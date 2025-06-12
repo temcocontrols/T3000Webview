@@ -6232,29 +6232,55 @@ class OptUtil {
   }
 
   /**
-   * Calculates the upper-left coordinates to center an object in the work area
-   * This function finds the position where an object with the given dimensions
-   * would be centered in the current view of the work area.
+   * Calculates the center coordinates of the work area in document space.
    *
-   * The function:
-   * 1. Calculates the center point of the current view
-   * 2. Adjusts for the object dimensions to find upper-left position
-   * 3. Converts window coordinates to document coordinates
-   * 4. Ensures minimum position of 10,10 to avoid edge placement
+   * This method determines the center point of the SVG document's display area,
+   * adjusts for the provided element's dimensions, and converts these coordinates
+   * from window/screen space to document space.
    *
-   * @param width - The width of the object to center
-   * @param height - The height of the object to center
-   * @returns Object with x,y coordinates in document space for upper-left position
+   * @param width - The width of the element to center in document units
+   * @param height - The height of the element to center in document units
+   * @returns Document coordinates object with x and y properties representing the centered position,
+   *          with minimum values clamped at (10,10)
    */
   CalcWorkAreaCenterCoords(width, height) {
     const svgDoc = this.svgDoc;
 
-    // Calculate the center point in window coordinates
-    const windowCenterX = svgDoc.docInfo.dispX + svgDoc.docInfo.dispWidth / 2 - (width / 2) * svgDoc.docInfo.docToScreenScale;
-    const windowCenterY = svgDoc.docInfo.dispY + svgDoc.docInfo.dispHeight / 2 - (height / 2) * svgDoc.docInfo.docToScreenScale;
+    /*
+    Calculate the center point in window coordinates
+
+    svgDoc.docInfo.dispX: The starting X position of the display area/viewport
+    svgDoc.docInfo.dispWidth / 2: Half the width of the display area (finding its center point)
+    (width / 2) * svgDoc.docInfo.docToScreenScale: Half the width of the element being positioned, converted from document units to screen units
+    */
+    const centerX = svgDoc.docInfo.dispX + svgDoc.docInfo.dispWidth / 2 - (width / 2) * svgDoc.docInfo.docToScreenScale;
+    const centerY = svgDoc.docInfo.dispY + svgDoc.docInfo.dispHeight / 2 - (height / 2) * svgDoc.docInfo.docToScreenScale;
 
     // Convert window coordinates to document coordinates
-    const docCoords = svgDoc.ConvertWindowToDocCoords(windowCenterX, windowCenterY);
+    const docCoords = svgDoc.ConvertWindowToDocCoords(centerX, centerY);
+
+    // Ensure minimum positioning of 10,10
+    docCoords.x = docCoords.x < 10 ? 10 : docCoords.x;
+    docCoords.y = docCoords.y < 10 ? 10 : docCoords.y;
+
+    return docCoords;
+  }
+
+  /**
+   * Converts window coordinates to document coordinates with minimum positioning constraints.
+   *
+   * @param coordsX - The x-coordinate in window space
+   * @param coordsY - The y-coordinate in window space
+   * @returns The converted coordinates in document space, with x and y values guaranteed to be at least 10
+   */
+  CalcDocCoords(coordsX, coordsY) {
+    // Convert coordinates from window to document space
+    const svgDoc = this.svgDoc;
+
+    let newX = svgDoc.docInfo.dispX + coordsX * svgDoc.docInfo.docToScreenScale;
+    let newY = svgDoc.docInfo.dispY + coordsY * svgDoc.docInfo.docToScreenScale;
+
+    const docCoords = svgDoc.ConvertWindowToDocCoords(newX, newY);
 
     // Ensure minimum positioning of 10,10
     docCoords.x = docCoords.x < 10 ? 10 : docCoords.x;
@@ -7280,7 +7306,6 @@ class OptUtil {
    * @returns Boolean indicating whether library objects were successfully loaded
    */
   LoadLibrary() {
-
     // Retrieve stored library items from local storage
     const libraries = DataOpt.LoadT3Library();
 
@@ -7289,8 +7314,19 @@ class OptUtil {
       return false;
     }
 
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - rck:", T3Gv.opt.rClickParam);
+
+    // Calculate the coordinates for placing the library objects
+    const hasRck = T3Gv.opt.rClickParam && T3Gv.opt.rClickParam.hitPoint.x && T3Gv.opt.rClickParam.hitPoint.y;
+
+    const coordsX = hasRck ? T3Gv.opt.rClickParam.hitPoint.x : 100;
+    const coordsY = hasRck ? T3Gv.opt.rClickParam.hitPoint.y : 100;
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - coordsX,coordsY:", coordsX, coordsY);
+
+    const docCoords = this.CalcDocCoords(coordsX, coordsY);
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - docCoords:", docCoords);
+
     // Calculate position for placing the shapes
-    const loadLocation = this.CalcWorkAreaCenterCoords(10, 10);
     let offsetX = 0;
     let offsetY = 0;
     const padding = 20; // Space between objects
@@ -7319,7 +7355,7 @@ class OptUtil {
       }
 
       // Position the object relative to center position with offset
-      newObject.SetShapeOrigin(loadLocation.x + offsetX, loadLocation.y + offsetY, null, false);
+      newObject.SetShapeOrigin(docCoords.x + offsetX, docCoords.y + offsetY, null, false);
 
       // Add the new object to document
       const newObjectId = DrawUtil.AddNewObject(newObject, false, false);
