@@ -5955,7 +5955,7 @@ class OptUtil {
         let imageWidth = width;
 
         // Calculate position to center the image in work area
-        const centerPosition = self.CalcWorkAreaCenterUL(imageWidth, imageHeight);
+        const centerPosition = self.CalcWorkAreaCenterCoords(imageWidth, imageHeight);
 
         // Create a transparent style for the image container
         const transparentStyle = new QuickStyle();
@@ -6246,31 +6246,19 @@ class OptUtil {
    * @param height - The height of the object to center
    * @returns Object with x,y coordinates in document space for upper-left position
    */
-  CalcWorkAreaCenterUL(width, height) {
+  CalcWorkAreaCenterCoords(width, height) {
     const svgDoc = this.svgDoc;
 
     // Calculate the center point in window coordinates
-    const windowCenterX =
-      svgDoc.docInfo.dispX +
-      svgDoc.docInfo.dispWidth / 2 -
-      (width / 2) * svgDoc.docInfo.docToScreenScale;
-
-    const windowCenterY =
-      svgDoc.docInfo.dispY +
-      svgDoc.docInfo.dispHeight / 2 -
-      (height / 2) * svgDoc.docInfo.docToScreenScale;
+    const windowCenterX = svgDoc.docInfo.dispX + svgDoc.docInfo.dispWidth / 2 - (width / 2) * svgDoc.docInfo.docToScreenScale;
+    const windowCenterY = svgDoc.docInfo.dispY + svgDoc.docInfo.dispHeight / 2 - (height / 2) * svgDoc.docInfo.docToScreenScale;
 
     // Convert window coordinates to document coordinates
     const docCoords = svgDoc.ConvertWindowToDocCoords(windowCenterX, windowCenterY);
 
     // Ensure minimum positioning of 10,10
-    if (docCoords.x < 10) {
-      docCoords.x = 10;
-    }
-
-    if (docCoords.y < 10) {
-      docCoords.y = 10;
-    }
+    docCoords.x = docCoords.x < 10 ? 10 : docCoords.x;
+    docCoords.y = docCoords.y < 10 ? 10 : docCoords.y;
 
     return docCoords;
   }
@@ -6361,7 +6349,7 @@ class OptUtil {
         }
 
         // Calculate position to center the SVG in work area
-        const centerPosition = this.CalcWorkAreaCenterUL(finalHeight, finalWidth);
+        const centerPosition = this.CalcWorkAreaCenterCoords(finalHeight, finalWidth);
 
         // Create a transparent style for the SVG container
         const transparentStyle = new QuickStyle();
@@ -7302,7 +7290,7 @@ class OptUtil {
     }
 
     // Calculate position for placing the shapes
-    const loadLocation = this.CalcWorkAreaCenterUL(100, 100);
+    const loadLocation = this.CalcWorkAreaCenterCoords(10, 10);
     let offsetX = 0;
     let offsetY = 0;
     const padding = 20; // Space between objects
