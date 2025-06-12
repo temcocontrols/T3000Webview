@@ -737,7 +737,7 @@ class CtxMenuUtil {
     const ctxMenu: MenuConfigItem[] =
       [{
         key: 'select-shape',
-        title: 'Select Shape',
+        title: 'Select Shape(s)',
         icon: BorderOutlined,
         // shortcut: 'Alt+S',
         type: 'submenu',

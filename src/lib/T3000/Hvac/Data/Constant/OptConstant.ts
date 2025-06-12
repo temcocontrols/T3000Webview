@@ -373,9 +373,9 @@ class OptConstant {
      * Default shape dimensions
      * Provides standard sizes for newly created shapes
      */
-    ShapeWidth: 150,
-    ShapeHeight: 75,
-    ShapeSquare: 100,
+    ShapeWidth: 120,
+    ShapeHeight: 50,
+    ShapeSquare: 60,
 
     /**
      * Maximum hops for shape detection

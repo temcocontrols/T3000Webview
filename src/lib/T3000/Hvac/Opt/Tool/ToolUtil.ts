@@ -349,16 +349,16 @@ class ToolUtil {
         context.StampTextLabel(false, false);
         break;
       case shapeTypes.RECTANGLE:
-        context.StampRectangle(result, false);
+        context.DrawRectangle(result, false);
         break;
       case shapeTypes.ROUNDED_RECTANGLE:
         context.StampRoundRect(result, false);
         break;
       case shapeTypes.CIRCLE:
-        context.StampCircle(result, true);
+        context.DrawCircle(result, true);
         break;
       case shapeTypes.OVAL:
-        context.StampCircle(result, false);
+        context.DrawCircle(result, false);
         break;
       case shapeTypes.ForeignObject:
         context.StampVueComponent(result, uniShapeType);
@@ -376,29 +376,20 @@ class ToolUtil {
    * @param isSquare - Whether to create a square (true) or rectangle (false)
    * @returns void
    */
-  StampRectangle(isDragDropMode, isSquare) {
-    LogUtil.Debug("O.ToolOpt StampRectangle input:", isDragDropMode, isSquare);
-
-    let width, height;
+  DrawRectangle(isDragDropMode, isSquare) {
     const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Set dimensions based on whether we want a square or rectangle
-    if (isSquare) {
-      width = OptConstant.Common.ShapeSquare;
-      height = OptConstant.Common.ShapeSquare;
-    } else {
-      width = OptConstant.Common.ShapeWidth;
-      height = 60;// OptConstant.Common.ShapeHeight;
-    }
+    let width = isSquare ? OptConstant.Common.ShapeSquare : OptConstant.Common.ShapeWidth;
+    let height = isSquare ? OptConstant.Common.ShapeSquare : OptConstant.Common.ShapeHeight;
+
+    // Initial position off-screen
+    const initialX = -1000;
+    const initialY = -1000;
 
     // Create shape attributes
     const shapeAttributes = {
-      Frame: {
-        x: -1000,
-        y: -1000,
-        width: width,
-        height: height
-      },
+      Frame: { x: initialX, y: initialY, width: width, height: height },
       TextGrow: NvConstant.TextGrowBehavior.ProPortional,
       shapeparam: 0,// sessionBlock.def.rrectparam,
       moreflags: OptConstant.ObjMoreFlags.FixedRR,
@@ -414,9 +405,7 @@ class ToolUtil {
     const rectangleShape = new Rect(shapeAttributes);
 
     // Use mouse stamp method to place the shape
-    DrawUtil.MouseStampNewShape(rectangleShape, true, true, true, null, null);
-
-    LogUtil.Debug("O.ToolOpt StampRectangle output: void");
+    DrawUtil.MouseDrawNewShape(rectangleShape, true, true, true, null, null);
   }
 
   /**
@@ -463,61 +452,54 @@ class ToolUtil {
     const roundRectShape = new RRect(shapeAttributes);
 
     // Use mouse stamp method to place the shape
-    DrawUtil.MouseStampNewShape(roundRectShape, true, true, true, null, null);
+    DrawUtil.MouseDrawNewShape(roundRectShape, true, true, true, null, null);
 
     LogUtil.Debug("O.ToolOpt StampRoundRect output: void");
   }
 
+
   /**
-   * Creates and stamps a circle or oval shape onto the drawing
-   * @param isDragDropMode - Whether to use drag-drop mode or mouse stamp mode
-   * @param isCircle - Whether to create a circle (true) or oval (false)
-   * @returns void
+   * Creates and places a circle or oval shape on the canvas.
+   *
+   * @param isDragDropMode - Determines if the shape is being created in drag-drop mode
+   * @param isCircle - When true, creates a perfect circle; when false, creates an oval
+   *
+   * @remarks
+   * The shape is initially positioned off-screen at coordinates (-1000, -1000) and then
+   * placed using the MouseDrawNewShape utility. The circle and oval have different
+   * growth behaviors - circles maintain proportional growth for both object and text,
+   * while ovals only maintain proportional text growth.
+   *
+   * Dimensions are determined by OptConstant values:
+   * - For circles: width = height = OptConstant.Common.ShapeSquare
+   * - For ovals: width = OptConstant.Common.ShapeWidth, height = OptConstant.Common.ShapeHeight
    */
-  StampCircle(isDragDropMode, isCircle) {
-    LogUtil.Debug("O.ToolOpt StampCircle input:", isDragDropMode, isCircle);
-
-    let width, height;
-
+  DrawCircle(isDragDropMode, isCircle) {
     // Set dimensions based on whether we want a circle or oval
-    if (isCircle) {
-      width = OptConstant.Common.ShapeSquare;
-      height = OptConstant.Common.ShapeSquare;
-    } else {
-      width = OptConstant.Common.ShapeWidth;
-      height = OptConstant.Common.ShapeHeight;
-    }
+    let width = isCircle ? OptConstant.Common.ShapeSquare : OptConstant.Common.ShapeWidth;
+    let height = isCircle ? OptConstant.Common.ShapeSquare : OptConstant.Common.ShapeHeight;
 
     // Initial position off-screen
     const initialX = -1000;
     const initialY = -1000;
-    let shapeAttributes = null;
 
-    // Configure shape attributes
-    if (isCircle) {
-      shapeAttributes = {
-        Frame: { x: initialX, y: initialY, width: 100, height: 100 },
+    // Configure shape attributes using ternary expression
+    let shapeAttributes = isCircle
+      ? {
+        Frame: { x: initialX, y: initialY, width: width, height: height },
         TextGrow: NvConstant.TextGrowBehavior.ProPortional,
-        // ObjGrow: OptConstant.GrowBehavior.ProPortional
-        ObjGrow: OptConstant.GrowBehavior.All
-
-      };
-    } else {
-      shapeAttributes = {
+        ObjGrow: OptConstant.GrowBehavior.ProPortional
+      }
+      : {
         Frame: { x: initialX, y: initialY, width: width, height: height },
         TextGrow: NvConstant.TextGrowBehavior.ProPortional
       };
-    }
 
     // Create the oval shape
     const ovalShape = new Oval(shapeAttributes);
 
-    LogUtil.Info("= u.ToolUtil StampCircle / Oval data", ovalShape);
-
     // Use mouse stamp method to place the shape
-    DrawUtil.MouseStampNewShape(ovalShape, true, true, true, null, null);
-
-    LogUtil.Debug("O.ToolOpt StampCircle output: void");
+    DrawUtil.MouseDrawNewShape(ovalShape, true, true, true, null, null);
   }
 
   StampVueComponent(isDragDropMode, uniShapeType) {
@@ -613,7 +595,7 @@ class ToolUtil {
     var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType, props, shapeAttributes);
 
     // Use mouse stamp method to place the shape
-    DrawUtil.MouseStampNewShape(fiObShape, true, true, true, null, null);
+    DrawUtil.MouseDrawNewShape(fiObShape, true, true, true, null, null);
 
     LogUtil.Debug("U.ToolUtil StampVueComponent output: void");
 
@@ -824,7 +806,7 @@ class ToolUtil {
     }
 
     // Stamp the shape onto the canvas
-    DrawUtil.MouseStampNewShape(newShape, true, true, true, null, null);
+    DrawUtil.MouseDrawNewShape(newShape, true, true, true, null, null);
 
     LogUtil.Debug("U.ToolUtil.StampShape - Output: Shape stamped successfully");
   }

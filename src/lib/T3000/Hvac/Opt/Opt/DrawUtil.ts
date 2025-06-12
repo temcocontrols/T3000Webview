@@ -295,16 +295,27 @@ class DrawUtil {
   }
 
   /**
-  * Prepares a new shape for stamping onto the document
-  * @param drawingShape - The shape to be stamped
-  * @param centerHorizontally - Whether to center the shape horizontally
-  * @param centerVertically - Whether to center the shape vertically
-  * @param useDefaultStyle - Whether to use default styling
-  * @param completionCallback - Callback function to execute after stamping
-  * @param userData - User data to pass to the callback function
-  */
-  static MouseStampNewShape(drawingShape, centerHorizontally, centerVertically, useDefaultStyle, completionCallback, userData) {
-    LogUtil.Debug("O.Opt MouseStampNewShape - Input:", {
+   * Initiates an interactive drawing operation for placing a new shape via mouse interaction.
+   * This method sets up a "stamp" mode where the user can place a shape by moving the mouse
+   * and clicking to confirm placement.
+   *
+   * @param drawingShape - The shape object to be drawn/placed. Should contain a BlockID property.
+   * @param centerHorizontally - Whether to center the shape horizontally at the mouse position
+   * @param centerVertically - Whether to center the shape vertically at the mouse position
+   * @param useDefaultStyle - Whether to apply default styling to the new shape
+   * @param completionCallback - Optional callback function to execute when shape placement is completed
+   * @param userData - Optional data to pass to the completion callback
+   *
+   * @remarks
+   * This method:
+   * - Sets the application to "Stamp" mode
+   * - Temporarily disables conflicting interactions
+   * - Sets up mouse event handlers for the stamping operation
+   * - Initializes tracking and positioning variables
+   * - Determines appropriate edit mode based on shape properties
+   */
+  static MouseDrawNewShape(drawingShape, centerHorizontally, centerVertically, useDefaultStyle, completionCallback, userData) {
+    LogUtil.Debug("= u.DrawUtil: MouseDrawNewShape - Input:", {
       drawingShape: drawingShape ? drawingShape.BlockID : null,
       centerHorizontally,
       centerVertically,
@@ -353,8 +364,6 @@ class DrawUtil {
     // Prepare for stamping
     LMEvtUtil.LMStampPreTrack();
     this.InitializeAutoGrowDrag();
-
-    LogUtil.Debug("O.Opt MouseStampNewShape - Output: Stamp operation initialized");
   }
 
   /**

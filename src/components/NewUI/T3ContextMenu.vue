@@ -329,7 +329,7 @@ const contextMenuConfig = ref<MenuConfigItem[]>([
   },
   {
     key: 'select-shape',
-    title: 'Select Shape',
+    title: 'Select Shape(s)',
     icon: GatewayOutlined,
     shortcut: 'Alt+S',
     type: 'item',
