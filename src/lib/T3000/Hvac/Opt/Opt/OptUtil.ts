@@ -7292,245 +7292,84 @@ class OptUtil {
    * @returns Boolean indicating whether library objects were successfully loaded
    */
   LoadLibrary() {
-    LogUtil.Debug("= O.OptUtil  LoadLibrary - Input: No parameters");
 
-    try {
-      // Retrieve stored library items from local storage
-      const serializedItems = localStorage.getItem('t3.library');
+    // Retrieve stored library items from local storage
+    const libraries = DataOpt.LoadT3Library();
 
-      if (!serializedItems) {
-        LogUtil.Debug("= O.OptUtil  LoadLibrary - No library items found in storage");
-        return false;
-      }
-
-      // Parse the JSON string back to objects
-      const libraryItems = JSON.parse(serializedItems);
-
-      if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
-        LogUtil.Debug("= O.OptUtil  LoadLibrary - Invalid or empty library data");
-        return false;
-      }
-
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
-
-      // Clear any current selection
-      this.CloseEdit(true);
-
-      // Calculate position for placing the shapes
-      const centerPosition = this.CalcWorkAreaCenterUL(500, 500);
-      let offsetX = 0;
-      let offsetY = 0;
-      const padding = 20; // Space between objects
-
-      // Track newly created objects for selection
-      const newObjectIds = [];
-
-      // Process each library item
-      for (let i = 0; i < libraryItems.length; i++) {
-        const libraryItem = libraryItems[i];
-
-        if (!libraryItem.Data) {
-          continue;
-        }
-
-        // Create a new object based on stored data
-        try {
-          const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
-
-          const originalObject = shapeData;
-
-          LogUtil.Info("= o.OptUtil: LoadLibrary - ConvertPlanObjectToShape:", originalObject);
-
-          // Clone the object data but create a proper instance based on type
-          let newObject=shapeData;
-
-          /*
-          // Determine the object type and create appropriate instance
-          switch (originalObject.objecttype) {
-            case PolygonConstant.ShapeTypes.RECTANGLE:
-              newObject = new Instance.Shape.Rect(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.OVAL:
-              newObject = new Instance.Shape.Oval(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.LINE:
-              newObject = new Instance.Shape.BaseLine(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.POLYGON:
-              newObject = new Instance.Shape.PolyLine(originalObject);
-              break;
-            // Add additional types as needed
-            default:
-              // Default to base shape for unknown types
-              newObject = new Instance.Shape.BaseDrawObject(originalObject);
-          }
-          */
-
-          if (newObject) {
-            // Position the object relative to center position with offset
-            newObject.SetShapeOrigin(
-              centerPosition.x + offsetX,
-              centerPosition.y + offsetY,
-              null,
-              false
-            );
-
-            // Add the new object to document
-            const newObjectId = DrawUtil.AddNewObject(newObject, false, false);
-
-            LogUtil.Info("= o.OptUtil: LoadLibrary - newObject,newObjectId:", newObject,newObjectId);
-
-            if (newObjectId >= 0) {
-              newObjectIds.push(newObjectId);
-
-              // Draw the shape using SvgUtil.AddSVGObject as requested
-              SvgUtil.AddSVGObject(i, newObjectId, false, true);
-
-              // Update offset for next object
-              offsetX += newObject.Frame.width + padding;
-
-              // Wrap to next row if needed
-              if (offsetX > 800) {
-                offsetX = 0;
-                offsetY += 200 + padding;
-              }
-            }
-          }
-        } catch (objError) {
-          LogUtil.Debug("= O.OptUtil  LoadLibrary - Error creating object:", objError);
-        }
-      }
-
-      // Select all newly created objects
-      if (newObjectIds.length > 0) {
-        // this.SelectObjects(newObjectIds, false, true);
-        SvgUtil.RenderAllSVGObjects();
-        DrawUtil.CompleteOperation(newObjectIds);
-      }
-
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
-      return true;
-    } catch (error) {
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Error:", error);
+    if (!libraries || libraries.length === 0) {
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - No library items found in storage");
       return false;
     }
-  }
 
-  LoadLibraryB() {
-    LogUtil.Info("= O.OptUtil  LoadLibrary - Input: No parameters");
+    // Calculate position for placing the shapes
+    const loadLocation = this.CalcWorkAreaCenterUL(100, 100);
+    let offsetX = 0;
+    let offsetY = 0;
+    const padding = 20; // Space between objects
 
-    try {
-      // Retrieve stored library items from local storage
-      const serializedItems = localStorage.getItem('t3.library');
+    // Track newly created objects for selection
+    const newObjectIds = [];
 
-      if (!serializedItems) {
-        LogUtil.Info("= O.OptUtil  LoadLibrary - No library items found in storage");
-        return false;
+    // Process each library item
+    for (let i = 0; i < libraries.length; i++) {
+      const libraryItem = libraries[i];
+
+      if (!libraryItem.Data) {
+        continue;
       }
 
-      // Parse the JSON string back to objects
-      const libraryItems = JSON.parse(serializedItems);
+      const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
+      const originalObject = shapeData;
 
-      if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
-        LogUtil.Info("= O.OptUtil  LoadLibrary - Invalid or empty library data");
-        return false;
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - ConvertPlanObjectToShape:", originalObject);
+
+      // Clone the object data but create a proper instance based on type
+      let newObject = shapeData;
+
+      if (!newObject) {
+        continue;
       }
 
-      LogUtil.Info("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
+      // Position the object relative to center position with offset
+      newObject.SetShapeOrigin(loadLocation.x + offsetX, loadLocation.y + offsetY, null, false);
 
-      // Clear any current selection
-      this.CloseEdit(true);
+      // Add the new object to document
+      const newObjectId = DrawUtil.AddNewObject(newObject, false, false);
 
-      // Calculate position for placing the shapes
-      const centerPosition = this.CalcWorkAreaCenterUL(500, 500);
-      let offsetX = 0;
-      let offsetY = 0;
-      const padding = 20; // Space between objects
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - newObject,newObjectId:", newObject, newObjectId);
 
-      // Track newly created objects for selection
-      const newObjectIds = [];
-
-      // Process each library item
-      for (let i = 0; i < libraryItems.length; i++) {
-        const libraryItem = libraryItems[i];
-
-        if (!libraryItem.Data) {
-          continue;
-        }
-
-        // Create a new object based on stored data
-        try {
-          const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
-
-          const originalObject = shapeData;
-
-          // Clone the object data but create a proper instance based on type
-          let newObject;
-
-          // Determine the object type and create appropriate instance
-          switch (originalObject.objecttype) {
-            case PolygonConstant.ShapeTypes.RECTANGLE:
-              newObject = new Instance.Shape.Rect(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.OVAL:
-              newObject = new Instance.Shape.Oval(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.LINE:
-              newObject = new Instance.Shape.BaseLine(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.POLYGON:
-              newObject = new Instance.Shape.PolyLine(originalObject);
-              break;
-            // Add additional types as needed
-            default:
-              // Default to base shape for unknown types
-              newObject = new Instance.Shape.BaseDrawObject(originalObject);
-          }
-
-          if (newObject) {
-            // Position the object relative to center position with offset
-            newObject.SetShapeOrigin(
-              centerPosition.x + offsetX,
-              centerPosition.y + offsetY,
-              null,
-              false
-            );
-
-            LogUtil.Info("= O.OptUtil  LoadLibrary - Creating object:", newObject);
-
-            // Add the new object to document
-            const newObjectId = DrawUtil.AddNewObject(newObject, false, true);
-            if (newObjectId >= 0) {
-              newObjectIds.push(newObjectId);
-
-              // Update offset for next object
-              offsetX += newObject.Frame.width + padding;
-
-              // Wrap to next row if needed
-              if (offsetX > 800) {
-                offsetX = 0;
-                offsetY += 200 + padding;
-              }
-            }
-          }
-        } catch (objError) {
-          LogUtil.Info("= O.OptUtil  LoadLibrary - Error creating object:", objError);
-        }
+      if (newObjectId < 0) {
+        continue;
       }
 
-      // Select all newly created objects
-      if (newObjectIds.length > 0) {
-        this.SelectObjects(newObjectIds, false, true);
-        SvgUtil.RenderAllSVGObjects();
-        DrawUtil.CompleteOperation(newObjectIds);
-      }
+      newObjectIds.push(newObjectId);
 
-      LogUtil.Info("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
-      return true;
-    } catch (error) {
-      LogUtil.Info("= O.OptUtil  LoadLibrary - Error:", error);
+      // Draw the shape using SvgUtil.AddSVGObject as requested
+      SvgUtil.AddSVGObject(i, newObjectId, false, true);
+
+      // Update offset for next object
+      offsetX += newObject.Frame.width + padding;
+
+      // Wrap to next row if needed
+      if (offsetX > 800) {
+        offsetX = 0;
+        offsetY += 200 + padding;
+      }
+    }
+
+    if (newObjectIds.length <= 0) {
       return false;
     }
+
+    // this.SelectObjects(newObjectIds, false, true);
+
+    // Clear any current selection
+    this.CloseEdit(true);
+    SvgUtil.RenderAllSVGObjects();
+    DrawUtil.CompleteOperation(newObjectIds);
+
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
+    return true;
   }
 
   /**
