@@ -32,6 +32,11 @@ const routes = [
         name: "hvac2",
         component: () => import("src/components/NewUI/IndexPage2.vue"),
       },
+      {
+        path:"calendar",
+        name: "calendar",
+        component: () => import("src/components/NewUI/ScheduleCalendar.vue"),
+      }
     ],
   },
   {
