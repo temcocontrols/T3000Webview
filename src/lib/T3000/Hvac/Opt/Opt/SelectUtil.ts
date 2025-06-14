@@ -903,8 +903,8 @@ class SelectUtil {
       return DSConstant.Contexts.DimensionText;
     }
     if (activeEditElement !== null && activeEditElement.ID === OptConstant.SVGElementClass.NoteText) {
-      LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.NoteText);
-      return DSConstant.Contexts.NoteText;
+      LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.Note);
+      return DSConstant.Contexts.Note;
     }
 
     // Handle default target selection.

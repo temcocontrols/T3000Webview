@@ -63,6 +63,7 @@ class ShapeConstant {
     NgEvent: 35,
     NgEventLabel: 36,
     NgTimeLine: 34,
+    ShapeContainer: 55,
   }
 }
 

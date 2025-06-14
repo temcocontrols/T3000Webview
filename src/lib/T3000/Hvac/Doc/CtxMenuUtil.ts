@@ -71,6 +71,7 @@ import T3Opt from './T3Opt';
 import Hvac from '../Hvac';
 import ToolOpt from '../Opt/Tool/ToolOpt';
 import T3Constant from '../Data/Constant/T3Constant';
+import DrawUtil from '../Opt/Opt/DrawUtil';
 
 class CtxMenuUtil {
 
@@ -1091,7 +1092,7 @@ class CtxMenuUtil {
         break;
       case 'clear':
         DataOpt.ClearT3LocalStorage();
-        Hvac.UI.Reload();
+        DrawUtil.ClearDrawArea();
         break;
       case 'lock':
         EvtOpt.toolOpt.LibLockAct(event);

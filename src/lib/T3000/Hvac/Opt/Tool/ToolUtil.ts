@@ -37,6 +37,7 @@ import AntdTest from "src/components/NewUI/AntdTest.vue";
 import ObjectType from "src/components/ObjectType.vue"
 import QuasarUtil from "../Quasar/QuasarUtil"
 import LogUtil from "../../Util/LogUtil"
+import Hvac from "../../Hvac"
 
 class ToolUtil {
 
@@ -1950,7 +1951,8 @@ class ToolUtil {
 
   ClearAndRest() {
     DataOpt.ClearT3LocalStorage();
-    // Hvac.UI.Reload();
+    DrawUtil.ClearDrawArea();
+    // Hvac.UI.ReInitialize();
   }
 }
 

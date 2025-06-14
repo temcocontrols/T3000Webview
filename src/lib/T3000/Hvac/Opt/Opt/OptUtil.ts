@@ -718,10 +718,7 @@ class OptUtil {
      * These setup basic data structures required for document management
      */
     // Create selected list block
-    const selectedListBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.SelectedListObject,
-      []
-    );
+    const selectedListBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.SelectedListObject, []);
     this.selectObjsBlockId = selectedListBlock.ID;
 
     // Create shape data block
@@ -736,10 +733,7 @@ class OptUtil {
     sdData.d_arrowsize = 1;
     sdData.CurrentTheme = null;
 
-    const sdDataBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.SDDataObject,
-      sdData
-    );
+    const sdDataBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.SDDataObject, sdData);
     this.sdDataBlockId = sdDataBlock.ID;
 
     // Create layers manager block
@@ -750,25 +744,16 @@ class OptUtil {
     layersManager.nlayers = 1;
     layersManager.activelayer = 0;
 
-    const layersManagerBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.LayersManagerObject,
-      layersManager
-    );
+    const layersManagerBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.LayersManagerObject, layersManager);
     this.layersManagerBlockId = layersManagerBlock.ID;
 
     // Create text edit block
     const teData = new TEData();
-    const tDataBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.TEDataObject,
-      teData
-    );
+    const tDataBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TEDataObject, teData);
     this.teDataBlockId = tDataBlock.ID;
 
     // Create links list block
-    const linksBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.LinkListObject,
-      []
-    );
+    const linksBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.LinkListObject, []);
     this.linksBlockId = linksBlock.ID;
     // #endregion
   }
@@ -780,7 +765,9 @@ class OptUtil {
    */
   Initialize() {
     ObjectUtil.PreserveUndoState(true);
+
     UIUtil.InitSvgDocument();
+
     UIUtil.InitT3GvOpt();
     this.sVGroot = this.svgDoc.svgObj.node;
     SelectUtil.UpdateSelectionAttributes(null);

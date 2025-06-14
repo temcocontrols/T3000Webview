@@ -2405,6 +2405,36 @@ class DrawUtil {
 
     LogUtil.Debug('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);
   }
+
+  static ClearDrawArea() {
+
+    /*
+    LayerUtil.ClearSVGHighlightLayer();
+    LayerUtil.ClearSVGOverlayLayer();
+    LayerUtil.ClearSVGObjectLayer();
+    UIUtil.SetBackgroundColor();
+    ObjectUtil.ClearDirtyList();
+    ObjectUtil.ClearFutureUndoStates();
+    ObjectUtil.ClearUndoRedo();
+    T3Gv.state = new StateOpt();
+    T3Gv.stdObj = new DataStore();
+    T3Gv.currentObjSeqId = -1;
+    T3Gv.opt.Initialize();
+    */
+
+    T3Gv.opt.CloseEdit(true);
+
+    // Clear SVG layers and set the current background color
+    LayerUtil.ClearSVGHighlightLayer();
+    LayerUtil.ClearSVGOverlayLayer();
+    LayerUtil.ClearSVGObjectLayer();
+    UIUtil.SetBackgroundColor();
+    ObjectUtil.ClearDirtyList();
+    // Clear any existing selection
+    SelectUtil.ClearAnySelection(true);
+
+    LogUtil.Debug("= u.DrawUtil: ClearDrawArea");
+  }
 }
 
 export default DrawUtil
