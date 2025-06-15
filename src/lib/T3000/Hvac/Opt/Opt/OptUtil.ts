@@ -767,12 +767,13 @@ class OptUtil {
    * This is the main setup method that prepares the SVG document, UI elements, and system state
    * It creates necessary data structures for managing shapes, selections, and user interactions
    */
-  Initialize() {
+  Initialize(isReInitialize = false) {
     ObjectUtil.PreserveUndoState(true);
 
-    UIUtil.InitSvgDocument();
+    UIUtil.InitSvgDocument(isReInitialize);
 
     UIUtil.InitT3GvOpt();
+
     this.sVGroot = this.svgDoc.svgObj.node;
     SelectUtil.UpdateSelectionAttributes(null);
     this.BuildarrowHlkTables();

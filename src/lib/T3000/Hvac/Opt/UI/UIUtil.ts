@@ -350,7 +350,7 @@ class UIUtil {
    * - Collaboration layer for multi-user functionality
    * It also configures event handlers for user interactions.
    */
-  static InitSvgDocument() {
+  static InitSvgDocument(isReInitialize = false) {
     // Get the session data from stored object
     const sdData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
     LogUtil.Debug("InitSvgDoc dim from T3Gv.stdObj without load storage data", T3Gv.opt.sdDataBlockId, T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
@@ -373,7 +373,7 @@ class UIUtil {
 
     // Initialize the document work area
     const workAreaConfig = { svgAreaId: T3Gv.opt.svgDocId, documentWidth: width, documentHeight: height, documentDPI: 100 };
-    T3Gv.docUtil.InitializeWorkArea(workAreaConfig);
+    T3Gv.docUtil.InitializeWorkArea(workAreaConfig, isReInitialize);
   }
 
   static InitT3GvOpt() {

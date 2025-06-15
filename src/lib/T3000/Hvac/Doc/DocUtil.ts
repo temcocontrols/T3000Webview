@@ -161,7 +161,7 @@ class DocUtil {
    * @param workAreaConfig - Configuration object for the work area
    * @returns void
    */
-  InitializeWorkArea(workAreaConfig: any): void {
+  InitializeWorkArea(workAreaConfig: any, isReInitialize = false): void {
     LogUtil.Info("= u.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
 
     // Use provided configuration or defaults
@@ -175,9 +175,13 @@ class DocUtil {
     this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
 
     // Initialize document-related properties
-    this.svgDoc = null;
-    this.hRulerDoc = null;
-    this.vRulerDoc = null;
+
+    if (!isReInitialize) {
+      this.svgDoc = null;
+      this.hRulerDoc = null;
+      this.vRulerDoc = null;
+    }
+
     this.rulerVis = true;
     this.gridVis = true;
     this.gridLayer = '_doc_grid';
@@ -207,12 +211,18 @@ class DocUtil {
     // Bind mouse move event handler
     $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
 
-    // Initialize SVG area with the configuration
-    // this.InitSvgArea(workAreaConfig);
+    if (!isReInitialize) {
+      // Initialize SVG area with the configuration
+      this.InitSvgArea(workAreaConfig);
+    }
 
     // Initialize UI components visibility and content
     this.UpdateGridVisibility();
-    this.SetUpRulers();
+
+    if (!isReInitialize) {
+      this.SetUpRulers();
+    }
+
     this.UpdateGrid();
     this.UpdatePageDivider();
     this.UpdateWorkArea();
@@ -1477,10 +1487,7 @@ class DocUtil {
    * @returns boolean - True if grid visibility was changed, false otherwise
    */
   UpdateGridVisibility(): boolean {
-    LogUtil.Debug("= U.DocUtil: UpdateGridVisibility - Input:", {
-      showGrid: this.docConfig.showGrid,
-      currentGridVisibility: this.gridVis
-    });
+    LogUtil.Debug("= u.DocUtil: UpdateGridVisibility - Input:", { showGrid: this.docConfig.showGrid, currentGridVisibility: this.gridVis });
 
     const gridLayer = this.svgDoc ? this.svgDoc.GetLayer(this.gridLayer) : null;
     let visibilityChanged = false;
@@ -2529,6 +2536,16 @@ class DocUtil {
     RefUtil.SetShowGrid(showGrid);
     this.UpdateGridVisibility();
     LogUtil.Debug("= U.DocUtil: LoadGridSetting - Output:", { showGrid });
+  }
+
+  RemoveAllLayers() {
+    const layersManagerBlockId = T3Gv.opt.layersManagerBlockId;
+    const layersManager = ObjectUtil.GetObjectPtr(layersManagerBlockId, false);
+    const layers = layersManager.layers;
+
+    LogUtil.Info("= u.DocUtil: RemoveAllLayers - Input:", { layersManagerBlockId, layers });
+
+    this.svgDoc.RemoveLayer("0");
   }
 }
 

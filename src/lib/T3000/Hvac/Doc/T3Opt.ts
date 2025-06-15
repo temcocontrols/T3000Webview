@@ -153,6 +153,8 @@ class T3Opt {
 
   ReInitialize() {
 
+    // T3Gv.docUtil.RemoveAllLayers();
+
     // $("#c-ruler").html("");
     // $("#h-ruler").html("");
     // $("#v-ruler").html("");
@@ -174,7 +176,7 @@ class T3Opt {
 
     // T3Gv.opt.InitBlockData();
 
-     T3Gv.opt.Initialize();
+     T3Gv.opt.Initialize(true);
 
     DataOpt.SaveToLocalStorage();
 
@@ -207,72 +209,6 @@ class T3Opt {
 
     // Render all SVG objects
     // SvgUtil.RenderAllSVGObjects();
-
-    this.userOpt.Initialize();
-
-    // Test for SDData object
-    LogUtil.Debug("= o.T3Opt: Initialize/ - After initialize all and the T3Gv.stdObj loaded from storage data:", T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
-
-    // Load rulers and grid settings from local storage
-    T3Gv.docUtil.LoadRulersSetting();
-    T3Gv.docUtil.LoadGridSetting();
-
-    // Set the document scale (0.25 to 4)
-    const docSetting = DataOpt.LoadDocSettingData();
-    const zoomPct = (docSetting?.docInfo?.docScale ?? 1) * 100;
-    T3Gv.docUtil.SetZoomLevel(zoomPct);
-    T3Gv.docUtil.UpdateRefZoomScale(docSetting?.docInfo?.docScale ?? 1);
-
-    LogUtil.Debug(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
-  }
-
-  ReInitializeA() {
-    // T3Gv.quasar = quasarInstance;
-    // QuasarUtil.quasar = quasarInstance;
-
-    // Initialize Instance with modules to avoid circular references
-    initializeInstance(Basic, Shape);
-
-    // Initialize data state and store
-    DataOpt.InitStateAndStore();
-
-    // Set up document handler and option manager
-    T3Gv.docUtil = new DocUtil();
-    T3Gv.opt = new OptUtil();
-
-    T3Gv.opt.InitializeProperties();
-
-    T3Gv.opt.Initialize();
-
-    // Initialize wall operations
-    T3Gv.wallOpt = new WallOpt();
-
-    // Prevent default context menu
-    window.oncontextmenu = function (event) {
-      event.preventDefault();
-    };
-
-    // Set up keyboard event handlers
-    window.onkeydown = KeyboardOpt.OnKeyDown;
-    window.onkeyup = KeyboardOpt.OnKeyUp;
-    window.onkeypress = KeyboardOpt.OnKeyPress;
-
-    // Expose handlers to window for external access
-    window.docUtil = T3Gv.docUtil;
-    window.wallOpt = T3Gv.wallOpt;
-
-    // Bind element control events
-    this.evtOpt.BindElemCtlEvent();
-
-    // Initialize clipboard
-    T3Clipboard.Init();
-
-    // Load stored data
-    DataOpt.InitStoredData();
-    DataOpt.LoadAppStateV2();
-
-    // Render all SVG objects
-    SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
 
