@@ -372,12 +372,8 @@ class UIUtil {
     var height = sdData.dim.y;
 
     // Initialize the document work area
-    T3Gv.docUtil.InitializeWorkArea({
-      svgAreaId: T3Gv.opt.svgDocId,
-      documentWidth: width,
-      documentHeight: height,
-      documentDPI: 100
-    });
+    const workAreaConfig = { svgAreaId: T3Gv.opt.svgDocId, documentWidth: width, documentHeight: height, documentDPI: 100 };
+    T3Gv.docUtil.InitializeWorkArea(workAreaConfig);
   }
 
   static InitT3GvOpt() {

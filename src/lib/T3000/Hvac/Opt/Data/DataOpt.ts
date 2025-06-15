@@ -493,6 +493,7 @@ class DataOpt {
     localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
     localStorage.removeItem(this.APP_STATE_V2);
     localStorage.removeItem(this.DRAW_KEY);
+    localStorage.removeItem(this.DOC_INFO_KEY);
   }
 
   static LoadT3Config(): any {

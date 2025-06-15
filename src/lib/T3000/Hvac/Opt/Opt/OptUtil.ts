@@ -392,7 +392,7 @@ class OptUtil {
      * These elements form the structure of the drawing document
      */
     this.svgDocId = '#svg-area';                // CSS selector for the SVG container
-    this.svgDoc = null;                         // SVG document reference (initialized later)
+    // this.svgDoc = null;                         // SVG document reference (initialized later)
     this.svgObjectLayer = null;                 // Main layer for drawing content
     this.svgOverlayLayer = null;                // Layer for UI elements (not exported)
     this.svgHighlightLayer = null;              // Layer for selection highlights
@@ -712,6 +712,10 @@ class OptUtil {
     this.selectionState = new SelectionAttr(); // Current selection state
     // #endregion
 
+    this.InitBlockData();
+  }
+
+  InitBlockData() {
     // #region Block Creation & Initialization
     /**
      * Create persistent storage blocks and initialize the system

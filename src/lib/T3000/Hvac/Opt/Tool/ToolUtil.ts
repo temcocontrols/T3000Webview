@@ -1952,7 +1952,8 @@ class ToolUtil {
   ClearAndRest() {
     DataOpt.ClearT3LocalStorage();
     DrawUtil.ClearDrawArea();
-    // Hvac.UI.ReInitialize();
+    Hvac.UI.ReInitialize();
+    // DataOpt.SaveToLocalStorage();
   }
 }
 

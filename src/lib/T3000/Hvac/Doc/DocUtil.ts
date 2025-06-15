@@ -162,7 +162,7 @@ class DocUtil {
    * @returns void
    */
   InitializeWorkArea(workAreaConfig: any): void {
-    LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
+    LogUtil.Info("= u.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
 
     // Use provided configuration or defaults
     workAreaConfig = workAreaConfig || {};
@@ -208,7 +208,7 @@ class DocUtil {
     $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
 
     // Initialize SVG area with the configuration
-    this.InitSvgArea(workAreaConfig);
+    // this.InitSvgArea(workAreaConfig);
 
     // Initialize UI components visibility and content
     this.UpdateGridVisibility();
@@ -238,7 +238,7 @@ class DocUtil {
    * @returns void
    */
   InitSvgArea(configuration: any) {
-    LogUtil.Debug("= U.DocUtil: InitSvgArea - Input:", configuration);
+    LogUtil.Info("= u.DocUtil: InitSvgArea - Input:", configuration);
 
     // Use provided configuration or empty object as fallback
     configuration = configuration || {};
@@ -1183,12 +1183,12 @@ class DocUtil {
 
     // Initialize horizontal ruler document if not already set
     if (!this.hRulerDoc) {
-      this.hRulerDoc = new Document(this.hRulerAreaId, [] /* Globals.WebFonts */);
+      this.hRulerDoc = new Document(this.hRulerAreaId, []);
     }
 
     // Initialize vertical ruler document if not already set
     if (!this.vRulerDoc) {
-      this.vRulerDoc = new Document(this.vRulerAreaId, [] /* Globals.WebFonts */);
+      this.vRulerDoc = new Document(this.vRulerAreaId, []);
     }
 
     // Initialize ruler guides and state properties

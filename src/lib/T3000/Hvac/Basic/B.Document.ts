@@ -107,7 +107,6 @@ class Document extends Container {
 
     this.svgObj = T3Svg.svg($(this.parentElem)[0]);
     this.docInfo = new DocInfo();
-    // this.fontList = fontList;
     this.activeEdit = null;
     this.spellChecker = null;
     this.documentLayerId = null;
