@@ -6,24 +6,9 @@
     </div>
 
     <!-- Desktop menu -->
-    <a-menu v-model:selectedKeys="topMenuCurrent" mode="horizontal" class="desktop-menu">
-      <a-menu-item key="dashboard">
-        <router-link to="/new/dashboard">Dashboard</router-link>
-      </a-menu-item>
-      <a-menu-item key="new-ui">
-        <router-link to="/hvac/t2">New UI</router-link>
-      </a-menu-item>
-      <a-menu-item key="app-library">
-        <router-link to="/new/app-library">Application Library</router-link>
-      </a-menu-item>
-      <a-menu-item key="modbus-register">
-        <router-link to="/modbus-register">Modbus Register</router-link>
-      </a-menu-item>
-      <a-menu-item key="schedules">
-        <router-link to="/new/schedules">Schedules</router-link>
-      </a-menu-item>
-      <a-menu-item key="holidays">
-        <router-link to="/new/holidays">Holidays</router-link>
+    <a-menu class="desktop-menu" v-model:selectedKeys="topMenuCurrent" mode="horizontal">
+      <a-menu-item v-for="item in menuItems" :key="item.key" @click="handleMenuClick(item.key)">
+        <router-link :to="item.route">{{ item.title }}</router-link>
       </a-menu-item>
     </a-menu>
 
@@ -43,30 +28,15 @@
   <a-drawer placement="left" :visible="mobileMenuVisible" @close="mobileMenuVisible = false" :closable="false"
     width="200" class="mobile-drawer">
     <a-menu v-model:selectedKeys="topMenuCurrent" mode="vertical">
-      <a-menu-item key="dashboard">
-        <router-link to="/new/dashboard">Dashboard</router-link>
-      </a-menu-item>
-      <a-menu-item key="new-ui">
-        <router-link to="/hvac/t2">New UI</router-link>
-      </a-menu-item>
-      <a-menu-item key="app-library">
-        <router-link to="/new/app-library">Application Library</router-link>
-      </a-menu-item>
-      <a-menu-item key="modbus-register">
-        <router-link to="/modbus-register">Modbus Register</router-link>
-      </a-menu-item>
-      <a-menu-item key="schedules">
-        <router-link to="/new/schedules">Schedules</router-link>
-      </a-menu-item>
-      <a-menu-item key="holidays">
-        <router-link to="/new/holidays">Holidays</router-link>
+      <a-menu-item v-for="item in menuItems" :key="item.key" @click="handleMenuClick(item.key)">
+        <router-link :to="item.route">{{ item.title }}</router-link>
       </a-menu-item>
     </a-menu>
   </a-drawer>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { MenuOutlined } from '@ant-design/icons-vue'
 import { topMenuCurrent } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 
@@ -74,8 +44,72 @@ defineOptions({
   name: 'Header-Component'
 });
 
-// const current = ref<string[]>(['dashboard']);
 const mobileMenuVisible = ref(false);
+
+const menuItems = [
+  {
+    key: "dashboard",
+    title: "Dashboard",
+    route: "/new/dashboard"
+  },
+  {
+    key: "new-ui",
+    title: "New UI",
+    route: "/hvac/t2"
+  },
+  {
+    key: "app-library",
+    title: "Application Library",
+    route: "/new/app-library"
+  },
+  {
+    key: "modbus-register",
+    title: "Modbus Register",
+    route: "/modbus-register"
+  },
+  {
+    key: "schedules",
+    title: "Schedules",
+    route: "/new/schedules"
+  },
+  {
+    key: "holidays",
+    title: "Holidays",
+    route: "/new/holidays"
+  }
+];
+
+// It does not work if this page is refreshed; refer to the onMounted hook below.
+const handleMenuClick = (key: string) => {
+  topMenuCurrent.value = [key];
+  mobileMenuVisible.value = false; // Close mobile menu after selection
+
+  console.log(`Menu item clicked: ${key}`, topMenuCurrent.value);
+};
+
+onMounted(() => {
+  // Get current URL path without the hash prefix
+  const currentPath = window.location.hash.slice(1); // e.g., "/new/holidays"
+
+  // Try exact match first
+  let matchedItem = menuItems.find(item => item.route === currentPath);
+
+  if (!matchedItem) {
+    // If no exact match, try matching by the last segment
+    const lastSegment = currentPath.split('/').pop();
+
+    matchedItem = menuItems.find(item => {
+      const routeLastSegment = item.route.split('/').pop();
+      return routeLastSegment === lastSegment;
+    });
+  }
+
+  if (matchedItem) {
+    topMenuCurrent.value = [matchedItem.key];
+    console.log(`Set active menu from URL: ${matchedItem.key}`);
+  }
+});
+
 </script>
 
 <style scoped>
