@@ -209,6 +209,7 @@
             @click="navigateTo('/')" />
           <q-tab name="newui" no-caps label="New UI">
           </q-tab>
+          <q-tab name="library" no-caps label="Library" @click="navigateTo('/hvac/library')" />
           <q-tab name="calendar" no-caps label="Schedules" @click="navigateTo('/hvac/calendar')"></q-tab>
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
@@ -509,7 +510,8 @@
                     Add to Library
                     <q-tooltip>Add selected shape(s) to library</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Load_Library" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_Load_Library" class="tool-bar-button"
+                    style="color: white;">
                     <template #icon>
                       <CopyOutlined class="tool-bar-icon-prefix" />
                     </template>
