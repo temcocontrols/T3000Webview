@@ -36,8 +36,8 @@
             @click="navigateTo('/')" />
           <q-tab name="newui" no-caps label="New UI">
           </q-tab>
-          <q-tab name="library" no-caps label="Library" @click="navigateTo('/hvac/library')" />
-          <q-tab name="schedules" no-caps label="Schedules" @click="navigateTo('/hvac/schedules')"></q-tab>
+          <!-- <q-tab name="library" no-caps label="Library" @click="navigateTo('/hvac/library')" /> -->
+          <q-tab name="schedules" no-caps label="Schedules" @click="navigateTo('/new/schedules')"></q-tab>
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
         <q-separator />

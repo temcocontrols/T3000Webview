@@ -17,7 +17,7 @@
         <router-link to="/new/app-library">Application Library</router-link>
       </a-menu-item>
       <a-menu-item key="modbus-register">
-        <router-link to="/new/modbus-register">Modbus Register</router-link>
+        <router-link to="/modbus-register">Modbus Register</router-link>
       </a-menu-item>
       <a-menu-item key="schedules">
         <router-link to="/new/schedules">Schedules</router-link>

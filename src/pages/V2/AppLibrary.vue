@@ -1,7 +1,7 @@
 <template>
   <main-layout>
     <div class="container">
-      <!-- <h1 class="page-title">AI Test data x</h1> -->
+      <!-- <h1 class="page-title">AI Test library data</h1> -->
 
       <!-- Hero Banner -->
 
@@ -12,7 +12,7 @@
           <a-col :xs="24" :md="8">
             <a-input-search
               v-model:value="searchQuery"
-              placeholder="Test data x"
+              placeholder="Test library data"
               enter-button
               allow-clear
               @search="onSearch"
@@ -23,26 +23,26 @@
             <div class="filters">
               <a-select
                 v-model:value="categoryFilter"
-                placeholder="Test data x"
+                placeholder="Test library data"
                 style="width: 120px; margin-right: 12px;"
                 @change="onFilterChange"
               >
-                <a-select-option value="">Test data x</a-select-option>
-                <a-select-option value="image">Test data x</a-select-option>
-                <a-select-option value="text">Test data x</a-select-option>
-                <a-select-option value="audio">Test data x</a-select-option>
-                <a-select-option value="interactive">Test data x</a-select-option>
+                <a-select-option value="">Test library data</a-select-option>
+                <a-select-option value="image">Test library data</a-select-option>
+                <a-select-option value="text">Test library data</a-select-option>
+                <a-select-option value="audio">Test library data</a-select-option>
+                <a-select-option value="interactive">Test library data</a-select-option>
               </a-select>
 
               <a-select
                 v-model:value="sortOrder"
-                placeholder="Test data x"
+                placeholder="Test library data"
                 style="width: 120px"
                 @change="onFilterChange"
               >
-                <a-select-option value="popular">Test data x</a-select-option>
-                <a-select-option value="newest">Test data x</a-select-option>
-                <a-select-option value="name">Test data x</a-select-option>
+                <a-select-option value="popular">Test library data</a-select-option>
+                <a-select-option value="newest">Test library data</a-select-option>
+                <a-select-option value="name">Test library data</a-select-option>
               </a-select>
             </div>
           </a-col>
@@ -78,7 +78,7 @@
               </template>
             </a-card-meta>
             <template #actions>
-              <a-button type="link">Test data x</a-button>
+              <a-button type="link">Test library data</a-button>
             </template>
           </a-card>
         </a-col>
@@ -86,7 +86,7 @@
 
       <!-- Empty State -->
       <a-empty v-if="filteredStudios.length === 0"
-               description="Test data x" />
+               description="Test library data" />
 
       <!-- Pagination -->
       <div class="pagination">
@@ -103,7 +103,7 @@
 
       <!-- Featured Collections -->
       <div class="collections-section">
-        <h2>Test data x</h2>
+        <h2>Test library data</h2>
 
         <a-row :gutter="[16, 16]">
           <a-col v-for="collection in featuredCollections" :key="collection.id"
@@ -113,7 +113,7 @@
                 <img :src="collection.image" :alt="collection.name" />
                 <div class="collection-overlay">
                   <h3>{{ collection.name }}</h3>
-                  <p>{{ collection.count }} Test data x</p>
+                  <p>{{ collection.count }} Test library data</p>
                 </div>
               </div>
               <a-card-meta>
@@ -149,85 +149,85 @@ defineOptions({
 const allStudios = ref<Studio[]>([
   {
     id: 1,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=StyleTransfer',
     avatar: 'https://via.placeholder.com/40',
     author: 'ArtAI Studio',
     category: 'image',
-    tags: ['Test data x', 'Test data x', 'Test data x'],
+    tags: ['Test library data', 'Test library data', 'Test library data'],
     views: '5.2k',
     likes: 943
   },
   {
     id: 2,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=WritingAssistant',
     avatar: 'https://via.placeholder.com/40',
     author: 'NLP Workshop',
     category: 'text',
-    tags: ['Test data x', 'Test data x', 'GPT'],
+    tags: ['Test library data', 'Test library data', 'GPT'],
     views: '8.7k',
     likes: 1532
   },
   {
     id: 3,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=AnimeGAN',
     avatar: 'https://via.placeholder.com/40',
     author: 'AnimeFace',
     category: 'image',
-    tags: ['Test data x', 'Test data x', 'GAN'],
+    tags: ['Test library data', 'Test library data', 'GAN'],
     views: '12.3k',
     likes: 2845
   },
   {
     id: 4,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=VoiceClone',
     avatar: 'https://via.placeholder.com/40',
     author: 'Voice Lab',
     category: 'audio',
-    tags: ['Test data x', 'Test data x', 'TTS'],
+    tags: ['Test library data', 'Test library data', 'TTS'],
     views: '4.5k',
     likes: 876
   },
   {
     id: 5,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=VideoMatting',
     avatar: 'https://via.placeholder.com/40',
     author: 'VideoTech',
     category: 'image',
-    tags: ['Test data x', 'Test data x', 'Test data x'],
+    tags: ['Test library data', 'Test library data', 'Test library data'],
     views: '3.8k',
     likes: 645
   },
   {
     id: 6,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=ChatbotBuilder',
     avatar: 'https://via.placeholder.com/40',
     author: 'AI Assistant',
     category: 'interactive',
-    tags: ['Test data x', 'Test data x', 'RAG'],
+    tags: ['Test library data', 'Test library data', 'RAG'],
     views: '7.2k',
     likes: 1234
   },
   {
     id: 7,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/500x300?text=PhotoRestoration',
     avatar: 'https://via.placeholder.com/40',
     author: 'Photo Labs',
     category: 'image',
-    tags: ['Test data x', 'Test data x', 'Test data x'],
+    tags: ['Test library data', 'Test library data', 'Test library data'],
     views: '6.3k',
     likes: 1105
   },
@@ -236,8 +236,8 @@ const allStudios = ref<Studio[]>([
 const featuredCollections = ref<Collection[]>([
   {
     id: 1,
-    name: 'Test data x',
-    description: 'Test data x',
+    name: 'Test library data',
+    description: 'Test library data',
     image: 'https://via.placeholder.com/600x300?text=CreativeImageTools',
     count: 12
   },
