@@ -10,11 +10,20 @@
       <a-menu-item key="dashboard">
         <router-link to="/new/dashboard">Dashboard</router-link>
       </a-menu-item>
-      <a-menu-item key="application">
-        <router-link to="/new/test1">Application Library</router-link>
+      <a-menu-item key="new-ui">
+        <router-link to="/hvac/t2">New UI</router-link>
       </a-menu-item>
-      <a-menu-item key="modbus">
-        <router-link to="/new/datasets">Modbus Register</router-link>
+      <a-menu-item key="app-library">
+        <router-link to="/new/app-library">Application Library</router-link>
+      </a-menu-item>
+      <a-menu-item key="modbus-register">
+        <router-link to="/new/modbus-register">Modbus Register</router-link>
+      </a-menu-item>
+      <a-menu-item key="schedules">
+        <router-link to="/new/schedules">Schedules</router-link>
+      </a-menu-item>
+      <a-menu-item key="holidays">
+        <router-link to="/new/holidays">Holidays</router-link>
       </a-menu-item>
     </a-menu>
 

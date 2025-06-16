@@ -15,12 +15,13 @@ const routes = [
     path: '/new',
     component: () => import('layouts/MainLayout2.vue'),
     children: [
-      // { path: '', component: () => import('src/pages/V2/HvacIndex.vue') },
+      { path: '', component: () => import('src/pages/V2/Dashboard.vue') },
       { path: 'dashboard', component: () => import('src/pages/V2/Dashboard.vue') },
-      { path: 'test1', component: () => import('src/pages/V2/Dashboard.vue') },
-      { path: 'datasets', component: () => import('src/pages/V2/Test2.vue') },
-      { path: 'studios', component: () => import('src/pages/V2/Test2.vue') },
-      { path: 'docs', component: () => import('src/pages/V2/Test2.vue') }
+      { path: 'new-ui', component: () => import('src/components/NewUI/IndexPage2.vue') },
+      { path: 'app-library', component: () => import('src/pages/V2/AppLibrary.vue') },
+      { path: 'modbus-register', component: () => import('src/pages/V2/ModbusRegister.vue') },
+      { path: 'schedules', component: () => import('src/pages/V2/Schedules.vue') },
+      { path: 'holidays', component: () => import('src/pages/V2/Schedules.vue') }
     ]
   },
   {
@@ -35,7 +36,7 @@ const routes = [
       {
         path: "schedules",
         name: "schedules",
-        component: () => import("src/components/NewUI/Schedules.vue"),
+        component: () => import("src/pages/V2/Schedules.vue"),
       },
       {
         path: "library",
