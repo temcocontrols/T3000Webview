@@ -5,17 +5,19 @@
     </div>
 
     <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered>
-      <template #bodyCell="{ column, record, }">
+      <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'onOff'">
           <a-switch v-model:checked="record.onOff" />
         </template>
         <template
           v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
-          <a-select v-model:value="record[column.key]" style="width: 100%">
-            <a-select-option v-for="option in timeOptions" :key="option" :value="option">
-              {{ option }}
-            </a-select-option>
-          </a-select>
+          <a-time-picker
+            v-model:value="record[column.key]"
+            format="HH:mm"
+            :minute-step="1"
+            value-format="HH:mm"
+            style="width: 100%"
+          />
         </template>
       </template>
     </a-table>
@@ -24,7 +26,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Table, Button, Switch, Select } from 'ant-design-vue';
+import { Table, Button, Switch, TimePicker } from 'ant-design-vue';
 
 defineOptions({
   name: 'SchedulesTable'
@@ -43,21 +45,6 @@ interface ScheduleItem {
   holiday1: string;
   holiday2: string;
 }
-
-// Generate time options (every 30 minutes)
-const generateTimeOptions = (): string[] => {
-  const options: string[] = [];
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute of [0, 30]) {
-      const formattedHour = hour.toString().padStart(2, '0');
-      const formattedMinute = minute.toString().padStart(2, '0');
-      options.push(`${formattedHour}:${formattedMinute}`);
-    }
-  }
-  return options;
-};
-
-const timeOptions = generateTimeOptions();
 
 const scheduleData = ref<ScheduleItem[]>([
   {
@@ -162,6 +149,6 @@ const copyToWeekdays = (): void => {
 .actions-bar {
   margin-bottom: 16px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 </style>
