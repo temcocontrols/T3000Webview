@@ -1,41 +1,61 @@
 <template>
   <div class="schedules-container">
-    <div class="actions-bar">
-      <a-button type="primary" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
-    </div>
+    <a-tabs v-model:activeKey="activeTab">
+      <a-tab-pane key="weekly" tab="Weekly">
+        <div class="actions-bar">
+          <a-button type="primary" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
+        </div>
 
-    <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered>
-      <template #bodyCell="{ column, record, index }">
-        <template v-if="column.key === 'onOff'">
-          <a-switch v-model:checked="record.onOff" />
-        </template>
-        <template
-          v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
-          <a-time-picker
-            v-model:value="record[column.key]"
-            format="HH:mm"
-            :minute-step="1"
-            value-format="HH:mm"
-            style="width: 100%"
-          />
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <a-button size="small" @click="copyRow(record, index)">
-            Copy
-          </a-button>
-        </template>
-      </template>
-    </a-table>
+        <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered>
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'onOff'">
+              <a-switch v-model:checked="record.onOff" />
+            </template>
+            <template
+              v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
+              <a-time-picker
+                v-model:value="record[column.key]"
+                format="HH:mm"
+                :minute-step="1"
+                value-format="HH:mm"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <a-button size="small" @click="copyRow(record, index)">
+                Copy
+              </a-button>
+            </template>
+          </template>
+        </a-table>
+      </a-tab-pane>
+
+      <a-tab-pane key="calendar" tab="Calendar">
+        <div class="calendar-year-view">
+          <div v-for="month in 12" :key="month" class="calendar-month">
+            <h3>{{ getMonthName(month) }}</h3>
+            <a-calendar
+              :fullscreen="false"
+              :value="getMonthDate(month)"
+              :headerRender="() => null"
+            />
+          </div>
+        </div>
+      </a-tab-pane>
+    </a-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Table, Button, Switch, TimePicker } from 'ant-design-vue';
+import { Table, Button, Switch, TimePicker, Tabs, Calendar } from 'ant-design-vue';
+import dayjs from 'dayjs';
 
 defineOptions({
   name: 'SchedulesTable'
 });
+
+const activeTab = ref('weekly');
 
 interface ScheduleItem {
   key: string;
@@ -147,6 +167,17 @@ const copyRow = (record: ScheduleItem, index: number): void => {
   // Insert the new row after the current row
   scheduleData.value.splice(index + 1, 0, newRow);
 };
+
+// Calendar helpers
+const currentYear = ref(dayjs().year());
+
+const getMonthName = (month: number): string => {
+  return dayjs().month(month - 1).format('MMMM');
+};
+
+const getMonthDate = (month: number) => {
+  return dayjs().year(currentYear.value).month(month - 1).date(1);
+};
 </script>
 
 <style scoped>
@@ -158,5 +189,17 @@ const copyRow = (record: ScheduleItem, index: number): void => {
   margin-bottom: 16px;
   display: flex;
   justify-content: flex-start;
+}
+
+.calendar-year-view {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.calendar-month {
+  border: 1px solid #f0f0f0;
+  border-radius: 2px;
+  padding: 8px;
 }
 </style>
