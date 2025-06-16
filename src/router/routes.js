@@ -15,12 +15,12 @@ const routes = [
     path: '/new',
     component: () => import('layouts/MainLayout2.vue'),
     children: [
-      { path: '', component: () => import('src/pages/Test/HvacIndex.vue') },
-      { path: 'hvac', component: () => import('src/pages/Test/HvacT2.vue') },
-      { path: 'test1', component: () => import('src/pages/Test/Test1.vue') },
-      { path: 'datasets', component: () => import('src/pages/Test/Test2.vue') },
-      { path: 'studios', component: () => import('src/pages/Test/Test2.vue') },
-      { path: 'docs', component: () => import('src/pages/Test/Test2.vue') }
+      // { path: '', component: () => import('src/pages/V2/HvacIndex.vue') },
+      { path: 'dashboard', component: () => import('src/pages/V2/Dashboard.vue') },
+      { path: 'test1', component: () => import('src/pages/V2/Dashboard.vue') },
+      { path: 'datasets', component: () => import('src/pages/V2/Test2.vue') },
+      { path: 'studios', component: () => import('src/pages/V2/Test2.vue') },
+      { path: 'docs', component: () => import('src/pages/V2/Test2.vue') }
     ]
   },
   {
@@ -33,12 +33,12 @@ const routes = [
         component: () => import("src/components/NewUI/IndexPage2.vue"),
       },
       {
-        path:"schedules",
+        path: "schedules",
         name: "schedules",
         component: () => import("src/components/NewUI/Schedules.vue"),
       },
       {
-        path:"library",
+        path: "library",
         name: "library",
         component: () => import("src/components/NewUI/NewLibrary.vue"),
       }
