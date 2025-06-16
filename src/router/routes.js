@@ -36,6 +36,11 @@ const routes = [
         path:"calendar",
         name: "calendar",
         component: () => import("src/components/NewUI/ScheduleCalendar.vue"),
+      },
+      {
+        path:"library",
+        name: "library",
+        component: () => import("src/components/NewUI/NewLibrary.vue"),
       }
     ],
   },

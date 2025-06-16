@@ -209,7 +209,7 @@
             @click="navigateTo('/')" />
           <q-tab name="newui" no-caps label="New UI">
           </q-tab>
-          <q-tab name="calendar" no-caps label="Calendar" @click="navigateTo('/hvac/calendar')"></q-tab>
+          <q-tab name="calendar" no-caps label="Schedules" @click="navigateTo('/hvac/calendar')"></q-tab>
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
         <q-separator />
