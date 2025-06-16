@@ -6,7 +6,7 @@
     </div>
 
     <!-- Desktop menu -->
-    <a-menu v-model:selectedKeys="current" mode="horizontal" class="desktop-menu">
+    <a-menu v-model:selectedKeys="topMenuCurrent" mode="horizontal" class="desktop-menu">
       <a-menu-item key="dashboard">
         <router-link to="/new/dashboard">Dashboard</router-link>
       </a-menu-item>
@@ -42,30 +42,39 @@
   <!-- Mobile menu drawer -->
   <a-drawer placement="left" :visible="mobileMenuVisible" @close="mobileMenuVisible = false" :closable="false"
     width="200" class="mobile-drawer">
-    <a-menu v-model:selectedKeys="current" mode="vertical">
+    <a-menu v-model:selectedKeys="topMenuCurrent" mode="vertical">
       <a-menu-item key="dashboard">
         <router-link to="/new/dashboard">Dashboard</router-link>
       </a-menu-item>
-      <a-menu-item key="application">
-        <router-link to="/new/test1">Application Library</router-link>
+      <a-menu-item key="new-ui">
+        <router-link to="/hvac/t2">New UI</router-link>
       </a-menu-item>
-      <a-menu-item key="modbus">
-        <router-link to="/new/datasets">Modbus Register</router-link>
+      <a-menu-item key="app-library">
+        <router-link to="/new/app-library">Application Library</router-link>
+      </a-menu-item>
+      <a-menu-item key="modbus-register">
+        <router-link to="/modbus-register">Modbus Register</router-link>
+      </a-menu-item>
+      <a-menu-item key="schedules">
+        <router-link to="/new/schedules">Schedules</router-link>
+      </a-menu-item>
+      <a-menu-item key="holidays">
+        <router-link to="/new/holidays">Holidays</router-link>
       </a-menu-item>
     </a-menu>
   </a-drawer>
 </template>
 
 <script setup lang="ts">
-// Script remains the same
 import { ref } from 'vue'
 import { MenuOutlined } from '@ant-design/icons-vue'
+import { topMenuCurrent } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 
 defineOptions({
   name: 'Header-Component'
 });
 
-const current = ref<string[]>(['dashboard']);
+// const current = ref<string[]>(['dashboard']);
 const mobileMenuVisible = ref(false);
 </script>
 

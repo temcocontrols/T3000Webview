@@ -68,7 +68,8 @@ export const zoomStep = ref<number>(0.25); // Zoom step value
 export const showRulers = ref<boolean>(false); // Show rulers on the canvas
 export const showGrid = ref<boolean>(false); // Show grid on the canvas
 
-
+// New ui's top menu
+export const topMenuCurrent = ref<string[]>(['dashboard']);
 
 
 
