@@ -1,19 +1,29 @@
 <template>
-  <!-- <NewTopToolBar2 :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
-    :object="appStateV2.items[appStateV2.activeItemIndex]" :selected-count="appStateV2.selectedTargets?.length"
-    :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
-    :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-    :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
-  </NewTopToolBar2> -->
+  <div class="divider-row"></div>
 
   <div class="schedules-container">
-    <a-tabs v-model:activeKey="activeTab">
-      <a-tab-pane key="schedules" tab="Schedules">
+    <a-tabs v-model:activeKey="activeTab" type="card" class="schedules-tabs" size="small">
+
+      <a-tab-pane key="schedules" tab="Schedules" class="schedules-tab">
         <div class="flex-container">
+
+
+
           <!-- Left Section: Device Tree -->
           <div class="left-section">
-            <a-tree :treeData="deviceTreeData" :defaultExpandedKeys="['0-0']" @select="onDeviceSelect" />
+            <a-tree :treeData="deviceTreeData" :defaultExpandedKeys="['0-0']" v-model:selectedKeys="deviceSelectedKeys"
+              @select="onDeviceSelect">
+              <template #title="{ key, title }">
+                <MenuUnfoldOutlined v-if="key === '0'" />
+                <CheckOutlined v-else-if="deviceSelectedKeys.includes(key)" />
+                <MinusOutlined v-else />
+                <span style="margin-left: 5px">{{ title }}</span>
+              </template>
+            </a-tree>
           </div>
+
+
+
 
           <!-- Right Section: Schedule Table -->
           <div class="right-section">
@@ -40,7 +50,7 @@
                 <template v-else-if="column.key === 'holiday1'">
                   <a-select v-model:value="record.holiday1" style="width: 100%">
                     <a-select-option v-for="ar in ['AR1', 'AR2', 'AR3', 'AR4']" :key="ar" :value="ar">{{ ar
-                      }}</a-select-option>
+                    }}</a-select-option>
                   </a-select>
                 </template>
                 <template v-else-if="column.key === 'state1'">
@@ -52,7 +62,7 @@
                 <template v-else-if="column.key === 'holiday2'">
                   <a-select v-model:value="record.holiday2" style="width: 100%">
                     <a-select-option v-for="ar in ['AR1', 'AR2', 'AR3', 'AR4']" :key="ar" :value="ar">{{ ar
-                      }}</a-select-option>
+                    }}</a-select-option>
                   </a-select>
                 </template>
                 <template v-else-if="column.key === 'state2'">
@@ -72,7 +82,7 @@
 
       <a-tab-pane key="weekly" tab="Weekly">
         <div class="actions-bar">
-          <a-button type="primary" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
+          <a-button type="primary" class="t3-btn" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
         </div>
 
         <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered>
@@ -102,6 +112,7 @@
           </div>
         </div>
       </a-tab-pane>
+
     </a-tabs>
   </div>
 </template>
@@ -109,26 +120,90 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Table, Button, Switch, TimePicker, Tabs, Calendar, Tree, Checkbox, Input, Select } from 'ant-design-vue';
+import {
+  CloseOutlined,
+  EditOutlined,
+  CopyOutlined,
+  ScissorOutlined,
+  FileAddOutlined,
+  SettingOutlined,
+  DeleteOutlined,
+  ClearOutlined,
+  RightOutlined,
+  RotateRightOutlined,
+  CompressOutlined,
+  AlignLeftOutlined,
+  ApartmentOutlined,
+  NodeIndexOutlined,
+  SwapOutlined,
+  VerticalAlignTopOutlined,
+  VerticalAlignBottomOutlined,
+  UndoOutlined,
+  RedoOutlined,
+  BlockOutlined,
+  SaveOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  BgColorsOutlined,
+  CheckOutlined,
+  FolderOutlined,
+  MinusOutlined,
+  MenuUnfoldOutlined,
+  GatewayOutlined
+} from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
-// import NewTopToolBar2 from "src/components/NewUI/NewTopToolBar2.vue";
-// import {
-//   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-//   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
-//   savedNotify, undoHistory, redoHistory, moveable, appStateV2
-// } from '../../lib/T3000/Hvac/Data/T3Data';
-// import {
-//   topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable, toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue,
-//   gaugeSettingsDialog, insertCount, selectedTool, isDrawing, snappable, keepRatio, selecto, importJsonDialog, clipboardFull
-// } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
-// import Hvac from "src/lib/T3000/Hvac/Hvac";
-
-const zoom =null;// Hvac.IdxPage.zoom;
 
 defineOptions({
   name: 'SchedulesTable'
 });
 
 const activeTab = ref('schedules');
+
+
+/** 1st tab Schedules */
+
+// Add this near your other ref declarations
+const deviceSelectedKeys = ref<string[]>(['0-0']);
+
+// New device tree data
+const deviceTreeData = ref([
+  {
+    title: 'All Devices',
+    key: '0',
+    children: [
+      {
+        title: 'T3000',
+        key: '0-0',
+      },
+      {
+        title: 'T3-TB',
+        key: '0-1',
+      },
+    ],
+  },
+]);
+
+// Function to handle device selection
+const onDeviceSelect = (selectedKeys: string[], info: any) => {
+  console.log('Selected', selectedKeys, info);
+  deviceSelectedKeys.value = selectedKeys; // Update selected keys
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Original schedule data
 interface ScheduleItem {
@@ -159,7 +234,71 @@ const scheduleData = ref<ScheduleItem[]>([
     holiday1: '08:00',
     holiday2: '08:00'
   },
-  // ... other schedule data
+  {
+    key: '2',
+    onOff: false,
+    monday: '17:30',
+    tuesday: '17:30',
+    wednesday: '17:30',
+    thursday: '17:30',
+    friday: '17:30',
+    saturday: '18:00',
+    sunday: '18:00',
+    holiday1: '18:00',
+    holiday2: '18:00'
+  },
+  {
+    key: '3',
+    onOff: true,
+    monday: '12:00',
+    tuesday: '12:00',
+    wednesday: '12:00',
+    thursday: '12:00',
+    friday: '12:00',
+    saturday: '13:00',
+    sunday: '13:00',
+    holiday1: '00:00',
+    holiday2: '00:00'
+  },
+  {
+    key: '4',
+    onOff: true,
+    monday: '22:00',
+    tuesday: '22:00',
+    wednesday: '22:00',
+    thursday: '22:00',
+    friday: '23:00',
+    saturday: '23:30',
+    sunday: '23:30',
+    holiday1: '22:00',
+    holiday2: '22:00'
+  },
+  {
+    key: '5',
+    onOff: false,
+    monday: '07:15',
+    tuesday: '07:15',
+    wednesday: '07:15',
+    thursday: '07:15',
+    friday: '07:15',
+    saturday: '09:30',
+    sunday: '09:30',
+    holiday1: '09:30',
+    holiday2: '09:30'
+  },
+  {
+    key: '6',
+    onOff: true,
+    monday: '14:45',
+    tuesday: '14:45',
+    wednesday: '14:45',
+    thursday: '14:45',
+    friday: '14:45',
+    saturday: '15:00',
+    sunday: '15:00',
+    holiday1: '15:00',
+    holiday2: '15:00'
+  }
 ]);
 
 const columns = [
@@ -221,31 +360,10 @@ const columns = [
   }
 ];
 
-// New device tree data
-const deviceTreeData = ref([
-  {
-    title: 'Controllers',
-    key: '0-0',
-    children: [
-      {
-        title: 'T3000',
-        key: '0-0-0',
-        children: [
-          { title: 'Schedule 1', key: '0-0-0-0' },
-          { title: 'Schedule 2', key: '0-0-0-1' },
-        ],
-      },
-      {
-        title: 'T3-TB',
-        key: '0-0-1',
-        children: [
-          { title: 'Schedule 1', key: '0-0-1-0' },
-          { title: 'Schedule 2', key: '0-0-1-1' },
-        ],
-      },
-    ],
-  },
-]);
+
+
+
+
 
 // New schedule table data
 interface ScheduleTableItem {
@@ -288,6 +406,84 @@ const scheduleTableData = ref<ScheduleTableItem[]>([
     holiday2: 'AR3',
     state2: 'On',
     label: 'SCH2'
+  },
+  {
+    key: '3',
+    checked: false,
+    num: 3,
+    fullLabel: 'Schedule 3',
+    autoManual: 'Auto',
+    output: 'On',
+    holiday1: 'AR3',
+    state1: 'On',
+    holiday2: 'AR4',
+    state2: 'Off',
+    label: 'SCH3'
+  },
+  {
+    key: '4',
+    checked: false,
+    num: 4,
+    fullLabel: 'Schedule 4',
+    autoManual: 'Manual',
+    output: 'Off',
+    holiday1: 'AR4',
+    state1: 'Off',
+    holiday2: 'AR1',
+    state2: 'On',
+    label: 'SCH4'
+  },
+  {
+    key: '5',
+    checked: false,
+    num: 5,
+    fullLabel: 'Schedule 5',
+    autoManual: 'Auto',
+    output: 'On',
+    holiday1: 'AR1',
+    state1: 'Off',
+    holiday2: 'AR2',
+    state2: 'On',
+    label: 'SCH5'
+  },
+  {
+    key: '6',
+    checked: false,
+    num: 6,
+    fullLabel: 'Schedule 6',
+    autoManual: 'Manual',
+    output: 'On',
+    holiday1: 'AR2',
+    state1: 'On',
+    holiday2: 'AR3',
+    state2: 'Off',
+    label: 'SCH6'
+  },
+  {
+    key: '7',
+    checked: false,
+    num: 7,
+    fullLabel: 'Schedule 7',
+    autoManual: 'Auto',
+    output: 'Off',
+    holiday1: 'AR3',
+    state1: 'Off',
+    holiday2: 'AR4',
+    state2: 'On',
+    label: 'SCH7'
+  },
+  {
+    key: '8',
+    checked: false,
+    num: 8,
+    fullLabel: 'Schedule 8',
+    autoManual: 'Manual',
+    output: 'Off',
+    holiday1: 'AR4',
+    state1: 'On',
+    holiday2: 'AR1',
+    state2: 'Off',
+    label: 'SCH8'
   }
 ]);
 
@@ -346,11 +542,6 @@ const scheduleColumns = [
   }
 ];
 
-// Function to handle device selection
-const onDeviceSelect = (selectedKeys: string[], info: any) => {
-  console.log('Selected', selectedKeys, info);
-};
-
 // Function to copy values from Monday to Friday
 const copyToWeekdays = (): void => {
   scheduleData.value.forEach(item => {
@@ -405,8 +596,25 @@ function showMoreDevices(): void {
 </script>
 
 <style scoped>
+.divider-row {
+  margin-top: 35px;
+}
+
 .schedules-container {
   padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.schedules-tab {
+  font-size: 13px;
+}
+
+.weekly-tab {
+  font-size: 13px;
+}
+
+.calendar-tab {
+  font-size: 13px;
 }
 
 .actions-bar {
@@ -417,7 +625,7 @@ function showMoreDevices(): void {
 
 .calendar-year-view {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 20px;
 }
 
@@ -442,5 +650,9 @@ function showMoreDevices(): void {
 
 .right-section {
   flex: 3;
+}
+
+.t3-btn {
+  border-radius: 2px;
 }
 </style>
