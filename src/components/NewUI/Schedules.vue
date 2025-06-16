@@ -5,7 +5,7 @@
     </div>
 
     <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered>
-      <template #bodyCell="{ column, record }">
+      <template #bodyCell="{ column, record, index }">
         <template v-if="column.key === 'onOff'">
           <a-switch v-model:checked="record.onOff" />
         </template>
@@ -18,6 +18,11 @@
             value-format="HH:mm"
             style="width: 100%"
           />
+        </template>
+        <template v-else-if="column.key === 'actions'">
+          <a-button size="small" @click="copyRow(record, index)">
+            Copy
+          </a-button>
         </template>
       </template>
     </a-table>
@@ -50,29 +55,17 @@ const scheduleData = ref<ScheduleItem[]>([
   {
     key: '1',
     onOff: true,
-    monday: '08:00',
-    tuesday: '08:00',
-    wednesday: '08:00',
-    thursday: '08:00',
-    friday: '08:00',
-    saturday: '10:00',
-    sunday: '10:00',
-    holiday1: '10:00',
-    holiday2: '10:00'
+    monday: '06:00',
+    tuesday: '06:00',
+    wednesday: '06:00',
+    thursday: '06:00',
+    friday: '06:00',
+    saturday: '08:00',
+    sunday: '08:00',
+    holiday1: '08:00',
+    holiday2: '08:00'
   },
-  {
-    key: '2',
-    onOff: true,
-    monday: '17:00',
-    tuesday: '17:00',
-    wednesday: '17:00',
-    thursday: '17:00',
-    friday: '17:00',
-    saturday: '15:00',
-    sunday: '15:00',
-    holiday1: '15:00',
-    holiday2: '15:00'
-  }
+  // ... other schedule data
 ]);
 
 const columns = [
@@ -127,6 +120,11 @@ const columns = [
     dataIndex: 'holiday2',
     key: 'holiday2',
   },
+  {
+    title: 'Actions',
+    key: 'actions',
+    width: 100,
+  }
 ];
 
 // Function to copy values from Monday to Friday
@@ -138,6 +136,16 @@ const copyToWeekdays = (): void => {
     item.thursday = mondayValue;
     item.friday = mondayValue;
   });
+};
+
+// Function to copy a row
+const copyRow = (record: ScheduleItem, index: number): void => {
+  // Create a deep copy of the record
+  const newRow = { ...record };
+  // Generate a unique key
+  newRow.key = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  // Insert the new row after the current row
+  scheduleData.value.splice(index + 1, 0, newRow);
 };
 </script>
 
