@@ -1,182 +1,9 @@
-<style scoped>
-.tool-bar-container {
-  display: flex;
-}
-
-.left-panel {
-  width: 105px;
-  background-color: #2a2a2a;
-}
-
-.right-panel {
-  flex-grow: 1;
-}
-
-.right-tab {
-  background-color: #2a2a2a;
-}
-
-.tool-title {
-  width: 105px;
-  height: 36px;
-  padding-left: 10px;
-  padding-top: 10px;
-  color: #fff;
-}
-
-.tool-btns {
-  display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  height: 53px;
-  width: 105px;
-  color: #fff;
-}
-
-.tab-panel {
-  background-color: #2a2a2a;
-  color: #fff;
-}
-
-.home-panel {
-  .container {
-    display: flex;
-  }
-
-  .sub-div {
-    display: flex;
-    flex-direction: column;
-    padding-top: 2px;
-  }
-
-  .button-row {
-    display: flex;
-  }
-
-  .q-btn {
-    padding: 4px 10px;
-  }
-}
-
-.file-panel {
-  .container {
-    display: flex;
-    height: 53px;
-  }
-
-  .sub-div {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .button-row {
-    display: flex;
-    gap: 5px;
-  }
-}
-
-.right-panel-card {
-  box-shadow: none;
-  border-radius: 0px;
-}
-
-.home-panel {
-  padding: 0px;
-}
-
-.file-panel {
-  padding: 0px;
-
-  .short-cut {
-    padding-top: 8px;
-    font-size: 12px;
-  }
-}
-
-.file-short-cut {
-  padding-top: 8px;
-  font-size: 10px;
-}
-
-.zoom-input {
-  background: transparent;
-  width: 27px;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-.zoom-input::-webkit-outer-spin-button,
-.zoom-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.device-panel {
-  padding: 0px;
-  height: 53px;
-}
-
-.device-row {
-  background-color: #e5e7eb;
-  color: #2a2a2a;
-}
-
-.newui-panel {
-  height: 53px;
-  padding: 0px;
-}
-
-.tool-bar-icon-prefix {
-  vertical-align: 2px;
-}
-
-.tool-bar-button {
-  color: white;
-  font-size: 12px;
-}
-
-.tool-bar-dropdown {
-  color: white;
-  font-size: 12px;
-  padding: 0 7px;
-}
-
-.tool-bar-menu-item {
-  font-size: 10px !important;
-}
-
-.color-idic-20b2aa {
-  background-color: #20B2AA;
-  width: 16px;
-  height: 16px;
-  display: inline-block;
-  margin-right: 8px;
-}
-
-.color-idic-ffffff {
-  background-color: #FFFFFF;
-  width: 16px;
-  height: 16px;
-  display: inline-block;
-  margin-right: 8px;
-}
-
-.color-idic-0aacb4 {
-  background-color: #0AACB4;
-  width: 16px;
-  height: 16px;
-  display: inline-block;
-  margin-right: 8px;
-}
-</style>
 
 <template>
   <div class="tool-bar-container">
     <div class="left-panel">
       <div class="tool-title">
-        <p style="font-size: 12px;">T3000 Havc</p>
+        <p style="font-size: 12px;">T3000 Hvac</p>
         <span style=" margin-left:0px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 0px;">
           {{ devVersion }}
         </span>
@@ -210,7 +37,7 @@
           <q-tab name="newui" no-caps label="New UI">
           </q-tab>
           <q-tab name="library" no-caps label="Library" @click="navigateTo('/hvac/library')" />
-          <q-tab name="calendar" no-caps label="Schedules" @click="navigateTo('/hvac/calendar')"></q-tab>
+          <q-tab name="schedules" no-caps label="Schedules" @click="navigateTo('/hvac/schedules')"></q-tab>
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
         <q-separator />
@@ -790,3 +617,177 @@ onMounted(() => {
   LogUtil.Debug('= v.NewTopBar: onMounted / docInfo, docConfig, zoomScale', docInfo, docConfig, zoomScale.value);
 });
 </script>
+
+<style scoped>
+.tool-bar-container {
+  display: flex;
+}
+
+.left-panel {
+  width: 105px;
+  background-color: #2a2a2a;
+}
+
+.right-panel {
+  flex-grow: 1;
+}
+
+.right-tab {
+  background-color: #2a2a2a;
+}
+
+.tool-title {
+  width: 105px;
+  height: 36px;
+  padding-left: 10px;
+  padding-top: 10px;
+  color: #fff;
+}
+
+.tool-btns {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  height: 53px;
+  width: 105px;
+  color: #fff;
+}
+
+.tab-panel {
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+.home-panel {
+  .container {
+    display: flex;
+  }
+
+  .sub-div {
+    display: flex;
+    flex-direction: column;
+    padding-top: 2px;
+  }
+
+  .button-row {
+    display: flex;
+  }
+
+  .q-btn {
+    padding: 4px 10px;
+  }
+}
+
+.file-panel {
+  .container {
+    display: flex;
+    height: 53px;
+  }
+
+  .sub-div {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .button-row {
+    display: flex;
+    gap: 5px;
+  }
+}
+
+.right-panel-card {
+  box-shadow: none;
+  border-radius: 0px;
+}
+
+.home-panel {
+  padding: 0px;
+}
+
+.file-panel {
+  padding: 0px;
+
+  .short-cut {
+    padding-top: 8px;
+    font-size: 12px;
+  }
+}
+
+.file-short-cut {
+  padding-top: 8px;
+  font-size: 10px;
+}
+
+.zoom-input {
+  background: transparent;
+  width: 27px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.zoom-input::-webkit-outer-spin-button,
+.zoom-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.device-panel {
+  padding: 0px;
+  height: 53px;
+}
+
+.device-row {
+  background-color: #e5e7eb;
+  color: #2a2a2a;
+}
+
+.newui-panel {
+  height: 53px;
+  padding: 0px;
+}
+
+.tool-bar-icon-prefix {
+  vertical-align: 2px;
+}
+
+.tool-bar-button {
+  color: white;
+  font-size: 12px;
+}
+
+.tool-bar-dropdown {
+  color: white;
+  font-size: 12px;
+  padding: 0 7px;
+}
+
+.tool-bar-menu-item {
+  font-size: 10px !important;
+}
+
+.color-idic-20b2aa {
+  background-color: #20B2AA;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.color-idic-ffffff {
+  background-color: #FFFFFF;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.color-idic-0aacb4 {
+  background-color: #0AACB4;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+</style>

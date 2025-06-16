@@ -1,7 +1,12 @@
 <template>
+  <!--
+    NOTE: This component has been moved to Dashboard.vue.
+    This is a temporary version for testing purposes only.
+    TODO: Remove this component after testing is complete.
+  -->
   <div class="hero">
     <div class="hero-content">
-      <h1>AI Studio Platform</h1>
+      <h1>T3000 Building Automation System</h1>
       <p>Build, deploy, and share AI models in one click</p>
       <a-button type="primary" size="large">Get Started</a-button>
     </div>
@@ -14,12 +19,20 @@
 <script>
 import { ref } from 'vue'
 
+/**
+ * @deprecated This component has been moved to Dashboard.vue
+ * TODO: Remove this component after testing is complete
+ */
 export default {
   name:'HeroView',
 }
 </script>
 
 <style scoped>
+/*
+  Styles for Hero component
+  Note: This component will be removed after testing
+*/
 .hero {
   display: flex;
   align-items: center;
