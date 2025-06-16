@@ -176,7 +176,7 @@ class T3Opt {
 
     // T3Gv.opt.InitBlockData();
 
-     T3Gv.opt.Initialize(true);
+     T3Gv.opt.Initialize(false);
 
     DataOpt.SaveToLocalStorage();
 

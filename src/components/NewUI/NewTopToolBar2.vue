@@ -343,7 +343,7 @@
                       <ClearOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Clear
-                    <q-tooltip>Clear data</q-tooltip>
+                    <q-tooltip>Clear draw area data</q-tooltip>
                   </a-button>
                 </a-flex>
               </a-col>

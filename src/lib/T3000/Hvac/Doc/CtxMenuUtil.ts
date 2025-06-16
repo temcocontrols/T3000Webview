@@ -1091,8 +1091,7 @@ class CtxMenuUtil {
         EvtOpt.toolOpt.SaveAct();
         break;
       case 'clear':
-        DataOpt.ClearT3LocalStorage();
-        DrawUtil.ClearDrawArea();
+        EvtOpt.toolOpt.ClearAct();
         break;
       case 'lock':
         EvtOpt.toolOpt.LibLockAct(event);
