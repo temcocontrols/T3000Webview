@@ -139,7 +139,7 @@
   <div class="tool-bar-container">
     <div class="left-panel">
       <div class="tool-title">
-        <p style="font-size: 12px;">T3000 Havc</p>
+        <p style="font-size: 12px;">T3000 Hvac</p>
         <span style=" margin-left:0px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 0px;">
           {{ devVersion }}
         </span>
