@@ -71,6 +71,9 @@ export const showGrid = ref<boolean>(false); // Show grid on the canvas
 // New ui's top menu
 export const topMenuCurrent = ref<string[]>(['dashboard']);
 
+// New schedule modal component
+export const scheduleModalVisible = ref<boolean>(false);
+export const selectedSchedule = ref(null);
 
 
 

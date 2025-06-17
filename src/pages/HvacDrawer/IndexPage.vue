@@ -1,146 +1,3 @@
-<style scoped>
-.full-area {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.main-area {
-  display: flex;
-  flex: 1;
-}
-
-.side-bar {
-  background-color: #f4f4f4;
-  width: 106px;
-}
-
-.work-area {
-
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  width: auto;
-  /* background-color: aquamarine; */
-  /*
-   padding-left: v-bind("documentAreaPosition.workAreaPadding");
-   position: fixed;
-   margin-top: 37px;
-  */
-  flex: 1;
-  margin-top: 1px;
-  position: relative;
-}
-
-.document-area {
-  position: relative;
-  background-color: #ebeced;
-  height: 100%;
-  /* background: red; */
-
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.c-ruler {
-  width: 20px;
-  height: 20px;
-  background-color: #ebeced;
-  /* background-color: blue; */
-  position: absolute;
-  overflow: hidden;
-  left: 1px;
-  top: 1px;
-}
-
-.h-ruler {
-  position: absolute;
-  overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #416990; */
-  top: 1px;
-  left: 22px;
-  /* padding-left: 22px; */
-  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
-  height: 20px;
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-
-}
-
-.v-ruler {
-  position: absolute;
-  overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #0f77de; */
-  width: 20px;
-  left: 1px;
-  top: 22px;
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.hv-grid {
-  position: absolute;
-  background-color: #ebeced;
-  /* background-color: #b25b5b; */
-  inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px);
-  height: calc(100vh - 97px); */
-
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  overflow: hidden;
-}
-
-.viewport-wrapper {
-  position: relative;
-  background-color: transparent;
-  scrollbar-width: thin;
-  inset: 22px 0px 0px 22px;
-  /* width: calc(100vw v-bind("documentAreaPosition.wpwWOffset")); */
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  /* overflow: hidden scroll; */
-  /* overflow: scroll; */
-  /* background-color: aquamarine; */
-  overflow: hidden;
-}
-
-.viewport {
-  /* width: 100%;
-  height: calc(100vh - 36px);
-  overflow: scroll;
-  position: relative;
-  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: rgb(7, 115, 115); */
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 68px); */
-  /* width: v-bind("documentAreaPosition.wiewPortWH.width"); */
-  /* height: v-bind("documentAreaPosition.wiewPortWH.height"); */
-
-  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-
-
-  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: #e5e7eb; */
-
-  /* background-color: chartreuse; */
-}
-
-.default-svg {
-  width: 100%;
-  height: 100%;
-  /* background-color: #0d09ec; */
-}
-</style>
-
 <template>
   <q-page style="background-color: #ebeced;">
     <div class="full-area">
@@ -546,14 +403,16 @@
                       :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
+                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)"
+                      @dblclick="objectDoubleClicked(item)" />
 
                     <CanvasShape v-if="
                       (item?.type ?? '') === 'Weld_General' ||
-                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + (item?.type ?? '')"
-                      :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                      @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                      @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item"
+                      :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
+                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                      @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
 
                     <WallExterior v-if="(item?.type ?? '') === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
@@ -730,6 +589,47 @@
       </DeviceInfo>
     </q-card>
   </q-dialog>
+
+
+
+
+
+
+  <!-- Schedule Details Modal with Ant Design -->
+
+
+  <!-- <a-modal v-model:visible="scheduleModalVisible" title="Schedule Details" width="700px">
+    <template #footer>
+      <a-button key="close" @click="scheduleModalVisible = false">Close</a-button>
+    </template>
+    <div>
+      <h3>Schedule Information</h3>
+      <a-table :dataSource="scheduleTableData" :columns="scheduleColumns" :pagination="false" size="small">
+        <template #headerCell="{ column }">
+          <template v-if="column.key === 'action'">
+            <span>Actions</span>
+          </template>
+        </template>
+      </a-table>
+    </div>
+  </a-modal> -->
+
+  <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </template>
 
 <script setup>
@@ -774,9 +674,16 @@ import {
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
+
+import { scheduleModalVisible, selectedSchedule } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
+import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
+
+import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
+
 // const isBuiltInEdge = ref(false);
 
 // Meta information for the application
@@ -3127,15 +3034,103 @@ function reloadPanelsData() {
 //     });
 // }
 
-// Create a label for an entry with optional prefix
+
+// Table data based on selected schedule
+const scheduleTableData = computed(() => {
+  if (!selectedSchedule.value) return [];
+  return [
+    {
+      key: '1',
+      property: 'ID',
+      value: selectedSchedule.value.id
+    },
+    {
+      key: '2',
+      property: 'Description',
+      value: selectedSchedule.value.description
+    },
+    {
+      key: '3',
+      property: 'Panel',
+      value: selectedSchedule.value.panel
+    }
+  ];
+});
+
+// Table columns configuration
+const scheduleColumns = [
+  {
+    title: 'Property',
+    dataIndex: 'property',
+    key: 'property',
+    width: '30%',
+  },
+  {
+    title: 'Value',
+    dataIndex: 'value',
+    key: 'value',
+    width: '70%',
+  }
+];
+
+// Make sure to add these to the returned object from setup()
+
+// Handle double-click events on objects
+function objectDoubleClicked(item) {
+  LogUtil.Debug('Double clicked on item:', item);
+
+  // Check if the item has a t3Entry and it's of type SCHEDULE
+  if (item.t3Entry?.type === "SCHEDULE") {
+    /*
+    // Show a popup for schedule items
+    $q.dialog({
+      title: 'Schedule Details',
+      message: `You double-clicked on Schedule: ${item.t3Entry.description || item.t3Entry.label || item.title || 'Unknown'}`,
+      html: true,
+      ok: 'Close'
+    });
+    */
+
+    /*
+    // For schedule items, show an Ant Design modal
+    if (item.t3Entry?.type === "SCHEDULE") {
+      // Set schedule details in refs for the modal
+      scheduleModalVisible.value = true;
+      selectedSchedule.value = {
+        id: item.t3Entry.id,
+        description: item.t3Entry.description || item.t3Entry.label || item.title || 'Unknown',
+        panel: item.t3Entry.pid
+      };
+    }
+    */
+
+    scheduleModalVisible.value = true;
+  }
+  // Do nothing for other types
+}
+
+/**
+ * Creates a formatted label for an entry with optional prefix
+ * @param {Object} option - The entry option object
+ * @returns {String} - Formatted label string
+ */
 function entryLabel(option) {
-   console.log('entryLabel - ', option);
-  let prefix =
-    (option.description && option.id !== option.description) ||
-      (!option.description && option.id !== option.label)
-      ? option.id + " - "
-      : "";
-  prefix = !option.description && !option.label ? option.id : prefix;
+  LogUtil.Debug("= Idx: entryLabel option:", option);
+
+  let prefix = "";
+
+  // Add ID prefix if ID differs from description or label
+  if ((option.description && option.id !== option.description) ||
+    (!option.description && option.id !== option.label)) {
+    prefix = option.id + " - ";
+  }
+
+  // If no description and no label, use ID as prefix
+  if (!option.description && !option.label) {
+    prefix = option.id;
+  }
+
+  // Return prefix followed by description or label (if available)
   return prefix + (option.description || option.label || "");
 }
 
@@ -3955,5 +3950,148 @@ function addOnlineLibImage(oItem) {
 
 .viewport:hover .cursor-icon {
   display: block;
+}
+</style>
+
+<style scoped>
+.full-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main-area {
+  display: flex;
+  flex: 1;
+}
+
+.side-bar {
+  background-color: #f4f4f4;
+  width: 106px;
+}
+
+.work-area {
+
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  width: auto;
+  /* background-color: aquamarine; */
+  /*
+   padding-left: v-bind("documentAreaPosition.workAreaPadding");
+   position: fixed;
+   margin-top: 37px;
+  */
+  flex: 1;
+  margin-top: 1px;
+  position: relative;
+}
+
+.document-area {
+  position: relative;
+  background-color: #ebeced;
+  height: 100%;
+  /* background: red; */
+
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.c-ruler {
+  width: 20px;
+  height: 20px;
+  background-color: #ebeced;
+  /* background-color: blue; */
+  position: absolute;
+  overflow: hidden;
+  left: 1px;
+  top: 1px;
+}
+
+.h-ruler {
+  position: absolute;
+  overflow: hidden;
+  background-color: #ebeced;
+  /* background-color: #416990; */
+  top: 1px;
+  left: 22px;
+  /* padding-left: 22px; */
+  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
+  height: 20px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+
+}
+
+.v-ruler {
+  position: absolute;
+  overflow: hidden;
+  background-color: #ebeced;
+  /* background-color: #0f77de; */
+  width: 20px;
+  left: 1px;
+  top: 22px;
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.hv-grid {
+  position: absolute;
+  background-color: #ebeced;
+  /* background-color: #b25b5b; */
+  inset: 22px 0px 0px 22px;
+  /* width: calc(100vw - 166px);
+  height: calc(100vh - 97px); */
+
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  overflow: hidden;
+}
+
+.viewport-wrapper {
+  position: relative;
+  background-color: transparent;
+  scrollbar-width: thin;
+  inset: 22px 0px 0px 22px;
+  /* width: calc(100vw v-bind("documentAreaPosition.wpwWOffset")); */
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  /* overflow: hidden scroll; */
+  /* overflow: scroll; */
+  /* background-color: aquamarine; */
+  overflow: hidden;
+}
+
+.viewport {
+  /* width: 100%;
+  height: calc(100vh - 36px);
+  overflow: scroll;
+  position: relative;
+  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
+  background-size: 20px 20px; */
+
+  /* background-color: rgb(7, 115, 115); */
+  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
+  height: calc(100vh - 68px); */
+  /* width: v-bind("documentAreaPosition.wiewPortWH.width"); */
+  /* height: v-bind("documentAreaPosition.wiewPortWH.height"); */
+
+  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+
+
+  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
+  background-size: 20px 20px; */
+
+  /* background-color: #e5e7eb; */
+
+  /* background-color: chartreuse; */
+}
+
+.default-svg {
+  width: 100%;
+  height: 100%;
+  /* background-color: #0d09ec; */
 }
 </style>
