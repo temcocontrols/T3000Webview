@@ -25,12 +25,26 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
           <!-- Right Section: Schedule Table -->
           <div class="right-section">
+
+
             <a-table :dataSource="scheduleTableData" :columns="scheduleColumns" :pagination="false" bordered>
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'checkbox'">
-                  <a-checkbox v-model:checked="record.checked" />
+                  <!-- <a-checkbox v-model:checked="record.checked" /> -->
+                  <a-button type="primary" size="small" class="t3-btn" @click="editSchedule(record)">Edit
+                    Schedule</a-button>
                 </template>
                 <template v-else-if="column.key === 'fullLabel'">
                   <a-input v-model:value="record.fullLabel" />
@@ -76,19 +90,52 @@
                 </template>
               </template>
             </a-table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
           </div>
         </div>
       </a-tab-pane>
 
       <a-tab-pane key="weekly" tab="Weekly">
         <div class="actions-bar">
-          <a-button type="primary" class="t3-btn" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
+          <a-button type="primary" size="small" class="t3-btn" @click="copyToWeekdays">Copy to Monday -
+            Friday</a-button>
+
+          <a-button size="small" class="t3-btn" style="margin-left: 10px;" @click="loadDefaultData">Load
+            Default</a-button>
+
+
+          <a-button class="t3-btn" size="small" style="margin-left: 10px;"
+            @click="scheduleData.push({ key: String(scheduleData.length + 1), onOff: false, monday: '', tuesday: '', wednesday: '', thursday: '', friday: '', saturday: '', sunday: '', holiday1: '', holiday2: '' })">
+            Add Schedule
+          </a-button>
+          <a-button size="small" class="t3-btn" style="margin-left: 10px;"
+            @click="scheduleData.splice(0, scheduleData.length)">Clear All
+          </a-button>
         </div>
 
         <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered>
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'onOff'">
-              <a-switch v-model:checked="record.onOff" />
+              <a-switch v-model:checked="record.onOff" checked-children="On" un-checked-children="Off"/>
+
             </template>
             <template
               v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
@@ -96,8 +143,11 @@
                 style="width: 100%" />
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-button size="small" @click="copyRow(record, index)">
+              <!-- <a-button size="small" type="link" @click="copyRow(record, index)">
                 Copy
+              </a-button> -->
+              <a-button type="primary" size="small" class="t3-btn" @click="scheduleData.splice(index, 1)">
+                Delete
               </a-button>
             </template>
           </template>
@@ -159,6 +209,20 @@ defineOptions({
 
 const activeTab = ref('schedules');
 
+// Original schedule data
+interface ScheduleItem {
+  key: string;
+  onOff: boolean;
+  monday: string;
+  tuesday: string;
+  wednesday: string;
+  thursday: string;
+  friday: string;
+  saturday: string;
+  sunday: string;
+  holiday1: string;
+  holiday2: string;
+}
 
 /** 1st tab Schedules */
 
@@ -187,117 +251,209 @@ const deviceTreeData = ref([
 const onDeviceSelect = (selectedKeys: string[], info: any) => {
   console.log('Selected', selectedKeys, info);
   deviceSelectedKeys.value = selectedKeys; // Update selected keys
+
+  // Update scheduleTableData based on the selected device
+  const deviceId = selectedKeys.length > 0 ? selectedKeys[0] : '';
+
+  // Generate new schedule data based on the selected device
+  const newScheduleData = Array(8).fill(null).map((_, index) => {
+    const num = index + 1;
+    const deviceName = deviceId === '0-0' ? 'T3000' : deviceId === '0-1' ? 'T3-TB' : 'Unknown';
+
+    return {
+      key: String(num),
+      checked: false,
+      num: num,
+      fullLabel: `${deviceName} Schedule ${num}`,
+      autoManual: index % 2 === 0 ? 'Auto' : 'Manual',
+      output: index % 2 === 0 ? 'On' : 'Off',
+      holiday1: `AR${(index % 4) + 1}`,
+      state1: index % 2 === 0 ? 'On' : 'Off',
+      holiday2: `AR${((index + 1) % 4) + 1}`,
+      state2: index % 2 === 0 ? 'Off' : 'On',
+      label: `${deviceName.substring(0, 1)}SCH${num}`
+    };
+  });
+
+  // Update the schedule table data
+  scheduleTableData.value = newScheduleData;
 };
 
+// Function to edit a schedule
+const editSchedule = (record: ScheduleTableItem): void => {
+  // Switch to the weekly tab
+  activeTab.value = 'weekly';
 
+  // Log the schedule being edited
+  console.log('Editing schedule:', record);
 
+  // Additional functionality can be added here to use the record data
+  // such as highlighting the relevant schedule in the weekly view
+};
 
+// Function to load default schedule data
+const loadDefaultData = (): void => {
+  scheduleData.value = [
+    {
+      key: '1',
+      onOff: true,
+      monday: '',
+      tuesday: '',
+      wednesday: '',
+      thursday: '',
+      friday: '',
+      saturday: '',
+      sunday: '',
+      holiday1: '',
+      holiday2: ''
+    },
+    {
+      key: '2',
+      onOff: false,
+      monday: '',
+      tuesday: '',
+      wednesday: '',
+      thursday: '',
+      friday: '',
+      saturday: '',
+      sunday: '',
+      holiday1: '',
+      holiday2: ''
+    },
+    {
+      key: '3',
+      onOff: true,
+      monday: '',
+      tuesday: '',
+      wednesday: '',
+      thursday: '',
+      friday: '',
+      saturday: '',
+      sunday: '',
+      holiday1: '',
+      holiday2: ''
+    },
+    {
+      key: '4',
+      onOff: true,
+      monday: '',
+      tuesday: '',
+      wednesday: '',
+      thursday: '',
+      friday: '',
+      saturday: '',
+      sunday: '',
+      holiday1: '',
+      holiday2: ''
+    },
+    {
+      key: '5',
+      onOff: false,
+      monday: '',
+      tuesday: '',
+      wednesday: '',
+      thursday: '',
+      friday: '',
+      saturday: '',
+      sunday: '',
+      holiday1: '',
+      holiday2: ''
+    },
+    {
+      key: '6',
+      onOff: true,
+      monday: '',
+      tuesday: '',
+      wednesday: '',
+      thursday: '',
+      friday: '',
+      saturday: '',
+      sunday: '',
+      holiday1: '',
+      holiday2: ''
+    }
+  ];
+};
 
-
-
-
-
-
-
-
-
-
-
-
-
-// Original schedule data
-interface ScheduleItem {
-  key: string;
-  onOff: boolean;
-  monday: string;
-  tuesday: string;
-  wednesday: string;
-  thursday: string;
-  friday: string;
-  saturday: string;
-  sunday: string;
-  holiday1: string;
-  holiday2: string;
-}
 
 const scheduleData = ref<ScheduleItem[]>([
   {
     key: '1',
     onOff: true,
-    monday: '06:00',
-    tuesday: '06:00',
-    wednesday: '06:00',
-    thursday: '06:00',
-    friday: '06:00',
-    saturday: '08:00',
-    sunday: '08:00',
-    holiday1: '08:00',
-    holiday2: '08:00'
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: ''
   },
   {
     key: '2',
     onOff: false,
-    monday: '17:30',
-    tuesday: '17:30',
-    wednesday: '17:30',
-    thursday: '17:30',
-    friday: '17:30',
-    saturday: '18:00',
-    sunday: '18:00',
-    holiday1: '18:00',
-    holiday2: '18:00'
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: ''
   },
   {
     key: '3',
     onOff: true,
-    monday: '12:00',
-    tuesday: '12:00',
-    wednesday: '12:00',
-    thursday: '12:00',
-    friday: '12:00',
-    saturday: '13:00',
-    sunday: '13:00',
-    holiday1: '00:00',
-    holiday2: '00:00'
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: ''
   },
   {
     key: '4',
     onOff: true,
-    monday: '22:00',
-    tuesday: '22:00',
-    wednesday: '22:00',
-    thursday: '22:00',
-    friday: '23:00',
-    saturday: '23:30',
-    sunday: '23:30',
-    holiday1: '22:00',
-    holiday2: '22:00'
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: ''
   },
   {
     key: '5',
     onOff: false,
-    monday: '07:15',
-    tuesday: '07:15',
-    wednesday: '07:15',
-    thursday: '07:15',
-    friday: '07:15',
-    saturday: '09:30',
-    sunday: '09:30',
-    holiday1: '09:30',
-    holiday2: '09:30'
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: ''
   },
   {
     key: '6',
     onOff: true,
-    monday: '14:45',
-    tuesday: '14:45',
-    wednesday: '14:45',
-    thursday: '14:45',
-    friday: '14:45',
-    saturday: '15:00',
-    sunday: '15:00',
-    holiday1: '15:00',
-    holiday2: '15:00'
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: ''
   }
 ]);
 
@@ -490,7 +646,7 @@ const scheduleTableData = ref<ScheduleTableItem[]>([
 // New schedule columns
 const scheduleColumns = [
   {
-    title: '',
+    title: 'Action',
     key: 'checkbox',
     width: 50,
   },
@@ -603,6 +759,14 @@ function showMoreDevices(): void {
 .schedules-container {
   padding: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  :deep(.ant-tabs-tab) {
+    font-size: 13px;
+  }
+
+  :deep() {
+    font-size: 13px;
+  }
 }
 
 .schedules-tab {
