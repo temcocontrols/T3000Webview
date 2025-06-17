@@ -33,33 +33,35 @@
 
       <div ref="calendarRef" class="calendar-container"></div>
 
-      <a-modal v-model:visible="isEventModalVisible" :title="modalMode === 'create' ? 'Create Event' : 'Edit Event'"
-        @ok="handleModalOk" @cancel="handleModalCancel">
-        <a-form :model="eventForm" layout="vertical">
-          <a-form-item label="Title" name="title">
-            <a-input v-model:value="eventForm.title" />
-          </a-form-item>
-          <a-form-item label="Start Date" name="start">
-            <a-date-picker v-model:value="eventForm.start" :showTime="true" format="YYYY-MM-DD HH:mm" />
-          </a-form-item>
-          <a-form-item label="End Date" name="end">
-            <a-date-picker v-model:value="eventForm.end" :showTime="true" format="YYYY-MM-DD HH:mm" />
-          </a-form-item>
-          <a-form-item label="Category" name="category">
-            <a-select v-model:value="eventForm.category">
-              <a-select-option value="time">Time</a-select-option>
-              <a-select-option value="allday">All Day</a-select-option>
-            </a-select>
-          </a-form-item>
-        </a-form>
 
-        <template #footer>
-          <a-button key="back" @click="handleModalCancel">Cancel</a-button>
-          <a-button v-if="modalMode === 'edit'" key="delete" danger @click="handleDeleteEvent">Delete</a-button>
-          <a-button key="submit" type="primary" @click="handleModalOk">Save</a-button>
-        </template>
-      </a-modal>
     </div>
+  </a-modal>
+
+  <a-modal v-model:visible="isEventModalVisible" :title="modalMode === 'create' ? 'Create Event' : 'Edit Event'"
+    @ok="handleModalOk" @cancel="handleModalCancel">
+    <a-form :model="eventForm" layout="vertical">
+      <a-form-item label="Title" name="title">
+        <a-input v-model:value="eventForm.title" />
+      </a-form-item>
+      <a-form-item label="Start Date" name="start">
+        <!-- <a-date-picker v-model:value="eventForm.start" :showTime="true" format="YYYY-MM-DD HH:mm" /> -->
+      </a-form-item>
+      <a-form-item label="End Date" name="end">
+        <!-- <a-date-picker v-model:value="eventForm.end" :showTime="true" format="YYYY-MM-DD HH:mm" /> -->
+      </a-form-item>
+      <a-form-item label="Category" name="category">
+        <a-select v-model:value="eventForm.category">
+          <a-select-option value="time">Time</a-select-option>
+          <a-select-option value="allday">All Day</a-select-option>
+        </a-select>
+      </a-form-item>
+    </a-form>
+
+    <template #footer>
+      <a-button key="back" @click="handleModalCancel">Cancel</a-button>
+      <a-button v-if="modalMode === 'edit'" key="delete" danger @click="handleDeleteEvent">Delete</a-button>
+      <a-button key="submit" type="primary" @click="handleModalOk">Save</a-button>
+    </template>
   </a-modal>
 </template>
 
@@ -70,6 +72,11 @@ import Calendar from '@toast-ui/calendar';
 import '@toast-ui/calendar/dist/toastui-calendar.min.css';
 import { format } from 'date-fns';
 import { scheduleModalVisible, selectedSchedule } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import 'tui-date-picker/dist/tui-date-picker.css';
+import 'tui-time-picker/dist/tui-time-picker.css';
+import dayjs from 'dayjs';
+import 'dayjs/locale/en'; // Import locale you need, 'en' for English
+dayjs.locale('en'); // Use the imported locale
 
 interface EventFormState {
   id: string;
@@ -111,6 +118,8 @@ interface CalendarEvent {
 defineOptions({
   name: 'ScheduleCalendar',
 });
+
+
 
 const calendarRef = ref<HTMLElement | null>(null);
 let calendar: Calendar | null = null;
@@ -243,9 +252,35 @@ watch(currentView, (newView) => {
 onMounted(() => {
   console.log('Calendar ref is set:', calendarRef.value);
 
-  if (calendarRef.value) {
+  if (!calendarRef.value) {
+    console.error('Calendar ref is not available');
+    return;
+  }
+
+  try {
+    // Define proper types for calendar events
+    type CalendarEventObject = {
+      title?: string;
+      start?: Date;
+      end?: Date;
+      isAllDay?: boolean;
+      id: string;
+      calendarId: string;
+    };
+
+    type CalendarUpdateInfo = {
+      event: CalendarEventObject;
+      changes: Partial<CalendarEventObject>;
+    };
+
+    type CalendarEventInfo = {
+      event: CalendarEventObject;
+    };
+
+    // Initialize the calendar with proper options
     calendar = new Calendar(calendarRef.value, {
       defaultView: currentView.value,
+      useFormPopup: false,
       useDetailPopup: false,
       useCreationPopup: false,
       week: {
@@ -271,33 +306,104 @@ onMounted(() => {
       ]
     });
 
-    if (calendar) {
-      currentDate.value = calendar.getDate().toDate();
 
-      calendar.on('beforeCreateEvent', (eventObj: any) => {
-        modalMode.value = 'create';
-        eventForm.title = eventObj.title || '';
-        eventForm.start = eventObj.start || new Date();
-        eventForm.end = eventObj.end || new Date();
-        eventForm.category = eventObj.isAllDay ? 'allday' : 'time';
-        isEventModalVisible.value = true;
-      });
-
-      calendar.on('beforeUpdateEvent', ({ event, changes }: any) => {
-        const { id, calendarId } = event;
-        calendar?.updateEvent(id, calendarId, changes);
-      });
-
-      calendar.on('clickEvent', ({ event }: any) => {
-        selectedEventId.value = event.id;
-        modalMode.value = 'edit';
-        eventForm.title = event.title;
-        eventForm.start = event.start;
-        eventForm.end = event.end;
-        eventForm.category = event.isAllDay ? 'allday' : 'time';
-        isEventModalVisible.value = true;
-      });
+    if (!calendar) {
+      console.error('Failed to initialize calendar');
+      return;
     }
+
+    console.log('Calendar initialized successfully:', calendar);
+    currentDate.value = calendar.getDate().toDate();
+
+    // Register event handlers
+    calendar.on('beforeCreateEvent', (eventObj: CalendarEventObject) => {
+      console.log('Calendar beforeCreateEvent triggered:', eventObj);
+      modalMode.value = 'create';
+      eventForm.title = eventObj.title || '';
+      eventForm.start = eventObj.start || new Date();
+      eventForm.end = eventObj.end || new Date();
+      eventForm.category = eventObj.isAllDay ? 'allday' : 'time';
+      isEventModalVisible.value = true;
+    });
+
+    calendar.on('beforeUpdateEvent', ({ event, changes }: CalendarUpdateInfo) => {
+      console.log('Calendar beforeUpdateEvent triggered:', event, changes);
+      const { id, calendarId } = event;
+      calendar?.updateEvent(id, calendarId, changes);
+    });
+
+    calendar.on('clickEvent', ({ event }: CalendarEventInfo) => {
+      console.log('Calendar clickEvent triggered:', event);
+      selectedEventId.value = event.id;
+      modalMode.value = 'edit';
+      eventForm.title = event.title || '';
+      eventForm.start = event.start || new Date();
+      eventForm.end = event.end || new Date();
+      eventForm.category = event.isAllDay ? 'allday' : 'time';
+      isEventModalVisible.value = true;
+    });
+
+
+    // Handle clicking on a time slot to create a new event
+    calendar.on('clickTimeGrid', (eventInfo) => {
+      console.log('Calendar Time grid clicked:', eventInfo);
+      isEventModalVisible.value = true;
+      if (eventInfo.time) {
+        const newStart = new Date(eventInfo.time);
+        const newEnd = new Date(newStart);
+        newEnd.setHours(newStart.getHours() + 1);
+
+        modalMode.value = 'create';
+        eventForm.title = '';
+        eventForm.start = newStart;
+        eventForm.end = newEnd;
+        eventForm.category = 'time';
+        isEventModalVisible.value = true;
+      }
+    });
+
+    // Handle creating events in month view by clicking on a date
+    calendar.on('selectDateTime', (eventInfo) => {
+      isEventModalVisible.value = true;
+      console.log('Calendar Date selected:', eventInfo);
+
+      try {
+
+        const date4 = eventInfo.start; // This is a native Date object
+
+        // Using native JS
+        const formatted = date4.toLocaleString('en-US');
+        console.log('Selected:', formatted);
+
+        // const newStart = new Date(eventInfo.start);
+        // const newEnd = new Date(eventInfo.end);
+
+        const newStart = dayjs(eventInfo.start).toDate();
+        const newEnd = dayjs(eventInfo.end).toDate();
+        console.log('Parsed Start:', newStart);
+        console.log('Parsed End:', newEnd);
+
+        // modalMode.value = 'create';
+        // eventForm.title = '';
+        // eventForm.start = newStart;
+        // eventForm.end = newEnd;
+        // eventForm.category = eventInfo.isAllDay ? 'allday' : 'time';
+        // scheduleModalVisible.value = false;
+        scheduleModalVisible.value = true;
+      }
+      catch (error) {
+        console.error('Error parsing date:', error);
+        return;
+      }
+
+
+    });
+
+
+
+    console.log('Calendar events registered');
+  } catch (error) {
+    console.error('Error initializing calendar:', error);
   }
 });
 </script>
