@@ -614,7 +614,8 @@
     </div>
   </a-modal> -->
 
-  <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal>
+  <!-- <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal> -->
+   <ScheduleCalendar v-if="scheduleModalVisible" :visible="scheduleModalVisible"/>
 
 
 
@@ -683,6 +684,7 @@ import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
+import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
 
 // const isBuiltInEdge = ref(false);
 
