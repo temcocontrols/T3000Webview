@@ -6,11 +6,15 @@
           <a-col>
             <a-button-group>
               <a-button @click="goToPrev">
-                <template #icon><left-outlined /></template>
+                <template #icon>
+                  <LeftOutlined />
+                </template>
               </a-button>
               <a-button @click="goToToday">Today</a-button>
               <a-button @click="goToNext">
-                <template #icon><right-outlined /></template>
+                <template #icon>
+                  <RightOutlined />
+                </template>
               </a-button>
             </a-button-group>
           </a-col>
@@ -19,10 +23,9 @@
           </a-col>
           <a-col>
             <a-radio-group v-model:value="currentView">
-              <a-radio-button value="day">Day</a-radio-button>
-              <a-radio-button value="week">Week</a-radio-button>
-              <a-radio-button value="month">Month</a-radio-button>
-              <a-radio-button value="year">Year</a-radio-button>
+              <a-radio-button value="day">Daily</a-radio-button>
+              <a-radio-button value="week">Weekly</a-radio-button>
+              <a-radio-button value="month">Monthly</a-radio-button>
             </a-radio-group>
           </a-col>
         </a-row>
@@ -60,8 +63,8 @@
   </a-modal>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted, reactive, computed, watch } from 'vue';
+<script setup lang="ts">
+import { defineComponent, ref, onMounted, reactive, computed, watch, defineOptions } from 'vue';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons-vue';
 import Calendar from '@toast-ui/calendar';
 import '@toast-ui/calendar/dist/toastui-calendar.min.css';
@@ -85,228 +88,216 @@ interface CalendarEvent {
   isAllDay: boolean;
 }
 
-type ViewType = 'day' | 'week' | 'month' | 'year';
+type ViewType = 'day' | 'week' | 'month';
 type ModalModeType = 'create' | 'edit';
 
-export default defineComponent({
+interface EventFormState {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  category: string;
+}
+
+interface CalendarEvent {
+  id: string;
+  calendarId: string;
+  title: string;
+  start: Date;
+  end: Date;
+  isAllDay: boolean;
+}
+
+defineOptions({
   name: 'ScheduleCalendar',
-  components: {
-    LeftOutlined,
-    RightOutlined
-  },
-  setup() {
-    const calendarRef = ref<HTMLElement | null>(null);
-    let calendar: Calendar | null = null;
-    const isEventModalVisible = ref<boolean>(false);
-    const modalMode = ref<ModalModeType>('create');
-    const selectedEventId = ref<string | null>(null);
-    const currentView = ref<ViewType>('week');
-    const currentDate = ref<Date>(new Date());
+});
 
-    const state = reactive<{
-      eventForm: EventFormState,
-      events: CalendarEvent[]
-    }>({
-      eventForm: {
-        id: '',
-        title: '',
-        start: new Date(),
-        end: new Date(),
-        category: 'time',
+const calendarRef = ref<HTMLElement | null>(null);
+let calendar: Calendar | null = null;
+const isEventModalVisible = ref<boolean>(false);
+const modalMode = ref<ModalModeType>('create');
+const selectedEventId = ref<string | null>(null);
+const currentView = ref<ViewType>('week');
+const currentDate = ref<Date>(new Date());
+
+const eventForm = reactive<EventFormState>({
+  id: '',
+  title: '',
+  start: new Date(),
+  end: new Date(),
+  category: 'time',
+});
+
+const events = ref<CalendarEvent[]>([]);
+
+const currentViewTitle = computed<string>(() => {
+  return format(currentDate.value, 'MMMM yyyy');
+});
+
+const resetEventForm = (): void => {
+  eventForm.id = '';
+  eventForm.title = '';
+  eventForm.start = new Date();
+  eventForm.end = new Date();
+  eventForm.category = 'time';
+};
+
+const handleModalOk = (): void => {
+  if (!eventForm.title) {
+    return;
+  }
+
+  if (modalMode.value === 'create') {
+    const newEventId = `event-${Date.now()}`;
+    const newEvent: CalendarEvent = {
+      id: newEventId,
+      calendarId: '1',
+      title: eventForm.title,
+      start: eventForm.start,
+      end: eventForm.end,
+      isAllDay: eventForm.category === 'allday',
+    };
+
+    calendar?.createEvents([newEvent]);
+    events.value.push(newEvent);
+  } else if (modalMode.value === 'edit' && selectedEventId.value) {
+    const updatedEvent: CalendarEvent = {
+      id: selectedEventId.value,
+      calendarId: '1',
+      title: eventForm.title,
+      start: eventForm.start,
+      end: eventForm.end,
+      isAllDay: eventForm.category === 'allday',
+    };
+
+    calendar?.updateEvent(
+      updatedEvent.id,
+      '1',
+      updatedEvent
+    );
+
+    const eventIndex = events.value.findIndex(e => e.id === selectedEventId.value);
+    if (eventIndex !== -1) {
+      events.value[eventIndex] = updatedEvent;
+    }
+  }
+
+  isEventModalVisible.value = false;
+  resetEventForm();
+};
+
+const handleModalCancel = (): void => {
+  isEventModalVisible.value = false;
+  resetEventForm();
+};
+
+const handleDeleteEvent = (): void => {
+  if (selectedEventId.value) {
+    calendar?.deleteEvent(selectedEventId.value, '1');
+
+    const eventIndex = events.value.findIndex(e => e.id === selectedEventId.value);
+    if (eventIndex !== -1) {
+      events.value.splice(eventIndex, 1);
+    }
+
+    isEventModalVisible.value = false;
+    resetEventForm();
+  }
+};
+
+const goToPrev = (): void => {
+  calendar?.prev();
+  if (calendar) {
+    currentDate.value = calendar.getDate().toDate();
+  }
+};
+
+const goToNext = (): void => {
+  calendar?.next();
+  if (calendar) {
+    currentDate.value = calendar.getDate().toDate();
+  }
+};
+
+const goToToday = (): void => {
+  calendar?.today();
+  if (calendar) {
+    currentDate.value = calendar.getDate().toDate();
+  }
+};
+
+const handleOk = (): void => {
+  scheduleModalVisible.value = false;
+};
+
+const handleCancel = (): void => {
+  scheduleModalVisible.value = false;
+};
+
+watch(currentView, (newView) => {
+  if (calendar) {
+    calendar.changeView(newView);
+  }
+});
+
+onMounted(() => {
+  console.log('Calendar ref is set:', calendarRef.value);
+
+  if (calendarRef.value) {
+    calendar = new Calendar(calendarRef.value, {
+      defaultView: currentView.value,
+      useDetailPopup: false,
+      useCreationPopup: false,
+      week: {
+        showTimezoneCollapseButton: true,
+        timezonesCollapsed: true
       },
-      events: [],
-    });
-
-    const currentViewTitle = computed<string>(() => {
-      return format(currentDate.value, 'MMMM yyyy');
-    });
-
-    const resetEventForm = (): void => {
-      state.eventForm = {
-        id: '',
-        title: '',
-        start: new Date(),
-        end: new Date(),
-        category: 'time',
-      };
-    };
-
-    const handleModalOk = (): void => {
-      if (!state.eventForm.title) {
-        return;
-      }
-
-      if (modalMode.value === 'create') {
-        const newEventId = `event-${Date.now()}`;
-        const newEvent: CalendarEvent = {
-          id: newEventId,
-          calendarId: '1',
-          title: state.eventForm.title,
-          start: state.eventForm.start,
-          end: state.eventForm.end,
-          isAllDay: state.eventForm.category === 'allday',
-        };
-
-        calendar?.createEvents([newEvent]);
-        state.events.push(newEvent);
-      } else if (modalMode.value === 'edit' && selectedEventId.value) {
-        const updatedEvent: CalendarEvent = {
-          id: selectedEventId.value,
-          calendarId: '1',
-          title: state.eventForm.title,
-          start: state.eventForm.start,
-          end: state.eventForm.end,
-          isAllDay: state.eventForm.category === 'allday',
-        };
-
-        calendar?.updateEvent(
-          updatedEvent.id,
-          '1',
-          updatedEvent
-        );
-
-        const eventIndex = state.events.findIndex(e => e.id === selectedEventId.value);
-        if (eventIndex !== -1) {
-          state.events[eventIndex] = updatedEvent;
+      month: {
+        visibleWeeksCount: 6
+      },
+      template: {
+        time(event) {
+          return `<span style="color: white;">${event.title}</span>`;
         }
-      }
-
-      isEventModalVisible.value = false;
-      resetEventForm();
-    };
-
-    const handleModalCancel = (): void => {
-      isEventModalVisible.value = false;
-      resetEventForm();
-    };
-
-    const handleDeleteEvent = (): void => {
-      if (selectedEventId.value) {
-        calendar?.deleteEvent(selectedEventId.value, '1');
-
-        const eventIndex = state.events.findIndex(e => e.id === selectedEventId.value);
-        if (eventIndex !== -1) {
-          state.events.splice(eventIndex, 1);
+      },
+      calendars: [
+        {
+          id: '1',
+          name: 'Schedule',
+          color: '#ffffff',
+          bgColor: '#1890ff',
+          borderColor: '#1890ff'
         }
-
-        isEventModalVisible.value = false;
-        resetEventForm();
-      }
-    };
-
-    const goToPrev = (): void => {
-      calendar?.prev();
-      if (calendar) {
-        currentDate.value = calendar.getDate().toDate();
-      }
-    };
-
-    const goToNext = (): void => {
-      calendar?.next();
-      if (calendar) {
-        currentDate.value = calendar.getDate().toDate();
-      }
-    };
-
-    const goToToday = (): void => {
-      calendar?.today();
-      if (calendar) {
-        currentDate.value = calendar.getDate().toDate();
-      }
-    };
-
-    const handleOk = (): void => {
-      scheduleModalVisible.value = false;
-    };
-
-    const handleCancel = (): void => {
-      scheduleModalVisible.value = false;
-    };
-
-    watch(currentView, (newView) => {
-      if (calendar) {
-        calendar.changeView(newView);
-      }
+      ]
     });
 
-    onMounted(() => {
-      if (calendarRef.value) {
-        calendar = new Calendar(calendarRef.value, {
-          defaultView: currentView.value,
-          useDetailPopup: false,
-          useCreationPopup: false,
-          week: {
-            showTimezoneCollapseButton: true,
-            timezonesCollapsed: true
-          },
-          month: {
-            visibleWeeksCount: 6
-          },
-          template: {
-            time(event) {
-              return `<span style="color: white;">${event.title}</span>`;
-            }
-          },
-          calendars: [
-            {
-              id: '1',
-              name: 'Schedule',
-              color: '#ffffff',
-              bgColor: '#1890ff',
-              borderColor: '#1890ff'
-            }
-          ]
-        });
+    if (calendar) {
+      currentDate.value = calendar.getDate().toDate();
 
-        if (calendar) {
-          currentDate.value = calendar.getDate().toDate();
+      calendar.on('beforeCreateEvent', (eventObj: any) => {
+        modalMode.value = 'create';
+        eventForm.title = eventObj.title || '';
+        eventForm.start = eventObj.start || new Date();
+        eventForm.end = eventObj.end || new Date();
+        eventForm.category = eventObj.isAllDay ? 'allday' : 'time';
+        isEventModalVisible.value = true;
+      });
 
-          calendar.on('beforeCreateEvent', (eventObj: any) => {
-            modalMode.value = 'create';
-            state.eventForm.title = eventObj.title || '';
-            state.eventForm.start = eventObj.start || new Date();
-            state.eventForm.end = eventObj.end || new Date();
-            state.eventForm.category = eventObj.isAllDay ? 'allday' : 'time';
-            isEventModalVisible.value = true;
-          });
+      calendar.on('beforeUpdateEvent', ({ event, changes }: any) => {
+        const { id, calendarId } = event;
+        calendar?.updateEvent(id, calendarId, changes);
+      });
 
-          calendar.on('beforeUpdateEvent', ({ event, changes }: any) => {
-            const { id, calendarId } = event;
-            calendar.updateEvent(id, calendarId, changes);
-          });
-
-          calendar.on('clickEvent', ({ event }: any) => {
-            selectedEventId.value = event.id;
-            modalMode.value = 'edit';
-            state.eventForm.title = event.title;
-            state.eventForm.start = event.start;
-            state.eventForm.end = event.end;
-            state.eventForm.category = event.isAllDay ? 'allday' : 'time';
-            isEventModalVisible.value = true;
-          });
-        }
-      }
-    });
-
-    return {
-      calendarRef,
-      scheduleModalVisible,
-      isEventModalVisible,
-      modalMode,
-      currentView,
-      currentDate,
-      currentViewTitle,
-      eventForm: state.eventForm,
-      events: state.events,
-      handleModalOk,
-      handleModalCancel,
-      handleDeleteEvent,
-      goToPrev,
-      goToNext,
-      goToToday,
-      handleOk,
-      handleCancel
-    };
+      calendar.on('clickEvent', ({ event }: any) => {
+        selectedEventId.value = event.id;
+        modalMode.value = 'edit';
+        eventForm.title = event.title;
+        eventForm.start = event.start;
+        eventForm.end = event.end;
+        eventForm.category = event.isAllDay ? 'allday' : 'time';
+        isEventModalVisible.value = true;
+      });
+    }
   }
 });
 </script>
