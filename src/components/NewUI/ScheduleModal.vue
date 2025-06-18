@@ -1,13 +1,12 @@
 <template>
   <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="1000" @ok="handleOk" @cancel="handleCancel">
-    <div class="button-container">
-      <a-button type="primary" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
-    </div>
+    <!-- Remove the button from here, as it will be moved to the modal footer -->
     <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered size="small">
       <template #bodyCell="{ column, record }">
         <!-- Status Column (On/Off) -->
         <template v-if="column.key === 'status'">
-          <a-switch v-model:checked="record.status" @change="onStatusChange(record)" checked-children="On" un-checked-children="Off"/>
+          <a-switch v-model:checked="record.status" @change="onStatusChange(record)" checked-children="On"
+            un-checked-children="Off" />
         </template>
 
         <!-- Day Columns (Monday through Holiday2) -->
@@ -22,6 +21,15 @@
         </template>
       </template>
     </a-table>
+    <template #footer>
+      <div style="display: flex; justify-content: flex-start; gap: 8px;">
+        <a-button class="t3-btn" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
+        <a-button class="t3-btn" @click="refreshFromT3000">Refresh from T3000</a-button>
+        <a-button class="t3-btn" @click="clearAll">Clear All</a-button>
+        <a-button class="t3-btn" @click="handleOk">Save</a-button>
+        <a-button class="t3-btn" @click="handleCancel">Cancel</a-button>
+      </div>
+    </template>
   </a-modal>
 </template>
 
@@ -77,34 +85,19 @@ const generateTimeOptions = (): string[] => {
 const timeOptions = generateTimeOptions();
 
 // Initial schedule data
-const scheduleData = ref<ScheduleItem[]>([
-  {
-    key: '1',
-    status: true,
-    monday: '08:00',
-    tuesday: '08:00',
-    wednesday: '08:00',
-    thursday: '08:00',
-    friday: '08:00',
-    saturday: '10:00',
-    sunday: '10:00',
-    holiday1: '10:00',
-    holiday2: '10:00',
-  },
-  {
-    key: '2',
-    status: false,
-    monday: '17:00',
-    tuesday: '17:00',
-    wednesday: '17:00',
-    thursday: '17:00',
-    friday: '17:00',
-    saturday: '15:00',
-    sunday: '15:00',
-    holiday1: '15:00',
-    holiday2: '15:00',
-  },
-]);
+const scheduleData = ref<ScheduleItem[]>(Array.from({ length: 8 }, (_, i) => ({
+  key: (i + 1).toString(),
+  status: false,
+  monday: '',
+  tuesday: '',
+  wednesday: '',
+  thursday: '',
+  friday: '',
+  saturday: '',
+  sunday: '',
+  holiday1: '',
+  holiday2: '',
+})));
 
 // Table column definitions
 const columns = [
@@ -182,6 +175,38 @@ const copyToWeekdays = () => {
   });
 };
 
+const refreshFromT3000 = () => {
+  scheduleData.value = Array.from({ length: 8 }, (_, i) => ({
+    key: (i + 1).toString(),
+    status: false,
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: '',
+  }))
+};
+
+const clearAll = () => {
+  scheduleData.value = scheduleData.value.map(record => ({
+    ...record,
+    status: false,
+    monday: '',
+    tuesday: '',
+    wednesday: '',
+    thursday: '',
+    friday: '',
+    saturday: '',
+    sunday: '',
+    holiday1: '',
+    holiday2: '',
+  }));
+};
+
 const handleOk = () => {
   // emit('save', scheduleData.value);
   // emit('update:visible', false);
@@ -198,6 +223,10 @@ const handleCancel = () => {
 .button-container {
   margin-bottom: 16px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
+}
+
+.t3-btn {
+  border-radius: 2px;
 }
 </style>

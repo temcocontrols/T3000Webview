@@ -614,8 +614,8 @@
     </div>
   </a-modal> -->
 
-  <!-- <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal> -->
-   <ScheduleCalendar v-if="scheduleModalVisible" :visible="scheduleModalVisible"/>
+  <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal>
+  <!-- <ScheduleCalendar v-if="scheduleModalVisible" :visible="scheduleModalVisible"/> -->
 
 
 
@@ -3082,7 +3082,7 @@ function objectDoubleClicked(item) {
   LogUtil.Debug('Double clicked on item:', item);
 
   // Check if the item has a t3Entry and it's of type SCHEDULE
-  if (item.t3Entry?.type === "SCHEDULE") {
+  if (item.t3Entry?.type === "SCH") {
     /*
     // Show a popup for schedule items
     $q.dialog({
