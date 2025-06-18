@@ -11,8 +11,7 @@
         <template #bodyCell="{ column, record }">
           <!-- Status Column (On/Off) -->
           <template v-if="column.key === 'status'">
-            <a-switch v-model:checked="record.status" @change="onStatusChange(record)" checked-children="On"
-              un-checked-children="Off" />
+            <a-switch :checked="record.status" checked-children="On" un-checked-children="Off" disabled />
           </template>
 
           <!-- Day Columns (Monday through Holiday2) -->
@@ -91,7 +90,7 @@ const timeOptions = generateTimeOptions();
 // Initial schedule data
 const scheduleData = ref<ScheduleItem[]>(Array.from({ length: 8 }, (_, i) => ({
   key: (i + 1).toString(),
-  status: false,
+  status: i % 2 === 0, // true for 1st, 3rd, 5th, ...; false for 2nd, 4th, ...
   monday: '',
   tuesday: '',
   wednesday: '',
@@ -108,7 +107,6 @@ const columns = [
   {
     title: 'On/Off',
     key: 'status',
-    width: 80,
   },
   {
     title: 'Monday',
@@ -182,7 +180,7 @@ const copyToWeekdays = () => {
 const refreshFromT3000 = () => {
   scheduleData.value = Array.from({ length: 8 }, (_, i) => ({
     key: (i + 1).toString(),
-    status: false,
+    status: i % 2 === 0, // true for 1st, 3rd, 5th, ...; false for 2nd, 4th, ...
     monday: '',
     tuesday: '',
     wednesday: '',
@@ -198,7 +196,6 @@ const refreshFromT3000 = () => {
 const clearAll = () => {
   scheduleData.value = scheduleData.value.map(record => ({
     ...record,
-    status: false,
     monday: '',
     tuesday: '',
     wednesday: '',
