@@ -20,9 +20,26 @@
           <!-- Day Columns (Monday through Holiday2) -->
           <template
             v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
-            <a-time-picker v-model:value="record[column.key]" format="HH:mm" :minute-step="15" :show-second="false"
-              style="width: 100%;border-radius: 0px;" size="middle" placeholder=""
-              @change="(time, timeString) => onTimeChange(record, column.key, timeString)" />
+
+
+
+
+            <a-time-picker :value="record[column.key] ? dayjs(record[column.key], 'HH:mm') : null" format="HH:mm"
+              :minute-step="15" :show-second="false" style="width: 100%;border-radius: 0px;" size="middle"
+              placeholder=""
+              @change="(time: dayjs.Dayjs | null, timeString: string) => onTimeChange(record, column.key, time)" />
+
+
+
+
+
+
+
+
+
+
+
+
           </template>
         </template>
       </a-table>
@@ -43,6 +60,7 @@
 import { ref, computed } from 'vue';
 import { Modal, Table, Button, Switch, Select } from 'ant-design-vue';
 import { scheduleModalVisible, selectedSchedule, scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import dayjs from 'dayjs';
 
 interface ScheduleItem {
   key: string;
@@ -163,8 +181,15 @@ const onStatusChange = (record: ScheduleItem) => {
   console.log('Status changed:', record);
 };
 
-const onTimeChange = (record: ScheduleItem, key: string, value: string) => {
-  console.log(`Time changed for ${key}:`, value);
+// Event handlers
+const onTimeChange = (record: ScheduleItem, key: string, value: Dayjs | string | null) => {
+  if (value && typeof value !== 'string') {
+    record[key] = value;
+  } else if (typeof value === 'string') {
+    record[key] = dayjs(value, 'HH:mm');
+  } else {
+    record[key] = null;
+  }
 };
 
 const copyToWeekdays = () => {
@@ -181,6 +206,8 @@ const copyToWeekdays = () => {
 };
 
 const refreshFromT3000 = () => {
+
+  /*
   scheduleData.value = Array.from({ length: 8 }, (_, i) => ({
     key: (i + 1).toString(),
     status: i % 2 === 0, // true for 1st, 3rd, 5th, ...; false for 2nd, 4th, ...
@@ -194,6 +221,9 @@ const refreshFromT3000 = () => {
     holiday1: '',
     holiday2: '',
   }))
+  */
+
+  loadDefaultData();
 };
 
 const clearAll = () => {
@@ -249,9 +279,6 @@ onMounted(() => {
 });
 
 const loadDefaultData = () => {
-
-  //[[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":0,"minutes":56},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}]]
-
   if (
     scheduleItemData.value &&
     scheduleItemData.value.t3Entry &&
@@ -273,7 +300,9 @@ const loadDefaultData = () => {
     // We need to transpose it so each row contains all days
     const time = scheduleItemData.value.t3Entry.time;
     const rowCount = time[0]?.length || 0;
-    scheduleData.value = Array.from({ length: rowCount }, (_, rowIdx) => {
+
+    // Create a new array to trigger reactivity
+    const newScheduleData = Array.from({ length: rowCount }, (_, rowIdx) => {
       const item: any = {
         key: (rowIdx + 1).toString(),
         status: rowIdx % 2 === 0, // fallback if no status info
@@ -281,19 +310,21 @@ const loadDefaultData = () => {
       dayKeys.forEach((day, dayIdx) => {
         const t = time[dayIdx]?.[rowIdx];
         if (t && typeof t.hours === 'number' && typeof t.minutes === 'number') {
-          item[day] = `${t.hours.toString().padStart(2, '0')}:${t.minutes
-            .toString()
-            .padStart(2, '0')}`;
+          // Use dayjs to create a time string in "HH:mm" format
+          const hour = t.hours.toString().padStart(2, '0');
+          const minute = t.minutes.toString().padStart(2, '0');
+          item[day] = `${hour}:${minute}`;
         } else {
           item[day] = '';
         }
       });
       return item;
     });
+    scheduleData.value = newScheduleData;
 
     LogUtil.Debug(
       '= ScheduleModal: loadDefaultData scheduleData',
-      JSON.stringify(scheduleData.value)
+      JSON.stringify(scheduleData.value), scheduleData.value
     );
   }
 };
