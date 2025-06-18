@@ -74,6 +74,7 @@ export const topMenuCurrent = ref<string[]>(['dashboard']);
 // New schedule modal component
 export const scheduleModalVisible = ref<boolean>(false);
 export const selectedSchedule = ref(null);
+export const scheduleItemData = ref({});
 
 
 

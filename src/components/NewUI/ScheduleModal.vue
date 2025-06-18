@@ -4,9 +4,12 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="1000" style="border-radius: 0px;"
+    <a-modal v-model:visible="scheduleModalVisible" :title="modalTitle" :width="1000" style="border-radius: 0px;"
       wrapClassName="t3-modal" @ok="handleOk" @cancel="handleCancel">
       <!-- Remove the button from here, as it will be moved to the modal footer -->
+
+      <a-alert :message="schInfo" type="info" show-icon class="sch-alert" />
+
       <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered size="small">
         <template #bodyCell="{ column, record }">
           <!-- Status Column (On/Off) -->
@@ -39,7 +42,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Modal, Table, Button, Switch, Select } from 'ant-design-vue';
-import { scheduleModalVisible, selectedSchedule } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalVisible, selectedSchedule, scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
 
 interface ScheduleItem {
   key: string;
@@ -218,6 +221,83 @@ const handleCancel = () => {
   // emit('update:visible', false);
   scheduleModalVisible.value = false;
 };
+
+import { onMounted } from 'vue';
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
+
+const modalTitle = ref<string>("Schedule full label test title");
+const schInfo = ref<string>("T3-TB / Test Schedule / Panel 1 / Schedule 1");
+
+onMounted(() => {
+  LogUtil.Debug('= ScheduleModal: onMounted scheduleItemData', scheduleItemData.value);
+
+  if (scheduleItemData.value && scheduleItemData.value.t3Entry) {
+    const { id, label, description } = scheduleItemData.value.t3Entry;
+    modalTitle.value = [id, label, description].filter(Boolean).join(', ');
+  }
+
+  if (scheduleItemData.value && scheduleItemData.value.t3Entry) {
+    const { command, control, description, id, label, type } = scheduleItemData.value.t3Entry;
+    schInfo.value = [command, control, description, id, label, type].filter(Boolean).join(' / ');
+  }
+
+  if (scheduleItemData.value && scheduleItemData.value.t3Entry && scheduleItemData.value.t3Entry.time) {
+    LogUtil.Debug('= ScheduleModal: onMounted Schedule time:', JSON.stringify(scheduleItemData.value.t3Entry.time));
+  }
+
+  loadDefaultData();
+});
+
+const loadDefaultData = () => {
+
+  //[[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":2,"minutes":59},{"hours":3,"minutes":0},{"hours":9,"minutes":0},{"hours":21,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":23,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":0,"minutes":56},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}],[{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0},{"hours":0,"minutes":0}]]
+
+  if (
+    scheduleItemData.value &&
+    scheduleItemData.value.t3Entry &&
+    Array.isArray(scheduleItemData.value.t3Entry.time)
+  ) {
+    const dayKeys = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+      'holiday1',
+      'holiday2',
+    ];
+
+    // scheduleItemData.value.t3Entry.time is an array of days, each with 8 rows (schedules)
+    // We need to transpose it so each row contains all days
+    const time = scheduleItemData.value.t3Entry.time;
+    const rowCount = time[0]?.length || 0;
+    scheduleData.value = Array.from({ length: rowCount }, (_, rowIdx) => {
+      const item: any = {
+        key: (rowIdx + 1).toString(),
+        status: rowIdx % 2 === 0, // fallback if no status info
+      };
+      dayKeys.forEach((day, dayIdx) => {
+        const t = time[dayIdx]?.[rowIdx];
+        if (t && typeof t.hours === 'number' && typeof t.minutes === 'number') {
+          item[day] = `${t.hours.toString().padStart(2, '0')}:${t.minutes
+            .toString()
+            .padStart(2, '0')}`;
+        } else {
+          item[day] = '';
+        }
+      });
+      return item;
+    });
+
+    LogUtil.Debug(
+      '= ScheduleModal: loadDefaultData scheduleData',
+      JSON.stringify(scheduleData.value)
+    );
+  }
+};
+
 </script>
 
 <style>
@@ -258,6 +338,21 @@ const handleCancel = () => {
 
   .ant-table-cell {
     padding: 5px 4px !important;
+  }
+
+  .ant-table-thead {
+    height: 38px !important;
+
+    .ant-table-cell {
+      background-color: #eff3f8;
+    }
+  }
+
+  .sch-alert {
+    margin-bottom: 10px;
+    margin-left: -15px;
+    margin-right: -15px;
+    border-radius: 0px;
   }
 }
 </style>
