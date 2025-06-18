@@ -1,7 +1,8 @@
 <template>
-  <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="1000" @ok="handleOk" @cancel="handleCancel">
+  <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="800" style="top: 20px;height: 600px;"
+    @ok="handleOk" @cancel="handleCancel">
     <div class="schedule-calendar-container">
-      <div class="calendar-header">
+      <!-- <div class="calendar-header"> -->
         <a-row type="flex" justify="space-between" align="middle">
           <a-col>
             <a-button-group>
@@ -30,24 +31,71 @@
           </a-col>
         </a-row>
       </div>
-
       <div ref="calendarRef" class="calendar-container"></div>
-
-
-    </div>
+    <!-- </div> -->
   </a-modal>
 
-  <a-modal v-model:visible="isEventModalVisible" :title="modalMode === 'create' ? 'Create Event' : 'Edit Event'"
+  <a-modal v-model:visible="isEventModalVisible" :title="modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'"
     @ok="handleModalOk" @cancel="handleModalCancel">
     <a-form :model="eventForm" layout="vertical">
-      <a-form-item label="Title" name="title">
-        <a-input v-model:value="eventForm.title" />
+      <a-form-item label="On/Off" name="onoff">
+        <a-switch v-model:checked="eventForm.title" checked-children="On" un-checked-children="Off" />
       </a-form-item>
       <a-form-item label="Start Date" name="start">
         <!-- <a-date-picker v-model:value="eventForm.start" :showTime="true" format="YYYY-MM-DD HH:mm" /> -->
+        <a-row gutter="8">
+          <a-col>
+            <a-select v-model:value="eventForm.start" :value="dayjs(eventForm.start).format('YYYY-MM-DD')" disabled
+              style="width: 120px;">
+              <a-select-option :value="dayjs(eventForm.start).format('YYYY-MM-DD')">
+                {{ dayjs(eventForm.start).format('YYYY-MM-DD') }}
+              </a-select-option>
+            </a-select>
+          </a-col>
+          <a-col>
+            <a-select v-model:value="eventForm.start" :value="dayjs(eventForm.start).hour()" style="width: 70px"
+              @change="val => { eventForm.start = dayjs(eventForm.start).hour(val).toDate() }">
+              <a-select-option v-for="h in 24" :key="h - 1" :value="h - 1">
+                {{ (h - 1).toString().padStart(2, '0') }}
+              </a-select-option>
+            </a-select>
+            :
+            <a-select v-model:value="eventForm.start" :value="dayjs(eventForm.start).minute()" style="width: 70px"
+              @change="val => { eventForm.start = dayjs(eventForm.start).minute(val).toDate() }">
+              <a-select-option v-for="m in 60" :key="m - 1" :value="m - 1">
+                {{ (m - 1).toString().padStart(2, '0') }}
+              </a-select-option>
+            </a-select>
+          </a-col>
+        </a-row>
       </a-form-item>
       <a-form-item label="End Date" name="end">
         <!-- <a-date-picker v-model:value="eventForm.end" :showTime="true" format="YYYY-MM-DD HH:mm" /> -->
+        <a-row gutter="8">
+          <a-col>
+            <a-select v-model:value="eventForm.end" :value="dayjs(eventForm.end).format('YYYY-MM-DD')" disabled
+              style="width: 120px;">
+              <a-select-option :value="dayjs(eventForm.end).format('YYYY-MM-DD')">
+                {{ dayjs(eventForm.end).format('YYYY-MM-DD') }}
+              </a-select-option>
+            </a-select>
+          </a-col>
+          <a-col>
+            <a-select v-model:value="eventForm.end" :value="dayjs(eventForm.end).hour()" style="width: 70px"
+              @change="val => { eventForm.end = dayjs(eventForm.end).hour(val).toDate() }">
+              <a-select-option v-for="h in 24" :key="h - 1" :value="h - 1">
+                {{ (h - 1).toString().padStart(2, '0') }}
+              </a-select-option>
+            </a-select>
+            :
+            <a-select v-model:value="eventForm.end" :value="dayjs(eventForm.end).minute()" style="width: 70px"
+              @change="val => { eventForm.end = dayjs(eventForm.end).minute(val).toDate() }">
+              <a-select-option v-for="m in 60" :key="m - 1" :value="m - 1">
+                {{ (m - 1).toString().padStart(2, '0') }}
+              </a-select-option>
+            </a-select>
+          </a-col>
+        </a-row>
       </a-form-item>
       <a-form-item label="Category" name="category">
         <a-select v-model:value="eventForm.category">
@@ -118,8 +166,6 @@ interface CalendarEvent {
 defineOptions({
   name: 'ScheduleCalendar',
 });
-
-
 
 const calendarRef = ref<HTMLElement | null>(null);
 let calendar: Calendar | null = null;
@@ -249,6 +295,42 @@ watch(currentView, (newView) => {
   }
 });
 
+const hideUIPanel = () => {
+  // Remove the "Milestone" button from the calendar UI if it exists
+  // Toast UI Calendar does not show a "Milestone" button by default in v2+,
+  // but if you see it, you can hide it via CSS or by not using milestone features.
+  // Here is a CSS-based approach:
+  const style = document.createElement('style');
+  style.innerHTML = `
+      .toastui-calendar-milestone { display: none !important; }
+    `;
+  document.head.appendChild(style);
+
+  /**
+   * Remove the "Task" button from the Toast UI Calendar UI if it exists.
+   * Toast UI Calendar v2+ does not show a "Task" button by default,
+   * but if you see it, you can hide it via CSS.
+   */
+  const taskStyle = document.createElement('style');
+  taskStyle.innerHTML = `
+      .toastui-calendar-task { display: none !important; }
+    `;
+  document.head.appendChild(taskStyle);
+
+  /**
+   * Hide the "All Day" row and label in Toast UI Calendar.
+   * This can be done via CSS since Toast UI Calendar does not provide a direct API to remove it.
+   */
+  const allDayStyle = document.createElement('style');
+  allDayStyle.innerHTML = `
+      .toastui-calendar-allday-panel,
+      .toastui-calendar-allday {
+        display: none !important;
+      }
+    `;
+  document.head.appendChild(allDayStyle);
+};
+
 onMounted(() => {
   console.log('Calendar ref is set:', calendarRef.value);
 
@@ -343,7 +425,6 @@ onMounted(() => {
       isEventModalVisible.value = true;
     });
 
-
     // Handle clicking on a time slot to create a new event
     calendar.on('clickTimeGrid', (eventInfo) => {
       console.log('Calendar Time grid clicked:', eventInfo);
@@ -383,24 +464,20 @@ onMounted(() => {
         console.log('Parsed Start:', newStart);
         console.log('Parsed End:', newEnd);
 
-        // modalMode.value = 'create';
-        // eventForm.title = '';
-        // eventForm.start = newStart;
-        // eventForm.end = newEnd;
-        // eventForm.category = eventInfo.isAllDay ? 'allday' : 'time';
-        // scheduleModalVisible.value = false;
+        modalMode.value = 'create';
+        eventForm.title = '';
+        eventForm.start = newStart;
+        eventForm.end = newEnd;
+        eventForm.category = eventInfo.isAllDay ? 'allday' : 'time';
         scheduleModalVisible.value = true;
       }
       catch (error) {
         console.error('Error parsing date:', error);
         return;
       }
-
-
     });
 
-
-
+    hideUIPanel();
     console.log('Calendar events registered');
   } catch (error) {
     console.error('Error initializing calendar:', error);
@@ -411,18 +488,28 @@ onMounted(() => {
 <style scoped>
 .schedule-calendar-container {
   width: 100%;
-  height: 100%;
+  /* height: 100%; */
   display: flex;
   flex-direction: column;
 }
 
 .calendar-header {
-  margin-bottom: 20px;
+  margin-bottom: 5px;
 }
 
 .calendar-container {
   width: 100%;
-  height: 600px;
+  /* height: 400px; */
   flex-grow: 1;
 }
+
+/* Set Toast UI Calendar week view layout height */
+:deep(.toastui-calendar-layout.toastui-calendar-week-view) {
+  height: 400px !important;
+}
+
+:deep(.toastui-calendar-panel.toastui-calendar-time) {
+  height: 350px !important;
+}
+
 </style>

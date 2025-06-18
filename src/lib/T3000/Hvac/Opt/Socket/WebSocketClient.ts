@@ -40,7 +40,7 @@ class WebSocketClient {
   }
 
   private onOpen(event: Event) {
-    LogUtil.Debug('= Ws connection opened:', event);
+    LogUtil.Debug('= ws: connection opened:', event);
 
     this.retries = 0;
     // this.startPing();
@@ -59,7 +59,7 @@ class WebSocketClient {
   }
 
   private onClose(event: CloseEvent) {
-    LogUtil.Debug('= Ws connection closed:', event);
+    LogUtil.Debug('= ws: connection closed:', event);
     this.attemptReconnect();
   }
 
@@ -83,13 +83,13 @@ class WebSocketClient {
 
   private attemptReconnect() {
     if (this.retries < this.maxRetries) {
-      LogUtil.Debug(`= Ws attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
+      LogUtil.Debug(`= ws: attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
       setTimeout(() => {
         this.retries++;
         this.connect();
       }, 5000); // 5 seconds
     } else {
-      LogUtil.Debug("= Ws max retries reached. Giving up.");
+      LogUtil.Debug("= ws: max retries reached. Giving up.");
     }
   }
 
@@ -662,7 +662,7 @@ class WebSocketClient {
 
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
-    LogUtil.Debug('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
+    LogUtil.Debug('= ws: GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
 
     // load the first panel's panel data by default
     const firstPanelId = data.length > 0 ? data[0].panel_number : null;
@@ -695,7 +695,7 @@ class WebSocketClient {
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
-    LogUtil.Debug('= Ws GET_ENTRIES_RES', msgData.data);
+    LogUtil.Debug('= ws: GET_ENTRIES_RES', msgData.data);
 
     // TODO refer to WebViewClient-> HandleGetEntriesRes
     msgData.data.forEach((item) => {
@@ -765,7 +765,7 @@ class WebSocketClient {
 
   public HandleSaveNewLibraryDataRes(msgData) {
     // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
-    LogUtil.Debug('= Ws Handle SAVE_NEW_LIBRARY_DATA_RES', msgData.data);
+    LogUtil.Debug('= ws: Handle SAVE_NEW_LIBRARY_DATA_RES', msgData.data);
   }
 
   public HandleDeleteImageRes(msgData) {
@@ -829,7 +829,7 @@ class WebSocketClient {
     const rspAction = response?.action ?? -1;
     const rspStatus = response?.data?.status ?? false;
 
-    LogUtil.Debug('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
+    LogUtil.Debug('= ws: showSuccess | action:', rspAction, '| status:', rspStatus);
 
     if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
       Hvac.QuasarUtil.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
@@ -870,7 +870,7 @@ class WebSocketClient {
     if (!this.needRefresh) return;
     if (this.reloadInitialDataInterval) return;
 
-    LogUtil.Debug('= Ws reload-initial-interval start', this.reloadInitialDataInterval);
+    LogUtil.Debug('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
 
     // Set a timer to reload the initial data every 5 minutes
     this.reloadInitialDataInterval = setInterval(() => {
@@ -883,7 +883,7 @@ class WebSocketClient {
       }
     }, 2000);
 
-    LogUtil.Debug('= Ws reload-initial-interval end', this.reloadInitialDataInterval);
+    LogUtil.Debug('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
   }
 
   clearInitialDataInterval() {
@@ -892,7 +892,7 @@ class WebSocketClient {
     }
 
     this.reloadInitialDataInterval = null;
-    LogUtil.Debug('= Ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
+    LogUtil.Debug('= ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
   }
 }
 
