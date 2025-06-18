@@ -1,36 +1,40 @@
 <template>
-  <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="1000" @ok="handleOk" @cancel="handleCancel">
-    <!-- Remove the button from here, as it will be moved to the modal footer -->
-    <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered size="small">
-      <template #bodyCell="{ column, record }">
-        <!-- Status Column (On/Off) -->
-        <template v-if="column.key === 'status'">
-          <a-switch v-model:checked="record.status" @change="onStatusChange(record)" checked-children="On"
-            un-checked-children="Off" />
-        </template>
+  <a-config-provider :theme="{
+    token: {
+      colorPrimary: '#0064c8',
+    },
+  }">
+    <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="1000" style="border-radius: 0px;"
+      wrapClassName="t3-modal" @ok="handleOk" @cancel="handleCancel">
+      <!-- Remove the button from here, as it will be moved to the modal footer -->
+      <a-table :dataSource="scheduleData" :columns="columns" :pagination="false" bordered size="small">
+        <template #bodyCell="{ column, record }">
+          <!-- Status Column (On/Off) -->
+          <template v-if="column.key === 'status'">
+            <a-switch v-model:checked="record.status" @change="onStatusChange(record)" checked-children="On"
+              un-checked-children="Off" />
+          </template>
 
-        <!-- Day Columns (Monday through Holiday2) -->
-        <template
-          v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
-          <a-select v-model:value="record[column.key]" style="width: 100%"
-            @change="(value) => onTimeChange(record, column.key, value)">
-            <a-select-option v-for="time in timeOptions" :key="time" :value="time">
-              {{ time }}
-            </a-select-option>
-          </a-select>
+          <!-- Day Columns (Monday through Holiday2) -->
+          <template
+            v-else-if="['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'holiday1', 'holiday2'].includes(column.key)">
+            <a-time-picker v-model:value="record[column.key]" format="HH:mm" :minute-step="15" :show-second="false"
+              style="width: 100%;border-radius: 0px;" size="middle" placeholder=""
+              @change="(time, timeString) => onTimeChange(record, column.key, timeString)" />
+          </template>
         </template>
+      </a-table>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-start; gap: 8px;">
+          <a-button class="t3-btn" @click="copyToWeekdays" type="primary">Copy to Monday - Friday</a-button>
+          <a-button class="t3-btn" @click="refreshFromT3000">Refresh from T3000</a-button>
+          <a-button class="t3-btn" @click="clearAll">Clear All</a-button>
+          <a-button class="t3-btn" @click="handleOk">Save</a-button>
+          <a-button class="t3-btn" @click="handleCancel">Cancel</a-button>
+        </div>
       </template>
-    </a-table>
-    <template #footer>
-      <div style="display: flex; justify-content: flex-start; gap: 8px;">
-        <a-button class="t3-btn" @click="copyToWeekdays">Copy to Monday - Friday</a-button>
-        <a-button class="t3-btn" @click="refreshFromT3000">Refresh from T3000</a-button>
-        <a-button class="t3-btn" @click="clearAll">Clear All</a-button>
-        <a-button class="t3-btn" @click="handleOk">Save</a-button>
-        <a-button class="t3-btn" @click="handleCancel">Cancel</a-button>
-      </div>
-    </template>
-  </a-modal>
+    </a-modal>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
@@ -219,7 +223,7 @@ const handleCancel = () => {
 };
 </script>
 
-<style scoped>
+<style>
 .button-container {
   margin-bottom: 16px;
   display: flex;
@@ -228,5 +232,35 @@ const handleCancel = () => {
 
 .t3-btn {
   border-radius: 2px;
+}
+
+.t3-modal {
+
+  .ant-modal-content {
+    /* background-color: #18b5c3 !important; */
+    border-radius: 0px !important;
+  }
+
+  .ant-modal-header {
+    border-radius: 0px !important;
+    margin-left: -15px;
+    margin-right: -15px;
+  }
+
+  .ant-table {
+    border-radius: 0px !important;
+    margin-left: -15px;
+    margin-right: -15px;
+  }
+
+  .ant-modal-footer {
+    border-radius: 0px !important;
+    margin-left: -15px;
+    margin-right: -15px;
+  }
+
+  .ant-table-cell {
+    padding: 5px 4px !important;
+  }
 }
 </style>
