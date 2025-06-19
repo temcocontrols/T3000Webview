@@ -3111,6 +3111,7 @@ function objectDoubleClicked(item) {
   }
 
   if (item.t3Entry?.type === "SCHEDULE") {
+    scheduleItemData.value = item;
     scheduleModalNVisible.value = true;
   }
   // Do nothing for other types
