@@ -76,6 +76,8 @@ export const scheduleModalVisible = ref<boolean>(false);
 export const selectedSchedule = ref(null);
 export const scheduleItemData = ref({});
 
+export const scheduleModalNVisible = ref<boolean>(false);
+
 
 
 

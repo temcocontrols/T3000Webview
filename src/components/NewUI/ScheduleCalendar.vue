@@ -1,5 +1,5 @@
 <template>
-  <a-modal v-model:visible="scheduleModalVisible" title="Schedule" :width="800" style="top: 20px;height: 600px;"
+  <a-modal v-model:visible="scheduleModalNVisible" title="Schedule" :width="800" style="top: 20px;height: 600px;"
     @ok="handleOk" @cancel="handleCancel">
     <div class="schedule-calendar-container">
       <!-- <div class="calendar-header"> -->
@@ -41,62 +41,7 @@
       <a-form-item label="On/Off" name="onoff">
         <a-switch v-model:checked="eventForm.title" checked-children="On" un-checked-children="Off" />
       </a-form-item>
-      <a-form-item label="Start Date" name="start">
-        <!-- <a-date-picker v-model:value="eventForm.start" :showTime="true" format="YYYY-MM-DD HH:mm" /> -->
-        <a-row gutter="8">
-          <a-col>
-            <a-select v-model:value="eventForm.start" :value="dayjs(eventForm.start).format('YYYY-MM-DD')" disabled
-              style="width: 120px;">
-              <a-select-option :value="dayjs(eventForm.start).format('YYYY-MM-DD')">
-                {{ dayjs(eventForm.start).format('YYYY-MM-DD') }}
-              </a-select-option>
-            </a-select>
-          </a-col>
-          <a-col>
-            <a-select v-model:value="eventForm.start" :value="dayjs(eventForm.start).hour()" style="width: 70px"
-              @change="val => { eventForm.start = dayjs(eventForm.start).hour(val).toDate() }">
-              <a-select-option v-for="h in 24" :key="h - 1" :value="h - 1">
-                {{ (h - 1).toString().padStart(2, '0') }}
-              </a-select-option>
-            </a-select>
-            :
-            <a-select v-model:value="eventForm.start" :value="dayjs(eventForm.start).minute()" style="width: 70px"
-              @change="val => { eventForm.start = dayjs(eventForm.start).minute(val).toDate() }">
-              <a-select-option v-for="m in 60" :key="m - 1" :value="m - 1">
-                {{ (m - 1).toString().padStart(2, '0') }}
-              </a-select-option>
-            </a-select>
-          </a-col>
-        </a-row>
-      </a-form-item>
-      <a-form-item label="End Date" name="end">
-        <!-- <a-date-picker v-model:value="eventForm.end" :showTime="true" format="YYYY-MM-DD HH:mm" /> -->
-        <a-row gutter="8">
-          <a-col>
-            <a-select v-model:value="eventForm.end" :value="dayjs(eventForm.end).format('YYYY-MM-DD')" disabled
-              style="width: 120px;">
-              <a-select-option :value="dayjs(eventForm.end).format('YYYY-MM-DD')">
-                {{ dayjs(eventForm.end).format('YYYY-MM-DD') }}
-              </a-select-option>
-            </a-select>
-          </a-col>
-          <a-col>
-            <a-select v-model:value="eventForm.end" :value="dayjs(eventForm.end).hour()" style="width: 70px"
-              @change="val => { eventForm.end = dayjs(eventForm.end).hour(val).toDate() }">
-              <a-select-option v-for="h in 24" :key="h - 1" :value="h - 1">
-                {{ (h - 1).toString().padStart(2, '0') }}
-              </a-select-option>
-            </a-select>
-            :
-            <a-select v-model:value="eventForm.end" :value="dayjs(eventForm.end).minute()" style="width: 70px"
-              @change="val => { eventForm.end = dayjs(eventForm.end).minute(val).toDate() }">
-              <a-select-option v-for="m in 60" :key="m - 1" :value="m - 1">
-                {{ (m - 1).toString().padStart(2, '0') }}
-              </a-select-option>
-            </a-select>
-          </a-col>
-        </a-row>
-      </a-form-item>
+
       <a-form-item label="Category" name="category">
         <a-select v-model:value="eventForm.category">
           <a-select-option value="time">Time</a-select-option>
@@ -119,7 +64,7 @@ import { LeftOutlined, RightOutlined } from '@ant-design/icons-vue';
 import Calendar from '@toast-ui/calendar';
 import '@toast-ui/calendar/dist/toastui-calendar.min.css';
 import { format } from 'date-fns';
-import { scheduleModalVisible, selectedSchedule } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalNVisible, selectedSchedule } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
 import 'tui-date-picker/dist/tui-date-picker.css';
 import 'tui-time-picker/dist/tui-time-picker.css';
 import dayjs from 'dayjs';
@@ -282,11 +227,11 @@ const goToToday = (): void => {
 };
 
 const handleOk = (): void => {
-  scheduleModalVisible.value = false;
+  scheduleModalNVisible.value = false;
 };
 
 const handleCancel = (): void => {
-  scheduleModalVisible.value = false;
+  scheduleModalNVisible.value = false;
 };
 
 watch(currentView, (newView) => {
@@ -469,7 +414,7 @@ onMounted(() => {
         eventForm.start = newStart;
         eventForm.end = newEnd;
         eventForm.category = eventInfo.isAllDay ? 'allday' : 'time';
-        scheduleModalVisible.value = true;
+        scheduleModalNVisible.value = true;
       }
       catch (error) {
         console.error('Error parsing date:', error);

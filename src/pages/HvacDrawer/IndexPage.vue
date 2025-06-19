@@ -615,7 +615,7 @@
   </a-modal> -->
 
   <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal>
-  <!-- <ScheduleCalendar v-if="scheduleModalVisible" :visible="scheduleModalVisible"/> -->
+  <ScheduleCalendar v-if="scheduleModalNVisible" :visible="scheduleModalNVisible" />
 
 
 
@@ -676,7 +676,7 @@ import {
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
-import { scheduleModalVisible, selectedSchedule, scheduleItemData } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
@@ -3108,6 +3108,10 @@ function objectDoubleClicked(item) {
 
     scheduleItemData.value = item;
     scheduleModalVisible.value = true;
+  }
+
+  if (item.t3Entry?.type === "SCHEDULE") {
+    scheduleModalNVisible.value = true;
   }
   // Do nothing for other types
 }
