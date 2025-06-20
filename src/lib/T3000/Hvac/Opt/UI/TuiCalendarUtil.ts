@@ -328,40 +328,37 @@ class TuiCalendarUtil {
   };
 
   hideUIPanel = () => {
-    // Remove the "Milestone" button from the calendar UI if it exists
-    // Toast UI Calendar does not show a "Milestone" button by default in v2+,
-    // but if you see it, you can hide it via CSS or by not using milestone features.
-    // Here is a CSS-based approach:
-    const style = document.createElement('style');
-    style.innerHTML = `
-      .toastui-calendar-milestone { display: none !important; }
+    // Remove the "Milestone" button and its resizer
+    const milestoneStyle = document.createElement('style');
+    milestoneStyle.innerHTML = `
+      .toastui-calendar-milestone,
+      .toastui-calendar-panel-resizer {
+      display: none !important;
+      }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(milestoneStyle);
 
-    /**
-     * Remove the "Task" button from the Toast UI Calendar UI if it exists.
-     * Toast UI Calendar v2+ does not show a "Task" button by default,
-     * but if you see it, you can hide it via CSS.
-     */
+    // Remove the "Task" button and its resizer
     const taskStyle = document.createElement('style');
     taskStyle.innerHTML = `
-      .toastui-calendar-task { display: none !important; }
+      .toastui-calendar-task,
+      .toastui-calendar-panel-resizer {
+      display: none !important;
+      }
     `;
     document.head.appendChild(taskStyle);
 
-    /**
-     * Hide the "All Day" row and label in Toast UI Calendar.
-     * This can be done via CSS since Toast UI Calendar does not provide a direct API to remove it.
-     */
+    // Hide the "All Day" row, label, and its resizer
     const allDayStyle = document.createElement('style');
     allDayStyle.innerHTML = `
       .toastui-calendar-allday-panel,
-      .toastui-calendar-allday {
-        display: none !important;
+      .toastui-calendar-allday,
+      .toastui-calendar-panel-resizer {
+      display: none !important;
       }
     `;
     document.head.appendChild(allDayStyle);
-  };
+    };
 
 
   currentViewTitle = () => {

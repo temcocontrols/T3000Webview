@@ -17,7 +17,8 @@
           </a-col>
           <a-col>
             <div style="display: flex; justify-content: flex-start; gap: 8px;">
-              <a-button class="t3-btn" size="small" @click="copyToWeekdays" type="primary">Copy to Monday - Friday</a-button>
+              <a-button class="t3-btn" size="small" @click="copyToWeekdays" type="primary">Copy to Monday -
+                Friday</a-button>
               <a-button class="t3-btn" size="small" @click="refreshFromT3000">Reset</a-button>
               <a-button class="t3-btn" size="small" @click="clearAll">Clear All</a-button>
               <a-button class="t3-btn" size="small" @click="handleOk">Save Data</a-button>
@@ -510,6 +511,12 @@ onMounted(() => {
 }
 
 
+.toastui-calendar-week-view .toastui-calendar-panel:not(.toastui-calendar-time) {
+   overflow-y: hidden !important;
+   height: 50px !important;
+}
+
+
 .t3-btn {
   border-radius: 0px !important;
 }
@@ -564,7 +571,7 @@ onMounted(() => {
     border-radius: 0px;
   }
 
-  .ant-modal-title{
+  .ant-modal-title {
     font-size: 14px;
   }
 }
