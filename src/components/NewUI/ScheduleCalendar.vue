@@ -4,7 +4,7 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="800" style="top: 20px;height: 600px;"
+    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="750" style="height: 600px;"
       wrapClassName="t3-modal" @ok="handleOk" @cancel="handleCancel" destroyOnClose keyboard="true">
       <div class="schedule-calendar-container">
         <!-- <div class="calendar-header"> -->
@@ -76,18 +76,46 @@
     </a-modal>
 
     <a-modal v-model:visible="isEventModalVisible" :title="modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'"
-      wrapClassName="t3-modal" @ok="handleModalOk" @cancel="handleModalCancel" destroyOnClose keyboard="true">
+      wrapClassName="t3-sub-modal" @ok="handleModalOk" @cancel="handleModalCancel" destroyOnClose keyboard="true">
       <a-form :model="eventForm" layout="vertical">
-        <a-form-item label="On/Off" name="onoff">
-          <a-switch v-model:checked="eventForm.title" checked-children="On" un-checked-children="Off" />
-        </a-form-item>
 
-        <a-form-item label="Category" name="category">
+
+
+        <a-row gutter="16" align="middle" style="margin-bottom: 0;">
+          <a-col :span="6">
+            <a-form-item label="On/Off" name="isOn" style="margin-bottom: 0;">
+              <a-switch v-model:checked="eventForm.isOn" checked-children="On" un-checked-children="Off" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="9">
+            <a-form-item label="Start Date" name="start" style="margin-bottom: 0;">
+              <a-row gutter="8">
+                <a-col>
+                  <a-time-picker v-model:value="startTime" :format="'HH:mm'" :minute-step="1" style="width: 140px" />
+
+
+
+                </a-col>
+              </a-row>
+            </a-form-item>
+          </a-col>
+          <a-col :span="9">
+            <a-form-item label="End Date" name="end" style="margin-bottom: 0;">
+              <a-row gutter="8">
+                <a-col>
+                  <a-time-picker v-model:value="endTime" :format="'HH:mm'" :minute-step="1" style="width: 140px" />
+                </a-col>
+              </a-row>
+            </a-form-item>
+          </a-col>
+        </a-row>
+
+        <!-- <a-form-item label="Category" name="category">
           <a-select v-model:value="eventForm.category">
             <a-select-option value="time">Time</a-select-option>
             <a-select-option value="allday">All Day</a-select-option>
           </a-select>
-        </a-form-item>
+        </a-form-item> -->
       </a-form>
 
       <template #footer>
@@ -133,6 +161,21 @@ const eventForm = reactive<EventFormState>({
   start: new Date(),
   end: new Date(),
   category: 'time',
+  isOn: false
+});
+
+// Computed properties for a-time-picker compatibility
+const startTime = computed({
+  get: () => dayjs(eventForm.start),
+  set: (val) => {
+    if (val) eventForm.start = val.toDate();
+  }
+});
+const endTime = computed({
+  get: () => dayjs(eventForm.end),
+  set: (val) => {
+    if (val) eventForm.end = val.toDate();
+  }
 });
 
 const tcUtil = new TuiCalendarUtil();
@@ -512,8 +555,8 @@ onMounted(() => {
 
 
 .toastui-calendar-week-view .toastui-calendar-panel:not(.toastui-calendar-time) {
-   overflow-y: hidden !important;
-   height: 50px !important;
+  overflow-y: hidden !important;
+  height: 50px !important;
 }
 
 
@@ -526,6 +569,7 @@ onMounted(() => {
   .ant-modal-content {
     /* background-color: #18b5c3 !important; */
     border-radius: 0px !important;
+    padding: 10px 30px !important;
   }
 
   .ant-modal-body {
