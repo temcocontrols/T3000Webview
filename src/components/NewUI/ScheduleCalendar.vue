@@ -509,7 +509,8 @@ onMounted(() => {
   tcUtil.initVariables(calendarRef, isEventModalVisible, modalMode, eventForm);
   tcUtil.initTuiCalendar();
   tcUtil.hideUIPanel();
-  tcUtil.loadT3Data();
+  tcUtil.initDefaultData();
+  tcUtil.initDefaultEvents();
 });
 
 

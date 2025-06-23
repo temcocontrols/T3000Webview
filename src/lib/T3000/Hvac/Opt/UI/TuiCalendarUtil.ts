@@ -40,6 +40,7 @@ interface CalendarEvent {
   isAllDay: boolean;
   isOn?: boolean;
   backgroundColor?: string;
+  group?: string;
 }
 
 // Define proper types for calendar events
@@ -458,7 +459,8 @@ class TuiCalendarUtil {
     return format(currentDate.value, 'MMMM dd, yyyy');
   }
 
-  loadT3Data = () => {
+  initDefaultData = () => {
+    LogUtil.Debug('= tuiCalendarUtil: loadT3Data called with scheduleItemData:', JSON.stringify(scheduleItemData.value, null, 2));
     if (scheduleItemData.value && scheduleItemData.value.t3Entry) {
       const { id, label, description } = scheduleItemData.value.t3Entry;
       modalTitle.value = [id, label, description].filter(Boolean).join(', ');
@@ -472,8 +474,287 @@ class TuiCalendarUtil {
     if (scheduleItemData.value && scheduleItemData.value.t3Entry && scheduleItemData.value.t3Entry.time) {
       LogUtil.Debug('= tuiCalendarUtil: onMounted Schedule time:', JSON.stringify(scheduleItemData.value.t3Entry.time));
     }
+
+    this.initT3Data();
   }
 
+  initDefaultEvents = (): void => {
+
+    /*
+    const defaultEvents: CalendarEvent[] = [
+      {
+        id: `event-${Date.now()}-1`,
+        calendarId: '1',
+        title: 'On',
+        start: dayjs().startOf('day').add(9, 'hour').toDate(),
+        end: dayjs().startOf('day').add(10, 'hour').toDate(),
+        isAllDay: false,
+        isOn: true,
+        group: dayjs().format('dddd'),
+      },
+      {
+        id: `event-${Date.now()}-2`,
+        calendarId: '1',
+        title: 'Off',
+        start: dayjs().startOf('day').add(18, 'hour').toDate(),
+        end: dayjs().startOf('day').add(19, 'hour').toDate(),
+        isAllDay: false,
+        isOn: false,
+        group: dayjs().format('dddd'),
+      }
+    ];
+
+    this.events.value = [...defaultEvents];
+    this.calendar?.createEvents(defaultEvents);
+
+    LogUtil.Debug('= tuiCalendarUtil: Default events initialized:', JSON.stringify(this.events.value, null, 2));
+    */
+
+    // this.initT3DataToMonFriDays();
+    const events = this.convertTimeArrayToEvents(scheduleItemData.value?.t3Entry?.time || []);
+
+    // Replace current events and render in calendar
+    this.events.value = events;
+    this.calendar?.createEvents(events);
+  }
+
+  /*
+  [{
+    "key": "1",
+    "status": true,
+    "monday": "02:59",
+    "tuesday": "02:59",
+    "wednesday": "02:59",
+    "thursday": "02:59",
+    "friday": "02:59",
+    "saturday": "00:00",
+    "sunday": "00:00",
+    "holiday1": "00:00",
+    "holiday2": "00:00"
+  }]
+  */
+  initT3Data = () => {
+    LogUtil.Debug('= tuiCalendarUtil: initT3Data called with scheduleItemData:', JSON.stringify(scheduleItemData.value, null, null));
+    if (scheduleItemData.value && scheduleItemData.value.t3Entry && Array.isArray(scheduleItemData.value.t3Entry.time)) {
+      const dayKeys = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+        'holiday1',
+        'holiday2',
+      ];
+
+      // scheduleItemData.value.t3Entry.time is an array of days, each with 8 rows (schedules)
+      // We need to transpose it so each row contains all days
+      const time = scheduleItemData.value.t3Entry.time;
+      const rowCount = time[0]?.length || 0;
+
+      // Create a new array to trigger reactivity
+      const newScheduleData = Array.from({ length: rowCount }, (_, rowIdx) => {
+        const item: any = {
+          key: (rowIdx + 1).toString(),
+          status: rowIdx % 2 === 0, // fallback if no status info
+        };
+        dayKeys.forEach((day, dayIdx) => {
+          const t = time[dayIdx]?.[rowIdx];
+          if (t && typeof t.hours === 'number' && typeof t.minutes === 'number') {
+            // Use dayjs to create a time string in "HH:mm" format
+            const hour = t.hours.toString().padStart(2, '0');
+            const minute = t.minutes.toString().padStart(2, '0');
+            item[day] = `${hour}:${minute}`;
+          } else {
+            item[day] = '';
+          }
+        });
+        return item;
+      });
+
+      LogUtil.Debug('= tuiCalendarUtil: Transformed T3 schedule data:', newScheduleData);
+    }
+  }
+
+  initT3DataToMonFriDays = () => {
+    // Extract time array from scheduleItemData
+    const timeArr = scheduleItemData.value?.t3Entry?.time;
+    if (!Array.isArray(timeArr) || timeArr.length < 8) {
+      LogUtil.Error('= tuiCalendarUtil: Invalid or missing time array in scheduleItemData');
+      return;
+    }
+
+    // Map day index to dayjs weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+    const dayMap = [1, 2, 3, 4, 5]; // Monday to Friday
+
+    // Use current week as base
+    const baseDate = dayjs().startOf('week'); // Sunday
+
+    const events: CalendarEvent[] = [];
+
+    // For each day (Monday to Friday)
+    for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
+      const dayTimes = timeArr[dayIdx];
+      if (!Array.isArray(dayTimes)) continue;
+
+      // For each time slot (up to 8 per day)
+      for (let slotIdx = 0; slotIdx < dayTimes.length - 1; slotIdx++) {
+        const startTime = dayTimes[slotIdx];
+        const endTime = dayTimes[slotIdx + 1];
+
+        // Only create event if start and end are not both 0:0 and not the same
+        if (
+          startTime &&
+          endTime &&
+          (startTime.hours !== 0 || startTime.minutes !== 0 || endTime.hours !== 0 || endTime.minutes !== 0) &&
+          (startTime.hours !== endTime.hours || startTime.minutes !== endTime.minutes)
+        ) {
+          const start = baseDate
+            .add(dayMap[dayIdx], 'day')
+            .hour(startTime.hours)
+            .minute(startTime.minutes)
+            .second(0)
+            .toDate();
+          const end = baseDate
+            .add(dayMap[dayIdx], 'day')
+            .hour(endTime.hours)
+            .minute(endTime.minutes)
+            .second(0)
+            .toDate();
+
+          events.push({
+            id: `event-${dayIdx}-${slotIdx}-${Date.now()}`,
+            calendarId: '1',
+            title: slotIdx % 2 === 0 ? 'On' : 'Off',
+            start,
+            end,
+            isAllDay: false,
+            isOn: slotIdx % 2 === 0,
+            backgroundColor: slotIdx % 2 === 0 ? '#52c41a' : '#f5222d',
+            group: dayjs(start).format('dddd'),
+          });
+        }
+      }
+    }
+
+    // Replace current events and render in calendar
+    this.events.value = events;
+    this.calendar?.createEvents(events);
+  }
+
+
+  /**
+   * Converts a 2D array of time objects to TUI Calendar events.
+   * @param timeArr - 2D array: [days][slots], each slot is {hours, minutes}
+   * @returns CalendarEvent[]
+   */
+  convertTimeArrayToEventsBackup(timeArr: { hours: number; minutes: number }[][]): CalendarEvent[] {
+    // Map index to dayjs weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+    const dayNames = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Holiday1', 'Holiday2'
+    ];
+    const baseDate = dayjs().startOf('week'); // Sunday
+
+    const events: CalendarEvent[] = [];
+
+    for (let dayIdx = 0; dayIdx < timeArr.length; dayIdx++) {
+      const slots = timeArr[dayIdx];
+      if (!Array.isArray(slots) || slots.length < 2) continue;
+
+      // Each pair (on/off) is slots[0]-slots[1], slots[2]-slots[3], ...
+      for (let i = 0; i < slots.length - 1; i += 2) {
+        const startTime = slots[i];
+        const endTime = slots[i + 1];
+
+        // Skip if both start and end are 0:0 or identical
+        if (
+          !startTime || !endTime ||
+          (startTime.hours === 0 && startTime.minutes === 0 && endTime.hours === 0 && endTime.minutes === 0) ||
+          (startTime.hours === endTime.hours && startTime.minutes === endTime.minutes)
+        ) {
+          continue;
+        }
+
+        // For holidays, use next week to avoid overlap with weekdays
+        let eventDate = baseDate.add(dayIdx < 7 ? dayIdx + 1 : dayIdx - 6 + 7, 'day');
+        const start = eventDate.hour(startTime.hours).minute(startTime.minutes).second(0).toDate();
+        const end = eventDate.hour(endTime.hours).minute(endTime.minutes).second(0).toDate();
+
+        events.push({
+          id: `event-${dayIdx}-${i}-${Date.now()}`,
+          calendarId: '1',
+          title: (i / 2) % 2 === 0 ? 'On' : 'Off',
+          start,
+          end,
+          isAllDay: false,
+          isOn: (i / 2) % 2 === 0,
+          backgroundColor: (i / 2) % 2 === 0 ? '#52c41a' : '#f5222d',
+          group: dayNames[dayIdx] || `Day${dayIdx + 1}`,
+        });
+      }
+    }
+
+    LogUtil.Debug('= tuiCalendarUtil: Converted events:', events);
+
+    return events;
+  }
+
+  /**
+   * Converts a 2D array of time objects to TUI Calendar events.
+   * @param timeArr - 2D array: [days][slots], each slot is {hours, minutes}
+   * @returns CalendarEvent[]
+   */
+  convertTimeArrayToEvents(timeArr: { hours: number; minutes: number }[][]): CalendarEvent[] {
+    // Map index to dayjs weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+    const dayNames = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Holiday1', 'Holiday2'
+    ];
+    const baseDate = dayjs().startOf('week'); // Sunday
+
+    const events: CalendarEvent[] = [];
+
+    for (let dayIdx = 0; dayIdx < timeArr.length; dayIdx++) {
+      const slots = timeArr[dayIdx];
+      if (!Array.isArray(slots) || slots.length < 2) continue;
+
+      // Each pair (on/off) is slots[0]-slots[1], slots[2]-slots[3], ...
+      for (let i = 0; i < slots.length - 1; i += 2) {
+        const startTime = slots[i];
+        const endTime = slots[i + 1];
+
+        // Skip if both start and end are 0:0 or identical
+        if (
+          !startTime || !endTime ||
+          (startTime.hours === 0 && startTime.minutes === 0 && endTime.hours === 0 && endTime.minutes === 0) ||
+          (startTime.hours === endTime.hours && startTime.minutes === endTime.minutes)
+        ) {
+          continue;
+        }
+
+        // For holidays, use next week to avoid overlap with weekdays
+        let eventDate = baseDate.add(dayIdx < 7 ? dayIdx + 1 : dayIdx - 6 + 7, 'day');
+        const start = eventDate.hour(startTime.hours).minute(startTime.minutes).second(0).toDate();
+        const end = eventDate.hour(endTime.hours).minute(endTime.minutes).second(0).toDate();
+
+        events.push({
+          id: `event-${dayIdx}-${i}-${Date.now()}`,
+          calendarId: '1',
+          title: (i / 2) % 2 === 0 ? 'On' : 'Off',
+          start,
+          end,
+          isAllDay: false,
+          isOn: (i / 2) % 2 === 0,
+          backgroundColor: (i / 2) % 2 === 0 ? '#52c41a' : '#f5222d',
+          group: dayNames[dayIdx] || `Day${dayIdx + 1}`,
+        });
+      }
+    }
+
+    LogUtil.Debug('= tuiCalendarUtil: Converted events:', events);
+
+    return events;
+  }
 }
 
 export default TuiCalendarUtil

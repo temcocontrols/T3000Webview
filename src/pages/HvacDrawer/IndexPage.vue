@@ -3107,7 +3107,8 @@ function objectDoubleClicked(item) {
     */
 
     scheduleItemData.value = item;
-    scheduleModalVisible.value = true;
+    //scheduleModalVisible.value = true;
+    scheduleModalNVisible.value = true;
   }
 
   if (item.t3Entry?.type === "SCHEDULE") {
