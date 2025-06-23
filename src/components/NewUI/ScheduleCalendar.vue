@@ -4,7 +4,7 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="750" style="height: 600px;"
+    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="750" style="top:20px;height: 600px;"
       wrapClassName="t3-modal" @ok="handleOk" @cancel="handleCancel" destroyOnClose keyboard="true">
       <div class="schedule-calendar-container">
         <!-- <div class="calendar-header"> -->
@@ -83,23 +83,27 @@
 
         <a-row gutter="16" align="middle" style="margin-bottom: 0;">
           <a-col :span="6">
-            <a-form-item label="On/Off" name="isOn" style="margin-bottom: 0;">
-              <a-switch v-model:checked="eventForm.isOn" checked-children="On" un-checked-children="Off" />
+            <a-form-item label="On/Off" name="isOnStart" style="margin-bottom: 0;">
+              <a-switch :checked="true" :disabled="true" checked-children="On" un-checked-children="Off" />
             </a-form-item>
           </a-col>
-          <a-col :span="9">
+          <a-col :span="18">
             <a-form-item label="Start Date" name="start" style="margin-bottom: 0;">
               <a-row gutter="8">
                 <a-col>
                   <a-time-picker v-model:value="startTime" :format="'HH:mm'" :minute-step="1" style="width: 140px" />
-
-
-
                 </a-col>
               </a-row>
             </a-form-item>
           </a-col>
-          <a-col :span="9">
+        </a-row>
+        <a-row gutter="16" align="middle" style="margin-bottom: 0;">
+          <a-col :span="6">
+            <a-form-item label="On/Off" name="isOnEnd" style="margin-bottom: 0;">
+              <a-switch :checked="false" :disabled="true" checked-children="On" un-checked-children="Off" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="18">
             <a-form-item label="End Date" name="end" style="margin-bottom: 0;">
               <a-row gutter="8">
                 <a-col>
@@ -156,12 +160,15 @@ const modalMode = ref<ModalModeType>('create');
 // const currentDate = ref<Date>(new Date());
 
 const eventForm = reactive<EventFormState>({
-  id: '',
-  title: '',
+  id: "",
+  calendarId: "1",
+  title: "",
   start: new Date(),
   end: new Date(),
-  category: 'time',
-  isOn: false
+  // isAllDay: false,
+  group: "",
+  flagText: ""
+
 });
 
 // Computed properties for a-time-picker compatibility
