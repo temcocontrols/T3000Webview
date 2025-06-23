@@ -1,7 +1,7 @@
 
 import Calendar from '@toast-ui/calendar';
 import dayjs from 'dayjs';
-import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo, tuiEvents } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
 import { reactive, ref, Ref } from 'vue';
 import { format } from 'date-fns';
 import LogUtil from '../../Util/LogUtil';
@@ -77,7 +77,6 @@ class TuiCalendarUtil {
     this.isEventModalVisible = isEventModalVisible;
     this.modalMode = modalMode;
     this.eventForm = eventForm;
-
   };
 
   defaultCalendarOptions = () => {
@@ -94,15 +93,8 @@ class TuiCalendarUtil {
       },
       template: {
         time(event) {
-          console.log('= tuiCalendarUtil: Template time called for event:', event);
-          return `
-            <span
-              title="On: ${event.start ? dayjs(event.start).format('HH:mm') : ''}&#10;Off: ${event.end ? dayjs(event.end).format('HH:mm') : ''}"
-              style="display: inline-block; cursor: pointer;">
-              <span>On: ${event.start ? dayjs(event.start).format('HH:mm') : ''}</span><br/>
-              <span>Off: ${event.end ? dayjs(event.end).format('HH:mm') : ''}</span>
-            </span>
-          `;
+          LogUtil.Debug('= tuiCalendarUtil: Template time called for event:', tuiEvents.value);
+          return TuiCalendarUtil.GetTimeTemplate(event);
         }
       },
       calendars: [
@@ -116,6 +108,55 @@ class TuiCalendarUtil {
       ]
     };
     return calendarOptions;
+  }
+
+  static GetTimeTemplate(event: CalendarEvent): string {
+    LogUtil.Debug('= tuiCalendarUtil: GetTimeTemplate called for event:', event);
+
+    const eventObj = tuiEvents.value.find(e => e.id === event.id);
+    const flagText = eventObj ? eventObj.flagText : '';
+
+    const startStr = event.start ? dayjs(event.start).format('HH:mm') : '';
+    const endStr = event.end ? dayjs(event.end).format('HH:mm') : '';
+
+    let title = '';
+    if (!flagText) {
+      // flagText is empty: show both start and end
+      title = `On: ${startStr}&#10;Off: ${endStr}`;
+    } else if (flagText === 'end-empty') {
+      // Only show start, end is empty
+      title = `On: ${startStr}`;
+    } else if (flagText === 'start-empty') {
+      // Only show end, start is empty
+      title = `Off: ${endStr}`;
+    }
+
+    /*
+    return `
+      <span
+        title="On: ${event.start ? dayjs(event.start).format('HH:mm') : ''}&#10;Off: ${event.end ? dayjs(event.end).format('HH:mm') : ''}"
+        style="display: inline-block; cursor: pointer;">
+        <span>On: ${event.start ? dayjs(event.start).format('HH:mm') : ''}</span><br/>
+        <span>Off: ${event.end ? dayjs(event.end).format('HH:mm') : ''}</span>
+      </span>
+    `;
+    */
+
+    return `
+      <span
+        title="${title}"
+        style="display: inline-block; cursor: pointer;">
+        ${flagText === 'start-empty'
+        ? `<span>Off: ${event.end ? dayjs(event.end).format('HH:mm') : ''}</span>`
+        : flagText === 'end-empty'
+          ? `<span>On: ${event.start ? dayjs(event.start).format('HH:mm') : ''}</span>`
+          : `
+              <span>On: ${event.start ? dayjs(event.start).format('HH:mm') : ''}</span><br/>
+              <span>Off: ${event.end ? dayjs(event.end).format('HH:mm') : ''}</span>
+            `
+      }
+      </span>
+    `;
   }
 
   initTuiCalendar() {
@@ -508,6 +549,7 @@ class TuiCalendarUtil {
 
     // Replace current events and render in calendar
     this.events.value = events;
+    tuiEvents.value = events;
     this.calendar?.createEvents(events);
   }
 
@@ -719,7 +761,6 @@ class TuiCalendarUtil {
           title: titleStr,
           start: start,
           end: end,
-          // isAllDay: false,
           group: dayNames[outputIdx] || `Day${outputIdx + 1}`,
           flagText: flagText
         });

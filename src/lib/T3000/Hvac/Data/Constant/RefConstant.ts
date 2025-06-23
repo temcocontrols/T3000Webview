@@ -81,6 +81,7 @@ export const scheduleModalNVisible = ref<boolean>(false);
 export const currentDate = ref<Date>(new Date());
 export const modalTitle = ref<string>("Schedule full label test title");
 export const schInfo = ref<string>("T3-TB / Test Schedule / Panel 1 / Schedule 1");
+export const tuiEvents = ref<any[]>([]); // Array to hold events for the calendar
 
 
 
