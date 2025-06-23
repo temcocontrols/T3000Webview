@@ -702,20 +702,25 @@ class TuiCalendarUtil {
 
   /**
    * Converts a 2D array of time objects to TUI Calendar events.
+   * The input array is ordered: [Monday, Tuesday, ..., Sunday, Holiday1, Holiday2].
+   * For TUI Calendar, Sunday should be first, then Monday-Friday, then Holiday1, Holiday2.
    * @param timeArr - 2D array: [days][slots], each slot is {hours, minutes}
    * @returns CalendarEvent[]
    */
   convertTimeArrayToEvents(timeArr: { hours: number; minutes: number }[][]): CalendarEvent[] {
-    // Map index to dayjs weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+    // Input order: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, Holiday1, Holiday2]
+    // Output order: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Holiday1, Holiday2]
+    const inputToOutputIdx = [6, 0, 1, 2, 3, 4, 5, 7, 8]; // Map input idx to output idx
     const dayNames = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Holiday1', 'Holiday2'
+      'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Holiday1', 'Holiday2'
     ];
     const baseDate = dayjs().startOf('week'); // Sunday
 
     const events: CalendarEvent[] = [];
 
-    for (let dayIdx = 0; dayIdx < timeArr.length; dayIdx++) {
-      const slots = timeArr[dayIdx];
+    for (let outputIdx = 0; outputIdx < inputToOutputIdx.length; outputIdx++) {
+      const inputIdx = inputToOutputIdx[outputIdx];
+      const slots = timeArr[inputIdx];
       if (!Array.isArray(slots) || slots.length < 2) continue;
 
       // Each pair (on/off) is slots[0]-slots[1], slots[2]-slots[3], ...
@@ -733,12 +738,19 @@ class TuiCalendarUtil {
         }
 
         // For holidays, use next week to avoid overlap with weekdays
-        let eventDate = baseDate.add(dayIdx < 7 ? dayIdx + 1 : dayIdx - 6 + 7, 'day');
+        let eventDate: dayjs.Dayjs;
+        if (outputIdx <= 6) {
+          // Sunday (0) to Saturday (6)
+          eventDate = baseDate.add(outputIdx, 'day');
+        } else {
+          // Holidays: place after the week
+          eventDate = baseDate.add(7 + (outputIdx - 7), 'day');
+        }
         const start = eventDate.hour(startTime.hours).minute(startTime.minutes).second(0).toDate();
         const end = eventDate.hour(endTime.hours).minute(endTime.minutes).second(0).toDate();
 
         events.push({
-          id: `event-${dayIdx}-${i}-${Date.now()}`,
+          id: `event-${outputIdx}-${i}-${Date.now()}`,
           calendarId: '1',
           title: (i / 2) % 2 === 0 ? 'On' : 'Off',
           start,
@@ -746,7 +758,7 @@ class TuiCalendarUtil {
           isAllDay: false,
           isOn: (i / 2) % 2 === 0,
           backgroundColor: (i / 2) % 2 === 0 ? '#52c41a' : '#f5222d',
-          group: dayNames[dayIdx] || `Day${dayIdx + 1}`,
+          group: dayNames[outputIdx] || `Day${outputIdx + 1}`,
         });
       }
     }
