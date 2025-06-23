@@ -93,7 +93,7 @@ class TuiCalendarUtil {
         visibleWeeksCount: 6
       },
       template: {
-        time(event: CalendarEvent) {
+        time(event) {
           console.log('= tuiCalendarUtil: Template time called for event:', event);
           return `
             <span
@@ -107,7 +107,7 @@ class TuiCalendarUtil {
       },
       calendars: [
         {
-          id: '1',//By default, the calendar ID is '1', currently only one calendar is supported
+          id: '1',
           name: 'Schedule',
           color: '#ffffff',
           bgColor: '#1890ff',
@@ -115,19 +115,10 @@ class TuiCalendarUtil {
         }
       ]
     };
-    //this.calendar = new Calendar(this.calendarRef.value, calendarOptions);
     return calendarOptions;
   }
 
-  initTuiCalendar(
-    // calendarRef: any,
-    // calendar: any,
-    // currentView: any,
-    // currentDate: any,
-    // modalMode: any,
-    // eventForm: any,
-    // isEventModalVisible: any
-  ) {
+  initTuiCalendar() {
     LogUtil.Debug('= tuiCalendarUtil: initTuiCalendar Calendar ref is set:', this.calendarRef.value);
 
     if (!this.calendarRef.value) {
@@ -165,36 +156,6 @@ class TuiCalendarUtil {
       return originalUpdateEvent.call(this, id, calendarId, changes);
     };
 
-    /*
-    this.calendar = new Calendar(this.calendarRef.value, {
-      defaultView: this.currentView.value,
-      useFormPopup: false,
-      useDetailPopup: false,
-      // useCreationPopup: false,
-      week: {
-        showTimezoneCollapseButton: true,
-        timezonesCollapsed: true
-      },
-      month: {
-        visibleWeeksCount: 6
-      },
-      template: {
-        time(event) {
-          return `<span style="color: white;">${event.title}</span>`;
-        }
-      },
-      calendars: [
-        // {
-        //   id: '1',
-        //   name: 'Schedule',
-        //   color: '#ffffff',
-        //   bgColor: '#1890ff',
-        //   borderColor: '#1890ff'
-        // }
-      ]
-    });
-    */
-
     this.calendar = new Calendar(this.calendarRef.value, this.defaultCalendarOptions());
 
     if (!this.calendar) {
@@ -211,7 +172,6 @@ class TuiCalendarUtil {
       this.eventForm.title = eventObj.title || '';
       this.eventForm.start = eventObj.start || new Date();
       this.eventForm.end = eventObj.end || new Date();
-      // this.eventForm.category = eventObj.isAllDay ? 'allday' : 'time';
       this.isEventModalVisible.value = true;
     });
 
@@ -229,28 +189,8 @@ class TuiCalendarUtil {
       this.eventForm.title = event.title || '';
       this.eventForm.start = event.start || new Date();
       this.eventForm.end = event.end || new Date();
-      // this.eventForm.category = event.isAllDay ? 'allday' : 'time';
       this.isEventModalVisible.value = true;
     });
-
-    /*
-    this.calendar.on('clickTimeGrid', (eventInfo: any) => {
-      LogUtil.Debug('= tuiCalendarUtil: Calendar Time grid clicked:', eventInfo);
-      this.isEventModalVisible.value = true;
-      if (eventInfo.time) {
-        const newStart = new Date(eventInfo.time);
-        const newEnd = new Date(newStart);
-        newEnd.setHours(newStart.getHours() + 1);
-
-        this.modalMode.value = 'create';
-        this.eventForm.title = '';
-        this.eventForm.start = newStart;
-        this.eventForm.end = newEnd;
-        this.eventForm.category = 'time';
-        this.isEventModalVisible.value = true;
-      }
-    });
-    */
 
     // Create event on date selection
     this.calendar.on('selectDateTime', (eventInfo: any) => {
@@ -271,27 +211,20 @@ class TuiCalendarUtil {
       this.eventForm.title = '';
       this.eventForm.start = newStart;
       this.eventForm.end = newEnd;
-      // this.eventForm.category = eventInfo.isAllDay ? 'allday' : 'time';
-      // this.eventForm.isOn = eventInfo.isOn || false;
       scheduleModalNVisible.value = true;
 
     });
   }
-
 
   resetEventForm = (): void => {
     this.eventForm.id = '';
     this.eventForm.title = '';
     this.eventForm.start = new Date();
     this.eventForm.end = new Date();
-    // this.eventForm.category = 'time';
-    // this.eventForm.isOn = false;
-    // this.eventForm.backgroundColor = '';
   };
 
   createEvent = () => {
     const newEventId = `event-${Date.now()}`;
-    // const title = this.eventForm.isOn ? "On" : 'Off';
     const newEvent: CalendarEvent = {
       id: newEventId,
       calendarId: `1`,
@@ -299,11 +232,6 @@ class TuiCalendarUtil {
       start: this.eventForm.start,
       end: this.eventForm.end,
       flagText: this.eventForm.flagText || '',
-      // isAllDay: this.eventForm.category === 'allday',
-      // isOn: this.eventForm.isOn,
-      // backgroundColor: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
-      // color: '#fff',
-      // borderColor: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
     };
 
     this.calendar?.createEvents([newEvent]);
@@ -317,7 +245,6 @@ class TuiCalendarUtil {
 
   editEvent = () => {
     LogUtil.Debug('= tuiCalendarUtil: Editing event with ID:', this.selectedEventId.value);
-    // const title = this.eventForm.isOn ? "On" : 'Off';
     // Find the original event to get its calendarId
     const originalEvent = this.events.value.find(e => e.id === this.selectedEventId.value);
     const updatedEvent: CalendarEvent = {
@@ -327,11 +254,6 @@ class TuiCalendarUtil {
       start: this.eventForm.start,
       end: this.eventForm.end,
       flagText: this.eventForm.flagText || '',
-      // isAllDay: this.eventForm.category === 'allday',
-      // isOn: this.eventForm.isOn,
-      // backgroundColor: this.eventForm.backgroundColor || '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
-      // color: '#fff',
-      // borderColor: this.eventForm.backgroundColor || '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
     };
 
     this.calendar?.updateEvent(updatedEvent.id, '1', updatedEvent);
@@ -395,9 +317,7 @@ class TuiCalendarUtil {
       LogUtil.Debug('= tuiCalendarUtil: Remaining events:',);
 
       if (this.calendar) {
-        // Remove all events and re-add from the current events array to refresh the UI
         this.calendar.render();
-        // this.calendar.createEvents(this.events.value);
       }
     }
   };
@@ -580,37 +500,6 @@ class TuiCalendarUtil {
   }
 
   initDefaultEvents = (): void => {
-
-    /*
-    const defaultEvents: CalendarEvent[] = [
-      {
-        id: `event-${Date.now()}-1`,
-        calendarId: '1',
-        title: 'On',
-        start: dayjs().startOf('day').add(9, 'hour').toDate(),
-        end: dayjs().startOf('day').add(10, 'hour').toDate(),
-        isAllDay: false,
-        isOn: true,
-        group: dayjs().format('dddd'),
-      },
-      {
-        id: `event-${Date.now()}-2`,
-        calendarId: '1',
-        title: 'Off',
-        start: dayjs().startOf('day').add(18, 'hour').toDate(),
-        end: dayjs().startOf('day').add(19, 'hour').toDate(),
-        isAllDay: false,
-        isOn: false,
-        group: dayjs().format('dddd'),
-      }
-    ];
-
-    this.events.value = [...defaultEvents];
-    this.calendar?.createEvents(defaultEvents);
-
-    LogUtil.Debug('= tuiCalendarUtil: Default events initialized:', JSON.stringify(this.events.value, null, 2));
-    */
-
     // Use test data temporarily
     const testTimeArr = this.initT3TestData();
 
@@ -734,9 +623,6 @@ class TuiCalendarUtil {
             start,
             end,
             flagText: slotIdx % 2 === 0 ? 'On' : 'Off',
-            // isAllDay: false,
-            // isOn: slotIdx % 2 === 0,
-            // backgroundColor: slotIdx % 2 === 0 ? '#52c41a' : '#f5222d',
             group: dayjs(start).format('dddd'),
           });
         }
