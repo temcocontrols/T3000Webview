@@ -86,7 +86,12 @@ class TuiCalendarUtil {
       useDetailPopup: false,
       week: {
         showTimezoneCollapseButton: true,
-        timezonesCollapsed: true
+        timezonesCollapsed: true,
+        dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Holiday1', 'Holiday2'],
+        visibleWeeksCount: 1, // Show only one week with all days
+        visibleEventCount: 9, // Show 9 days in week view (7 days + 2 holidays)
+        // Note: If your version of toast-ui/calendar does not support more than 7 days in week view,
+        // you may need to use a custom rendering or fork the library.
       },
       month: {
         visibleWeeksCount: 6

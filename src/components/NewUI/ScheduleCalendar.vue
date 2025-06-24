@@ -4,7 +4,7 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="750" style="height: 600px;"
+    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="950" style="top:30px; height: 600px;"
       wrapClassName="t3-modal" @ok="handleOk" @cancel="handleCancel" destroyOnClose keyboard="true">
       <div class="schedule-calendar-container">
         <!-- <div class="calendar-header"> -->
@@ -35,11 +35,12 @@
 
     </a-modal>
 
-    <a-modal v-model:visible="isEventModalVisible" :title="modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'"
-      wrapClassName="t3-sub-modal" @ok="handleModalOk" @cancel="handleModalCancel" destroyOnClose keyboard="true">
+    <a-modal v-model:visible="isEventModalVisible" :width="300"
+      :title="modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'" wrapClassName="t3-sub-modal"
+      @ok="handleModalOk" @cancel="handleModalCancel" destroyOnClose keyboard="true">
       <a-form :model="eventForm" layout="vertical">
 
-        <a-row gutter="16" align="middle" style="margin-bottom: 0;">
+        <a-row gutter="16" align="middle" style="margin-bottom: 0;font-size: 12px;">
           <a-col :span="6">
             <a-form-item label="On/Off" name="isOnStart" style="margin-bottom: 0;">
               <a-switch :checked="true" :disabled="true" checked-children="On" un-checked-children="Off" />
@@ -55,7 +56,7 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <a-row gutter="16" align="middle" style="margin-bottom: 0;">
+        <a-row gutter="16" align="middle" style="margin-bottom: 0;font-size: 12px;">
           <a-col :span="6">
             <a-form-item label="On/Off" name="isOnEnd" style="margin-bottom: 0;">
               <a-switch :checked="false" :disabled="true" checked-children="On" un-checked-children="Off" />
@@ -74,9 +75,12 @@
       </a-form>
 
       <template #footer>
-        <a-button key="back" @click="handleModalCancel">Cancel</a-button>
-        <a-button v-if="modalMode === 'edit'" key="delete" danger @click="handleDeleteEvent">Delete</a-button>
-        <a-button key="submit" type="primary" @click="handleModalOk">Save</a-button>
+        <div style="display: flex; justify-content: flex-start; gap: 4px;">
+          <a-button class="t3-btn" key="back" @click="handleModalCancel">Cancel</a-button>
+          <a-button class="t3-btn" v-if="modalMode === 'edit'" key="delete" danger
+            @click="handleDeleteEvent">Delete</a-button>
+          <a-button class="t3-btn" key="submit" type="primary" @click="handleModalOk">Save</a-button>
+        </div>
       </template>
     </a-modal>
   </a-config-provider>
@@ -297,5 +301,11 @@ onMounted(() => {
   background-clip: border-box;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.t3-sub-modal {
+  label {
+    font-size: 12px !important;
+  }
 }
 </style>
