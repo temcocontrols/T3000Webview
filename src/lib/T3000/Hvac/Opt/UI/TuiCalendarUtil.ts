@@ -7,7 +7,6 @@ import { format } from 'date-fns';
 import LogUtil from '../../Util/LogUtil';
 import T3UIUtil from './T3UIUtil';
 
-
 type ViewType = 'day' | 'week' | 'month';
 export type ModalModeType = 'create' | 'edit';
 
@@ -17,12 +16,8 @@ export interface EventFormState {
   title: string;
   start: Date;
   end: Date;
-  // isAllDay: boolean;
   group?: string;
   flagText: string;
-  // category: string;
-  // isOn: boolean;
-  // backgroundColor?: string;
 }
 
 interface CalendarEvent {
@@ -31,33 +26,9 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  // isAllDay: boolean;
-  // isOn?: boolean;
-  // backgroundColor?: string;
   group?: string;
   flagText: string;
 }
-
-// Define proper types for calendar events
-// type CalendarEventObject = {
-//   id: string;
-//   calendarId: string;
-//   title?: string;
-//   start?: Date;
-//   end?: Date;
-//   isAllDay?: boolean;
-//   // isOn?: boolean;
-//   // backgroundColor?: string;
-// };
-
-// type CalendarUpdateInfo = {
-//   event: CalendarEventObject;
-//   changes: Partial<CalendarEventObject>;
-// };
-
-// type CalendarEventInfo = {
-//   event: CalendarEventObject;
-// };
 
 class TuiCalendarUtil {
   calendar: Calendar | null = null;
