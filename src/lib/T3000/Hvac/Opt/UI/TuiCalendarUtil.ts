@@ -70,7 +70,7 @@ class TuiCalendarUtil {
   eventForm: EventFormState;
 
   static GetTimeTemplate(event: CalendarEvent): string {
-    LogUtil.Debug('= tuiCalendarUtil: GetTimeTemplate called for event:', event);
+    // LogUtil.Debug('= tuiCalendarUtil: GetTimeTemplate called for event:', event);
 
     const eventObj = tuiEvents.value.find(e => e.id === event.id);
     const flagText = eventObj ? eventObj.flagText : '';
@@ -147,7 +147,7 @@ class TuiCalendarUtil {
       },
       template: {
         time(event) {
-          LogUtil.Debug('= tuiCalendarUtil: Template time called for event:', tuiEvents.value);
+          // LogUtil.Debug('= tuiCalendarUtil: Template time called for event:', tuiEvents.value);
           return TuiCalendarUtil.GetTimeTemplate(event);
         }
       },
@@ -266,6 +266,16 @@ class TuiCalendarUtil {
       this.eventForm.start = newStart;
       this.eventForm.end = newEnd;
 
+      const dayNames = [
+        'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Holiday1', 'Holiday2'
+      ];
+      const baseDate = dayjs(eventInfo.start).startOf('week'); // Sunday
+      const dayOfWeek = dayjs(eventInfo.start).day(); // 0 (Sunday) - 6 (Saturday)
+      let group = dayNames[dayOfWeek];
+      let id = `${group}-${dayOfWeek}-${Date.now()}`;
+      this.eventForm.id = id;
+      this.eventForm.group = group;
+
       this.SetEventModalVisiblity(true);
     });
   }
@@ -280,6 +290,8 @@ class TuiCalendarUtil {
     this.eventForm.start = new Date();
     this.eventForm.end = new Date();
     this.eventForm.flagText = '';
+    this.eventForm.group = '';
+    this.eventForm.calendarId = '1'; // Default calendar ID
   }
 
   HandleModalOk(): void {
@@ -301,18 +313,22 @@ class TuiCalendarUtil {
     this.ResetEventForm();
     this.SetEventModalVisiblity(false);
 
-    LogUtil.Debug('= tuiCalendarUtil: All calendar events:', JSON.stringify(this.events.value, null, 2));
+    // Copy events to tuiEvents for global access
+    tuiEvents.value = this.events.value;
+
+    LogUtil.Debug('= tuiCalendarUtil: All calendar events:', tuiEvents.value, this.events.value);
   }
 
   ModalCreateEvent() {
-    const newEventId = `event-${Date.now()}`;
+    // const newEventId = `event-${Date.now()}`;
     const newEvent: CalendarEvent = {
-      id: newEventId,
+      id: this.eventForm.id,
       calendarId: `1`,
       title: this.eventForm.title,
       start: this.eventForm.start,
       end: this.eventForm.end,
       flagText: this.eventForm.flagText || '',
+      group: this.eventForm.group || '',
     };
 
     this.calendar?.createEvents([newEvent]);
@@ -325,17 +341,20 @@ class TuiCalendarUtil {
   }
 
   ModalEditEvent() {
-    LogUtil.Debug('= tuiCalendarUtil: Editing event with ID:', this.selectedEventId.value);
-
     // Find the original event to get its calendarId
     const originalEvent = this.events.value.find(e => e.id === this.selectedEventId.value);
+    LogUtil.Debug('= tuiCalendarUtil: Editing event with ID: Before', this.selectedEventId.value, originalEvent, this.eventForm);
+
     const updatedEvent: CalendarEvent = {
       id: this.selectedEventId.value,
       calendarId: `1`,
       title: this.eventForm.title,
       start: this.eventForm.start,
       end: this.eventForm.end,
-      flagText: this.eventForm.flagText || '',
+
+      // When do updating event, we need to keep the original flagText and group
+      flagText: originalEvent.flagText || '',
+      group: originalEvent.group || '',
     };
 
     this.calendar?.updateEvent(updatedEvent.id, '1', updatedEvent);
@@ -553,9 +572,10 @@ class TuiCalendarUtil {
    * Modifies scheduleItemData.value.t3Entry.time in-place if available.
    */
   CopyMondayToWeekdays(): void {
-    let timeArr = this.InitT3Data();
 
     /*
+    let timeArr = this.InitT3Data();
+
     // If timeArr has only 1 item (Monday), create/reset Tuesday-Friday as deep copies of Monday
     if (Array.isArray(timeArr)) {
       if (timeArr.length === 1) {
@@ -579,6 +599,7 @@ class TuiCalendarUtil {
     }
     */
 
+    /*
     const events = this.ConvertTimeArrayToEvents(timeArr);
 
     // Replace current events and render in calendar
@@ -587,14 +608,58 @@ class TuiCalendarUtil {
 
     this.calendar?.clear();
     this.calendar?.createEvents(events);
+    */
+
+    // Find the "Monday" group events
+    const mondayEvents = this.events.value.filter(e => e.group === 'Monday');
+
+    LogUtil.Debug('= tuiCalendarUtil: CopyMondayToWeekdays called, found Monday events:', this.events.value, mondayEvents);
+
+    // Days to copy to
+    const targetDays = ['Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+    // Remove existing events for Tuesday-Friday
+    this.events.value = this.events.value.filter(
+      e => !targetDays.includes(e.group || '')
+    );
+
+    // For each target day, clone Monday's events and update fields
+    targetDays.forEach((day, dayIdx) => {
+      mondayEvents.forEach((event, idx) => {
+        // Calculate the new date for the target day
+        const baseDate = dayjs(event.start).startOf('week'); // Sunday
+        const dayOffset = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Holiday1', 'Holiday2'].indexOf(day);
+        const newStart = dayjs(baseDate).add(dayOffset, 'day').hour(dayjs(event.start).hour()).minute(dayjs(event.start).minute()).second(0).toDate();
+        const newEnd = dayjs(baseDate).add(dayOffset, 'day').hour(dayjs(event.end).hour()).minute(dayjs(event.end).minute()).second(0).toDate();
+
+        this.events.value.push(
+          reactive({
+            ...event,
+            id: `${day}-${dayIdx}-${idx}-${Date.now()}`,
+            group: day,
+            start: newStart,
+            end: newEnd,
+          })
+        );
+      });
+    });
+
+    // Sync tuiEvents and calendar UI
+    tuiEvents.value = [...this.events.value];
+    this.calendar?.clear();
+    this.calendar?.createEvents(this.events.value);
+
+    LogUtil.Debug('= tuiCalendarUtil: CopyMondayToWeekdays completed, updated events:', this.events.value, tuiEvents.value);
   }
 
   RefreshFromT3000(): void {
-
+    this.calendar?.clear();
+    this.InitDefaultEvents();
   }
 
   ClearAll(): void {
-
+    this.calendar?.clear();
+    this.InitDefaultEvents();
   }
 
   /**
