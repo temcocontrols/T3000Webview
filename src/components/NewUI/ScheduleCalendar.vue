@@ -172,10 +172,12 @@ const goToToday = (): void => {
 
 const handleOk = (): void => {
   scheduleModalNVisible.value = false;
+  tcUtil.SetNavVisibility(true);
 };
 
 const handleCancel = (): void => {
   scheduleModalNVisible.value = false;
+  tcUtil.SetNavVisibility(true);
 };
 
 const copyToWeekdays = () => {

@@ -84,8 +84,10 @@ export const schInfo = ref<string>("T3-TB / Test Schedule / Panel 1 / Schedule 1
 export const tuiEvents = ref<any[]>([]); // Array to hold events for the calendar
 
 
-
-
+// Global
+export const topNavVisible = ref<boolean>(true);
+export const leftNavVisible = ref<boolean>(true);
+export const rightNavVisible = ref<boolean>(true);
 
 
 

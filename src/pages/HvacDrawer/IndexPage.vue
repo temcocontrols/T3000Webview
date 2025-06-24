@@ -8,20 +8,21 @@
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge" />
+          :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge && topNavVisible" />
 
         <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices"
+          v-if="!isBuiltInEdge && !locked && topNavVisible">
         </NewTopToolBar>
       </div>
 
       <div class="main-area">
-        <div class="side-bar" v-if="!locked">
+        <div class="side-bar" v-if="!locked && leftNavVisible">
           <!-- Tools Sidebar -->
-          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+          <ToolsSidebar v-if="!locked && leftNavVisible" :selected-tool="selectedTool" :images="library.images"
             :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
             @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
             @tool-dropped="toolDropped" :isBuiltInEdge="isBuiltInEdge" />
@@ -434,7 +435,7 @@
 
     <!-- Object config sidebar -->
     <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
-      (appState.activeItemIndex || appState.activeItemIndex === 0) &&
+      (appState.activeItemIndex || appState.activeItemIndex === 0) && rightNavVisible &&
       (appState.selectedTargets.length > 0)" @refresh-moveable="refreshMoveable"
       @T3UpdateEntryField="T3UpdateEntryField" @linkT3Entry="linkT3EntryDialogAction"
       @gaugeSettings="gaugeSettingsDialogAction" @mounted="addActionToHistory('Object settings opened')"
@@ -676,7 +677,7 @@ import {
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
-import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible, leftNavVisible, rightNavVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
@@ -685,6 +686,7 @@ import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
 import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
+import T3UIUtil from "src/lib/T3000/Hvac/Opt/UI/T3UIUtil";
 
 // const isBuiltInEdge = ref(false);
 
@@ -3115,6 +3117,9 @@ function objectDoubleClicked(item) {
     scheduleItemData.value = item;
     scheduleModalNVisible.value = true;
   }
+
+  T3UIUtil.SetNavVisiblity(false);
+
   // Do nothing for other types
 }
 

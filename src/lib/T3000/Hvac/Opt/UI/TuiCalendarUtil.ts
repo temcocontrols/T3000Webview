@@ -1,10 +1,11 @@
 
 import Calendar from '@toast-ui/calendar';
 import dayjs from 'dayjs';
-import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo, tuiEvents } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo, tuiEvents, topNavVisible, leftNavVisible, rightNavVisible } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
 import { reactive, ref, Ref } from 'vue';
 import { format } from 'date-fns';
 import LogUtil from '../../Util/LogUtil';
+import T3UIUtil from './T3UIUtil';
 
 
 type ViewType = 'day' | 'week' | 'month';
@@ -229,6 +230,8 @@ class TuiCalendarUtil {
 
     //Update event click handler
     this.calendar.on('clickEvent', ({ event }: any) => {
+      // this.SetNavVisibility(false);
+
       LogUtil.Debug('= tuiCalendarUtil: Calendar clickEvent triggered:', event);
       this.selectedEventId.value = event.id;
       this.modalMode.value = 'edit';
@@ -240,9 +243,12 @@ class TuiCalendarUtil {
 
     // Create event on date selection
     this.calendar.on('selectDateTime', (eventInfo: any) => {
-      this.isEventModalVisible.value = true;
-      LogUtil.Debug('= tuiCalendarUtil: Calendar Date selected:', eventInfo);
 
+      // this.SetNavVisibility(false);
+
+      this.isEventModalVisible.value = true;
+
+      LogUtil.Debug('= tuiCalendarUtil: Calendar Date selected:', topNavVisible, leftNavVisible, rightNavVisible, eventInfo);
 
       const date4 = eventInfo.start;
       const formatted = date4.toLocaleString('en-US');
@@ -775,6 +781,10 @@ class TuiCalendarUtil {
     LogUtil.Debug('= tuiCalendarUtil: Converted events:', events);
 
     return events;
+  }
+
+  SetNavVisibility = (visible: boolean): void => {
+    T3UIUtil.SetNavVisiblity(visible);
   }
 }
 

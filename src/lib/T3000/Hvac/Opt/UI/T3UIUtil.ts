@@ -1,6 +1,7 @@
 
 
 import AntdUtil from "./AntdUtil";
+import { topNavVisible, leftNavVisible, rightNavVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 class T3UIUtil {
 
@@ -12,6 +13,13 @@ class T3UIUtil {
   static ShowZoomInOutError(errorMsg: string) {
     // AntdUtil.ShowNotification("error", "Zoom In/Out Error", errorMsg);
     AntdUtil.ShowTopAlert("error", "Zoom In/Out Error", errorMsg);
+  }
+
+  static SetNavVisiblity(visibility: boolean) {
+    // Set the visibility of the top, left, and right navigation bars
+    topNavVisible.value = visibility;
+    leftNavVisible.value = visibility;
+    rightNavVisible.value = visibility;
   }
 }
 
