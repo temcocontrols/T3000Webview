@@ -5,41 +5,38 @@
     },
   }">
     <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="950" style="top:30px; height: 600px;"
-      wrapClassName="t3-modal" @ok="handleOk" @cancel="handleCancel" destroyOnClose keyboard="true">
+      wrapClassName="t3-modal" @ok="HandleOk" @cancel="HandleCancel" destroyOnClose keyboard="true">
       <div class="schedule-calendar-container">
         <!-- <div class="calendar-header"> -->
         <a-row type="flex" justify="space-between" align="middle" style="margin-bottom: 10px;">
           <a-col style="margin-top: 5px;">
             <div style="display: flex; justify-content: flex-start;gap:4px;height: 32px;">
               <!-- <FieldTimeOutlined class="view-title" /> -->
-              <label class="view-title">{{ currentViewTitle() }}</label>
+              <label class="view-title">{{ CurrentViewTitle() }}</label>
             </div>
           </a-col>
           <a-col>
             <div style="display: flex; justify-content: flex-start; gap: 8px;">
-              <a-button class="t3-btn" size="small" @click="copyToWeekdays" type="primary">Copy to Monday -
+              <a-button class="t3-btn" size="small" @click="CopyMondayToWeekdays" type="primary">Copy to Monday -
                 Friday</a-button>
-              <a-button class="t3-btn" size="small" @click="refreshFromT3000">Reset</a-button>
-              <a-button class="t3-btn" size="small" @click="clearAll">Clear All</a-button>
-              <a-button class="t3-btn" size="small" @click="handleOk">Save Data</a-button>
-              <a-button class="t3-btn" size="small" @click="handleCancel">Cancel</a-button>
+              <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
+              <a-button class="t3-btn" size="small" @click="ClearAll">Clear All</a-button>
+              <a-button class="t3-btn" size="small" @click="HandleOk">Save Data</a-button>
+              <a-button class="t3-btn" size="small" @click="HandleCancel">Cancel</a-button>
             </div>
           </a-col>
         </a-row>
       </div>
       <div ref="calendarRef" class="calendar-container"></div>
-
       <template #footer>
         <!-- No footer -->
       </template>
-
     </a-modal>
 
     <a-modal v-model:visible="isEventModalVisible" :width="300"
       :title="modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'" wrapClassName="t3-sub-modal"
-      @ok="handleModalOk" @cancel="handleModalCancel" destroyOnClose keyboard="true">
+      @ok="HandleModalOk" @cancel="HandleModalCancel" destroyOnClose keyboard="true">
       <a-form :model="eventForm" layout="vertical">
-
         <a-row gutter="16" align="middle" style="margin-bottom: 0;font-size: 12px;">
           <a-col :span="6">
             <a-form-item label="On/Off" name="isOnStart" style="margin-bottom: 0;">
@@ -73,13 +70,12 @@
           </a-col>
         </a-row>
       </a-form>
-
       <template #footer>
         <div style="display: flex; justify-content: flex-start; gap: 4px;">
-          <a-button class="t3-btn" key="back" @click="handleModalCancel">Cancel</a-button>
+          <a-button class="t3-btn" key="back" @click="HandleModalCancel">Cancel</a-button>
           <a-button class="t3-btn" v-if="modalMode === 'edit'" key="delete" danger
-            @click="handleDeleteEvent">Delete</a-button>
-          <a-button class="t3-btn" key="submit" type="primary" @click="handleModalOk">Save</a-button>
+            @click="HandleDeleteEvent">Delete</a-button>
+          <a-button class="t3-btn" key="submit" type="primary" @click="HandleModalOk">Save</a-button>
         </div>
       </template>
     </a-modal>
@@ -101,6 +97,7 @@ import TuiCalendarUtil, { ModalModeType, EventFormState } from 'src/lib/T3000/Hv
 dayjs.locale('en');
 
 import { FieldTimeOutlined } from '@ant-design/icons-vue';
+import T3UIUtil from 'src/lib/T3000/Hvac/Opt/UI/T3UIUtil';
 
 defineOptions({
   name: 'ScheduleCalendar',
@@ -116,10 +113,8 @@ const eventForm = reactive<EventFormState>({
   title: "",
   start: new Date(),
   end: new Date(),
-  // isAllDay: false,
   group: "",
   flagText: ""
-
 });
 
 // Computed properties for a-time-picker compatibility
@@ -138,63 +133,50 @@ const endTime = computed({
 
 const tcUtil = new TuiCalendarUtil();
 
-const currentViewTitle = (): string => {
-  return tcUtil.currentViewTitle();
+const CurrentViewTitle = (): string => {
+  return tcUtil.CurrentViewTitle();
 };
 
-const resetEventForm = (): void => {
-  tcUtil.resetEventForm();
+const HandleModalOk = (): void => {
+  tcUtil.HandleModalOk();
 };
 
-const handleModalOk = (): void => {
-  tcUtil.handleModalOk();
+const HandleModalCancel = (): void => {
+  tcUtil.HandleModalCancel();
 };
 
-const handleModalCancel = (): void => {
-  tcUtil.handleModalCancel();
+const HandleDeleteEvent = (): void => {
+  tcUtil.HandleDeleteEvent();
 };
 
-const handleDeleteEvent = (): void => {
-  tcUtil.handleDeleteEvent();
-};
-
-const goToPrev = (): void => {
-  tcUtil.goToPrev();
-};
-
-const goToNext = (): void => {
-  tcUtil.goToNext();
-};
-
-const goToToday = (): void => {
-  tcUtil.goToToday();
-};
-
-const handleOk = (): void => {
+const HandleOk = (): void => {
   scheduleModalNVisible.value = false;
-  tcUtil.SetNavVisibility(true);
+  T3UIUtil.SetNavVisiblity(true);
 };
 
-const handleCancel = (): void => {
+const HandleCancel = (): void => {
   scheduleModalNVisible.value = false;
-  tcUtil.SetNavVisibility(true);
+  T3UIUtil.SetNavVisiblity(true);
 };
 
-const copyToWeekdays = () => {
+const CopyMondayToWeekdays = () => {
+  tcUtil.CopyMondayToWeekdays();
 };
 
-const refreshFromT3000 = () => {
+const RefreshFromT3000 = () => {
+  tcUtil.RefreshFromT3000();
 };
 
-const clearAll = () => {
+const ClearAll = () => {
+  tcUtil.ClearAll();
 };
 
 onMounted(() => {
-  tcUtil.initVariables(calendarRef, isEventModalVisible, modalMode, eventForm);
-  tcUtil.initTuiCalendar();
-  tcUtil.hideUIPanel();
-  tcUtil.initDefaultData();
-  tcUtil.initDefaultEvents();
+  tcUtil.InitVariables(calendarRef, isEventModalVisible, modalMode, eventForm);
+  tcUtil.InitTuiCalendar();
+  tcUtil.HideUIPanel();
+  tcUtil.InitTitle();
+  tcUtil.InitDefaultEvents();
 });
 
 </script>
@@ -202,7 +184,6 @@ onMounted(() => {
 <style>
 .schedule-calendar-container {
   width: 100%;
-  /* height: 100%; */
   display: flex;
   flex-direction: column;
 }
@@ -213,7 +194,6 @@ onMounted(() => {
 
 .calendar-container {
   width: 100%;
-  /* height: 400px; */
   flex-grow: 1;
 }
 
@@ -238,9 +218,7 @@ onMounted(() => {
 }
 
 .t3-modal {
-
   .ant-modal-content {
-    /* background-color: #18b5c3 !important; */
     border-radius: 0px !important;
     padding: 10px 30px !important;
   }

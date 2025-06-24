@@ -60,7 +60,6 @@ interface CalendarEvent {
 // };
 
 class TuiCalendarUtil {
-
   calendar: Calendar | null = null;
   selectedEventId: Ref<string | null>;
   calendarRef: Ref<HTMLElement>;
@@ -69,52 +68,6 @@ class TuiCalendarUtil {
   isEventModalVisible: Ref<boolean>;
   modalMode: Ref<ModalModeType>;
   eventForm: EventFormState;
-
-  initVariables = (calendarRef, isEventModalVisible, modalMode, eventForm) => {
-    this.selectedEventId = ref<string | null>(null);
-    this.calendarRef = calendarRef;
-    this.events = ref<CalendarEvent[]>([]);
-    this.currentView = ref<ViewType>('week');
-    this.isEventModalVisible = isEventModalVisible;
-    this.modalMode = modalMode;
-    this.eventForm = eventForm;
-  };
-
-  defaultCalendarOptions = () => {
-    const calendarOptions = {
-      defaultView: this.currentView.value,
-      useFormPopup: false,
-      useDetailPopup: false,
-      week: {
-        showTimezoneCollapseButton: true,
-        timezonesCollapsed: true,
-        dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Holiday1', 'Holiday2'],
-        visibleWeeksCount: 1, // Show only one week with all days
-        visibleEventCount: 9, // Show 9 days in week view (7 days + 2 holidays)
-        // Note: If your version of toast-ui/calendar does not support more than 7 days in week view,
-        // you may need to use a custom rendering or fork the library.
-      },
-      month: {
-        visibleWeeksCount: 6
-      },
-      template: {
-        time(event) {
-          LogUtil.Debug('= tuiCalendarUtil: Template time called for event:', tuiEvents.value);
-          return TuiCalendarUtil.GetTimeTemplate(event);
-        }
-      },
-      calendars: [
-        {
-          id: '1',
-          name: 'Schedule',
-          color: '#ffffff',
-          bgColor: '#1890ff',
-          borderColor: '#1890ff'
-        }
-      ]
-    };
-    return calendarOptions;
-  }
 
   static GetTimeTemplate(event: CalendarEvent): string {
     LogUtil.Debug('= tuiCalendarUtil: GetTimeTemplate called for event:', event);
@@ -165,14 +118,57 @@ class TuiCalendarUtil {
     `;
   }
 
-  initTuiCalendar() {
-    LogUtil.Debug('= tuiCalendarUtil: initTuiCalendar Calendar ref is set:', this.calendarRef.value);
+  InitVariables(calendarRef, isEventModalVisible, modalMode, eventForm) {
+    this.selectedEventId = ref<string | null>(null);
+    this.calendarRef = calendarRef;
+    this.events = ref<CalendarEvent[]>([]);
+    this.currentView = ref<ViewType>('week');
+    this.isEventModalVisible = isEventModalVisible;
+    this.modalMode = modalMode;
+    this.eventForm = eventForm;
+  };
 
+  DefaultCalendarOptions() {
+    const calendarOptions = {
+      defaultView: this.currentView.value,
+      useFormPopup: false,
+      useDetailPopup: false,
+      week: {
+        showTimezoneCollapseButton: true,
+        timezonesCollapsed: true,
+        dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Holiday1', 'Holiday2'],
+        visibleWeeksCount: 1, // Show only one week with all days
+        visibleEventCount: 9, // Show 9 days in week view (7 days + 2 holidays)
+        // Note: If your version of toast-ui/calendar does not support more than 7 days in week view,
+        // you may need to use a custom rendering or fork the library.
+      },
+      month: {
+        visibleWeeksCount: 6
+      },
+      template: {
+        time(event) {
+          LogUtil.Debug('= tuiCalendarUtil: Template time called for event:', tuiEvents.value);
+          return TuiCalendarUtil.GetTimeTemplate(event);
+        }
+      },
+      calendars: [
+        {
+          id: '1',
+          name: 'Schedule',
+          color: '#ffffff',
+          bgColor: '#1890ff',
+          borderColor: '#1890ff'
+        }
+      ]
+    };
+    return calendarOptions;
+  }
+
+  InitTuiCalendar() {
     if (!this.calendarRef.value) {
       LogUtil.Error('= tuiCalendarUtil: Calendar ref is not available');
       return;
     }
-
 
     const getRandomColor = () => {
       const colors = [
@@ -182,6 +178,7 @@ class TuiCalendarUtil {
     };
 
     const originalCreateEvents = Calendar.prototype.createEvents;
+
     Calendar.prototype.createEvents = function (events) {
       LogUtil.Debug('= tuiCalendarUtil: Calendar.prototype.createEvents:', events);
       events.forEach(event => {
@@ -193,6 +190,7 @@ class TuiCalendarUtil {
     };
 
     const originalUpdateEvent = Calendar.prototype.updateEvent;
+
     Calendar.prototype.updateEvent = function (id, calendarId, changes) {
       LogUtil.Debug('= tuiCalendarUtil: Calendar.prototype.updateEvent:', id, calendarId, changes);
       if (!changes.backgroundColor) {
@@ -203,16 +201,25 @@ class TuiCalendarUtil {
       return originalUpdateEvent.call(this, id, calendarId, changes);
     };
 
-    this.calendar = new Calendar(this.calendarRef.value, this.defaultCalendarOptions());
+    this.calendar = new Calendar(this.calendarRef.value, this.DefaultCalendarOptions());
 
     if (!this.calendar) {
       LogUtil.Error('= tuiCalendarUtil: Failed to initialize calendar');
       return;
     }
 
-    LogUtil.Debug('= tuiCalendarUtil: Calendar initialized successfully:', this.calendar);
     currentDate.value = this.calendar.getDate().toDate();
 
+    this.BindBeforeCreateEvent();
+    this.BindBeforeUpdateEvent();
+
+    this.BindClickEvent();
+    this.BindSelectDateTime();
+
+    LogUtil.Debug('= tuiCalendarUtil: Calendar initialized successfully:', this.calendar);
+  }
+
+  BindBeforeCreateEvent() {
     this.calendar.on('beforeCreateEvent', (eventObj: any) => {
       LogUtil.Debug('= tuiCalendarUtil: Calendar beforeCreateEvent triggered:', eventObj);
       this.modalMode.value = 'create';
@@ -221,61 +228,83 @@ class TuiCalendarUtil {
       this.eventForm.end = eventObj.end || new Date();
       this.isEventModalVisible.value = true;
     });
+  }
 
+  BindBeforeUpdateEvent() {
     this.calendar.on('beforeUpdateEvent', ({ event, changes }: any) => {
       LogUtil.Debug('= tuiCalendarUtil: Calendar beforeUpdateEvent triggered:', event, changes);
       const { id, calendarId } = event;
       this.calendar?.updateEvent(id, calendarId, changes);
     });
+  }
 
+  BindClickEvent() {
     //Update event click handler
     this.calendar.on('clickEvent', ({ event }: any) => {
-      // this.SetNavVisibility(false);
-
       LogUtil.Debug('= tuiCalendarUtil: Calendar clickEvent triggered:', event);
       this.selectedEventId.value = event.id;
       this.modalMode.value = 'edit';
       this.eventForm.title = event.title || '';
       this.eventForm.start = event.start || new Date();
       this.eventForm.end = event.end || new Date();
-      this.isEventModalVisible.value = true;
-    });
 
+      this.SetEventModalVisiblity(true);
+    });
+  }
+
+  BindSelectDateTime() {
     // Create event on date selection
     this.calendar.on('selectDateTime', (eventInfo: any) => {
-
-      // this.SetNavVisibility(false);
-
-      this.isEventModalVisible.value = true;
-
       LogUtil.Debug('= tuiCalendarUtil: Calendar Date selected:', topNavVisible, leftNavVisible, rightNavVisible, eventInfo);
 
       const date4 = eventInfo.start;
       const formatted = date4.toLocaleString('en-US');
-      LogUtil.Debug('= tuiCalendarUtil: Selected:', formatted);
-
       const newStart = dayjs(eventInfo.start).toDate();
       const newEnd = dayjs(eventInfo.end).toDate();
-      LogUtil.Debug('= tuiCalendarUtil: Parsed Start:', newStart);
-      LogUtil.Debug('= tuiCalendarUtil: Parsed End:', newEnd);
-
       this.modalMode.value = 'create';
       this.eventForm.title = '';
       this.eventForm.start = newStart;
       this.eventForm.end = newEnd;
-      scheduleModalNVisible.value = true;
 
+      this.SetEventModalVisiblity(true);
     });
   }
 
-  resetEventForm = (): void => {
+  SetEventModalVisiblity(visible: boolean) {
+    this.isEventModalVisible.value = visible;
+  }
+
+  ResetEventForm(): void {
     this.eventForm.id = '';
     this.eventForm.title = '';
     this.eventForm.start = new Date();
     this.eventForm.end = new Date();
-  };
+    this.eventForm.flagText = '';
+  }
 
-  createEvent = () => {
+  HandleModalOk(): void {
+    LogUtil.Debug('= tuiCalendarUtil: handleModalOk called with eventForm:', this.eventForm);
+
+    if (!this.eventForm.start && !this.eventForm.end) {
+      return;
+    }
+
+    if (this.modalMode.value === 'create') {
+      this.ModalCreateEvent();
+      LogUtil.Debug('= tuiCalendarUtil: Creating new event with title:', this.eventForm);
+
+    } else if (this.modalMode.value === 'edit' && this.selectedEventId.value) {
+      this.ModalEditEvent();
+      LogUtil.Debug('= tuiCalendarUtil: Editing existing event with ID:', this.selectedEventId.value);
+    }
+
+    this.ResetEventForm();
+    this.SetEventModalVisiblity(false);
+
+    LogUtil.Debug('= tuiCalendarUtil: All calendar events:', JSON.stringify(this.events.value, null, 2));
+  }
+
+  ModalCreateEvent() {
     const newEventId = `event-${Date.now()}`;
     const newEvent: CalendarEvent = {
       id: newEventId,
@@ -295,8 +324,9 @@ class TuiCalendarUtil {
     }
   }
 
-  editEvent = () => {
+  ModalEditEvent() {
     LogUtil.Debug('= tuiCalendarUtil: Editing event with ID:', this.selectedEventId.value);
+
     // Find the original event to get its calendarId
     const originalEvent = this.events.value.find(e => e.id === this.selectedEventId.value);
     const updatedEvent: CalendarEvent = {
@@ -321,37 +351,12 @@ class TuiCalendarUtil {
     }
   }
 
-  handleModalOk = (): void => {
-    LogUtil.Debug('= tuiCalendarUtil: handleModalOk called with eventForm:', this.eventForm);
-
-    if (!this.eventForm.start && !this.eventForm.end) {
-      return;
-    }
-
-    if (this.modalMode.value === 'create') {
-      this.createEvent();
-      LogUtil.Debug('= tuiCalendarUtil: Creating new event with title:', this.eventForm);
-
-    } else if (this.modalMode.value === 'edit' && this.selectedEventId.value) {
-      this.editEvent();
-      LogUtil.Debug('= tuiCalendarUtil: Editing existing event with ID:', this.selectedEventId.value);
-    }
-
+  HandleModalCancel(): void {
     this.isEventModalVisible.value = false;
-    this.resetEventForm();
+    this.ResetEventForm();
+  }
 
-
-    LogUtil.Debug('= tuiCalendarUtil: All calendar events:', JSON.stringify(this.events.value, null, 2));
-
-  };
-
-  handleModalCancel = (): void => {
-    this.isEventModalVisible.value = false;
-    this.resetEventForm();
-  };
-
-  handleDeleteEvent = (): void => {
-
+  HandleDeleteEvent(): void {
     LogUtil.Debug('= tuiCalendarUtil: handleDeleteEvent called with selectedEventId:', this.selectedEventId.value);
 
     if (this.selectedEventId.value) {
@@ -363,7 +368,7 @@ class TuiCalendarUtil {
       }
 
       this.isEventModalVisible.value = false;
-      this.resetEventForm();
+      this.ResetEventForm();
 
       LogUtil.Debug('= tuiCalendarUtil: Event deleted successfully:', this.events.value);
       LogUtil.Debug('= tuiCalendarUtil: Remaining events:',);
@@ -372,30 +377,9 @@ class TuiCalendarUtil {
         this.calendar.render();
       }
     }
-  };
+  }
 
-  goToPrev = (): void => {
-    this.calendar?.prev();
-    if (this.calendar) {
-      currentDate.value = this.calendar.getDate().toDate();
-    }
-  };
-
-  goToNext = (): void => {
-    this.calendar?.next();
-    if (this.calendar) {
-      currentDate.value = this.calendar.getDate().toDate();
-    }
-  };
-
-  goToToday = (): void => {
-    this.calendar?.today();
-    if (this.calendar) {
-      currentDate.value = this.calendar.getDate().toDate();
-    }
-  };
-
-  hideUIPanel = () => {
+  HideUIPanel() {
     // Remove the "Milestone" button and its resizer
     const milestoneStyle = document.createElement('style');
     milestoneStyle.innerHTML = `
@@ -428,15 +412,13 @@ class TuiCalendarUtil {
     document.head.appendChild(allDayStyle);
   };
 
-
-  currentViewTitle = () => {
+  CurrentViewTitle = () => {
     //MMMM dd, yyyy
     //MMMM yyyy
     return format(currentDate.value, 'MMMM dd, yyyy');
   }
 
-  initDefaultData = () => {
-    LogUtil.Debug('= tuiCalendarUtil: loadT3Data called with scheduleItemData:', JSON.stringify(scheduleItemData.value, null, 2));
+  InitTitle() {
     if (scheduleItemData.value && scheduleItemData.value.t3Entry) {
       const { id, label, description } = scheduleItemData.value.t3Entry;
       modalTitle.value = [id, label, description].filter(Boolean).join(', ');
@@ -447,14 +429,10 @@ class TuiCalendarUtil {
       schInfo.value = [command, control, description, id, label, type].filter(Boolean).join(' / ');
     }
 
-    if (scheduleItemData.value && scheduleItemData.value.t3Entry && scheduleItemData.value.t3Entry.time) {
-      LogUtil.Debug('= tuiCalendarUtil: onMounted Schedule time:', JSON.stringify(scheduleItemData.value.t3Entry.time));
-    }
-
-    this.initT3Data();
+    LogUtil.Debug('= tuiCalendarUtil: InitTitle called, modalTitle, schInfo:', modalTitle.value, 'schInfo:', schInfo.value, scheduleItemData.value.t3Entry);
   }
 
-  initT3TestData = () => {
+  InitTestData() {
     const testTimeArr = [
       [
         { hours: 2, minutes: 59, tflag: 0 },
@@ -466,96 +444,102 @@ class TuiCalendarUtil {
         { hours: 0, minutes: 0, tflag: 0 },
         { hours: 0, minutes: 0, tflag: 0 }
       ],
-      [
-        { hours: 2, minutes: 59, tflag: 0 },
-        { hours: 3, minutes: 0, tflag: 0 },
-        { hours: 9, minutes: 0, tflag: 0 },
-        { hours: 21, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 2, minutes: 59, tflag: 0 },
-        { hours: 3, minutes: 0, tflag: 0 },
-        { hours: 9, minutes: 0, tflag: 0 },
-        { hours: 21, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 2, minutes: 59, tflag: 0 },
-        { hours: 3, minutes: 0, tflag: 0 },
-        { hours: 9, minutes: 0, tflag: 0 },
-        { hours: 21, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 2, minutes: 59, tflag: 0 },
-        { hours: 3, minutes: 0, tflag: 0 },
-        { hours: 9, minutes: 0, tflag: 0 },
-        { hours: 21, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 0, minutes: 0, tflag: 1 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 0, minutes: 0, tflag: 1 },
-        { hours: 0, minutes: 56, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 0, minutes: 0, tflag: 1 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 }
-      ],
-      [
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 22, minutes: 0, tflag: 0 }
-      ]
+      // [
+      //   { hours: 2, minutes: 59, tflag: 0 },
+      //   { hours: 3, minutes: 0, tflag: 0 },
+      //   { hours: 9, minutes: 0, tflag: 0 },
+      //   { hours: 21, minutes: 0, tflag: 0 },
+      //   { hours: 23, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 2, minutes: 59, tflag: 0 },
+      //   { hours: 3, minutes: 0, tflag: 0 },
+      //   { hours: 9, minutes: 0, tflag: 0 },
+      //   { hours: 21, minutes: 0, tflag: 0 },
+      //   { hours: 23, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 2, minutes: 59, tflag: 0 },
+      //   { hours: 3, minutes: 0, tflag: 0 },
+      //   { hours: 9, minutes: 0, tflag: 0 },
+      //   { hours: 21, minutes: 0, tflag: 0 },
+      //   { hours: 23, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 2, minutes: 59, tflag: 0 },
+      //   { hours: 3, minutes: 0, tflag: 0 },
+      //   { hours: 9, minutes: 0, tflag: 0 },
+      //   { hours: 21, minutes: 0, tflag: 0 },
+      //   { hours: 23, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 0, minutes: 0, tflag: 1 },
+      //   { hours: 23, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 0, minutes: 0, tflag: 1 },
+      //   { hours: 0, minutes: 56, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 0, minutes: 0, tflag: 1 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 23, minutes: 0, tflag: 0 }
+      // ],
+      // [
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 0, minutes: 0, tflag: 0 },
+      //   { hours: 22, minutes: 0, tflag: 0 }
+      // ]
     ];
 
     return testTimeArr;
   }
 
-  initDefaultEvents = (): void => {
-    // Use test data temporarily
-    const testTimeArr = this.initT3TestData();
+  InitT3Data() {
+    let timeArr = scheduleItemData.value?.t3Entry?.time || [];
 
-    // const events = this.convertTimeArrayToEvents(scheduleItemData.value?.t3Entry?.time || []);
+    // Use test data temporarily
+    timeArr = this.InitTestData();
+    return timeArr;
+  }
+
+  InitDefaultEvents(): void {
+    // Use test data temporarily
+    const testTimeArr = this.InitT3Data();
     const events = this.ConvertTimeArrayToEvents(testTimeArr);
 
     // Replace current events and render in calendar
@@ -564,127 +548,53 @@ class TuiCalendarUtil {
     this.calendar?.createEvents(events);
   }
 
-  /*
-  [{
-    "key": "1",
-    "status": true,
-    "monday": "02:59",
-    "tuesday": "02:59",
-    "wednesday": "02:59",
-    "thursday": "02:59",
-    "friday": "02:59",
-    "saturday": "00:00",
-    "sunday": "00:00",
-    "holiday1": "00:00",
-    "holiday2": "00:00"
-  }]
-  */
-  initT3Data = () => {
-    LogUtil.Debug('= tuiCalendarUtil: initT3Data called with scheduleItemData:', JSON.stringify(scheduleItemData.value, null, null));
-    if (scheduleItemData.value && scheduleItemData.value.t3Entry && Array.isArray(scheduleItemData.value.t3Entry.time)) {
-      const dayKeys = [
-        'monday',
-        'tuesday',
-        'wednesday',
-        'thursday',
-        'friday',
-        'saturday',
-        'sunday',
-        'holiday1',
-        'holiday2',
-      ];
+  /**
+   * Copies Monday's time array to Tuesday, Wednesday, Thursday, and Friday.
+   * Modifies scheduleItemData.value.t3Entry.time in-place if available.
+   */
+  CopyMondayToWeekdays(): void {
+    let timeArr = this.InitT3Data();
 
-      // scheduleItemData.value.t3Entry.time is an array of days, each with 8 rows (schedules)
-      // We need to transpose it so each row contains all days
-      const time = scheduleItemData.value.t3Entry.time;
-      const rowCount = time[0]?.length || 0;
-
-      // Create a new array to trigger reactivity
-      const newScheduleData = Array.from({ length: rowCount }, (_, rowIdx) => {
-        const item: any = {
-          key: (rowIdx + 1).toString(),
-          status: rowIdx % 2 === 0, // fallback if no status info
-        };
-        dayKeys.forEach((day, dayIdx) => {
-          const t = time[dayIdx]?.[rowIdx];
-          if (t && typeof t.hours === 'number' && typeof t.minutes === 'number') {
-            // Use dayjs to create a time string in "HH:mm" format
-            const hour = t.hours.toString().padStart(2, '0');
-            const minute = t.minutes.toString().padStart(2, '0');
-            item[day] = `${hour}:${minute}`;
-          } else {
-            item[day] = '';
-          }
-        });
-        return item;
-      });
-
-      LogUtil.Debug('= tuiCalendarUtil: Transformed T3 schedule data:', newScheduleData);
-    }
-  }
-
-  initT3DataToMonFriDays = () => {
-    // Extract time array from scheduleItemData
-    const timeArr = scheduleItemData.value?.t3Entry?.time;
-    if (!Array.isArray(timeArr) || timeArr.length < 8) {
-      LogUtil.Error('= tuiCalendarUtil: Invalid or missing time array in scheduleItemData');
-      return;
-    }
-
-    // Map day index to dayjs weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
-    const dayMap = [1, 2, 3, 4, 5]; // Monday to Friday
-
-    // Use current week as base
-    const baseDate = dayjs().startOf('week'); // Sunday
-
-    const events: CalendarEvent[] = [];
-
-    // For each day (Monday to Friday)
-    for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
-      const dayTimes = timeArr[dayIdx];
-      if (!Array.isArray(dayTimes)) continue;
-
-      // For each time slot (up to 8 per day)
-      for (let slotIdx = 0; slotIdx < dayTimes.length - 1; slotIdx++) {
-        const startTime = dayTimes[slotIdx];
-        const endTime = dayTimes[slotIdx + 1];
-
-        // Only create event if start and end are not both 0:0 and not the same
-        if (
-          startTime &&
-          endTime &&
-          (startTime.hours !== 0 || startTime.minutes !== 0 || endTime.hours !== 0 || endTime.minutes !== 0) &&
-          (startTime.hours !== endTime.hours || startTime.minutes !== endTime.minutes)
-        ) {
-          const start = baseDate
-            .add(dayMap[dayIdx], 'day')
-            .hour(startTime.hours)
-            .minute(startTime.minutes)
-            .second(0)
-            .toDate();
-          const end = baseDate
-            .add(dayMap[dayIdx], 'day')
-            .hour(endTime.hours)
-            .minute(endTime.minutes)
-            .second(0)
-            .toDate();
-
-          events.push({
-            id: `event-${dayIdx}-${slotIdx}-${Date.now()}`,
-            calendarId: '1',
-            title: slotIdx % 2 === 0 ? 'On' : 'Off',
-            start,
-            end,
-            flagText: slotIdx % 2 === 0 ? 'On' : 'Off',
-            group: dayjs(start).format('dddd'),
-          });
+    /*
+    // If timeArr has only 1 item (Monday), create/reset Tuesday-Friday as deep copies of Monday
+    if (Array.isArray(timeArr)) {
+      if (timeArr.length === 1) {
+        for (let i = 1; i <= 4; i++) {
+          timeArr[i] = timeArr[0].map(slot => ({ ...slot }));
+        }
+      } else if (timeArr.length >= 5) {
+        for (let i = 1; i <= 4; i++) {
+          timeArr[i] = timeArr[0].map(slot => ({ ...slot }));
         }
       }
     }
+    */
+
+    /*
+    // If scheduleItemData.value.t3Entry.time exists, update it as well
+    if (scheduleItemData.value && scheduleItemData.value.t3Entry && Array.isArray(scheduleItemData.value.t3Entry.time)) {
+      for (let i = 1; i <= 4; i++) {
+      scheduleItemData.value.t3Entry.time[i] = timeArr[0].map(slot => ({ ...slot }));
+      }
+    }
+    */
+
+    const events = this.ConvertTimeArrayToEvents(timeArr);
 
     // Replace current events and render in calendar
     this.events.value = events;
+    tuiEvents.value = events;
+
+    this.calendar?.clear();
     this.calendar?.createEvents(events);
+  }
+
+  RefreshFromT3000(): void {
+
+  }
+
+  ClearAll(): void {
+
   }
 
   /**
@@ -779,12 +689,29 @@ class TuiCalendarUtil {
     }
 
     LogUtil.Debug('= tuiCalendarUtil: Converted events:', events);
-
     return events;
   }
 
-  SetNavVisibility = (visible: boolean): void => {
-    T3UIUtil.SetNavVisiblity(visible);
+  // Unused methods, kept for reference
+  GoToPrev(): void {
+    this.calendar?.prev();
+    if (this.calendar) {
+      currentDate.value = this.calendar.getDate().toDate();
+    }
+  }
+
+  GoToNext(): void {
+    this.calendar?.next();
+    if (this.calendar) {
+      currentDate.value = this.calendar.getDate().toDate();
+    }
+  }
+
+  GoToToday(): void {
+    this.calendar?.today();
+    if (this.calendar) {
+      currentDate.value = this.calendar.getDate().toDate();
+    }
   }
 }
 
