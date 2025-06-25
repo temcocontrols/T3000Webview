@@ -615,8 +615,9 @@
     </div>
   </a-modal> -->
 
-  <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible"></ScheduleModal>
+  <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible" />
   <ScheduleCalendar v-if="scheduleModalNVisible" :visible="scheduleModalNVisible" />
+  <ScheduleAnnual v-if="annualScheduleVisible" :visible="annualScheduleVisible" />
 
 
 
@@ -677,7 +678,7 @@ import {
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
-import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible, leftNavVisible, rightNavVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible, leftNavVisible, rightNavVisible, annualScheduleVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
@@ -686,6 +687,7 @@ import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
 import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
+import ScheduleAnnual from "src/components/NewUI/ScheduleAnnual.vue";
 import T3UIUtil from "src/lib/T3000/Hvac/Opt/UI/T3UIUtil";
 
 // const isBuiltInEdge = ref(false);
@@ -3116,6 +3118,11 @@ function objectDoubleClicked(item) {
   if (item.t3Entry?.type === "SCHEDULE") {
     scheduleItemData.value = item;
     scheduleModalNVisible.value = true;
+  }
+
+  if (item.t3Entry?.type === "INPUT") {
+    scheduleItemData.value = item;
+    annualScheduleVisible.value = true;
   }
 
   T3UIUtil.SetNavVisiblity(false);

@@ -91,6 +91,10 @@ export const rightNavVisible = ref<boolean>(true);
 
 export const scheduleLockVisible = ref<boolean>(true);
 
+// Annual schedule
+export const annualScheduleVisible = ref<boolean>(false);
+export const annualScheduleData = ref<any[]>([]); // Array to hold annual schedule data
+
 
 
 
