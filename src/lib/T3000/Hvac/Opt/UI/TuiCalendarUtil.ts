@@ -6,6 +6,8 @@ import { reactive, ref, Ref } from 'vue';
 import { format } from 'date-fns';
 import LogUtil from '../../Util/LogUtil';
 import T3UIUtil from './T3UIUtil';
+import { isBuiltInEdge, T3_Types } from '../../Data/T3Data';
+import Hvac from '../../Hvac';
 
 type ViewType = 'day' | 'week' | 'month';
 export type ModalModeType = 'create' | 'edit';
@@ -18,6 +20,8 @@ export interface EventFormState {
   end: Date;
   group?: string;
   flagText: string;
+  startFlag: number;
+  endFlag: number;
 }
 
 interface CalendarEvent {
@@ -28,6 +32,8 @@ interface CalendarEvent {
   end: Date;
   group?: string;
   flagText: string;
+  startFlag: number;
+  endFlag: number;
 }
 
 class TuiCalendarUtil {
@@ -300,6 +306,8 @@ class TuiCalendarUtil {
       end: this.eventForm.end,
       flagText: this.eventForm.flagText || '',
       group: this.eventForm.group || '',
+      startFlag: this.eventForm.startFlag || 0,
+      endFlag: this.eventForm.endFlag || 0,
     };
 
     this.calendar?.createEvents([newEvent]);
@@ -326,6 +334,8 @@ class TuiCalendarUtil {
       // When do updating event, we need to keep the original flagText and group
       flagText: originalEvent.flagText || '',
       group: originalEvent.group || '',
+      startFlag: this.eventForm.startFlag || 0,
+      endFlag: this.eventForm.endFlag || 0,
     };
 
     this.calendar?.updateEvent(updatedEvent.id, '1', updatedEvent);
@@ -720,7 +730,9 @@ class TuiCalendarUtil {
           start: start,
           end: end,
           group: dayNames[outputIdx] || `Day${outputIdx + 1}`,
-          flagText: flagText
+          flagText: flagText,
+          startFlag: startTime.tflag,
+          endFlag: endTime.tflag
         });
       }
     }
@@ -731,6 +743,41 @@ class TuiCalendarUtil {
 
   SaveDataToT3000(): void {
     const timeArr = this.TransferEventsToT3Format();
+    const msgData = this.PrepareMsgData(timeArr);
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.UpdateEntry(msgData);
+    }
+    else {
+      Hvac.WsClient.UpdateEntry(msgData);
+    }
+  }
+
+  PrepareMsgData(timeArr: { hours: number; minutes: number; tflag: number }[][]): {} {
+
+    if (
+      scheduleItemData.value == null ||
+      scheduleItemData.value.t3Entry == null
+    ) {
+      return;
+    }
+
+    const key = "value";
+    const fieldVal = timeArr;
+    const pid = scheduleItemData.value.t3Entry.pid;
+    const index = scheduleItemData.value.t3Entry.index;
+    const type = scheduleItemData.value.t3Entry.type;
+
+    const msgData = {
+      action: 3, // UPDATE_ENTRY
+      field: key,
+      value: fieldVal,
+      panelId: pid,
+      entryIndex: index,
+      entryType: T3_Types[type],
+    };
+
+    return msgData;
   }
 
   /**
@@ -768,20 +815,36 @@ class TuiCalendarUtil {
         if (slotIdx >= 8) break;
 
         // Start slot
-        result[dayIdx][slotIdx] = {
-          hours: ev.start ? ev.start.getHours() : 0,
-          minutes: ev.start ? ev.start.getMinutes() : 0,
-          tflag: ev.flagText === 'start-empty' ? 1 : 0
-        };
+        if (ev.flagText === 'start-empty') {
+          result[dayIdx][slotIdx] = {
+            hours: 0,
+            minutes: 0,
+            tflag: 0
+          };
+        } else {
+          result[dayIdx][slotIdx] = {
+            hours: ev.start ? ev.start.getHours() : 0,
+            minutes: ev.start ? ev.start.getMinutes() : 0,
+            tflag: ev.startFlag ?? 0
+          };
+        }
         slotIdx++;
         if (slotIdx >= 8) break;
 
         // End slot
-        result[dayIdx][slotIdx] = {
-          hours: ev.end ? ev.end.getHours() : 0,
-          minutes: ev.end ? ev.end.getMinutes() : 0,
-          tflag: ev.flagText === 'end-empty' ? 1 : 0
-        };
+        if (ev.flagText === 'end-empty') {
+          result[dayIdx][slotIdx] = {
+            hours: 0,
+            minutes: 0,
+            tflag: 0
+          };
+        } else {
+          result[dayIdx][slotIdx] = {
+            hours: ev.end ? ev.end.getHours() : 0,
+            minutes: ev.end ? ev.end.getMinutes() : 0,
+            tflag: ev.endFlag ?? 0
+          };
+        }
         slotIdx++;
       }
 
