@@ -1,7 +1,7 @@
 
 import { ref } from "vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
-
+import { EventFormState, CalendarEvent } from "../Constant/T3Interface"
 
 // Interface definition for context menu configuration
 export interface ICtxMenuConfig { isShow: boolean; from: string; type: string; }
@@ -82,7 +82,7 @@ export const currentDate = ref<Date>(new Date());
 export const modalTitle = ref<string>("Schedule full label test title");
 export const schInfo = ref<string>("T3-TB / Test Schedule / Panel 1 / Schedule 1");
 export const tuiEvents = ref<any[]>([]); // Array to hold events for the calendar
-
+export const schEventList = ref<CalendarEvent[]>([]); // Array to hold schedule events
 
 // Global
 export const topNavVisible = ref<boolean>(true);

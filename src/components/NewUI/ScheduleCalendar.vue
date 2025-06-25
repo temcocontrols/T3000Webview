@@ -93,11 +93,13 @@ import 'tui-date-picker/dist/tui-date-picker.css';
 import 'tui-time-picker/dist/tui-time-picker.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/en';
-import TuiCalendarUtil, { ModalModeType, EventFormState } from 'src/lib/T3000/Hvac/Opt/UI/TuiCalendarUtil';
+import TuiCalendarUtil, { ModalModeType } from 'src/lib/T3000/Hvac/Opt/UI/TuiCalendarUtil';
 dayjs.locale('en');
 import { locked } from 'src/lib/T3000/Hvac/Data/T3Data';
 import { FieldTimeOutlined } from '@ant-design/icons-vue';
 import T3UIUtil from 'src/lib/T3000/Hvac/Opt/UI/T3UIUtil';
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
+import { EventFormState } from 'src/lib/T3000/Hvac/Data/Constant/T3Interface';
 
 defineOptions({
   name: 'ScheduleCalendar',
@@ -114,7 +116,9 @@ const eventForm = reactive<EventFormState>({
   start: new Date(),
   end: new Date(),
   group: "",
-  flagText: ""
+  flagText: "",
+  startFlag: 0,
+  endFlag: 0,
 });
 
 // Computed properties for a-time-picker compatibility
@@ -132,6 +136,7 @@ const endTime = computed({
 });
 
 const tcUtil = new TuiCalendarUtil();
+LogUtil.Debug('ScheduleCalendar', 'TuiCalendarUtil initialized', tcUtil);
 
 const CurrentViewTitle = (): string => {
   return tcUtil.CurrentViewTitle();

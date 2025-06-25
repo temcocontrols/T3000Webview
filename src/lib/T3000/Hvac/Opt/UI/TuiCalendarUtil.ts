@@ -1,47 +1,24 @@
 
 import Calendar from '@toast-ui/calendar';
 import dayjs from 'dayjs';
-import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo, tuiEvents, topNavVisible, leftNavVisible, rightNavVisible } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo, tuiEvents, topNavVisible, leftNavVisible, rightNavVisible, schEventList } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
 import { reactive, ref, Ref } from 'vue';
 import { format } from 'date-fns';
 import LogUtil from '../../Util/LogUtil';
 import T3UIUtil from './T3UIUtil';
 import { isBuiltInEdge, T3_Types } from '../../Data/T3Data';
 import Hvac from '../../Hvac';
+import { CalendarEvent, EventFormState } from "../../Data/Constant/T3Interface";
 
 type ViewType = 'day' | 'week' | 'month';
 export type ModalModeType = 'create' | 'edit';
-
-export interface EventFormState {
-  id: string;
-  calendarId: string;
-  title: string;
-  start: Date;
-  end: Date;
-  group?: string;
-  flagText: string;
-  startFlag: number;
-  endFlag: number;
-}
-
-interface CalendarEvent {
-  id: string;
-  calendarId: string;
-  title: string;
-  start: Date;
-  end: Date;
-  group?: string;
-  flagText: string;
-  startFlag: number;
-  endFlag: number;
-}
 
 class TuiCalendarUtil {
   calendar: Calendar | null = null;
   selectedEventId: Ref<string | null>;
   calendarRef: Ref<HTMLElement>;
   currentView: Ref;
-  events: Ref<CalendarEvent[]>;
+  // events: Ref<CalendarEvent[]>;
   isEventModalVisible: Ref<boolean>;
   modalMode: Ref<ModalModeType>;
   eventForm: EventFormState;
@@ -98,12 +75,14 @@ class TuiCalendarUtil {
   InitVariables(calendarRef, isEventModalVisible, modalMode, eventForm) {
     this.selectedEventId = ref<string | null>(null);
     this.calendarRef = calendarRef;
-    this.events = ref<CalendarEvent[]>([]);
+
+    // Use schEventList instead
+    // this.events = ref<CalendarEvent[]>([]);
     this.currentView = ref<ViewType>('week');
     this.isEventModalVisible = isEventModalVisible;
     this.modalMode = modalMode;
     this.eventForm = eventForm;
-  };
+  }
 
   DefaultCalendarOptions() {
     const calendarOptions = {
@@ -291,9 +270,9 @@ class TuiCalendarUtil {
     this.SetEventModalVisiblity(false);
 
     // Copy events to tuiEvents for global access
-    tuiEvents.value = this.events.value;
+    tuiEvents.value = schEventList.value;
 
-    LogUtil.Debug('= tuiCalendarUtil: All calendar events:', tuiEvents.value, this.events.value);
+    LogUtil.Debug('= tuiCalendarUtil: All calendar events:', tuiEvents.value, schEventList.value);
   }
 
   ModalCreateEvent() {
@@ -306,12 +285,13 @@ class TuiCalendarUtil {
       end: this.eventForm.end,
       flagText: this.eventForm.flagText || '',
       group: this.eventForm.group || '',
-      startFlag: this.eventForm.startFlag || 0,
-      endFlag: this.eventForm.endFlag || 0,
+
+      startFlag: (this.eventForm.start.getHours() === 0 && this.eventForm.start.getMinutes() === 0) ? 1 : this.eventForm.startFlag || 0,
+      endFlag: (this.eventForm.end.getHours() === 0 && this.eventForm.end.getMinutes() === 0) ? 1 : this.eventForm.endFlag || 0
     };
 
     this.calendar?.createEvents([newEvent]);
-    this.events.value.push(newEvent);
+    schEventList.value.push(newEvent);
 
     if (this.calendar) {
       // Clear any selection highlight from mouse drag or click
@@ -321,7 +301,7 @@ class TuiCalendarUtil {
 
   ModalEditEvent() {
     // Find the original event to get its calendarId
-    const originalEvent = this.events.value.find(e => e.id === this.selectedEventId.value);
+    const originalEvent = schEventList.value.find(e => e.id === this.selectedEventId.value);
     LogUtil.Debug('= tuiCalendarUtil: Editing event with ID: Before', this.selectedEventId.value, originalEvent, this.eventForm);
 
     const updatedEvent: CalendarEvent = {
@@ -334,15 +314,16 @@ class TuiCalendarUtil {
       // When do updating event, we need to keep the original flagText and group
       flagText: originalEvent.flagText || '',
       group: originalEvent.group || '',
-      startFlag: this.eventForm.startFlag || 0,
-      endFlag: this.eventForm.endFlag || 0,
+
+      startFlag: (this.eventForm.start.getHours() === 0 && this.eventForm.start.getMinutes() === 0) ? 1 : this.eventForm.startFlag || 0,
+      endFlag: (this.eventForm.end.getHours() === 0 && this.eventForm.end.getMinutes() === 0) ? 1 : this.eventForm.endFlag || 0
     };
 
     this.calendar?.updateEvent(updatedEvent.id, '1', updatedEvent);
 
-    const eventIndex = this.events.value.findIndex(e => e.id === this.selectedEventId.value);
+    const eventIndex = schEventList.value.findIndex(e => e.id === this.selectedEventId.value);
     if (eventIndex !== -1) {
-      this.events.value[eventIndex] = updatedEvent;
+      schEventList.value[eventIndex] = updatedEvent;
     }
 
     if (this.calendar) {
@@ -362,15 +343,15 @@ class TuiCalendarUtil {
     if (this.selectedEventId.value) {
       this.calendar?.deleteEvent(this.selectedEventId.value, `1`);
 
-      const eventIndex = this.events.value.findIndex(e => e.id === this.selectedEventId.value);
+      const eventIndex = schEventList.value.findIndex(e => e.id === this.selectedEventId.value);
       if (eventIndex !== -1) {
-        this.events.value.splice(eventIndex, 1);
+        schEventList.value.splice(eventIndex, 1);
       }
 
       this.isEventModalVisible.value = false;
       this.ResetEventForm();
 
-      LogUtil.Debug('= tuiCalendarUtil: Event deleted successfully:', this.events.value);
+      LogUtil.Debug('= tuiCalendarUtil: Event deleted successfully:', schEventList.value);
       LogUtil.Debug('= tuiCalendarUtil: Remaining events:',);
 
       if (this.calendar) {
@@ -543,10 +524,12 @@ class TuiCalendarUtil {
     const testTimeArr = this.InitT3Data();
     const events = this.ConvertTimeArrayToEvents(testTimeArr);
 
+    const existingEvents = schEventList.value && schEventList.value.length > 0 ? schEventList.value : events;
+
     // Replace current events and render in calendar
-    this.events.value = events;
-    tuiEvents.value = events;
-    this.calendar?.createEvents(events);
+    schEventList.value = existingEvents;
+    tuiEvents.value = existingEvents;
+    this.calendar?.createEvents(existingEvents);
   }
 
   /**
@@ -593,15 +576,15 @@ class TuiCalendarUtil {
     */
 
     // Find the "Monday" group events
-    const mondayEvents = this.events.value.filter(e => e.group === 'Monday');
+    const mondayEvents = schEventList.value.filter(e => e.group === 'Monday');
 
-    LogUtil.Debug('= tuiCalendarUtil: CopyMondayToWeekdays called, found Monday events:', this.events.value, mondayEvents);
+    LogUtil.Debug('= tuiCalendarUtil: CopyMondayToWeekdays called, found Monday events:', schEventList.value, mondayEvents);
 
     // Days to copy to
     const targetDays = ['Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     // Remove existing events for Tuesday-Friday
-    this.events.value = this.events.value.filter(
+    schEventList.value = schEventList.value.filter(
       e => !targetDays.includes(e.group || '')
     );
 
@@ -614,7 +597,7 @@ class TuiCalendarUtil {
         const newStart = dayjs(baseDate).add(dayOffset, 'day').hour(dayjs(event.start).hour()).minute(dayjs(event.start).minute()).second(0).toDate();
         const newEnd = dayjs(baseDate).add(dayOffset, 'day').hour(dayjs(event.end).hour()).minute(dayjs(event.end).minute()).second(0).toDate();
 
-        this.events.value.push(
+        schEventList.value.push(
           reactive({
             ...event,
             id: `${day}-${dayIdx}-${idx}-${Date.now()}`,
@@ -627,20 +610,24 @@ class TuiCalendarUtil {
     });
 
     // Sync tuiEvents and calendar UI
-    tuiEvents.value = [...this.events.value];
+    tuiEvents.value = [...schEventList.value];
     this.calendar?.clear();
-    this.calendar?.createEvents(this.events.value);
+    this.calendar?.createEvents(schEventList.value);
 
-    LogUtil.Debug('= tuiCalendarUtil: CopyMondayToWeekdays completed, updated events:', this.events.value, tuiEvents.value);
+    LogUtil.Debug('= tuiCalendarUtil: CopyMondayToWeekdays completed, updated events:', schEventList.value, tuiEvents.value);
   }
 
   RefreshFromT3000(): void {
     this.calendar?.clear();
+    schEventList.value = [];
+    tuiEvents.value = [];
     this.InitDefaultEvents();
   }
 
   ClearAll(): void {
     this.calendar?.clear();
+    schEventList.value = [];
+    tuiEvents.value = [];
     this.InitDefaultEvents();
   }
 
@@ -797,7 +784,7 @@ class TuiCalendarUtil {
 
     // Group events by day name
     const grouped: Record<string, CalendarEvent[]> = {};
-    for (const event of this.events.value) {
+    for (const event of schEventList.value) {
       if (!event.group) continue;
       if (!grouped[event.group]) grouped[event.group] = [];
       grouped[event.group].push(event);
