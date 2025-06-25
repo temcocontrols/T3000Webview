@@ -16,7 +16,7 @@
             </div>
           </a-col>
           <a-col>
-            <div style="display: flex; justify-content: flex-start; gap: 8px;">
+            <div style="display: flex; justify-content: flex-start; gap: 8px;" v-if="!locked">
               <a-button class="t3-btn" size="small" @click="CopyMondayToWeekdays" type="primary">Copy to Monday -
                 Friday</a-button>
               <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
@@ -95,6 +95,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/en';
 import TuiCalendarUtil, { ModalModeType, EventFormState } from 'src/lib/T3000/Hvac/Opt/UI/TuiCalendarUtil';
 dayjs.locale('en');
+import { locked } from 'src/lib/T3000/Hvac/Data/T3Data';
 
 import { FieldTimeOutlined } from '@ant-design/icons-vue';
 import T3UIUtil from 'src/lib/T3000/Hvac/Opt/UI/T3UIUtil';

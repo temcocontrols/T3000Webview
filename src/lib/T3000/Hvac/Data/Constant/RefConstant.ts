@@ -89,6 +89,8 @@ export const topNavVisible = ref<boolean>(true);
 export const leftNavVisible = ref<boolean>(true);
 export const rightNavVisible = ref<boolean>(true);
 
+export const scheduleLockVisible = ref<boolean>(true);
+
 
 
 

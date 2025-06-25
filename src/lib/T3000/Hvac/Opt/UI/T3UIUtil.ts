@@ -17,9 +17,9 @@ class T3UIUtil {
 
   static SetNavVisiblity(visibility: boolean) {
     // Set the visibility of the top, left, and right navigation bars
-    topNavVisible.value = visibility;
-    leftNavVisible.value = visibility;
-    rightNavVisible.value = visibility;
+    topNavVisible.value = true;// visibility;
+    leftNavVisible.value = true;// visibility;
+    rightNavVisible.value = true;// visibility;
   }
 }
 
