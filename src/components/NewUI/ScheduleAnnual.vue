@@ -1,132 +1,101 @@
-<template>
-  <div>
-    <a-row :gutter="16">
-      <a-col v-for="(month, idx) in months" :key="month" :span="6" style="margin-bottom: 16px">
-        <a-card :title="month" size="small">
-          <a-row :gutter="[8, 8]">
-            <a-col v-for="day in getDaysInMonth(idx)" :key="day" :span="3" style="text-align: center">
-              <a-tooltip :title="getHolidayName(currentYear, idx, day)" v-if="isHoliday(currentYear, idx, day)">
-                <a-badge color="red" :count="''" style="box-shadow: 0 0 0 2px #fff">
-                  <a-checkbox :checked="isSelected(currentYear, idx, day)" @change="onSelect(currentYear, idx, day)">
-                    <span style="color: red">{{ day }}</span>
-                  </a-checkbox>
-                </a-badge>
-              </a-tooltip>
-              <template v-else>
-                <a-checkbox :checked="isSelected(currentYear, idx, day)" @change="onSelect(currentYear, idx, day)">
-                  {{ day }}
-                </a-checkbox>
-              </template>
-            </a-col>
-          </a-row>
-        </a-card>
-      </a-col>
-    </a-row>
-    <a-divider />
-    <div>
-      <h3>Selected Days Summary</h3>
-      <ul>
-        <li v-for="sel in selectedDays" :key="selKey(sel)">
-          {{ months[sel.month] }} {{ sel.day }}, {{ sel.year }}
-          <span v-if="getHolidayName(sel.year, sel.month, sel.day)">
-            ({{ getHolidayName(sel.year, sel.month, sel.day) }})
-          </span>
-        </li>
-      </ul>
-    </div>
-  </div>
-</template>
-
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { Row as ARow, Col as ACol, Card as ACard, Checkbox as ACheckbox, Divider as ADivider, Tooltip as ATooltip, Badge as ABadge } from 'ant-design-vue';
+import { ref, computed, onMounted, watch } from 'vue'
+import { Calendar as ACalendar, Select as ASelect, Spin as ASpin, Tooltip as ATooltip } from 'ant-design-vue'
+import Holidays from 'date-holidays'
+import moment, { Moment } from 'moment'
+// import 'ant-design-vue/dist/antd.css'
 
-defineOptions({
-  name: 'ScheduleAnnual',
-});
-
-const currentYear = new Date().getFullYear();
-const months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-// US Federal Holidays (fixed and some floating, for demo purpose, not exhaustive)
-function getUSHolidays(year: number) {
-  // Helper for nth weekday of month
-  function nthWeekdayOfMonth(n: number, weekday: number, month: number) {
-    const first = new Date(year, month, 1).getDay();
-    let day = 1 + ((7 + weekday - first) % 7) + (n - 1) * 7;
-    return day;
-  }
-  // Helper for last weekday of month
-  function lastWeekdayOfMonth(weekday: number, month: number) {
-    const last = new Date(year, month + 1, 0).getDate();
-    for (let d = last; d > last - 7; d--) {
-      if (new Date(year, month, d).getDay() === weekday) return d;
-    }
-    return last;
-  }
-  return [
-    { month: 0, day: 1, name: 'New Year\'s Day' },
-    { month: 0, day: nthWeekdayOfMonth(3, 1, 0), name: 'Martin Luther King Jr. Day' }, // 3rd Monday Jan
-    { month: 1, day: nthWeekdayOfMonth(3, 1, 1), name: 'Presidents\' Day' }, // 3rd Monday Feb
-    { month: 4, day: lastWeekdayOfMonth(1, 4), name: 'Memorial Day' }, // Last Monday May
-    { month: 6, day: 4, name: 'Independence Day' },
-    { month: 8, day: nthWeekdayOfMonth(1, 1, 8), name: 'Labor Day' }, // 1st Monday Sep
-    { month: 9, day: nthWeekdayOfMonth(2, 1, 9), name: 'Columbus Day' }, // 2nd Monday Oct
-    { month: 10, day: 11, name: 'Veterans Day' },
-    { month: 10, day: nthWeekdayOfMonth(4, 4, 10), name: 'Thanksgiving Day' }, // 4th Thursday Nov
-    { month: 11, day: 25, name: 'Christmas Day' }
-  ];
+interface Holiday {
+  date: Moment
+  name: string
 }
 
-const holidays = computed(() => getUSHolidays(currentYear));
+// Props & State
+const currentYear = moment().year()
+const year = ref<number>(currentYear)
+const holidays = ref<Holiday[]>([])
+const loading = ref<boolean>(true)
+const monthList = Array.from({ length: 12 }, (_, i) => i)
 
-function isHoliday(year: number, month: number, day: number) {
-  return holidays.value.some(h => h.month === month && h.day === day);
-}
-function getHolidayName(year: number, month: number, day: number) {
-  const h = holidays.value.find(h => h.month === month && h.day === day);
-  return h ? h.name : '';
-}
-
-function getDaysInMonth(month: number) {
-  return Array.from(
-    { length: new Date(currentYear, month + 1, 0).getDate() },
-    (_, i) => i + 1
-  );
-}
-
-type SelectedDay = { year: number; month: number; day: number };
-const selectedDays = ref<SelectedDay[]>([]);
-
-function selKey(sel: SelectedDay) {
-  return `${sel.year}-${sel.month}-${sel.day}`;
+// Fetch holidays for selected year
+const fetchHolidays = (y: number) => {
+  const hd = new Holidays('US')
+  return hd.getHolidays(y).map((h: any) => ({
+    date: moment(h.date),
+    name: h.name,
+  }))
 }
 
-function isSelected(year: number, month: number, day: number) {
-  return selectedDays.value.some(
-    d => d.year === year && d.month === month && d.day === day
-  );
+const getHolidayForDate = (date: Moment) =>
+  holidays.value.filter((h) => h.date.isSame(date, 'day'))
+
+const yearOptions = computed(() =>
+  Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
+)
+
+const loadHolidays = () => {
+  loading.value = true
+  setTimeout(() => {
+    holidays.value = fetchHolidays(year.value)
+    loading.value = false
+  }, 100)
 }
 
-function onSelect(year: number, month: number, day: number) {
-  return (e: any) => {
-    const idx = selectedDays.value.findIndex(
-      d => d.year === year && d.month === month && d.day === day
-    );
-    if (e.target.checked && idx === -1) {
-      selectedDays.value.push({ year, month, day });
-    } else if (!e.target.checked && idx !== -1) {
-      selectedDays.value.splice(idx, 1);
-    }
-  };
-}
+onMounted(loadHolidays)
+watch(year, loadHolidays)
 </script>
 
-<style scoped>
-.ant-card {
-  min-height: 180px;
-}
-</style>
+<template>
+  <div style="padding: 24px;">
+    <div style="margin-bottom: 24px; display: flex; align-items: center;">
+      <span style="margin-right: 8px; font-weight: 500;">Year:</span>
+      <a-select v-model:value="year" style="width: 100px">
+        <a-select-option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</a-select-option>
+      </a-select>
+    </div>
+    <a-spin :spinning="loading">
+      <div style="
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          justify-content: flex-start;
+        ">
+        <div v-for="month in monthList" :key="month" style="
+            width: 300px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 8px;
+            background: #fafafa;
+          ">
+          <h4 style="text-align: center; margin-bottom: 8px;">
+            {{ moment([year, month]).format('MMMM') }}
+          </h4>
+          <a-calendar :fullscreen="false" :value="moment([year, month])" :header-render="() => null" :date-cell-render="(date: Moment) => {
+            const dayHolidays = getHolidayForDate(date)
+            if (!dayHolidays.length) return null
+            return h(
+              ATooltip,
+              { title: dayHolidays.map(h => h.name).join(', ') },
+              {
+                default: () => h(
+                  'div',
+                  {
+                    style: {
+                      background: '#ff7875',
+                      color: 'white',
+                      borderRadius: '4px',
+                      padding: '0 2px',
+                      fontSize: '12px',
+                      textAlign: 'center',
+                    }
+                  },
+                  dayHolidays.map(h => h.name.split(' ')[0]).join(', ')
+                )
+              }
+            )
+          }" />
+        </div>
+      </div>
+    </a-spin>
+  </div>
+</template>
