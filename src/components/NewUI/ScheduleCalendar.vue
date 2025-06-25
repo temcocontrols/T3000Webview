@@ -96,7 +96,6 @@ import 'dayjs/locale/en';
 import TuiCalendarUtil, { ModalModeType, EventFormState } from 'src/lib/T3000/Hvac/Opt/UI/TuiCalendarUtil';
 dayjs.locale('en');
 import { locked } from 'src/lib/T3000/Hvac/Data/T3Data';
-
 import { FieldTimeOutlined } from '@ant-design/icons-vue';
 import T3UIUtil from 'src/lib/T3000/Hvac/Opt/UI/T3UIUtil';
 
@@ -153,6 +152,9 @@ const HandleDeleteEvent = (): void => {
 const HandleOk = (): void => {
   scheduleModalNVisible.value = false;
   T3UIUtil.SetNavVisiblity(true);
+
+  // Save the calendar data to T3000
+  tcUtil.SaveDataToT3000();
 };
 
 const HandleCancel = (): void => {

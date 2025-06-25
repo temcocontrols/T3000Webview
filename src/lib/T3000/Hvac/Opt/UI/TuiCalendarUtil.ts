@@ -143,7 +143,7 @@ class TuiCalendarUtil {
 
     const getRandomColor = () => {
       const colors = [
-        '#1890ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#13c2c2', '#f5222d', '#a0d911'
+        '#1890ff',// '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#13c2c2', '#f5222d', '#a0d911'
       ];
       return colors[Math.floor(Math.random() * colors.length)];
     };
@@ -420,6 +420,7 @@ class TuiCalendarUtil {
     }
 
     LogUtil.Debug('= tuiCalendarUtil: InitTitle called, modalTitle, schInfo:', modalTitle.value, 'schInfo:', schInfo.value, scheduleItemData.value.t3Entry);
+    LogUtil.Debug('= tuiCalendarUtil: time:', JSON.stringify(scheduleItemData.value.t3Entry.time, null, 0));
   }
 
   InitTestData() {
@@ -434,16 +435,16 @@ class TuiCalendarUtil {
         { hours: 0, minutes: 0, tflag: 0 },
         { hours: 0, minutes: 0, tflag: 0 }
       ],
-      // [
-      //   { hours: 2, minutes: 59, tflag: 0 },
-      //   { hours: 3, minutes: 0, tflag: 0 },
-      //   { hours: 9, minutes: 0, tflag: 0 },
-      //   { hours: 21, minutes: 0, tflag: 0 },
-      //   { hours: 23, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 }
-      // ],
+      [
+        { hours: 0, minutes: 0, tflag: 1 },
+        { hours: 3, minutes: 0, tflag: 0 },
+        { hours: 9, minutes: 0, tflag: 0 },
+        { hours: 21, minutes: 0, tflag: 0 },
+        { hours: 23, minutes: 0, tflag: 0 },
+        { hours: 0, minutes: 0, tflag: 0 },
+        { hours: 0, minutes: 0, tflag: 0 },
+        { hours: 0, minutes: 0, tflag: 0 }
+      ],
       // [
       //   { hours: 2, minutes: 59, tflag: 0 },
       //   { hours: 3, minutes: 0, tflag: 0 },
@@ -726,6 +727,69 @@ class TuiCalendarUtil {
 
     LogUtil.Debug('= tuiCalendarUtil: Converted events:', events);
     return events;
+  }
+
+  SaveDataToT3000(): void {
+    const timeArr = this.TransferEventsToT3Format();
+  }
+
+  /**
+   * Converts the current calendar events to the T3 time array format.
+   * Output: Array of 9 days (Monday-Sunday, Holiday1, Holiday2), each with 8 slots.
+   * Each slot: { hours, minutes, tflag }
+   */
+  TransferEventsToT3Format(): { hours: number; minutes: number; tflag: number }[][] {
+    const dayNames = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Holiday1', 'Holiday2'
+    ];
+
+    // Initialize a 2D array for 9 days, each with 8 slots (default to 00:00, tflag: 0)
+    const result: { hours: number; minutes: number; tflag: number }[][] = Array.from({ length: 9 }, () =>
+      Array.from({ length: 8 }, () => ({ hours: 0, minutes: 0, tflag: 0 }))
+    );
+
+    // Group events by day name
+    const grouped: Record<string, CalendarEvent[]> = {};
+    for (const event of this.events.value) {
+      if (!event.group) continue;
+      if (!grouped[event.group]) grouped[event.group] = [];
+      grouped[event.group].push(event);
+    }
+
+    // For each day, fill slots by event start/end
+    dayNames.forEach((day, dayIdx) => {
+      const events = (grouped[day] || []).sort((a, b) => {
+        // Sort by start time
+        return (a.start?.getTime() ?? 0) - (b.start?.getTime() ?? 0);
+      });
+
+      let slotIdx = 0;
+      for (const ev of events) {
+        if (slotIdx >= 8) break;
+
+        // Start slot
+        result[dayIdx][slotIdx] = {
+          hours: ev.start ? ev.start.getHours() : 0,
+          minutes: ev.start ? ev.start.getMinutes() : 0,
+          tflag: ev.flagText === 'start-empty' ? 1 : 0
+        };
+        slotIdx++;
+        if (slotIdx >= 8) break;
+
+        // End slot
+        result[dayIdx][slotIdx] = {
+          hours: ev.end ? ev.end.getHours() : 0,
+          minutes: ev.end ? ev.end.getMinutes() : 0,
+          tflag: ev.flagText === 'end-empty' ? 1 : 0
+        };
+        slotIdx++;
+      }
+
+      // If there are less than 8 slots, the rest remain as {0,0,0}
+    });
+
+    LogUtil.Debug('= tuiCalendarUtil: TransferEventsToT3Format completed, result:', this.events.value, result);
+    return result;
   }
 
   // Unused methods, kept for reference
