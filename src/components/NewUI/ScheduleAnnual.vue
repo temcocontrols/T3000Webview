@@ -15,7 +15,9 @@
     <!-- <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 24px;"> -->
     <div style="display: flex; flex-wrap: wrap; gap: 16px;">
       <a-calendar v-for="(month) in months1" :key="month.format('YYYY-MM')" :value="month" :fullscreen="false"
-        :header-render="() => headerRender({ value: month, onChange: () => { } })" style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;">
+        :header-render="() => headerRender({ value: month, onChange: () => { } })"
+        @select="onSelect"
+        style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;">
         <template #dateFullCellRender="{ current }">
           <div :style="isSelected(current) ?
             'background: #1890ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;' :
@@ -37,6 +39,7 @@ import { annualScheduleVisible, annualScheduleData } from 'src/lib/T3000/Hvac/Da
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+/*
 // Generate 12 months for the current year
 const selectedDates = [
   '2025-01-01',
@@ -46,9 +49,17 @@ const selectedDates = [
   '2025-06-05',
   '2025-06-23'
 ];
+*/
+
 const year = 2025;
-const months1 = Array.from({ length: 12 }, (_, i) => dayjs(`${year}-${String(i + 1).padStart(2, '0')}-01`));
-const isSelected = (date) => selectedDates.includes(date.format('YYYY-MM-DD'));
+const months1 = months.map((_, i) => dayjs(`${year}-${String(i + 1).padStart(2, '0')}-01`));
+
+const isSelected = (date) => {
+  // Check if the date is selected in annualScheduleData
+  const monthKey = months[date.month()];
+  const dayStr = date.format('YYYY-MM-DD');
+  return annualScheduleData.value[monthKey]?.includes(dayStr) || false;
+};
 
 LogUtil.Debug(`= annual: months1 Generated months for year ${year}:`, months1);
 
@@ -108,7 +119,7 @@ const headerRender = ({ value, onChange }) => {
       h(
         'span',
         { style: 'font-weight: bold; font-size: 16px;' },
-        value.$d.getMonth()
+        months[value.$d.getMonth()]
       )
     ]
   )
@@ -118,12 +129,13 @@ const onSelect = (date, { source }) => {
   LogUtil.Debug(`= annual: onSelect Date selected:`, date, `Source:`, source);
 
   const month = date.month();
+  const monthKey = months[month]; // Use month name as key
   const day = date.format('YYYY-MM-DD');
-  if (!annualScheduleData.value[month]) {
-    annualScheduleData.value[month] = [];
+  if (!annualScheduleData.value[monthKey]) {
+    annualScheduleData.value[monthKey] = [];
   }
-  if (!annualScheduleData.value[month].includes(day)) {
-    annualScheduleData.value[month].push(day);
+  if (!annualScheduleData.value[monthKey].includes(day)) {
+    annualScheduleData.value[monthKey].push(day);
   }
 
   LogUtil.Debug(`= annual: onSelect Date selected:`, date, `Source:`, source, annualScheduleData.value);
