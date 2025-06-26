@@ -1,101 +1,85 @@
-<script lang="ts" setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { Calendar as ACalendar, Select as ASelect, Spin as ASpin, Tooltip as ATooltip } from 'ant-design-vue'
-import Holidays from 'date-holidays'
-import moment, { Moment } from 'moment'
-// import 'ant-design-vue/dist/antd.css'
+<template>
+  <a-modal v-model:open="showModal" title="US Holidays Calendar" width="75vw" style="top: 20px;" :footer="null">
+    <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+      <div
+        v-for="month in 12"
+        :key="month"
+        style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;"
+      >
+        <a-calendar
+          :fullscreen="false"
+          :date-cell-render="dateCellRender"
+          :header-render="() => headerRender({ value: month, onChange: () => { } })"
+          :value="dayjs(`${currentYear}-${month}-01`)"
+          style="width: 100%; min-width: 0; font-size: 12px;"
+        />
+      </div>
+    </div>
+  </a-modal>
+</template>
 
-interface Holiday {
-  date: Moment
-  name: string
+<script setup>
+import { ref } from 'vue'
+import { Calendar as ACalendar, Card as ACard, Tag } from 'ant-design-vue'
+import dayjs from 'dayjs'
+
+// US Federal Holidays for the current year
+const currentYear = dayjs().year()
+const usHolidays = [
+  { date: `${currentYear}-01-01`, name: "New Year's Day" },
+  { date: `${currentYear}-01-15`, name: "Martin Luther King Jr. Day" }, // 3rd Monday Jan
+  { date: `${currentYear}-02-19`, name: "Presidents' Day" }, // 3rd Monday Feb
+  { date: `${currentYear}-05-27`, name: "Memorial Day" }, // Last Monday May
+  { date: `${currentYear}-06-19`, name: "Juneteenth" },
+  { date: `${currentYear}-07-04`, name: "Independence Day" },
+  { date: `${currentYear}-09-02`, name: "Labor Day" }, // 1st Monday Sep
+  { date: `${currentYear}-10-14`, name: "Columbus Day" }, // 2nd Monday Oct
+  { date: `${currentYear}-11-11`, name: "Veterans Day" },
+  { date: `${currentYear}-11-28`, name: "Thanksgiving Day" }, // 4th Thursday Nov
+  { date: `${currentYear}-12-25`, name: "Christmas Day" }
+]
+
+// Helper to check if a date is a US holiday
+function getHoliday(date) {
+  return usHolidays.find(
+    h => dayjs(h.date).isSame(date, 'day')
+  )
 }
 
-// Props & State
-const currentYear = moment().year()
-const year = ref<number>(currentYear)
-const holidays = ref<Holiday[]>([])
-const loading = ref<boolean>(true)
-const monthList = Array.from({ length: 12 }, (_, i) => i)
+// Render each date cell
+import { h } from 'vue'
 
-// Fetch holidays for selected year
-const fetchHolidays = (y: number) => {
-  const hd = new Holidays('US')
-  return hd.getHolidays(y).map((h: any) => ({
-    date: moment(h.date),
-    name: h.name,
-  }))
+function dateCellRender(date) {
+  const holiday = getHoliday(date)
+  if (holiday) {
+    return h(
+      Tag,
+      { color: 'red', style: 'width:100%;display:block;' },
+      { default: () => holiday.name }
+    )
+  }
+  return null
 }
 
-const getHolidayForDate = (date: Moment) =>
-  holidays.value.filter((h) => h.date.isSame(date, 'day'))
-
-const yearOptions = computed(() =>
-  Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
-)
-
-const loadHolidays = () => {
-  loading.value = true
-  setTimeout(() => {
-    holidays.value = fetchHolidays(year.value)
-    loading.value = false
-  }, 100)
+// Custom header to show only the current year and allow month selection
+function headerRender({ value, onChange }) {
+  return h(
+    'div',
+    { style: 'padding: 8px 16px;' },
+    [
+      h(
+        'span',
+        { style: 'font-weight: bold; font-size: 16px;' },
+        value
+      )
+    ]
+  )
 }
-
-onMounted(loadHolidays)
-watch(year, loadHolidays)
 </script>
 
-<template>
-  <div style="padding: 24px;">
-    <div style="margin-bottom: 24px; display: flex; align-items: center;">
-      <span style="margin-right: 8px; font-weight: 500;">Year:</span>
-      <a-select v-model:value="year" style="width: 100px">
-        <a-select-option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</a-select-option>
-      </a-select>
-    </div>
-    <a-spin :spinning="loading">
-      <div style="
-          display: flex;
-          flex-wrap: wrap;
-          gap: 20px;
-          justify-content: flex-start;
-        ">
-        <div v-for="month in monthList" :key="month" style="
-            width: 300px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 8px;
-            background: #fafafa;
-          ">
-          <h4 style="text-align: center; margin-bottom: 8px;">
-            {{ moment([year, month]).format('MMMM') }}
-          </h4>
-          <a-calendar :fullscreen="false" :value="moment([year, month])" :header-render="() => null" :date-cell-render="(date: Moment) => {
-            const dayHolidays = getHolidayForDate(date)
-            if (!dayHolidays.length) return null
-            return h(
-              ATooltip,
-              { title: dayHolidays.map(h => h.name).join(', ') },
-              {
-                default: () => h(
-                  'div',
-                  {
-                    style: {
-                      background: '#ff7875',
-                      color: 'white',
-                      borderRadius: '4px',
-                      padding: '0 2px',
-                      fontSize: '12px',
-                      textAlign: 'center',
-                    }
-                  },
-                  dayHolidays.map(h => h.name.split(' ')[0]).join(', ')
-                )
-              }
-            )
-          }" />
-        </div>
-      </div>
-    </a-spin>
-  </div>
-</template>
+<style scoped>
+.ant-picker-calendar-date .ant-tag {
+  font-size: 10px;
+  padding: 2px 4px;
+}
+</style>
