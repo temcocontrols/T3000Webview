@@ -19,6 +19,8 @@
           </a-col>
           <a-col>
             <div style="display: flex; justify-content: flex-start; gap: 8px;">
+              <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">Select All
+                Holidays</a-button>
               <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
               <a-button class="t3-btn" size="small" @click="ClearAll">Clear All</a-button>
               <a-button class="t3-btn" size="small" @click="HandleOk">Save Data</a-button>
@@ -46,12 +48,12 @@
           style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;">
           <template #dateFullCellRender="{ current }">
             <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
-                <div
+              <div
                 :style="isSelected(current)
-                    ? 'background: linear-gradient(135deg, #1890ff 0%, rgb(75, 210, 102) 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #rgb(44, 180, 129); text-decoration: underline;'
+                  ? 'background: linear-gradient(135deg, #1890ff 0%, rgb(75, 210, 102) 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #rgb(44, 180, 129); text-decoration: underline;'
                   : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'">
                 {{ current.date() }}
-                </div>
+              </div>
             </a-tooltip>
             <div v-else
               :style="isSelected(current)
@@ -197,6 +199,28 @@ function getUsHolidays(currentYear: number) {
 }
 
 const usHolidays = getUsHolidays(currentYear);
+
+const selectAllHolidays = () => {
+  LogUtil.Debug('= annual: selectAllHolidays Called');
+  // Clear all first
+  for (const monthKey in annualScheduleData.value) {
+    if (Object.prototype.hasOwnProperty.call(annualScheduleData.value, monthKey)) {
+      annualScheduleData.value[monthKey] = [];
+    }
+  }
+  // Add all US holidays to annualScheduleData
+  usHolidays.forEach(holiday => {
+    const dateObj = dayjs(holiday.date);
+    const monthKey = months[dateObj.month()];
+    if (!annualScheduleData.value[monthKey]) {
+      annualScheduleData.value[monthKey] = [];
+    }
+    if (!annualScheduleData.value[monthKey].includes(holiday.date)) {
+      annualScheduleData.value[monthKey].push(holiday.date);
+    }
+  });
+  LogUtil.Debug('= annual: selectAllHolidays Completed', annualScheduleData.value);
+}
 
 // Helper to check if a date is a US holiday
 const getHoliday = (date) => {
