@@ -46,16 +46,16 @@
           style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;">
           <template #dateFullCellRender="{ current }">
             <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
-              <div
+                <div
                 :style="isSelected(current)
-                  ? 'background: #1890ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #ff4d4f;'
-                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; color: #ff4d4f; font-weight: bold;'">
+                    ? 'background: linear-gradient(135deg, #1890ff 0%, rgb(75, 210, 102) 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #rgb(44, 180, 129); text-decoration: underline;'
+                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'">
                 {{ current.date() }}
-              </div>
+                </div>
             </a-tooltip>
             <div v-else
               :style="isSelected(current)
-                ? 'background: #1890ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
+                ? 'background: linear-gradient(135deg, #1890ff 0%, rgb(75, 210, 102) 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
                 : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
               {{ current.date() }}
             </div>
