@@ -45,9 +45,18 @@
           :header-render="() => headerRender({ value: month, onChange: () => { } })" @select="onSelect"
           style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;">
           <template #dateFullCellRender="{ current }">
-            <div :style="isSelected(current) ?
-              'background: #1890ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;' :
-              'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
+            <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
+              <div
+                :style="isSelected(current)
+                  ? 'background: #1890ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #ff4d4f;'
+                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; color: #ff4d4f; font-weight: bold;'">
+                {{ current.date() }}
+              </div>
+            </a-tooltip>
+            <div v-else
+              :style="isSelected(current)
+                ? 'background: #1890ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
+                : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
               {{ current.date() }}
             </div>
           </template>
@@ -116,21 +125,78 @@ const getModalTitle = () => {
   return `Annual Schedule for ${dayjs().year()}`;
 }
 
-// US Federal Holidays for the current year
+// US Federal Holidays and Common Major Non-Federal Holidays for the current year
 const currentYear = dayjs().year()
-const usHolidays = [
-  { date: `${currentYear}-01-01`, name: "New Year's Day" },
-  { date: `${currentYear}-01-15`, name: "Martin Luther King Jr. Day" }, // 3rd Monday Jan
-  { date: `${currentYear}-02-19`, name: "Presidents' Day" }, // 3rd Monday Feb
-  { date: `${currentYear}-05-27`, name: "Memorial Day" }, // Last Monday May
-  { date: `${currentYear}-06-19`, name: "Juneteenth" },
-  { date: `${currentYear}-07-04`, name: "Independence Day" },
-  { date: `${currentYear}-09-02`, name: "Labor Day" }, // 1st Monday Sep
-  { date: `${currentYear}-10-14`, name: "Columbus Day" }, // 2nd Monday Oct
-  { date: `${currentYear}-11-11`, name: "Veterans Day" },
-  { date: `${currentYear}-11-28`, name: "Thanksgiving Day" }, // 4th Thursday Nov
-  { date: `${currentYear}-12-25`, name: "Christmas Day" }
-]
+function getUsHolidays(currentYear: number) {
+  const usHolidays = [
+    // Federal Holidays
+    { date: `${currentYear}-01-01`, name: "New Year's Day" },
+    { date: dayjs(`${currentYear}-01-01`).day(1) > 0 ? dayjs(`${currentYear}-01-01`).day(1).add(14, 'day').format('YYYY-MM-DD') : '', name: "Martin Luther King Jr. Day" }, // 3rd Monday Jan
+    { date: dayjs(`${currentYear}-02-01`).day(1) > 0 ? dayjs(`${currentYear}-02-01`).day(1).add(14, 'day').format('YYYY-MM-DD') : '', name: "Presidents' Day" }, // 3rd Monday Feb
+    { date: dayjs(`${currentYear}-05-31`).day() === 1 ? dayjs(`${currentYear}-05-31`).format('YYYY-MM-DD') : dayjs(`${currentYear}-05-31`).day(1).subtract(7, 'day').format('YYYY-MM-DD'), name: "Memorial Day" }, // Last Monday May
+    { date: `${currentYear}-06-19`, name: "Juneteenth" },
+    { date: `${currentYear}-07-04`, name: "Independence Day" },
+    { date: dayjs(`${currentYear}-09-01`).day(1) === 1 ? dayjs(`${currentYear}-09-01`).format('YYYY-MM-DD') : dayjs(`${currentYear}-09-01`).day(1).format('YYYY-MM-DD'), name: "Labor Day" }, // 1st Monday Sep
+    { date: dayjs(`${currentYear}-10-01`).day(1) > 0 ? dayjs(`${currentYear}-10-01`).day(1).add(7, 'day').format('YYYY-MM-DD') : '', name: "Columbus Day" }, // 2nd Monday Oct
+    { date: `${currentYear}-11-11`, name: "Veterans Day" },
+    {
+      date: (() => { // 4th Thursday Nov
+        const firstThursday = dayjs(`${currentYear}-11-01`).day(4) < 4 ? dayjs(`${currentYear}-11-01`).add(4 - dayjs(`${currentYear}-11-01`).day(), 'day') : dayjs(`${currentYear}-11-01`).day(4);
+        return firstThursday.add(21, 'day').format('YYYY-MM-DD');
+      })(), name: "Thanksgiving Day"
+    },
+    { date: `${currentYear}-12-25`, name: "Christmas Day" },
+
+    // Major Non-Federal Holidays
+    {
+      date: (() => { // Easter Sunday (computational)
+        // Anonymous Gregorian algorithm
+        const Y = currentYear;
+        const a = Y % 19;
+        const b = Math.floor(Y / 100);
+        const c = Y % 100;
+        const d = Math.floor(b / 4);
+        const e = b % 4;
+        const f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3);
+        const h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4);
+        const k = c % 4;
+        const l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const month = Math.floor((h + l - 7 * m + 114) / 31);
+        const day = ((h + l - 7 * m + 114) % 31) + 1;
+        return `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      })(), name: "Easter Sunday"
+    },
+    { date: `${currentYear}-12-31`, name: "New Year's Eve" },
+    { date: `${currentYear}-10-31`, name: "Halloween" },
+    { date: `${currentYear}-02-14`, name: "Valentine's Day" },
+    { date: `${currentYear}-03-17`, name: "St. Patrick's Day" },
+    { date: `${currentYear}-05-12`, name: "Mother's Day" }, // 2nd Sunday May (approx, see below)
+    { date: `${currentYear}-06-16`, name: "Father's Day" }, // 3rd Sunday June (approx, see below)
+    { date: `${currentYear}-07-24`, name: "Pioneer Day (UT)" },
+    { date: `${currentYear}-11-01`, name: "All Saints' Day" }
+  ];
+
+  // Adjust Mother's Day (2nd Sunday in May)
+  usHolidays.forEach(h => {
+    if (h.name === "Mother's Day") {
+      const mayFirst = dayjs(`${currentYear}-05-01`);
+      const firstSunday = mayFirst.day() === 0 ? mayFirst : mayFirst.add(7 - mayFirst.day(), 'day');
+      h.date = firstSunday.add(7, 'day').format('YYYY-MM-DD');
+    }
+    if (h.name === "Father's Day") {
+      const juneFirst = dayjs(`${currentYear}-06-01`);
+      const firstSunday = juneFirst.day() === 0 ? juneFirst : juneFirst.add(7 - juneFirst.day(), 'day');
+      h.date = firstSunday.add(14, 'day').format('YYYY-MM-DD');
+    }
+  });
+
+  return usHolidays;
+}
+
+const usHolidays = getUsHolidays(currentYear);
 
 // Helper to check if a date is a US holiday
 const getHoliday = (date) => {
