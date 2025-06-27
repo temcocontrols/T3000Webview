@@ -18,7 +18,7 @@
             </div>
           </a-col>
           <a-col>
-            <div style="display: flex; justify-content: flex-start; gap: 8px;">
+            <div style="display: flex; justify-content: flex-start; gap: 8px;" v-if="!locked">
               <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">Select All
                 Holidays</a-button>
               <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
@@ -73,6 +73,7 @@ import { ref } from 'vue'
 import { Calendar as ACalendar, Card as ACard, Tag } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { annualScheduleVisible, annualScheduleData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
+import { locked } from 'src/lib/T3000/Hvac/Data/T3Data';
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -202,13 +203,7 @@ const usHolidays = getUsHolidays(currentYear);
 
 const selectAllHolidays = () => {
   LogUtil.Debug('= annual: selectAllHolidays Called');
-  // Clear all first
-  for (const monthKey in annualScheduleData.value) {
-    if (Object.prototype.hasOwnProperty.call(annualScheduleData.value, monthKey)) {
-      annualScheduleData.value[monthKey] = [];
-    }
-  }
-  // Add all US holidays to annualScheduleData
+  // Add all US holidays to annualScheduleData without removing existing days
   usHolidays.forEach(holiday => {
     const dateObj = dayjs(holiday.date);
     const monthKey = months[dateObj.month()];
@@ -277,11 +272,16 @@ const onSelect = (date, { source }) => {
   if (!annualScheduleData.value[monthKey]) {
     annualScheduleData.value[monthKey] = [];
   }
-  if (!annualScheduleData.value[monthKey].includes(day)) {
+  const idx = annualScheduleData.value[monthKey].indexOf(day);
+  if (idx === -1) {
+    // Not selected, add it
     annualScheduleData.value[monthKey].push(day);
+  } else {
+    // Already selected, remove it
+    annualScheduleData.value[monthKey].splice(idx, 1);
   }
 
-  LogUtil.Debug(`= annual: onSelect Date selected:`, date, `Source:`, source, annualScheduleData.value);
+  LogUtil.Debug(`= annual: onSelect Date toggled:`, date, `Source:`, source, annualScheduleData.value);
 }
 
 const getCurrentDay = (month) => {
