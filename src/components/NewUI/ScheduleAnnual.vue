@@ -4,8 +4,30 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:open="annualScheduleVisible" :title="getModalTitle()" width="75vw" style="top: 20px;"
-      :footer="null" wrapClassName="t3-annual-modal">
+    <a-modal v-model:open="annualScheduleVisible" width="75vw" style="top: 20px;" :footer="null"
+      wrapClassName="t3-annual-modal" destroyOnClose keyboard="true">
+
+
+      <div class="annual-calendar-container">
+        <!-- <div class="calendar-header"> -->
+        <a-row type="flex" justify="space-between" align="middle" style="margin-bottom: 20px;">
+          <a-col style="margin-top: 5px;margin-left: 10px;">
+            <div style="display: flex; justify-content: flex-start;gap:4px;height: 32px;">
+              <!-- <FieldTimeOutlined class="view-title" /> -->
+              <label class="view-title">{{ getModalTitle() }}</label>
+            </div>
+          </a-col>
+          <a-col>
+            <div style="display: flex; justify-content: flex-start; gap: 8px;">
+              <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
+              <a-button class="t3-btn" size="small" @click="ClearAll">Clear All</a-button>
+              <a-button class="t3-btn" size="small" @click="HandleOk">Save Data</a-button>
+              <a-button class="t3-btn" size="small" @click="HandleCancel">Cancel</a-button>
+            </div>
+          </a-col>
+        </a-row>
+      </div>
+
       <!-- <div style="display: flex; flex-wrap: wrap; gap: 16px;">
       <div v-for="(monthName, idx) in months" :key="monthName"
         style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;">
@@ -68,6 +90,29 @@ const isSelected = (date) => {
 // LogUtil.Debug(`= annual: months1 Generated months for year ${year}:`, months1);
 
 const getModalTitle = () => {
+
+  /*
+  return h(
+    'div',
+    {
+      style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;'
+    },
+    [
+      h('span', { style: 'font-size: 18px; font-weight: bold;' }, `Annual Schedule for ${dayjs().year()}`),
+      h(
+        'a-button',
+        {
+          type: 'primary',
+          onClick: () => {
+            // Save logic here
+            LogUtil.Debug('= annual: Save button clicked', annualScheduleData.value);
+          }
+        },
+        { default: () => 'Save' }
+      )
+    ]
+  )
+  */
   return `Annual Schedule for ${dayjs().year()}`;
 }
 
@@ -179,6 +224,43 @@ const getValidRange = (month) => {
   return allDays;
 }
 
+const RefreshFromT3000 = () => {
+  LogUtil.Debug(`= annual: RefreshFromT3000 Called`);
+  // Logic to refresh data from T3000
+  // For now, just log the action
+
+  for (const monthKey in annualScheduleData.value) {
+    if (Object.prototype.hasOwnProperty.call(annualScheduleData.value, monthKey)) {
+      annualScheduleData.value[monthKey] = [];
+    }
+  }
+}
+
+const ClearAll = () => {
+  LogUtil.Debug(`= annual: ClearAll Called`);
+  // Clear all data in annualScheduleData
+  for (const monthKey in annualScheduleData.value) {
+    if (Object.prototype.hasOwnProperty.call(annualScheduleData.value, monthKey)) {
+      annualScheduleData.value[monthKey] = [];
+    }
+  }
+  LogUtil.Debug(`= annual: ClearAll Completed`, annualScheduleData.value);
+}
+
+const HandleCancel = () => {
+  LogUtil.Debug(`= annual: HandleCancel Called`);
+  annualScheduleVisible.value = false;
+  // Logic to handle cancel action
+  // For now, just log the action
+}
+
+const HandleOk = () => {
+  LogUtil.Debug(`= annual: HandleOk Called`);
+  annualScheduleVisible.value = false;
+  // Logic to handle ok action
+  // For now, just log the action
+  LogUtil.Debug(`= annual: Data saved`, annualScheduleData.value);
+}
 </script>
 
 <style>
@@ -234,6 +316,13 @@ const getValidRange = (month) => {
 
   .ant-picker-content thead tr th {
     font-weight: bold;
+  }
+
+  .annual-calendar-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
   }
 }
 </style>
