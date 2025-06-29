@@ -4,7 +4,7 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:visible="scheduleModalNVisible" :title="modalTitle" :width="950" style="top:30px; height: 600px;"
+    <a-modal v-model:open="scheduleModalNVisible" :title="modalTitle" :width="950" style="top:30px; height: 600px;"
       wrapClassName="t3-modal" @ok="HandleOk" @cancel="HandleCancel" destroyOnClose keyboard="true">
       <div class="schedule-calendar-container">
         <!-- <div class="calendar-header"> -->
@@ -12,7 +12,7 @@
           <a-col style="margin-top: 5px;">
             <div style="display: flex; justify-content: flex-start;gap:4px;height: 32px;">
               <!-- <FieldTimeOutlined class="view-title" /> -->
-              <label class="view-title">{{ CurrentViewTitle() }}</label>
+              <label class="view-title">{{ currentViewTitle }}</label>
             </div>
           </a-col>
           <a-col>
@@ -33,7 +33,7 @@
       </template>
     </a-modal>
 
-    <a-modal v-model:visible="isEventModalVisible" :width="300"
+    <a-modal v-model:open="isEventModalVisible" :width="300"
       :title="modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'" wrapClassName="t3-sub-modal"
       @ok="HandleModalOk" @cancel="HandleModalCancel" destroyOnClose keyboard="true">
       <a-form :model="eventForm" layout="vertical">
@@ -138,53 +138,98 @@ const endTime = computed({
 const tcUtil = new TuiCalendarUtil();
 LogUtil.Debug('ScheduleCalendar', 'TuiCalendarUtil initialized', tcUtil);
 
-const CurrentViewTitle = (): string => {
-  return tcUtil.CurrentViewTitle();
-};
+// Computed property for view title to avoid function calls in template
+const currentViewTitle = computed((): string => {
+  try {
+    return tcUtil.CurrentViewTitle();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to get current view title', error);
+    return 'Schedule Calendar';
+  }
+});
 
 const HandleModalOk = (): void => {
-  tcUtil.HandleModalOk();
+  try {
+    tcUtil.HandleModalOk();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to handle modal OK', error);
+  }
 };
 
 const HandleModalCancel = (): void => {
-  tcUtil.HandleModalCancel();
+  try {
+    tcUtil.HandleModalCancel();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to handle modal cancel', error);
+  }
 };
 
 const HandleDeleteEvent = (): void => {
-  tcUtil.HandleDeleteEvent();
+  try {
+    tcUtil.HandleDeleteEvent();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to delete event', error);
+  }
 };
 
 const HandleOk = (): void => {
-  scheduleModalNVisible.value = false;
-  T3UIUtil.SetNavVisiblity(true);
+  try {
+    scheduleModalNVisible.value = false;
+    T3UIUtil.SetNavVisiblity(true);
 
-  // Save the calendar data to T3000
-  tcUtil.SaveDataToT3000();
+    // Save the calendar data to T3000
+    tcUtil.SaveDataToT3000();
+    LogUtil.Debug('ScheduleCalendar', 'Data saved successfully');
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to save data', error);
+    // Optionally show error message to user
+  }
 };
 
 const HandleCancel = (): void => {
-  scheduleModalNVisible.value = false;
-  T3UIUtil.SetNavVisiblity(true);
+  try {
+    scheduleModalNVisible.value = false;
+    T3UIUtil.SetNavVisiblity(true);
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to cancel modal', error);
+  }
 };
 
-const CopyMondayToWeekdays = () => {
-  tcUtil.CopyMondayToWeekdays();
+const CopyMondayToWeekdays = (): void => {
+  try {
+    tcUtil.CopyMondayToWeekdays();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to copy Monday to weekdays', error);
+  }
 };
 
-const RefreshFromT3000 = () => {
-  tcUtil.RefreshFromT3000();
+const RefreshFromT3000 = (): void => {
+  try {
+    tcUtil.RefreshFromT3000();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to refresh from T3000', error);
+  }
 };
 
-const ClearAll = () => {
-  tcUtil.ClearAll();
+const ClearAll = (): void => {
+  try {
+    tcUtil.ClearAll();
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to clear all data', error);
+  }
 };
 
 onMounted(() => {
-  tcUtil.InitVariables(calendarRef, isEventModalVisible, modalMode, eventForm);
-  tcUtil.InitTuiCalendar();
-  tcUtil.HideUIPanel();
-  tcUtil.InitTitle();
-  tcUtil.InitDefaultEvents();
+  try {
+    tcUtil.InitVariables(calendarRef, isEventModalVisible, modalMode, eventForm);
+    tcUtil.InitTuiCalendar();
+    tcUtil.HideUIPanel();
+    tcUtil.InitTitle();
+    tcUtil.InitDefaultEvents();
+    LogUtil.Debug('ScheduleCalendar', 'Component mounted and initialized successfully');
+  } catch (error) {
+    LogUtil.Error('ScheduleCalendar', 'Failed to initialize component on mount', error);
+  }
 });
 
 </script>
