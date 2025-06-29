@@ -45,22 +45,29 @@
           style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;"
         >
           <template #dateFullCellRender="{ current }">
-            <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
+            <!-- Only show dates that belong to the current month -->
+            <div v-if="current.month() === month.month()">
+              <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
+                <div
+                  :style="isSelected(current)
+                    ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #2cb481; text-decoration: underline;'
+                    : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'"
+                >
+                  {{ current.date() }}
+                </div>
+              </a-tooltip>
               <div
+                v-else
                 :style="isSelected(current)
-                  ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #2cb481; text-decoration: underline;'
-                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'"
+                  ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
+                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'"
               >
                 {{ current.date() }}
               </div>
-            </a-tooltip>
-            <div
-              v-else
-              :style="isSelected(current)
-                ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
-                : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'"
-            >
-              {{ current.date() }}
+            </div>
+            <!-- Empty cell for dates not in current month -->
+            <div v-else style="width: 24px; height: 24px; margin: auto;">
+              <!-- Empty space for previous/next month dates -->
             </div>
           </template>
         </a-calendar>
@@ -311,9 +318,18 @@ const headerRender = ({ value }: { value: Dayjs }): any => {
   )
 }
 
-// Date selection handler
+// Date selection handler - Updated to only allow selection of current month dates
 const onSelect = (date: Dayjs, { source }: CalendarSelectInfo): void => {
   LogUtil.Debug('= annual: onSelect Date selected:', date, 'Source:', source)
+
+  // Find which month calendar this date belongs to
+  const calendarMonth = months1.value.find(m => m.month() === date.month() && m.year() === date.year())
+
+  // Only allow selection if the date belongs to the calendar's month
+  if (!calendarMonth || date.month() !== calendarMonth.month()) {
+    LogUtil.Debug('= annual: onSelect Date not in current month, ignoring selection')
+    return
+  }
 
   const month = date.month()
   const monthKey = months[month]
@@ -428,6 +444,12 @@ const HandleOk = (): void => {
     display: flex;
     flex-direction: column;
     padding-top: 10px;
+  }
+
+  /* Hide dates from previous/next months by making them transparent */
+  .ant-picker-cell-in-view.ant-picker-cell-range-start,
+  .ant-picker-cell-in-view.ant-picker-cell-range-end {
+    background: transparent;
   }
 }
 </style>
