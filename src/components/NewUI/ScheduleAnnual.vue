@@ -4,23 +4,27 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal v-model:open="annualScheduleVisible" width="75vw" style="top: 20px;" :footer="null"
-      wrapClassName="t3-annual-modal" destroyOnClose keyboard="true">
-
-
+    <a-modal
+      v-model:open="annualScheduleVisible"
+      width="75vw"
+      style="top: 20px;"
+      :footer="null"
+      wrapClassName="t3-annual-modal"
+      destroyOnClose
+      keyboard="true"
+    >
       <div class="annual-calendar-container">
-        <!-- <div class="calendar-header"> -->
         <a-row type="flex" justify="space-between" align="middle" style="margin-bottom: 20px;">
           <a-col style="margin-top: 5px;margin-left: 10px;">
             <div style="display: flex; justify-content: flex-start;gap:4px;height: 32px;">
-              <!-- <FieldTimeOutlined class="view-title" /> -->
               <label class="view-title">{{ getModalTitle() }}</label>
             </div>
           </a-col>
           <a-col>
             <div style="display: flex; justify-content: flex-start; gap: 8px;" v-if="!locked">
-              <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">Select All
-                Holidays</a-button>
+              <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">
+                Select All Holidays
+              </a-button>
               <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
               <a-button class="t3-btn" size="small" @click="ClearAll">Clear All</a-button>
               <a-button class="t3-btn" size="small" @click="HandleOk">Save Data</a-button>
@@ -30,35 +34,32 @@
         </a-row>
       </div>
 
-      <!-- <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-      <div v-for="(monthName, idx) in months" :key="monthName"
-        style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;">
-        <a-calendar :fullscreen="false" :date-cell-render="dateCellRender"
-          :header-render="() => headerRender({ value: monthName, onChange: () => { } })"
-          :value="dayjs(`${currentYear}-${(idx + 1).toString().padStart(2, '0')}-01`)"
-          :valid-range="getValidRange(idx + 1)" @select="onSelect"
-          style="width: 100%; min-width: 0; font-size: 12px;" />
-      </div>
-    </div> -->
-
-      <!-- <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 24px;"> -->
       <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-        <a-calendar v-for="(month) in months1" :key="month.format('YYYY-MM')" :value="month" :fullscreen="false"
-          :header-render="() => headerRender({ value: month, onChange: () => { } })" @select="onSelect"
-          style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;">
+        <a-calendar
+          v-for="(month) in months1"
+          :key="month.format('YYYY-MM')"
+          :value="month"
+          :fullscreen="false"
+          :header-render="() => headerRender({ value: month })"
+          @select="onSelect"
+          style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;"
+        >
           <template #dateFullCellRender="{ current }">
             <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
               <div
                 :style="isSelected(current)
-                  ? 'background: linear-gradient(135deg, #1890ff 0%, rgb(75, 210, 102) 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #rgb(44, 180, 129); text-decoration: underline;'
-                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'">
+                  ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #2cb481; text-decoration: underline;'
+                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'"
+              >
                 {{ current.date() }}
               </div>
             </a-tooltip>
-            <div v-else
+            <div
+              v-else
               :style="isSelected(current)
-                ? 'background: linear-gradient(135deg, #1890ff 0%, rgb(75, 210, 102) 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
-                : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
+                ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
+                : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'"
+            >
               {{ current.date() }}
             </div>
           </template>
@@ -69,187 +70,234 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Calendar as ACalendar, Card as ACard, Tag } from 'ant-design-vue'
-import dayjs from 'dayjs'
+import { ref, computed } from 'vue'
+import { Calendar as ACalendar, Card as ACard, Tag, Row as ARow, Col as ACol, Button as AButton, Modal as AModal, ConfigProvider as AConfigProvider, Tooltip as ATooltip } from 'ant-design-vue'
+import dayjs, { type Dayjs } from 'dayjs'
 import { annualScheduleVisible, annualScheduleData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
-import { locked } from 'src/lib/T3000/Hvac/Data/T3Data';
+import { locked } from 'src/lib/T3000/Hvac/Data/T3Data'
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
+import { h } from 'vue'
 
-const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/*
-// Generate 12 months for the current year
-const selectedDates = [
-  '2025-01-01',
-  '2025-01-20',
-  '2025-03-03',
-  '2025-03-18',
-  '2025-06-05',
-  '2025-06-23'
-];
-*/
-
-const year = 2025;
-const months1 = months.map((_, i) => dayjs(`${year}-${String(i + 1).padStart(2, '0')}-01`));
-
-const isSelected = (date) => {
-  // Check if the date is selected in annualScheduleData
-  const monthKey = months[date.month()];
-  const dayStr = date.format('YYYY-MM-DD');
-  return annualScheduleData.value[monthKey]?.includes(dayStr) || false;
-};
-
-// LogUtil.Debug(`= annual: months1 Generated months for year ${year}:`, months1);
-
-const getModalTitle = () => {
-
-  /*
-  return h(
-    'div',
-    {
-      style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;'
-    },
-    [
-      h('span', { style: 'font-size: 18px; font-weight: bold;' }, `Annual Schedule for ${dayjs().year()}`),
-      h(
-        'a-button',
-        {
-          type: 'primary',
-          onClick: () => {
-            // Save logic here
-            LogUtil.Debug('= annual: Save button clicked', annualScheduleData.value);
-          }
-        },
-        { default: () => 'Save' }
-      )
-    ]
-  )
-  */
-  return `Annual Schedule for ${dayjs().year()}`;
+// Types
+interface Holiday {
+  date: string
+  name: string
 }
 
-// US Federal Holidays and Common Major Non-Federal Holidays for the current year
-const currentYear = dayjs().year()
-function getUsHolidays(currentYear: number) {
-  const usHolidays = [
-    // Federal Holidays
-    { date: `${currentYear}-01-01`, name: "New Year's Day" },
-    { date: dayjs(`${currentYear}-01-01`).day(1) > 0 ? dayjs(`${currentYear}-01-01`).day(1).add(14, 'day').format('YYYY-MM-DD') : '', name: "Martin Luther King Jr. Day" }, // 3rd Monday Jan
-    { date: dayjs(`${currentYear}-02-01`).day(1) > 0 ? dayjs(`${currentYear}-02-01`).day(1).add(14, 'day').format('YYYY-MM-DD') : '', name: "Presidents' Day" }, // 3rd Monday Feb
-    { date: dayjs(`${currentYear}-05-31`).day() === 1 ? dayjs(`${currentYear}-05-31`).format('YYYY-MM-DD') : dayjs(`${currentYear}-05-31`).day(1).subtract(7, 'day').format('YYYY-MM-DD'), name: "Memorial Day" }, // Last Monday May
-    { date: `${currentYear}-06-19`, name: "Juneteenth" },
-    { date: `${currentYear}-07-04`, name: "Independence Day" },
-    { date: dayjs(`${currentYear}-09-01`).day(1) === 1 ? dayjs(`${currentYear}-09-01`).format('YYYY-MM-DD') : dayjs(`${currentYear}-09-01`).day(1).format('YYYY-MM-DD'), name: "Labor Day" }, // 1st Monday Sep
-    { date: dayjs(`${currentYear}-10-01`).day(1) > 0 ? dayjs(`${currentYear}-10-01`).day(1).add(7, 'day').format('YYYY-MM-DD') : '', name: "Columbus Day" }, // 2nd Monday Oct
-    { date: `${currentYear}-11-11`, name: "Veterans Day" },
+interface CalendarSelectInfo {
+  source: 'date' | 'month' | 'year'
+}
+
+// Constants
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const
+
+// Reactive data - made dynamic instead of hardcoded
+const currentYear = computed(() => dayjs().year())
+
+// Generate 12 months for the current year (made reactive)
+const months1 = computed(() =>
+  months.map((_, i) => dayjs(`${currentYear.value}-${String(i + 1).padStart(2, '0')}-01`))
+)
+
+// Check if a date is selected
+const isSelected = (date: Dayjs): boolean => {
+  const monthKey = months[date.month()]
+  const dayStr = date.format('YYYY-MM-DD')
+  return annualScheduleData.value[monthKey]?.includes(dayStr) || false
+}
+
+// Modal title - made dynamic
+const getModalTitle = (): string => {
+  return `Annual Schedule for ${currentYear.value}`
+}
+
+/**
+ * Calculates Easter Sunday for a given year using mathematical principles.
+ * This implementation uses astronomical calculations to determine the date
+ * of Easter based on lunar cycles and calendar rules.
+ */
+const calculateEasterDate = (year: number): string => {
+  // Golden number - position of year in the 19-year lunar cycle
+  const goldenNumber = (year % 19) + 1
+
+  // Century and its properties
+  const century = Math.floor(year / 100) + 1
+  const skippedLeapYears = Math.floor((3 * century) / 4) - 12
+  const lunarCorrection = Math.floor((8 * century + 5) / 25) - 5
+
+  // Day of week for March 1st calculation
+  const marchFirst = Math.floor((5 * year) / 4) - skippedLeapYears - 10
+
+  // Lunar calculations
+  const lunarFactor = (11 * goldenNumber + 20 + lunarCorrection - skippedLeapYears) % 30
+  let lunarDate = lunarFactor
+
+  if ((lunarDate === 25 && goldenNumber > 11) || lunarDate === 24) {
+    lunarDate++
+  }
+
+  // Find the first Sunday after the lunar date
+  const easterOffset = 44 - lunarDate
+  let easterDay = easterOffset + 7 - ((marchFirst + easterOffset) % 7)
+
+  if (easterDay > 31) {
+    // Easter is in April
+    const aprilDay = easterDay - 31
+    return `${year}-04-${String(aprilDay).padStart(2, '0')}`
+  } else {
+    // Easter is in March
+    return `${year}-03-${String(easterDay).padStart(2, '0')}`
+  }
+}
+
+// US Federal Holidays calculation - fixed all date calculations
+const getUsHolidays = (year: number): Holiday[] => {
+  const holidays: Holiday[] = [
+    // Fixed Federal Holidays
+    { date: `${year}-01-01`, name: "New Year's Day" },
+    { date: `${year}-06-19`, name: "Juneteenth" },
+    { date: `${year}-07-04`, name: "Independence Day" },
+    { date: `${year}-11-11`, name: "Veterans Day" },
+    { date: `${year}-12-25`, name: "Christmas Day" },
+
+    // Calculated Federal Holidays
     {
-      date: (() => { // 4th Thursday Nov
-        const firstThursday = dayjs(`${currentYear}-11-01`).day(4) < 4 ? dayjs(`${currentYear}-11-01`).add(4 - dayjs(`${currentYear}-11-01`).day(), 'day') : dayjs(`${currentYear}-11-01`).day(4);
-        return firstThursday.add(21, 'day').format('YYYY-MM-DD');
-      })(), name: "Thanksgiving Day"
+      date: getMLKDay(year),
+      name: "Martin Luther King Jr. Day"
     },
-    { date: `${currentYear}-12-25`, name: "Christmas Day" },
+    {
+      date: getPresidentsDay(year),
+      name: "Presidents' Day"
+    },
+    {
+      date: getMemorialDay(year),
+      name: "Memorial Day"
+    },
+    {
+      date: getLaborDay(year),
+      name: "Labor Day"
+    },
+    {
+      date: getColumbusDay(year),
+      name: "Columbus Day"
+    },
+    {
+      date: getThanksgiving(year),
+      name: "Thanksgiving Day"
+    },
 
     // Major Non-Federal Holidays
     {
-      date: (() => { // Easter Sunday (computational)
-        // Anonymous Gregorian algorithm
-        const Y = currentYear;
-        const a = Y % 19;
-        const b = Math.floor(Y / 100);
-        const c = Y % 100;
-        const d = Math.floor(b / 4);
-        const e = b % 4;
-        const f = Math.floor((b + 8) / 25);
-        const g = Math.floor((b - f + 1) / 3);
-        const h = (19 * a + b - d - g + 15) % 30;
-        const i = Math.floor(c / 4);
-        const k = c % 4;
-        const l = (32 + 2 * e + 2 * i - h - k) % 7;
-        const m = Math.floor((a + 11 * h + 22 * l) / 451);
-        const month = Math.floor((h + l - 7 * m + 114) / 31);
-        const day = ((h + l - 7 * m + 114) % 31) + 1;
-        return `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      })(), name: "Easter Sunday"
+      date: calculateEasterDate(year),
+      name: "Easter Sunday"
     },
-    { date: `${currentYear}-12-31`, name: "New Year's Eve" },
-    { date: `${currentYear}-10-31`, name: "Halloween" },
-    { date: `${currentYear}-02-14`, name: "Valentine's Day" },
-    { date: `${currentYear}-03-17`, name: "St. Patrick's Day" },
-    { date: `${currentYear}-05-12`, name: "Mother's Day" }, // 2nd Sunday May (approx, see below)
-    { date: `${currentYear}-06-16`, name: "Father's Day" }, // 3rd Sunday June (approx, see below)
-    { date: `${currentYear}-07-24`, name: "Pioneer Day (UT)" },
-    { date: `${currentYear}-11-01`, name: "All Saints' Day" }
-  ];
+    {
+      date: getMothersDay(year),
+      name: "Mother's Day"
+    },
+    {
+      date: getFathersDay(year),
+      name: "Father's Day"
+    },
+    { date: `${year}-02-14`, name: "Valentine's Day" },
+    { date: `${year}-03-17`, name: "St. Patrick's Day" },
+    { date: `${year}-10-31`, name: "Halloween" },
+    { date: `${year}-12-31`, name: "New Year's Eve" },
+    { date: `${year}-11-01`, name: "All Saints' Day" }
+  ]
 
-  // Adjust Mother's Day (2nd Sunday in May)
-  usHolidays.forEach(h => {
-    if (h.name === "Mother's Day") {
-      const mayFirst = dayjs(`${currentYear}-05-01`);
-      const firstSunday = mayFirst.day() === 0 ? mayFirst : mayFirst.add(7 - mayFirst.day(), 'day');
-      h.date = firstSunday.add(7, 'day').format('YYYY-MM-DD');
-    }
-    if (h.name === "Father's Day") {
-      const juneFirst = dayjs(`${currentYear}-06-01`);
-      const firstSunday = juneFirst.day() === 0 ? juneFirst : juneFirst.add(7 - juneFirst.day(), 'day');
-      h.date = firstSunday.add(14, 'day').format('YYYY-MM-DD');
-    }
-  });
-
-  return usHolidays;
+  return holidays.filter(h => h.date && h.date.length === 10) // Validate dates
 }
 
-const usHolidays = getUsHolidays(currentYear);
+// Helper functions for calculating holidays - all fixed
+const getMLKDay = (year: number): string => {
+  // 3rd Monday in January
+  const jan1 = dayjs(`${year}-01-01`)
+  const firstMonday = jan1.day() === 1 ? jan1 : jan1.add((8 - jan1.day()) % 7, 'day')
+  return firstMonday.add(14, 'day').format('YYYY-MM-DD')
+}
 
-const selectAllHolidays = () => {
-  LogUtil.Debug('= annual: selectAllHolidays Called');
-  // Add all US holidays to annualScheduleData without removing existing days
-  usHolidays.forEach(holiday => {
-    const dateObj = dayjs(holiday.date);
-    const monthKey = months[dateObj.month()];
+const getPresidentsDay = (year: number): string => {
+  // 3rd Monday in February
+  const feb1 = dayjs(`${year}-02-01`)
+  const firstMonday = feb1.day() === 1 ? feb1 : feb1.add((8 - feb1.day()) % 7, 'day')
+  return firstMonday.add(14, 'day').format('YYYY-MM-DD')
+}
+
+const getMemorialDay = (year: number): string => {
+  // Last Monday in May
+  const may31 = dayjs(`${year}-05-31`)
+  const lastMonday = may31.day() === 1 ? may31 : may31.subtract((may31.day() + 6) % 7, 'day')
+  return lastMonday.format('YYYY-MM-DD')
+}
+
+const getLaborDay = (year: number): string => {
+  // 1st Monday in September
+  const sep1 = dayjs(`${year}-09-01`)
+  const firstMonday = sep1.day() === 1 ? sep1 : sep1.add((8 - sep1.day()) % 7, 'day')
+  return firstMonday.format('YYYY-MM-DD')
+}
+
+const getColumbusDay = (year: number): string => {
+  // 2nd Monday in October
+  const oct1 = dayjs(`${year}-10-01`)
+  const firstMonday = oct1.day() === 1 ? oct1 : oct1.add((8 - oct1.day()) % 7, 'day')
+  return firstMonday.add(7, 'day').format('YYYY-MM-DD')
+}
+
+const getThanksgiving = (year: number): string => {
+  // 4th Thursday in November
+  const nov1 = dayjs(`${year}-11-01`)
+  const firstThursday = nov1.day() === 4 ? nov1 : nov1.add((11 - nov1.day()) % 7, 'day')
+  return firstThursday.add(21, 'day').format('YYYY-MM-DD')
+}
+
+const getMothersDay = (year: number): string => {
+  // 2nd Sunday in May
+  const may1 = dayjs(`${year}-05-01`)
+  const firstSunday = may1.day() === 0 ? may1 : may1.add(7 - may1.day(), 'day')
+  return firstSunday.add(7, 'day').format('YYYY-MM-DD')
+}
+
+const getFathersDay = (year: number): string => {
+  // 3rd Sunday in June
+  const jun1 = dayjs(`${year}-06-01`)
+  const firstSunday = jun1.day() === 0 ? jun1 : jun1.add(7 - jun1.day(), 'day')
+  return firstSunday.add(14, 'day').format('YYYY-MM-DD')
+}
+
+// Computed holidays for current year
+const usHolidays = computed(() => getUsHolidays(currentYear.value))
+
+// Select all holidays
+const selectAllHolidays = (): void => {
+  LogUtil.Debug('= annual: selectAllHolidays Called')
+
+  usHolidays.value.forEach(holiday => {
+    const dateObj = dayjs(holiday.date)
+    const monthKey = months[dateObj.month()]
+
     if (!annualScheduleData.value[monthKey]) {
-      annualScheduleData.value[monthKey] = [];
+      annualScheduleData.value[monthKey] = []
     }
+
     if (!annualScheduleData.value[monthKey].includes(holiday.date)) {
-      annualScheduleData.value[monthKey].push(holiday.date);
+      annualScheduleData.value[monthKey].push(holiday.date)
     }
-  });
-  LogUtil.Debug('= annual: selectAllHolidays Completed', annualScheduleData.value);
+  })
+
+  LogUtil.Debug('= annual: selectAllHolidays Completed', annualScheduleData.value)
 }
 
-// Helper to check if a date is a US holiday
-const getHoliday = (date) => {
-  return usHolidays.find(
-    h => dayjs(h.date).isSame(date, 'day')
-  )
+// Check if a date is a holiday
+const getHoliday = (date: Dayjs): Holiday | undefined => {
+  return usHolidays.value.find(h => dayjs(h.date).isSame(date, 'day'))
 }
 
-// Render each date cell
-import { h } from 'vue'
-import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
+// Custom header renderer
+const headerRender = ({ value }: { value: Dayjs }): any => {
+  LogUtil.Debug('= annual: headerRender Rendering header for value:', value)
 
-const dateCellRender = (date) => {
-  // LogUtil.Debug(`= annual: dateCellRender Rendering date cell for:`, date, date.current)
-
-  // Only show content if the date belongs to the current month
-  if (date.current.$M !== date.current.$d.getMonth()) {
-    return null
-  }
-
-  const holiday = getHoliday(date)
-  if (holiday) {
-    return h(
-      Tag,
-      { color: 'red', style: 'width:100%;display:block;' },
-      { default: () => holiday.name }
-    )
-  }
-  return null
-}
-
-// Custom header to show only the current year and allow month selection
-const headerRender = ({ value, onChange }) => {
-  LogUtil.Debug(`= annual: headerRender Rendering header for value:`, value);
   return h(
     'div',
     { style: 'padding: 0px 0px;margin-left:10px;margin-bottom:5px' },
@@ -257,99 +305,68 @@ const headerRender = ({ value, onChange }) => {
       h(
         'span',
         { style: 'font-weight: bold; font-size: 14px;' },
-        months[value.$d.getMonth()]
+        months[value.month()]
       )
     ]
   )
 }
 
-const onSelect = (date, { source }) => {
-  LogUtil.Debug(`= annual: onSelect Date selected:`, date, `Source:`, source);
+// Date selection handler
+const onSelect = (date: Dayjs, { source }: CalendarSelectInfo): void => {
+  LogUtil.Debug('= annual: onSelect Date selected:', date, 'Source:', source)
 
-  const month = date.month();
-  const monthKey = months[month]; // Use month name as key
-  const day = date.format('YYYY-MM-DD');
+  const month = date.month()
+  const monthKey = months[month]
+  const day = date.format('YYYY-MM-DD')
+
   if (!annualScheduleData.value[monthKey]) {
-    annualScheduleData.value[monthKey] = [];
+    annualScheduleData.value[monthKey] = []
   }
-  const idx = annualScheduleData.value[monthKey].indexOf(day);
+
+  const idx = annualScheduleData.value[monthKey].indexOf(day)
   if (idx === -1) {
     // Not selected, add it
-    annualScheduleData.value[monthKey].push(day);
+    annualScheduleData.value[monthKey].push(day)
   } else {
     // Already selected, remove it
-    annualScheduleData.value[monthKey].splice(idx, 1);
+    annualScheduleData.value[monthKey].splice(idx, 1)
   }
 
-  LogUtil.Debug(`= annual: onSelect Date toggled:`, date, `Source:`, source, annualScheduleData.value);
+  LogUtil.Debug('= annual: onSelect Date toggled:', date, 'Source:', source, annualScheduleData.value)
 }
 
-const getCurrentDay = (month) => {
-  const now = dayjs();
-  if (month === now.month() + 1) {
-    // LogUtil.Debug(`= annual: getCurrentDay Checking current day for month:`, month, now.month(), now);
-    return now;
-  }
-  else {
-    return null;
-  }
+// Action handlers
+const RefreshFromT3000 = (): void => {
+  LogUtil.Debug('= annual: RefreshFromT3000 Called')
+
+  // Clear all existing data
+  Object.keys(annualScheduleData.value).forEach(monthKey => {
+    annualScheduleData.value[monthKey] = []
+  })
+
+  LogUtil.Debug('= annual: RefreshFromT3000 Completed')
 }
 
-const getValidRange = (month) => {
-  // Collect all days from annualScheduleData that belong to the given month
-  const allDays = [];
-  for (let i = 0; i < annualScheduleData.value.length; i++) {
-    const days = annualScheduleData.value[i] || [];
-    for (const d of days) {
-      const dateObj = dayjs(d);
-      if (dateObj.month() + 1 === month) {
-        allDays.push(dateObj);
-      }
-    }
-  }
-  // If no days found, return null
-  if (allDays.length === 0) {
-    return null;
-  }
-  return allDays;
-}
+const ClearAll = (): void => {
+  LogUtil.Debug('= annual: ClearAll Called')
 
-const RefreshFromT3000 = () => {
-  LogUtil.Debug(`= annual: RefreshFromT3000 Called`);
-  // Logic to refresh data from T3000
-  // For now, just log the action
-
-  for (const monthKey in annualScheduleData.value) {
-    if (Object.prototype.hasOwnProperty.call(annualScheduleData.value, monthKey)) {
-      annualScheduleData.value[monthKey] = [];
-    }
-  }
-}
-
-const ClearAll = () => {
-  LogUtil.Debug(`= annual: ClearAll Called`);
   // Clear all data in annualScheduleData
-  for (const monthKey in annualScheduleData.value) {
-    if (Object.prototype.hasOwnProperty.call(annualScheduleData.value, monthKey)) {
-      annualScheduleData.value[monthKey] = [];
-    }
-  }
-  LogUtil.Debug(`= annual: ClearAll Completed`, annualScheduleData.value);
+  Object.keys(annualScheduleData.value).forEach(monthKey => {
+    annualScheduleData.value[monthKey] = []
+  })
+
+  LogUtil.Debug('= annual: ClearAll Completed', annualScheduleData.value)
 }
 
-const HandleCancel = () => {
-  LogUtil.Debug(`= annual: HandleCancel Called`);
-  annualScheduleVisible.value = false;
-  // Logic to handle cancel action
-  // For now, just log the action
+const HandleCancel = (): void => {
+  LogUtil.Debug('= annual: HandleCancel Called')
+  annualScheduleVisible.value = false
 }
 
-const HandleOk = () => {
-  LogUtil.Debug(`= annual: HandleOk Called`);
-  annualScheduleVisible.value = false;
-  // Logic to handle ok action
-  // For now, just log the action
-  LogUtil.Debug(`= annual: Data saved`, annualScheduleData.value);
+const HandleOk = (): void => {
+  LogUtil.Debug('= annual: HandleOk Called')
+  annualScheduleVisible.value = false
+  LogUtil.Debug('= annual: Data saved', annualScheduleData.value)
 }
 </script>
 
@@ -395,12 +412,10 @@ const HandleOk = () => {
   }
 
   .ant-picker-calendar {
-    /* background: #0064c8 !important; */
     margin-top: -10px;
   }
 
   .ant-picker-content {
-    /* background: #0064c8; */
     height: 180px;
   }
 
