@@ -12,26 +12,48 @@ import LogUtil from "../../Util/LogUtil"
 
 class WebSocketClient {
 
-  private socket: WebSocket;
+  private socket: WebSocket | null = null;
   private retries: number = 0;
   private maxRetries: number = 10;
   private pingInterval: number = 10000; // 10 seconds
+  private pingIntervalId: NodeJS.Timeout | null = null;
+  private reconnectTimeoutId: NodeJS.Timeout | null = null;
   private uri: string;
   public messageModel: MessageModel;
   public messageData: string;
   public needRefresh: boolean = true;
   public $q: any;
   public reloadInitialDataInterval: any;
+  private isDestroyed: boolean = false;
+  private messageQueue: string[] = [];
 
   constructor() { }
 
   public connect() {
+    if (this.isDestroyed) {
+      LogUtil.Error('Cannot connect: WebSocketClient has been destroyed');
+      return;
+    }
+
+    // Cleanup previous connection
+    this.cleanup();
 
     this.uri = this.getUri();
 
     //ws://localhost:9104 || ws://127.0.0.1:9104
     const wsUri = `ws://${this.uri}:9104`;
-    this.socket = new WebSocket(wsUri);
+
+    try {
+      this.socket = new WebSocket(wsUri);
+      this.setupEventHandlers();
+    } catch (error) {
+      LogUtil.Error('Failed to create WebSocket connection:', error);
+      this.attemptReconnect();
+    }
+  }
+
+  private setupEventHandlers() {
+    if (!this.socket) return;
 
     this.socket.onopen = this.onOpen.bind(this);
     this.socket.onmessage = this.onMessage.bind(this);
@@ -45,52 +67,107 @@ class WebSocketClient {
     this.retries = 0;
     // this.startPing();
 
-    if (this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.bindCurrentClient();
+      this.processPendingMessages();
     }
 
-    // Refesh the data if re/connected to the data client
+    // Refresh the data if re/connected to the data client
     this.GetPanelsList();
   }
 
   private onMessage(event: MessageEvent) {
     // LogUtil.Info('= Ws message received:', event.data);
-    this.processMessage(event.data);
+    try {
+      this.processMessage(event.data);
+    } catch (error) {
+      LogUtil.Error('Error processing WebSocket message:', error);
+    }
   }
 
   private onClose(event: CloseEvent) {
     LogUtil.Info('= ws: connection closed:', event);
-    this.attemptReconnect();
+    this.cleanup();
+    if (!this.isDestroyed) {
+      this.attemptReconnect();
+    }
   }
 
   private onError(event: Event) {
     T3Util.Error('= ws: onError/', event);
 
     const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
-    // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
     T3UIUtil.ShowWebSocketError(errorMsg);
 
-    this.attemptReconnect();
+    this.cleanup();
+    if (!this.isDestroyed) {
+      this.attemptReconnect();
+    }
+  }
+
+  private cleanup() {
+    // Clear intervals
+    if (this.pingIntervalId) {
+      clearInterval(this.pingIntervalId);
+      this.pingIntervalId = null;
+    }
+
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+
+    if (this.reloadInitialDataInterval) {
+      clearInterval(this.reloadInitialDataInterval);
+      this.reloadInitialDataInterval = null;
+    }
+
+    // Clean up socket
+    if (this.socket) {
+      this.socket.onopen = null;
+      this.socket.onmessage = null;
+      this.socket.onclose = null;
+      this.socket.onerror = null;
+
+      if (this.socket.readyState === WebSocket.OPEN) {
+        this.socket.close();
+      }
+      this.socket = null;
+    }
   }
 
   private startPing() {
-    setInterval(() => {
+    // Clear existing interval if any
+    if (this.pingIntervalId) {
+      clearInterval(this.pingIntervalId);
+    }
+
+    this.pingIntervalId = setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        this.socket.send("ping");
+        try {
+          this.socket.send("ping");
+        } catch (error) {
+          LogUtil.Error('Failed to send ping:', error);
+        }
       }
     }, this.pingInterval);
   }
 
   private attemptReconnect() {
-    if (this.retries < this.maxRetries) {
-      LogUtil.Info(`= ws: attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
-      setTimeout(() => {
-        this.retries++;
-        this.connect();
-      }, 5000); // 5 seconds
-    } else {
-      LogUtil.Info("= ws: max retries reached. Giving up.");
+    if (this.retries >= this.maxRetries || this.isDestroyed) {
+      LogUtil.Info("= ws: max retries reached or client destroyed. Giving up.");
+      return;
     }
+
+    // Use exponential backoff for reconnection delay
+    const delay = Math.min(1000 * Math.pow(2, this.retries), 30000);
+
+    LogUtil.Info(`= ws: attempting to reconnect (${this.retries + 1}/${this.maxRetries}) in ${delay}ms`);
+
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.retries++;
+      this.connect();
+    }, delay);
   }
 
   public getUri() {
@@ -112,48 +189,55 @@ class WebSocketClient {
   }
 
   sendMessage(message: string) {
+    if (this.isDestroyed) {
+      LogUtil.Error('Cannot send message: WebSocketClient has been destroyed');
+      return;
+    }
+
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket?.send(message);
-      const currentDateTime = new Date().toLocaleString();
-      LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+      try {
+        this.socket.send(message);
+        const currentDateTime = new Date().toLocaleString();
+        LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+      } catch (error) {
+        LogUtil.Error('Failed to send message:', error);
+        this.messageQueue.push(message);
+        this.attemptReconnect();
+      }
     } else {
-      LogUtil.Info('= ws: sendMessage / socket is not open | ready state:', this.socket.readyState);
+      // Queue message for later
+      this.messageQueue.push(message);
+      LogUtil.Info('= ws: sendMessage / socket not open, message queued. Ready state:', this.socket?.readyState);
 
-      // Store the message to send after reconnection
-      const pendingMessage = message;
-
-      // Remove existing onopen handler to avoid duplicates
-      this.socket.onopen = null;
-
-      // If socket is closed or closing, reconnect
-      if (this.socket.readyState === WebSocket.CLOSED || this.socket.readyState === WebSocket.CLOSING) {
-        LogUtil.Info('= ws: sendMessage / reconnecting before sending message...');
-
-        // Create new socket connection
+      // If not connected, attempt to connect
+      if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
         this.connect();
-
-        // Set up onopen handler for the new connection
-        this.socket.onopen = (event: Event) => {
-          LogUtil.Info('= ws: sendMessage / reconnected successfully, sending pending message');
-          // Call the original onOpen handler
-          this.onOpen(event);
-
-          // Send the pending message
-          if (this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(pendingMessage);
-            LogUtil.Info('= ws: sendMessage / pending message sent after reconnection');
-          } else {
-            T3Util.Error('= ws: sendMessage / failed to send message after reconnection attempt');
-          }
-        };
-      } else {
-        // Socket is connecting, wait for it to open
-        this.socket.onopen = () => {
-          LogUtil.Info('= ws: sendMessage / connection established, sending pending message');
-          this.socket.send(pendingMessage);
-        };
       }
     }
+  }
+
+  private processPendingMessages() {
+    while (this.messageQueue.length > 0 && this.socket?.readyState === WebSocket.OPEN) {
+      const message = this.messageQueue.shift();
+      if (message) {
+        try {
+          this.socket.send(message);
+          LogUtil.Info('= ws: pending message sent:', message);
+        } catch (error) {
+          LogUtil.Error('Failed to send pending message:', error);
+          // Put message back at the beginning of queue
+          this.messageQueue.unshift(message);
+          break;
+        }
+      }
+    }
+  }
+
+  public destroy() {
+    this.isDestroyed = true;
+    this.cleanup();
+    this.messageQueue = [];
+    LogUtil.Info('= ws: WebSocketClient destroyed');
   }
 
   //#region  Format Message
