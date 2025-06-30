@@ -28,10 +28,10 @@ if (element) {
 // ❌ Bad - accessing ref before mount
 setup() {
   const myRef = ref(null);
-  
+
   // This might run before component is mounted
   myRef.value.focus(); // node is undefined
-  
+
   return { myRef };
 }
 
@@ -41,13 +41,13 @@ import { NodeDebugger } from 'src/lib/debug/NodeDebugger.js';
 
 setup() {
   const myRef = ref(null);
-  
+
   onMounted(() => {
     if (NodeDebugger.validateRef(myRef, 'myRef')) {
       myRef.value.focus();
     }
   });
-  
+
   return { myRef };
 }
 ```
@@ -173,15 +173,15 @@ const { validateRef, safeQuery, logCallStack } = useNodeDebugger();
 
 onMounted(async () => {
   await nextTick();
-  
+
   // Validate Vue ref
   if (validateRef(myRef, 'myRef')) {
     console.log('Ref is ready');
   }
-  
+
   // Safe DOM query within component
   const element = safeQuery('.my-class', myRef.value);
-  
+
   // Log call stack for debugging
   if (process.env.NODE_ENV === 'development') {
     logCallStack('Component mounted');
@@ -197,7 +197,7 @@ import { progressiveLoader } from 'src/lib/performance/ProgressiveLoader.js';
 // The progressiveLoader now handles all validation internally
 export function setupLazyImages(container) {
   const images = container.querySelectorAll('img[data-src]');
-  
+
   images.forEach(img => {
     // This is now safe - validation is built-in
     progressiveLoader.registerImage(img, {
