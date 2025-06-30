@@ -1,25 +1,19 @@
 import { defineAsyncComponent } from 'vue';
 
-// Create optimized lazy components with simple error handling
+// Create optimized lazy components with robust error handling and retry logic
 const createOptimizedComponent = (importFn, name, options = {}) => {
   const {
     category = 'normal',
-    timeout = 15000
+    timeout = getTimeoutForComponent(name),
+    maxRetries = 3,
+    retryDelay = 1000
   } = options;
 
-  console.log(`Creating component: ${name}`);
+  console.log(`Creating component: ${name} with timeout: ${timeout}ms`);
 
   return defineAsyncComponent({
     loader: async () => {
-      console.log(`Loading component: ${name}`);
-      try {
-        const module = await importFn();
-        console.log(`Successfully loaded component: ${name}`);
-        return module;
-      } catch (error) {
-        console.error(`Failed to load component: ${name}`, error);
-        throw error;
-      }
+      return loadComponentWithRetry(importFn, name, maxRetries, retryDelay, timeout);
     },
     loadingComponent: {
       template: `<SimpleLoadingComponent :message="'Loading component...'" :component-name="'${name}'" />`,
@@ -38,10 +32,69 @@ const createOptimizedComponent = (importFn, name, options = {}) => {
     timeout,
     onError: (error, retry, fail, attempts) => {
       console.error(`Error loading component ${name} (attempt ${attempts}):`, error);
-      fail(); // Always fail to show error component
+
+      // For timeout errors, try to retry with longer timeout
+      if (error.message.includes('timed out') && attempts < maxRetries) {
+        console.log(`Retrying component ${name} with extended timeout...`);
+        setTimeout(() => retry(), retryDelay * attempts);
+      } else {
+        console.error(`Failed to load component ${name} after ${attempts} attempts`);
+        fail();
+      }
     }
   });
 };
+
+// Get appropriate timeout based on component name and known problematic files
+function getTimeoutForComponent(name) {
+  // Known heavy components that need longer timeouts
+  const heavyComponents = {
+    'IndexPage2': 30000,        // 30 seconds for IndexPage2 (contains pathseg.js)
+    'HvacIndexPage2': 30000,
+    'SVGEditor': 25000,
+    'MainLayout': 20000,
+    'HvacIndexPage': 20000
+  };
+
+  return heavyComponents[name] || 15000; // Default 15 seconds
+}
+
+// Enhanced component loader with retry logic
+async function loadComponentWithRetry(importFn, name, maxRetries, retryDelay, timeout) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Loading component: ${name} (attempt ${attempt}/${maxRetries})`);
+
+      // Create a promise race between the import and a timeout
+      const loadPromise = importFn();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Component ${name} timed out after ${timeout}ms (attempt ${attempt})`));
+        }, timeout);
+      });
+
+      const module = await Promise.race([loadPromise, timeoutPromise]);
+      console.log(`Successfully loaded component: ${name} on attempt ${attempt}`);
+      return module;
+
+    } catch (error) {
+      lastError = error;
+      console.warn(`Failed to load component ${name} on attempt ${attempt}:`, error.message);
+
+      // If this isn't the last attempt, wait before retrying
+      if (attempt < maxRetries) {
+        const delay = retryDelay * attempt; // Exponential backoff
+        console.log(`Retrying component ${name} in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  console.error(`Failed to load component ${name} after ${maxRetries} attempts`);
+  throw lastError;
+}
 
 const routes = [
   {

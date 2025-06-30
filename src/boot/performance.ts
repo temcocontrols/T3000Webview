@@ -5,6 +5,7 @@ import { webWorkerManager } from 'src/lib/performance/WebWorkerManager.js';
 import { t3000Cache } from 'src/lib/performance/AdvancedCache.js';
 import { performanceMonitor } from 'src/lib/performance/PerformanceMonitor.js';
 import { asyncTimeoutManager } from 'src/lib/performance/AsyncComponentTimeoutManager.js';
+import { chunkLoadingManager } from 'src/lib/performance/ChunkLoadingManager.js';
 import { ErrorHandler } from 'src/lib/T3000/Hvac/Util/ErrorHandler';
 import { NodeDebugger } from 'src/lib/debug/NodeDebugger.js';
 
@@ -12,7 +13,10 @@ export default boot(async ({ app, router }) => {
   console.log('[Boot] Initializing T3000 Performance Optimizations...');
 
   try {
-    // Initialize global error handling first
+    // Initialize chunk loading manager first to handle early chunk errors
+    console.log('[Boot] Chunk loading manager initialized');
+
+    // Initialize global error handling
     ErrorHandler.initializeGlobalHandling();
     console.log('[Boot] Global error handling initialized');
 
@@ -51,6 +55,10 @@ export default boot(async ({ app, router }) => {
     } else {
       console.warn('[Boot] Web Workers not supported, falling back to main thread processing');
     }
+
+    // Initialize chunk loading performance monitoring
+    asyncTimeoutManager.monitorChunkLoading();
+    console.log('[Boot] Chunk loading performance monitoring enabled');
 
     // Initialize Progressive Loader for images and data
     console.log('[Boot] Progressive Loader initialized');

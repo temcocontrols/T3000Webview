@@ -16,6 +16,19 @@ export class AsyncComponentTimeoutManager {
       critical: 60000  // Critical components (essential for app)
     };
     this.retryStrategies = new Map();
+
+    // Known heavy components with specific timeouts
+    this.componentTimeouts = {
+      'IndexPage2': 30000,        // Contains pathseg.js and other heavy dependencies
+      'HvacIndexPage2': 30000,
+      'SVGEditor': 25000,
+      'MainLayout': 20000,
+      'HvacIndexPage': 20000,
+      'ObjectConfig': 20000,
+      'ObjectConfigNew': 20000
+    };
+
+    this.monitorChunkLoading();
   }
 
   /**
@@ -35,7 +48,7 @@ export class AsyncComponentTimeoutManager {
       onError = null
     } = options;
 
-    const timeout = this.timeoutThresholds[category] || this.timeoutThresholds.normal;
+    const timeout = this.getTimeoutForComponent(name, category);
 
     return componentLazyLoader.createLazyComponent(importFn, {
       ...options,
@@ -348,6 +361,45 @@ export class AsyncComponentTimeoutManager {
   }
 
   /**
+   * Enhanced component loader with performance monitoring
+   */
+  monitorChunkLoading() {
+    // Monitor performance of chunk loading
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const [resource] = args;
+      const isChunk = typeof resource === 'string' &&
+                     (resource.includes('.js') || resource.includes('.css'));
+
+      if (isChunk) {
+        const startTime = performance.now();
+        const chunkName = resource.split('/').pop() || 'unknown';
+
+        console.log(`[Performance Monitor] Loading chunk: ${chunkName}`);
+
+        try {
+          const response = await originalFetch.apply(this, args);
+          const loadTime = performance.now() - startTime;
+
+          console.log(`[Performance Monitor] Chunk Load: ${JSON.stringify({
+            name: chunkName,
+            size: response.headers.get('content-length') || 'unknown',
+            time: Math.round(loadTime)
+          })}`);
+
+          return response;
+        } catch (error) {
+          const loadTime = performance.now() - startTime;
+          console.error(`[Performance Monitor] Chunk Load Failed: ${chunkName} after ${Math.round(loadTime)}ms`, error);
+          throw error;
+        }
+      }
+
+      return originalFetch.apply(this, args);
+    };
+  }
+
+  /**
    * Get timeout statistics
    * @returns {Object} Timeout statistics
    */
@@ -389,6 +441,28 @@ export class AsyncComponentTimeoutManager {
    */
   clearAllTimeoutHistory() {
     this.retryStrategies.clear();
+  }
+
+  /**
+   * Get appropriate timeout for a specific component
+   * @param {string} name - Component name
+   * @param {string} category - Component category
+   * @returns {number} Timeout in milliseconds
+   */
+  getTimeoutForComponent(name, category = 'normal') {
+    // Check for specific component timeouts first
+    if (this.componentTimeouts[name]) {
+      return this.componentTimeouts[name];
+    }
+
+    // Check if component name contains known heavy patterns
+    const heavyPatterns = ['SVG', 'Editor', 'Canvas', 'Chart', 'Graph', 'Index'];
+    if (heavyPatterns.some(pattern => name.includes(pattern))) {
+      return this.timeoutThresholds.slow;
+    }
+
+    // Fall back to category-based timeout
+    return this.timeoutThresholds[category] || this.timeoutThresholds.normal;
   }
 }
 

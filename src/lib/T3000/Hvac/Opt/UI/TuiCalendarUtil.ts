@@ -838,7 +838,7 @@ class TuiCalendarUtil {
       // If there are less than 8 slots, the rest remain as {0,0,0}
     });
 
-    LogUtil.Debug('= tuiCalendarUtil: TransferEventsToT3Format completed, result:', this.events.value, result);
+    LogUtil.Debug('= tuiCalendarUtil: TransferEventsToT3Format completed, result:', tuiEvents.value, result);
     return result;
   }
 
