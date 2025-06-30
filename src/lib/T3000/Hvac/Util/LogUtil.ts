@@ -70,6 +70,22 @@ class LogUtil {
   }
 
   /**
+   * Logs warning messages to the console
+   * Uses console.warn for better visibility in browser dev tools
+   * @param message - The warning message to log
+   * @param additionalParams - Optional additional parameters to log
+   */
+  static Warn(message: any, ...additionalParams: any[]): void {
+    if (!this.enableInfo) { return; } // Use same flag as Info for warnings
+
+    if (additionalParams == null || additionalParams.length === 0) {
+      console.warn.apply(console, [message]);
+    } else {
+      console.warn.apply(console, [message].concat(additionalParams));
+    }
+  }
+
+  /**
    * Logs an error message to the console
    * @param message - The error message to log
    * @param additionalParams - Optional additional parameters to log

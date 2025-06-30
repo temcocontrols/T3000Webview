@@ -6,6 +6,7 @@ import {
   createWebHashHistory,
 } from "vue-router";
 import routes from "./routes";
+import { createRouterErrorBoundary } from "./RouterErrorBoundary.js";
 
 /*
  * If not building with SSR mode, you can
@@ -32,6 +33,12 @@ export default route(function (/* { store, ssrContext } */) {
     // quasar.conf.js -> build -> publicPath
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
+
+  // Initialize router error boundary for better error handling
+  if (process.env.CLIENT) {
+    createRouterErrorBoundary(Router);
+    console.log('[Router] Error boundary initialized');
+  }
 
   return Router;
 });
