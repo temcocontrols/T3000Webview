@@ -4,15 +4,8 @@
       colorPrimary: '#0064c8',
     },
   }">
-    <a-modal
-      v-model:open="annualScheduleVisible"
-      width="75vw"
-      style="top: 20px;"
-      :footer="null"
-      wrapClassName="t3-annual-modal"
-      destroyOnClose
-      keyboard="true"
-    >
+    <a-modal v-model:open="annualScheduleVisible" width="75vw" style="top: 20px;" :footer="null"
+      wrapClassName="t3-annual-modal" destroyOnClose keyboard="true" :closable="true">
       <div class="annual-calendar-container">
         <a-row type="flex" justify="space-between" align="middle" style="margin-bottom: 20px;">
           <a-col style="margin-top: 5px;margin-left: 10px;">
@@ -20,7 +13,7 @@
               <label class="view-title">{{ getModalTitle() }}</label>
             </div>
           </a-col>
-          <a-col>
+          <a-col style="margin-right: 40px;">
             <div style="display: flex; justify-content: flex-start; gap: 8px;" v-if="!locked">
               <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">
                 Select All Holidays
@@ -28,22 +21,16 @@
               <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
               <a-button class="t3-btn" size="small" @click="ClearAll">Clear All</a-button>
               <a-button class="t3-btn" size="small" @click="HandleOk">Save Data</a-button>
-              <a-button class="t3-btn" size="small" @click="HandleCancel">Cancel</a-button>
+              <!-- <a-button class="t3-btn" size="small" @click="HandleCancel">Cancel</a-button> -->
             </div>
           </a-col>
         </a-row>
       </div>
 
       <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-        <a-calendar
-          v-for="(month) in months1"
-          :key="month.format('YYYY-MM')"
-          :value="month"
-          :fullscreen="false"
-          :header-render="() => headerRender({ value: month })"
-          @select="onSelect"
-          style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;"
-        >
+        <a-calendar v-for="(month) in months1" :key="month.format('YYYY-MM')" :value="month" :fullscreen="false"
+          :header-render="() => headerRender({ value: month })" @select="onSelect"
+          style="flex: 1 1 220px; min-width: 220px; max-width: 1fr;font-size: 12px;">
           <template #dateFullCellRender="{ current }">
             <!-- Only show dates that belong to the current month -->
             <div v-if="current.month() === month.month()">
@@ -51,17 +38,13 @@
                 <div
                   :style="isSelected(current)
                     ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #2cb481; text-decoration: underline;'
-                    : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'"
-                >
+                    : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'">
                   {{ current.date() }}
                 </div>
               </a-tooltip>
-              <div
-                v-else
-                :style="isSelected(current)
-                  ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
-                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'"
-              >
+              <div v-else :style="isSelected(current)
+                ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
+                : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
                 {{ current.date() }}
               </div>
             </div>
@@ -444,6 +427,7 @@ const HandleOk = (): void => {
     display: flex;
     flex-direction: column;
     padding-top: 10px;
+    margin-top: -30px;
   }
 
   /* Hide dates from previous/next months by making them transparent */
