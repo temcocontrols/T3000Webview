@@ -6,6 +6,16 @@ node_modules
 .quasar
 /dist
 
+# CMake build artifacts and native module builds
+/build
+build/
+*.vcxproj
+*.vcxproj.filters
+*.sln
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
 # Cordova related directories and files
 /src-cordova/node_modules
 /src-cordova/platforms
