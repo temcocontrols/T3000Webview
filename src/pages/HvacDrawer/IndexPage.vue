@@ -689,6 +689,7 @@ import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
 import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
 import ScheduleAnnual from "src/components/NewUI/ScheduleAnnual.vue";
 import T3UIUtil from "src/lib/T3000/Hvac/Opt/UI/T3UIUtil";
+import SelectoErrorHandler from "../../lib/performance/SelectoErrorHandler.js";
 
 // const isBuiltInEdge = ref(false);
 
@@ -1055,7 +1056,8 @@ function refreshDeviceAppState() {
 // }
 
 onBeforeUnmount(() => {
-
+  // Safely cleanup selecto component to prevent "this.$_selecto is undefined" error
+  SelectoErrorHandler.safeDestroy(selecto);
 })
 
 // Lifecycle hook for component unmount
@@ -1341,7 +1343,7 @@ function addActionToHistory(title) {
 
 // Handles click events on group elements
 function onClickGroup(e) {
-  selecto.value.clickTarget(e.inputEvent, e.inputTarget);
+  SelectoErrorHandler.safeCall(selecto, 'clickTarget', e.inputEvent, e.inputTarget);
 }
 
 // Starts dragging an element
@@ -1486,7 +1488,7 @@ function selectGroup(id) {
 
   appState.value.selectedTargets =
     appState.value.selectedTargets.concat(targets);
-  selecto.value.setSelectedTargets(appState.value.selectedTargets);
+  SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', appState.value.selectedTargets);
 }
 
 // Starts resizing an element
@@ -1658,7 +1660,7 @@ function addLibItem(items, size, pos) {
       elements.push(el);
     });
     appState.value.selectedTargets = elements;
-    selecto.value.setSelectedTargets(elements);
+    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
     appState.value.activeItemIndex = null;
     const scalPercentage = 1 / appState.value.viewportTransform.scale;
     setTimeout(() => {
@@ -1805,7 +1807,7 @@ function drawObject(size, pos, tool) {
     if (locked.value) return;
     const target = document.querySelector(`#moveable-item-${item.id}`);
     appState.value.selectedTargets = [target];
-    selecto.value.setSelectedTargets([target]);
+    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', [target]);
   }, 100);
   return item;
 }
@@ -2865,7 +2867,7 @@ function duplicateSelected() {
   });
   setTimeout(() => {
     appState.value.selectedTargets = elements;
-    selecto.value.setSelectedTargets(elements);
+    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
     appState.value.activeItemIndex = null;
   }, 20);
 }
@@ -3083,7 +3085,7 @@ const scheduleColumns = [
 
 // Handle double-click events on objects
 function objectDoubleClicked(item) {
-  LogUtil.Debug('Double clicked on item:', item);
+  LogUtil.Debug('Double clicked on item:', item.t3Entry);
 
   // Check if the item has a t3Entry and it's of type SCHEDULE
   if (item.t3Entry?.type === "SCH") {
@@ -3120,7 +3122,7 @@ function objectDoubleClicked(item) {
     scheduleModalNVisible.value = true;
   }
 
-  if (item.t3Entry?.type === "INPUT") {
+  if (item.t3Entry?.type === "HOL") {
     scheduleItemData.value = item;
     annualScheduleVisible.value = true;
   }
@@ -3580,7 +3582,7 @@ function pasteFromClipboard() {
       elements.push(el);
     });
     appState.value.selectedTargets = elements;
-    selecto.value.setSelectedTargets(elements);
+    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
     appState.value.activeItemIndex = null;
   }, 10);
 }
