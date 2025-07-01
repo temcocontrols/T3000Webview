@@ -3085,7 +3085,7 @@ const scheduleColumns = [
 
 // Handle double-click events on objects
 function objectDoubleClicked(item) {
-  LogUtil.Debug('Double clicked on item:', item.t3Entry);
+  LogUtil.Debug('= idx: objectDoubleClicked /', item.t3Entry);
 
   // Check if the item has a t3Entry and it's of type SCHEDULE
   if (item.t3Entry?.type === "SCH") {
