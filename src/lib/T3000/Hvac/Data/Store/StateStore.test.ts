@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { stateStore, type StateStore } from '../Store/StateStore';
-import type GlobalMsgModel from '../../../Model/GlobalMsgModel';
+import type GlobalMsgModel from  '../../Model/GlobalMsgModel'
 
 describe('StateStore', () => {
   beforeEach(() => {
@@ -183,14 +183,16 @@ describe('StateStore', () => {
         type: 'info',
         message: 'Test message 1',
         isShow: true,
-        msgType: 'system'
+        msgType: 'system',
+        extral: undefined
       };
 
       const message2: GlobalMsgModel = {
         type: 'error',
         message: 'Test message 2',
         isShow: true,
-        msgType: 'validation'
+        msgType: 'validation',
+        extral: undefined
       };
 
       stateStore.addGlobalMessage(message1);
@@ -206,14 +208,16 @@ describe('StateStore', () => {
         type: 'info',
         message: 'Test message 1',
         isShow: true,
-        msgType: 'system'
+        msgType: 'system',
+        extral: undefined
       };
 
       const message2: GlobalMsgModel = {
         type: 'error',
         message: 'Test message 2',
         isShow: true,
-        msgType: 'validation'
+        msgType: 'validation',
+        extral: undefined
       };
 
       stateStore.addGlobalMessage(message1);
@@ -230,7 +234,8 @@ describe('StateStore', () => {
         type: 'info',
         message: 'Test message',
         isShow: true,
-        msgType: 'system'
+        msgType: 'system',
+        extral: undefined
       };
 
       stateStore.addGlobalMessage(message);
@@ -248,14 +253,16 @@ describe('StateStore', () => {
         type: 'info',
         message: 'Test message 1',
         isShow: true,
-        msgType: 'system'
+        msgType: 'system',
+        extral: undefined
       });
 
       stateStore.addGlobalMessage({
         type: 'error',
         message: 'Test message 2',
         isShow: true,
-        msgType: 'validation'
+        msgType: 'validation',
+        extral: undefined
       });
 
       stateStore.clearGlobalMessages();
@@ -323,7 +330,8 @@ describe('StateStore', () => {
         type: 'info',
         message: 'Test',
         isShow: true,
-        msgType: 'system'
+        msgType: 'system',
+        extral: undefined
       });
 
       // Destroy
