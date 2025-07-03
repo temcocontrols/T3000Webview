@@ -3124,6 +3124,7 @@ function objectDoubleClicked(item) {
 
   if (item.t3Entry?.type === "HOL") {
     scheduleItemData.value = item;
+    annualScheduleData.value = [];
     annualScheduleVisible.value = true;
   }
 

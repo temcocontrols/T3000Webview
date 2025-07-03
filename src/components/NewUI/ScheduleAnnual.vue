@@ -446,8 +446,8 @@ const transferHexToBinary = (): number[] => {
     scheduleItemData.value.t3Entry.data.forEach((byteValue, index) => {
       LogUtil.Debug(`= annual: Processing byte ${index}: ${byteValue} (0x${byteValue.toString(16).padStart(2, '0')})`)
 
-      // Convert each byte to 8 bits (MSB first)
-      for (let bitPosition = 7; bitPosition >= 0; bitPosition--) {
+      // Convert each byte to 8 bits (LSB first)
+      for (let bitPosition = 0; bitPosition < 8; bitPosition++) {
         const bit = (byteValue >> bitPosition) & 1
         binaryArray.push(bit)
       }
@@ -518,6 +518,9 @@ import { onMounted } from 'vue'
 
 onMounted(() => {
   LogUtil.Debug('= annual: Component mounted, loading test data with scheduleItemData', scheduleItemData.value);
+  LogUtil.Debug('= annual: Initializing annual schedule data for year:', currentYear.value);
+  LogUtil.Debug('= annual: annualScheduleData:', annualScheduleData.value);
+
   transferDatesToDisplay();
 
   /*
