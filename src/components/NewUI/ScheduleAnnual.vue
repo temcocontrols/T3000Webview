@@ -382,7 +382,7 @@ const PrepareTestData = () => {
   return testData
 }
 
-const TransferToDates = () => {
+const TransferTestDataToDates = () => {
   var dates = PrepareTestData();
 
   // Convert test data to selected dates
@@ -431,13 +431,46 @@ const TransferToDates = () => {
   return selectedDates;
 }
 
+const transferHexToBinary = (): number[] => {
+  LogUtil.Debug('= annual: transferHexToBinary Called with annualScheduleData:', annualScheduleData.value.t3Entry?.data)
+
+  // Convert the raw hex data to a JSON string representation
+  const hexDataAsJson = JSON.stringify(annualScheduleData.value.t3Entry?.data || [])
+  LogUtil.Debug('= annual: transferHexToBinary - Data as JSON string:', hexDataAsJson)
+
+  const binaryArray: number[] = []
+
+  // Check if annualScheduleData.value.t3Entry.data exists and is a valid array
+  if (annualScheduleData.value?.t3Entry?.data && Array.isArray(annualScheduleData.value.t3Entry.data)) {
+    // Process each byte in the 46-byte array
+    annualScheduleData.value.t3Entry.data.forEach((byteValue, index) => {
+      LogUtil.Debug(`= annual: Processing byte ${index}: ${byteValue} (0x${byteValue.toString(16).padStart(2, '0')})`)
+
+      // Convert each byte to 8 bits (MSB first)
+      for (let bitPosition = 7; bitPosition >= 0; bitPosition--) {
+        const bit = (byteValue >> bitPosition) & 1
+        binaryArray.push(bit)
+      }
+    })
+  } else {
+    LogUtil.Debug('= annual: transferHexToBinary - No valid data found in annualScheduleData.value.t3Entry.data')
+  }
+
+  LogUtil.Debug(`= annual: transferHexToBinary Result - Total bits: ${binaryArray.length}`, binaryArray)
+  return binaryArray
+}
+
+
+
 // Load test data on component mount
 import { onMounted } from 'vue'
 
 onMounted(() => {
-  LogUtil.Debug('= annual: Component mounted, loading test data')
+  LogUtil.Debug('= annual: Component mounted, loading test data with scheduleItemData', annualScheduleData.value);
+  transferHexToBinary();
 
-  const testData =TransferToDates();// PrepareTestData()
+  /*
+  const testData = TransferToDates();// PrepareTestData()
 
   // Parse test data and populate the schedule
   // For demonstration, let's select some random dates based on the test data
@@ -465,7 +498,10 @@ onMounted(() => {
   })
 
   LogUtil.Debug('= annual: Test data loaded into schedule:', annualScheduleData.value)
+  */
 })
+
+
 
 </script>
 

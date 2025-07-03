@@ -678,7 +678,7 @@ import {
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
-import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible, leftNavVisible, rightNavVisible, annualScheduleVisible } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible, leftNavVisible, rightNavVisible, annualScheduleVisible, annualScheduleData } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
@@ -3123,7 +3123,7 @@ function objectDoubleClicked(item) {
   }
 
   if (item.t3Entry?.type === "HOL") {
-    scheduleItemData.value = item;
+    annualScheduleData.value = item;
     annualScheduleVisible.value = true;
   }
 
