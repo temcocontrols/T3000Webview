@@ -64,7 +64,7 @@
 import { ref, computed } from 'vue'
 import { Calendar as ACalendar, Card as ACard, Tag, Row as ARow, Col as ACol, Button as AButton, Modal as AModal, ConfigProvider as AConfigProvider, Tooltip as ATooltip } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
-import { annualScheduleVisible, annualScheduleData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
+import { annualScheduleVisible, annualScheduleData, scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { locked } from 'src/lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { h } from 'vue'
@@ -432,18 +432,18 @@ const TransferTestDataToDates = () => {
 }
 
 const transferHexToBinary = (): number[] => {
-  LogUtil.Debug('= annual: transferHexToBinary Called with annualScheduleData:', annualScheduleData.value.t3Entry?.data)
+  LogUtil.Debug('= annual: transferHexToBinary Called with scheduleItemData:', scheduleItemData.value.t3Entry?.data)
 
   // Convert the raw hex data to a JSON string representation
-  const hexDataAsJson = JSON.stringify(annualScheduleData.value.t3Entry?.data || [])
+  const hexDataAsJson = JSON.stringify(scheduleItemData.value.t3Entry?.data || [])
   LogUtil.Debug('= annual: transferHexToBinary - Data as JSON string:', hexDataAsJson)
 
   const binaryArray: number[] = []
 
-  // Check if annualScheduleData.value.t3Entry.data exists and is a valid array
-  if (annualScheduleData.value?.t3Entry?.data && Array.isArray(annualScheduleData.value.t3Entry.data)) {
+  // Check if scheduleItemData.value.t3Entry.data exists and is a valid array
+  if (scheduleItemData.value?.t3Entry?.data && Array.isArray(scheduleItemData.value.t3Entry.data)) {
     // Process each byte in the 46-byte array
-    annualScheduleData.value.t3Entry.data.forEach((byteValue, index) => {
+    scheduleItemData.value.t3Entry.data.forEach((byteValue, index) => {
       LogUtil.Debug(`= annual: Processing byte ${index}: ${byteValue} (0x${byteValue.toString(16).padStart(2, '0')})`)
 
       // Convert each byte to 8 bits (MSB first)
@@ -453,21 +453,72 @@ const transferHexToBinary = (): number[] => {
       }
     })
   } else {
-    LogUtil.Debug('= annual: transferHexToBinary - No valid data found in annualScheduleData.value.t3Entry.data')
+    LogUtil.Debug('= annual: transferHexToBinary - No valid data found in scheduleItemData.value.t3Entry.data')
   }
 
   LogUtil.Debug(`= annual: transferHexToBinary Result - Total bits: ${binaryArray.length}`, binaryArray)
   return binaryArray
 }
 
+const transferDatesToDisplay = (): void => {
+  LogUtil.Debug('= annual: transferDatesToDisplay Called')
 
+  // Get binary array from hex data
+  const binaryArray = transferHexToBinary()
+
+  if (binaryArray.length === 0) {
+    LogUtil.Debug('= annual: transferDatesToDisplay - No binary data available')
+    return
+  }
+
+  // Clear existing schedule data
+  Object.keys(annualScheduleData.value).forEach(monthKey => {
+    annualScheduleData.value[monthKey] = []
+  })
+
+  // Process binary array to extract selected dates
+  // Each month uses 32 bits (4 bytes), representing up to 31 days
+  const bitsPerMonth = 32
+  const totalMonths = 12
+
+  for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
+    const startBitIndex = monthIndex * bitsPerMonth
+    const monthKey = months[monthIndex]
+
+    // Process each day in the month (31 days max)
+    for (let dayBit = 0; dayBit < 31; dayBit++) {
+      const bitIndex = startBitIndex + dayBit
+
+      if (bitIndex < binaryArray.length && binaryArray[bitIndex] === 1) {
+        const day = dayBit + 1
+        const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+        // Validate the date exists in the month
+        const testDate = dayjs(dateStr)
+        if (testDate.isValid() && testDate.month() === monthIndex) {
+          // Initialize month array if needed
+          if (!annualScheduleData.value[monthKey]) {
+            annualScheduleData.value[monthKey] = []
+          }
+
+          // Add date if not already present
+          if (!annualScheduleData.value[monthKey].includes(dateStr)) {
+            annualScheduleData.value[monthKey].push(dateStr)
+          }
+        }
+      }
+    }
+  }
+
+  LogUtil.Debug('= annual: transferDatesToDisplay Completed - Selected dates loaded:', annualScheduleData.value)
+}
 
 // Load test data on component mount
 import { onMounted } from 'vue'
 
 onMounted(() => {
-  LogUtil.Debug('= annual: Component mounted, loading test data with scheduleItemData', annualScheduleData.value);
-  transferHexToBinary();
+  LogUtil.Debug('= annual: Component mounted, loading test data with scheduleItemData', scheduleItemData.value);
+  transferDatesToDisplay();
 
   /*
   const testData = TransferToDates();// PrepareTestData()

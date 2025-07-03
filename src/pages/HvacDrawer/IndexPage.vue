@@ -3123,7 +3123,7 @@ function objectDoubleClicked(item) {
   }
 
   if (item.t3Entry?.type === "HOL") {
-    annualScheduleData.value = item;
+    scheduleItemData.value = item;
     annualScheduleVisible.value = true;
   }
 
