@@ -442,11 +442,11 @@ const transferHexToBinary = (): number[] => {
 
   // Check if scheduleItemData.value.t3Entry.data exists and is a valid array
   if (scheduleItemData.value?.t3Entry?.data && Array.isArray(scheduleItemData.value.t3Entry.data)) {
-    // Process each byte in the 46-byte array
+    // Process each byte in the array
     scheduleItemData.value.t3Entry.data.forEach((byteValue, index) => {
       LogUtil.Debug(`= annual: Processing byte ${index}: ${byteValue} (0x${byteValue.toString(16).padStart(2, '0')})`)
 
-      // Convert each byte to 8 bits (LSB first)
+      // Convert each byte to 8 bits (LSB first - bit 0 to bit 7)
       for (let bitPosition = 0; bitPosition < 8; bitPosition++) {
         const bit = (byteValue >> bitPosition) & 1
         binaryArray.push(bit)
@@ -463,11 +463,9 @@ const transferHexToBinary = (): number[] => {
 const transferDatesToDisplay = (): void => {
   LogUtil.Debug('= annual: transferDatesToDisplay Called')
 
-  // Get binary array from hex data
-  const binaryArray = transferHexToBinary()
-
-  if (binaryArray.length === 0) {
-    LogUtil.Debug('= annual: transferDatesToDisplay - No binary data available')
+  // Check if scheduleItemData.value.t3Entry.data exists and is a valid array
+  if (!(scheduleItemData.value as any)?.t3Entry?.data || !Array.isArray((scheduleItemData.value as any).t3Entry.data)) {
+    LogUtil.Debug('= annual: transferDatesToDisplay - No valid data found in scheduleItemData.value.t3Entry.data')
     return
   }
 
@@ -476,34 +474,94 @@ const transferDatesToDisplay = (): void => {
     annualScheduleData.value[monthKey] = []
   })
 
-  // Process binary array to extract selected dates
-  // Each month uses 32 bits (4 bytes), representing up to 31 days
-  const bitsPerMonth = 32
-  const totalMonths = 12
+  const data = (scheduleItemData.value as any).t3Entry.data
+  LogUtil.Debug('= annual: Processing raw data:', data)
 
-  for (let monthIndex = 0; monthIndex < totalMonths; monthIndex++) {
-    const startBitIndex = monthIndex * bitsPerMonth
+  // Day offsets for each month (cumulative days from Jan 1st)
+  // Based on C++ code: day_in_this_year array
+  const dayInThisYear = [
+    0,   // January starts at day 0
+    31,  // February starts after 31 days (Jan)
+    59,  // March starts after 59 days (Jan+Feb)
+    90,  // April starts after 90 days
+    120, // May starts after 120 days
+    151, // June starts after 151 days
+    181, // July starts after 181 days
+    212, // August starts after 212 days
+    243, // September starts after 243 days
+    273, // October starts after 273 days
+    304, // November starts after 304 days
+    334  // December starts after 334 days
+  ]
+
+  // Process each month using the continuous bit stream approach
+  for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
     const monthKey = months[monthIndex]
 
-    // Process each day in the month (31 days max)
-    for (let dayBit = 0; dayBit < 31; dayBit++) {
-      const bitIndex = startBitIndex + dayBit
+    if (monthIndex === 0) {
+      // January: Use first 4 bytes directly (days 0-31)
+      let monthBits = 0
+      for (let byteOffset = 0; byteOffset < 4; byteOffset++) {
+        if (byteOffset < data.length) {
+          monthBits |= (data[byteOffset] << (byteOffset * 8))
+        }
+      }
 
-      if (bitIndex < binaryArray.length && binaryArray[bitIndex] === 1) {
-        const day = dayBit + 1
-        const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      LogUtil.Debug(`= annual: Month ${monthIndex + 1} (${monthKey}) - Direct bytes - Combined: 0x${monthBits.toString(16)}`)
 
-        // Validate the date exists in the month
-        const testDate = dayjs(dateStr)
-        if (testDate.isValid() && testDate.month() === monthIndex) {
-          // Initialize month array if needed
+      // Check each bit for days 1-31
+      for (let dayBit = 0; dayBit < 31; dayBit++) {
+        if ((monthBits >> dayBit) & 1) {
+          const day = dayBit + 1
+          const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
           if (!annualScheduleData.value[monthKey]) {
             annualScheduleData.value[monthKey] = []
           }
-
-          // Add date if not already present
           if (!annualScheduleData.value[monthKey].includes(dateStr)) {
             annualScheduleData.value[monthKey].push(dateStr)
+            LogUtil.Debug(`= annual: Added date ${dateStr} (day ${day}) for month ${monthKey}`)
+          }
+        }
+      }
+    } else {
+      // Other months: Extract from continuous bit stream with offset
+      const startDayInYear = dayInThisYear[monthIndex]
+      const startByte = Math.floor(startDayInYear / 8)
+      const moveBit = startDayInYear % 8
+
+      LogUtil.Debug(`= annual: Month ${monthIndex + 1} (${monthKey}) - Start day: ${startDayInYear}, Start byte: ${startByte}, Move bit: ${moveBit}`)
+
+      // Extract 5 bytes to ensure we have enough data for shifting
+      let tempData = BigInt(0)
+      for (let i = 0; i < 5 && (startByte + i) < data.length; i++) {
+        tempData |= BigInt(data[startByte + i]) << BigInt(i * 8)
+      }
+
+      // Shift right by moveBit positions to align month start to bit 0
+      tempData = tempData >> BigInt(moveBit)
+
+      // Mask to 32 bits for month data
+      const monthBits = Number(tempData & BigInt(0xFFFFFFFF))
+
+      LogUtil.Debug(`= annual: Month ${monthIndex + 1} (${monthKey}) - Shifted bits: 0x${monthBits.toString(16)}`)
+
+      // Check each bit for days 1-31
+      for (let dayBit = 0; dayBit < 31; dayBit++) {
+        if ((monthBits >> dayBit) & 1) {
+          const day = dayBit + 1
+          const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+          // Validate the date exists in the month
+          const testDate = dayjs(dateStr)
+          if (testDate.isValid() && testDate.month() === monthIndex) {
+            if (!annualScheduleData.value[monthKey]) {
+              annualScheduleData.value[monthKey] = []
+            }
+            if (!annualScheduleData.value[monthKey].includes(dateStr)) {
+              annualScheduleData.value[monthKey].push(dateStr)
+              LogUtil.Debug(`= annual: Added date ${dateStr} (day ${day}) for month ${monthKey}`)
+            }
           }
         }
       }
@@ -519,7 +577,13 @@ import { onMounted } from 'vue'
 onMounted(() => {
   LogUtil.Debug('= annual: Component mounted, loading test data with scheduleItemData', scheduleItemData.value);
   LogUtil.Debug('= annual: Initializing annual schedule data for year:', currentYear.value);
-  LogUtil.Debug('= annual: annualScheduleData:', annualScheduleData.value);
+  LogUtil.Debug('= annual: annualScheduleData on mounted:', annualScheduleData.value);
+
+  // Run analysis first to determine correct format
+  analyzeDataFormat();
+
+  // Test the continuous bit logic
+  testContinuousBitLogic();
 
   transferDatesToDisplay();
 
@@ -555,8 +619,230 @@ onMounted(() => {
   */
 })
 
+// Test function to analyze the data format
+const analyzeDataFormat = (): void => {
+  // Use actual data if available, otherwise use test data
+  let dataToAnalyze: number[]
+  if ((scheduleItemData.value as any)?.t3Entry?.data && Array.isArray((scheduleItemData.value as any).t3Entry.data)) {
+    dataToAnalyze = (scheduleItemData.value as any).t3Entry.data
+    LogUtil.Debug('= annual: analyzeDataFormat - Using actual scheduleItemData:', dataToAnalyze)
+  } else {
+    dataToAnalyze = PrepareTestData()
+    LogUtil.Debug('= annual: analyzeDataFormat - Using test data:', dataToAnalyze)
+  }
 
+  // Expected results for verification
+  const expectedResults = {
+    January: [1,2,3,4,5,6,7,9,19,29],
+    February: [1,5,9,19],
+    June: [3]
+  }
 
+  LogUtil.Debug('= annual: Expected results:', expectedResults)
+
+  // Analyze January (first 4 bytes)
+  const janBytes = dataToAnalyze.slice(0, 4)
+  LogUtil.Debug('= annual: Analyzing January bytes:', janBytes, 'hex:', janBytes.map(b => '0x' + b.toString(16).padStart(2, '0')))
+
+  // Analyze February (bytes 4-7)
+  const febBytes = dataToAnalyze.slice(4, 8)
+  LogUtil.Debug('= annual: Analyzing February bytes:', febBytes, 'hex:', febBytes.map(b => '0x' + b.toString(16).padStart(2, '0')))
+
+  // Analyze June (bytes 20-23)
+  const junBytes = dataToAnalyze.slice(20, 24)
+  LogUtil.Debug('= annual: Analyzing June bytes:', junBytes, 'hex:', junBytes.map(b => '0x' + b.toString(16).padStart(2, '0')))
+
+  // Test different bit ordering approaches for January
+  LogUtil.Debug('= annual: Testing different approaches for January:')
+
+  // Approach 1: LSB first within each byte, bytes in order
+  const jan1Results: number[] = []
+  for (let byteIdx = 0; byteIdx < 4; byteIdx++) {
+    for (let bit = 0; bit < 8; bit++) {
+      const day = byteIdx * 8 + bit + 1
+      if (day <= 31 && ((janBytes[byteIdx] >> bit) & 1)) {
+        jan1Results.push(day)
+      }
+    }
+  }
+  LogUtil.Debug('= annual: Approach 1 (LSB first per byte):', jan1Results)
+
+  // Approach 2: MSB first within each byte, bytes in order
+  const jan2Results: number[] = []
+  for (let byteIdx = 0; byteIdx < 4; byteIdx++) {
+    for (let bit = 7; bit >= 0; bit--) {
+      const day = byteIdx * 8 + (7 - bit) + 1
+      if (day <= 31 && ((janBytes[byteIdx] >> bit) & 1)) {
+        jan2Results.push(day)
+      }
+    }
+  }
+  LogUtil.Debug('= annual: Approach 2 (MSB first per byte):', jan2Results)
+
+  // Approach 3: 32-bit little-endian combination
+  let jan32bit = 0
+  for (let i = 0; i < 4; i++) {
+    jan32bit |= (janBytes[i] << (i * 8))
+  }
+  LogUtil.Debug('= annual: 32-bit LE value: 0x' + jan32bit.toString(16))
+  const jan3Results: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((jan32bit >> bit) & 1) {
+      jan3Results.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: Approach 3 (32-bit little-endian):', jan3Results)
+
+  // Approach 4: 32-bit big-endian combination
+  let jan32bitBE = 0
+  for (let i = 0; i < 4; i++) {
+    jan32bitBE |= (janBytes[i] << ((3 - i) * 8))
+  }
+  LogUtil.Debug('= annual: 32-bit BE value: 0x' + jan32bitBE.toString(16))
+  const jan4Results: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((jan32bitBE >> bit) & 1) {
+      jan4Results.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: Approach 4 (32-bit big-endian):', jan4Results)
+
+  // Compare with expected
+  LogUtil.Debug('= annual: Expected January:', expectedResults.January)
+  LogUtil.Debug('= annual: Approach comparisons:')
+  LogUtil.Debug('= annual: Approach 1 match:', JSON.stringify(jan1Results.sort((a,b) => a-b)) === JSON.stringify(expectedResults.January.sort((a,b) => a-b)))
+  LogUtil.Debug('= annual: Approach 2 match:', JSON.stringify(jan2Results.sort((a,b) => a-b)) === JSON.stringify(expectedResults.January.sort((a,b) => a-b)))
+  LogUtil.Debug('= annual: Approach 3 match:', JSON.stringify(jan3Results.sort((a,b) => a-b)) === JSON.stringify(expectedResults.January.sort((a,b) => a-b)))
+  LogUtil.Debug('= annual: Approach 4 match:', JSON.stringify(jan4Results.sort((a,b) => a-b)) === JSON.stringify(expectedResults.January.sort((a,b) => a-b)))
+
+  // Test February with the same approaches
+  LogUtil.Debug('= annual: Testing February with all approaches:')
+
+  // Feb Approach 1
+  const feb1Results: number[] = []
+  for (let byteIdx = 0; byteIdx < 4; byteIdx++) {
+    for (let bit = 0; bit < 8; bit++) {
+      const day = byteIdx * 8 + bit + 1
+      if (day <= 31 && ((febBytes[byteIdx] >> bit) & 1)) {
+        feb1Results.push(day)
+      }
+    }
+  }
+  LogUtil.Debug('= annual: Feb Approach 1:', feb1Results)
+
+  // Feb Approach 3 (32-bit LE)
+  let feb32bit = 0
+  for (let i = 0; i < 4; i++) {
+    feb32bit |= (febBytes[i] << (i * 8))
+  }
+  const feb3Results: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((feb32bit >> bit) & 1) {
+      feb3Results.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: Feb Approach 3 (32-bit LE):', feb3Results)
+  LogUtil.Debug('= annual: Expected February:', expectedResults.February)
+  LogUtil.Debug('= annual: Feb Approach 3 match:', JSON.stringify(feb3Results.sort((a,b) => a-b)) === JSON.stringify(expectedResults.February.sort((a,b) => a-b)))
+
+  // Test June
+  LogUtil.Debug('= annual: Testing June approach 3:')
+  let jun32bit = 0
+  for (let i = 0; i < 4; i++) {
+    jun32bit |= (junBytes[i] << (i * 8))
+  }
+  const jun3Results: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((jun32bit >> bit) & 1) {
+      jun3Results.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: Jun Approach 3 (32-bit LE):', jun3Results)
+  LogUtil.Debug('= annual: Expected June:', expectedResults.June)
+  LogUtil.Debug('= annual: Jun Approach 3 match:', JSON.stringify(jun3Results.sort((a,b) => a-b)) === JSON.stringify(expectedResults.June.sort((a,b) => a-b)))
+}
+
+// Debug function to test the continuous bit stream logic
+const testContinuousBitLogic = (): void => {
+  const testData = PrepareTestData()
+  LogUtil.Debug('= annual: testContinuousBitLogic - Test data:', testData)
+
+  // Expected results for verification
+  const expectedResults = {
+    January: [1,2,3,4,5,6,7,9,19,29],
+    February: [1,5,9,19],
+    June: [3]
+  }
+
+  // Day offsets for each month (from C++ code)
+  const dayInThisYear = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+
+  // Test January (month 0)
+  LogUtil.Debug('= annual: Testing January with continuous bit logic:')
+  let janBits = 0
+  for (let i = 0; i < 4; i++) {
+    janBits |= (testData[i] << (i * 8))
+  }
+  const janResults: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((janBits >> bit) & 1) {
+      janResults.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: January results:', janResults)
+  LogUtil.Debug('= annual: Expected January:', expectedResults.January)
+  LogUtil.Debug('= annual: January match:', JSON.stringify(janResults.sort((a,b) => a-b)) === JSON.stringify(expectedResults.January.sort((a,b) => a-b)))
+
+  // Test February (month 1)
+  LogUtil.Debug('= annual: Testing February with continuous bit logic:')
+  const febStartDay = dayInThisYear[1] // 31
+  const febStartByte = Math.floor(febStartDay / 8) // 3
+  const febMoveBit = febStartDay % 8 // 7
+  LogUtil.Debug(`= annual: February - Start day: ${febStartDay}, Start byte: ${febStartByte}, Move bit: ${febMoveBit}`)
+
+  let febTempData = BigInt(0)
+  for (let i = 0; i < 5 && (febStartByte + i) < testData.length; i++) {
+    febTempData |= BigInt(testData[febStartByte + i]) << BigInt(i * 8)
+  }
+  febTempData = febTempData >> BigInt(febMoveBit)
+  const febBits = Number(febTempData & BigInt(0xFFFFFFFF))
+
+  const febResults: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((febBits >> bit) & 1) {
+      febResults.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: February results:', febResults)
+  LogUtil.Debug('= annual: Expected February:', expectedResults.February)
+  LogUtil.Debug('= annual: February match:', JSON.stringify(febResults.sort((a,b) => a-b)) === JSON.stringify(expectedResults.February.sort((a,b) => a-b)))
+
+  // Test June (month 5)
+  LogUtil.Debug('= annual: Testing June with continuous bit logic:')
+  const junStartDay = dayInThisYear[5] // 151
+  const junStartByte = Math.floor(junStartDay / 8) // 18
+  const junMoveBit = junStartDay % 8 // 7
+  LogUtil.Debug(`= annual: June - Start day: ${junStartDay}, Start byte: ${junStartByte}, Move bit: ${junMoveBit}`)
+
+  let junTempData = BigInt(0)
+  for (let i = 0; i < 5 && (junStartByte + i) < testData.length; i++) {
+    junTempData |= BigInt(testData[junStartByte + i]) << BigInt(i * 8)
+  }
+  junTempData = junTempData >> BigInt(junMoveBit)
+  const junBits = Number(junTempData & BigInt(0xFFFFFFFF))
+
+  const junResults: number[] = []
+  for (let bit = 0; bit < 31; bit++) {
+    if ((junBits >> bit) & 1) {
+      junResults.push(bit + 1)
+    }
+  }
+  LogUtil.Debug('= annual: June results:', junResults)
+  LogUtil.Debug('= annual: Expected June:', expectedResults.June)
+  LogUtil.Debug('= annual: June match:', JSON.stringify(junResults.sort((a,b) => a-b)) === JSON.stringify(expectedResults.June.sort((a,b) => a-b)))
+}
+
+// ...existing code...
 </script>
 
 <style>

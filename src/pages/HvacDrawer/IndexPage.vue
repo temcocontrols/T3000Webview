@@ -3123,9 +3123,12 @@ function objectDoubleClicked(item) {
   }
 
   if (item.t3Entry?.type === "HOL") {
+
     scheduleItemData.value = item;
     annualScheduleData.value = [];
     annualScheduleVisible.value = true;
+
+     LogUtil.Debug('= idx: objectDoubleClicked HOLIDAY', annualScheduleData.value);
   }
 
   T3UIUtil.SetNavVisiblity(false);
