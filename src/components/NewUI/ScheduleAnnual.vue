@@ -34,15 +34,7 @@
           <template #dateFullCellRender="{ current }">
             <!-- Only show dates that belong to the current month -->
             <div v-if="current.month() === month.month()">
-              <a-tooltip v-if="getHoliday(current)" :title="getHoliday(current).name">
-                <div
-                  :style="isSelected(current)
-                    ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #2cb481; text-decoration: underline;'
-                    : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto; font-weight: bold; text-decoration: underline; background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%); color: white;'">
-                  {{ current.date() }}
-                </div>
-              </a-tooltip>
-              <div v-else
+              <div
                 :style="isSelected(current)
                   ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
                   : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
@@ -62,7 +54,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Calendar as ACalendar, Row as ARow, Col as ACol, Button as AButton, Modal as AModal, ConfigProvider as AConfigProvider, Tooltip as ATooltip } from 'ant-design-vue'
+import { Calendar as ACalendar, Row as ARow, Col as ACol, Button as AButton, Modal as AModal, ConfigProvider as AConfigProvider } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import { annualScheduleVisible, annualScheduleData, scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { locked } from 'src/lib/T3000/Hvac/Data/T3Data'
@@ -325,10 +317,13 @@ const onSelect = (date: Dayjs, { source }: CalendarSelectInfo): void => {
 
 // Action handlers
 const RefreshFromT3000 = (): void => {
-  // Clear all existing data
+  // Clear all existing data first
   Object.keys(annualScheduleData.value).forEach(monthKey => {
     annualScheduleData.value[monthKey] = []
   })
+
+  // Reload data from the hex array
+  transferDatesToDisplay()
 }
 
 const ClearAll = (): void => {
@@ -343,17 +338,47 @@ const HandleCancel = (): void => {
 }
 
 const HandleOk = (): void => {
+  // Convert selected dates back to hex array format
+  const hexArray = transferSelectedDatesToHex()
+
+  // Store the hex array back in scheduleItemData
+  if (!(scheduleItemData.value as any).t3Entry) {
+    (scheduleItemData.value as any).t3Entry = {}
+  }
+  (scheduleItemData.value as any).t3Entry.data = hexArray
+
+  console.log('Saved schedule data:', hexArray)
   annualScheduleVisible.value = false
 }
 
 const transferDatesToDisplay = (): void => {
-  // Check if scheduleItemData.value.t3Entry.data exists and is a valid array
+  // Create test data if none exists
   let data: number[]
   if ((scheduleItemData.value as any)?.t3Entry?.data && Array.isArray((scheduleItemData.value as any).t3Entry.data)) {
     data = (scheduleItemData.value as any).t3Entry.data
   } else {
-    // No valid data found, exit early
-    return
+    // Create test data: set specific bits to test the mapping
+    // Let's create a pattern where we can clearly see what's happening
+    data = new Array(46).fill(0) // 46 bytes for annual schedule
+
+    // Set specific test bits:
+    // January: set bit 0 (should be day 1) and bit 6 (should be day 7)
+    data[0] = 0x41  // Binary: 01000001, bits 0 and 6 set
+
+    // February: set bit 13 (should be day 14)
+    data[4] = 0x20  // Binary: 00100000, bit 5 set (5 + 8 = 13)
+
+    // March: set bit 2 (should be day 3) at the correct offset
+    // March starts at day 59 (bit 59), so bit 2 of March is bit 61 overall
+    // Byte 7 bit 5 (7*8 + 5 = 61, but we need to account for offset)
+    const marchStartBit = 59
+    const marchTestBit = 2
+    const overallBit = marchStartBit + marchTestBit
+    const byteIndex = Math.floor(overallBit / 8)
+    const bitInByte = overallBit % 8
+    data[byteIndex] = 1 << bitInByte
+
+    console.log(`Test data created: March day 3 should be set at byte ${byteIndex}, bit ${bitInByte}`)
   }
 
   // Clear existing schedule data
@@ -361,34 +386,94 @@ const transferDatesToDisplay = (): void => {
     annualScheduleData.value[monthKey] = []
   })
 
-  // Process data using month-based format (4 bytes per month)
+  // Day offsets for each month - matching C++ leap_year() and no_leap_year() functions exactly
+  const isLeapYear = (year: number) => year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const currentIsLeapYear = isLeapYear(currentYear.value)
+
+  let dayInThisYear: number[]
+
+  if (currentIsLeapYear) {
+    // Leap year (366 days) - matching C++ leap_year() function exactly
+    dayInThisYear = [
+      0,   // January: i<31
+      31,  // February: i<60 (31+29)
+      60,  // March: i<91 (31+29+31)
+      91,  // April: i<121 (31+29+31+30)
+      121, // May: i<152 (31+29+31+30+31)
+      152, // June: i<182 (31+29+31+30+31+30)
+      182, // July: i<213 (31+29+31+30+31+30+31)
+      213, // August: i<244 (31+29+31+30+31+30+31+31)
+      244, // September: i<274 (31+29+31+30+31+30+31+31+30)
+      274, // October: i<305 (31+29+31+30+31+30+31+31+30+31)
+      305, // November: i<335 (31+29+31+30+31+30+31+31+30+31+30)
+      335  // December: i<366 (31+29+31+30+31+30+31+31+30+31+30+31)
+    ]
+  } else {
+    // Non-leap year (365 days) - matching C++ no_leap_year() function exactly
+    dayInThisYear = [
+      0,   // January: i<31
+      31,  // February: i<59 (31+28)
+      59,  // March: i<90 (31+28+31)
+      90,  // April: i<120 (31+28+31+30)
+      120, // May: i<151 (31+28+31+30+31)
+      151, // June: i<181 (31+28+31+30+31+30)
+      181, // July: i<212 (31+28+31+30+31+30+31)
+      212, // August: i<243 (31+28+31+30+31+30+31+31)
+      243, // September: i<273 (31+28+31+30+31+30+31+31+30)
+      273, // October: i<304 (31+28+31+30+31+30+31+31+30+31)
+      304, // November: i<334 (31+28+31+30+31+30+31+31+30+31+30)
+      334  // December: i<365 (31+28+31+30+31+30+31+31+30+31+30+31)
+    ]
+  }
+
+  // Process each month using the same logic as C++ Fresh_Schedule_Day_Cal function
   for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
     const monthKey = months[monthIndex]
-    const startByteIndex = monthIndex * 4
+    let monthBits = 0
 
-    if (startByteIndex + 3 < data.length) {
-      // Get 4 bytes for this month
-      let monthBits = 0
-      for (let byteOffset = 0; byteOffset < 4; byteOffset++) {
-        monthBits |= (data[startByteIndex + byteOffset] << (byteOffset * 8))
+    if (monthIndex === 0) {
+      // January: Direct 4-byte copy (matching C++ line 304)
+      for (let byteOffset = 0; byteOffset < 4 && byteOffset < data.length; byteOffset++) {
+        monthBits |= (data[byteOffset] << (byteOffset * 8))
+      }
+    } else {
+      // Other months: Extract from continuous bit stream with offset (matching C++ lines 306-318)
+      const startByte = Math.floor(dayInThisYear[monthIndex] / 8)  // day_in_this_year[i]/8
+      const moveBit = dayInThisYear[monthIndex] % 8               // day_in_this_year[i]%8
+
+      // Extract 5 bytes like C++ does: memcpy_s(&temp_data,5,&g_DayState[annual_list_line][start_byte],5)
+      let tempData = BigInt(0)
+      for (let i = 0; i < 5 && (startByte + i) < data.length; i++) {
+        tempData |= BigInt(data[startByte + i]) << BigInt(i * 8)
       }
 
-      // Check each bit for days 1-31
-      for (let dayBit = 0; dayBit < 31; dayBit++) {
-        if ((monthBits >> dayBit) & 1) {
-          // Use standard 1-based mapping for all months
-          const day = dayBit + 1
-          const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      // Shift right by moveBit positions: temp_data = temp_data>>move_bit
+      tempData = tempData >> BigInt(moveBit)
 
-          // Validate the date exists in the month
-          const testDate = dayjs(dateStr)
-          if (testDate.isValid() && testDate.month() === monthIndex && day > 0) {
-            if (!annualScheduleData.value[monthKey]) {
-              annualScheduleData.value[monthKey] = []
-            }
-            if (!annualScheduleData.value[monthKey].includes(dateStr)) {
-              annualScheduleData.value[monthKey].push(dateStr)
-            }
+      // Mask to 32 bits: temp_data = temp_data % (0x0100000000)
+      tempData = tempData & BigInt(0xFFFFFFFF)
+
+      monthBits = Number(tempData)
+    }
+
+    // Extract selected days from the month bits
+    console.log(`${monthKey}: monthBits = 0x${monthBits.toString(16)}, binary = ${monthBits.toString(2).padStart(32, '0')}`)
+
+    for (let dayBit = 0; dayBit < 31; dayBit++) {
+      if ((monthBits >> dayBit) & 1) {
+        const day = dayBit + 1  // Standard mapping: bit 0 = day 1, bit 1 = day 2, etc.
+        const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+        console.log(`  ${monthKey}: Bit ${dayBit} set -> Day ${day} (${dateStr})`)
+
+        // Validate the date exists in the month
+        const testDate = dayjs(dateStr)
+        if (testDate.isValid() && testDate.month() === monthIndex && day > 0 && day <= 31) {
+          if (!annualScheduleData.value[monthKey]) {
+            annualScheduleData.value[monthKey] = []
+          }
+          if (!annualScheduleData.value[monthKey].includes(dateStr)) {
+            annualScheduleData.value[monthKey].push(dateStr)
           }
         }
       }
@@ -396,9 +481,99 @@ const transferDatesToDisplay = (): void => {
   }
 }
 
+const transferSelectedDatesToHex = (): number[] => {
+  // Create a 46-byte array to store the annual schedule data
+  const data = new Array(46).fill(0)
 
+  // Day offsets for each month - matching C++ leap_year() and no_leap_year() functions exactly
+  const isLeapYear = (year: number) => year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const currentIsLeapYear = isLeapYear(currentYear.value)
 
+  let dayInThisYear: number[]
 
+  if (currentIsLeapYear) {
+    // Leap year (366 days) - matching C++ leap_year() function exactly
+    dayInThisYear = [
+      0,   // January: i<31
+      31,  // February: i<60 (31+29)
+      60,  // March: i<91 (31+29+31)
+      91,  // April: i<121 (31+29+31+30)
+      121, // May: i<152 (31+29+31+30+31)
+      152, // June: i<182 (31+29+31+30+31+30)
+      182, // July: i<213 (31+29+31+30+31+30+31)
+      213, // August: i<244 (31+29+31+30+31+30+31+31)
+      244, // September: i<274 (31+29+31+30+31+30+31+31+30)
+      274, // October: i<305 (31+29+31+30+31+30+31+31+30+31)
+      305, // November: i<335 (31+29+31+30+31+30+31+31+30+31+30)
+      335  // December: i<366 (31+29+31+30+31+30+31+31+30+31+30+31)
+    ]
+  } else {
+    // Non-leap year (365 days) - matching C++ no_leap_year() function exactly
+    dayInThisYear = [
+      0,   // January: i<31
+      31,  // February: i<59 (31+28)
+      59,  // March: i<90 (31+28+31)
+      90,  // April: i<120 (31+28+31+30)
+      120, // May: i<151 (31+28+31+30+31)
+      151, // June: i<181 (31+28+31+30+31+30)
+      181, // July: i<212 (31+28+31+30+31+30+31)
+      212, // August: i<243 (31+28+31+30+31+30+31+31)
+      243, // September: i<273 (31+28+31+30+31+30+31+31+30)
+      273, // October: i<304 (31+28+31+30+31+30+31+31+30+31)
+      304, // November: i<334 (31+28+31+30+31+30+31+31+30+31+30)
+      334  // December: i<365 (31+28+31+30+31+30+31+31+30+31+30+31)
+    ]
+  }
+
+  // Process each month
+  for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+    const monthKey = months[monthIndex]
+    let monthBits = 0
+
+    // Get selected dates for this month
+    const selectedDates = annualScheduleData.value[monthKey] || []
+
+    // Convert dates to bits
+    selectedDates.forEach(dateStr => {
+      const dateObj = dayjs(dateStr)
+      if (dateObj.isValid() && dateObj.month() === monthIndex) {
+        const day = dateObj.date()
+        if (day >= 1 && day <= 31) {
+          // Set the bit for this day (bit 0 = day 1, bit 1 = day 2, etc.)
+          monthBits |= (1 << (day - 1))
+        }
+      }
+    })
+
+    console.log(`${monthKey}: monthBits = 0x${monthBits.toString(16)}, binary = ${monthBits.toString(2).padStart(32, '0')}`)
+
+    if (monthIndex === 0) {
+      // January: Direct 4-byte copy (matching C++ approach)
+      for (let byteOffset = 0; byteOffset < 4; byteOffset++) {
+        data[byteOffset] = (monthBits >> (byteOffset * 8)) & 0xFF
+      }
+    } else {
+      // Other months: Pack into continuous bit stream with offset
+      const startBit = dayInThisYear[monthIndex]
+
+      // Convert monthBits to a continuous bit stream
+      for (let dayBit = 0; dayBit < 31; dayBit++) {
+        if ((monthBits >> dayBit) & 1) {
+          const overallBit = startBit + dayBit
+          const byteIndex = Math.floor(overallBit / 8)
+          const bitInByte = overallBit % 8
+
+          if (byteIndex < data.length) {
+            data[byteIndex] |= (1 << bitInByte)
+          }
+        }
+      }
+    }
+  }
+
+  console.log('Generated hex array:', data.map(b => `0x${b.toString(16).padStart(2, '0')}`).join(', '))
+  return data
+}
 
 // Component lifecycle
 onMounted(() => {
