@@ -42,9 +42,10 @@
                   {{ current.date() }}
                 </div>
               </a-tooltip>
-              <div v-else :style="isSelected(current)
-                ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
-                : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
+              <div v-else
+                :style="isSelected(current)
+                  ? 'background: linear-gradient(135deg, #1890ff 0%, #4bd666 100%); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'
+                  : 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: auto;'">
                 {{ current.date() }}
               </div>
             </div>
@@ -367,6 +368,105 @@ const HandleOk = (): void => {
   annualScheduleVisible.value = false
   LogUtil.Debug('= annual: Data saved', annualScheduleData.value)
 }
+
+const PrepareTestData = () => {
+  const testData = [
+    0x7F, 0x01, 0x04, 0xB0, 0x88, 0x00, 0x02, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  ]
+
+  LogUtil.Debug('= annual: Test data array created with 46 bytes:', testData)
+  return testData
+}
+
+const TransferToDates = () => {
+  var dates = PrepareTestData();
+
+  // Convert test data to selected dates
+  const selectedDates: string[] = [];
+
+  // Process each month (12 months, 4 bytes each = 48 bytes, but we have 46 bytes)
+  // Each month uses 4 bytes (32 bits) to represent up to 31 days
+  for (let monthIndex = 0; monthIndex < 12 && (monthIndex * 4 + 3) < dates.length; monthIndex++) {
+    const startByteIndex = monthIndex * 4;
+
+    // Get 4 bytes for this month and convert to 32-bit value
+    let monthBits = 0;
+    for (let byteOffset = 0; byteOffset < 4; byteOffset++) {
+      if (startByteIndex + byteOffset < dates.length) {
+        // Reverse byte order (little-endian to big-endian)
+        monthBits |= (dates[startByteIndex + byteOffset] << (byteOffset * 8));
+      }
+    }
+
+    // Check each bit (day) in the month
+    for (let dayBit = 0; dayBit < 31; dayBit++) {
+      if ((monthBits >> dayBit) & 1) {
+        // This day is selected
+        const day = dayBit + 1;
+        const monthKey = months[monthIndex];
+        const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        // Validate the date exists in the month
+        const testDate = dayjs(dateStr);
+        if (testDate.isValid() && testDate.month() === monthIndex) {
+          selectedDates.push(dateStr);
+
+          // Add to annualScheduleData
+          if (!annualScheduleData.value[monthKey]) {
+            annualScheduleData.value[monthKey] = [];
+          }
+          if (!annualScheduleData.value[monthKey].includes(dateStr)) {
+            annualScheduleData.value[monthKey].push(dateStr);
+          }
+        }
+      }
+    }
+  }
+
+  LogUtil.Debug('= annual: Parsed selected dates from test data:', selectedDates);
+  return selectedDates;
+}
+
+// Load test data on component mount
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  LogUtil.Debug('= annual: Component mounted, loading test data')
+
+  const testData =TransferToDates();// PrepareTestData()
+
+  // Parse test data and populate the schedule
+  // For demonstration, let's select some random dates based on the test data
+  const selectedDates = [
+    `${currentYear.value}-01-01`, // New Year's Day
+    `${currentYear.value}-01-15`, // MLK Day area
+    `${currentYear.value}-02-14`, // Valentine's Day
+    `${currentYear.value}-03-17`, // St. Patrick's Day
+    `${currentYear.value}-07-04`, // Independence Day
+    `${currentYear.value}-10-31`, // Halloween
+    `${currentYear.value}-12-25`, // Christmas
+  ]
+
+  selectedDates.forEach(dateStr => {
+    const dateObj = dayjs(dateStr)
+    const monthKey = months[dateObj.month()]
+
+    if (!annualScheduleData.value[monthKey]) {
+      annualScheduleData.value[monthKey] = []
+    }
+
+    if (!annualScheduleData.value[monthKey].includes(dateStr)) {
+      annualScheduleData.value[monthKey].push(dateStr)
+    }
+  })
+
+  LogUtil.Debug('= annual: Test data loaded into schedule:', annualScheduleData.value)
+})
+
 </script>
 
 <style>
