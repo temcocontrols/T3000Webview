@@ -9,6 +9,7 @@ import T3UIUtil from './T3UIUtil';
 import { isBuiltInEdge, T3_Types } from '../../Data/T3Data';
 import Hvac from '../../Hvac';
 import { CalendarEvent, EventFormState } from "../../Data/Constant/T3Interface";
+import { data } from 'jquery';
 
 type ViewType = 'day' | 'week' | 'month';
 export type ModalModeType = 'create' | 'edit';
@@ -417,94 +418,94 @@ class TuiCalendarUtil {
   InitTestData() {
     const testTimeArr = [
       [
-        { hours: 2, minutes: 59, tflag: 0 },
-        { hours: 3, minutes: 0, tflag: 0 },
-        { hours: 9, minutes: 0, tflag: 0 },
-        { hours: 21, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
+        { hours: 2, minutes: 59, flag: 0 },
+        { hours: 3, minutes: 0, flag: 0 },
+        { hours: 9, minutes: 0, flag: 0 },
+        { hours: 21, minutes: 0, flag: 0 },
+        { hours: 23, minutes: 0, flag: 0 },
+        { hours: 0, minutes: 0, flag: 0 },
+        { hours: 0, minutes: 0, flag: 0 },
+        { hours: 0, minutes: 0, flag: 0 }
       ],
       [
-        { hours: 0, minutes: 0, tflag: 1 },
-        { hours: 3, minutes: 0, tflag: 0 },
-        { hours: 9, minutes: 0, tflag: 0 },
-        { hours: 21, minutes: 0, tflag: 0 },
-        { hours: 23, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 },
-        { hours: 0, minutes: 0, tflag: 0 }
+        { hours: 0, minutes: 0, flag: 1 },
+        { hours: 3, minutes: 0, flag: 0 },
+        { hours: 9, minutes: 0, flag: 0 },
+        { hours: 21, minutes: 0, flag: 0 },
+        { hours: 23, minutes: 0, flag: 0 },
+        { hours: 0, minutes: 0, flag: 0 },
+        { hours: 0, minutes: 0, flag: 0 },
+        { hours: 0, minutes: 0, flag: 0 }
       ],
       // [
-      //   { hours: 2, minutes: 59, tflag: 0 },
-      //   { hours: 3, minutes: 0, tflag: 0 },
-      //   { hours: 9, minutes: 0, tflag: 0 },
-      //   { hours: 21, minutes: 0, tflag: 0 },
-      //   { hours: 23, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 }
+      //   { hours: 2, minutes: 59, flag: 0 },
+      //   { hours: 3, minutes: 0, flag: 0 },
+      //   { hours: 9, minutes: 0, flag: 0 },
+      //   { hours: 21, minutes: 0, flag: 0 },
+      //   { hours: 23, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 }
       // ],
       // [
-      //   { hours: 2, minutes: 59, tflag: 0 },
-      //   { hours: 3, minutes: 0, tflag: 0 },
-      //   { hours: 9, minutes: 0, tflag: 0 },
-      //   { hours: 21, minutes: 0, tflag: 0 },
-      //   { hours: 23, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 }
+      //   { hours: 2, minutes: 59, flag: 0 },
+      //   { hours: 3, minutes: 0, flag: 0 },
+      //   { hours: 9, minutes: 0, flag: 0 },
+      //   { hours: 21, minutes: 0, flag: 0 },
+      //   { hours: 23, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 }
       // ],
       // [
-      //   { hours: 2, minutes: 59, tflag: 0 },
-      //   { hours: 3, minutes: 0, tflag: 0 },
-      //   { hours: 9, minutes: 0, tflag: 0 },
-      //   { hours: 21, minutes: 0, tflag: 0 },
-      //   { hours: 23, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 }
+      //   { hours: 2, minutes: 59, flag: 0 },
+      //   { hours: 3, minutes: 0, flag: 0 },
+      //   { hours: 9, minutes: 0, flag: 0 },
+      //   { hours: 21, minutes: 0, flag: 0 },
+      //   { hours: 23, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 }
       // ],
       // [
-      //   { hours: 0, minutes: 0, tflag: 1 },
-      //   { hours: 23, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 }
+      //   { hours: 0, minutes: 0, flag: 1 },
+      //   { hours: 23, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 }
       // ],
       // [
-      //   { hours: 0, minutes: 0, tflag: 1 },
-      //   { hours: 0, minutes: 56, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 }
+      //   { hours: 0, minutes: 0, flag: 1 },
+      //   { hours: 0, minutes: 56, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 }
       // ],
       // [
-      //   { hours: 0, minutes: 0, tflag: 1 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 23, minutes: 0, tflag: 0 }
+      //   { hours: 0, minutes: 0, flag: 1 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 23, minutes: 0, flag: 0 }
       // ],
       // [
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 0, minutes: 0, tflag: 0 },
-      //   { hours: 22, minutes: 0, tflag: 0 }
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 0, minutes: 0, flag: 0 },
+      //   { hours: 22, minutes: 0, flag: 0 }
       // ]
     ];
 
@@ -638,7 +639,7 @@ class TuiCalendarUtil {
    * @param timeArr - 2D array: [days][slots], each slot is {hours, minutes}
    * @returns CalendarEvent[]
    */
-  ConvertTimeArrayToEvents(timeArr: { hours: number; minutes: number, tflag: number }[][]): CalendarEvent[] {
+  ConvertTimeArrayToEvents(timeArr: { hours: number; minutes: number, flag: number }[][]): CalendarEvent[] {
     // Input order: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, Holiday1, Holiday2]
     // Output order: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Holiday1, Holiday2]
     const inputToOutputIdx = [6, 0, 1, 2, 3, 4, 5, 7, 8]; // Map input idx to output idx
@@ -659,22 +660,22 @@ class TuiCalendarUtil {
         let startTime = slots[i];
         let endTime = slots[i + 1];
 
-        // 1. Both start and end are 00:00 with tflag 0 => skip
+        // 1. Both start and end are 00:00 with flag 0 => skip
         if (
           startTime &&
           endTime &&
-          startTime.hours === 0 && startTime.minutes === 0 && startTime.tflag === 0 &&
-          endTime.hours === 0 && endTime.minutes === 0 && endTime.tflag === 0
+          startTime.hours === 0 && startTime.minutes === 0 && startTime.flag === 0 &&
+          endTime.hours === 0 && endTime.minutes === 0 && endTime.flag === 0
         ) {
           continue;
         }
 
-        // 2. If one of start or end is 00:00 with tflag 0, set it to the other (make both the same as the one not 00:00 and not tflag 0)
+        // 2. If one of start or end is 00:00 with flag 0, set it to the other (make both the same as the one not 00:00 and not flag 0)
         let flagText = '';
         if (
           startTime &&
-          startTime.hours === 0 && startTime.minutes === 0 && startTime.tflag === 0 &&
-          !(endTime.hours === 0 && endTime.minutes === 0 && endTime.tflag === 0)
+          startTime.hours === 0 && startTime.minutes === 0 && startTime.flag === 0 &&
+          !(endTime.hours === 0 && endTime.minutes === 0 && endTime.flag === 0)
         ) {
           startTime = { ...endTime };
           endTime = { ...endTime };
@@ -682,8 +683,8 @@ class TuiCalendarUtil {
 
         } else if (
           endTime &&
-          endTime.hours === 0 && endTime.minutes === 0 && endTime.tflag === 0 &&
-          !(startTime.hours === 0 && startTime.minutes === 0 && startTime.tflag === 0)
+          endTime.hours === 0 && endTime.minutes === 0 && endTime.flag === 0 &&
+          !(startTime.hours === 0 && startTime.minutes === 0 && startTime.flag === 0)
         ) {
           endTime = { ...startTime };
           startTime = { ...startTime };
@@ -718,8 +719,8 @@ class TuiCalendarUtil {
           end: end,
           group: dayNames[outputIdx] || `Day${outputIdx + 1}`,
           flagText: flagText,
-          startFlag: startTime.tflag,
-          endFlag: endTime.tflag
+          startFlag: startTime.flag,
+          endFlag: endTime.flag
         });
       }
     }
@@ -740,7 +741,7 @@ class TuiCalendarUtil {
     }
   }
 
-  PrepareMsgData(timeArr: { hours: number; minutes: number; tflag: number }[][]): {} {
+  PrepareMsgData(timeArr: { hours: number; minutes: number; flag: number }[][]): {} {
 
     if (
       scheduleItemData.value == null ||
@@ -758,10 +759,12 @@ class TuiCalendarUtil {
     const msgData = {
       action: 3, // UPDATE_ENTRY
       field: key,
-      value: fieldVal,
+      value: -1,
+      data: { time: fieldVal },
       panelId: pid,
       entryIndex: index,
-      entryType: T3_Types[type],
+      // entryType: T3_Types[type],
+      entryType: 16,// BAC_WR_TIME,
     };
 
     return msgData;
@@ -770,16 +773,16 @@ class TuiCalendarUtil {
   /**
    * Converts the current calendar events to the T3 time array format.
    * Output: Array of 9 days (Monday-Sunday, Holiday1, Holiday2), each with 8 slots.
-   * Each slot: { hours, minutes, tflag }
+   * Each slot: { hours, minutes, flag }
    */
-  TransferEventsToT3Format(): { hours: number; minutes: number; tflag: number }[][] {
+  TransferEventsToT3Format(): { hours: number; minutes: number; flag: number }[][] {
     const dayNames = [
       'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Holiday1', 'Holiday2'
     ];
 
-    // Initialize a 2D array for 9 days, each with 8 slots (default to 00:00, tflag: 0)
-    const result: { hours: number; minutes: number; tflag: number }[][] = Array.from({ length: 9 }, () =>
-      Array.from({ length: 8 }, () => ({ hours: 0, minutes: 0, tflag: 0 }))
+    // Initialize a 2D array for 9 days, each with 8 slots (default to 00:00, flag: 0)
+    const result: { hours: number; minutes: number; flag: number }[][] = Array.from({ length: 9 }, () =>
+      Array.from({ length: 8 }, () => ({ hours: 0, minutes: 0, flag: 0 }))
     );
 
     // Group events by day name
@@ -806,13 +809,13 @@ class TuiCalendarUtil {
           result[dayIdx][slotIdx] = {
             hours: 0,
             minutes: 0,
-            tflag: 0
+            flag: 0
           };
         } else {
           result[dayIdx][slotIdx] = {
             hours: ev.start ? ev.start.getHours() : 0,
             minutes: ev.start ? ev.start.getMinutes() : 0,
-            tflag: ev.startFlag ?? 0
+            flag: ev.startFlag ?? 0
           };
         }
         slotIdx++;
@@ -823,13 +826,13 @@ class TuiCalendarUtil {
           result[dayIdx][slotIdx] = {
             hours: 0,
             minutes: 0,
-            tflag: 0
+            flag: 0
           };
         } else {
           result[dayIdx][slotIdx] = {
             hours: ev.end ? ev.end.getHours() : 0,
             minutes: ev.end ? ev.end.getMinutes() : 0,
-            tflag: ev.endFlag ?? 0
+            flag: ev.endFlag ?? 0
           };
         }
         slotIdx++;

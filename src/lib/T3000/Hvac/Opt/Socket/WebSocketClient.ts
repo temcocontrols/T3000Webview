@@ -196,13 +196,23 @@ class WebSocketClient {
 
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       try {
-        this.socket.send(message);
-        const currentDateTime = new Date().toLocaleString();
+      this.socket.send(message);
+      const currentDateTime = new Date().toLocaleString();
+
+      // Parse message to check action type
+      try {
+        const parsedMessage = JSON.parse(message);
+        if (parsedMessage?.message.action !== 1&&parsedMessage?.message.action !== 6) {
         LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+        }
+      } catch {
+        // If parsing fails, log normally
+        LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+      }
       } catch (error) {
-        LogUtil.Error('Failed to send message:', error);
-        this.messageQueue.push(message);
-        this.attemptReconnect();
+      LogUtil.Error('Failed to send message:', error);
+      this.messageQueue.push(message);
+      this.attemptReconnect();
       }
     } else {
       // Queue message for later
@@ -211,10 +221,10 @@ class WebSocketClient {
 
       // If not connected, attempt to connect
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
-        this.connect();
+      this.connect();
       }
     }
-  }
+    }
 
   private processPendingMessages() {
     while (this.messageQueue.length > 0 && this.socket?.readyState === WebSocket.OPEN) {
@@ -285,6 +295,10 @@ class WebSocketClient {
     this.messageModel.message.value = data.value;
     this.messageModel.message.entryIndex = data.entryIndex;
     this.messageModel.message.entryType = data.entryType;
+
+    if (data.data !== undefined) {
+      this.messageModel.message.data = data.data;
+    }
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
@@ -956,7 +970,7 @@ class WebSocketClient {
     if (!this.needRefresh) return;
     if (this.reloadInitialDataInterval) return;
 
-    LogUtil.Info('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
+    // LogUtil.Info('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
 
     // Set a timer to reload the initial data every 5 minutes
     this.reloadInitialDataInterval = setInterval(() => {
@@ -969,7 +983,7 @@ class WebSocketClient {
       }
     }, 2000);
 
-    LogUtil.Info('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
+    // LogUtil.Info('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
   }
 
   clearInitialDataInterval() {
