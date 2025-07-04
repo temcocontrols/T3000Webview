@@ -78,6 +78,22 @@ module.exports = configure(function (/* ctx */) {
 
       // extendViteConf (viteConf) {},
       extendViteConf(viteConf) {
+        // Enable React JSX support for Grafana components
+        viteConf.esbuild = viteConf.esbuild || {};
+        viteConf.esbuild.jsx = 'react-jsx';
+        viteConf.esbuild.jsxImportSource = 'react';
+
+        // Optimize deps for Grafana and React
+        viteConf.optimizeDeps = viteConf.optimizeDeps || {};
+        viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
+        viteConf.optimizeDeps.include.push(
+          'react',
+          'react-dom',
+          '@grafana/ui',
+          '@grafana/data',
+          '@grafana/runtime'
+        );
+
         // Manual chunk splitting for better bundle optimization
         viteConf.build = viteConf.build || {};
         viteConf.build.rollupOptions = viteConf.build.rollupOptions || {};
@@ -85,6 +101,15 @@ module.exports = configure(function (/* ctx */) {
 
         // Define manual chunks to split large dependencies
         viteConf.build.rollupOptions.output.manualChunks = (id) => {
+          // Grafana libraries
+          if (id.includes('@grafana/')) {
+            return 'grafana';
+          }
+          // React libraries
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react';
+          }
+
           // T3000 library chunks
           if (id.includes('src/lib/T3000')) {
             if (id.includes('T3000/Hvac/Data')) {

@@ -143,6 +143,10 @@ const routes = [
       {
         path: 'holidays',
         component: createOptimizedComponent(() => import('src/pages/V2/Schedules.vue'), "V2Holidays", { category: 'normal' })
+      },
+      {
+        path: 'grafana-demo',
+        component: createOptimizedComponent(() => import('src/pages/GrafanaDemo.vue'), "GrafanaDemo", { category: 'normal' })
       }
     ]
   },
