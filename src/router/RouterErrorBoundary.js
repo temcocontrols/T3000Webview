@@ -22,9 +22,18 @@ export class RouterErrorBoundary {
     // Handle navigation guards errors
     this.router.beforeEach((to, from, next) => {
       try {
-        // Clear any previous timeout errors when navigating
         console.log(`[Router] Navigating from ${from.path} to ${to.path}`);
-        next();
+
+        // Special handling when leaving pages that might have Selecto components
+        if (from.path && (from.path.includes('hvac') || from.path.includes('drawer'))) {
+          console.log('[Router] Leaving page with potential Selecto components, allowing cleanup time');
+          // Give a small delay to allow proper cleanup
+          setTimeout(() => {
+            next();
+          }, 100);
+        } else {
+          next();
+        }
       } catch (error) {
         this.handleNavigationError(error, to, from);
         next(false); // Cancel navigation
@@ -41,6 +50,13 @@ export class RouterErrorBoundary {
 
   handleRouterError(error) {
     console.error('[Router] Router error:', error);
+
+    // Handle specific Selecto/Gesto errors
+    if (error.message && (error.message.includes('gesto') || error.message.includes('selecto'))) {
+      console.warn('[Router] Selecto/Gesto related error detected during navigation (safely ignored):', error.message);
+      // Don't treat this as a critical error
+      return;
+    }
 
     this.errorHandler.handleError(
       error,

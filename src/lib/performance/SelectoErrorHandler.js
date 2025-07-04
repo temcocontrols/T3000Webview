@@ -46,6 +46,62 @@ export class SelectoErrorHandler {
   }
 
   /**
+   * Enhanced safe destroy that handles the specific "gesto is null" error
+   * @param {Object} selectoRef - Vue ref to the selecto component
+   * @returns {boolean} - True if cleanup was successful
+   */
+  static safeDestroyWithGestoFix(selectoRef) {
+    try {
+      if (!selectoRef || !selectoRef.value) {
+        console.warn('[SelectoErrorHandler] Selecto ref is null or undefined');
+        return false;
+      }
+
+      const selectoInstance = selectoRef.value;
+
+      // Check for gesto property specifically to avoid "gesto is null" error
+      if (selectoInstance.gesto === null || selectoInstance.gesto === undefined) {
+        console.warn('[SelectoErrorHandler] Gesto is null/undefined, skipping destroy');
+        return false;
+      }
+
+      // Check if the selecto instance has a destroy method
+      if (typeof selectoInstance.destroy === 'function') {
+        selectoInstance.destroy();
+        console.log('[SelectoErrorHandler] Selecto instance destroyed successfully');
+        return true;
+      }
+
+      // Check if it has an internal $_selecto property that needs cleanup
+      if (selectoInstance.$_selecto) {
+        if (selectoInstance.$_selecto.gesto === null || selectoInstance.$_selecto.gesto === undefined) {
+          console.warn('[SelectoErrorHandler] Internal gesto is null/undefined, skipping destroy');
+          return false;
+        }
+
+        if (typeof selectoInstance.$_selecto.destroy === 'function') {
+          selectoInstance.$_selecto.destroy();
+          console.log('[SelectoErrorHandler] Internal $_selecto destroyed successfully');
+          return true;
+        }
+      }
+
+      console.warn('[SelectoErrorHandler] No destroy method found on selecto instance');
+      return false;
+
+    } catch (error) {
+      // Specifically handle the "gesto is null" error
+      if (error.message && error.message.includes('gesto')) {
+        console.warn('[SelectoErrorHandler] Gesto-related error during cleanup (safely ignored):', error.message);
+        return false;
+      }
+
+      console.warn('[SelectoErrorHandler] Error during selecto cleanup (non-critical):', error.message);
+      return false;
+    }
+  }
+
+  /**
    * Check if a selecto component is properly initialized
    * @param {Object} selectoRef - Vue ref to the selecto component
    * @returns {boolean} - True if properly initialized

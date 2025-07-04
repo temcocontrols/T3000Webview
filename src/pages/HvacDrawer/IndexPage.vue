@@ -1057,7 +1057,8 @@ function refreshDeviceAppState() {
 
 onBeforeUnmount(() => {
   // Safely cleanup selecto component to prevent "this.$_selecto is undefined" error
-  SelectoErrorHandler.safeDestroy(selecto);
+  // Use enhanced method to handle "gesto is null" errors
+  SelectoErrorHandler.safeDestroyWithGestoFix(selecto);
 })
 
 // Lifecycle hook for component unmount

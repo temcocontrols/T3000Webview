@@ -3,7 +3,6 @@ import {
   DataFrame,
   Field,
   FieldType,
-  PanelPlugin,
   TimeRange,
   dateTime,
   LoadingState,
@@ -11,14 +10,67 @@ import {
   FieldConfig,
   FieldDisplay
 } from '@grafana/data';
-import {
-  PanelContainer,
-  useTheme2,
-  Button,
-  ButtonGroup,
-  Spinner
-} from '@grafana/ui';
 import { T3000DataPoint, T3000Config } from './types';
+
+// Simple fallback components to avoid broken Grafana UI imports
+const SimpleButton: React.FC<{
+  onClick: () => void;
+  children: React.ReactNode;
+  variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+}> = ({ onClick, children, variant = 'secondary', disabled = false }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    style={{
+      padding: '8px 16px',
+      margin: '0 4px',
+      border: variant === 'primary' ? '1px solid #1f77b4' : '1px solid #ddd',
+      backgroundColor: variant === 'primary' ? '#1f77b4' : '#f8f9fa',
+      color: variant === 'primary' ? 'white' : '#333',
+      borderRadius: '4px',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      fontSize: '14px',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}
+  >
+    {children}
+  </button>
+);
+
+const SimpleSpinner: React.FC = () => (
+  <div style={{
+    display: 'inline-block',
+    width: '16px',
+    height: '16px',
+    border: '2px solid #f3f3f3',
+    borderTop: '2px solid #1f77b4',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
+  }}>
+    <style>
+      {`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+  </div>
+);
+
+const SimplePanelContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{
+    backgroundColor: '#ffffff',
+    border: '1px solid #e7e7e7',
+    borderRadius: '2px',
+    padding: '16px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  }}>
+    {children}
+  </div>
+);
 
 interface T3000PanelProps {
   data?: PanelData;
@@ -43,7 +95,36 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
   width,
   height
 }) => {
-  const theme = useTheme2();
+  console.log('[GrafanaPanel] Received props:', {
+    data,
+    timeRange,
+    config,
+    width,
+    height
+  });
+
+  // Simple theme object since useTheme2 is broken
+  const theme = {
+    colors: {
+      text: {
+        primary: '#212529',
+        secondary: '#6c757d'
+      },
+      background: {
+        primary: '#ffffff',
+        secondary: '#f8f9fa',
+        canvas: '#fafbfc'
+      },
+      border: {
+        weak: '#e7e7e7'
+      },
+      info: {
+        transparent: '#e3f2fd',
+        border: '#90caf9',
+        text: '#1976d2'
+      }
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
 
   const quickTimeRanges = [
@@ -73,7 +154,7 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
   };
 
   return (
-    <PanelContainer>
+    <SimplePanelContainer>
       <div style={{
         width,
         height,
@@ -96,27 +177,46 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {/* Quick time range buttons */}
-            <ButtonGroup>
+            <div style={{ display: 'flex', gap: '4px' }}>
               {quickTimeRanges.map((range) => (
-                <Button
+                <SimpleButton
                   key={range.label}
                   variant="secondary"
-                  size="sm"
                   onClick={() => handleTimeRangeSelect(range.value)}
                 >
                   {range.label}
-                </Button>
+                </SimpleButton>
               ))}
-            </ButtonGroup>
+            </div>
 
-            <Button
+            <SimpleButton
               variant="primary"
-              size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
             >
-              {isLoading ? <Spinner /> : 'Refresh'}
-            </Button>
+              {isLoading ? <SimpleSpinner /> : 'Refresh'}
+            </SimpleButton>
+
+            <SimpleButton
+              variant="secondary"
+              onClick={() => {
+                console.log('[GrafanaPanel] Manual test data generation');
+                // Test data generation directly
+                const { t3000Api } = require('./api');
+                t3000Api.getData({
+                  deviceId: 123,
+                  timeRange: {
+                    from: { valueOf: () => Date.now() - 30 * 60 * 1000 },
+                    to: { valueOf: () => Date.now() }
+                  },
+                  channels: [1, 2, 3, 4, 5]
+                }).then(result => {
+                  console.log('[GrafanaPanel] Test result:', result);
+                });
+              }}
+            >
+              Test API
+            </SimpleButton>
           </div>
         </div>
 
@@ -128,6 +228,20 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
           display: 'flex',
           flexDirection: 'column'
         }}>
+          {/* Debug information */}
+          <div style={{
+            marginBottom: '16px',
+            padding: '8px',
+            background: '#fffbe6',
+            border: '1px solid #d9c441',
+            borderRadius: '4px',
+            fontSize: '12px'
+          }}>
+            <strong>Debug Info:</strong> Data state: {data?.state || 'undefined'},
+            Series count: {data?.series?.length || 0},
+            Loading: {isLoading ? 'true' : 'false'}
+          </div>
+
           {data && data.series && data.series.length > 0 ? (
             <div style={{
               flex: 1,
@@ -219,7 +333,7 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
             }}>
               {isLoading ? (
                 <>
-                  <Spinner size={32} />
+                  <SimpleSpinner />
                   <div style={{ marginTop: '16px' }}>Loading T3000 data...</div>
                 </>
               ) : (
@@ -232,7 +346,7 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
           )}
         </div>
       </div>
-    </PanelContainer>
+    </SimplePanelContainer>
   );
 };
 

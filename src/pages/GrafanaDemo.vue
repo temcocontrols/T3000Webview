@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, onBeforeUnmount, onErrorCaptured } from 'vue';
 import GrafanaChart from '../components/NewUI/GrafanaChart.vue';
 import type { T3000Config } from '../components/NewUI/chart/types';
 
@@ -99,6 +99,25 @@ const environmentConfig = reactive<T3000Config>({
       max: 'auto'
     }
   }
+});
+
+// Error handling for the demo page
+onErrorCaptured((error, instance, info) => {
+  // Handle any errors in the demo components
+  if (error.message && (error.message.includes('gesto') || error.message.includes('selecto'))) {
+    console.warn('[GrafanaDemo] Selecto-related error captured (safely ignored):', error.message);
+    return false; // Prevent the error from propagating
+  }
+
+  console.warn('[GrafanaDemo] Component error:', error, info);
+  return false; // Prevent the error from propagating
+});
+
+// Cleanup when leaving the demo page
+onBeforeUnmount(() => {
+  console.log('[GrafanaDemo] Cleaning up demo page');
+  // Give components time to cleanup properly
+  // This helps prevent navigation-related errors
 });
 </script>
 

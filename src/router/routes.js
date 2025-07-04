@@ -147,6 +147,10 @@ const routes = [
       {
         path: 'grafana-demo',
         component: createOptimizedComponent(() => import('src/pages/GrafanaDemo.vue'), "GrafanaDemo", { category: 'normal' })
+      },
+      {
+        path: 'navigation-test',
+        component: createOptimizedComponent(() => import('src/pages/NavigationTest.vue'), "NavigationTest", { category: 'normal' })
       }
     ]
   },

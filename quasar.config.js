@@ -80,7 +80,7 @@ module.exports = configure(function (/* ctx */) {
       extendViteConf(viteConf) {
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};
-        viteConf.esbuild.jsx = 'react-jsx';
+        viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
 
         // Optimize deps for Grafana and React

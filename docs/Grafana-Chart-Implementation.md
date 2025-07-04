@@ -613,8 +613,11 @@ const securityChannels = [/* Security-specific channels */]
 
 ### 1. Install Grafana Dependencies
 ```bash
+# Install Grafana libraries (compatible with React 18)
 npm install @grafana/ui @grafana/data @grafana/runtime @grafana/schema
-npm install react react-dom @types/react @types/react-dom
+
+# Install React 18 (required for Grafana compatibility)
+npm install react@^18.0.0 react-dom@^18.0.0 @types/react@^18.0.0 @types/react-dom@^18.0.0
 ```
 
 ### 2. Configure Build Tools
@@ -741,9 +744,14 @@ const environmentConfig: T3000Config = {
 ### Demo Page Access
 To see the implementation in action:
 1. Start the development server: `npm run client-dev`
-2. Navigate to http://localhost:9000/new/grafana-demo in your browser
+2. Navigate to http://localhost:3006/new/grafana-demo in your browser
 3. The demo shows multiple chart instances with different configurations
 4. Data is generated using the mock T3000 API for demonstration
+
+**Navigation Test Page**: http://localhost:3006/new/navigation-test
+- Provides safe navigation links between different application sections
+- Includes error handling for Selecto/Gesto component navigation issues
+- Useful for testing navigation between pages with different component types
 
 **Live Demo Features:**
 - Multiple chart instances showing different device configurations
@@ -762,7 +770,7 @@ To see the implementation in action:
 
 ### Browser Compatibility
 - **Modern Browsers**: Chrome 88+, Firefox 85+, Safari 14+
-- **React 18**: Required for concurrent features
+- **React 18**: Compatible and required for Grafana libraries (project uses React 18.0.0)
 - **ES2020**: Modern JavaScript features
 
 ### Monitoring and Debugging

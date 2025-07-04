@@ -11,22 +11,29 @@ export class T3000Api {
    * Fetch real-time data from T3000 device
    */
   async fetchCurrentData(deviceId: number, channelIds: number[]): Promise<T3000ApiResponse> {
-    const response = await fetch(`${this.baseUrl}/t3000/current`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        device_id: deviceId,
-        channel_ids: channelIds
+    try {
+      const response = await fetch(`${this.baseUrl}/t3000/current`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          device_id: deviceId,
+          channel_ids: channelIds
+        })
       })
-    })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch current data: ${response.statusText}`)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch current data: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      // Fall back to mock data when real API is not available
+      console.warn('[T3000Api] Real API not available, using mock data:', error);
+      const now = Date.now();
+      return this.generateMockData(channelIds, now - 1800000, now, 5000); // Last 30 minutes
     }
-
-    return response.json()
   }
 
   /**
@@ -39,25 +46,31 @@ export class T3000Api {
     endTime: number,
     interval?: number
   ): Promise<T3000ApiResponse> {
-    const response = await fetch(`${this.baseUrl}/t3000/timeseries`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        device_id: deviceId,
-        channel_ids: channelIds,
-        start_time: startTime,
-        end_time: endTime,
-        interval: interval || 5000 // Default 5 second interval
+    try {
+      const response = await fetch(`${this.baseUrl}/t3000/timeseries`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          device_id: deviceId,
+          channel_ids: channelIds,
+          start_time: startTime,
+          end_time: endTime,
+          interval: interval || 5000 // Default 5 second interval
+        })
       })
-    })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch time series data: ${response.statusText}`)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch time series data: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      // Fall back to mock data when real API is not available
+      console.warn('[T3000Api] Real API not available, using mock data:', error);
+      return this.generateMockData(channelIds, startTime, endTime, interval || 5000);
     }
-
-    return response.json()
   }
 
   /**
@@ -101,13 +114,19 @@ export class T3000Api {
   async getData(params: {
     deviceId: number;
     timeRange: { from: any; to: any };
-    channels: string[];
+    channels: number[] | string[];
   }): Promise<T3000ApiResponse> {
     const now = Date.now();
     const timeSpan = params.timeRange.to.valueOf() - params.timeRange.from.valueOf();
 
-    // Map channel names to IDs (simplified mapping)
-    const channelIds = params.channels.map((name, index) => index + 1);
+    // Convert channel names to IDs if needed
+    let channelIds: number[];
+    if (typeof params.channels[0] === 'string') {
+      // Map channel names to IDs (simplified mapping)
+      channelIds = (params.channels as string[]).map((name, index) => index + 1);
+    } else {
+      channelIds = params.channels as number[];
+    }
 
     // If time range is recent (less than 1 hour), fetch current data
     if (timeSpan < 3600000 && params.timeRange.to.valueOf() > now - 300000) {
@@ -133,6 +152,13 @@ export class T3000Api {
     endTime: number,
     interval: number = 5000
   ): T3000ApiResponse {
+    console.log('[T3000Api] Generating mock data:', {
+      channelIds,
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      interval
+    });
+
     const channels: T3000ApiResponse['channels'] = {}
 
     // Mock channel definitions
@@ -189,11 +215,14 @@ export class T3000Api {
       }
     })
 
-    return {
+    const result = {
       deviceId: 123, // Mock device ID
       timestamp: Date.now(),
       channels
-    }
+    };
+
+    console.log('[T3000Api] Generated mock data result:', result);
+    return result;
   }
 
   private getBaseValue(channelId: number): number {

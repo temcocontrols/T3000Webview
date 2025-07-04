@@ -75,13 +75,30 @@ export function useT3000Chart(config: T3000Config) {
 
       data.value.state = LoadingState.Loading
 
+      // Map field names to channel IDs for the mock API
+      const channelIds = config.fields.analog.concat(config.fields.digital).map((name, index) => index + 1);
+
+      console.log('[useT3000Chart] Loading data with config:', {
+        deviceId: config.deviceId,
+        channelIds,
+        timeRange: {
+          from: timeRange.value.from.valueOf(),
+          to: timeRange.value.to.valueOf(),
+          raw: timeRange.value.raw
+        }
+      });
+
       const response = await t3000Api.getData({
-        deviceId: parseInt(config.deviceId),
+        deviceId: parseInt(config.deviceId) || 123,
         timeRange: timeRange.value,
-        channels: config.fields.analog.concat(config.fields.digital)
+        channels: channelIds // Pass channel IDs instead of field names
       })
 
+      console.log('[useT3000Chart] API response:', response);
+
       const dataFrames = convertToDataFrames(response)
+
+      console.log('[useT3000Chart] Converted DataFrames:', dataFrames);
 
       data.value = {
         ...data.value,
@@ -89,6 +106,8 @@ export function useT3000Chart(config: T3000Config) {
         series: dataFrames,
         timeRange: timeRange.value
       }
+
+      console.log('[useT3000Chart] Final data state:', data.value);
 
     } catch (err) {
       console.error('Failed to load T3000 data:', err)
