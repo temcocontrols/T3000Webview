@@ -15,10 +15,11 @@
           </a-col>
           <a-col style="margin-right: 40px;">
             <div style="display: flex; justify-content: flex-start; gap: 8px;" v-if="!locked">
-              <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">
+              <!-- <a-button class="t3-btn" size="small" type="primary" @click="selectAllHolidays">
                 Select All Holidays
-              </a-button>
-              <a-button class="t3-btn" size="small" @click="RefreshFromT3000">Reset</a-button>
+              </a-button> -->
+              <a-button class="t3-btn" size="small" type="primary" @click="RefreshFromT3000">Refresh From
+                T3000</a-button>
               <a-button class="t3-btn" size="small" @click="ClearAll">Clear All</a-button>
               <a-button class="t3-btn" size="small" @click="HandleOk">Save Data</a-button>
               <!-- <a-button class="t3-btn" size="small" @click="HandleCancel">Cancel</a-button> -->
@@ -56,9 +57,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { Calendar as ACalendar, Row as ARow, Col as ACol, Button as AButton, Modal as AModal, ConfigProvider as AConfigProvider } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
-import { annualScheduleVisible, annualScheduleData, scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
+import { annualScheduleVisible, annualScheduleData, scheduleItemData, } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { locked } from 'src/lib/T3000/Hvac/Data/T3Data'
 import { h } from 'vue'
+import T3UIUtil from 'src/lib/T3000/Hvac/Opt/UI/T3UIUtil'
+import { isBuiltInEdge, T3_Types } from '../../lib/T3000/Hvac/Data/T3Data';
+import Hvac from 'src/lib/T3000/Hvac/Hvac'
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
 // Types
 interface Holiday {
@@ -338,17 +343,57 @@ const HandleCancel = (): void => {
 }
 
 const HandleOk = (): void => {
-  // Convert selected dates back to hex array format
-  const hexArray = transferSelectedDatesToHex()
 
-  // Store the hex array back in scheduleItemData
-  if (!(scheduleItemData.value as any).t3Entry) {
-    (scheduleItemData.value as any).t3Entry = {}
+  try {
+    annualScheduleVisible.value = false;
+    T3UIUtil.SetNavVisiblity(true);
+
+    // Save the calendar data to T3000
+    // Convert selected dates back to hex array format
+    const hexArray = transferSelectedDatesToHex()
+
+    const msgData = PrepareMsgData(hexArray);
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.UpdateEntry(msgData);
+    }
+    else {
+      Hvac.WsClient.UpdateEntry(msgData);
+    }
+  } catch (error) {
+    LogUtil.Error(`Error saving annual schedule: ${error}`);
   }
-  (scheduleItemData.value as any).t3Entry.data = hexArray
+}
 
-  console.log('Saved schedule data:', hexArray)
-  annualScheduleVisible.value = false
+const PrepareMsgData = (hexArray: any) => {
+
+  if (
+    scheduleItemData.value == null ||
+    scheduleItemData.value.t3Entry == null
+  ) {
+    return;
+  }
+
+  const key = "value";
+  const fieldVal = hexArray;
+  const pid = scheduleItemData.value.t3Entry.pid;
+  const index = scheduleItemData.value.t3Entry.index;
+  const type = scheduleItemData.value.t3Entry.type;
+
+  const msgData = {
+    action: 3, // UPDATE_ENTRY
+    field: key,
+    value: -1,
+    data: { data: fieldVal },
+    panelId: pid,
+    entryIndex: index,
+    // entryType: T3_Types[type],
+    entryType:17, // BAC_AR_Y Assuming 17 is the correct type for annual schedule
+  };
+
+  LogUtil.Debug(`PrepareMsgData: ${JSON.stringify(msgData)}`);
+
+  return msgData;
 }
 
 const transferDatesToDisplay = (): void => {

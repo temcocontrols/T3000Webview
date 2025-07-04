@@ -203,7 +203,7 @@ export class NodeDebugger {
     if (!NodeDebugger.isEnabled) return;
 
     const stack = new Error().stack;
-    console.log(`[Node Debugger] ${label}:`, stack);
+    // console.log(`[Node Debugger] ${label}:`, stack);
   }
 
   /**
@@ -219,13 +219,13 @@ export class NodeDebugger {
         if (mutation.type === 'childList') {
           mutation.addedNodes.forEach((node) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
-              console.log('[Node Debugger] Element added:', node);
+              // console.log('[Node Debugger] Element added:', node);
             }
           });
 
           mutation.removedNodes.forEach((node) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
-              console.log('[Node Debugger] Element removed:', node);
+              // console.log('[Node Debugger] Element removed:', node);
             }
           });
         }
@@ -237,7 +237,7 @@ export class NodeDebugger {
       subtree: true
     });
 
-    console.log('[Node Debugger] DOM mutation monitoring started');
+    // console.log('[Node Debugger] DOM mutation monitoring started');
     return observer;
   }
 }

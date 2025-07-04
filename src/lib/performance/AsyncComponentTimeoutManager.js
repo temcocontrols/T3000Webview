@@ -375,17 +375,17 @@ export class AsyncComponentTimeoutManager {
         const startTime = performance.now();
         const chunkName = resource.split('/').pop() || 'unknown';
 
-        console.log(`[Performance Monitor] Loading chunk: ${chunkName}`);
+        // console.log(`[Performance Monitor] Loading chunk: ${chunkName}`);
 
         try {
           const response = await originalFetch.apply(this, args);
           const loadTime = performance.now() - startTime;
 
-          console.log(`[Performance Monitor] Chunk Load: ${JSON.stringify({
-            name: chunkName,
-            size: response.headers.get('content-length') || 'unknown',
-            time: Math.round(loadTime)
-          })}`);
+          // console.log(`[Performance Monitor] Chunk Load: ${JSON.stringify({
+          //   name: chunkName,
+          //   size: response.headers.get('content-length') || 'unknown',
+          //   time: Math.round(loadTime)
+          // })}`);
 
           return response;
         } catch (error) {

@@ -288,7 +288,7 @@ export class PerformanceMonitor {
 
   log(type, data) {
     if (this.isEnabled) {
-      console.log(`[Performance Monitor] ${type}:`, data);
+      // console.log(`[Performance Monitor] ${type}:`, data);
     }
   }
 
