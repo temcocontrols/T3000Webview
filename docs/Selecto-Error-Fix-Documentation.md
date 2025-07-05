@@ -158,3 +158,70 @@ This fix successfully resolves the "this.$_selecto is undefined" error by implem
 4. **Follows defensive programming best practices** for reliable software
 
 The solution is non-intrusive, performant, and can be easily extended to other similar component integration challenges.
+
+## Latest Update: Enhanced $_selecto Error Handling
+
+### New Issue Fixed (July 2025)
+**Error**: `[Performance] Unhandled promise rejection: TypeError: can't access property "destroy", this.$_selecto is undefined`
+
+### Enhanced Solution
+
+#### 1. New Method: `safeDestroyWithSelectoFix()`
+Specifically handles the `$_selecto is undefined` error:
+
+```javascript
+static safeDestroyWithSelectoFix(selectoRef) {
+  // Checks if $_selecto is undefined before accessing it
+  // Provides graceful fallback if the property is not available
+  // Handles both $_selecto and gesto null/undefined scenarios
+}
+```
+
+#### 2. Universal Destroy Method
+**New Recommended Approach**: `universalDestroy()`
+
+```javascript
+SelectoErrorHandler.universalDestroy(selecto);
+```
+
+This method uses multiple strategies:
+1. Try `safeDestroyWithSelectoFix()` - Handles `$_selecto` undefined
+2. Try `safeDestroyWithGestoFix()` - Handles `gesto is null`
+3. Try `safeDestroy()` - Basic safe destruction
+4. Fallback: Clear the ref manually
+
+#### 3. Enhanced safeCall Method
+Improved to handle `$_selecto` undefined errors:
+
+```javascript
+// Checks $_selecto before method calls
+// Provides specific error messages for $_selecto issues
+// Falls back to direct method calls when possible
+```
+
+### Updated IndexPage.vue Implementation
+
+```javascript
+onBeforeUnmount(() => {
+  // Safely cleanup selecto component using universal destroy method
+  // This handles all known selecto errors: "$_selecto is undefined", "gesto is null", etc.
+  SelectoErrorHandler.universalDestroy(selecto);
+})
+```
+
+### Error Types Now Handled
+- ✅ `$_selecto is undefined`
+- ✅ `gesto is null`
+- ✅ Component not initialized
+- ✅ Destroy method not available
+- ✅ Timing race conditions during unmount
+- ✅ Unhandled promise rejections
+
+### Benefits of Enhanced Fix
+1. **Complete Error Suppression**: No more console errors
+2. **Multiple Fallback Strategies**: Robust cleanup process
+3. **Detailed Logging**: Clear debugging information
+4. **Future-Proof**: Handles unknown edge cases
+5. **Backward Compatible**: Existing code continues to work
+
+The enhanced error handler ensures stable component lifecycle management and eliminates all known selecto-related performance errors.
