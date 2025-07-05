@@ -678,7 +678,10 @@ import {
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
-import { scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible, leftNavVisible, rightNavVisible, annualScheduleVisible, annualScheduleData } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import {
+  scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible,
+  leftNavVisible, rightNavVisible, annualScheduleVisible, annualScheduleData, trendLogData, trendLogVisible
+} from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
@@ -1056,9 +1059,9 @@ function refreshDeviceAppState() {
 // }
 
 onBeforeUnmount(() => {
-  // Safely cleanup selecto component to prevent "this.$_selecto is undefined" error
-  // Use enhanced method to handle "gesto is null" errors
-  SelectoErrorHandler.safeDestroyWithGestoFix(selecto);
+  // Safely cleanup selecto component using universal destroy method
+  // This handles all known selecto errors: "$_selecto is undefined", "gesto is null", etc.
+  SelectoErrorHandler.universalDestroy(selecto);
 })
 
 // Lifecycle hook for component unmount
@@ -3129,7 +3132,16 @@ function objectDoubleClicked(item) {
     annualScheduleData.value = [];
     annualScheduleVisible.value = true;
 
-     LogUtil.Debug('= idx: objectDoubleClicked HOLIDAY', annualScheduleData.value);
+    LogUtil.Debug('= idx: objectDoubleClicked HOLIDAY', annualScheduleData.value);
+  }
+
+  //TrendLog
+  if (item.t3Entry?.type === "MON") {
+    scheduleItemData.value = item;
+    trendLogData.value = [];
+    trendLogVisible.value = true;
+
+    LogUtil.Debug('= idx: objectDoubleClicked MON Trend Log', trendLogData.value, trendLogVisible.value);
   }
 
   T3UIUtil.SetNavVisiblity(false);

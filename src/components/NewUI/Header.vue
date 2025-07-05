@@ -58,6 +58,11 @@ const menuItems = [
     route: "/hvac/t2"
   },
   {
+    key: "chartjs-dashboard",
+    title: "Chart.js Dashboard",
+    route: "/new/chartjs-dashboard"
+  },
+  {
     key: "app-library",
     title: "Application Library",
     route: "/new/app-library"

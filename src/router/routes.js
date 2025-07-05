@@ -151,6 +151,10 @@ const routes = [
       {
         path: 'navigation-test',
         component: createOptimizedComponent(() => import('src/pages/NavigationTest.vue'), "NavigationTest", { category: 'normal' })
+      },
+      {
+        path: 'chartjs-dashboard',
+        component: createOptimizedComponent(() => import('src/pages/ChartJsDashboard.vue'), "ChartJsDashboard", { category: 'normal' })
       }
     ]
   },

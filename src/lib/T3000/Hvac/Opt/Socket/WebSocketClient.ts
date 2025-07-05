@@ -637,7 +637,7 @@ class WebSocketClient {
 
   public HandleGetPanelDataRes(msgData) {
 
-    LogUtil.Info('= ws: HandleGetPanelDataRes / msgData:', JSON.stringify(msgData, null, 2));
+    // LogUtil.Info('= ws: HandleGetPanelDataRes / msgData:', JSON.stringify(msgData, null, 2));
     /*
      load graphic list from GET_PANEL_DATA_RES
      => action: 0, // GET_PANEL_DATA_RES

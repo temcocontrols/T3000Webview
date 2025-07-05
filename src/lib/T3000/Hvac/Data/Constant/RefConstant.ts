@@ -95,7 +95,9 @@ export const scheduleLockVisible = ref<boolean>(true);
 export const annualScheduleVisible = ref<boolean>(false);
 export const annualScheduleData = ref<any[]>([]); // Array to hold annual schedule data
 
-
+// Trend Log
+export const trendLogData = ref<any[]>([]); // Array to hold trend log data
+export const trendLogVisible = ref<boolean>(false); // Visibility state of the trend log
 
 
 
