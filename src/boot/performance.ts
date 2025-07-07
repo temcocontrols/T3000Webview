@@ -8,17 +8,18 @@ import { asyncTimeoutManager } from 'src/lib/performance/AsyncComponentTimeoutMa
 import { chunkLoadingManager } from 'src/lib/performance/ChunkLoadingManager.js';
 import { ErrorHandler } from 'src/lib/T3000/Hvac/Util/ErrorHandler';
 import { NodeDebugger } from 'src/lib/debug/NodeDebugger.js';
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 
 export default boot(async ({ app, router }) => {
-  console.log('[Boot] Initializing T3000 Performance Optimizations...');
+  LogUtil.Debug('[Boot] Initializing T3000 Performance Optimizations...');
 
   try {
     // Initialize chunk loading manager first to handle early chunk errors
-    console.log('[Boot] Chunk loading manager initialized');
+    LogUtil.Debug('[Boot] Chunk loading manager initialized');
 
     // Initialize global error handling
     ErrorHandler.initializeGlobalHandling();
-    console.log('[Boot] Global error handling initialized');
+    LogUtil.Debug('[Boot] Global error handling initialized');
 
     // Start DOM mutation monitoring in development
     if (process.env.NODE_ENV === 'development') {
@@ -29,21 +30,21 @@ export default boot(async ({ app, router }) => {
     if (process.env.NODE_ENV === 'production' || window.location.search.includes('sw=true')) {
       const swRegistered = await serviceWorkerManager.register();
       if (swRegistered) {
-        console.log('[Boot] Service Worker registered successfully');
+        LogUtil.Debug('[Boot] Service Worker registered successfully');
 
         // Setup update notifications
         serviceWorkerManager.on('updateAvailable', () => {
-          console.log('[Boot] Service Worker update available');
+          LogUtil.Debug('[Boot] Service Worker update available');
           // You could show a notification to the user here
         });
 
         serviceWorkerManager.on('offline', () => {
-          console.log('[Boot] Application is offline');
+          LogUtil.Debug('[Boot] Application is offline');
           // You could show offline indicator here
         });
 
         serviceWorkerManager.on('online', () => {
-          console.log('[Boot] Application is back online');
+          LogUtil.Debug('[Boot] Application is back online');
           // You could hide offline indicator here
         });
       }
@@ -51,20 +52,20 @@ export default boot(async ({ app, router }) => {
 
     // Initialize Web Worker for background processing
     if (webWorkerManager.isSupported) {
-      console.log('[Boot] Web Worker Manager initialized');
+      LogUtil.Debug('[Boot] Web Worker Manager initialized');
     } else {
-      console.warn('[Boot] Web Workers not supported, falling back to main thread processing');
+      LogUtil.Debug('[Boot] Web Workers not supported, falling back to main thread processing');
     }
 
     // Initialize chunk loading performance monitoring
     asyncTimeoutManager.monitorChunkLoading();
-    console.log('[Boot] Chunk loading performance monitoring enabled');
+    LogUtil.Debug('[Boot] Chunk loading performance monitoring enabled');
 
     // Initialize Progressive Loader for images and data
-    console.log('[Boot] Progressive Loader initialized');
+    LogUtil.Debug('[Boot] Progressive Loader initialized');
 
     // Initialize Async Component Timeout Manager
-    console.log('[Boot] Async Component Timeout Manager initialized');
+    LogUtil.Debug('[Boot] Async Component Timeout Manager initialized');
     // The manager is automatically available through imports
 
     // Setup router hooks for performance monitoring
@@ -87,7 +88,7 @@ export default boot(async ({ app, router }) => {
 
     // Setup unhandled promise rejection tracking
     window.addEventListener('unhandledrejection', (event) => {
-      console.error('[Performance] Unhandled promise rejection:', event.reason);
+      LogUtil.Error('[Performance] Unhandled promise rejection:', event.reason);
       performanceMonitor.log('Unhandled Promise Rejection', {
         reason: event.reason
       });
@@ -108,16 +109,16 @@ export default boot(async ({ app, router }) => {
     }
 
     // Initialize T3000 cache with some default settings
-    console.log('[Boot] T3000 Advanced Cache initialized');
+    LogUtil.Debug('[Boot] T3000 Advanced Cache initialized');
 
     // Preload critical T3000 data if available
     try {
       const cachedData = await t3000Cache.export();
       if (cachedData && Object.keys(cachedData.data).length > 0) {
-        console.log('[Boot] Restored cached T3000 data:', Object.keys(cachedData.data).length, 'entries');
+        LogUtil.Debug('[Boot] Restored cached T3000 data:', Object.keys(cachedData.data).length, 'entries');
       }
     } catch (error) {
-      console.warn('[Boot] Failed to restore cached data:', error);
+      LogUtil.Debug('[Boot] Failed to restore cached data:', error);
     }
 
     // Setup periodic cache cleanup
@@ -134,10 +135,10 @@ export default boot(async ({ app, router }) => {
       progressiveLoader: progressiveLoader
     };
 
-    console.log('[Boot] T3000 Performance Optimizations initialized successfully');
+    LogUtil.Debug('[Boot] T3000 Performance Optimizations initialized successfully');
 
   } catch (error) {
-    console.error('[Boot] Failed to initialize performance optimizations:', error);
+    LogUtil.Error('[Boot] Failed to initialize performance optimizations:', error);
     // Don't fail the application startup if performance optimizations fail
   }
 });

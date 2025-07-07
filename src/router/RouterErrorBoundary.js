@@ -3,6 +3,7 @@
  * Handles navigation errors and component loading failures at the router level
  */
 
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 import { ErrorHandler } from '../lib/T3000/Hvac/Util/ErrorHandler';
 import { asyncTimeoutManager } from '../lib/performance/AsyncComponentTimeoutManager.js';
 
@@ -22,11 +23,11 @@ export class RouterErrorBoundary {
     // Handle navigation guards errors
     this.router.beforeEach((to, from, next) => {
       try {
-        console.log(`[Router] Navigating from ${from.path} to ${to.path}`);
+        LogUtil.Debug(`[Router] Navigating from ${from.path} to ${to.path}`);
 
         // Special handling when leaving pages that might have Selecto components
         if (from.path && (from.path.includes('hvac') || from.path.includes('drawer'))) {
-          console.log('[Router] Leaving page with potential Selecto components, allowing cleanup time');
+          LogUtil.Debug('[Router] Leaving page with potential Selecto components, allowing cleanup time');
           // Give a small delay to allow proper cleanup
           setTimeout(() => {
             next();
@@ -49,11 +50,11 @@ export class RouterErrorBoundary {
   }
 
   handleRouterError(error) {
-    console.error('[Router] Router error:', error);
+    LogUtil.Error('[Router] Router error:', error);
 
     // Handle specific Selecto/Gesto errors
     if (error.message && (error.message.includes('gesto') || error.message.includes('selecto'))) {
-      console.warn('[Router] Selecto/Gesto related error detected during navigation (safely ignored):', error.message);
+      LogUtil.Debug('[Router] Selecto/Gesto related error detected during navigation (safely ignored):', error.message);
       // Don't treat this as a critical error
       return;
     }
@@ -74,7 +75,7 @@ export class RouterErrorBoundary {
   }
 
   handleNavigationError(error, to, from) {
-    console.error(`[Router] Navigation error from ${from.path} to ${to.path}:`, error);
+    LogUtil.Error(`[Router] Navigation error from ${from.path} to ${to.path}:`, error);
 
     this.errorHandler.handleError(
       error,
@@ -89,7 +90,7 @@ export class RouterErrorBoundary {
   }
 
   handleNavigationFailure(failure, to, from) {
-    console.error(`[Router] Navigation failed from ${from.path} to ${to.path}:`, failure);
+    LogUtil.Error(`[Router] Navigation failed from ${from.path} to ${to.path}:`, failure);
 
     this.errorHandler.handleError(
       new Error(`Navigation failure: ${failure.type || 'Unknown'}`),
@@ -122,20 +123,20 @@ export class RouterErrorBoundary {
   }
 
   async handleComponentLoadingFailure(to) {
-    console.log(`[Router] Handling component loading failure for route: ${to.path}`);
+    LogUtil.Debug(`[Router] Handling component loading failure for route: ${to.path}`);
 
     // Get timeout statistics to determine if there's a pattern
     const stats = asyncTimeoutManager.getTimeoutStats();
 
     if (stats.failedComponents > 3) {
-      console.warn('[Router] Multiple component failures detected, showing global fallback');
+      LogUtil.Debug('[Router] Multiple component failures detected, showing global fallback');
       this.navigateToGlobalFallback();
     } else {
       // Try to navigate to the same route again with a delay
       setTimeout(() => {
-        console.log(`[Router] Retrying navigation to ${to.path}`);
+        LogUtil.Debug(`[Router] Retrying navigation to ${to.path}`);
         this.router.push(to.path).catch((retryError) => {
-          console.error('[Router] Retry navigation failed:', retryError);
+          LogUtil.Error('[Router] Retry navigation failed:', retryError);
           this.navigateToFallback();
         });
       }, 2000);
@@ -149,10 +150,10 @@ export class RouterErrorBoundary {
     for (const route of fallbackRoutes) {
       try {
         this.router.push(route);
-        console.log(`[Router] Navigated to fallback route: ${route}`);
+        LogUtil.Debug(`[Router] Navigated to fallback route: ${route}`);
         return;
       } catch (error) {
-        console.error(`[Router] Failed to navigate to fallback ${route}:`, error);
+        LogUtil.Error(`[Router] Failed to navigate to fallback ${route}:`, error);
         continue;
       }
     }
@@ -165,7 +166,7 @@ export class RouterErrorBoundary {
     try {
       this.router.push('/error-fallback');
     } catch (error) {
-      console.error('[Router] Failed to navigate to global fallback:', error);
+      LogUtil.Error('[Router] Failed to navigate to global fallback:', error);
       this.showBasicErrorPage();
     }
   }
@@ -189,7 +190,7 @@ export class RouterErrorBoundary {
   // Recovery methods
   clearComponentCache() {
     asyncTimeoutManager.clearAllTimeoutHistory();
-    console.log('[Router] Cleared component timeout history');
+    LogUtil.Debug('[Router] Cleared component timeout history');
   }
 
   getErrorStats() {

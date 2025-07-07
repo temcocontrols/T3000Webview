@@ -198,7 +198,7 @@ class ErrorHandler {
       );
     });
 
-    LogUtil.Info('Global error handling initialized');
+    LogUtil.Debug('Global error handling initialized');
   }
 
   /**
