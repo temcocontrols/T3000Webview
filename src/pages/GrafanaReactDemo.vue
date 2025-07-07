@@ -171,8 +171,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import GrafanaTimeSeriesReact from 'src/components/GrafanaTimeSeriesReact.vue'
-import GrafanaTimeSeries from 'src/components/GrafanaTimeSeries.vue'
+import GrafanaTimeSeriesReact from 'src/components/NewUI/GrafanaTimeSeriesReact.vue'
+import GrafanaTimeSeries from 'src/components/NewUI/GrafanaTimeSeries.vue'
 
 defineOptions({
   name: 'GrafanaReactDemo'

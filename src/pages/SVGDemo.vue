@@ -160,8 +160,8 @@
 </template>
 
 <script setup lang="ts">
-import GrafanaTimeSeriesSVG from 'src/components/GrafanaTimeSeriesSVG.vue'
-import GrafanaTimeSeries from 'src/components/GrafanaTimeSeries.vue'
+import GrafanaTimeSeriesSVG from 'src/components/NewUI/GrafanaTimeSeriesSVG.vue'
+import GrafanaTimeSeries from 'src/components/NewUI/GrafanaTimeSeries.vue'
 
 defineOptions({
   name: 'SVGDemo'
