@@ -157,6 +157,10 @@ const routes = [
       {
         path: 'chartjs-dashboard',
         component: createOptimizedComponent(() => import('src/pages/ChartJsDashboard.vue'), "ChartJsDashboard", { category: 'normal' })
+      },
+      {
+        path: 'grafana-timeseries',
+        component: createOptimizedComponent(() => import('src/pages/GrafanaTimeSeriesDemo.vue'), "GrafanaTimeSeriesDemo", { category: 'normal' })
       }
     ]
   },

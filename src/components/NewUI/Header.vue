@@ -63,6 +63,11 @@ const menuItems = [
     route: "/new/chartjs-dashboard"
   },
   {
+    key: "grafana-timeseries",
+    title: "Grafana Time Series",
+    route: "/new/grafana-timeseries"
+  },
+  {
     key: "app-library",
     title: "Application Library",
     route: "/new/app-library"
