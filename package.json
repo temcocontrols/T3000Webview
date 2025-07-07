@@ -20,10 +20,6 @@
     "test:unit:ci": "vitest run"
   },
   "dependencies": {
-    "@grafana/data": "^12.0.2",
-    "@grafana/runtime": "^12.0.2",
-    "@grafana/schema": "^12.0.2",
-    "@grafana/ui": "^12.0.2",
     "@quasar/extras": "^1.15.11",
     "@svgdotjs/svg.js": "^3.2.4",
     "@toast-ui/calendar": "^2.1.3",

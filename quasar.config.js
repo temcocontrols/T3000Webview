@@ -83,15 +83,12 @@ module.exports = configure(function (/* ctx */) {
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
 
-        // Optimize deps for Grafana and React
+        // Optimize deps for React
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
         viteConf.optimizeDeps.include.push(
           'react',
-          'react-dom',
-          '@grafana/ui',
-          '@grafana/data',
-          '@grafana/runtime'
+          'react-dom'
         );
 
         // Manual chunk splitting for better bundle optimization
