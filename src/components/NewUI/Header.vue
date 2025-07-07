@@ -68,6 +68,11 @@ const menuItems = [
     route: "/new/grafana-timeseries"
   },
   {
+    key: "grafana-react",
+    title: "Grafana React Demo",
+    route: "/new/grafana-react"
+  },
+  {
     key: "app-library",
     title: "Application Library",
     route: "/new/app-library"

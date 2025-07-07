@@ -1,4 +1,30 @@
-import { DataFrame, Field, FieldType, TimeRange } from '@grafana/data'
+// Simple type definitions to replace Grafana types
+interface DataFrame {
+  name: string
+  fields: Field[]
+}
+
+interface Field {
+  name: string
+  type: string
+  values: any[]
+  config?: any
+}
+
+enum FieldType {
+  time = 'time',
+  number = 'number',
+  string = 'string'
+}
+
+interface TimeRange {
+  from: Date
+  to: Date
+  raw: {
+    from: Date
+    to: Date
+  }
+}
 
 // T3000 specific data structures
 export interface T3000DataPoint {
@@ -30,11 +56,11 @@ export interface T3000PanelOptions {
 }
 
 // Grafana DataFrame structure for T3000 data
-export interface T3000DataFrame extends DataFrame {
+export interface T3000DataFrame {
+  name: string
   fields: Field[]     // Time field + value fields for each channel
   length: number      // Number of data points
   refId?: string      // Query reference
-  name?: string       // Series name
 }
 
 export interface T3000Query {
