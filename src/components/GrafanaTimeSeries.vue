@@ -3,16 +3,16 @@
     <div class="grafana-panel-header">
       <div class="panel-title">{{ title }}</div>
       <div class="panel-controls">
-        <button 
-          class="grafana-button" 
+        <button
+          class="grafana-button"
           :class="{ 'grafana-button--primary': isRealtime }"
           @click="toggleRealtime"
         >
           {{ isRealtime ? 'Pause' : 'Resume' }}
         </button>
-        <select 
+        <select
           class="grafana-select"
-          v-model="timeRange" 
+          v-model="timeRange"
           @change="onTimeRangeChange"
         >
           <option value="5m">Last 5 minutes</option>
@@ -25,12 +25,12 @@
       </div>
     </div>
 
-    <div 
-      ref="timeSeriesContainer" 
+    <div
+      ref="timeSeriesContainer"
       class="grafana-timeseries-panel"
       :style="{ height: `${height}px` }"
     >
-      <canvas 
+      <canvas
         ref="canvasRef"
         class="chart-canvas"
       ></canvas>
@@ -45,13 +45,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import { 
-  DataFrame, 
-  FieldType, 
-  TimeRange,
-  dateTime,
-  MutableDataFrame
-} from '@grafana/data'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
 
@@ -66,6 +59,15 @@ interface SeriesConfig {
   color: string
   data: DataPoint[]
   visible: boolean
+}
+
+interface TimeRange {
+  from: Date
+  to: Date
+  raw: {
+    from: Date
+    to: Date
+  }
 }
 
 interface Props {
@@ -128,11 +130,11 @@ const currentTimeRange = computed((): TimeRange => {
   const now = Date.now()
   const from = now - timeRangeMs.value
   return {
-    from: dateTime(from),
-    to: dateTime(now),
+    from: new Date(from),
+    to: new Date(now),
     raw: {
-      from: dateTime(from),
-      to: dateTime(now)
+      from: new Date(from),
+      to: new Date(now)
     }
   }
 })
@@ -180,37 +182,6 @@ const addDataPoint = () => {
 
   lastUpdateTime.value = new Date().toLocaleTimeString()
   updateChart()
-}
-
-// Convert data to Grafana DataFrame format (for potential future use)
-const createDataFrames = (): DataFrame[] => {
-  return dataSeries.value
-    .filter(series => series.visible && series.data.length > 0)
-    .map(series => {
-      const frame = new MutableDataFrame({
-        name: series.name,
-        fields: [
-          {
-            name: 'Time',
-            type: FieldType.time,
-            values: series.data.map(d => d.timestamp)
-          },
-          {
-            name: 'Value',
-            type: FieldType.number,
-            values: series.data.map(d => d.value),
-            config: {
-              color: {
-                mode: 'fixed',
-                fixedColor: series.color
-              },
-              displayName: series.name
-            }
-          }
-        ]
-      })
-      return frame
-    })
 }
 
 // Create chart with Chart.js (styled like Grafana)
