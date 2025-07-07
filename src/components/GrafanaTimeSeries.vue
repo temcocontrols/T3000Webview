@@ -30,7 +30,10 @@
       class="grafana-timeseries-panel"
       :style="{ height: `${height}px` }"
     >
-      <!-- Grafana TimeSeries component will be rendered here -->
+      <canvas 
+        ref="canvasRef"
+        class="chart-canvas"
+      ></canvas>
     </div>
 
     <div class="grafana-panel-footer">
@@ -42,31 +45,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { 
-  TimeSeries, 
-  VizLegend,
-  PanelContainer 
-} from '@grafana/ui'
 import { 
   DataFrame, 
   FieldType, 
   TimeRange,
   dateTime,
-  MutableDataFrame,
-  createTheme,
-  GrafanaTheme2
+  MutableDataFrame
 } from '@grafana/data'
-import { setEchoSrv } from '@grafana/runtime'
-
-// Mock echo service for Grafana runtime
-const mockEchoSrv = {
-  addEvent: () => {},
-  flush: () => {},
-  subscribe: () => ({ unsubscribe: () => {} })
-}
-setEchoSrv(mockEchoSrv)
+import Chart from 'chart.js/auto'
+import 'chartjs-adapter-date-fns'
 
 // Types
 interface DataPoint {
@@ -100,11 +87,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Reactive variables
 const timeSeriesContainer = ref<HTMLElement>()
+const canvasRef = ref<HTMLCanvasElement>()
 const isRealtime = ref(true)
 const timeRange = ref(props.timeRange)
 const lastUpdateTime = ref('')
 const realtimeInterval = ref<NodeJS.Timeout>()
-const reactRoot = ref<any>(null)
+let chartInstance: Chart | null = null
 
 // Series configuration - matching your graphic.png
 const seriesConfigs: SeriesConfig[] = [
@@ -191,10 +179,10 @@ const addDataPoint = () => {
   })
 
   lastUpdateTime.value = new Date().toLocaleTimeString()
-  renderChart()
+  updateChart()
 }
 
-// Convert data to Grafana DataFrame format
+// Convert data to Grafana DataFrame format (for potential future use)
 const createDataFrames = (): DataFrame[] => {
   return dataSeries.value
     .filter(series => series.visible && series.data.length > 0)
@@ -225,102 +213,154 @@ const createDataFrames = (): DataFrame[] => {
     })
 }
 
-// Render Grafana TimeSeries component
-const renderChart = () => {
-  if (!timeSeriesContainer.value) return
+// Create chart with Chart.js (styled like Grafana)
+const createChart = () => {
+  if (!canvasRef.value) return
 
-  const dataFrames = createDataFrames()
-  if (dataFrames.length === 0) return
+  const ctx = canvasRef.value.getContext('2d')
+  if (!ctx) return
 
-  const theme = createTheme({ colors: { mode: 'dark' } })
-
-  const TimeSeriesComponent = React.createElement(
-    PanelContainer,
-    {},
-    React.createElement(TimeSeries, {
-      data: {
-        series: dataFrames,
-        timeRange: currentTimeRange.value,
-        state: 'Done'
-      },
-      timeRange: currentTimeRange.value,
-      timeZone: 'browser',
-      options: {
-        legend: {
-          displayMode: 'list',
-          placement: 'bottom',
-          calcs: ['lastNotNull']
-        },
-        tooltip: {
-          mode: 'single',
-          sort: 'none'
-        }
-      },
-      fieldConfig: {
-        defaults: {
-          custom: {
-            drawStyle: 'line',
-            lineInterpolation: 'linear',
-            lineWidth: 2,
-            fillOpacity: 0,
-            gradientMode: 'none',
-            spanNulls: false,
-            insertNulls: false,
-            showPoints: 'never',
-            pointSize: 5,
-            stacking: {
-              mode: 'none',
-              group: 'A'
-            },
-            axisPlacement: 'auto',
-            axisLabel: '',
-            axisColorMode: 'text',
-            scaleDistribution: {
-              type: 'linear'
-            },
-            axisCenteredZero: false,
-            hideFrom: {
-              legend: false,
-              tooltip: false,
-              vis: false
-            },
-            thresholdsStyle: {
-              mode: 'off'
-            }
-          },
-          color: {
-            mode: 'palette-classic'
-          },
-          mappings: [],
-          thresholds: {
-            mode: 'absolute',
-            steps: [
-              {
-                color: 'green',
-                value: null
-              },
-              {
-                color: 'red',
-                value: 80
-              }
-            ]
-          }
-        },
-        overrides: []
-      },
-      width: timeSeriesContainer.value.clientWidth,
-      height: props.height - 80 // Account for header/footer
-    })
-  )
-
-  // Clean up previous render
-  if (reactRoot.value) {
-    reactRoot.value.unmount()
+  // Destroy existing chart
+  if (chartInstance) {
+    chartInstance.destroy()
   }
 
-  // Create new React root and render
-  reactRoot.value = ReactDOM.createRoot(timeSeriesContainer.value)
-  reactRoot.value.render(TimeSeriesComponent)
+  const datasets = dataSeries.value
+    .filter(series => series.visible)
+    .map(series => ({
+      label: series.name,
+      data: series.data.map(point => ({
+        x: point.timestamp,
+        y: point.value
+      })),
+      borderColor: series.color,
+      backgroundColor: series.color + '20',
+      borderWidth: 2,
+      fill: false,
+      tension: 0.1,
+      pointRadius: 0,
+      pointHoverRadius: 4
+    }))
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#d9d9d9',
+            font: {
+              size: 12,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            usePointStyle: true,
+            pointStyle: 'line'
+          }
+        },
+        tooltip: {
+          backgroundColor: '#2d3748',
+          titleColor: '#d9d9d9',
+          bodyColor: '#d9d9d9',
+          borderColor: '#4a5568',
+          borderWidth: 1,
+          cornerRadius: 4,
+          displayColors: true,
+          callbacks: {
+            title: (context) => {
+              const date = new Date(context[0].parsed.x)
+              return date.toLocaleString()
+            },
+            label: (context) => {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            displayFormats: {
+              minute: 'HH:mm',
+              hour: 'HH:mm'
+            }
+          },
+          grid: {
+            color: '#36414b',
+            display: true
+          },
+          ticks: {
+            color: '#8e8e8e',
+            font: {
+              size: 11,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            }
+          }
+        },
+        y: {
+          grid: {
+            color: '#36414b',
+            display: true
+          },
+          ticks: {
+            color: '#8e8e8e',
+            font: {
+              size: 11,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            }
+          }
+        }
+      },
+      elements: {
+        line: {
+          borderWidth: 2
+        },
+        point: {
+          radius: 0,
+          hoverRadius: 4
+        }
+      }
+    }
+  })
+}
+
+// Update existing chart
+const updateChart = () => {
+  if (!chartInstance) {
+    createChart()
+    return
+  }
+
+  // Update datasets
+  chartInstance.data.datasets = dataSeries.value
+    .filter(series => series.visible)
+    .map(series => ({
+      label: series.name,
+      data: series.data.map(point => ({
+        x: point.timestamp,
+        y: point.value
+      })),
+      borderColor: series.color,
+      backgroundColor: series.color + '20',
+      borderWidth: 2,
+      fill: false,
+      tension: 0.1,
+      pointRadius: 0,
+      pointHoverRadius: 4
+    }))
+
+  chartInstance.update('none')
 }
 
 // Event handlers
@@ -334,7 +374,7 @@ const toggleRealtime = () => {
 }
 
 const onTimeRangeChange = () => {
-  renderChart()
+  createChart()
 }
 
 const startRealtime = () => {
@@ -355,7 +395,7 @@ const stopRealtime = () => {
 onMounted(async () => {
   initializeData()
   await nextTick()
-  renderChart()
+  createChart()
   if (isRealtime.value) {
     startRealtime()
   }
@@ -363,162 +403,139 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopRealtime()
-  if (reactRoot.value) {
-    reactRoot.value.unmount()
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
   }
 })
 </script>
 
 <style scoped>
 .grafana-timeseries-container {
-  background: #1f1f1f;
-  border-radius: 8px;
-  border: 1px solid #333;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #ffffff;
+  background: #181b1f;
+  border: 1px solid #36414b;
+  border-radius: 3px;
+  font-family: Inter, Helvetica, Arial, sans-serif;
+  color: #d9d9d9;
+  overflow: hidden;
 }
 
-.grafana-timeseries-header {
+.grafana-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #333;
+  padding: 8px 16px;
+  background: #1e2328;
+  border-bottom: 1px solid #36414b;
+  min-height: 32px;
 }
 
 .panel-title {
-  margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  color: #ffffff;
+  color: #d9d9d9;
+  margin: 0;
+  line-height: 1.25;
 }
 
 .panel-controls {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
-.panel-controls button {
-  background: #333;
-  border: 1px solid #555;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 4px;
+.grafana-button {
+  background: #262c35;
+  border: 1px solid #36414b;
+  color: #d9d9d9;
+  padding: 4px 8px;
+  border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.2s;
+  height: 24px;
+  line-height: 16px;
+  transition: all 0.15s ease-in-out;
+  font-family: inherit;
 }
 
-.panel-controls button:hover {
-  background: #444;
+.grafana-button:hover {
+  background: #2f3c45;
+  border-color: #52616b;
 }
 
-.panel-controls button.active {
+.grafana-button--primary {
   background: #1f77b4;
   border-color: #1f77b4;
-}
-
-.panel-controls select {
-  background: #333;
-  border: 1px solid #555;
   color: #fff;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 12px;
 }
 
-.grafana-timeseries-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #333;
+.grafana-button--primary:hover {
+  background: #1a6ca8;
+  border-color: #1a6ca8;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+.grafana-select {
+  background: #262c35;
+  border: 1px solid #36414b;
+  color: #d9d9d9;
   padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  border-radius: 3px;
   font-size: 12px;
+  height: 24px;
+  font-family: inherit;
+  cursor: pointer;
 }
 
-.legend-item:hover {
-  background: #333;
+.grafana-select:hover {
+  border-color: #52616b;
 }
 
-.legend-item.disabled {
-  opacity: 0.5;
+.grafana-select:focus {
+  outline: none;
+  border-color: #1f77b4;
+  box-shadow: 0 0 0 2px rgba(31, 119, 180, 0.3);
 }
 
-.legend-item.disabled .legend-color {
-  background: #666 !important;
-}
-
-.legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-}
-
-.legend-name {
-  font-weight: 500;
-  min-width: 120px;
-}
-
-.legend-value {
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 11px;
-  color: #ccc;
-}
-
-.grafana-timeseries-chart {
+.grafana-timeseries-panel {
+  background: #181b1f;
+  width: 100%;
+  position: relative;
   padding: 16px;
-  background: #161616;
 }
 
-.grafana-timeseries-footer {
+.chart-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.grafana-panel-footer {
   display: flex;
   justify-content: space-between;
-  padding: 8px 16px;
+  align-items: center;
+  padding: 4px 16px;
+  background: #1e2328;
+  border-top: 1px solid #36414b;
   font-size: 11px;
-  color: #888;
-  border-top: 1px solid #333;
+  color: #8e8e8e;
+  min-height: 24px;
 }
 
-/* D3 Chart Styles */
-:deep(.x-axis text),
-:deep(.y-axis text) {
-  fill: #ccc;
+.footer-text {
   font-size: 11px;
+  color: #8e8e8e;
 }
 
-:deep(.x-axis path),
-:deep(.y-axis path) {
-  stroke: #555;
+/* Grafana UI overrides for dark theme */
+:deep(.grafana-ui-panel) {
+  background: transparent !important;
 }
 
-:deep(.x-axis .tick line),
-:deep(.y-axis .tick line) {
-  stroke: #555;
+:deep(.react-grid-layout) {
+  background: transparent !important;
 }
 
-:deep(.grid line) {
-  stroke: #333;
-  stroke-dasharray: 2,2;
-  opacity: 0.7;
-}
-
-:deep(.grid path) {
-  stroke-width: 0;
-}
-
-:deep(.line) {
-  stroke-width: 2;
-  fill: none;
+/* Override any light theme colors */
+:deep(*) {
+  color-scheme: dark;
 }
 </style>
