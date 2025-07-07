@@ -3,6 +3,8 @@
  * Handles communication with web workers for heavy computations
  */
 
+import LogUtil from "../T3000/Hvac/Util/LogUtil";
+
 export class WebWorkerManager {
   constructor() {
     this.worker = null;
@@ -31,7 +33,7 @@ export class WebWorkerManager {
       };
 
       this.worker.onerror = (error) => {
-        console.error('[Worker Manager] Worker error:', error);
+        LogUtil.Error('[Worker Manager] Worker error:', error);
         this.handleWorkerError(error);
       };
 
@@ -40,9 +42,9 @@ export class WebWorkerManager {
       // Process queued messages
       this.processMessageQueue();
 
-      console.log('[Worker Manager] Web Worker initialized');
+      LogUtil.Debug('[Worker Manager] Web Worker initialized');
     } catch (error) {
-      console.error('[Worker Manager] Failed to initialize worker:', error);
+      LogUtil.Error('[Worker Manager] Failed to initialize worker:', error);
       this.isSupported = false;
     }
   }
@@ -59,7 +61,7 @@ export class WebWorkerManager {
       if (error) {
         if (retryCount < this.maxRetries) {
           // Retry the message
-          console.warn(`[Worker Manager] Retrying message ${id}, attempt ${retryCount + 1}`);
+          LogUtil.Debug(`[Worker Manager] Retrying message ${id}, attempt ${retryCount + 1}`);
           setTimeout(() => {
             this.retryMessage(id);
           }, this.retryDelay * Math.pow(2, retryCount));
@@ -78,7 +80,7 @@ export class WebWorkerManager {
    * Handle worker errors
    */
   handleWorkerError(error) {
-    console.error('[Worker Manager] Worker error:', error);
+    LogUtil.Error('[Worker Manager] Worker error:', error);
 
     // Reject all pending messages
     this.pendingMessages.forEach(({ reject }, id) => {
@@ -180,7 +182,7 @@ export class WebWorkerManager {
    * Fallback processing in main thread
    */
   async processInMainThread(message) {
-    console.warn('[Worker Manager] Processing in main thread (fallback)');
+    LogUtil.Debug('[Worker Manager] Processing in main thread (fallback)');
 
     const { type, data } = message;
 
@@ -316,7 +318,7 @@ export class WebWorkerManager {
         error: result.status === 'rejected' ? result.reason : null
       }));
     } catch (error) {
-      console.error('[Worker Manager] Batch processing failed:', error);
+      LogUtil.Error('[Worker Manager] Batch processing failed:', error);
       throw error;
     }
   }
@@ -384,7 +386,7 @@ export class WebWorkerManager {
       this.worker = null;
       this.isWorkerReady = false;
 
-      console.log('[Worker Manager] Worker terminated');
+      LogUtil.Debug('[Worker Manager] Worker terminated');
     }
   }
 }

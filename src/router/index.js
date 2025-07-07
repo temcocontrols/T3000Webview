@@ -7,6 +7,7 @@ import {
 } from "vue-router";
 import routes from "./routes";
 import { createRouterErrorBoundary } from "./RouterErrorBoundary.js";
+import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 /*
  * If not building with SSR mode, you can
@@ -37,7 +38,7 @@ export default route(function (/* { store, ssrContext } */) {
   // Initialize router error boundary for better error handling
   if (process.env.CLIENT) {
     createRouterErrorBoundary(Router);
-    console.log('[Router] Error boundary initialized');
+    LogUtil.Debug('[Router] Error boundary initialized');
   }
 
   return Router;
