@@ -1,3 +1,5 @@
+
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 import { defineAsyncComponent } from 'vue';
 
 // Create optimized lazy components with robust error handling and retry logic
@@ -9,7 +11,7 @@ const createOptimizedComponent = (importFn, name, options = {}) => {
     retryDelay = 1000
   } = options;
 
-  console.log(`Creating component: ${name} with timeout: ${timeout}ms`);
+  LogUtil.Debug(`Creating component: ${name} with timeout: ${timeout}ms`);
 
   return defineAsyncComponent({
     loader: async () => {
@@ -31,14 +33,14 @@ const createOptimizedComponent = (importFn, name, options = {}) => {
     delay: 200,
     timeout,
     onError: (error, retry, fail, attempts) => {
-      console.error(`Error loading component ${name} (attempt ${attempts}):`, error);
+      LogUtil.Error(`Error loading component ${name} (attempt ${attempts}):`, error);
 
       // For timeout errors, try to retry with longer timeout
       if (error.message.includes('timed out') && attempts < maxRetries) {
-        console.log(`Retrying component ${name} with extended timeout...`);
+        LogUtil.Debug(`Retrying component ${name} with extended timeout...`);
         setTimeout(() => retry(), retryDelay * attempts);
       } else {
-        console.error(`Failed to load component ${name} after ${attempts} attempts`);
+        LogUtil.Error(`Failed to load component ${name} after ${attempts} attempts`);
         fail();
       }
     }
@@ -65,7 +67,7 @@ async function loadComponentWithRetry(importFn, name, maxRetries, retryDelay, ti
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Loading component: ${name} (attempt ${attempt}/${maxRetries})`);
+      LogUtil.Debug(`Loading component: ${name} (attempt ${attempt}/${maxRetries})`);
 
       // Create a promise race between the import and a timeout
       const loadPromise = importFn();
@@ -76,17 +78,17 @@ async function loadComponentWithRetry(importFn, name, maxRetries, retryDelay, ti
       });
 
       const module = await Promise.race([loadPromise, timeoutPromise]);
-      console.log(`Successfully loaded component: ${name} on attempt ${attempt}`);
+      LogUtil.Debug(`Successfully loaded component: ${name} on attempt ${attempt}`);
       return module;
 
     } catch (error) {
       lastError = error;
-      console.warn(`Failed to load component ${name} on attempt ${attempt}:`, error.message);
+      LogUtil.Debug(`Failed to load component ${name} on attempt ${attempt}:`, error.message);
 
       // If this isn't the last attempt, wait before retrying
       if (attempt < maxRetries) {
         const delay = retryDelay * attempt; // Exponential backoff
-        console.log(`Retrying component ${name} in ${delay}ms...`);
+        LogUtil.Debug(`Retrying component ${name} in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
