@@ -7,9 +7,9 @@
     <a-modal
       v-model:visible="timeSeriesModalVisible"
       :title="modalTitle"
-      :width="1400"
+      :width="1600"
       :footer="null"
-      style="border-radius: 0px; top: 10px;"
+      style="border-radius: 0px; top: 20px;"
       wrapClassName="t3-timeseries-modal"
       @cancel="handleCancel"
     >
@@ -930,12 +930,13 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: 70vh;
-  min-height: 500px;
+  height: calc(70vh - 80px); /* Account for top controls bar */
+  min-height: 450px;
+  max-height: 600px;
   gap: 16px;
   background: #0f1419;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible; /* Allow content to be visible */
 }
 
 .left-panel {
@@ -956,6 +957,8 @@ onUnmounted(() => {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Allow flex shrinking */
+  overflow: hidden; /* Contain content properly */
 }
 
 .control-section {
@@ -1132,13 +1135,17 @@ onUnmounted(() => {
 
 .chart-container {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   position: relative;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-canvas {
   width: 100% !important;
   height: 100% !important;
+  min-height: 280px;
 }
 
 .chart-footer {
@@ -1343,8 +1350,9 @@ onUnmounted(() => {
 }
 
 :deep(.t3-timeseries-modal .ant-modal-body) {
-  padding: 20px !important;
+  padding: 16px !important;
   background: #0f1419 !important;
+  margin: 0;
 }
 
 /* Scrollbar styling */
@@ -1399,6 +1407,33 @@ onUnmounted(() => {
     padding-top: 12px;
     margin-left: 0;
     margin-top: 8px;
+  }
+
+  .timeseries-container {
+    height: calc(60vh - 60px);
+    min-height: 400px;
+  }
+
+  .left-panel {
+    width: 280px;
+  }
+}
+
+/* Responsive behavior for smaller screens */
+@media (max-width: 900px) {
+  .timeseries-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 600px;
+  }
+
+  .left-panel {
+    width: 100%;
+    max-height: 250px;
+  }
+
+  .right-panel {
+    min-height: 350px;
   }
 }
 
