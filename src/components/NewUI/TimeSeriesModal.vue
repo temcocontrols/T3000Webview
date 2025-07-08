@@ -7,11 +7,12 @@
     <a-modal
       v-model:visible="timeSeriesModalVisible"
       :title="modalTitle"
-      :width="1600"
+      :width="1400"
       :footer="null"
-      style="border-radius: 0px; top: 20px;"
+      style="border-radius: 8px; top: 30px;"
       wrapClassName="t3-timeseries-modal"
       @cancel="handleCancel"
+      centered
     >
       <!-- Top Controls Bar -->
       <div class="top-controls-bar">
@@ -230,37 +231,37 @@
           <div class="chart-header">
             <h3>{{ chartTitle }}</h3>
             <div class="chart-info">
-              <a-tag color="green" v-if="isRealTime">
-                <template #icon><SyncOutlined :spin="true" /></template>
-                Live Data
-              </a-tag>
-              <a-tag color="blue" v-else>Historical Data</a-tag>
-              <span class="info-text">{{ totalDataPoints }} data points</span>
-              <span class="info-text">{{ visibleSeriesCount }} series visible</span>
-              <span class="info-text">Updated: {{ lastUpdateTime }}</span>
+              <div class="chart-info-left">
+                <a-tag color="green" v-if="isRealTime">
+                  <template #icon><SyncOutlined :spin="true" /></template>
+                  Live Data
+                </a-tag>
+                <a-tag color="blue" v-else>Historical Data</a-tag>
+                <span class="info-text">{{ totalDataPoints }} data points</span>
+                <span class="info-text">{{ visibleSeriesCount }} series visible</span>
+                <span class="info-text">Updated: {{ lastUpdateTime }}</span>
+              </div>
+              <div class="chart-info-right">
+                <div class="status-indicators">
+                  <div class="status-section">
+                    <a-typography-text class="status-label">Range:</a-typography-text>
+                    <a-tag size="small">{{ timeBase === 'custom' ? 'Custom Range' : timeBaseLabel }}</a-tag>
+                  </div>
+                  <div class="status-section">
+                    <a-typography-text class="status-label">Zoom:</a-typography-text>
+                    <a-tag size="small">{{ Math.round(zoomLevel * 100) }}%</a-tag>
+                  </div>
+                  <div class="status-section">
+                    <a-typography-text class="status-label">View:</a-typography-text>
+                    <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="chart-container" ref="chartContainer">
             <canvas ref="chartCanvas" class="chart-canvas"></canvas>
-          </div>
-
-          <!-- Chart Footer with enhanced status -->
-          <div class="chart-footer">
-            <div class="status-indicators">
-              <div class="status-section">
-                <a-typography-text class="status-label">Range:</a-typography-text>
-                <a-tag>{{ timeBase === 'custom' ? 'Custom Range' : timeBaseLabel }}</a-tag>
-              </div>
-              <div class="status-section">
-                <a-typography-text class="status-label">Zoom:</a-typography-text>
-                <a-tag>{{ Math.round(zoomLevel * 100) }}%</a-tag>
-              </div>
-              <div class="status-section">
-                <a-typography-text class="status-label">View:</a-typography-text>
-                <a-tag color="blue">View {{ currentView }}</a-tag>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -930,20 +931,21 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: calc(70vh - 80px); /* Account for top controls bar */
-  min-height: 450px;
-  max-height: 600px;
-  gap: 16px;
+  height: calc(65vh - 60px); /* Reduced height for more compact design */
+  min-height: 420px; /* Reduced minimum height */
+  max-height: 550px; /* Reduced maximum height */
+  gap: 12px; /* Reduced gap for more compactness */
   background: #0f1419;
-  border-radius: 4px;
-  overflow: visible; /* Allow content to be visible */
+  border-radius: 6px; /* Slightly more rounded */
+  overflow: visible;
+  padding: 0; /* Remove any default padding */
 }
 
 .left-panel {
-  width: 300px;
+  width: 280px; /* Reduced from 300px */
   background: #181b1f;
   border: 1px solid #36414b;
-  border-radius: 4px;
+  border-radius: 6px; /* Match container border radius */
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
@@ -962,7 +964,7 @@ onUnmounted(() => {
 }
 
 .control-section {
-  padding: 16px;
+  padding: 12px; /* Reduced padding */
   border-bottom: 1px solid #36414b;
 }
 
@@ -979,9 +981,9 @@ onUnmounted(() => {
 }
 
 .control-section h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0; /* Reduced margin */
   color: #d9d9d9;
-  font-size: 14px;
+  font-size: 13px; /* Slightly smaller */
   font-weight: 600;
 }
 
@@ -992,7 +994,7 @@ onUnmounted(() => {
 }
 
 .series-item {
-  margin-bottom: 12px;
+  margin-bottom: 8px; /* Reduced margin */
   border: 1px solid #36414b;
   border-radius: 4px;
   background: #1e2328;
@@ -1033,9 +1035,9 @@ onUnmounted(() => {
 .series-header {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px 10px; /* Reduced padding */
   cursor: pointer;
-  gap: 8px;
+  gap: 6px; /* Reduced gap */
 }
 
 .series-color {
@@ -1085,11 +1087,11 @@ onUnmounted(() => {
 }
 
 .series-stats {
-  padding: 8px 12px;
+  padding: 6px 10px; /* Reduced padding */
   border-top: 1px solid #36414b;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  gap: 3px; /* Reduced gap */
 }
 
 .stat-item {
@@ -1108,23 +1110,55 @@ onUnmounted(() => {
 }
 
 .chart-header {
-  padding: 16px 20px;
+  padding: 12px 16px; /* Reduced padding */
   border-bottom: 1px solid #36414b;
   background: #1e2328;
 }
 
 .chart-header h3 {
-  margin: 0 0 4px 0;
+  margin: 0 0 3px 0; /* Reduced margin */
   color: #d9d9d9;
-  font-size: 18px;
+  font-size: 16px; /* Slightly smaller font */
   font-weight: 600;
 }
 
 .chart-info {
   display: flex;
-  gap: 16px;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
+  gap: 12px; /* Reduced gap */
+}
+
+.chart-info-left {
+  display: flex;
+  gap: 12px; /* Reduced gap */
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.chart-info-right {
+  display: flex;
+  align-items: center;
+}
+
+.status-indicators {
+  display: flex;
+  gap: 12px; /* Reduced gap */
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-label {
+  color: #8e8e8e !important;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .info-text {
@@ -1135,9 +1169,9 @@ onUnmounted(() => {
 
 .chart-container {
   flex: 1;
-  padding: 16px;
+  padding: 12px; /* Reduced padding */
   position: relative;
-  min-height: 300px;
+  min-height: 280px; /* Reduced min height */
   display: flex;
   flex-direction: column;
 }
@@ -1145,62 +1179,37 @@ onUnmounted(() => {
 .chart-canvas {
   width: 100% !important;
   height: 100% !important;
-  min-height: 280px;
-}
-
-.chart-footer {
-  padding: 12px 20px;
-  border-top: 1px solid #36414b;
-  background: #1e2328;
-}
-
-.status-indicators {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.status-section {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.status-label {
-  color: #8e8e8e !important;
-  font-size: 12px;
-  font-weight: 500;
+  min-height: 260px; /* Reduced min height */
 }
 
 /* Top Controls Bar Styling */
 .top-controls-bar {
   background: #181b1f;
   border: 1px solid #36414b;
-  border-radius: 4px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  border-radius: 6px; /* Match modal styling */
+  padding: 10px 14px; /* More compact padding */
+  margin-bottom: 12px; /* Reduced margin */
 }
 
 .controls-group {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px; /* Reduced gap */
   flex-wrap: wrap;
 }
 
 .controls-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px; /* Reduced gap */
   flex-wrap: wrap;
 }
 
 .controls-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px; /* Reduced gap */
   flex-wrap: wrap;
 }
 
@@ -1333,16 +1342,21 @@ onUnmounted(() => {
 :deep(.t3-timeseries-modal .ant-modal-content) {
   background: #0f1419 !important;
   border: 1px solid #36414b;
+  border-radius: 8px !important; /* More rounded corners */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important; /* Modern shadow */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-header) {
   background: #181b1f !important;
   border-bottom: 1px solid #36414b !important;
+  border-radius: 8px 8px 0 0 !important; /* Match content border radius */
+  padding: 12px 16px !important; /* Reduced padding */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-title) {
   color: #d9d9d9 !important;
   font-weight: 600;
+  font-size: 16px !important; /* Slightly smaller */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-close-x) {
@@ -1350,7 +1364,7 @@ onUnmounted(() => {
 }
 
 :deep(.t3-timeseries-modal .ant-modal-body) {
-  padding: 16px !important;
+  padding: 12px !important; /* Reduced padding */
   background: #0f1419 !important;
   margin: 0;
 }
@@ -1417,6 +1431,20 @@ onUnmounted(() => {
   .left-panel {
     width: 280px;
   }
+
+  .chart-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .chart-info-right {
+    width: 100%;
+  }
+
+  .status-indicators {
+    gap: 12px;
+  }
 }
 
 /* Responsive behavior for smaller screens */
@@ -1434,6 +1462,22 @@ onUnmounted(() => {
 
   .right-panel {
     min-height: 350px;
+  }
+
+  .chart-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .chart-info-left,
+  .chart-info-right {
+    width: 100%;
+  }
+
+  .status-indicators {
+    justify-content: flex-start;
+    gap: 8px;
   }
 }
 
