@@ -7,59 +7,119 @@
     <a-modal
       v-model:visible="timeSeriesModalVisible"
       :title="modalTitle"
-      :width="1200"
+      :width="1400"
       :footer="null"
-      style="border-radius: 0px; top: 20px;"
+      style="border-radius: 0px; top: 10px;"
       wrapClassName="t3-timeseries-modal"
       @cancel="handleCancel"
     >
-      <div class="timeseries-container">
-        <!-- Left Panel: Controls and Series -->
-        <div class="left-panel">
-          <!-- Time Range Controls -->
-          <div class="control-section">
-            <h4>Time Range</h4>
-            <a-select v-model:value="timeRange" style="width: 100%; margin-bottom: 12px;" @change="onTimeRangeChange">
-              <a-select-option value="5m">Last 5 minutes</a-select-option>
-              <a-select-option value="15m">Last 15 minutes</a-select-option>
-              <a-select-option value="30m">Last 30 minutes</a-select-option>
-              <a-select-option value="1h">Last 1 hour</a-select-option>
-              <a-select-option value="6h">Last 6 hours</a-select-option>
-              <a-select-option value="12h">Last 12 hours</a-select-option>
-              <a-select-option value="24h">Last 24 hours</a-select-option>
-              <a-select-option value="7d">Last 7 days</a-select-option>
-            </a-select>
+      <!-- Top Controls Bar -->
+      <div class="top-controls-bar">
+        <div class="controls-group">
+          <!-- Left Side Controls -->
+          <div class="controls-left">
+            <!-- Time Base -->
+            <div class="control-item">
+              <a-typography-text class="control-label">Time Base:</a-typography-text>
+              <a-select
+                v-model:value="timeBase"
+                size="small"
+                style="width: 120px;"
+                @change="onTimeBaseChange"
+              >
+                <a-select-option value="5m">5 minutes</a-select-option>
+                <a-select-option value="15m">15 minutes</a-select-option>
+                <a-select-option value="30m">30 minutes</a-select-option>
+                <a-select-option value="1h">1 hour</a-select-option>
+                <a-select-option value="6h">6 hours</a-select-option>
+                <a-select-option value="12h">12 hours</a-select-option>
+                <a-select-option value="24h">24 hours</a-select-option>
+                <a-select-option value="7d">7 days</a-select-option>
+                <a-select-option value="custom">Custom Define</a-select-option>
+              </a-select>
+            </div>
 
-            <a-date-picker
-              v-model:value="customStartDate"
-              placeholder="Start Date"
-              style="width: 100%; margin-bottom: 8px;"
-              :disabled="timeRange !== 'custom'"
-              @change="onCustomDateChange"
-            />
-            <a-date-picker
-              v-model:value="customEndDate"
-              placeholder="End Date"
-              style="width: 100%;"
-              :disabled="timeRange !== 'custom'"
-              @change="onCustomDateChange"
-            />
-          </div>
+            <!-- Navigation Arrows -->
+            <div class="control-item">
+              <a-button-group size="small">
+                <a-button @click="moveTimeLeft" :disabled="isRealTime">
+                  <template #icon><LeftOutlined /></template>
+                </a-button>
+                <a-button @click="moveTimeRight" :disabled="isRealTime">
+                  <template #icon><RightOutlined /></template>
+                </a-button>
+              </a-button-group>
+            </div>
 
-          <!-- Real-time Controls -->
-          <div class="control-section">
-            <h4>Real-time Updates</h4>
-            <a-switch
-              v-model:checked="isRealTime"
-              checked-children="Live"
-              un-checked-children="Paused"
-              @change="onRealTimeToggle"
-            />
-            <div v-if="isRealTime" style="margin-top: 8px;">
-              <small>Update every {{ updateInterval / 1000 }}s</small>
+            <!-- Zoom Controls -->
+            <div class="control-item">
+              <a-button-group size="small">
+                <a-button @click="zoomIn">
+                  <template #icon><ZoomInOutlined /></template>
+                  Zoom In
+                </a-button>
+                <a-button @click="zoomOut">
+                  <template #icon><ZoomOutOutlined /></template>
+                  Zoom Out
+                </a-button>
+              </a-button-group>
+            </div>
+
+            <!-- View Buttons -->
+            <div class="control-item">
+              <a-button-group size="small">
+                <a-button
+                  :type="currentView === 1 ? 'primary' : 'default'"
+                  @click="setView(1)"
+                >
+                  View 1
+                </a-button>
+                <a-button
+                  :type="currentView === 2 ? 'primary' : 'default'"
+                  @click="setView(2)"
+                >
+                  View 2
+                </a-button>
+                <a-button
+                  :type="currentView === 3 ? 'primary' : 'default'"
+                  @click="setView(3)"
+                >
+                  View 3
+                </a-button>
+              </a-button-group>
             </div>
           </div>
 
+          <!-- Right Side Controls -->
+          <div class="controls-right">
+            <!-- Chart Options -->
+            <div class="control-item chart-options">
+              <a-typography-text class="control-label">Chart Options:</a-typography-text>
+              <div class="chart-options-flex">
+                <a-checkbox v-model:checked="showGrid" size="small">Grid</a-checkbox>
+                <a-checkbox v-model:checked="showLegend" size="small">Legend</a-checkbox>
+                <a-checkbox v-model:checked="smoothLines" size="small">Smooth</a-checkbox>
+                <a-checkbox v-model:checked="showPoints" size="small">Points</a-checkbox>
+              </div>
+            </div>
+
+            <!-- Real-time Toggle -->
+            <div class="control-item">
+              <a-switch
+                v-model:checked="isRealTime"
+                size="small"
+                checked-children="Live"
+                un-checked-children="Paused"
+                @change="onRealTimeToggle"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeseries-container">
+        <!-- Left Panel: Data Series and Options -->
+        <div class="left-panel">
           <!-- Data Series -->
           <div class="control-section">
             <h4>Data Series</h4>
@@ -77,6 +137,7 @@
                     v-model:checked="series.visible"
                     size="small"
                     @change="onSeriesVisibilityChange"
+                    @click.stop
                   />
                 </div>
                 <div v-if="series.visible" class="series-stats">
@@ -101,24 +162,42 @@
             </div>
           </div>
 
-          <!-- Chart Options -->
-          <div class="control-section">
-            <h4>Chart Options</h4>
-            <a-checkbox v-model:checked="showGrid">Show Grid</a-checkbox>
-            <a-checkbox v-model:checked="showLegend">Show Legend</a-checkbox>
-            <a-checkbox v-model:checked="smoothLines">Smooth Lines</a-checkbox>
-            <a-checkbox v-model:checked="showPoints">Show Points</a-checkbox>
-          </div>
-
           <!-- Export Options -->
           <div class="control-section">
             <h4>Export</h4>
-            <a-button block size="small" @click="exportChart" style="margin-bottom: 8px;">
-              Export Chart as PNG
-            </a-button>
-            <a-button block size="small" @click="exportData">
-              Export Data as CSV
-            </a-button>
+            <div class="compact-controls">
+              <a-space direction="vertical" size="small" style="width: 100%;">
+                <a-button size="small" block @click="exportChart">
+                  <template #icon><DownloadOutlined /></template>
+                  PNG
+                </a-button>
+                <a-button size="small" block @click="exportData">
+                  <template #icon><FileExcelOutlined /></template>
+                  CSV
+                </a-button>
+              </a-space>
+            </div>
+          </div>
+
+          <!-- Custom Date Range (only shown when Custom Define is selected) -->
+          <div v-if="timeBase === 'custom'" class="control-section">
+            <h4>Custom Range</h4>
+            <a-space direction="vertical" size="small" style="width: 100%;">
+              <a-date-picker
+                v-model:value="customStartDate"
+                placeholder="Start Date"
+                size="small"
+                style="width: 100%;"
+                @change="onCustomDateChange"
+              />
+              <a-date-picker
+                v-model:value="customEndDate"
+                placeholder="End Date"
+                size="small"
+                style="width: 100%;"
+                @change="onCustomDateChange"
+              />
+            </a-space>
           </div>
         </div>
 
@@ -127,8 +206,14 @@
           <div class="chart-header">
             <h3>{{ chartTitle }}</h3>
             <div class="chart-info">
-              <span>Last updated: {{ lastUpdateTime }}</span>
-              <span>{{ totalDataPoints }} data points</span>
+              <a-tag color="green" v-if="isRealTime">
+                <template #icon><SyncOutlined :spin="true" /></template>
+                Live Data
+              </a-tag>
+              <a-tag color="blue" v-else>Historical Data</a-tag>
+              <span class="info-text">{{ totalDataPoints }} data points</span>
+              <span class="info-text">{{ visibleSeriesCount }} series visible</span>
+              <span class="info-text">Updated: {{ lastUpdateTime }}</span>
             </div>
           </div>
 
@@ -136,18 +221,20 @@
             <canvas ref="chartCanvas" class="chart-canvas"></canvas>
           </div>
 
-          <!-- Chart Footer with status -->
+          <!-- Chart Footer with enhanced status -->
           <div class="chart-footer">
             <div class="status-indicators">
-              <div class="status-item">
-                <div class="status-dot" :class="{ 'status-active': isRealTime }"></div>
-                <span>{{ isRealTime ? 'Live Data' : 'Historical Data' }}</span>
+              <div class="status-section">
+                <a-typography-text class="status-label">Range:</a-typography-text>
+                <a-tag>{{ timeBase === 'custom' ? 'Custom Range' : timeBaseLabel }}</a-tag>
               </div>
-              <div class="status-item">
-                <span>{{ visibleSeriesCount }} series visible</span>
+              <div class="status-section">
+                <a-typography-text class="status-label">Zoom:</a-typography-text>
+                <a-tag>{{ Math.round(zoomLevel * 100) }}%</a-tag>
               </div>
-              <div class="status-item">
-                <span>{{ timeRange === 'custom' ? 'Custom Range' : timeRangeLabel }}</span>
+              <div class="status-section">
+                <a-typography-text class="status-label">View:</a-typography-text>
+                <a-tag color="blue">View {{ currentView }}</a-tag>
               </div>
             </div>
           </div>
@@ -169,6 +256,15 @@ import { message } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
+import {
+  LeftOutlined,
+  RightOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined,
+  SyncOutlined,
+  DownloadOutlined,
+  FileExcelOutlined
+} from '@ant-design/icons-vue'
 
 // Types
 interface DataPoint {
@@ -204,7 +300,10 @@ const timeSeriesModalVisible = computed({
   set: (value) => emit('update:visible', value)
 })
 
-const timeRange = ref('1h')
+// New reactive variables for top controls
+const timeBase = ref('1h')
+const currentView = ref(1)
+const zoomLevel = ref(1)
 const customStartDate = ref<Dayjs | null>(null)
 const customEndDate = ref<Dayjs | null>(null)
 const isRealTime = ref(true)
@@ -254,7 +353,7 @@ const visibleSeriesCount = computed(() => {
   return dataSeries.value.filter(series => series.visible).length
 })
 
-const timeRangeLabel = computed(() => {
+const timeBaseLabel = computed(() => {
   const labels = {
     '5m': 'Last 5 minutes',
     '15m': 'Last 15 minutes',
@@ -265,7 +364,7 @@ const timeRangeLabel = computed(() => {
     '24h': 'Last 24 hours',
     '7d': 'Last 7 days'
   }
-  return labels[timeRange.value] || 'Unknown'
+  return labels[timeBase.value] || 'Unknown'
 })
 
 // Chart configuration with Grafana-like styling
@@ -417,7 +516,7 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = () => {
-  const minutes = getTimeRangeMinutes(timeRange.value)
+  const minutes = getTimeRangeMinutes(timeBase.value)
   dataSeries.value.forEach((series, index) => {
     series.data = generateMockData(index, minutes)
   })
@@ -484,15 +583,134 @@ const updateChart = () => {
   chartInstance.update('none')
 }
 
+// New control functions
+const moveTimeLeft = () => {
+  if (isRealTime.value) return
+
+  // Move time window left by 15 minutes (or timebase/4)
+  const baseMinutes = getTimeRangeMinutes(timeBase.value)
+  const shiftMinutes = Math.max(baseMinutes / 4, 15)
+
+  dataSeries.value.forEach((series) => {
+    series.data = series.data.map(point => ({
+      ...point,
+      timestamp: point.timestamp - (shiftMinutes * 60 * 1000)
+    }))
+  })
+
+  updateChart()
+  message.info(`Moved ${shiftMinutes} minutes back`)
+}
+
+const moveTimeRight = () => {
+  if (isRealTime.value) return
+
+  // Move time window right by 15 minutes (or timebase/4)
+  const baseMinutes = getTimeRangeMinutes(timeBase.value)
+  const shiftMinutes = Math.max(baseMinutes / 4, 15)
+
+  dataSeries.value.forEach((series) => {
+    series.data = series.data.map(point => ({
+      ...point,
+      timestamp: point.timestamp + (shiftMinutes * 60 * 1000)
+    }))
+  })
+
+  updateChart()
+  message.info(`Moved ${shiftMinutes} minutes forward`)
+}
+
+const zoomIn = () => {
+  if (zoomLevel.value < 4) {
+    zoomLevel.value = Math.min(zoomLevel.value * 1.5, 4)
+
+    if (chartInstance) {
+      const xScale = chartInstance.scales.x
+      const range = xScale.max - xScale.min
+      const newRange = range / 1.5
+      const center = (xScale.max + xScale.min) / 2
+
+      chartInstance.options.scales.x.min = center - newRange / 2
+      chartInstance.options.scales.x.max = center + newRange / 2
+      chartInstance.update('none')
+    }
+
+    message.info(`Zoomed to ${Math.round(zoomLevel.value * 100)}%`)
+  }
+}
+
+const zoomOut = () => {
+  if (zoomLevel.value > 0.25) {
+    zoomLevel.value = Math.max(zoomLevel.value / 1.5, 0.25)
+
+    if (chartInstance) {
+      const xScale = chartInstance.scales.x
+      const range = xScale.max - xScale.min
+      const newRange = range * 1.5
+      const center = (xScale.max + xScale.min) / 2
+
+      chartInstance.options.scales.x.min = center - newRange / 2
+      chartInstance.options.scales.x.max = center + newRange / 2
+      chartInstance.update('none')
+    }
+
+    message.info(`Zoomed to ${Math.round(zoomLevel.value * 100)}%`)
+  }
+}
+
+const setView = (viewNumber: number) => {
+  currentView.value = viewNumber
+
+  // Different view configurations
+  const viewConfigs = {
+    1: {
+      showGrid: true,
+      showLegend: true,
+      smoothLines: false,
+      showPoints: false,
+      description: 'Standard view with grid and legend'
+    },
+    2: {
+      showGrid: false,
+      showLegend: false,
+      smoothLines: true,
+      showPoints: false,
+      description: 'Clean view with smooth lines'
+    },
+    3: {
+      showGrid: true,
+      showLegend: true,
+      smoothLines: true,
+      showPoints: true,
+      description: 'Detailed view with all features'
+    }
+  }
+
+  const config = viewConfigs[viewNumber]
+  if (config) {
+    showGrid.value = config.showGrid
+    showLegend.value = config.showLegend
+    smoothLines.value = config.smoothLines
+    showPoints.value = config.showPoints
+
+    if (chartInstance) {
+      chartInstance.destroy()
+      createChart()
+    }
+
+    message.info(`Switched to ${config.description}`)
+  }
+}
+
 // Event handlers
-const onTimeRangeChange = () => {
-  if (timeRange.value !== 'custom') {
+const onTimeBaseChange = () => {
+  if (timeBase.value !== 'custom') {
     initializeData()
   }
 }
 
 const onCustomDateChange = () => {
-  if (timeRange.value === 'custom' && customStartDate.value && customEndDate.value) {
+  if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
     // Generate data for custom date range
     initializeData()
   }
@@ -769,8 +987,14 @@ onUnmounted(() => {
 .chart-info {
   display: flex;
   gap: 16px;
-  font-size: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.info-text {
   color: #8e8e8e;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .chart-container {
@@ -794,27 +1018,86 @@ onUnmounted(() => {
   display: flex;
   gap: 20px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.status-item {
+.status-section {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.status-label {
+  color: #8e8e8e !important;
   font-size: 12px;
-  color: #8e8e8e;
+  font-weight: 500;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #555;
-  transition: background-color 0.3s ease;
+/* Top Controls Bar Styling */
+.top-controls-bar {
+  background: #181b1f;
+  border: 1px solid #36414b;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
 }
 
-.status-active {
-  background: #4ECDC4;
-  box-shadow: 0 0 8px rgba(78, 205, 196, 0.5);
+.controls-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.controls-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.chart-options {
+  border-left: 1px solid #36414b;
+  padding-left: 16px;
+  margin-left: 8px;
+}
+
+.chart-options-flex {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.control-label {
+  color: #d9d9d9 !important;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Compact controls styling */
+.compact-controls {
+  padding: 8px 0;
+}
+
+.compact-controls .ant-space-item {
+  width: 100%;
 }
 
 .loading-overlay {
@@ -927,5 +1210,40 @@ onUnmounted(() => {
 .left-panel::-webkit-scrollbar-thumb:hover,
 .series-list::-webkit-scrollbar-thumb:hover {
   background: #52616b;
+}
+
+/* Responsive behavior for top controls */
+@media (max-width: 1200px) {
+  .controls-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .controls-left,
+  .controls-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .chart-options {
+    border-left: none;
+    border-top: 1px solid #36414b;
+    padding-left: 0;
+    padding-top: 12px;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+}
+
+/* Enhanced checkbox styling in top bar */
+.chart-options-flex :deep(.ant-checkbox-wrapper) {
+  margin-bottom: 0 !important;
+  color: #d9d9d9 !important;
+  font-size: 11px;
+}
+
+.chart-options-flex :deep(.ant-checkbox-wrapper:hover) {
+  color: #ffffff !important;
 }
 </style>
