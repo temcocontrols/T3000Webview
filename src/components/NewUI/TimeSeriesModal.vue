@@ -138,42 +138,50 @@
           <!-- Data Series -->
           <div class="control-section">
             <h4>Data Series</h4>
-            <div class="series-list">
-              <div
-                v-for="(series, index) in dataSeries"
-                :key="series.name"
-                class="series-item"
-                :class="{ 'series-disabled': !series.visible }"
-              >
-                <div class="series-header" @click="toggleSeries(index)">
-                  <div class="series-color" :style="{ backgroundColor: series.color }"></div>
-                  <span class="series-name">{{ series.name }}</span>
-                  <div class="series-controls">
-                    <a-button
-                      size="small"
-                      type="text"
-                      class="expand-toggle"
-                      @click="(e) => toggleSeriesExpansion(index, e)"
-                    >
-                      <template #icon>
-                        <DownOutlined
-                          v-if="expandedSeries.has(index)"
-                          class="expand-icon expanded"
-                        />
-                        <RightOutlined
-                          v-else
-                          class="expand-icon"
-                        />
-                      </template>
-                    </a-button>
-                    <a-switch
-                      v-model:checked="series.visible"
-                      size="small"
-                      @change="onSeriesVisibilityChange(index)"
-                    />
+            <div class="series-list">                <div
+                  v-for="(series, index) in dataSeries"
+                  :key="series.name"
+                  class="series-item"
+                  :class="{
+                    'series-disabled': !series.visible,
+                    'series-empty': series.isEmpty
+                  }"
+                >
+                  <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
+                    <div class="series-color" :style="{ backgroundColor: series.color }"></div>
+                    <span class="series-name">
+                      {{ series.name }}
+                      <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
+                    </span>
+                    <div class="series-controls" v-if="!series.isEmpty">
+                      <a-button
+                        size="small"
+                        type="text"
+                        class="expand-toggle"
+                        @click="(e) => toggleSeriesExpansion(index, e)"
+                      >
+                        <template #icon>
+                          <DownOutlined
+                            v-if="expandedSeries.has(index)"
+                            class="expand-icon expanded"
+                          />
+                          <RightOutlined
+                            v-else
+                            class="expand-icon"
+                          />
+                        </template>
+                      </a-button>
+                      <a-switch
+                        v-model:checked="series.visible"
+                        size="small"
+                        @change="onSeriesVisibilityChange(index)"
+                      />
+                    </div>
+                    <div class="series-controls" v-else>
+                      <span class="empty-placeholder">—</span>
+                    </div>
                   </div>
-                </div>
-                <div v-if="expandedSeries.has(index)" class="series-stats">
+                  <div v-if="expandedSeries.has(index) && !series.isEmpty" class="series-stats">
                   <div class="stat-item">
                     <span class="stat-label">Last:</span>
                     <span class="stat-value">{{ getLastValue(series.data) }}</span>
@@ -296,6 +304,7 @@ interface SeriesConfig {
   data: DataPoint[]
   visible: boolean
   unit?: string
+  isEmpty?: boolean
 }
 
 interface Props {
@@ -336,16 +345,31 @@ const lastUpdateTime = ref('')
 // Series detail expansion state
 const expandedSeries = ref<Set<number>>(new Set())
 
-// Chart data - T3000 temperature sensor series matching graphic.png layout
-const dataSeries = ref<SeriesConfig[]>([
-  { name: 'BMC01E1E-1P1B', color: '#FF6B6B', data: [], visible: true, unit: '°C' },
-  { name: 'BMC01E1E-2P1B', color: '#4ECDC4', data: [], visible: true, unit: '°C' },
-  { name: 'BMC01E1E-3P1B', color: '#45B7D1', data: [], visible: true, unit: '°C' },
-  { name: 'BMC01E1E-4P1B', color: '#FFA07A', data: [], visible: true, unit: '°C' },
-  { name: 'BMC01E1E-5P1B', color: '#98D8C8', data: [], visible: true, unit: '°C' },
-  { name: 'BMC01E1E-6P1B', color: '#F7DC6F', data: [], visible: true, unit: '°C' },
-  { name: 'BMC01E1E-7P1B', color: '#BB8FCE', data: [], visible: true, unit: '°C' }
-])
+// Chart data - T3000 temperature sensor series (always 14 items)
+const generateDataSeries = (): SeriesConfig[] => {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE',
+    '#FFB366', '#6BCF7F', '#A8E6CF', '#FF8A95', '#B8860B', '#9370DB', '#20B2AA'
+  ]
+
+  const baseSeries = [
+    'BMC01E1E-1P1B', 'BMC01E1E-2P1B', 'BMC01E1E-3P1B', 'BMC01E1E-4P1B',
+    'BMC01E1E-5P1B', 'BMC01E1E-6P1B', 'BMC01E1E-7P1B', 'BMC01E1E-8P1B',
+    'BMC01E1E-9P1B', 'BMC01E1E-10P1B', 'BMC01E1E-11P1B', 'BMC01E1E-12P1B',
+    'BMC01E1E-13P1B', 'BMC01E1E-14P1B'
+  ]
+
+  return baseSeries.map((name, index) => ({
+    name: name,
+    color: colors[index % colors.length],
+    data: [],
+    visible: index < 7, // Only first 7 visible by default
+    unit: '°C',
+    isEmpty: index >= 7 // Mark items 8-14 as empty by default
+  }))
+}
+
+const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
 
 // Chart references
 const chartContainer = ref<HTMLElement>()
@@ -367,11 +391,13 @@ const chartTitle = computed(() => {
 })
 
 const totalDataPoints = computed(() => {
-  return dataSeries.value.reduce((total, series) => total + series.data.length, 0)
+  return dataSeries.value
+    .filter(series => !series.isEmpty)
+    .reduce((total, series) => total + series.data.length, 0)
 })
 
 const visibleSeriesCount = computed(() => {
-  return dataSeries.value.filter(series => series.visible).length
+  return dataSeries.value.filter(series => series.visible && !series.isEmpty).length
 })
 
 const timeBaseLabel = computed(() => {
@@ -393,7 +419,7 @@ const getChartConfig = () => ({
   type: 'line' as const,
   data: {
     datasets: dataSeries.value
-      .filter(series => series.visible)
+      .filter(series => series.visible && !series.isEmpty)
       .map(series => ({
         label: series.name,
         data: series.data.map(point => ({
@@ -539,7 +565,9 @@ const getTimeRangeMinutes = (range: string): number => {
 const initializeData = () => {
   const minutes = getTimeRangeMinutes(timeBase.value)
   dataSeries.value.forEach((series, index) => {
-    series.data = generateMockData(index, minutes)
+    if (!series.isEmpty) {
+      series.data = generateMockData(index, minutes)
+    }
   })
   updateChart()
 }
@@ -547,6 +575,8 @@ const initializeData = () => {
 const addRealtimeDataPoint = () => {
   const now = Date.now()
   dataSeries.value.forEach((series, index) => {
+    if (series.isEmpty) return
+
     const lastPoint = series.data[series.data.length - 1]
     const baseTemp = 20 + index * 2
     const variation = Math.sin(Date.now() * 0.0001) * 2 + Math.random() * 1.5 - 0.75
@@ -582,7 +612,7 @@ const updateChart = () => {
   if (!chartInstance) return
 
   chartInstance.data.datasets = dataSeries.value
-    .filter(series => series.visible)
+    .filter(series => series.visible && !series.isEmpty && series.data.length > 0)
     .map(series => ({
       label: series.name,
       data: series.data.map(point => ({
@@ -751,6 +781,7 @@ const onSeriesVisibilityChange = (index) => {
 }
 
 const toggleSeries = (index: number) => {
+  if (dataSeries.value[index].isEmpty) return
   dataSeries.value[index].visible = !dataSeries.value[index].visible
   updateChart()
 }
@@ -818,19 +849,20 @@ const exportChart = () => {
 }
 
 const exportData = () => {
+  const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
   const csvData = []
-  const headers = ['Timestamp', ...dataSeries.value.filter(s => s.visible).map(s => s.name)]
+  const headers = ['Timestamp', ...activeSeriesData.map(s => s.name)]
   csvData.push(headers.join(','))
 
   // Find max data length
-  const maxLength = Math.max(...dataSeries.value.filter(s => s.visible).map(s => s.data.length))
+  const maxLength = Math.max(...activeSeriesData.map(s => s.data.length))
 
   for (let i = 0; i < maxLength; i++) {
     const row = []
-    const timestamp = dataSeries.value.find(s => s.visible && s.data[i])?.data[i]?.timestamp
+    const timestamp = activeSeriesData.find(s => s.data[i])?.data[i]?.timestamp
     if (timestamp) {
       row.push(new Date(timestamp).toISOString())
-      dataSeries.value.filter(s => s.visible).forEach(series => {
+      activeSeriesData.forEach(series => {
         row.push(series.data[i]?.value?.toFixed(2) || '')
       })
       csvData.push(row.join(','))
@@ -970,6 +1002,29 @@ onUnmounted(() => {
 
 .series-disabled {
   opacity: 0.6;
+}
+
+.series-empty {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.series-empty .series-header {
+  cursor: default;
+}
+
+.empty-indicator {
+  color: #8e8e8e;
+  font-style: italic;
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.empty-placeholder {
+  color: #5a5a5a;
+  font-size: 14px;
+  width: 52px;
+  text-align: center;
 }
 
 .series-header {
