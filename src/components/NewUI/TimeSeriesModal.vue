@@ -153,7 +153,7 @@
                       size="small"
                       type="text"
                       class="expand-toggle"
-                      @click.stop="toggleSeriesExpansion(index)"
+                      @click="(e) => toggleSeriesExpansion(index, e)"
                     >
                       <template #icon>
                         <DownOutlined
@@ -169,8 +169,7 @@
                     <a-switch
                       v-model:checked="series.visible"
                       size="small"
-                      @change="onSeriesVisibilityChange"
-                      @click.stop
+                      @change="onSeriesVisibilityChange(index)"
                     />
                   </div>
                 </div>
@@ -280,8 +279,10 @@ import {
   ZoomOutOutlined,
   SyncOutlined,
   DownloadOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  DownOutlined
 } from '@ant-design/icons-vue'
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
 // Types
 interface DataPoint {
@@ -744,8 +745,9 @@ const onRealTimeToggle = (checked: boolean) => {
   }
 }
 
-const onSeriesVisibilityChange = () => {
-  updateChart()
+const onSeriesVisibilityChange = (index) => {
+  LogUtil.Debug(`Toggling visibility for series ${dataSeries.value[index].name}`)
+  toggleSeries(index)
 }
 
 const toggleSeries = (index: number) => {
@@ -753,7 +755,12 @@ const toggleSeries = (index: number) => {
   updateChart()
 }
 
-const toggleSeriesExpansion = (index: number) => {
+const toggleSeriesExpansion = (index: number, event?: Event) => {
+  // Stop event propagation to prevent triggering parent handlers
+  if (event && typeof event.stopPropagation === 'function') {
+    event.stopPropagation()
+  }
+
   if (expandedSeries.value.has(index)) {
     expandedSeries.value.delete(index)
   } else {
