@@ -118,17 +118,6 @@
                 </a-button>
               </div>
             </div>
-
-            <!-- Real-time Toggle -->
-            <div class="control-item">
-              <a-switch
-                v-model:checked="isRealTime"
-                size="small"
-                checked-children="Live"
-                un-checked-children="Paused"
-                @change="onRealTimeToggle"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -138,7 +127,19 @@
         <div class="left-panel">
           <!-- Data Series -->
           <div class="control-section">
-            <h4>Data Series</h4>
+            <div class="data-series-header">
+              <h4>Data Series</h4>
+              <div class="auto-scroll-toggle">
+                <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                <a-switch
+                  v-model:checked="isRealTime"
+                  size="small"
+                  checked-children="On"
+                  un-checked-children="Off"
+                  @change="onRealTimeToggle"
+                />
+              </div>
+            </div>
             <div class="series-list">                <div
                   v-for="(series, index) in dataSeries"
                   :key="series.name"
@@ -229,7 +230,16 @@
         <!-- Right Panel: Chart -->
         <div class="right-panel">
           <div class="chart-header">
-            <h3>{{ chartTitle }}</h3>
+            <div class="chart-title-section">
+              <h3>{{ chartTitle }}</h3>
+              <a-alert
+                v-if="viewAlert.visible"
+                :message="viewAlert.message"
+                type="info"
+                show-icon
+                class="view-alert"
+              />
+            </div>
             <div class="chart-info">
               <div class="chart-info-left">
                 <a-tag color="green" v-if="isRealTime">
@@ -277,7 +287,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, notification } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
@@ -342,6 +352,12 @@ const showLegend = ref(true)
 const smoothLines = ref(false)
 const showPoints = ref(false)
 const lastUpdateTime = ref('')
+
+// View switch alert state
+const viewAlert = ref({
+  visible: false,
+  message: ''
+})
 
 // Series detail expansion state
 const expandedSeries = ref<Set<number>>(new Set())
@@ -720,21 +736,24 @@ const setView = (viewNumber: number) => {
       showLegend: true,
       smoothLines: false,
       showPoints: false,
-      description: 'Standard view with grid and legend'
+      title: 'Standard View',
+      description: 'Grid lines and legend enabled for comprehensive data analysis'
     },
     2: {
       showGrid: false,
       showLegend: false,
       smoothLines: true,
       showPoints: false,
-      description: 'Clean view with smooth lines'
+      title: 'Clean View',
+      description: 'Minimalist display with smooth lines for focused viewing'
     },
     3: {
       showGrid: true,
       showLegend: true,
       smoothLines: true,
       showPoints: true,
-      description: 'Detailed view with all features'
+      title: 'Detailed View',
+      description: 'All features enabled for maximum data visualization detail'
     }
   }
 
@@ -750,7 +769,16 @@ const setView = (viewNumber: number) => {
       createChart()
     }
 
-    message.info(`Switched to ${config.description}`)
+    // Show alert with view details
+    viewAlert.value = {
+      visible: true,
+      message: `Switched to ${config.title}`
+    }
+
+    // Auto-hide alert after 4 seconds
+    setTimeout(() => {
+      viewAlert.value.visible = false
+    }, 4000)
   }
 }
 
@@ -987,6 +1015,33 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+.data-series-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.data-series-header h4 {
+  margin: 0;
+  color: #d9d9d9;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auto-scroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle-label {
+  color: #8e8e8e !important;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .series-list {
   flex: 1;
   overflow-y: auto;
@@ -1115,11 +1170,25 @@ onUnmounted(() => {
   background: #1e2328;
 }
 
+.chart-title-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 3px;
+}
+
 .chart-header h3 {
-  margin: 0 0 3px 0; /* Reduced margin */
+  margin: 0; /* Remove margin since it's now in flex */
   color: #d9d9d9;
   font-size: 16px; /* Slightly smaller font */
   font-weight: 600;
+  flex-shrink: 0; /* Prevent title from shrinking */
+}
+
+.view-alert {
+  max-width: 400px;
+  flex-shrink: 1;
 }
 
 .chart-info {
@@ -1502,5 +1571,68 @@ onUnmounted(() => {
 .custom-date-section {
   flex-shrink: 0;
   min-height: auto;
+}
+
+/* Notification styling */
+:deep(.ant-notification) {
+  z-index: 9999 !important;
+}
+
+:deep(.ant-notification .ant-notification-notice) {
+  background: #181b1f !important;
+  border: 1px solid #36414b !important;
+  border-radius: 0px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+:deep(.ant-notification .ant-notification-notice .ant-notification-notice-message) {
+  color: #d9d9d9 !important;
+  font-weight: 600 !important;
+}
+
+:deep(.ant-notification .ant-notification-notice .ant-notification-notice-description) {
+  color: #8e8e8e !important;
+}
+
+:deep(.ant-notification .ant-notification-notice .ant-notification-notice-icon) {
+  color: #52c41a !important;
+}
+
+:deep(.ant-notification .ant-notification-notice .ant-notification-notice-close) {
+  color: #8e8e8e !important;
+}
+
+:deep(.ant-notification .ant-notification-notice .ant-notification-notice-close:hover) {
+  color: #d9d9d9 !important;
+}
+
+/* Alert styling for view switching */
+:deep(.view-alert) {
+  background: #1e2328 !important;
+  border: 1px solid #36414b !important;
+  border-radius: 0px !important;
+}
+
+:deep(.view-alert .ant-alert-message) {
+  color: #d9d9d9 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+
+:deep(.view-alert .ant-alert-description) {
+  color: #8e8e8e !important;
+  font-size: 11px !important;
+}
+
+:deep(.view-alert .ant-alert-icon) {
+  color: #1890ff !important;
+}
+
+:deep(.view-alert .ant-alert-close-icon) {
+  color: #8e8e8e !important;
+}
+
+:deep(.view-alert .ant-alert-close-icon:hover) {
+  color: #d9d9d9 !important;
 }
 </style>
