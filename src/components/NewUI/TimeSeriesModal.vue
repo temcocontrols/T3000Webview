@@ -9,7 +9,7 @@
       :title="modalTitle"
       :width="1400"
       :footer="null"
-      style="border-radius: 8px; top: 30px;"
+      style="border-radius: 0px; top: 30px;"
       wrapClassName="t3-timeseries-modal"
       @cancel="handleCancel"
       centered
@@ -466,7 +466,7 @@ const getChartConfig = () => ({
         bodyColor: '#d9d9d9',
         borderColor: '#4a5568',
         borderWidth: 1,
-        cornerRadius: 4,
+        cornerRadius: 0, /* No border radius */
         displayColors: true,
         callbacks: {
           title: (context: any) => {
@@ -936,7 +936,7 @@ onUnmounted(() => {
   max-height: 550px; /* Reduced maximum height */
   gap: 12px; /* Reduced gap for more compactness */
   background: #0f1419;
-  border-radius: 6px; /* Slightly more rounded */
+  border-radius: 0px; /* No border radius */
   overflow: visible;
   padding: 0; /* Remove any default padding */
 }
@@ -945,7 +945,7 @@ onUnmounted(() => {
   width: 280px; /* Reduced from 300px */
   background: #181b1f;
   border: 1px solid #36414b;
-  border-radius: 6px; /* Match container border radius */
+  border-radius: 0px; /* No border radius */
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
@@ -956,7 +956,7 @@ onUnmounted(() => {
   flex: 1;
   background: #181b1f;
   border: 1px solid #36414b;
-  border-radius: 4px;
+  border-radius: 0px; /* No border radius */
   display: flex;
   flex-direction: column;
   min-width: 0; /* Allow flex shrinking */
@@ -996,7 +996,7 @@ onUnmounted(() => {
 .series-item {
   margin-bottom: 8px; /* Reduced margin */
   border: 1px solid #36414b;
-  border-radius: 4px;
+  border-radius: 0px; /* No border radius */
   background: #1e2328;
   transition: all 0.2s ease;
 }
@@ -1043,7 +1043,7 @@ onUnmounted(() => {
 .series-color {
   width: 12px;
   height: 12px;
-  border-radius: 2px;
+  border-radius: 0px; /* No border radius */
   flex-shrink: 0;
 }
 
@@ -1186,7 +1186,7 @@ onUnmounted(() => {
 .top-controls-bar {
   background: #181b1f;
   border: 1px solid #36414b;
-  border-radius: 6px; /* Match modal styling */
+  border-radius: 0px; /* No border radius */
   padding: 10px 14px; /* More compact padding */
   margin-bottom: 12px; /* Reduced margin */
 }
@@ -1342,14 +1342,14 @@ onUnmounted(() => {
 :deep(.t3-timeseries-modal .ant-modal-content) {
   background: #0f1419 !important;
   border: 1px solid #36414b;
-  border-radius: 8px !important; /* More rounded corners */
+  border-radius: 0px !important; /* No border radius */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important; /* Modern shadow */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-header) {
   background: #181b1f !important;
   border-bottom: 1px solid #36414b !important;
-  border-radius: 8px 8px 0 0 !important; /* Match content border radius */
+  border-radius: 0px !important; /* No border radius */
   padding: 12px 16px !important; /* Reduced padding */
 }
 
@@ -1383,7 +1383,7 @@ onUnmounted(() => {
 .left-panel::-webkit-scrollbar-thumb,
 .series-list::-webkit-scrollbar-thumb {
   background: #36414b;
-  border-radius: 3px;
+  border-radius: 0px; /* No border radius */
 }
 
 .left-panel::-webkit-scrollbar-thumb:hover,
