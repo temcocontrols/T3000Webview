@@ -103,6 +103,21 @@
               </div>
             </div>
 
+            <!-- Export Options -->
+            <div class="control-item export-options">
+              <a-typography-text class="control-label">Export:</a-typography-text>
+              <div class="export-options-flex">
+                <a-button size="small" @click="exportChart">
+                  <template #icon><DownloadOutlined /></template>
+                  PNG
+                </a-button>
+                <a-button size="small" @click="exportData">
+                  <template #icon><FileExcelOutlined /></template>
+                  CSV
+                </a-button>
+              </div>
+            </div>
+
             <!-- Real-time Toggle -->
             <div class="control-item">
               <a-switch
@@ -133,14 +148,33 @@
                 <div class="series-header" @click="toggleSeries(index)">
                   <div class="series-color" :style="{ backgroundColor: series.color }"></div>
                   <span class="series-name">{{ series.name }}</span>
-                  <a-switch
-                    v-model:checked="series.visible"
-                    size="small"
-                    @change="onSeriesVisibilityChange"
-                    @click.stop
-                  />
+                  <div class="series-controls">
+                    <a-button
+                      size="small"
+                      type="text"
+                      class="expand-toggle"
+                      @click.stop="toggleSeriesExpansion(index)"
+                    >
+                      <template #icon>
+                        <DownOutlined
+                          v-if="expandedSeries.has(index)"
+                          class="expand-icon expanded"
+                        />
+                        <RightOutlined
+                          v-else
+                          class="expand-icon"
+                        />
+                      </template>
+                    </a-button>
+                    <a-switch
+                      v-model:checked="series.visible"
+                      size="small"
+                      @change="onSeriesVisibilityChange"
+                      @click.stop
+                    />
+                  </div>
                 </div>
-                <div v-if="series.visible" class="series-stats">
+                <div v-if="expandedSeries.has(index)" class="series-stats">
                   <div class="stat-item">
                     <span class="stat-label">Last:</span>
                     <span class="stat-value">{{ getLastValue(series.data) }}</span>
@@ -162,25 +196,8 @@
             </div>
           </div>
 
-          <!-- Export Options -->
-          <div class="control-section">
-            <h4>Export</h4>
-            <div class="compact-controls">
-              <a-space direction="vertical" size="small" style="width: 100%;">
-                <a-button size="small" block @click="exportChart">
-                  <template #icon><DownloadOutlined /></template>
-                  PNG
-                </a-button>
-                <a-button size="small" block @click="exportData">
-                  <template #icon><FileExcelOutlined /></template>
-                  CSV
-                </a-button>
-              </a-space>
-            </div>
-          </div>
-
           <!-- Custom Date Range (only shown when Custom Define is selected) -->
-          <div v-if="timeBase === 'custom'" class="control-section">
+          <div v-if="timeBase === 'custom'" class="control-section custom-date-section">
             <h4>Custom Range</h4>
             <a-space direction="vertical" size="small" style="width: 100%;">
               <a-date-picker
@@ -314,6 +331,9 @@ const showLegend = ref(true)
 const smoothLines = ref(false)
 const showPoints = ref(false)
 const lastUpdateTime = ref('')
+
+// Series detail expansion state
+const expandedSeries = ref<Set<number>>(new Set())
 
 // Chart data - T3000 temperature sensor series matching graphic.png layout
 const dataSeries = ref<SeriesConfig[]>([
@@ -733,6 +753,14 @@ const toggleSeries = (index: number) => {
   updateChart()
 }
 
+const toggleSeriesExpansion = (index: number) => {
+  if (expandedSeries.value.has(index)) {
+    expandedSeries.value.delete(index)
+  } else {
+    expandedSeries.value.add(index)
+  }
+}
+
 const startRealTimeUpdates = () => {
   if (realtimeInterval) {
     clearInterval(realtimeInterval)
@@ -878,6 +906,8 @@ onUnmounted(() => {
   border-radius: 4px;
   overflow-y: auto;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .right-panel {
@@ -898,6 +928,14 @@ onUnmounted(() => {
   border-bottom: none;
 }
 
+/* Data Series section takes up remaining space */
+.control-section:first-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .control-section h4 {
   margin: 0 0 12px 0;
   color: #d9d9d9;
@@ -906,8 +944,9 @@ onUnmounted(() => {
 }
 
 .series-list {
-  max-height: 300px;
+  flex: 1;
   overflow-y: auto;
+  padding-right: 4px;
 }
 
 .series-item {
@@ -946,6 +985,38 @@ onUnmounted(() => {
   color: #d9d9d9;
   font-size: 12px;
   font-weight: 500;
+}
+
+.series-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expand-toggle {
+  padding: 0 !important;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e8e8e !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.expand-toggle:hover {
+  color: #d9d9d9 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.expand-icon {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.expand-icon.expanded {
+  transform: rotate(0deg);
 }
 
 .series-stats {
@@ -1082,6 +1153,30 @@ onUnmounted(() => {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.export-options {
+  border-left: 1px solid #36414b;
+  padding-left: 16px;
+  margin-left: 8px;
+}
+
+.export-options-flex {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Export options styling in top bar */
+.export-options-flex :deep(.ant-btn) {
+  padding: 4px 8px !important;
+  height: auto !important;
+  font-size: 11px !important;
+}
+
+.export-options-flex :deep(.ant-btn .anticon) {
+  font-size: 12px !important;
 }
 
 .control-label {
@@ -1234,6 +1329,15 @@ onUnmounted(() => {
     margin-left: 0;
     margin-top: 8px;
   }
+
+  .export-options {
+    border-left: none;
+    border-top: 1px solid #36414b;
+    padding-left: 0;
+    padding-top: 12px;
+    margin-left: 0;
+    margin-top: 8px;
+  }
 }
 
 /* Enhanced checkbox styling in top bar */
@@ -1245,5 +1349,17 @@ onUnmounted(() => {
 
 .chart-options-flex :deep(.ant-checkbox-wrapper:hover) {
   color: #ffffff !important;
+}
+
+/* Custom Date Range section styling */
+.control-section:has(.ant-space) {
+  flex-shrink: 0;
+  min-height: auto;
+}
+
+/* Alternative approach for browsers that don't support :has() */
+.custom-date-section {
+  flex-shrink: 0;
+  min-height: auto;
 }
 </style>
