@@ -165,6 +165,10 @@ const routes = [
       {
         path: 'grafana-react',
         component: createOptimizedComponent(() => import('src/pages/GrafanaReactDemo.vue'), "GrafanaReactDemo", { category: 'normal' })
+      },
+      {
+        path: 'timeseries-dashboard',
+        component: createOptimizedComponent(() => import('src/pages/TimeSeriesDashboard.vue'), "TimeSeriesDashboard", { category: 'normal' })
       }
     ]
   },
