@@ -151,10 +151,18 @@
                 >
                   <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
                     <div class="series-color" :style="{ backgroundColor: series.color }"></div>
-                    <span class="series-name">
-                      {{ series.name }}
-                      <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
-                    </span>
+                    <div class="series-info">
+                      <span class="series-name">
+                        {{ series.name }}
+                        <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
+                      </span>
+                      <div v-if="!series.isEmpty" class="series-details">
+                        <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
+                          {{ series.itemType }}
+                        </a-tag>
+                        <span class="unit-info">{{ series.unit }}</span>
+                      </div>
+                    </div>
                     <div class="series-controls" v-if="!series.isEmpty">
                       <a-button
                         size="small"
@@ -186,19 +194,19 @@
                   <div v-if="expandedSeries.has(index) && !series.isEmpty" class="series-stats">
                   <div class="stat-item">
                     <span class="stat-label">Last:</span>
-                    <span class="stat-value">{{ getLastValue(series.data) }}</span>
+                    <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Avg:</span>
-                    <span class="stat-value">{{ getAverageValue(series.data) }}</span>
+                    <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Min:</span>
-                    <span class="stat-value">{{ getMinValue(series.data) }}</span>
+                    <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Max:</span>
-                    <span class="stat-value">{{ getMaxValue(series.data) }}</span>
+                    <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
                   </div>
                 </div>
               </div>
@@ -303,6 +311,87 @@ import {
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
+// Unit Type Mappings for T3000
+const DIGITAL_UNITS = {
+  1: { label: 'Off/On', states: ['Off', 'On'] as [string, string] },
+  2: { label: 'Close/Open', states: ['Close', 'Open'] as [string, string] },
+  3: { label: 'Stop/Start', states: ['Stop', 'Start'] as [string, string] },
+  4: { label: 'Disable/Enable', states: ['Disable', 'Enable'] as [string, string] },
+  5: { label: 'Normal/Alarm', states: ['Normal', 'Alarm'] as [string, string] },
+  6: { label: 'Low/High', states: ['Low', 'High'] as [string, string] },
+  7: { label: 'Cool/Heat', states: ['Cool', 'Heat'] as [string, string] },
+  8: { label: 'Auto/Manual', states: ['Auto', 'Manual'] as [string, string] },
+  9: { label: 'Occupied/Unoccupied', states: ['Unoccupied', 'Occupied'] as [string, string] },
+  10: { label: 'Night/Day', states: ['Night', 'Day'] as [string, string] },
+  11: { label: 'Inactive/Active', states: ['Inactive', 'Active'] as [string, string] },
+  12: { label: 'Fail/OK', states: ['Fail', 'OK'] as [string, string] },
+  13: { label: 'Closed/Open', states: ['Closed', 'Open'] as [string, string] },
+  14: { label: 'False/True', states: ['False', 'True'] as [string, string] },
+  15: { label: 'No/Yes', states: ['No', 'Yes'] as [string, string] },
+  16: { label: 'Unlocked/Locked', states: ['Unlocked', 'Locked'] as [string, string] },
+  17: { label: 'Available/Unavailable', states: ['Available', 'Unavailable'] as [string, string] },
+  18: { label: 'Standby/Running', states: ['Standby', 'Running'] as [string, string] },
+  19: { label: 'Vacant/Occupied', states: ['Vacant', 'Occupied'] as [string, string] },
+  20: { label: 'Below/Above', states: ['Below', 'Above'] as [string, string] },
+  21: { label: 'Empty/Full', states: ['Empty', 'Full'] as [string, string] },
+  22: { label: 'Minimum/Maximum', states: ['Minimum', 'Maximum'] as [string, string] }
+} as const
+
+const ANALOG_UNITS = {
+  31: { label: 'deg.Celsius', symbol: '°C' },
+  32: { label: 'deg.Fahrenheit', symbol: '°F' },
+  33: { label: 'deg.Kelvin', symbol: 'K' },
+  34: { label: 'Pascals', symbol: 'Pa' },
+  35: { label: 'Hectopascals', symbol: 'hPa' },
+  36: { label: 'Kilopascals', symbol: 'kPa' },
+  37: { label: 'MilliBar', symbol: 'mbar' },
+  38: { label: 'Bar', symbol: 'bar' },
+  39: { label: 'PSI', symbol: 'PSI' },
+  40: { label: 'Inches H2O', symbol: 'inH2O' },
+  41: { label: 'Feet H2O', symbol: 'ftH2O' },
+  42: { label: 'CFM', symbol: 'CFM' },
+  43: { label: 'CMH', symbol: 'm³/h' },
+  44: { label: 'Volts', symbol: 'V' },
+  45: { label: 'Millivolts', symbol: 'mV' },
+  46: { label: 'Amperes', symbol: 'A' },
+  47: { label: 'Milliamps', symbol: 'mA' },
+  48: { label: 'KiloWatts', symbol: 'kW' },
+  49: { label: 'Watts', symbol: 'W' },
+  50: { label: 'BTU/Hr', symbol: 'BTU/h' },
+  51: { label: 'Therms', symbol: 'thm' },
+  52: { label: 'Ton-Hours', symbol: 'ton·h' },
+  53: { label: 'KiloWatt-Hours', symbol: 'kWh' },
+  54: { label: 'Percent', symbol: '%' },
+  55: { label: 'PPM', symbol: 'ppm' },
+  56: { label: 'RPM', symbol: 'rpm' },
+  57: { label: 'Seconds', symbol: 's' },
+  58: { label: 'Minutes', symbol: 'min' },
+  59: { label: 'Hours', symbol: 'h' },
+  60: { label: 'Days', symbol: 'days' },
+  61: { label: 'Weeks', symbol: 'weeks' },
+  62: { label: 'Months', symbol: 'months' },
+  63: { label: 'Years', symbol: 'years' }
+} as const
+
+// Helper function to get unit info
+const getUnitInfo = (unitCode: number) => {
+  if (unitCode >= 1 && unitCode <= 22) {
+    return {
+      type: 'digital' as const,
+      info: DIGITAL_UNITS[unitCode as keyof typeof DIGITAL_UNITS]
+    }
+  } else if (unitCode >= 31 && unitCode <= 63) {
+    return {
+      type: 'analog' as const,
+      info: ANALOG_UNITS[unitCode as keyof typeof ANALOG_UNITS]
+    }
+  }
+  return {
+    type: 'analog' as const,
+    info: { label: 'Unknown', symbol: '' }
+  }
+}
+
 // Types
 interface DataPoint {
   timestamp: number
@@ -316,6 +405,10 @@ interface SeriesConfig {
   visible: boolean
   unit?: string
   isEmpty?: boolean
+  unitType: 'digital' | 'analog'      // NEW: Type of data (digital binary or analog continuous)
+  unitCode: number                    // NEW: Unit code from T3000 (1-22 digital, 31-63 analog)
+  digitalStates?: [string, string]   // NEW: State labels for digital units ['Low', 'High']
+  itemType?: string                  // NEW: T3000 item type (VAR, Input, Output, HOL, etc.)
 }
 
 interface Props {
@@ -362,7 +455,7 @@ const viewAlert = ref({
 // Series detail expansion state
 const expandedSeries = ref<Set<number>>(new Set())
 
-// Chart data - T3000 temperature sensor series (always 14 items)
+// Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE',
@@ -376,14 +469,56 @@ const generateDataSeries = (): SeriesConfig[] => {
     'BMC01E1E-13P1B', 'BMC01E1E-14P1B'
   ]
 
-  return baseSeries.map((name, index) => ({
-    name: name,
-    color: colors[index % colors.length],
-    data: [],
-    visible: index < 7, // Only first 7 visible by default
-    unit: '°C',
-    isEmpty: index >= 7 // Mark items 8-14 as empty by default
-  }))
+  // Mixed unit codes for demo - digital and analog combined
+  const unitCodes = [
+    31, // deg.Celsius (analog)
+    32, // deg.Fahrenheit (analog)
+    1,  // Off/On (digital)
+    2,  // Close/Open (digital)
+    54, // Percent (analog)
+    3,  // Stop/Start (digital)
+    44, // Volts (analog)
+    5,  // Normal/Alarm (digital)
+    49, // Watts (analog)
+    8,  // Auto/Manual (digital)
+    54, // Percent (analog)
+    11, // Inactive/Active (digital)
+    42, // CFM (analog)
+    18  // Standby/Running (digital)
+  ]
+
+  const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
+
+  return baseSeries.map((name, index) => {
+    const unitCode = unitCodes[index]
+    const unitInfo = getUnitInfo(unitCode)
+
+    let unit: string
+    let digitalStates: [string, string] | undefined
+
+    if (unitInfo.type === 'digital') {
+      const digitalInfo = unitInfo.info as { label: string; states: [string, string] }
+      unit = digitalInfo.label
+      digitalStates = digitalInfo.states
+    } else {
+      const analogInfo = unitInfo.info as { label: string; symbol: string }
+      unit = analogInfo.symbol
+      digitalStates = undefined
+    }
+
+    return {
+      name: name,
+      color: colors[index % colors.length],
+      data: [],
+      visible: index < 7, // Only first 7 visible by default
+      unit: unit,
+      isEmpty: index >= 7, // Mark items 8-14 as empty by default
+      unitType: unitInfo.type,
+      unitCode: unitCode,
+      digitalStates: digitalStates,
+      itemType: itemTypes[index]
+    }
+  })
 }
 
 const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
@@ -447,7 +582,9 @@ const getChartConfig = () => ({
         backgroundColor: series.color + '20',
         borderWidth: 2,
         fill: false,
-        tension: smoothLines.value ? 0.4 : 0,
+        // NEW: Digital units use step-line, analog units use smooth/straight lines
+        stepped: series.unitType === 'digital' ? 'middle' as const : false,
+        tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
         pointRadius: showPoints.value ? 3 : 0,
         pointHoverRadius: 6,
         pointBackgroundColor: series.color,
@@ -491,8 +628,17 @@ const getChartConfig = () => ({
           },
           label: (context: any) => {
             const series = dataSeries.value.find(s => s.name === context.dataset.label)
-            const unit = series?.unit || ''
-            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}${unit}`
+            if (!series) return `${context.dataset.label}: ${context.parsed.y}`
+
+            // NEW: Different formatting for digital vs analog
+            if (series.unitType === 'digital') {
+              const stateIndex = context.parsed.y === 1 ? 1 : 0
+              const stateText = series.digitalStates?.[stateIndex] || (context.parsed.y === 1 ? 'High' : 'Low')
+              return `${context.dataset.label}: ${stateText} (${context.parsed.y})`
+            } else {
+              const unit = series.unit || ''
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}${unit}`
+            }
           }
         }
       }
@@ -520,6 +666,8 @@ const getChartConfig = () => ({
         }
       },
       y: {
+        // NEW: Extended Y-axis range to support both digital (0/1) and analog values
+        min: -1, // Allow space below 0 for better digital visualization
         grid: {
           color: showGrid.value ? '#36414b' : 'transparent',
           display: showGrid.value
@@ -530,8 +678,14 @@ const getChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
+          // NEW: Dynamic Y-axis labeling for mixed units
           callback: function(value: any) {
-            return `${value}°C`
+            // For digital values (0 or 1), show cleaner labels
+            if (value === 0 || value === 1) {
+              return value.toString()
+            }
+            // For analog values, show with decimal places
+            return typeof value === 'number' ? value.toFixed(1) : value
           }
         }
       }
@@ -552,14 +706,57 @@ const getChartConfig = () => ({
 const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPoint[] => {
   const now = Date.now()
   const points = Math.min(timeRangeMinutes * 2, 200) // 1 point every 30 seconds, max 200 points
-  const baseTemp = 20 + seriesIndex * 2
+  const series = dataSeries.value[seriesIndex]
   const data: DataPoint[] = []
 
-  for (let i = 0; i < points; i++) {
-    const timestamp = now - (points - i) * 30000 // 30 second intervals
-    const variation = Math.sin(i * 0.1) * 2 + Math.random() * 1.5 - 0.75
-    const value = baseTemp + variation
-    data.push({ timestamp, value })
+  if (series.unitType === 'digital') {
+    // Digital data: Generate step-like transitions between 0 and 1
+    let currentState = Math.random() > 0.5 ? 1 : 0
+
+    for (let i = 0; i < points; i++) {
+      const timestamp = now - (points - i) * 30000 // 30 second intervals
+
+      // Randomly change state (about 10% chance per point for realistic transitions)
+      if (Math.random() < 0.1) {
+        currentState = currentState === 1 ? 0 : 1
+      }
+
+      data.push({ timestamp, value: currentState })
+    }
+  } else {
+    // Analog data: Generate continuous values based on unit type
+    const unitCode = series.unitCode
+    let baseValue: number
+    let range: number
+
+    // Set realistic ranges based on unit type
+    if (unitCode === 31 || unitCode === 32) { // Temperature (°C/°F)
+      baseValue = unitCode === 31 ? 20 + seriesIndex * 2 : 68 + seriesIndex * 4
+      range = unitCode === 31 ? 10 : 18
+    } else if (unitCode === 54) { // Percent
+      baseValue = 50 + seriesIndex * 5
+      range = 30
+    } else if (unitCode === 44) { // Volts
+      baseValue = 12 + seriesIndex * 0.5
+      range = 2
+    } else if (unitCode === 49) { // Watts
+      baseValue = 100 + seriesIndex * 50
+      range = 50
+    } else if (unitCode === 42) { // CFM
+      baseValue = 500 + seriesIndex * 100
+      range = 200
+    } else {
+      // Default for other analog units
+      baseValue = 10 + seriesIndex * 5
+      range = 10
+    }
+
+    for (let i = 0; i < points; i++) {
+      const timestamp = now - (points - i) * 30000 // 30 second intervals
+      const variation = Math.sin(i * 0.1) * range * 0.3 + (Math.random() * range * 0.4 - range * 0.2)
+      const value = Math.max(0, baseValue + variation) // Ensure non-negative values
+      data.push({ timestamp, value })
+    }
   }
 
   return data
@@ -594,10 +791,41 @@ const addRealtimeDataPoint = () => {
   dataSeries.value.forEach((series, index) => {
     if (series.isEmpty) return
 
-    const lastPoint = series.data[series.data.length - 1]
-    const baseTemp = 20 + index * 2
-    const variation = Math.sin(Date.now() * 0.0001) * 2 + Math.random() * 1.5 - 0.75
-    const newValue = baseTemp + variation
+    let newValue: number
+
+    if (series.unitType === 'digital') {
+      // Digital data: Randomly change state occasionally (simulate T3000 digital input changes)
+      const lastValue = series.data.length > 0 ? series.data[series.data.length - 1].value : 0
+      // 5% chance to change state each update (simulating real digital state changes)
+      if (Math.random() < 0.05) {
+        newValue = lastValue === 1 ? 0 : 1
+      } else {
+        newValue = lastValue
+      }
+    } else {
+      // Analog data: Generate realistic continuous values
+      const unitCode = series.unitCode
+      const lastPoint = series.data[series.data.length - 1]
+      const lastValue = lastPoint ? lastPoint.value : 0
+
+      // Different variation patterns based on unit type
+      let variation: number
+      if (unitCode === 31 || unitCode === 32) { // Temperature
+        variation = Math.sin(Date.now() * 0.0001) * 1 + Math.random() * 0.5 - 0.25
+      } else if (unitCode === 54) { // Percent
+        variation = Math.sin(Date.now() * 0.0002) * 5 + Math.random() * 2 - 1
+      } else if (unitCode === 44) { // Volts
+        variation = Math.sin(Date.now() * 0.0001) * 0.2 + Math.random() * 0.1 - 0.05
+      } else if (unitCode === 49) { // Watts
+        variation = Math.sin(Date.now() * 0.0001) * 10 + Math.random() * 5 - 2.5
+      } else if (unitCode === 42) { // CFM
+        variation = Math.sin(Date.now() * 0.0001) * 50 + Math.random() * 20 - 10
+      } else {
+        variation = Math.sin(Date.now() * 0.0001) * 2 + Math.random() * 1 - 0.5
+      }
+
+      newValue = Math.max(0, lastValue + variation) // Ensure non-negative
+    }
 
     series.data.push({ timestamp: now, value: newValue })
 
@@ -640,7 +868,9 @@ const updateChart = () => {
       backgroundColor: series.color + '20',
       borderWidth: 2,
       fill: false,
-      tension: smoothLines.value ? 0.4 : 0,
+      // Apply step-line for digital, smooth/straight for analog
+      stepped: series.unitType === 'digital' ? 'middle' as const : false,
+      tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
       pointRadius: showPoints.value ? 3 : 0,
       pointHoverRadius: 6,
       pointBackgroundColor: series.color,
@@ -843,27 +1073,65 @@ const stopRealTimeUpdates = () => {
 }
 
 // Utility functions
-const getLastValue = (data: DataPoint[]): string => {
+const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
   if (data.length === 0) return 'N/A'
-  return data[data.length - 1].value.toFixed(2) + '°C'
+
+  const lastValue = data[data.length - 1].value
+
+  if (series?.unitType === 'digital') {
+    const stateIndex = lastValue === 1 ? 1 : 0
+    const stateText = series.digitalStates?.[stateIndex] || (lastValue === 1 ? 'High' : 'Low')
+    return `${stateText} (${lastValue})`
+  } else {
+    const unit = series?.unit || ''
+    return lastValue.toFixed(2) + unit
+  }
 }
 
-const getAverageValue = (data: DataPoint[]): string => {
+const getAverageValue = (data: DataPoint[], series?: SeriesConfig): string => {
   if (data.length === 0) return 'N/A'
+
   const avg = data.reduce((sum, point) => sum + point.value, 0) / data.length
-  return avg.toFixed(2) + '°C'
+
+  if (series?.unitType === 'digital') {
+    // For digital, show percentage of time in "high" state
+    const highCount = data.filter(p => p.value === 1).length
+    const percentage = (highCount / data.length) * 100
+    return `${percentage.toFixed(1)}% High`
+  } else {
+    const unit = series?.unit || ''
+    return avg.toFixed(2) + unit
+  }
 }
 
-const getMinValue = (data: DataPoint[]): string => {
+const getMinValue = (data: DataPoint[], series?: SeriesConfig): string => {
   if (data.length === 0) return 'N/A'
+
   const min = Math.min(...data.map(p => p.value))
-  return min.toFixed(2) + '°C'
+
+  if (series?.unitType === 'digital') {
+    const stateIndex = min === 1 ? 1 : 0
+    const stateText = series.digitalStates?.[stateIndex] || (min === 1 ? 'High' : 'Low')
+    return `${stateText} (${min})`
+  } else {
+    const unit = series?.unit || ''
+    return min.toFixed(2) + unit
+  }
 }
 
-const getMaxValue = (data: DataPoint[]): string => {
+const getMaxValue = (data: DataPoint[], series?: SeriesConfig): string => {
   if (data.length === 0) return 'N/A'
+
   const max = Math.max(...data.map(p => p.value))
-  return max.toFixed(2) + '°C'
+
+  if (series?.unitType === 'digital') {
+    const stateIndex = max === 1 ? 1 : 0
+    const stateText = series.digitalStates?.[stateIndex] || (max === 1 ? 'High' : 'Low')
+    return `${stateText} (${max})`
+  } else {
+    const unit = series?.unit || ''
+    return max.toFixed(2) + unit
+  }
 }
 
 const exportChart = () => {
@@ -1103,10 +1371,33 @@ onUnmounted(() => {
 }
 
 .series-name {
-  flex: 1;
   color: #d9d9d9;
   font-size: 12px;
   font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.series-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.series-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.unit-info {
+  color: #8e8e8e;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(142, 142, 142, 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
 .series-controls {
