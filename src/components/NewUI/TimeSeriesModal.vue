@@ -1,6 +1,6 @@
 <template>
   <a-config-provider :theme="{
-    algorithm: 'defaultAlgorithm',
+    algorithm: theme.defaultAlgorithm,
     token: {
       colorPrimary: '#0064c8',
       colorBgBase: '#ffffff',
@@ -299,7 +299,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { message, notification } from 'ant-design-vue'
+import { message, notification, theme } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
@@ -635,7 +635,7 @@ const getChartConfig = () => ({
         display: showLegend.value,
         position: 'bottom' as const,
         labels: {
-          color: '#d9d9d9',
+          color: '#000000',
           font: {
             size: 12,
             family: 'Inter, Helvetica, Arial, sans-serif'
@@ -645,10 +645,10 @@ const getChartConfig = () => ({
         }
       },
       tooltip: {
-        backgroundColor: '#2d3748',
-        titleColor: '#d9d9d9',
-        bodyColor: '#d9d9d9',
-        borderColor: '#4a5568',
+        backgroundColor: '#ffffff',
+        titleColor: '#000000',
+        bodyColor: '#000000',
+        borderColor: '#d9d9d9',
         borderWidth: 1,
         cornerRadius: 0, /* No border radius */
         displayColors: true,
@@ -685,11 +685,11 @@ const getChartConfig = () => ({
           }
         },
         grid: {
-          color: showGrid.value ? '#36414b' : 'transparent',
+          color: showGrid.value ? '#d0d0d0' : 'transparent',
           display: showGrid.value
         },
         ticks: {
-          color: '#8e8e8e',
+          color: '#595959',
           font: {
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
@@ -700,11 +700,11 @@ const getChartConfig = () => ({
         // NEW: Extended Y-axis range to support both digital (0/1) and analog values
         min: -1, // Allow space below 0 for better digital visualization
         grid: {
-          color: showGrid.value ? '#36414b' : 'transparent',
+          color: showGrid.value ? '#d0d0d0' : 'transparent',
           display: showGrid.value
         },
         ticks: {
-          color: '#8e8e8e',
+          color: '#595959',
           font: {
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'

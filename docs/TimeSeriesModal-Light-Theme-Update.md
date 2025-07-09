@@ -18,7 +18,7 @@ Updated the `a-config-provider` theme configuration:
 
 <!-- After (Light Theme) -->
 <a-config-provider :theme="{
-  algorithm: 'defaultAlgorithm',
+  algorithm: theme.defaultAlgorithm,
   token: {
     colorPrimary: '#0064c8',
     colorBgBase: '#ffffff',
@@ -85,6 +85,31 @@ Updated the `a-config-provider` theme configuration:
 - **Track**: `#1e2328` → `#ffffff`
 - **Thumb**: `#36414b` → `#d9d9d9`
 - **Hover**: `#52616b` → `#bfbfbf`
+
+## Chart Grid Line Color Improvements
+
+### Final Grid Color Updates (January 2025)
+
+**Grid Lines Enhanced:**
+- Updated grid line color from `#e8e8e8` (very light gray) to `#d0d0d0` (medium gray)
+- Provides better visibility and contrast on light backgrounds
+- Maintains professional appearance while ensuring grid lines are clearly visible
+
+**Complete Light Theme Chart Colors:**
+- **Grid Lines**: `#d0d0d0` (medium gray for better visibility)
+- **Tick Labels**: `#595959` (dark gray for excellent readability)
+- **Tooltip Background**: `#ffffff` (white)
+- **Tooltip Text**: `#000000` (black)
+- **Tooltip Border**: `#d9d9d9` (light gray)
+- **Legend Text**: `#000000` (black)
+
+**Visual Benefits:**
+- Grid lines are now clearly visible without being overwhelming
+- Better contrast for data visualization
+- Consistent with light theme aesthetic
+- Professional appearance suitable for business dashboards
+
+All chart elements now use appropriate light theme colors for optimal visibility and professional appearance.
 
 ## Benefits of Light Theme
 
@@ -158,3 +183,46 @@ Chart.js theme could be updated to better coordinate with the light theme for ev
 ## Conclusion
 
 The TimeSeriesModal component has been successfully converted to a light theme while maintaining all existing functionality. The new light theme provides better readability, professional appearance, and improved accessibility for users.
+
+## Theme Configuration Error Fix
+
+### Issue Resolution (January 2025)
+
+**Error**: `Uncaught (in promise) TypeError: derivative4 is not a function`
+
+**Root Cause**:
+- The Ant Design theme algorithm was incorrectly configured as a string `'defaultAlgorithm'` instead of the actual algorithm function reference.
+
+**Fix Applied**:
+1. **Added proper import**: Added `theme` to the Ant Design Vue imports
+   ```typescript
+   import { message, notification, theme } from 'ant-design-vue'
+   ```
+
+2. **Fixed algorithm reference**: Changed from string to proper function reference
+   ```vue
+   // BEFORE (incorrect)
+   algorithm: 'defaultAlgorithm',
+
+   // AFTER (correct)
+   algorithm: theme.defaultAlgorithm,
+   ```
+
+**Complete Fixed Theme Configuration**:
+```vue
+<a-config-provider :theme="{
+  algorithm: theme.defaultAlgorithm,
+  token: {
+    colorPrimary: '#0064c8',
+    colorBgBase: '#ffffff',
+    colorText: '#000000',
+    colorBorder: '#d9d9d9',
+  },
+}">
+```
+
+**Result**:
+- Theme error resolved ✅
+- Development server runs cleanly ✅
+- All Ant Design components properly themed for light theme ✅
+- No more JavaScript runtime errors ✅
