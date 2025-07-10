@@ -132,16 +132,44 @@
           <!-- Data Series -->
           <div class="control-section">
             <div class="data-series-header">
-              <h4>Data Series</h4>
-              <div class="auto-scroll-toggle">
-                <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                <a-switch
-                  v-model:checked="isRealTime"
-                  size="small"
-                  checked-children="On"
-                  un-checked-children="Off"
-                  @change="onRealTimeToggle"
-                />
+              <div class="header-main">
+                <h4>Data Series (14 Items)</h4>
+                <div class="auto-scroll-toggle">
+                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                  <a-switch
+                    v-model:checked="isRealTime"
+                    size="small"
+                    checked-children="On"
+                    un-checked-children="Off"
+                    @change="onRealTimeToggle"
+                  />
+                </div>
+              </div>
+
+              <div class="header-controls">
+                <div class="control-group">
+                  <a-typography-text class="control-group-label">All Items:</a-typography-text>
+                  <a-button-group size="small">
+                    <a-button @click="enableAllSeries" :disabled="!hasDisabledSeries">
+                      Enable All
+                    </a-button>
+                    <a-button @click="disableAllSeries" :disabled="!hasEnabledSeries">
+                      Disable All
+                    </a-button>
+                  </a-button-group>
+                </div>
+
+                <div class="control-group">
+                  <a-typography-text class="control-group-label">By Type:</a-typography-text>
+                  <a-button-group size="small">
+                    <a-button @click="toggleAnalogSeries" :disabled="!hasAnalogSeries">
+                      {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                    </a-button>
+                    <a-button @click="toggleDigitalSeries" :disabled="!hasDigitalSeries">
+                      {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                    </a-button>
+                  </a-button-group>
+                </div>
               </div>
             </div>
             <div class="series-list">                <div
@@ -570,7 +598,7 @@ const modalTitle = computed(() => {
 })
 
 const chartTitle = computed(() => {
-  return props.itemData?.t3Entry?.description || 'T3000 Temperature Sensors'
+  return props.itemData?.t3Entry?.description || ''
 })
 
 const totalDataPoints = computed(() => {
@@ -595,6 +623,47 @@ const timeBaseLabel = computed(() => {
     '7d': 'Last 7 days'
   }
   return labels[timeBase.value] || 'Unknown'
+})
+
+// Series control computed properties
+const hasEnabledSeries = computed(() => {
+  return dataSeries.value.some(series => series.visible && !series.isEmpty)
+})
+
+const hasDisabledSeries = computed(() => {
+  return dataSeries.value.some(series => !series.visible && !series.isEmpty)
+})
+
+const analogSeries = computed(() => {
+  return dataSeries.value.filter(series => series.unitType === 'analog' && !series.isEmpty)
+})
+
+const digitalSeries = computed(() => {
+  return dataSeries.value.filter(series => series.unitType === 'digital' && !series.isEmpty)
+})
+
+const hasAnalogSeries = computed(() => {
+  return analogSeries.value.length > 0
+})
+
+const hasDigitalSeries = computed(() => {
+  return digitalSeries.value.length > 0
+})
+
+const analogCount = computed(() => {
+  return analogSeries.value.length
+})
+
+const digitalCount = computed(() => {
+  return digitalSeries.value.length
+})
+
+const allAnalogEnabled = computed(() => {
+  return analogSeries.value.length > 0 && analogSeries.value.every(series => series.visible)
+})
+
+const allDigitalEnabled = computed(() => {
+  return digitalSeries.value.length > 0 && digitalSeries.value.every(series => series.visible)
 })
 
 // Chart configuration with Grafana-like styling
@@ -911,6 +980,46 @@ const updateChart = () => {
 
   chartInstance.update('none')
 }
+
+// Series control methods
+const enableAllSeries = () => {
+  dataSeries.value.forEach(series => {
+    if (!series.isEmpty) {
+      series.visible = true
+    }
+  })
+  updateChart()
+}
+
+const disableAllSeries = () => {
+  dataSeries.value.forEach(series => {
+    if (!series.isEmpty) {
+      series.visible = false
+    }
+  })
+  updateChart()
+}
+
+const toggleAnalogSeries = () => {
+  const enableAnalog = !allAnalogEnabled.value
+  dataSeries.value.forEach(series => {
+    if (series.unitType === 'analog' && !series.isEmpty) {
+      series.visible = enableAnalog
+    }
+  })
+  updateChart()
+}
+
+const toggleDigitalSeries = () => {
+  const enableDigital = !allDigitalEnabled.value
+  dataSeries.value.forEach(series => {
+    if (series.unitType === 'digital' && !series.isEmpty) {
+      series.visible = enableDigital
+    }
+  })
+  updateChart()
+}
+
 
 // New control functions
 const moveTimeLeft = () => {
@@ -1316,9 +1425,22 @@ onUnmounted(() => {
 
 .data-series-header {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 0px;
+}
+
+.header-main {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .data-series-header h4 {
@@ -1326,6 +1448,31 @@ onUnmounted(() => {
   color: #262626;
   font-size: 13px;
   font-weight: 600;
+}
+
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.control-group-label {
+  color: #8c8c8c !important;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .auto-scroll-toggle {
@@ -1877,10 +2024,6 @@ onUnmounted(() => {
   margin-bottom: 0 !important;
   color: #000000 !important;
   font-size: 11px;
-}
-
-.chart-options-flex :deep(.ant-checkbox-wrapper:hover) {
-  color: #262626 !important;
 }
 
 /* Custom Date Range section styling */
