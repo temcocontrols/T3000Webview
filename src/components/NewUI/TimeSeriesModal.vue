@@ -126,14 +126,44 @@
         </div>
       </div>
 
-      <div class="timeseries-container">
-        <!-- Left Panel: Data Series and Options -->
+      <div class="timeseries-container">        <!-- Left Panel: Data Series and Options -->
         <div class="left-panel">
           <!-- Data Series -->
           <div class="control-section">
             <div class="data-series-header">
-              <div class="header-main">
-                <h4>Data Series (14 Items)</h4>
+              <!-- Line 1: Title only -->
+              <div class="header-line-1">
+                <h5>Data Series ({{ dataSeries.length }} Items)</h5>
+              </div>
+
+              <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+              <div class="header-line-2">
+                <a-dropdown>
+                  <a-button size="small">All <DownOutlined /></a-button>
+                  <template #overlay>
+                    <a-menu>
+                      <a-menu-item @click="enableAllSeries" :disabled="!hasDisabledSeries">
+                        Enable All
+                      </a-menu-item>
+                      <a-menu-item @click="disableAllSeries" :disabled="!hasEnabledSeries">
+                        Disable All
+                      </a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
+                <a-dropdown>
+                  <a-button size="small">By Type <DownOutlined /></a-button>
+                  <template #overlay>
+                    <a-menu>
+                      <a-menu-item @click="toggleAnalogSeries" :disabled="!hasAnalogSeries">
+                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                      </a-menu-item>
+                      <a-menu-item @click="toggleDigitalSeries" :disabled="!hasDigitalSeries">
+                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                      </a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
                 <div class="auto-scroll-toggle">
                   <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
                   <a-switch
@@ -143,32 +173,6 @@
                     un-checked-children="Off"
                     @change="onRealTimeToggle"
                   />
-                </div>
-              </div>
-
-              <div class="header-controls">
-                <div class="control-group">
-                  <a-typography-text class="control-group-label">All Items:</a-typography-text>
-                  <a-button-group size="small">
-                    <a-button @click="enableAllSeries" :disabled="!hasDisabledSeries">
-                      Enable All
-                    </a-button>
-                    <a-button @click="disableAllSeries" :disabled="!hasEnabledSeries">
-                      Disable All
-                    </a-button>
-                  </a-button-group>
-                </div>
-
-                <div class="control-group">
-                  <a-typography-text class="control-group-label">By Type:</a-typography-text>
-                  <a-button-group size="small">
-                    <a-button @click="toggleAnalogSeries" :disabled="!hasAnalogSeries">
-                      {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                    </a-button>
-                    <a-button @click="toggleDigitalSeries" :disabled="!hasDigitalSeries">
-                      {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                    </a-button>
-                  </a-button-group>
                 </div>
               </div>
             </div>
@@ -1367,10 +1371,10 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: calc(65vh - 60px); /* Reduced height for more compact design */
-  min-height: 420px; /* Reduced minimum height */
-  max-height: 550px; /* Reduced maximum height */
-  gap: 12px; /* Reduced gap for more compactness */
+  height: calc(75vh - 40px); /* Further increased height with ultra-compact modal */
+  min-height: 480px; /* Increased for better chart space */
+  max-height: 650px; /* Increased maximum for larger screens */
+  gap: 6px; /* Ultra-minimal gap for maximum space */
   background: #ffffff;
   border-radius: 0px; /* No border radius */
   overflow: visible;
@@ -1400,7 +1404,7 @@ onUnmounted(() => {
 }
 
 .control-section {
-  padding: 12px; /* Reduced padding */
+  padding: 0; /* Remove outer padding */
   border-bottom: 1px solid #e8e8e8;
 }
 
@@ -1414,63 +1418,52 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: 8px; /* Inner padding only for data series */
 }
 
 .control-section h4 {
-  margin: 0 0 10px 0; /* Reduced margin */
+  margin: 0 0 8px 0; /* Reduced margin */
   color: #262626;
-  font-size: 13px; /* Slightly smaller */
+  font-size: 12px; /* Smaller size */
   font-weight: 600;
 }
 
 .data-series-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 8px;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding: 4px 6px;
   background: #fafafa;
   border: 1px solid #e8e8e8;
   border-radius: 0px;
 }
 
-.header-main {
+.header-line-1,
+.header-line-2 {
+  padding-left: 2px;
+}
+
+.header-line-2 {
   display: flex;
-  justify-content: space-between;
+  flex-direction: row;
   align-items: center;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.data-series-header h4 {
-  margin: 0;
-  color: #262626;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.header-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  justify-content: flex-start;
   width: 100%;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .control-group {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
-  width: 100%;
-  justify-content: space-between;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
 }
 
 .control-group-label {
   color: #8c8c8c !important;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1483,7 +1476,7 @@ onUnmounted(() => {
 
 .toggle-label {
   color: #8c8c8c !important;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1634,7 +1627,7 @@ onUnmounted(() => {
 }
 
 .chart-header {
-  padding: 12px 16px; /* Reduced padding */
+  padding: 6px 8px; /* Ultra-compact padding to match modal header */
   border-bottom: 1px solid #e8e8e8;
   background: #ffffff;
 }
@@ -1876,35 +1869,54 @@ onUnmounted(() => {
   border-color: #40a9ff !important;
 }
 
-/* Modal styling */
+/* Modal styling - ultra-compact and space-efficient */
 :deep(.t3-timeseries-modal .ant-modal-content) {
   background: #ffffff !important;
   border: 1px solid #e8e8e8;
   border-radius: 0px !important; /* No border radius */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important; /* Lighter shadow */
+  margin: 0 !important; /* Remove default margin */
+  padding: 0 !important; /* Remove default padding */
+  overflow: hidden !important; /* Prevent any spacing issues */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-header) {
   background: #fafafa !important;
   border-bottom: 1px solid #e8e8e8 !important;
   border-radius: 0px !important; /* No border radius */
-  padding: 12px 16px !important; /* Reduced padding */
+  padding: 6px 8px !important; /* Ultra-compact padding */
+  margin: 0 !important; /* Remove margin */
+  min-height: 32px !important; /* Even more compact height */
+  line-height: 1.2 !important; /* Tight line height */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-title) {
   color: #262626 !important;
   font-weight: 600;
-  font-size: 16px !important; /* Slightly smaller */
+  font-size: 14px !important; /* Smaller but readable size */
+  line-height: 1.2 !important; /* Tight line height */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.t3-timeseries-modal .ant-modal-close) {
+  top: 2px !important; /* Adjust close button position for smaller header */
+  right: 6px !important; /* Closer to edge */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-close-x) {
   color: #8c8c8c !important;
+  width: 24px !important; /* More compact close button */
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 12px !important; /* Smaller close icon */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-body) {
-  padding: 12px !important; /* Reduced padding */
+  padding: 4px !important; /* Ultra-compact padding - minimal but functional */
   background: #ffffff !important;
-  margin: 0;
+  margin: 0 !important;
+  overflow: hidden !important; /* Ensure tight fit */
 }
 
 /* Scrollbar styling */
@@ -2099,5 +2111,30 @@ onUnmounted(() => {
 
 :deep(.view-alert .ant-alert-close-icon:hover) {
   color: #262626 !important;
+}
+
+/*
+  IMPORTANT: Ensure the modal root has class 't3-timeseries-modal'.
+
+  If not, add :wrap-class-name="'t3-timeseries-modal'" to your <a-modal> or <Modal> component.
+*/
+
+:deep(.t3-timeseries-modal) :deep(.ant-modal-content),
+:deep(.t3-timeseries-modal .ant-modal-content),
+:global(.t3-timeseries-modal) :global(.ant-modal-content) {
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #fff !important;
+  border-radius: 0 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important;
+  border: 1px solid #e8e8e8 !important;
+}
+
+:deep(.t3-timeseries-modal) :deep(.ant-modal-body),
+:deep(.t3-timeseries-modal .ant-modal-body),
+:global(.t3-timeseries-modal) :global(.ant-modal-body) {
+  padding: 4px !important;
+  margin: 0 !important;
+  background: #fff !important;
 }
 </style>
