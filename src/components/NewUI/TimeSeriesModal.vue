@@ -2138,3 +2138,9 @@ onUnmounted(() => {
   background: #fff !important;
 }
 </style>
+
+<style>
+.t3-timeseries-modal .ant-modal-content {
+  padding: 10px 14px !important;
+}
+</style>
