@@ -13,7 +13,7 @@
       :title="modalTitle"
       :width="1400"
       :footer="null"
-      style="border-radius: 0px; top: 30px;"
+      style="border-radius: 0px; top: 10px;"
       wrapClassName="t3-timeseries-modal"
       @cancel="handleCancel"
       centered
