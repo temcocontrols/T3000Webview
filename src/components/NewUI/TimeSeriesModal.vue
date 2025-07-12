@@ -109,6 +109,47 @@
             </div>
           </div>
 
+          <!-- Chart Header Section (moved from right panel) -->
+          <div class="chart-header-in-topbar">
+            <div class="chart-title-section">
+              <h3>{{ chartTitle }}</h3>
+              <a-alert
+                v-if="viewAlert.visible"
+                :message="viewAlert.message"
+                type="info"
+                show-icon
+                class="view-alert"
+              />
+            </div>
+            <div class="chart-info">
+              <div class="chart-info-left">
+                <a-tag color="green" v-if="isRealTime">
+                  <template #icon><SyncOutlined :spin="true" /></template>
+                  Live Data
+                </a-tag>
+                <a-tag color="blue" v-else>Historical Data</a-tag>
+                <span class="info-text">{{ visibleSeriesCount }} series visible</span>
+                <span class="info-text">Updated: {{ lastUpdateTime }}</span>
+              </div>
+              <div class="chart-info-right">
+                <div class="status-indicators">
+                  <div class="status-section">
+                    <a-typography-text class="status-label">Range:</a-typography-text>
+                    <a-tag size="small">{{ timeBase === 'custom' ? 'Custom Range' : timeBaseLabel }}</a-tag>
+                  </div>
+                  <div class="status-section">
+                    <a-typography-text class="status-label">Zoom:</a-typography-text>
+                    <a-tag size="small">{{ Math.round(zoomLevel * 100) }}%</a-tag>
+                  </div>
+                  <div class="status-section">
+                    <a-typography-text class="status-label">View:</a-typography-text>
+                    <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Right Side Controls -->
           <div class="controls-right">
             <!-- Chart Options -->
@@ -342,46 +383,6 @@
 
         <!-- Right Panel: Chart -->
         <div class="right-panel">
-          <div class="chart-header">
-            <div class="chart-title-section">
-              <h3>{{ chartTitle }}</h3>
-              <a-alert
-                v-if="viewAlert.visible"
-                :message="viewAlert.message"
-                type="info"
-                show-icon
-                class="view-alert"
-              />
-            </div>
-            <div class="chart-info">
-              <div class="chart-info-left">
-                <a-tag color="green" v-if="isRealTime">
-                  <template #icon><SyncOutlined :spin="true" /></template>
-                  Live Data
-                </a-tag>
-                <a-tag color="blue" v-else>Historical Data</a-tag>
-                <span class="info-text">{{ visibleSeriesCount }} series visible</span>
-                <span class="info-text">Updated: {{ lastUpdateTime }}</span>
-              </div>
-              <div class="chart-info-right">
-                <div class="status-indicators">
-                  <div class="status-section">
-                    <a-typography-text class="status-label">Range:</a-typography-text>
-                    <a-tag size="small">{{ timeBase === 'custom' ? 'Custom Range' : timeBaseLabel }}</a-tag>
-                  </div>
-                  <div class="status-section">
-                    <a-typography-text class="status-label">Zoom:</a-typography-text>
-                    <a-tag size="small">{{ Math.round(zoomLevel * 100) }}%</a-tag>
-                  </div>
-                  <div class="status-section">
-                    <a-typography-text class="status-label">View:</a-typography-text>
-                    <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div class="chart-container" ref="chartContainer">
             <canvas ref="chartCanvas" class="chart-canvas"></canvas>
           </div>
@@ -431,21 +432,21 @@ const DIGITAL_UNITS = {
   5: { label: 'Normal/Alarm', states: ['Normal', 'Alarm'] as [string, string] },
   6: { label: 'Normal/High', states: ['Normal', 'High'] as [string, string] },
   7: { label: 'Normal/Low', states: ['Normal', 'Low'] as [string, string] },
-  8: { label: 'No/Yes', states: ['No', 'Yes'] as [string, string] },
-  9: { label: 'Cool/Heat', states: ['Cool', 'Heat'] as [string, string] },
-  10: { label: 'Unoccupy/Occupy', states: ['Unoccupy', 'Occupy'] as [string, string] },
-  11: { label: 'Low/High', states: ['Low', 'High'] as [string, string] },
-  12: { label: 'On/Off', states: ['On', 'Off'] as [string, string] },
-  13: { label: 'Open/Close', states: ['Open', 'Close'] as [string, string] },
-  14: { label: 'Start/Stop', states: ['Start', 'Stop'] as [string, string] },
-  15: { label: 'Enable/Disable', states: ['Enable', 'Disable'] as [string, string] },
-  16: { label: 'Alarm/Normal', states: ['Alarm', 'Normal'] as [string, string] },
-  17: { label: 'High/Normal', states: ['High', 'Normal'] as [string, string] },
-  18: { label: 'Low/Normal', states: ['Low', 'Normal'] as [string, string] },
-  19: { label: 'Yes/No', states: ['Yes', 'No'] as [string, string] },
-  20: { label: 'Heat/Cool', states: ['Heat', 'Cool'] as [string, string] },
-  21: { label: 'Occupy/Unoccupy', states: ['Occupy', 'Unoccupy'] as [string, string] },
-  22: { label: 'High/Low', states: ['High', 'Low'] as [string, string] }
+  8: { label: 'No/Yes', states: ['No', 'Yes' ] as [string, string] },
+  9: { label: 'Cool/Heat', states: ['Cool', 'Heat' ] as [string, string] },
+  10: { label: 'Unoccupy/Occupy', states: ['Unoccupy', 'Occupy' ] as [string, string] },
+  11: { label: 'Low/High', states: ['Low', 'High' ] as [string, string] },
+  12: { label: 'On/Off', states: ['On', 'Off' ] as [string, string] },
+  13: { label: 'Open/Close', states: ['Open', 'Close' ] as [string, string] },
+  14: { label: 'Start/Stop', states: ['Start', 'Stop' ] as [string, string] },
+  15: { label: 'Enable/Disable', states: ['Enable', 'Disable' ] as [string, string] },
+  16: { label: 'Alarm/Normal', states: ['Alarm', 'Normal' ] as [string, string] },
+  17: { label: 'High/Normal', states: ['High', 'Normal' ] as [string, string] },
+  18: { label: 'Low/Normal', states: ['Low', 'Normal' ] as [string, string] },
+  19: { label: 'Yes/No', states: ['Yes', 'No' ] as [string, string] },
+  20: { label: 'Heat/Cool', states: ['Heat', 'Cool' ] as [string, string] },
+  21: { label: 'Occupy/Unoccupy', states: ['Occupy', 'Unoccupy' ] as [string, string] },
+  22: { label: 'High/Low', states: ['High', 'Low' ] as [string, string] }
 } as const
 
 const ANALOG_UNITS = {
@@ -1906,7 +1907,7 @@ onUnmounted(() => {
 
 .controls-group {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px; /* Reduced gap */
   flex-wrap: wrap;
@@ -2305,7 +2306,6 @@ onUnmounted(() => {
 :deep(.view-alert .ant-alert-message) {
   color: #262626 !important;
   font-weight: 600 !important;
-  font-size: 12px !important;
 }
 
 :deep(.view-alert .ant-alert-description) {
@@ -2536,6 +2536,82 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
   width: auto !important;
   min-width: fit-content !important;
+}
+
+/* Chart Header in Top Bar Styling */
+.chart-header-in-topbar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 300px;
+  margin: 0 16px;
+}
+
+.chart-header-in-topbar .chart-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-header-in-topbar .chart-title-section h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #262626;
+  line-height: 1.2;
+}
+
+.chart-header-in-topbar .chart-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.chart-header-in-topbar .chart-info-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chart-header-in-topbar .chart-info-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-header-in-topbar .status-indicators {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chart-header-in-topbar .status-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-header-in-topbar .status-label {
+  font-size: 11px;
+  color: #8c8c8c;
+  font-weight: 500;
+}
+
+.chart-header-in-topbar .info-text {
+  font-size: 11px;
+  color: #8c8c8c;
+  font-weight: 400;
+}
+
+.chart-header-in-topbar .view-alert {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 11px;
 }
 </style>
 
