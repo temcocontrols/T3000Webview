@@ -1898,44 +1898,45 @@ onUnmounted(() => {
   background: #fafafa;
   border: 1px solid #e8e8e8;
   border-radius: 0px;
-  /* No border radius */
-  padding: 10px 14px;
-  /* More compact padding */
+  padding: 8px 12px;
   margin-bottom: 5px;
-  /* Reduced margin */
+  box-sizing: border-box;
 }
 
 .controls-group {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  /* Reduced gap */
-  flex-wrap: wrap;
+  gap: 12px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .controls-left {
   display: flex;
   align-items: center;
-  gap: 16px;
-  /* Reduced gap */
-  flex-wrap: wrap;
+  gap: 12px;
+  flex-wrap: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .controls-right {
   display: flex;
   align-items: center;
-  gap: 4px;
-  /* Reduced gap */
-  flex-wrap: wrap;
-  margin-right: 12px;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .control-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .chart-options {
@@ -2089,7 +2090,6 @@ onUnmounted(() => {
   background: #ffffff !important;
   border: 1px solid #e8e8e8;
   border-radius: 0px !important;
-  /* No border radius */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
   /* Lighter shadow */
   margin: 0 !important;
@@ -2175,63 +2175,175 @@ onUnmounted(() => {
   background: #bfbfbf;
 }
 
-/* Responsive behavior for top controls */
-@media (max-width: 1200px) {
+/* RESPONSIVE BEHAVIOR - Mobile First Approach */
+
+/* Large screens (desktop) - default layout above */
+@media (min-width: 1200px) {
   .controls-group {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    flex-wrap: nowrap;
   }
 
-  .controls-left,
-  .controls-right {
-    width: 100%;
-    justify-content: flex-start;
+  .controls-left {
+    flex-wrap: nowrap;
   }
 
-  .chart-options {
-    border-left: none;
-    border-top: 1px solid #e8e8e8;
-    padding-left: 0;
-    padding-top: 12px;
-    margin-left: 0;
-    margin-top: 8px;
-  }
-
-  .export-options {
-    border-left: none;
-    border-top: 1px solid #e8e8e8;
-    padding-left: 0;
-    padding-top: 12px;
-    margin-left: 0;
-    margin-top: 8px;
-  }
-
-  .timeseries-container {
-    height: calc(60vh - 60px);
-    min-height: 400px;
-  }
-
-  .left-panel {
-    width: 280px;
-  }
-
-  .chart-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .chart-info-right {
-    width: 100%;
-  }
-
-  .status-indicators {
-    gap: 12px;
+  .chart-header-in-topbar {
+    min-width: 0;
+    flex-wrap: nowrap;
   }
 }
 
-/* Responsive behavior for smaller screens */
+/* Medium screens (tablets and small laptops) */
+@media (max-width: 1199px) and (min-width: 768px) {
+  .top-controls-bar {
+    padding: 6px 10px;
+  }
+
+  .controls-group {
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .controls-left {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chart-header-in-topbar {
+    flex-basis: 100%;
+    order: -1;
+    margin: 0 0 8px 0;
+    border-bottom: 1px solid #e8e8e8;
+    padding-bottom: 6px;
+  }
+
+  .controls-right {
+    margin-left: auto;
+  }
+
+  .chart-options,
+  .export-options {
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+  }
+}
+
+/* Small screens (mobile phones) */
+@media (max-width: 767px) {
+  .top-controls-bar {
+    padding: 6px 8px;
+  }
+
+  .controls-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .controls-left {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .controls-right {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #e8e8e8;
+  }
+
+  .chart-header-in-topbar {
+    width: 100%;
+    order: -1;
+    margin: 0 0 8px 0;
+    border-bottom: 1px solid #e8e8e8;
+    padding-bottom: 6px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .chart-header-in-topbar .chart-title-section {
+    flex-basis: 100%;
+    margin-bottom: 4px;
+  }
+
+  .chart-header-in-topbar .chart-title-section h3 {
+    font-size: 12px;
+  }
+
+  .chart-header-in-topbar .chart-info {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .chart-header-in-topbar .chart-info-left {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .chart-header-in-topbar .chart-info-right {
+    margin-left: 0;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    margin-top: 4px;
+  }
+
+  .chart-header-in-topbar .status-indicators {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .chart-options,
+  .export-options {
+    border-left: none;
+    border-top: none;
+    padding-left: 0;
+    padding-top: 0;
+    margin-left: 0;
+    margin-top: 0;
+  }
+
+  .control-item {
+    gap: 4px;
+  }
+
+  .control-label {
+    font-size: 11px !important;
+  }
+
+  /* Hide some status indicators on very small screens */
+  .chart-header-in-topbar .info-text:nth-child(n+3) {
+    display: none;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .top-controls-bar {
+    padding: 4px 6px;
+  }
+
+  .controls-left .control-item:not(:first-child):not(:nth-child(2)) {
+    display: none;
+  }
+
+  .chart-header-in-topbar .chart-info-right .status-section:nth-child(n+2) {
+    display: none;
+  }
+
+  .chart-header-in-topbar .chart-title-section h3 {
+    font-size: 11px;
+    max-width: 200px;
+  }
+}
+
+/* Container responsive behavior */
 @media (max-width: 900px) {
   .timeseries-container {
     flex-direction: column;
@@ -2246,22 +2358,6 @@ onUnmounted(() => {
 
   .right-panel {
     min-height: 350px;
-  }
-
-  .chart-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .chart-info-left,
-  .chart-info-right {
-    width: 100%;
-  }
-
-  .status-indicators {
-    justify-content: flex-start;
-    gap: 8px;
   }
 }
 
@@ -2567,55 +2663,67 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 4px;
-  min-width: 300px;
+  gap: 6px;
+  min-width: 0;
   margin: 0 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .chart-header-in-topbar .chart-title-section {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chart-header-in-topbar .chart-title-section h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #262626;
   line-height: 1.2;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .chart-header-in-topbar .chart-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chart-header-in-topbar .chart-info-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .chart-header-in-topbar .chart-info-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .chart-header-in-topbar .status-indicators {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .chart-header-in-topbar .status-section {
@@ -2623,6 +2731,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 2px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chart-header-in-topbar .status-label {
@@ -2637,12 +2746,6 @@ onUnmounted(() => {
   font-weight: 400;
   white-space: nowrap;
 }
-
-.chart-header-in-topbar .view-alert {
-  margin: 0;
-  padding: 2px 6px;
-  font-size: 10px;
-}
 </style>
 
 <!-- Modal Content Padding Override -->
@@ -2650,5 +2753,79 @@ onUnmounted(() => {
 /* Override ant-modal-content padding from default 20,24 to 10,14 */
 .t3-timeseries-modal .ant-modal-content {
   padding: 10px 14px !important;
+}
+</style>
+
+<style scoped>
+/* Additional robustness for top-controls-bar */
+.top-controls-bar * {
+  box-sizing: border-box;
+}
+
+/* Force single-line behavior for control labels */
+.control-label {
+  white-space: nowrap !important;
+  font-size: 11px !important;
+  flex-shrink: 0;
+}
+
+/* Ensure dropdowns don't break layout */
+.control-item .ant-btn {
+  white-space: nowrap !important;
+  flex-shrink: 0;
+}
+
+.control-item .ant-select {
+  flex-shrink: 0;
+}
+
+/* Prevent button groups from wrapping */
+.control-item .ant-btn-group {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Force chart info elements to stay compact */
+.chart-header-in-topbar .ant-tag {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 10px !important;
+  padding: 0 4px !important;
+  line-height: 18px !important;
+}
+
+/* Ensure alert doesn't break layout */
+.chart-header-in-topbar .ant-alert {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.chart-header-in-topbar .ant-alert .ant-alert-message {
+  font-size: 10px !important;
+  margin: 0 !important;
+}
+
+/* Override any ant design min-width constraints */
+.top-controls-bar .ant-select-selector {
+  min-width: auto !important;
+}
+
+.top-controls-bar .ant-btn {
+  min-width: auto !important;
+}
+
+/* Ensure proper overflow handling */
+.controls-group {
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .controls-left {
+    overflow: hidden;
+  }
+
+  .chart-header-in-topbar {
+    overflow: hidden;
+  }
 }
 </style>
