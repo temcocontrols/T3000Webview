@@ -10,10 +10,10 @@
   }">
     <a-modal
       v-model:visible="timeSeriesModalVisible"
-      :title="modalTitle"
+      :title="null"
       :width="1400"
       :footer="null"
-      style="border-radius: 0px; top: 10px;"
+      style="border-radius: 0px; top: 5px;"
       wrapClassName="t3-timeseries-modal"
       @cancel="handleCancel"
       centered
@@ -58,16 +58,30 @@
 
             <!-- Zoom Controls -->
             <div class="control-item">
-              <a-button-group size="small">
-                <a-button @click="zoomIn">
-                  <template #icon><ZoomInOutlined /></template>
-                  Zoom In
+              <a-dropdown placement="bottomRight">
+                <a-button size="small" style="display: flex; align-items: center;">
+                  <ZoomInOutlined style="margin-right: 4px;" />
+                  <span>Zoom</span>
+                  <DownOutlined style="margin-left: 4px;" />
                 </a-button>
-                <a-button @click="zoomOut">
-                  <template #icon><ZoomOutOutlined /></template>
-                  Zoom Out
-                </a-button>
-              </a-button-group>
+                <template #overlay>
+                  <a-menu class="zoom-options-menu">
+                    <a-menu-item key="zoom-in" @click="zoomIn">
+                      <ZoomInOutlined style="margin-right: 8px;" />
+                      Zoom In
+                    </a-menu-item>
+                    <a-menu-item key="zoom-out" @click="zoomOut">
+                      <ZoomOutOutlined style="margin-right: 8px;" />
+                      Zoom Out
+                    </a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="reset-zoom" @click="resetZoom">
+                      <ReloadOutlined style="margin-right: 8px;" />
+                      Reset Zoom
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </div>
 
             <!-- View Buttons -->
@@ -135,9 +149,10 @@
             <!-- Export Options -->
             <div class="control-item export-options">
               <a-dropdown placement="bottomRight">
-                <a-button size="small">
-                  <template #icon><ExportOutlined /></template>
-                  Export <DownOutlined />
+                <a-button size="small" style="display: flex; align-items: center;">
+                  <ExportOutlined style="margin-right: 4px;" />
+                  <span>Export</span>
+                  <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
                   <a-menu class="export-options-menu">
@@ -185,9 +200,9 @@
           <!-- Data Series -->
           <div class="control-section">
             <div class="data-series-header">
-              <!-- Line 1: Title only -->
+              <!-- Line 1: Title with modal title and series count -->
               <div class="header-line-1">
-                <h5>Data Series ({{ dataSeries.length }} Items)</h5>
+                <h5>{{ modalTitle }} - Data Series ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h5>
               </div>
 
               <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
@@ -345,7 +360,6 @@
                   Live Data
                 </a-tag>
                 <a-tag color="blue" v-else>Historical Data</a-tag>
-                <span class="info-text">{{ totalDataPoints }} data points</span>
                 <span class="info-text">{{ visibleSeriesCount }} series visible</span>
                 <span class="info-text">Updated: {{ lastUpdateTime }}</span>
               </div>
@@ -394,6 +408,7 @@ import {
   RightOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
+  ReloadOutlined,
   SyncOutlined,
   DownloadOutlined,
   FileExcelOutlined,
@@ -657,7 +672,8 @@ const modalTitle = computed(() => {
                props.itemData?.t3Entry?.label ||
                props.itemData?.title ||
                'Trend Log Chart'
-  return `Time Series: ${name}`
+  // return `Time Series: ${name}`
+  return `${name}`
 })
 
 const chartTitle = computed(() => {
@@ -1157,6 +1173,23 @@ const zoomOut = () => {
 
     message.info(`Zoomed to ${Math.round(zoomLevel.value * 100)}%`)
   }
+}
+
+const resetZoom = () => {
+  zoomLevel.value = 1.0
+
+  if (chartInstance) {
+    // Reset to original data range
+    const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
+    const now = Date.now()
+    const startTime = now - timeRangeMinutes * 60 * 1000
+
+    chartInstance.options.scales.x.min = startTime
+    chartInstance.options.scales.x.max = now
+    chartInstance.update('none')
+  }
+
+  message.info('Zoom reset to 100%')
 }
 
 const setView = (viewNumber: number) => {
@@ -1868,7 +1901,7 @@ onUnmounted(() => {
   border: 1px solid #e8e8e8;
   border-radius: 0px; /* No border radius */
   padding: 10px 14px; /* More compact padding */
-  margin-bottom: 12px; /* Reduced margin */
+  margin-bottom: 5px; /* Reduced margin */
 }
 
 .controls-group {
@@ -1956,109 +1989,94 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-.export-options {
-  border-left: 1px solid #e8e8e8;
-  padding-left: 16px;
-  margin-left: 8px;
+/* ============================================
+   EXPORT OPTIONS DROPDOWN COMPREHENSIVE STYLES
+   ============================================ */
+
+/* Base dropdown menu styling */
+.export-options-menu {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
-.export-options-flex {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-/* Export options styling in top bar */
-.export-options-flex :deep(.ant-btn) {
-  padding: 4px 8px !important;
+/* Menu item layout - force single line */
+.export-options-menu .ant-menu-item {
   height: auto !important;
-  font-size: 11px !important;
+  line-height: 1.2 !important;
+  padding: 6px 12px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: fit-content !important;
 }
 
-.export-options-flex :deep(.ant-btn .anticon) {
+/* Smaller font size for menu items */
+.export-options-menu .ant-menu-item,
+.export-options-menu .ant-btn,
+.export-options-menu .ant-btn span {
   font-size: 12px !important;
+  font-weight: 400 !important;
 }
 
-.control-label {
-  color: #262626 !important;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
+/* Export button styling within menu items */
+.export-options-menu .ant-btn {
+  padding: 0 !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
 }
 
-/* Compact controls styling */
-.compact-controls {
-  padding: 8px 0;
+.export-options-menu .ant-btn .anticon {
+  margin-right: 8px !important;
+  font-size: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
-.compact-controls .ant-space-item {
-  width: 100%;
+.export-options-menu .ant-btn span {
+  display: inline !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
 }
 
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+/* Hover effects */
+.export-options-menu .ant-menu-item:hover {
+  background-color: #f5f5f5 !important;
+  color: #0064c8 !important;
 }
 
-.loading-text {
-  margin-top: 16px;
-  color: #262626;
-  font-size: 14px;
+.export-options-menu .ant-btn:hover {
+  background-color: transparent !important;
+  color: #0064c8 !important;
 }
 
-/* Light theme overrides for Ant Design components */
-:deep(.ant-select-selector) {
-  background: #ffffff !important;
-  border-color: #d9d9d9 !important;
-  color: #000000 !important;
+.export-options-menu .ant-menu-item:hover .ant-btn {
+  color: #0064c8 !important;
 }
 
-:deep(.ant-select-selection-item) {
-  color: #000000 !important;
+/* Divider styling */
+.export-options-menu .ant-menu-divider {
+  margin: 4px 0 !important;
+  background-color: #e8e8e8 !important;
 }
 
-:deep(.ant-picker) {
-  background: #ffffff !important;
-  border-color: #d9d9d9 !important;
-}
-
-:deep(.ant-picker input) {
-  color: #000000 !important;
-}
-
-:deep(.ant-switch) {
-  background: #d9d9d9 !important;
-}
-
-:deep(.ant-switch-checked) {
-  background: #0064c8 !important;
-}
-
-:deep(.ant-checkbox-wrapper) {
-  color: #000000 !important;
-  margin-bottom: 8px;
-  display: block;
-}
-
-:deep(.ant-btn) {
-  background: #ffffff !important;
-  border-color: #d9d9d9 !important;
-  color: #000000 !important;
-}
-
-:deep(.ant-btn:hover) {
-  background: #f5f5f5 !important;
-  border-color: #40a9ff !important;
+/* Ensure dropdown positioning */
+.export-options-menu.ant-dropdown-menu {
+  padding: 4px 0 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  width: auto !important;
+  min-width: fit-content !important;
 }
 
 /* Modal styling - ultra-compact and space-efficient */
@@ -2066,7 +2084,7 @@ onUnmounted(() => {
   background: #ffffff !important;
   border: 1px solid #e8e8e8;
   border-radius: 0px !important; /* No border radius */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important; /* Lighter shadow */
+  box-shadow: 0  8px 32px rgba(0,  0, 0, 0.15) !important; /* Lighter shadow */
   margin: 0 !important; /* Remove default margin */
   padding: 0 !important; /* Remove default padding */
   overflow: hidden !important; /* Prevent any spacing issues */
@@ -2105,7 +2123,7 @@ onUnmounted(() => {
 }
 
 :deep(.t3-timeseries-modal .ant-modal-body) {
-  padding: 4px !important; /* Ultra-compact padding - minimal but functional */
+  padding: 2px !important; /* Even more compact since no header */
   background: #ffffff !important;
   margin: 0 !important;
   overflow: hidden !important; /* Ensure tight fit */
@@ -2245,6 +2263,8 @@ onUnmounted(() => {
 /* Notification styling */
 :deep(.ant-notification) {
   z-index: 9999 !important;
+  left: 24px !important;
+  right: auto !important;
 }
 
 :deep(.ant-notification .ant-notification-notice) {
@@ -2444,10 +2464,6 @@ onUnmounted(() => {
   line-height: 1.2 !important;
 }
 
-.chart-options-menu .ant-btn-link:hover {
-  color: #0064c8 !important;
-}
-
 /* Divider styling */
 .chart-options-menu .ant-menu-divider {
   margin: 4px 0 !important;
@@ -2461,5 +2477,72 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
   width: auto !important;
   min-width: fit-content !important;
+}
+
+/* ============================================
+   ZOOM OPTIONS DROPDOWN COMPREHENSIVE STYLES
+   ============================================ */
+
+/* Base dropdown menu styling */
+.zoom-options-menu {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Menu item layout - force single line */
+.zoom-options-menu .ant-menu-item {
+  height: auto !important;
+  line-height: 1.2 !important;
+  padding: 6px 12px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: fit-content !important;
+}
+
+/* Smaller font size for menu items */
+.zoom-options-menu .ant-menu-item {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+
+/* Icon styling within menu items */
+.zoom-options-menu .ant-menu-item .anticon {
+  font-size: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Hover effects */
+.zoom-options-menu .ant-menu-item:hover {
+  background-color: #f5f5f5 !important;
+  color: #0064c8 !important;
+}
+
+/* Divider styling */
+.zoom-options-menu .ant-menu-divider {
+  margin: 4px 0 !important;
+  background-color: #e8e8e8 !important;
+}
+
+/* Ensure dropdown positioning */
+.zoom-options-menu.ant-dropdown-menu {
+  padding: 4px 0 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  width: auto !important;
+  min-width: fit-content !important;
+}
+</style>
+
+<!-- Modal Content Padding Override -->
+<style>
+/* Override ant-modal-content padding from default 20,24 to 10,14 */
+.t3-timeseries-modal .ant-modal-content {
+  padding: 10px 14px !important;
 }
 </style>
