@@ -282,10 +282,10 @@
                 'series-disabled': !series.visible,
                 'series-empty': series.isEmpty
               }" :style="{
-                backgroundColor: series.color + '20'
+                backgroundColor: series.color
               }">
                 <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
-                  <div class="series-color" :style="{ backgroundColor: series.color }"></div>
+                  <!-- <div class="series-color" :style="{ backgroundColor: series.color }"></div> -->
                   <div class="series-info">
                     <span class="series-name">
                       {{ series.name }}
@@ -1737,20 +1737,29 @@ onUnmounted(() => {
 }
 
 .series-empty {
-  opacity: 0.3;
+  opacity: 0.4;
   pointer-events: none;
-  background: #f8f9fa !important;
+  background: #e8e8e8 !important;
 }
 
 .series-empty .series-header {
   cursor: default;
 }
 
-.empty-indicator {
+.series-empty .series-name,
+.series-empty .stat-label,
+.series-empty .stat-value,
+.series-empty .unit-info {
   color: #8c8c8c !important;
+  text-shadow: none !important;
+}
+
+.empty-indicator {
+  color: rgba(255,255,255,0.8) !important;
   font-style: italic;
   font-size: 9px;
   margin-left: 4px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 
 .empty-placeholder {
@@ -1773,15 +1782,16 @@ onUnmounted(() => {
   height: 8px;
   border-radius: 2px;
   flex-shrink: 0;
-  border: 1px solid rgba(255,255,255,0.8);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  border: 2px solid rgba(255,255,255,0.9);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .series-name {
   font-size: 12px;
   font-weight: 500;
   margin-bottom: 2px;
-  color: #262626;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 .series-info {
@@ -1799,13 +1809,14 @@ onUnmounted(() => {
 }
 
 .unit-info {
-  color: #8c8c8c;
+  color: #ffffff;
   font-size: 9px;
   font-weight: 500;
-  background: rgba(140, 140, 140, 0.1);
+  background: rgba(0, 0, 0, 0.2);
   padding: 1px 3px;
   border-radius: 2px;
   white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 
 .series-controls {
@@ -1855,14 +1866,16 @@ onUnmounted(() => {
 }
 
 .stat-label {
-  color: #8c8c8c;
+  color: #ffffff;
   font-size: 9px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 
 .stat-value {
-  color: #262626;
+  color: #ffffff;
   font-weight: 500;
   font-size: 10px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 
 .chart-header {
