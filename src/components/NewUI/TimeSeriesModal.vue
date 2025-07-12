@@ -99,28 +99,87 @@
           <div class="controls-right">
             <!-- Chart Options -->
             <div class="control-item chart-options">
-              <a-typography-text class="control-label">Chart Options:</a-typography-text>
-              <div class="chart-options-flex">
-                <a-checkbox v-model:checked="showGrid" size="small">Grid</a-checkbox>
-                <a-checkbox v-model:checked="showLegend" size="small">Legend</a-checkbox>
-                <a-checkbox v-model:checked="smoothLines" size="small">Smooth</a-checkbox>
-                <a-checkbox v-model:checked="showPoints" size="small">Points</a-checkbox>
-              </div>
+              <a-dropdown placement="bottomRight">
+                <a-button size="small">
+                  <template #icon><SettingOutlined /></template>
+                  Chart <DownOutlined />
+                </a-button>
+                <template #overlay>
+                  <a-menu class="chart-options-menu">
+                    <a-menu-item key="grid">
+                      <a-checkbox v-model:checked="showGrid" @change="onChartOptionChange">
+                        Show Grid
+                      </a-checkbox>
+                    </a-menu-item>
+                    <a-menu-item key="legend">
+                      <a-checkbox v-model:checked="showLegend" @change="onChartOptionChange">
+                        Show Legend
+                      </a-checkbox>
+                    </a-menu-item>
+                    <a-menu-item key="smooth">
+                      <a-checkbox v-model:checked="smoothLines" @change="onChartOptionChange">
+                        Smooth Lines
+                      </a-checkbox>
+                    </a-menu-item>
+                    <a-menu-item key="points">
+                      <a-checkbox v-model:checked="showPoints" @change="onChartOptionChange">
+                        Show Points
+                      </a-checkbox>
+                    </a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="reset">
+                      <a-button type="link" size="small" @click="resetChartOptions">
+                        Reset to Default
+                      </a-button>
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </div>
 
             <!-- Export Options -->
             <div class="control-item export-options">
-              <a-typography-text class="control-label">Export:</a-typography-text>
-              <div class="export-options-flex">
-                <a-button size="small" @click="exportChart">
-                  <template #icon><DownloadOutlined /></template>
-                  PNG
+              <a-dropdown placement="bottomRight">
+                <a-button size="small">
+                  <template #icon><ExportOutlined /></template>
+                  Export <DownOutlined />
                 </a-button>
-                <a-button size="small" @click="exportData">
-                  <template #icon><FileExcelOutlined /></template>
-                  CSV
-                </a-button>
-              </div>
+                <template #overlay>
+                  <a-menu class="export-options-menu">
+                    <a-menu-item key="png">
+                      <a-button type="text" size="small" @click="exportChart" style="width: 100%; text-align: left;">
+                        <template #icon><FileImageOutlined /></template>
+                        Export as PNG
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="jpg">
+                      <a-button type="text" size="small" @click="exportChartJPG" style="width: 100%; text-align: left;">
+                        <template #icon><FileImageOutlined /></template>
+                        Export as JPG
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="svg">
+                      <a-button type="text" size="small" @click="exportChartSVG" style="width: 100%; text-align: left;">
+                        <template #icon><FileOutlined /></template>
+                        Export as SVG
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="csv">
+                      <a-button type="text" size="small" @click="exportData" style="width: 100%; text-align: left;">
+                        <template #icon><FileExcelOutlined /></template>
+                        Export Data (CSV)
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="json">
+                      <a-button type="text" size="small" @click="exportDataJSON" style="width: 100%; text-align: left;">
+                        <template #icon><FileTextOutlined /></template>
+                        Export Data (JSON)
+                      </a-button>
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </div>
           </div>
         </div>
@@ -343,7 +402,12 @@ import {
   SyncOutlined,
   DownloadOutlined,
   FileExcelOutlined,
-  DownOutlined
+  DownOutlined,
+  SettingOutlined,
+  ExportOutlined,
+  FileImageOutlined,
+  FileOutlined,
+  FileTextOutlined
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
@@ -1319,6 +1383,75 @@ const exportData = () => {
   message.success('Data exported successfully')
 }
 
+// Additional Export Methods
+const exportChartJPG = () => {
+  if (!chartInstance) return
+
+  const link = document.createElement('a')
+  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
+  link.href = chartInstance.toBase64Image('image/jpeg', 0.9)
+  link.click()
+
+  message.success('Chart exported as JPG successfully')
+}
+
+const exportChartSVG = () => {
+  if (!chartInstance) return
+
+  // Note: Chart.js doesn't natively support SVG export
+  // This would require additional library like chart.js-to-svg
+  message.info('SVG export requires additional implementation')
+}
+
+const exportDataJSON = () => {
+  const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
+
+  const jsonData = {
+    title: chartTitle.value,
+    exportedAt: new Date().toISOString(),
+    timeRange: {
+      start: activeSeriesData[0]?.data[0]?.timestamp,
+      end: activeSeriesData[0]?.data[activeSeriesData[0]?.data.length - 1]?.timestamp
+    },
+    series: activeSeriesData.map(series => ({
+      name: series.name,
+      unit: series.unit,
+      type: series.unitType,
+      color: series.color,
+      data: series.data.map(point => ({
+        timestamp: point.timestamp,
+        value: point.value
+      }))
+    }))
+  }
+
+  const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' })
+  const link = document.createElement('a')
+  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.json`
+  link.href = URL.createObjectURL(blob)
+  link.click()
+
+  message.success('Data exported as JSON successfully')
+}
+
+// Chart Options Methods
+const onChartOptionChange = () => {
+  // Auto-refresh chart when options change
+  if (chartInstance) {
+    chartInstance.destroy()
+    createChart()
+  }
+}
+
+const resetChartOptions = () => {
+  showGrid.value = true
+  showLegend.value = true
+  smoothLines.value = false
+  showPoints.value = false
+
+  message.success('Chart options reset to default')
+}
+
 const handleCancel = () => {
   stopRealTimeUpdates()
   timeSeriesModalVisible.value = false
@@ -1762,6 +1895,76 @@ onUnmounted(() => {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* Chart Options Dropdown Menu Styles */
+:deep(.chart-options-menu) {
+  min-width: 180px;
+}
+
+:deep(.chart-options-menu .ant-menu-item) {
+  padding: 8px 12px !important;
+  height: auto !important;
+}
+
+:deep(.chart-options-menu .ant-checkbox-wrapper) {
+  width: 100%;
+  font-size: 13px;
+  color: #333;
+}
+
+:deep(.chart-options-menu .ant-checkbox-wrapper:hover) {
+  color: #0064c8;
+}
+
+:deep(.chart-options-menu .ant-btn-link) {
+  padding: 0 !important;
+  height: auto !important;
+  font-size: 12px;
+  color: #666;
+}
+
+.export-options {
+  border-left: 1px solid #e8e8e8;
+  padding-left: 16px;
+  margin-left: 8px;
+}
+
+.export-options-flex {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Export Options Dropdown Menu Styles */
+:deep(.export-options-menu) {
+  min-width: 160px;
+}
+
+:deep(.export-options-menu .ant-menu-item) {
+  padding: 6px 8px !important;
+  height: auto !important;
+}
+
+:deep(.export-options-menu .ant-btn) {
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 12px;
+  color: #333;
+  padding: 4px 0 !important;
+  height: auto !important;
+  justify-content: flex-start;
+}
+
+:deep(.export-options-menu .ant-btn:hover) {
+  color: #0064c8;
+  background: transparent !important;
+}
+
+:deep(.export-options-menu .ant-btn .anticon) {
+  margin-right: 8px;
+  font-size: 14px;
 }
 
 .export-options {
