@@ -8,16 +8,8 @@
       colorBorder: '#d9d9d9',
     },
   }">
-    <a-modal
-      v-model:visible="timeSeriesModalVisible"
-      :title="null"
-      :width="1400"
-      :footer="null"
-      style="border-radius: 0px; top: 5px;"
-      wrapClassName="t3-timeseries-modal"
-      @cancel="handleCancel"
-      centered
-    >
+    <a-modal v-model:visible="timeSeriesModalVisible" :title="null" :width="1400" :footer="null"
+      style="border-radius: 0px; top: 5px;" wrapClassName="t3-timeseries-modal" @cancel="handleCancel" centered>
       <!-- Top Controls Bar -->
       <div class="top-controls-bar">
         <div class="controls-group">
@@ -26,12 +18,7 @@
             <!-- Time Base -->
             <div class="control-item">
               <a-typography-text class="control-label">Time Base:</a-typography-text>
-              <a-select
-                v-model:value="timeBase"
-                size="small"
-                style="width: 120px;"
-                @change="onTimeBaseChange"
-              >
+              <a-select v-model:value="timeBase" size="small" style="width: 120px;" @change="onTimeBaseChange">
                 <a-select-option value="5m">5 minutes</a-select-option>
                 <a-select-option value="15m">15 minutes</a-select-option>
                 <a-select-option value="30m">30 minutes</a-select-option>
@@ -48,10 +35,14 @@
             <div class="control-item">
               <a-button-group size="small">
                 <a-button @click="moveTimeLeft" :disabled="isRealTime">
-                  <template #icon><LeftOutlined /></template>
+                  <template #icon>
+                    <LeftOutlined />
+                  </template>
                 </a-button>
                 <a-button @click="moveTimeRight" :disabled="isRealTime">
-                  <template #icon><RightOutlined /></template>
+                  <template #icon>
+                    <RightOutlined />
+                  </template>
                 </a-button>
               </a-button-group>
             </div>
@@ -87,22 +78,13 @@
             <!-- View Buttons -->
             <div class="control-item">
               <a-button-group size="small">
-                <a-button
-                  :type="currentView === 1 ? 'primary' : 'default'"
-                  @click="setView(1)"
-                >
+                <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)">
                   View 1
                 </a-button>
-                <a-button
-                  :type="currentView === 2 ? 'primary' : 'default'"
-                  @click="setView(2)"
-                >
+                <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)">
                   View 2
                 </a-button>
-                <a-button
-                  :type="currentView === 3 ? 'primary' : 'default'"
-                  @click="setView(3)"
-                >
+                <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)">
                   View 3
                 </a-button>
               </a-button-group>
@@ -111,31 +93,33 @@
 
           <!-- Chart Header Section (moved from right panel) -->
           <div class="chart-header-in-topbar">
+            <!-- Title and Alert -->
             <div class="chart-title-section">
               <h3>{{ chartTitle }}</h3>
-              <a-alert
-                v-if="viewAlert.visible"
-                :message="viewAlert.message"
-                type="info"
-                show-icon
-                class="view-alert"
-              />
+              <a-alert v-if="viewAlert.visible" :message="viewAlert.message" type="info" show-icon class="view-alert" />
             </div>
+
+            <!-- Chart Info in single line -->
             <div class="chart-info">
-              <div class="chart-info-left">
-                <a-tag color="green" v-if="isRealTime">
-                  <template #icon><SyncOutlined :spin="true" /></template>
-                  Live Data
-                </a-tag>
-                <a-tag color="blue" v-else>Historical Data</a-tag>
-                <span class="info-text">{{ visibleSeriesCount }} series visible</span>
-                <span class="info-text">Updated: {{ lastUpdateTime }}</span>
-              </div>
+              <!-- Live/Historical Status -->
+              <a-tag color="green" v-if="isRealTime" size="small">
+                <template #icon>
+                  <SyncOutlined :spin="true" />
+                </template>
+                Live
+              </a-tag>
+              <a-tag color="blue" v-else size="small">Historical</a-tag>
+
+              <!-- Series and Update Info -->
+              <span class="info-text">{{ visibleSeriesCount }} series</span>
+              <span class="info-text">{{ lastUpdateTime }}</span>
+
+              <!-- Status indicators on the right -->
               <div class="chart-info-right">
                 <div class="status-indicators">
                   <div class="status-section">
                     <a-typography-text class="status-label">Range:</a-typography-text>
-                    <a-tag size="small">{{ timeBase === 'custom' ? 'Custom Range' : timeBaseLabel }}</a-tag>
+                    <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
                   </div>
                   <div class="status-section">
                     <a-typography-text class="status-label">Zoom:</a-typography-text>
@@ -143,7 +127,7 @@
                   </div>
                   <div class="status-section">
                     <a-typography-text class="status-label">View:</a-typography-text>
-                    <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
+                    <a-tag color="blue" size="small">{{ currentView }}</a-tag>
                   </div>
                 </div>
               </div>
@@ -154,9 +138,7 @@
           <div class="controls-right">
             <!-- Chart Options -->
             <div class="control-item chart-options">
-              <a-dropdown
-                placement="bottomRight"
-              >
+              <a-dropdown placement="bottomRight">
                 <a-button size="small" style="display: flex; align-items: center;">
                   <SettingOutlined style="margin-right: 4px;" />
                   <span>Chart</span>
@@ -199,32 +181,42 @@
                   <a-menu class="export-options-menu">
                     <a-menu-item key="png">
                       <a-button type="text" size="small" @click="exportChart" style="width: 100%; text-align: left;">
-                        <template #icon><FileImageOutlined /></template>
+                        <template #icon>
+                          <FileImageOutlined />
+                        </template>
                         Export as PNG
                       </a-button>
                     </a-menu-item>
                     <a-menu-item key="jpg">
                       <a-button type="text" size="small" @click="exportChartJPG" style="width: 100%; text-align: left;">
-                        <template #icon><FileImageOutlined /></template>
+                        <template #icon>
+                          <FileImageOutlined />
+                        </template>
                         Export as JPG
                       </a-button>
                     </a-menu-item>
                     <a-menu-item key="svg">
                       <a-button type="text" size="small" @click="exportChartSVG" style="width: 100%; text-align: left;">
-                        <template #icon><FileOutlined /></template>
+                        <template #icon>
+                          <FileOutlined />
+                        </template>
                         Export as SVG
                       </a-button>
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="csv">
                       <a-button type="text" size="small" @click="exportData" style="width: 100%; text-align: left;">
-                        <template #icon><FileExcelOutlined /></template>
+                        <template #icon>
+                          <FileExcelOutlined />
+                        </template>
                         Export Data (CSV)
                       </a-button>
                     </a-menu-item>
                     <a-menu-item key="json">
                       <a-button type="text" size="small" @click="exportDataJSON" style="width: 100%; text-align: left;">
-                        <template #icon><FileTextOutlined /></template>
+                        <template #icon>
+                          <FileTextOutlined />
+                        </template>
                         Export Data (JSON)
                       </a-button>
                     </a-menu-item>
@@ -236,7 +228,7 @@
         </div>
       </div>
 
-      <div class="timeseries-container">        <!-- Left Panel: Data Series and Options -->
+      <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
         <div class="left-panel">
           <!-- Data Series -->
           <div class="control-section">
@@ -249,7 +241,9 @@
               <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
               <div class="header-line-2">
                 <a-dropdown>
-                  <a-button size="small">All <DownOutlined /></a-button>
+                  <a-button size="small">All
+                    <DownOutlined />
+                  </a-button>
                   <template #overlay>
                     <a-menu>
                       <a-menu-item @click="enableAllSeries" :disabled="!hasDisabledSeries">
@@ -262,7 +256,9 @@
                   </template>
                 </a-dropdown>
                 <a-dropdown>
-                  <a-button size="small">By Type <DownOutlined /></a-button>
+                  <a-button size="small">By Type
+                    <DownOutlined />
+                  </a-button>
                   <template #overlay>
                     <a-menu>
                       <a-menu-item @click="toggleAnalogSeries" :disabled="!hasAnalogSeries">
@@ -276,68 +272,45 @@
                 </a-dropdown>
                 <div class="auto-scroll-toggle">
                   <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                  <a-switch
-                    v-model:checked="isRealTime"
-                    size="small"
-                    checked-children="On"
-                    un-checked-children="Off"
-                    @change="onRealTimeToggle"
-                  />
+                  <a-switch v-model:checked="isRealTime" size="small" checked-children="On" un-checked-children="Off"
+                    @change="onRealTimeToggle" />
                 </div>
               </div>
             </div>
-            <div class="series-list">                <div
-                  v-for="(series, index) in dataSeries"
-                  :key="series.name"
-                  class="series-item"
-                  :class="{
-                    'series-disabled': !series.visible,
-                    'series-empty': series.isEmpty
-                  }"
-                >
-                  <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
-                    <div class="series-color" :style="{ backgroundColor: series.color }"></div>
-                    <div class="series-info">
-                      <span class="series-name">
-                        {{ series.name }}
-                        <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
-                      </span>
-                      <div v-if="!series.isEmpty" class="series-details">
-                        <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
-                          {{ series.itemType }}
-                        </a-tag>
-                        <span class="unit-info">{{ series.unit }}</span>
-                      </div>
-                    </div>
-                    <div class="series-controls" v-if="!series.isEmpty">
-                      <a-button
-                        size="small"
-                        type="text"
-                        class="expand-toggle"
-                        @click="(e) => toggleSeriesExpansion(index, e)"
-                      >
-                        <template #icon>
-                          <DownOutlined
-                            v-if="expandedSeries.has(index)"
-                            class="expand-icon expanded"
-                          />
-                          <RightOutlined
-                            v-else
-                            class="expand-icon"
-                          />
-                        </template>
-                      </a-button>
-                      <a-switch
-                        v-model:checked="series.visible"
-                        size="small"
-                        @change="onSeriesVisibilityChange(index)"
-                      />
-                    </div>
-                    <div class="series-controls" v-else>
-                      <span class="empty-placeholder">—</span>
+            <div class="series-list">
+              <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
+                'series-disabled': !series.visible,
+                'series-empty': series.isEmpty
+              }">
+                <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
+                  <div class="series-color" :style="{ backgroundColor: series.color }"></div>
+                  <div class="series-info">
+                    <span class="series-name">
+                      {{ series.name }}
+                      <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
+                    </span>
+                    <div v-if="!series.isEmpty" class="series-details">
+                      <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
+                        {{ series.itemType }}
+                      </a-tag>
+                      <span class="unit-info">{{ series.unit }}</span>
                     </div>
                   </div>
-                  <div v-if="expandedSeries.has(index) && !series.isEmpty" class="series-stats">
+                  <div class="series-controls" v-if="!series.isEmpty">
+                    <a-button size="small" type="text" class="expand-toggle"
+                      @click="(e) => toggleSeriesExpansion(index, e)">
+                      <template #icon>
+                        <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
+                        <RightOutlined v-else class="expand-icon" />
+                      </template>
+                    </a-button>
+                    <a-switch v-model:checked="series.visible" size="small" @change="onSeriesVisibilityChange(index)" />
+                  </div>
+                  <div class="series-controls" v-else>
+                    <span class="empty-placeholder">—</span>
+                  </div>
+                </div>
+                <div v-if="expandedSeries.has(index) && !series.isEmpty" class="series-stats">
                   <div class="stat-item">
                     <span class="stat-label">Last:</span>
                     <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
@@ -363,20 +336,10 @@
           <div v-if="timeBase === 'custom'" class="control-section custom-date-section">
             <h4>Custom Range</h4>
             <a-space direction="vertical" size="small" style="width: 100%;">
-              <a-date-picker
-                v-model:value="customStartDate"
-                placeholder="Start Date"
-                size="small"
-                style="width: 100%;"
-                @change="onCustomDateChange"
-              />
-              <a-date-picker
-                v-model:value="customEndDate"
-                placeholder="End Date"
-                size="small"
-                style="width: 100%;"
-                @change="onCustomDateChange"
-              />
+              <a-date-picker v-model:value="customStartDate" placeholder="Start Date" size="small" style="width: 100%;"
+                @change="onCustomDateChange" />
+              <a-date-picker v-model:value="customEndDate" placeholder="End Date" size="small" style="width: 100%;"
+                @change="onCustomDateChange" />
             </a-space>
           </div>
         </div>
@@ -432,21 +395,21 @@ const DIGITAL_UNITS = {
   5: { label: 'Normal/Alarm', states: ['Normal', 'Alarm'] as [string, string] },
   6: { label: 'Normal/High', states: ['Normal', 'High'] as [string, string] },
   7: { label: 'Normal/Low', states: ['Normal', 'Low'] as [string, string] },
-  8: { label: 'No/Yes', states: ['No', 'Yes' ] as [string, string] },
-  9: { label: 'Cool/Heat', states: ['Cool', 'Heat' ] as [string, string] },
-  10: { label: 'Unoccupy/Occupy', states: ['Unoccupy', 'Occupy' ] as [string, string] },
-  11: { label: 'Low/High', states: ['Low', 'High' ] as [string, string] },
-  12: { label: 'On/Off', states: ['On', 'Off' ] as [string, string] },
-  13: { label: 'Open/Close', states: ['Open', 'Close' ] as [string, string] },
-  14: { label: 'Start/Stop', states: ['Start', 'Stop' ] as [string, string] },
-  15: { label: 'Enable/Disable', states: ['Enable', 'Disable' ] as [string, string] },
-  16: { label: 'Alarm/Normal', states: ['Alarm', 'Normal' ] as [string, string] },
-  17: { label: 'High/Normal', states: ['High', 'Normal' ] as [string, string] },
-  18: { label: 'Low/Normal', states: ['Low', 'Normal' ] as [string, string] },
-  19: { label: 'Yes/No', states: ['Yes', 'No' ] as [string, string] },
-  20: { label: 'Heat/Cool', states: ['Heat', 'Cool' ] as [string, string] },
-  21: { label: 'Occupy/Unoccupy', states: ['Occupy', 'Unoccupy' ] as [string, string] },
-  22: { label: 'High/Low', states: ['High', 'Low' ] as [string, string] }
+  8: { label: 'No/Yes', states: ['No', 'Yes'] as [string, string] },
+  9: { label: 'Cool/Heat', states: ['Cool', 'Heat'] as [string, string] },
+  10: { label: 'Unoccupy/Occupy', states: ['Unoccupy', 'Occupy'] as [string, string] },
+  11: { label: 'Low/High', states: ['Low', 'High'] as [string, string] },
+  12: { label: 'On/Off', states: ['On', 'Off'] as [string, string] },
+  13: { label: 'Open/Close', states: ['Open', 'Close'] as [string, string] },
+  14: { label: 'Start/Stop', states: ['Start', 'Stop'] as [string, string] },
+  15: { label: 'Enable/Disable', states: ['Enable', 'Disable'] as [string, string] },
+  16: { label: 'Alarm/Normal', states: ['Alarm', 'Normal'] as [string, string] },
+  17: { label: 'High/Normal', states: ['High', 'Normal'] as [string, string] },
+  18: { label: 'Low/Normal', states: ['Low', 'Normal'] as [string, string] },
+  19: { label: 'Yes/No', states: ['Yes', 'No'] as [string, string] },
+  20: { label: 'Heat/Cool', states: ['Heat', 'Cool'] as [string, string] },
+  21: { label: 'Occupy/Unoccupy', states: ['Occupy', 'Unoccupy'] as [string, string] },
+  22: { label: 'High/Low', states: ['High', 'Low'] as [string, string] }
 } as const
 
 const ANALOG_UNITS = {
@@ -670,9 +633,9 @@ let realtimeInterval: NodeJS.Timeout | null = null
 // Computed properties
 const modalTitle = computed(() => {
   const name = props.itemData?.t3Entry?.description ||
-               props.itemData?.t3Entry?.label ||
-               props.itemData?.title ||
-               'Trend Log Chart'
+    props.itemData?.t3Entry?.label ||
+    props.itemData?.title ||
+    'Trend Log Chart'
   // return `Time Series: ${name}`
   return `${name}`
 })
@@ -859,7 +822,7 @@ const getChartConfig = () => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           // NEW: Dynamic Y-axis labeling for mixed units
-          callback: function(value: any) {
+          callback: function (value: any) {
             // For digital values (0 or 1), show cleaner labels
             if (value === 0 || value === 1) {
               return value.toString()
@@ -1236,6 +1199,7 @@ const setView = (viewNumber: number) => {
       createChart()
     }
 
+    /*
     // Show alert with view details
     viewAlert.value = {
       visible: true,
@@ -1246,6 +1210,7 @@ const setView = (viewNumber: number) => {
     setTimeout(() => {
       viewAlert.value.visible = false
     }, 4000)
+    */
   }
 }
 
@@ -1554,21 +1519,29 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: calc(75vh - 40px); /* Further increased height with ultra-compact modal */
-  min-height: 480px; /* Increased for better chart space */
-  max-height: 650px; /* Increased maximum for larger screens */
-  gap: 6px; /* Ultra-minimal gap for maximum space */
+  height: calc(75vh - 40px);
+  /* Further increased height with ultra-compact modal */
+  min-height: 480px;
+  /* Increased for better chart space */
+  max-height: 650px;
+  /* Increased maximum for larger screens */
+  gap: 6px;
+  /* Ultra-minimal gap for maximum space */
   background: #ffffff;
-  border-radius: 0px; /* No border radius */
+  border-radius: 0px;
+  /* No border radius */
   overflow: visible;
-  padding: 0; /* Remove any default padding */
+  padding: 0;
+  /* Remove any default padding */
 }
 
 .left-panel {
-  width: 280px; /* Reduced from 300px */
+  width: 280px;
+  /* Reduced from 300px */
   background: #fafafa;
   border: 1px solid #e8e8e8;
-  border-radius: 0px; /* No border radius */
+  border-radius: 0px;
+  /* No border radius */
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
@@ -1579,15 +1552,19 @@ onUnmounted(() => {
   flex: 1;
   background: #fafafa;
   border: 1px solid #e8e8e8;
-  border-radius: 0px; /* No border radius */
+  border-radius: 0px;
+  /* No border radius */
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Allow flex shrinking */
-  overflow: hidden; /* Contain content properly */
+  min-width: 0;
+  /* Allow flex shrinking */
+  overflow: hidden;
+  /* Contain content properly */
 }
 
 .control-section {
-  padding: 0; /* Remove outer padding */
+  padding: 0;
+  /* Remove outer padding */
   border-bottom: 1px solid #e8e8e8;
 }
 
@@ -1601,13 +1578,16 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 8px; /* Inner padding only for data series */
+  padding: 8px;
+  /* Inner padding only for data series */
 }
 
 .control-section h4 {
-  margin: 0 0 8px 0; /* Reduced margin */
+  margin: 0 0 8px 0;
+  /* Reduced margin */
   color: #262626;
-  font-size: 12px; /* Smaller size */
+  font-size: 12px;
+  /* Smaller size */
   font-weight: 600;
 }
 
@@ -1671,9 +1651,11 @@ onUnmounted(() => {
 }
 
 .series-item {
-  margin-bottom: 8px; /* Reduced margin */
+  margin-bottom: 8px;
+  /* Reduced margin */
   border: 1px solid #e8e8e8;
-  border-radius: 0px; /* No border radius */
+  border-radius: 0px;
+  /* No border radius */
   background: #ffffff;
   transition: all 0.2s ease;
 }
@@ -1712,15 +1694,18 @@ onUnmounted(() => {
 .series-header {
   display: flex;
   align-items: center;
-  padding: 6px 10px; /* Reduced padding */
+  padding: 6px 10px;
+  /* Reduced padding */
   cursor: pointer;
-  gap: 6px; /* Reduced gap */
+  gap: 6px;
+  /* Reduced gap */
 }
 
 .series-color {
   width: 12px;
   height: 12px;
-  border-radius: 0px; /* No border radius */
+  border-radius: 0px;
+  /* No border radius */
   flex-shrink: 0;
 }
 
@@ -1787,11 +1772,13 @@ onUnmounted(() => {
 }
 
 .series-stats {
-  padding: 6px 10px; /* Reduced padding */
+  padding: 6px 10px;
+  /* Reduced padding */
   border-top: 1px solid #e8e8e8;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px; /* Reduced gap */
+  gap: 3px;
+  /* Reduced gap */
 }
 
 .stat-item {
@@ -1810,7 +1797,8 @@ onUnmounted(() => {
 }
 
 .chart-header {
-  padding: 6px 8px; /* Ultra-compact padding to match modal header */
+  padding: 6px 8px;
+  /* Ultra-compact padding to match modal header */
   border-bottom: 1px solid #e8e8e8;
   background: #ffffff;
 }
@@ -1824,11 +1812,14 @@ onUnmounted(() => {
 }
 
 .chart-header h3 {
-  margin: 0; /* Remove margin since it's now in flex */
+  margin: 0;
+  /* Remove margin since it's now in flex */
   color: #262626;
-  font-size: 16px; /* Slightly smaller font */
+  font-size: 16px;
+  /* Slightly smaller font */
   font-weight: 600;
-  flex-shrink: 0; /* Prevent title from shrinking */
+  flex-shrink: 0;
+  /* Prevent title from shrinking */
 }
 
 .view-alert {
@@ -1841,12 +1832,14 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px; /* Reduced gap */
+  gap: 12px;
+  /* Reduced gap */
 }
 
 .chart-info-left {
   display: flex;
-  gap: 12px; /* Reduced gap */
+  gap: 12px;
+  /* Reduced gap */
   align-items: center;
   flex-wrap: wrap;
 }
@@ -1858,7 +1851,8 @@ onUnmounted(() => {
 
 .status-indicators {
   display: flex;
-  gap: 12px; /* Reduced gap */
+  gap: 12px;
+  /* Reduced gap */
   align-items: center;
   flex-wrap: wrap;
 }
@@ -1883,9 +1877,11 @@ onUnmounted(() => {
 
 .chart-container {
   flex: 1;
-  padding: 12px; /* Reduced padding */
+  padding: 12px;
+  /* Reduced padding */
   position: relative;
-  min-height: 280px; /* Reduced min height */
+  min-height: 280px;
+  /* Reduced min height */
   display: flex;
   flex-direction: column;
 }
@@ -1893,38 +1889,46 @@ onUnmounted(() => {
 .chart-canvas {
   width: 100% !important;
   height: 100% !important;
-  min-height: 260px; /* Reduced min height */
+  min-height: 260px;
+  /* Reduced min height */
 }
 
 /* Top Controls Bar Styling */
 .top-controls-bar {
   background: #fafafa;
   border: 1px solid #e8e8e8;
-  border-radius: 0px; /* No border radius */
-  padding: 10px 14px; /* More compact padding */
-  margin-bottom: 5px; /* Reduced margin */
+  border-radius: 0px;
+  /* No border radius */
+  padding: 10px 14px;
+  /* More compact padding */
+  margin-bottom: 5px;
+  /* Reduced margin */
 }
 
 .controls-group {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px; /* Reduced gap */
+  gap: 16px;
+  /* Reduced gap */
   flex-wrap: wrap;
 }
 
 .controls-left {
   display: flex;
   align-items: center;
-  gap: 16px; /* Reduced gap */
+  gap: 16px;
+  /* Reduced gap */
   flex-wrap: wrap;
 }
 
 .controls-right {
   display: flex;
   align-items: center;
-  gap: 16px; /* Reduced gap */
+  gap: 4px;
+  /* Reduced gap */
   flex-wrap: wrap;
+  margin-right: 12px;
 }
 
 .control-item {
@@ -1936,8 +1940,8 @@ onUnmounted(() => {
 
 .chart-options {
   border-left: 1px solid #e8e8e8;
-  padding-left: 16px;
-  margin-left: 8px;
+  padding-left: 8px;
+  margin-left: 4px;
 }
 
 .chart-options-flex {
@@ -1949,8 +1953,8 @@ onUnmounted(() => {
 
 .export-options {
   border-left: 1px solid #e8e8e8;
-  padding-left: 16px;
-  margin-left: 8px;
+  padding-left: 8px;
+  margin-left: 4px;
 }
 
 .export-options-flex {
@@ -2084,50 +2088,68 @@ onUnmounted(() => {
 :deep(.t3-timeseries-modal .ant-modal-content) {
   background: #ffffff !important;
   border: 1px solid #e8e8e8;
-  border-radius: 0px !important; /* No border radius */
-  box-shadow: 0  8px 32px rgba(0,  0, 0, 0.15) !important; /* Lighter shadow */
-  margin: 0 !important; /* Remove default margin */
-  padding: 0 !important; /* Remove default padding */
-  overflow: hidden !important; /* Prevent any spacing issues */
+  border-radius: 0px !important;
+  /* No border radius */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  /* Lighter shadow */
+  margin: 0 !important;
+  /* Remove default margin */
+  padding: 0 !important;
+  /* Remove default padding */
+  overflow: hidden !important;
+  /* Prevent any spacing issues */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-header) {
   background: #fafafa !important;
   border-bottom: 1px solid #e8e8e8 !important;
-  border-radius: 0px !important; /* No border radius */
-  padding: 6px 8px !important; /* Ultra-compact padding */
-  margin: 0 !important; /* Remove margin */
-  min-height: 32px !important; /* Even more compact height */
-  line-height: 1.2 !important; /* Tight line height */
+  border-radius: 0px !important;
+  /* No border radius */
+  padding: 6px 8px !important;
+  /* Ultra-compact padding */
+  margin: 0 !important;
+  /* Remove margin */
+  min-height: 32px !important;
+  /* Even more compact height */
+  line-height: 1.2 !important;
+  /* Tight line height */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-title) {
   color: #262626 !important;
   font-weight: 600;
-  font-size: 14px !important; /* Smaller but readable size */
-  line-height: 1.2 !important; /* Tight line height */
+  font-size: 14px !important;
+  /* Smaller but readable size */
+  line-height: 1.2 !important;
+  /* Tight line height */
   margin: 0 !important;
   padding: 0 !important;
 }
 
 :deep(.t3-timeseries-modal .ant-modal-close) {
-  top: 2px !important; /* Adjust close button position for smaller header */
-  right: 6px !important; /* Closer to edge */
+  top: 2px !important;
+  /* Adjust close button position for smaller header */
+  right: 6px !important;
+  /* Closer to edge */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-close-x) {
   color: #8c8c8c !important;
- width: 24px !important; /* More compact close button */
+  width: 24px !important;
+  /* More compact close button */
   height: 24px !important;
   line-height: 24px !important;
-  font-size: 12px !important; /* Smaller close icon */
+  font-size: 12px !important;
+  /* Smaller close icon */
 }
 
 :deep(.t3-timeseries-modal .ant-modal-body) {
-  padding: 2px !important; /* Even more compact since no header */
+  padding: 2px !important;
+  /* Even more compact since no header */
   background: #ffffff !important;
   margin: 0 !important;
-  overflow: hidden !important; /* Ensure tight fit */
+  overflow: hidden !important;
+  /* Ensure tight fit */
 }
 
 /* Scrollbar styling */
@@ -2144,7 +2166,8 @@ onUnmounted(() => {
 .left-panel::-webkit-scrollbar-thumb,
 .series-list::-webkit-scrollbar-thumb {
   background: #d9d9d9;
-  border-radius: 0px; /* No border radius */
+  border-radius: 0px;
+  /* No border radius */
 }
 
 .left-panel::-webkit-scrollbar-thumb:hover,
@@ -2338,7 +2361,7 @@ onUnmounted(() => {
   margin: 0 !important;
   background: #fff !important;
   border-radius: 0 !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
   border: 1px solid #e8e8e8 !important;
 }
 
@@ -2437,7 +2460,7 @@ onUnmounted(() => {
 }
 
 /* Text styling for checkbox labels */
-.chart-options-menu .ant-checkbox-wrapper > span {
+.chart-options-menu .ant-checkbox-wrapper>span {
   display: inline !important;
   white-space: nowrap !important;
   vertical-align: middle !important;
@@ -2542,76 +2565,83 @@ onUnmounted(() => {
 .chart-header-in-topbar {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
   min-width: 300px;
-  margin: 0 16px;
+  margin: 0 8px;
+  flex-wrap: wrap;
 }
 
 .chart-header-in-topbar .chart-title-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .chart-header-in-topbar .chart-title-section h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #262626;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .chart-header-in-topbar .chart-info {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
+  flex: 1;
 }
 
 .chart-header-in-topbar .chart-info-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .chart-header-in-topbar .chart-info-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .chart-header-in-topbar .status-indicators {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .chart-header-in-topbar .status-section {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  white-space: nowrap;
 }
 
 .chart-header-in-topbar .status-label {
-  font-size: 11px;
+  font-size: 10px;
   color: #8c8c8c;
   font-weight: 500;
 }
 
 .chart-header-in-topbar .info-text {
-  font-size: 11px;
+  font-size: 10px;
   color: #8c8c8c;
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .chart-header-in-topbar .view-alert {
   margin: 0;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 2px 6px;
+  font-size: 10px;
 }
 </style>
 
