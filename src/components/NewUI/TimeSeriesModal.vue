@@ -281,11 +281,13 @@
               <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
                 'series-disabled': !series.visible,
                 'series-empty': series.isEmpty
+              }" :style="{
+                backgroundColor: series.color + '20'
               }">
                 <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
                   <div class="series-color" :style="{ backgroundColor: series.color }"></div>
                   <div class="series-info">
-                    <span class="series-name" :style="{ color: series.color }">
+                    <span class="series-name">
                       {{ series.name }}
                       <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
                     </span>
@@ -1716,22 +1718,28 @@ onUnmounted(() => {
 .series-item {
   margin-bottom: 4px;
   border: 1px solid #e8e8e8;
-  border-radius: 0px;
+  border-radius: 4px;
   background: #ffffff;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  position: relative;
 }
 
-.series-item:hover {
-  background: #f5f5f5;
+/* Clean and simple design for series items */
+.series-item:not(.series-disabled):not(.series-empty) {
+  cursor: pointer;
 }
 
 .series-disabled {
-  opacity: 0.6;
+  opacity: 0.5;
+  filter: grayscale(0.5);
 }
 
 .series-empty {
-  opacity: 0.4;
+  opacity: 0.3;
   pointer-events: none;
+  background: #f8f9fa !important;
 }
 
 .series-empty .series-header {
@@ -1761,17 +1769,19 @@ onUnmounted(() => {
 }
 
 .series-color {
-  width: 10px;
-  height: 10px;
-  border-radius: 0px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .series-name {
   font-size: 12px;
   font-weight: 500;
   margin-bottom: 2px;
+  color: #262626;
 }
 
 .series-info {
