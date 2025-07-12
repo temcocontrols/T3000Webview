@@ -1929,6 +1929,7 @@ onUnmounted(() => {
   gap: 6px;
   flex-wrap: nowrap;
   flex-shrink: 0;
+  margin-right: 15px;
 }
 
 .control-item {
@@ -2104,7 +2105,6 @@ onUnmounted(() => {
   background: #fafafa !important;
   border-bottom: 1px solid #e8e8e8 !important;
   border-radius: 0px !important;
-  /* No border radius */
   padding: 6px 8px !important;
   /* Ultra-compact padding */
   margin: 0 !important;
@@ -2127,20 +2127,22 @@ onUnmounted(() => {
 }
 
 :deep(.t3-timeseries-modal .ant-modal-close) {
-  top: 2px !important;
-  /* Adjust close button position for smaller header */
-  right: 6px !important;
-  /* Closer to edge */
+  top: 16px !important;
+  /* Align with top controls bar height */
+  right: 12px !important;
+  /* Align with export dropdown */
+  z-index: 1000 !important;
 }
 
 :deep(.t3-timeseries-modal .ant-modal-close-x) {
   color: #8c8c8c !important;
-  width: 24px !important;
-  /* More compact close button */
-  height: 24px !important;
-  line-height: 24px !important;
-  font-size: 12px !important;
-  /* Smaller close icon */
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 :deep(.t3-timeseries-modal .ant-modal-body) {
@@ -2181,15 +2183,23 @@ onUnmounted(() => {
 @media (min-width: 1200px) {
   .controls-group {
     flex-wrap: nowrap;
+    align-items: center;
   }
 
   .controls-left {
     flex-wrap: nowrap;
+    flex-shrink: 1;
   }
 
   .chart-header-in-topbar {
     min-width: 0;
-    flex-wrap: nowrap;
+    /* flex-wrap: nowrap; */
+    flex: 1;
+    margin: 0 12px;
+  }
+
+  .controls-right {
+    flex-shrink: 0;
   }
 }
 
@@ -2208,18 +2218,20 @@ onUnmounted(() => {
   .controls-left {
     gap: 8px;
     flex-wrap: wrap;
+    /* flex-basis: 100%; */
   }
 
   .chart-header-in-topbar {
-    flex-basis: 100%;
-    order: -1;
-    margin: 0 0 8px 0;
-    border-bottom: 1px solid #e8e8e8;
-    padding-bottom: 6px;
+    flex-basis: calc(100% - 200px);
+    margin: 0 8px 0 0;
+    border-bottom: none;
+    padding-bottom: 0;
+    flex-wrap: nowrap;
   }
 
   .controls-right {
     margin-left: auto;
+    flex-shrink: 0;
   }
 
   .chart-options,
@@ -2247,24 +2259,27 @@ onUnmounted(() => {
     justify-content: flex-start;
     flex-wrap: wrap;
     gap: 6px;
+    order: 1;
+  }
+
+  .chart-header-in-topbar {
+    width: 100%;
+    order: 2;
+    margin: 8px 0;
+    border-top: 1px solid #e8e8e8;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 6px 0;
+    flex-wrap: nowrap;
+    gap: 4px;
   }
 
   .controls-right {
     width: 100%;
     justify-content: flex-start;
     gap: 6px;
-    padding-top: 6px;
-    border-top: 1px solid #e8e8e8;
-  }
-
-  .chart-header-in-topbar {
-    width: 100%;
-    order: -1;
-    margin: 0 0 8px 0;
-    border-bottom: 1px solid #e8e8e8;
-    padding-bottom: 6px;
-    flex-wrap: wrap;
-    gap: 4px;
+    order: 3;
+    padding-top: 0;
+    border-top: none;
   }
 
   .chart-header-in-topbar .chart-title-section {
@@ -2273,17 +2288,17 @@ onUnmounted(() => {
   }
 
   .chart-header-in-topbar .chart-title-section h3 {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .chart-header-in-topbar .chart-info {
     flex-basis: 100%;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 4px;
   }
 
   .chart-header-in-topbar .chart-info-left {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 3px;
   }
 
@@ -2295,7 +2310,7 @@ onUnmounted(() => {
   }
 
   .chart-header-in-topbar .status-indicators {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 3px;
   }
 
@@ -2338,8 +2353,14 @@ onUnmounted(() => {
   }
 
   .chart-header-in-topbar .chart-title-section h3 {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 200px;
+  }
+
+  /* Adjust close button for mobile */
+  :deep(.t3-timeseries-modal .ant-modal-close) {
+    top: 8px !important;
+    right: 8px !important;
   }
 }
 
@@ -2681,7 +2702,7 @@ onUnmounted(() => {
 
 .chart-header-in-topbar .chart-title-section h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #262626;
   line-height: 1.2;
@@ -2694,7 +2715,7 @@ onUnmounted(() => {
 .chart-header-in-topbar .chart-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: nowrap;
   flex-shrink: 1;
   min-width: 0;
@@ -2735,16 +2756,72 @@ onUnmounted(() => {
 }
 
 .chart-header-in-topbar .status-label {
-  font-size: 10px;
+  font-size: 12px;
   color: #8c8c8c;
   font-weight: 500;
 }
 
 .chart-header-in-topbar .info-text {
-  font-size: 10px;
+  font-size: 12px;
   color: #8c8c8c;
   font-weight: 400;
   white-space: nowrap;
+}
+
+/* Ensure chart-header-in-topbar always uses nowrap */
+.chart-header-in-topbar,
+.chart-header-in-topbar .chart-info,
+.chart-header-in-topbar .chart-info-left,
+.chart-header-in-topbar .chart-info-right,
+.chart-header-in-topbar .status-indicators {
+  flex-wrap: nowrap !important;
+  white-space: nowrap;
+}
+
+.chart-header-in-topbar .chart-title-section,
+.chart-header-in-topbar .chart-title-section h3,
+.chart-header-in-topbar .info-text,
+.chart-header-in-topbar .status-label {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Override any responsive flex-wrap settings for chart header */
+@media (max-width: 1199px) {
+  .chart-header-in-topbar {
+    flex-wrap: nowrap !important;
+  }
+
+  .chart-header-in-topbar .chart-info {
+    flex-wrap: nowrap !important;
+  }
+
+  .chart-header-in-topbar .chart-info-left {
+    flex-wrap: nowrap !important;
+  }
+
+  .chart-header-in-topbar .status-indicators {
+    flex-wrap: nowrap !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .chart-header-in-topbar {
+    flex-wrap: nowrap !important;
+  }
+
+  .chart-header-in-topbar .chart-info {
+    flex-wrap: nowrap !important;
+  }
+
+  .chart-header-in-topbar .chart-info-left {
+    flex-wrap: nowrap !important;
+  }
+
+  .chart-header-in-topbar .status-indicators {
+    flex-wrap: nowrap !important;
+  }
 }
 </style>
 
