@@ -285,7 +285,7 @@
                 <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
                   <div class="series-color" :style="{ backgroundColor: series.color }"></div>
                   <div class="series-info">
-                    <span class="series-name">
+                    <span class="series-name" :style="{ color: series.color }">
                       {{ series.name }}
                       <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
                     </span>
@@ -559,8 +559,27 @@ const expandedSeries = ref<Set<number>>(new Set())
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
   const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE',
-    '#FFB366', '#6BCF7F', '#A8E6CF', '#FF8A95', '#B8860B', '#9370DB', '#20B2AA'
+    '#E53E3E', // Bright Red
+    '#1E88E5', // Bright Blue
+    '#43A047', // Forest Green
+    '#FB8C00', // Deep Orange
+    '#8E24AA', // Deep Purple
+    '#00ACC1', // Cyan
+    '#FDD835', // Bright Yellow
+    '#F4511E', // Deep Orange Red
+    '#00695C', // Dark Teal
+    '#5D4037', // Brown
+    '#7B1FA2', // Dark Purple
+    '#C62828', // Dark Red
+    '#1565C0', // Dark Blue
+    '#2E7D32', // Dark Green
+    '#EF6C00', // Dark Orange
+    '#6A1B9A', // Deep Purple
+    '#0277BD', // Light Blue
+    '#388E3C', // Medium Green
+    '#F57C00', // Amber
+    '#7B1FA2', // Purple
+    '#0891B2'  // Cyan
   ]
 
   const baseSeries = [
@@ -749,11 +768,23 @@ const getChartConfig = () => ({
         labels: {
           color: '#000000',
           font: {
-            size: 12,
+            size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           usePointStyle: true,
-          pointStyle: 'line'
+          pointStyle: 'line',
+          generateLabels: (chart: any) => {
+            const datasets = chart.data.datasets
+            return datasets.map((dataset: any, i: number) => ({
+              text: dataset.label,
+              fillStyle: dataset.borderColor,
+              strokeStyle: dataset.borderColor,
+              fontColor: dataset.borderColor,
+              lineWidth: 2,
+              pointStyle: 'line',
+              datasetIndex: i
+            }))
+          }
         }
       },
       tooltip: {
@@ -762,8 +793,18 @@ const getChartConfig = () => ({
         bodyColor: '#000000',
         borderColor: '#d9d9d9',
         borderWidth: 1,
-        cornerRadius: 0, /* No border radius */
+        cornerRadius: 4,
         displayColors: true,
+        usePointStyle: true,
+        bodyFont: {
+          size: 12,
+          weight: 500
+        },
+        titleFont: {
+          size: 13,
+          weight: 600
+        },
+        padding: 8,
         callbacks: {
           title: (context: any) => {
             const date = new Date(context[0].parsed.x)
@@ -773,7 +814,7 @@ const getChartConfig = () => ({
             const series = dataSeries.value.find(s => s.name === context.dataset.label)
             if (!series) return `${context.dataset.label}: ${context.parsed.y}`
 
-            // NEW: Different formatting for digital vs analog
+            // Different formatting for digital vs analog
             if (series.unitType === 'digital') {
               const stateIndex = context.parsed.y === 1 ? 1 : 0
               const stateText = series.digitalStates?.[stateIndex] || (context.parsed.y === 1 ? 'High' : 'Low')
@@ -782,8 +823,30 @@ const getChartConfig = () => ({
               const unit = series.unit || ''
               return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}${unit}`
             }
-          }
-        }
+          },
+          labelColor: (context: any) => {
+            const series = dataSeries.value.find(s => s.name === context.dataset.label)
+            const color = series?.color || context.dataset.borderColor
+            return {
+              borderColor: color,
+              backgroundColor: color,
+              borderWidth: 2,
+              borderRadius: 2
+            }
+          },
+          labelTextColor: (context: any) => {
+            const series = dataSeries.value.find(s => s.name === context.dataset.label)
+            return series?.color || context.dataset.borderColor
+          },
+          beforeLabel: (context: any) => {
+            // This creates the colored text effect
+            return ''
+          },
+          afterLabel: (context: any) => {
+            return ''
+          }        },
+        // Use default tooltip with color customization
+        enabled: true
       }
     },
     scales: {
@@ -1519,12 +1582,12 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: calc(75vh - 40px);
-  /* Further increased height with ultra-compact modal */
-  min-height: 480px;
-  /* Increased for better chart space */
-  max-height: 650px;
-  /* Increased maximum for larger screens */
+  height: calc(85vh - 40px);
+  /* Increased height for better chart visibility */
+  min-height: 600px;
+  /* Increased minimum height */
+  max-height: 800px;
+  /* Increased maximum height for larger screens */
   gap: 6px;
   /* Ultra-minimal gap for maximum space */
   background: #ffffff;
@@ -1651,11 +1714,9 @@ onUnmounted(() => {
 }
 
 .series-item {
-  margin-bottom: 8px;
-  /* Reduced margin */
+  margin-bottom: 4px;
   border: 1px solid #e8e8e8;
   border-radius: 0px;
-  /* No border radius */
   background: #ffffff;
   transition: all 0.2s ease;
 }
@@ -1678,9 +1739,9 @@ onUnmounted(() => {
 }
 
 .empty-indicator {
-  color: #8c8c8c;
+  color: #8c8c8c !important;
   font-style: italic;
-  font-size: 10px;
+  font-size: 9px;
   margin-left: 4px;
 }
 
@@ -1694,23 +1755,20 @@ onUnmounted(() => {
 .series-header {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
-  /* Reduced padding */
+  padding: 4px 8px;
   cursor: pointer;
   gap: 6px;
-  /* Reduced gap */
 }
 
 .series-color {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 0px;
-  /* No border radius */
   flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 .series-name {
-  color: #262626;
   font-size: 12px;
   font-weight: 500;
   margin-bottom: 2px;
@@ -1720,23 +1778,24 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .series-details {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
 }
 
 .unit-info {
   color: #8c8c8c;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   background: rgba(140, 140, 140, 0.1);
-  padding: 1px 4px;
-  border-radius: 3px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  white-space: nowrap;
 }
 
 .series-controls {
@@ -1772,28 +1831,28 @@ onUnmounted(() => {
 }
 
 .series-stats {
-  padding: 6px 10px;
-  /* Reduced padding */
+  padding: 4px 8px;
   border-top: 1px solid #e8e8e8;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  /* Reduced gap */
+  gap: 2px;
 }
 
 .stat-item {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .stat-label {
   color: #8c8c8c;
+  font-size: 9px;
 }
 
 .stat-value {
   color: #262626;
   font-weight: 500;
+  font-size: 10px;
 }
 
 .chart-header {
@@ -2154,674 +2213,53 @@ onUnmounted(() => {
   /* Ensure tight fit */
 }
 
-/* Scrollbar styling */
-.left-panel::-webkit-scrollbar,
-.series-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.left-panel::-webkit-scrollbar-track,
-.series-list::-webkit-scrollbar-track {
+/* Custom tooltip styling for colored text */
+#chartjs-tooltip {
+  opacity: 1;
+  position: absolute;
   background: #ffffff;
-}
-
-.left-panel::-webkit-scrollbar-thumb,
-.series-list::-webkit-scrollbar-thumb {
-  background: #d9d9d9;
-  border-radius: 0px;
-  /* No border radius */
-}
-
-.left-panel::-webkit-scrollbar-thumb:hover,
-.series-list::-webkit-scrollbar-thumb:hover {
-  background: #bfbfbf;
-}
-
-/* RESPONSIVE BEHAVIOR - Mobile First Approach */
-
-/* Large screens (desktop) - default layout above */
-@media (min-width: 1200px) {
-  .controls-group {
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-
-  .controls-left {
-    flex-wrap: nowrap;
-    flex-shrink: 1;
-  }
-
-  .chart-header-in-topbar {
-    min-width: 0;
-    /* flex-wrap: nowrap; */
-    flex: 1;
-    margin: 0 12px;
-  }
-
-  .controls-right {
-    flex-shrink: 0;
-  }
-}
-
-/* Medium screens (tablets and small laptops) */
-@media (max-width: 1199px) and (min-width: 768px) {
-  .top-controls-bar {
-    padding: 6px 10px;
-  }
-
-  .controls-group {
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .controls-left {
-    gap: 8px;
-    flex-wrap: wrap;
-    /* flex-basis: 100%; */
-  }
-
-  .chart-header-in-topbar {
-    flex-basis: calc(100% - 200px);
-    margin: 0 8px 0 0;
-    border-bottom: none;
-    padding-bottom: 0;
-    flex-wrap: nowrap;
-  }
-
-  .controls-right {
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-
-  .chart-options,
-  .export-options {
-    border-left: none;
-    padding-left: 0;
-    margin-left: 0;
-  }
-}
-
-/* Small screens (mobile phones) */
-@media (max-width: 767px) {
-  .top-controls-bar {
-    padding: 6px 8px;
-  }
-
-  .controls-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .controls-left {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 6px;
-    order: 1;
-  }
-
-  .chart-header-in-topbar {
-    width: 100%;
-    order: 2;
-    margin: 8px 0;
-    border-top: 1px solid #e8e8e8;
-    border-bottom: 1px solid #e8e8e8;
-    padding: 6px 0;
-    flex-wrap: nowrap;
-    gap: 4px;
-  }
-
-  .controls-right {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 6px;
-    order: 3;
-    padding-top: 0;
-    border-top: none;
-  }
-
-  .chart-header-in-topbar .chart-title-section {
-    flex-basis: 100%;
-    margin-bottom: 4px;
-  }
-
-  .chart-header-in-topbar .chart-title-section h3 {
-    font-size: 13px;
-  }
-
-  .chart-header-in-topbar .chart-info {
-    flex-basis: 100%;
-    flex-wrap: nowrap;
-    gap: 4px;
-  }
-
-  .chart-header-in-topbar .chart-info-left {
-    flex-wrap: nowrap;
-    gap: 3px;
-  }
-
-  .chart-header-in-topbar .chart-info-right {
-    margin-left: 0;
-    flex-basis: 100%;
-    justify-content: flex-start;
-    margin-top: 4px;
-  }
-
-  .chart-header-in-topbar .status-indicators {
-    flex-wrap: nowrap;
-    gap: 3px;
-  }
-
-  .chart-options,
-  .export-options {
-    border-left: none;
-    border-top: none;
-    padding-left: 0;
-    padding-top: 0;
-    margin-left: 0;
-    margin-top: 0;
-  }
-
-  .control-item {
-    gap: 4px;
-  }
-
-  .control-label {
-    font-size: 11px !important;
-  }
-
-  /* Hide some status indicators on very small screens */
-  .chart-header-in-topbar .info-text:nth-child(n+3) {
-    display: none;
-  }
-}
-
-/* Extra small screens */
-@media (max-width: 480px) {
-  .top-controls-bar {
-    padding: 4px 6px;
-  }
-
-  .controls-left .control-item:not(:first-child):not(:nth-child(2)) {
-    display: none;
-  }
-
-  .chart-header-in-topbar .chart-info-right .status-section:nth-child(n+2) {
-    display: none;
-  }
-
-  .chart-header-in-topbar .chart-title-section h3 {
-    font-size: 12px;
-    max-width: 200px;
-  }
-
-  /* Adjust close button for mobile */
-  :deep(.t3-timeseries-modal .ant-modal-close) {
-    top: 8px !important;
-    right: 8px !important;
-  }
-}
-
-/* Container responsive behavior */
-@media (max-width: 900px) {
-  .timeseries-container {
-    flex-direction: column;
-    height: auto;
-    min-height: 600px;
-  }
-
-  .left-panel {
-    width: 100%;
-    max-height: 250px;
-  }
-
-  .right-panel {
-    min-height: 350px;
-  }
-}
-
-/* Enhanced checkbox styling in top bar */
-.chart-options-flex :deep(.ant-checkbox-wrapper) {
-  margin-bottom: 0 !important;
-  color: #000000 !important;
-  font-size: 11px;
-}
-
-/* Custom Date Range section styling */
-.control-section:has(.ant-space) {
-  flex-shrink: 0;
-  min-height: auto;
-}
-
-/* Alternative approach for browsers that don't support :has() */
-.custom-date-section {
-  flex-shrink: 0;
-  min-height: auto;
-}
-
-/* Notification styling */
-:deep(.ant-notification) {
-  z-index: 9999 !important;
-  left: 24px !important;
-  right: auto !important;
-}
-
-:deep(.ant-notification .ant-notification-notice) {
-  background: #ffffff !important;
-  border: 1px solid #e8e8e8 !important;
-  border-radius: 0px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-:deep(.ant-notification .ant-notification-notice .ant-notification-notice-message) {
-  color: #262626 !important;
-  font-weight: 600 !important;
-}
-
-:deep(.ant-notification .ant-notification-notice .ant-notification-notice-description) {
-  color: #8c8c8c !important;
-}
-
-:deep(.ant-notification .ant-notification-notice .ant-notification-notice-icon) {
-  color: #52c41a !important;
-}
-
-:deep(.ant-notification .ant-notification-notice .ant-notification-notice-close) {
-  color: #8c8c8c !important;
-}
-
-:deep(.ant-notification .ant-notification-notice .ant-notification-notice-close:hover) {
-  color: #262626 !important;
-}
-
-/* Alert styling for view switching */
-:deep(.view-alert) {
-  background: #ffffff !important;
-  border: 1px solid #e8e8e8 !important;
-  border-radius: 0px !important;
-}
-
-:deep(.view-alert .ant-alert-message) {
-  color: #262626 !important;
-  font-weight: 600 !important;
-}
-
-:deep(.view-alert .ant-alert-description) {
-  color: #8c8c8c !important;
-  font-size: 11px !important;
-}
-
-:deep(.view-alert .ant-alert-icon) {
-  color: #1890ff !important;
-}
-
-:deep(.view-alert .ant-alert-close-icon) {
-  color: #8c8c8c !important;
-}
-
-:deep(.view-alert .ant-alert-close-icon:hover) {
-  color: #262626 !important;
-}
-
-/*
-  IMPORTANT: Ensure the modal root has class 't3-timeseries-modal'.
-
-  If not, add :wrap-class-name="'t3-timeseries-modal'" to your <a-modal> or <Modal> component.
-*/
-
-:deep(.t3-timeseries-modal) :deep(.ant-modal-content),
-:deep(.t3-timeseries-modal .ant-modal-content),
-:global(.t3-timeseries-modal) :global(.ant-modal-content) {
-  padding: 0 !important;
-  margin: 0 !important;
-  background: #fff !important;
-  border-radius: 0 !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid #e8e8e8 !important;
-}
-
-:deep(.t3-timeseries-modal) :deep(.ant-modal-body),
-:deep(.t3-timeseries-modal .ant-modal-body),
-:global(.t3-timeseries-modal) :global(.ant-modal-body) {
-  padding: 4px !important;
-  margin: 0 !important;
-  background: #fff !important;
-}
-
-/* ============================================
-   CHART OPTIONS DROPDOWN COMPREHENSIVE STYLES
-   ============================================ */
-
-/* Base dropdown menu styling */
-.chart-options-menu {
-  width: auto !important;
-  min-width: auto !important;
-  max-width: none !important;
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-}
-
-/* Menu item layout - force single line */
-.chart-options-menu .ant-menu-item {
-  height: auto !important;
-  line-height: 1.2 !important;
-  padding: 6px 12px !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  display: flex !important;
-  align-items: center !important;
-  width: auto !important;
-  min-width: fit-content !important;
-}
-
-/* Smaller font size for menu items */
-.chart-options-menu .ant-menu-item,
-.chart-options-menu .ant-checkbox-wrapper,
-.chart-options-menu .ant-checkbox-wrapper span {
-  font-size: 12px !important;
-  font-weight: 400 !important;
-}
-
-/* Checkbox positioning and sizing */
-.chart-options-menu .ant-checkbox {
-  margin: 0 !important;
-  margin-right: 8px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
-}
-
-.chart-options-menu .ant-checkbox-wrapper {
-  margin: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  white-space: nowrap !important;
-  line-height: 1.2 !important;
-  width: 100% !important;
-}
-
-/* CRITICAL: Remove Ant Design's pseudo-elements that cause line breaks */
-.chart-options-menu .ant-checkbox-wrapper::after,
-.ant-checkbox-wrapper::after,
-[class*="css-dev-only-do-not-override"] .ant-checkbox-wrapper::after,
-[class*="css-"] .ant-checkbox-wrapper::after,
-:where(.css-dev-only-do-not-override-k8jyod).ant-checkbox-wrapper::after,
-.css-dev-only-do-not-override-k8jyod.ant-checkbox-wrapper::after {
-  content: "" !important;
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  position: absolute !important;
-  left: -9999px !important;
-}
-
-.chart-options-menu .ant-checkbox-wrapper::before,
-.ant-checkbox-wrapper::before,
-[class*="css-dev-only-do-not-override"] .ant-checkbox-wrapper::before,
-[class*="css-"] .ant-checkbox-wrapper::before {
-  content: "" !important;
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-/* Force inline display for all checkbox components */
-.chart-options-menu .ant-checkbox,
-.chart-options-menu .ant-checkbox-wrapper,
-.chart-options-menu .ant-checkbox-inner,
-.chart-options-menu .ant-checkbox-input {
-  display: inline-flex !important;
-  vertical-align: middle !important;
-  white-space: nowrap !important;
-}
-
-/* Text styling for checkbox labels */
-.chart-options-menu .ant-checkbox-wrapper>span {
-  display: inline !important;
-  white-space: nowrap !important;
-  vertical-align: middle !important;
-  line-height: 1.2 !important;
-  font-size: 12px !important;
-}
-
-/* Hover effects */
-.chart-options-menu .ant-menu-item:hover {
-  background-color: #f5f5f5 !important;
-  color: #0064c8 !important;
-}
-
-.chart-options-menu .ant-checkbox-wrapper:hover {
-  color: #0064c8 !important;
-}
-
-/* Reset button styling */
-.chart-options-menu .ant-btn-link {
-  padding: 0 !important;
-  height: auto !important;
-  font-size: 11px !important;
-  color: #666 !important;
-  line-height: 1.2 !important;
-}
-
-/* Divider styling */
-.chart-options-menu .ant-menu-divider {
-  margin: 4px 0 !important;
-  background-color: #e8e8e8 !important;
-}
-
-/* Ensure dropdown positioning */
-.chart-options-menu.ant-dropdown-menu {
-  padding: 4px 0 !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-  width: auto !important;
-  min-width: fit-content !important;
-}
-
-/* ============================================
-   ZOOM OPTIONS DROPDOWN COMPREHENSIVE STYLES
-   ============================================ */
-
-/* Base dropdown menu styling */
-.zoom-options-menu {
-  width: auto !important;
-  min-width: auto !important;
-  max-width: none !important;
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-}
-
-/* Menu item layout - force single line */
-.zoom-options-menu .ant-menu-item {
-  height: auto !important;
-  line-height: 1.2 !important;
-  padding: 6px 12px !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  display: flex !important;
-  align-items: center !important;
-  width: auto !important;
-  min-width: fit-content !important;
-}
-
-/* Smaller font size for menu items */
-.zoom-options-menu .ant-menu-item {
-  font-size: 12px !important;
-  font-weight: 400 !important;
-}
-
-/* Icon styling within menu items */
-.zoom-options-menu .ant-menu-item .anticon {
-  font-size: 12px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-}
-
-/* Hover effects */
-.zoom-options-menu .ant-menu-item:hover {
-  background-color: #f5f5f5 !important;
-  color: #0064c8 !important;
-}
-
-/* Divider styling */
-.zoom-options-menu .ant-menu-divider {
-  margin: 4px 0 !important;
-  background-color: #e8e8e8 !important;
-}
-
-/* Ensure dropdown positioning */
-.zoom-options-menu.ant-dropdown-menu {
-  padding: 4px 0 !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-  width: auto !important;
-  min-width: fit-content !important;
-}
-
-/* Chart Header in Top Bar Styling */
-.chart-header-in-topbar {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin: 0 8px;
-  flex-wrap: nowrap;
-  overflow: hidden;
-}
-
-.chart-header-in-topbar .chart-title-section {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.chart-header-in-topbar .chart-title-section h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #262626;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.chart-header-in-topbar .chart-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.chart-header-in-topbar .chart-info-left {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: nowrap;
-  flex-shrink: 1;
-  min-width: 0;
-}
-
-.chart-header-in-topbar .chart-info-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.chart-header-in-topbar .status-indicators {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-}
-
-.chart-header-in-topbar .status-section {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.chart-header-in-topbar .status-label {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  color: #000;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 12px;
-  color: #8c8c8c;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#chartjs-tooltip table {
+  margin: 0px;
+  border-collapse: collapse;
+}
+
+#chartjs-tooltip table td,
+#chartjs-tooltip table th {
+  padding: 2px 8px;
+  border: none;
+}
+
+#chartjs-tooltip table th {
+  font-weight: 600;
+  font-size: 13px;
+  color: #000;
+  text-align: left;
+}
+
+#chartjs-tooltip table td span {
+  border-radius: 2px;
+  font-weight: 500;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+/* Ensure series colors are maintained in all text elements */
+.series-name-colored {
   font-weight: 500;
 }
 
-.chart-header-in-topbar .info-text {
-  font-size: 12px;
-  color: #8c8c8c;
-  font-weight: 400;
-  white-space: nowrap;
-}
-
-/* Ensure chart-header-in-topbar always uses nowrap */
-.chart-header-in-topbar,
-.chart-header-in-topbar .chart-info,
-.chart-header-in-topbar .chart-info-left,
-.chart-header-in-topbar .chart-info-right,
-.chart-header-in-topbar .status-indicators {
-  flex-wrap: nowrap !important;
-  white-space: nowrap;
-}
-
-.chart-header-in-topbar .chart-title-section,
-.chart-header-in-topbar .chart-title-section h3,
-.chart-header-in-topbar .info-text,
-.chart-header-in-topbar .status-label {
-  white-space: nowrap !important;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Override any responsive flex-wrap settings for chart header */
-@media (max-width: 1199px) {
-  .chart-header-in-topbar {
-    flex-wrap: nowrap !important;
-  }
-
-  .chart-header-in-topbar .chart-info {
-    flex-wrap: nowrap !important;
-  }
-
-  .chart-header-in-topbar .chart-info-left {
-    flex-wrap: nowrap !important;
-  }
-
-  .chart-header-in-topbar .status-indicators {
-    flex-wrap: nowrap !important;
-  }
-}
-
-@media (max-width: 767px) {
-  .chart-header-in-topbar {
-    flex-wrap: nowrap !important;
-  }
-
-  .chart-header-in-topbar .chart-info {
-    flex-wrap: nowrap !important;
-  }
-
-  .chart-header-in-topbar .chart-info-left {
-    flex-wrap: nowrap !important;
-  }
-
-  .chart-header-in-topbar .status-indicators {
-    flex-wrap: nowrap !important;
-  }
+.chart-legend-colored .ant-legend-item {
+  color: inherit !important;
 }
 </style>
 
@@ -2904,5 +2342,47 @@ onUnmounted(() => {
   .chart-header-in-topbar {
     overflow: hidden;
   }
+}
+
+/* Make series details tags much smaller */
+.series-details .ant-tag {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+  margin: 0 !important;
+  border-radius: 2px !important;
+  min-width: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  border-width: 1px !important;
+}
+
+/* Override Ant Design tag styles more aggressively */
+:deep(.series-details .ant-tag) {
+  font-size:10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+  margin: 0 !important;
+  border-radius: 2px !important;
+  min-width: auto !important;
+  box-sizing: border-box !important;
+}
+
+:deep(.series-details .ant-tag-blue) {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+}
+
+:deep(.series-details .ant-tag-green) {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
 }
 </style>
