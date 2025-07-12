@@ -99,32 +99,27 @@
           <div class="controls-right">
             <!-- Chart Options -->
             <div class="control-item chart-options">
-              <a-dropdown placement="bottomRight">
-                <a-button size="small">
-                  <template #icon><SettingOutlined /></template>
-                  Chart <DownOutlined />
+              <a-dropdown
+                placement="bottomRight"
+              >
+                <a-button size="small" style="display: flex; align-items: center;">
+                  <SettingOutlined style="margin-right: 4px;" />
+                  <span>Chart</span>
+                  <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
                   <a-menu class="chart-options-menu">
-                    <a-menu-item key="grid">
-                      <a-checkbox v-model:checked="showGrid" @change="onChartOptionChange">
-                        Show Grid
-                      </a-checkbox>
+                    <a-menu-item key="grid" @click="toggleGridOption">
+                      <a-checkbox v-model:checked="showGrid" @click.stop>Show Grid</a-checkbox>
                     </a-menu-item>
-                    <a-menu-item key="legend">
-                      <a-checkbox v-model:checked="showLegend" @change="onChartOptionChange">
-                        Show Legend
-                      </a-checkbox>
+                    <a-menu-item key="legend" @click="toggleLegendOption">
+                      <a-checkbox v-model:checked="showLegend" @click.stop>Show Legend</a-checkbox>
                     </a-menu-item>
-                    <a-menu-item key="smooth">
-                      <a-checkbox v-model:checked="smoothLines" @change="onChartOptionChange">
-                        Smooth Lines
-                      </a-checkbox>
+                    <a-menu-item key="smooth" @click="toggleSmoothOption">
+                      <a-checkbox v-model:checked="smoothLines" @click.stop>Smooth Lines</a-checkbox>
                     </a-menu-item>
-                    <a-menu-item key="points">
-                      <a-checkbox v-model:checked="showPoints" @change="onChartOptionChange">
-                        Show Points
-                      </a-checkbox>
+                    <a-menu-item key="points" @click="togglePointsOption">
+                      <a-checkbox v-model:checked="showPoints" @click.stop>Show Points</a-checkbox>
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="reset">
@@ -1452,6 +1447,27 @@ const resetChartOptions = () => {
   message.success('Chart options reset to default')
 }
 
+// Toggle methods for chart options
+const toggleGridOption = () => {
+  showGrid.value = !showGrid.value
+  onChartOptionChange()
+}
+
+const toggleLegendOption = () => {
+  showLegend.value = !showLegend.value
+  onChartOptionChange()
+}
+
+const toggleSmoothOption = () => {
+  smoothLines.value = !smoothLines.value
+  onChartOptionChange()
+}
+
+const togglePointsOption = () => {
+  showPoints.value = !showPoints.value
+  onChartOptionChange()
+}
+
 const handleCancel = () => {
   stopRealTimeUpdates()
   timeSeriesModalVisible.value = false
@@ -1897,33 +1913,6 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-/* Chart Options Dropdown Menu Styles */
-:deep(.chart-options-menu) {
-  min-width: 180px;
-}
-
-:deep(.chart-options-menu .ant-menu-item) {
-  padding: 8px 12px !important;
-  height: auto !important;
-}
-
-:deep(.chart-options-menu .ant-checkbox-wrapper) {
-  width: 100%;
-  font-size: 13px;
-  color: #333;
-}
-
-:deep(.chart-options-menu .ant-checkbox-wrapper:hover) {
-  color: #0064c8;
-}
-
-:deep(.chart-options-menu .ant-btn-link) {
-  padding: 0 !important;
-  height: auto !important;
-  font-size: 12px;
-  color: #666;
-}
-
 .export-options {
   border-left: 1px solid #e8e8e8;
   padding-left: 16px;
@@ -2109,7 +2098,7 @@ onUnmounted(() => {
 
 :deep(.t3-timeseries-modal .ant-modal-close-x) {
   color: #8c8c8c !important;
-  width: 24px !important; /* More compact close button */
+ width: 24px !important; /* More compact close button */
   height: 24px !important;
   line-height: 24px !important;
   font-size: 12px !important; /* Smaller close icon */
@@ -2340,10 +2329,137 @@ onUnmounted(() => {
   margin: 0 !important;
   background: #fff !important;
 }
-</style>
 
-<style>
-.t3-timeseries-modal .ant-modal-content {
-  padding: 10px 14px !important;
+/* ============================================
+   CHART OPTIONS DROPDOWN COMPREHENSIVE STYLES
+   ============================================ */
+
+/* Base dropdown menu styling */
+.chart-options-menu {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Menu item layout - force single line */
+.chart-options-menu .ant-menu-item {
+  height: auto !important;
+  line-height: 1.2 !important;
+  padding: 6px 12px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: fit-content !important;
+}
+
+/* Smaller font size for menu items */
+.chart-options-menu .ant-menu-item,
+.chart-options-menu .ant-checkbox-wrapper,
+.chart-options-menu .ant-checkbox-wrapper span {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+
+/* Checkbox positioning and sizing */
+.chart-options-menu .ant-checkbox {
+  margin: 0 !important;
+  margin-right: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+.chart-options-menu .ant-checkbox-wrapper {
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  width: 100% !important;
+}
+
+/* CRITICAL: Remove Ant Design's pseudo-elements that cause line breaks */
+.chart-options-menu .ant-checkbox-wrapper::after,
+.ant-checkbox-wrapper::after,
+[class*="css-dev-only-do-not-override"] .ant-checkbox-wrapper::after,
+[class*="css-"] .ant-checkbox-wrapper::after,
+:where(.css-dev-only-do-not-override-k8jyod).ant-checkbox-wrapper::after,
+.css-dev-only-do-not-override-k8jyod.ant-checkbox-wrapper::after {
+  content: "" !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+.chart-options-menu .ant-checkbox-wrapper::before,
+.ant-checkbox-wrapper::before,
+[class*="css-dev-only-do-not-override"] .ant-checkbox-wrapper::before,
+[class*="css-"] .ant-checkbox-wrapper::before {
+  content: "" !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Force inline display for all checkbox components */
+.chart-options-menu .ant-checkbox,
+.chart-options-menu .ant-checkbox-wrapper,
+.chart-options-menu .ant-checkbox-inner,
+.chart-options-menu .ant-checkbox-input {
+  display: inline-flex !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+/* Text styling for checkbox labels */
+.chart-options-menu .ant-checkbox-wrapper > span {
+  display: inline !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  line-height: 1.2 !important;
+  font-size: 12px !important;
+}
+
+/* Hover effects */
+.chart-options-menu .ant-menu-item:hover {
+  background-color: #f5f5f5 !important;
+  color: #0064c8 !important;
+}
+
+.chart-options-menu .ant-checkbox-wrapper:hover {
+  color: #0064c8 !important;
+}
+
+/* Reset button styling */
+.chart-options-menu .ant-btn-link {
+  padding: 0 !important;
+  height: auto !important;
+  font-size: 11px !important;
+  color: #666 !important;
+  line-height: 1.2 !important;
+}
+
+.chart-options-menu .ant-btn-link:hover {
+  color: #0064c8 !important;
+}
+
+/* Divider styling */
+.chart-options-menu .ant-menu-divider {
+  margin: 4px 0 !important;
+  background-color: #e8e8e8 !important;
+}
+
+/* Ensure dropdown positioning */
+.chart-options-menu.ant-dropdown-menu {
+  padding: 4px 0 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  width: auto !important;
+  min-width: fit-content !important;
 }
 </style>
