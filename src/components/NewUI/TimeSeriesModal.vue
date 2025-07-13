@@ -51,39 +51,7 @@
           <!-- Vertical Separator -->
           <div class="section-divider"></div>
 
-          <!-- Section 2: Chart Info & Status -->
-          <div class="controls-section section-info">
-            <!-- Chart Title -->
-            <div class="control-item chart-title-compact">
-              <h3 class="chart-title">{{ chartTitle }}</h3>
-            </div>
-
-            <!-- Status Tags -->
-            <div class="control-item status-tags">
-              <!-- Live/Historical Status -->
-              <a-tag color="green" v-if="isRealTime" size="small">
-                <template #icon>
-                  <SyncOutlined :spin="true" />
-                </template>
-                Live
-              </a-tag>
-              <a-tag color="blue" v-else size="small">Historical</a-tag>
-
-              <!-- Series Count -->
-              <a-tag size="small">{{ visibleSeriesCount }} series</a-tag>
-
-              <!-- Range Info -->
-              <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
-
-              <!-- View Info -->
-              <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
-            </div>
-          </div>
-
-          <!-- Vertical Separator -->
-          <div class="section-divider"></div>
-
-          <!-- Section 3: Zoom & View Controls -->
+          <!-- Section 2: Zoom & View Controls -->
           <div class="controls-section section-zoom">
             <!-- Zoom Controls -->
             <div class="control-item">
@@ -126,6 +94,38 @@
                   View 3
                 </a-button>
               </a-button-group>
+            </div>
+          </div>
+
+          <!-- Vertical Separator -->
+          <div class="section-divider"></div>
+
+          <!-- Section 3: Chart Info & Status -->
+          <div class="controls-section section-info">
+            <!-- Chart Title -->
+            <div class="control-item chart-title-compact">
+              <h3 class="chart-title">{{ chartTitle }}</h3>
+            </div>
+
+            <!-- Status Tags -->
+            <div class="control-item status-tags">
+              <!-- Live/Historical Status -->
+              <a-tag color="green" v-if="isRealTime" size="small">
+                <template #icon>
+                  <SyncOutlined :spin="true" />
+                </template>
+                Live
+              </a-tag>
+              <a-tag color="blue" v-else size="small">Historical</a-tag>
+
+              <!-- Series Count -->
+              <a-tag size="small">{{ visibleSeriesCount }} series</a-tag>
+
+              <!-- Range Info -->
+              <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
+
+              <!-- View Info -->
+              <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
             </div>
           </div>
 
