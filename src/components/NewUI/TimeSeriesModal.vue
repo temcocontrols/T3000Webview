@@ -844,7 +844,8 @@ const getChartConfig = () => ({
           },
           afterLabel: (context: any) => {
             return ''
-          }        },
+          }
+        },
         // Use default tooltip with color customization
         enabled: true
       }
@@ -2316,6 +2317,160 @@ onUnmounted(() => {
 .chart-legend-colored .ant-legend-item {
   color: inherit !important;
 }
+
+/* Mobile responsive layout for main container */
+@media (max-width: 768px) {
+  .timeseries-container {
+    flex-direction: column;
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    gap: 8px;
+  }
+
+  .left-panel {
+    width: 100%;
+    min-height: 300px;
+    max-height: 400px;
+    order: 1;
+  }
+
+  .right-panel {
+    width: 100%;
+    min-height: 400px;
+    order: 2;
+  }
+
+  :global(.t3-timeseries-modal .ant-modal) {
+    width: 95vw !important;
+    margin: 10px auto !important;
+    max-width: none !important;
+  }
+
+  :global(.t3-timeseries-modal .ant-modal-content) {
+    padding: 8px 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-controls-bar {
+    padding: 4px 6px;
+  }
+
+  .controls-section {
+    padding: 4px 6px;
+    gap: 3px;
+  }
+
+  .status-tags {
+    gap: 2px;
+  }
+
+  .status-tags .ant-tag {
+    font-size: 9px !important;
+    padding: 1px 3px !important;
+    line-height: 16px !important;
+    margin: 0 !important;
+  }
+
+  .chart-title {
+    font-size: 11px;
+  }
+
+  .control-label {
+    font-size: 10px !important;
+  }
+
+  /* Compact select and buttons for small screens */
+  .section-time .ant-select {
+    width: 100% !important;
+    max-width: 140px;
+  }
+
+  .section-zoom .ant-btn-group .ant-btn {
+    min-width: 50px;
+    font-size: 10px;
+    padding: 0 6px;
+  }
+
+  .section-options .ant-btn {
+    font-size: 10px;
+    padding: 0 6px;
+  }
+
+  /* Stack elements vertically in sections for very small screens */
+  .section-time .control-item,
+  .section-zoom .control-item {
+    width: 100%;
+  }
+
+  .section-time .ant-btn-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .section-zoom .ant-btn-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  :global(.t3-timeseries-modal .ant-modal) {
+    width: 98vw !important;
+    margin: 5px auto !important;
+  }
+
+  :global(.t3-timeseries-modal .ant-modal-content) {
+    padding: 6px 8px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .controls-left {
+    overflow: hidden;
+  }
+}
+
+/* Make series details tags much smaller */
+.series-details .ant-tag {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+  margin: 0 !important;
+  border-radius: 2px !important;
+  min-width: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  border-width: 1px !important;
+}
+
+/* Override Ant Design tag styles more aggressively */
+:deep(.series-details .ant-tag) {
+  font-size:10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+  margin: 0 !important;
+  border-radius: 2px !important;
+  min-width: auto !important;
+  box-sizing: border-box !important;
+}
+
+:deep(.series-details .ant-tag-blue) {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+}
+
+:deep(.series-details .ant-tag-green) {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  line-height: 12px !important;
+  height: 12px !important;
+}
 </style>
 
 <!-- Modal Content Padding Override -->
@@ -2559,53 +2714,5 @@ onUnmounted(() => {
     width: 100%;
     justify-content: center;
   }
-}
-
-@media (min-width: 768px) {
-  .controls-left {
-    overflow: hidden;
-  }
-}
-
-/* Make series details tags much smaller */
-.series-details .ant-tag {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-  margin: 0 !important;
-  border-radius: 2px !important;
-  min-width: auto !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-  border-width: 1px !important;
-}
-
-/* Override Ant Design tag styles more aggressively */
-:deep(.series-details .ant-tag) {
-  font-size:10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-  margin: 0 !important;
-  border-radius: 2px !important;
-  min-width: auto !important;
-  box-sizing: border-box !important;
-}
-
-:deep(.series-details .ant-tag-blue) {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-}
-
-:deep(.series-details .ant-tag-green) {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
 }
 </style>
