@@ -353,11 +353,9 @@
               <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
                 'series-disabled': !series.visible,
                 'series-empty': series.isEmpty
-              }" :style="{
-                backgroundColor: series.color
               }">
                 <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
-                  <!-- <div class="series-color" :style="{ backgroundColor: series.color }"></div> -->
+                  <div v-if="!series.isEmpty" class="series-color-indicator" :style="{ backgroundColor: series.color }"></div>
                   <div class="series-info">
                     <span class="series-name">
                       {{ series.name }}
@@ -1735,17 +1733,24 @@ onUnmounted(() => {
 .data-series-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 6px;
-  padding: 4px 6px;
-  background: #fafafa;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: #f8f9fa;
   border: 1px solid #e8e8e8;
-  border-radius: 0px;
+  border-radius: 4px;
 }
 
 .header-line-1,
 .header-line-2 {
-  padding-left: 2px;
+  padding-left: 0;
+}
+
+.header-line-1 h5 {
+  margin: 0;
+  color: #262626;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .header-line-2 {
@@ -1779,8 +1784,8 @@ onUnmounted(() => {
 }
 
 .toggle-label {
-  color: #8c8c8c !important;
-  font-size: 10px;
+  color: #595959 !important;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1831,11 +1836,10 @@ onUnmounted(() => {
 }
 
 .empty-indicator {
-  color: rgba(255,255,255,0.8) !important;
+  color: #bfbfbf !important;
   font-style: italic;
-  font-size: 9px;
+  font-size: 10px;
   margin-left: 4px;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 
 .empty-placeholder {
@@ -1848,26 +1852,30 @@ onUnmounted(() => {
 .series-header {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 6px 10px;
   cursor: pointer;
-  gap: 6px;
+  gap: 8px;
+  transition: background-color 0.2s ease;
 }
 
-.series-color {
-  width: 8px;
-  height: 8px;
+.series-header:hover:not(.series-empty .series-header) {
+  background-color: rgba(0, 100, 200, 0.04);
+}
+
+.series-color-indicator {
+  width: 3px;
+  height: 24px;
   border-radius: 2px;
   flex-shrink: 0;
-  border: 2px solid rgba(255,255,255,0.9);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  opacity: 0.8;
 }
 
 .series-name {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   margin-bottom: 2px;
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  color: #262626;
+  line-height: 1.3;
 }
 
 .series-info {
@@ -1885,14 +1893,14 @@ onUnmounted(() => {
 }
 
 .unit-info {
-  color: #ffffff;
-  font-size: 9px;
+  color: #595959;
+  font-size: 10px;
   font-weight: 500;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1px 3px;
-  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 4px;
+  border-radius: 3px;
   white-space: nowrap;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .series-controls {
@@ -1928,11 +1936,12 @@ onUnmounted(() => {
 }
 
 .series-stats {
-  padding: 4px 8px;
-  border-top: 1px solid #e8e8e8;
+  padding: 6px 10px;
+  border-top: 1px solid #f0f0f0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2px;
+  gap: 4px;
+  background-color: #fafafa;
 }
 
 .stat-item {
@@ -1942,16 +1951,15 @@ onUnmounted(() => {
 }
 
 .stat-label {
-  color: #ffffff;
-  font-size: 9px;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+  color: #8c8c8c;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .stat-value {
-  color: #ffffff;
-  font-weight: 500;
+  color: #262626;
+  font-weight: 600;
   font-size: 10px;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 
 .chart-header {
