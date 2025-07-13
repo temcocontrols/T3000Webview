@@ -291,14 +291,14 @@
                 <a-dropdown>
                   <a-button size="small" style="display: flex; align-items: center;">
                     <span>All</span>
-                    <DownOutlined style="margin-left: 4px;" />
+                    <!-- <DownOutlined style="margin-left: 4px;" /> -->
                   </a-button>
                   <template #overlay>
                     <a-menu>
                       <a-menu-item :disabled="!hasDisabledSeries">
                         <a-button type="text" size="small" @click="enableAllSeries" style="width: 100%; text-align: left;" :disabled="!hasDisabledSeries">
                           <template #icon>
-                            <SyncOutlined />
+                            <!-- <SyncOutlined /> -->
                           </template>
                           Enable All
                         </a-button>
@@ -324,7 +324,8 @@
                       <a-menu-item :disabled="!hasAnalogSeries">
                         <a-button type="text" size="small" @click="toggleAnalogSeries" style="width: 100%; text-align: left;" :disabled="!hasAnalogSeries">
                           <template #icon>
-                            <SettingOutlined />
+                            <!-- <SyncOutlined v-if="!allAnalogEnabled" />
+                            <DisconnectOutlined v-else /> -->
                           </template>
                           {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
                         </a-button>
@@ -332,7 +333,8 @@
                       <a-menu-item :disabled="!hasDigitalSeries">
                         <a-button type="text" size="small" @click="toggleDigitalSeries" style="width: 100%; text-align: left;" :disabled="!hasDigitalSeries">
                           <template #icon>
-                            <WifiOutlined />
+                            <!-- <SyncOutlined v-if="!allDigitalEnabled" />
+                            <DisconnectOutlined v-else /> -->
                           </template>
                           {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
                         </a-button>
