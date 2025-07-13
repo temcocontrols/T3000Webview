@@ -63,18 +63,30 @@
                 </a-button>
                 <template #overlay>
                   <a-menu class="zoom-options-menu">
-                    <a-menu-item key="zoom-in" @click="zoomIn">
-                      <ZoomInOutlined style="margin-right: 8px;" />
-                      Zoom In
+                    <a-menu-item key="zoom-in">
+                      <a-button type="text" size="small" @click="zoomIn" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <ZoomInOutlined />
+                        </template>
+                        Zoom In
+                      </a-button>
                     </a-menu-item>
-                    <a-menu-item key="zoom-out" @click="zoomOut">
-                      <ZoomOutOutlined style="margin-right: 8px;" />
-                      Zoom Out
+                    <a-menu-item key="zoom-out">
+                      <a-button type="text" size="small" @click="zoomOut" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <ZoomOutOutlined />
+                        </template>
+                        Zoom Out
+                      </a-button>
                     </a-menu-item>
                     <a-menu-divider />
-                    <a-menu-item key="reset-zoom" @click="resetZoom">
-                      <ReloadOutlined style="margin-right: 8px;" />
-                      Reset Zoom
+                    <a-menu-item key="reset-zoom">
+                      <a-button type="text" size="small" @click="resetZoom" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <ReloadOutlined />
+                        </template>
+                        Reset Zoom
+                      </a-button>
                     </a-menu-item>
                   </a-menu>
                 </template>
@@ -109,14 +121,29 @@
 
             <!-- Status Tags -->
             <div class="control-item status-tags">
-              <!-- Live/Historical Status -->
+              <!-- Live/Historical Status with enhanced info -->
               <a-tag color="green" v-if="isRealTime" size="small">
                 <template #icon>
                   <SyncOutlined :spin="true" />
                 </template>
-                Live
+                Live • Updated {{ lastUpdateTime }}
               </a-tag>
-              <a-tag color="blue" v-else size="small">Historical</a-tag>
+              <a-tag color="blue" v-else size="small">
+                <template #icon>
+                  <ClockCircleOutlined />
+                </template>
+                Historical
+              </a-tag>
+
+              <!-- Connection Status -->
+              <a-tag :color="connectionStatus === 'connected' ? 'green' : connectionStatus === 'connecting' ? 'orange' : 'red'" size="small">
+                <template #icon>
+                  <WifiOutlined v-if="connectionStatus === 'connected'" />
+                  <LoadingOutlined v-else-if="connectionStatus === 'connecting'" />
+                  <DisconnectOutlined v-else />
+                </template>
+                {{ connectionStatus === 'connected' ? 'Online' : connectionStatus === 'connecting' ? 'Connecting' : 'Offline' }}
+              </a-tag>
 
               <!-- Series Count -->
               <a-tag size="small">{{ visibleSeriesCount }} series</a-tag>
@@ -144,21 +171,44 @@
                 </a-button>
                 <template #overlay>
                   <a-menu class="chart-options-menu">
-                    <a-menu-item key="grid" @click="toggleGridOption">
-                      <a-checkbox v-model:checked="showGrid" @click.stop>Show Grid</a-checkbox>
+                    <a-menu-item key="grid">
+                      <a-button type="text" size="small" @click="toggleGridOption" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <a-checkbox v-model:checked="showGrid" @click.stop style="margin-right: 8px;" />
+                        </template>
+                        Show Grid
+                      </a-button>
                     </a-menu-item>
-                    <a-menu-item key="legend" @click="toggleLegendOption">
-                      <a-checkbox v-model:checked="showLegend" @click.stop>Show Legend</a-checkbox>
+                    <a-menu-item key="legend">
+                      <a-button type="text" size="small" @click="toggleLegendOption" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <a-checkbox v-model:checked="showLegend" @click.stop style="margin-right: 8px;" />
+                        </template>
+                        Show Legend
+                      </a-button>
                     </a-menu-item>
-                    <a-menu-item key="smooth" @click="toggleSmoothOption">
-                      <a-checkbox v-model:checked="smoothLines" @click.stop>Smooth Lines</a-checkbox>
+                    <a-menu-item key="smooth">
+                      <a-button type="text" size="small" @click="toggleSmoothOption" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <a-checkbox v-model:checked="smoothLines" @click.stop style="margin-right: 8px;" />
+                        </template>
+                        Smooth Lines
+                      </a-button>
                     </a-menu-item>
-                    <a-menu-item key="points" @click="togglePointsOption">
-                      <a-checkbox v-model:checked="showPoints" @click.stop>Show Points</a-checkbox>
+                    <a-menu-item key="points">
+                      <a-button type="text" size="small" @click="togglePointsOption" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <a-checkbox v-model:checked="showPoints" @click.stop style="margin-right: 8px;" />
+                        </template>
+                        Show Points
+                      </a-button>
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="reset">
-                      <a-button type="link" size="small" @click="resetChartOptions">
+                      <a-button type="text" size="small" @click="resetChartOptions" style="width: 100%; text-align: left;">
+                        <template #icon>
+                          <ReloadOutlined />
+                        </template>
                         Reset to Default
                       </a-button>
                     </a-menu-item>
@@ -239,31 +289,53 @@
               <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
               <div class="header-line-2">
                 <a-dropdown>
-                  <a-button size="small">All
-                    <DownOutlined />
+                  <a-button size="small" style="display: flex; align-items: center;">
+                    <span>All</span>
+                    <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
                     <a-menu>
-                      <a-menu-item @click="enableAllSeries" :disabled="!hasDisabledSeries">
-                        Enable All
+                      <a-menu-item :disabled="!hasDisabledSeries">
+                        <a-button type="text" size="small" @click="enableAllSeries" style="width: 100%; text-align: left;" :disabled="!hasDisabledSeries">
+                          <template #icon>
+                            <SyncOutlined />
+                          </template>
+                          Enable All
+                        </a-button>
                       </a-menu-item>
-                      <a-menu-item @click="disableAllSeries" :disabled="!hasEnabledSeries">
-                        Disable All
+                      <a-menu-item :disabled="!hasEnabledSeries">
+                        <a-button type="text" size="small" @click="disableAllSeries" style="width: 100%; text-align: left;" :disabled="!hasEnabledSeries">
+                          <template #icon>
+                            <DisconnectOutlined />
+                          </template>
+                          Disable All
+                        </a-button>
                       </a-menu-item>
                     </a-menu>
                   </template>
                 </a-dropdown>
                 <a-dropdown>
-                  <a-button size="small">By Type
-                    <DownOutlined />
+                  <a-button size="small" style="display: flex; align-items: center;">
+                    <span>By Type</span>
+                    <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
                     <a-menu>
-                      <a-menu-item @click="toggleAnalogSeries" :disabled="!hasAnalogSeries">
-                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                      <a-menu-item :disabled="!hasAnalogSeries">
+                        <a-button type="text" size="small" @click="toggleAnalogSeries" style="width: 100%; text-align: left;" :disabled="!hasAnalogSeries">
+                          <template #icon>
+                            <SettingOutlined />
+                          </template>
+                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                        </a-button>
                       </a-menu-item>
-                      <a-menu-item @click="toggleDigitalSeries" :disabled="!hasDigitalSeries">
-                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                      <a-menu-item :disabled="!hasDigitalSeries">
+                        <a-button type="text" size="small" @click="toggleDigitalSeries" style="width: 100%; text-align: left;" :disabled="!hasDigitalSeries">
+                          <template #icon>
+                            <WifiOutlined />
+                          </template>
+                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                        </a-button>
                       </a-menu-item>
                     </a-menu>
                   </template>
@@ -545,7 +617,10 @@ const showGrid = ref(true)
 const showLegend = ref(true)
 const smoothLines = ref(false)
 const showPoints = ref(false)
-const lastUpdateTime = ref('')
+const lastUpdateTime = ref(new Date().toLocaleTimeString())
+
+// Connection and status tracking
+const connectionStatus = ref<'connected' | 'connecting' | 'disconnected'>('connected')
 
 // View switch alert state
 const viewAlert = ref({
@@ -2079,6 +2154,76 @@ onUnmounted(() => {
   gap: 6px;
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+/* Apply consistent styling to all dropdown menus */
+:deep(.chart-options-menu),
+:deep(.zoom-options-menu),
+:deep(.export-options-menu) {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.chart-options-menu .ant-menu-item),
+:deep(.zoom-options-menu .ant-menu-item),
+:deep(.export-options-menu .ant-menu-item) {
+  padding: 4px 8px;
+  margin: 2px 0;
+  border-radius: 4px;
+  line-height: 1.2;
+  min-height: auto;
+  height: auto;
+}
+
+:deep(.chart-options-menu .ant-btn),
+:deep(.zoom-options-menu .ant-btn),
+:deep(.export-options-menu .ant-btn) {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  height: auto !important;
+  padding: 4px 0 !important;
+  line-height: 1.2 !important;
+  font-size: 12px !important;
+  color: #262626 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+:deep(.chart-options-menu .ant-btn .anticon),
+:deep(.zoom-options-menu .ant-btn .anticon),
+:deep(.export-options-menu .ant-btn .anticon) {
+  font-size: 12px !important;
+  margin-right: 6px !important;
+  color: #1890ff !important;
+}
+
+:deep(.chart-options-menu .ant-btn span),
+:deep(.zoom-options-menu .ant-btn span),
+:deep(.export-options-menu .ant-btn span) {
+  font-size: 12px !important;
+  color: #262626 !important;
+}
+
+:deep(.chart-options-menu .ant-menu-item:hover),
+:deep(.zoom-options-menu .ant-menu-item:hover),
+:deep(.export-options-menu .ant-menu-item:hover) {
+  background-color: #f5f5f5 !important;
+}
+
+:deep(.chart-options-menu .ant-btn:hover),
+:deep(.zoom-options-menu .ant-btn:hover),
+:deep(.export-options-menu .ant-btn:hover) {
+  color: #1890ff !important;
+  background: transparent !important;
+}
+
+:deep(.chart-options-menu .ant-menu-item:hover .ant-btn),
+:deep(.zoom-options-menu .ant-menu-item:hover .ant-btn),
+:deep(.export-options-menu .ant-menu-item:hover .ant-btn) {
+  color: #1890ff !important;
 }
 
 /* Export Options Dropdown Menu Styles */
