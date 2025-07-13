@@ -13,8 +13,8 @@
       <!-- Top Controls Bar -->
       <div class="top-controls-bar">
         <div class="controls-group">
-          <!-- Left Side Controls -->
-          <div class="controls-left">
+          <!-- Section 1: Time & Navigation Controls -->
+          <div class="controls-section section-time">
             <!-- Time Base -->
             <div class="control-item">
               <a-typography-text class="control-label">Time Base:</a-typography-text>
@@ -46,7 +46,45 @@
                 </a-button>
               </a-button-group>
             </div>
+          </div>
 
+          <!-- Vertical Separator -->
+          <div class="section-divider"></div>
+
+          <!-- Section 2: Chart Info & Status -->
+          <div class="controls-section section-info">
+            <!-- Chart Title -->
+            <div class="control-item chart-title-compact">
+              <h3 class="chart-title">{{ chartTitle }}</h3>
+            </div>
+
+            <!-- Status Tags -->
+            <div class="control-item status-tags">
+              <!-- Live/Historical Status -->
+              <a-tag color="green" v-if="isRealTime" size="small">
+                <template #icon>
+                  <SyncOutlined :spin="true" />
+                </template>
+                Live
+              </a-tag>
+              <a-tag color="blue" v-else size="small">Historical</a-tag>
+
+              <!-- Series Count -->
+              <a-tag size="small">{{ visibleSeriesCount }} series</a-tag>
+
+              <!-- Range Info -->
+              <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
+
+              <!-- View Info -->
+              <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
+            </div>
+          </div>
+
+          <!-- Vertical Separator -->
+          <div class="section-divider"></div>
+
+          <!-- Section 3: Zoom & View Controls -->
+          <div class="controls-section section-zoom">
             <!-- Zoom Controls -->
             <div class="control-item">
               <a-dropdown placement="bottomRight">
@@ -91,51 +129,11 @@
             </div>
           </div>
 
-          <!-- Chart Header Section (moved from right panel) -->
-          <div class="chart-header-in-topbar">
-            <!-- Title and Alert -->
-            <div class="chart-title-section">
-              <h3>{{ chartTitle }}</h3>
-              <a-alert v-if="viewAlert.visible" :message="viewAlert.message" type="info" show-icon class="view-alert" />
-            </div>
+          <!-- Vertical Separator -->
+          <div class="section-divider"></div>
 
-            <!-- Chart Info in single line -->
-            <div class="chart-info">
-              <!-- Live/Historical Status -->
-              <a-tag color="green" v-if="isRealTime" size="small">
-                <template #icon>
-                  <SyncOutlined :spin="true" />
-                </template>
-                Live
-              </a-tag>
-              <a-tag color="blue" v-else size="small">Historical</a-tag>
-
-              <!-- Series and Update Info -->
-              <span class="info-text">{{ visibleSeriesCount }} series</span>
-              <span class="info-text">{{ lastUpdateTime }}</span>
-
-              <!-- Status indicators on the right -->
-              <div class="chart-info-right">
-                <div class="status-indicators">
-                  <div class="status-section">
-                    <a-typography-text class="status-label">Range:</a-typography-text>
-                    <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
-                  </div>
-                  <div class="status-section">
-                    <a-typography-text class="status-label">Zoom:</a-typography-text>
-                    <a-tag size="small">{{ Math.round(zoomLevel * 100) }}%</a-tag>
-                  </div>
-                  <div class="status-section">
-                    <a-typography-text class="status-label">View:</a-typography-text>
-                    <a-tag color="blue" size="small">{{ currentView }}</a-tag>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Side Controls -->
-          <div class="controls-right">
+          <!-- Section 4: Chart Options & Export -->
+          <div class="controls-section section-options">
             <!-- Chart Options -->
             <div class="control-item chart-options">
               <a-dropdown placement="bottomRight">
@@ -1988,12 +1986,72 @@ onUnmounted(() => {
 .controls-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 0;
   flex-wrap: nowrap;
   width: 100%;
   min-height: 32px;
   box-sizing: border-box;
+}
+
+/* New sectioned controls structure */
+.controls-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding: 0 12px;
+  min-height: 32px;
+}
+
+.section-time {
+  flex-shrink: 1;
+  min-width: 280px;
+}
+
+.section-info {
+  flex: 1;
+  min-width: 300px;
+  justify-content: flex-start;
+}
+
+.section-zoom {
+  flex-shrink: 0;
+  min-width: 200px;
+}
+
+.section-options {
+  flex-shrink: 0;
+  min-width: 160px;
+}
+
+/* Vertical dividers between sections */
+.section-divider {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, #d9d9d9 20%, #d9d9d9 80%, transparent);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* Chart title and status tags in info section */
+.chart-title-compact {
+  margin-right: 8px;
+}
+
+.chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: #262626;
+  white-space: nowrap;
+}
+
+.status-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
 }
 
 .controls-left {
@@ -2020,32 +2078,6 @@ onUnmounted(() => {
   gap: 6px;
   flex-shrink: 0;
   white-space: nowrap;
-}
-
-.chart-options {
-  border-left: 1px solid #e8e8e8;
-  padding-left: 8px;
-  margin-left: 4px;
-}
-
-.chart-options-flex {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.export-options {
-  border-left: 1px solid #e8e8e8;
-  padding-left: 8px;
-  margin-left: 4px;
-}
-
-.export-options-flex {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 /* Export Options Dropdown Menu Styles */
@@ -2324,23 +2356,12 @@ onUnmounted(() => {
 }
 
 /* Force chart info elements to stay compact */
-.chart-header-in-topbar .ant-tag {
+.status-tags .ant-tag {
   flex-shrink: 0;
   white-space: nowrap;
   font-size: 10px !important;
   padding: 0 4px !important;
   line-height: 18px !important;
-}
-
-/* Ensure alert doesn't break layout */
-.chart-header-in-topbar .ant-alert {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.chart-header-in-topbar .ant-alert .ant-alert-message {
-  font-size: 10px !important;
-  margin: 0 !important;
 }
 
 /* Override any ant design min-width constraints */
@@ -2357,12 +2378,191 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-@media (min-width: 768px) {
-  .controls-left {
-    overflow: hidden;
+/* Responsive design for sectioned top bar */
+@media (max-width: 1200px) {
+  .section-info {
+    min-width: 250px;
   }
 
-  .chart-header-in-topbar {
+  .section-time {
+    min-width: 240px;
+  }
+
+  .status-tags .ant-tag {
+    font-size: 9px !important;
+    padding: 0 3px !important;
+  }
+
+  .chart-title {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .controls-group {
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .controls-section {
+    padding: 6px 8px;
+    min-height: auto;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .section-divider {
+    display: none;
+  }
+
+  .section-time,
+  .section-info,
+  .section-zoom,
+  .section-options {
+    min-width: auto;
+    width: 100%;
+    flex: none;
+  }
+
+  .section-time {
+    background: rgba(0, 100, 200, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 100, 200, 0.1);
+  }
+
+  .section-info {
+    background: rgba(255, 140, 0, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 140, 0, 0.1);
+  }
+
+  .section-zoom {
+    background: rgba(0, 150, 0, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 150, 0, 0.1);
+  }
+
+  .section-options {
+    background: rgba(130, 0, 130, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(130, 0, 130, 0.1);
+  }
+
+  .status-tags {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .chart-title {
+    text-align: left;
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .chart-title-compact {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .control-item {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  /* Ensure Time Base controls don't overflow */
+  .section-time .control-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .section-time .control-label {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  /* Make button groups wrap on mobile */
+  .section-time .ant-btn-group,
+  .section-zoom .ant-btn-group {
+    flex-wrap: wrap;
+  }
+
+  /* Optimize View buttons for mobile */
+  .section-zoom .ant-btn-group .ant-btn {
+    min-width: 60px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-controls-bar {
+    padding: 4px 6px;
+  }
+
+  .controls-section {
+    padding: 4px 6px;
+    gap: 3px;
+  }
+
+  .status-tags {
+    gap: 2px;
+  }
+
+  .status-tags .ant-tag {
+    font-size: 9px !important;
+    padding: 1px 3px !important;
+    line-height: 16px !important;
+    margin: 0 !important;
+  }
+
+  .chart-title {
+    font-size: 11px;
+  }
+
+  .control-label {
+    font-size: 10px !important;
+  }
+
+  /* Compact select and buttons for small screens */
+  .section-time .ant-select {
+    width: 100% !important;
+    max-width: 140px;
+  }
+
+  .section-zoom .ant-btn-group .ant-btn {
+    min-width: 50px;
+    font-size: 10px;
+    padding: 0 6px;
+  }
+
+  .section-options .ant-btn {
+    font-size: 10px;
+    padding: 0 6px;
+  }
+
+  /* Stack elements vertically in sections for very small screens */
+  .section-time .control-item,
+  .section-zoom .control-item {
+    width: 100%;
+  }
+
+  .section-time .ant-btn-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .section-zoom .ant-btn-group {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 768px) {
+  .controls-left {
     overflow: hidden;
   }
 }
