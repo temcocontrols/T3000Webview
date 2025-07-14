@@ -24,53 +24,17 @@
                   <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
-                  <a-menu>
-                    <a-menu-item key="5m">
-                      <a-button type="text" size="small" @click="setTimeBase('5m')" style="width: 100%; text-align: left;">
-                        5 minutes
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="15m">
-                      <a-button type="text" size="small" @click="setTimeBase('15m')" style="width: 100%; text-align: left;">
-                        15 minutes
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="30m">
-                      <a-button type="text" size="small" @click="setTimeBase('30m')" style="width: 100%; text-align: left;">
-                        30 minutes
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="1h">
-                      <a-button type="text" size="small" @click="setTimeBase('1h')" style="width: 100%; text-align: left;">
-                        1 hour
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="6h">
-                      <a-button type="text" size="small" @click="setTimeBase('6h')" style="width: 100%; text-align: left;">
-                        6 hours
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="12h">
-                      <a-button type="text" size="small" @click="setTimeBase('12h')" style="width: 100%; text-align: left;">
-                        12 hours
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="24h">
-                      <a-button type="text" size="small" @click="setTimeBase('24h')" style="width: 100%; text-align: left;">
-                        24 hours
-                      </a-button>
-                    </a-menu-item>
-                    <a-menu-item key="7d">
-                      <a-button type="text" size="small" @click="setTimeBase('7d')" style="width: 100%; text-align: left;">
-                        7 days
-                      </a-button>
-                    </a-menu-item>
+                  <a-menu @click="handleTimeBaseMenu">
+                    <a-menu-item key="5m">5 minutes</a-menu-item>
+                    <a-menu-item key="15m">15 minutes</a-menu-item>
+                    <a-menu-item key="30m">30 minutes</a-menu-item>
+                    <a-menu-item key="1h">1 hour</a-menu-item>
+                    <a-menu-item key="6h">6 hours</a-menu-item>
+                    <a-menu-item key="12h">12 hours</a-menu-item>
+                    <a-menu-item key="24h">24 hours</a-menu-item>
+                    <a-menu-item key="7d">7 days</a-menu-item>
                     <a-menu-divider />
-                    <a-menu-item key="custom">
-                      <a-button type="text" size="small" @click="setTimeBase('custom')" style="width: 100%; text-align: left;">
-                        Custom Define
-                      </a-button>
-                    </a-menu-item>
+                    <a-menu-item key="custom">Custom Define</a-menu-item>
                   </a-menu>
                 </template>
               </a-dropdown>
@@ -107,31 +71,19 @@
                   <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
-                  <a-menu class="zoom-options-menu">
+                  <a-menu class="zoom-options-menu" @click="handleZoomMenu">
                     <a-menu-item key="zoom-in">
-                      <a-button type="text" size="small" @click="zoomIn" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <ZoomInOutlined />
-                        </template>
-                        Zoom In
-                      </a-button>
+                      <ZoomInOutlined />
+                      Zoom In
                     </a-menu-item>
                     <a-menu-item key="zoom-out">
-                      <a-button type="text" size="small" @click="zoomOut" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <ZoomOutOutlined />
-                        </template>
-                        Zoom Out
-                      </a-button>
+                      <ZoomOutOutlined />
+                      Zoom Out
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="reset-zoom">
-                      <a-button type="text" size="small" @click="resetZoom" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <ReloadOutlined />
-                        </template>
-                        Reset Zoom
-                      </a-button>
+                      <ReloadOutlined />
+                      Reset Zoom
                     </a-menu-item>
                   </a-menu>
                 </template>
@@ -215,47 +167,27 @@
                   <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
-                  <a-menu class="chart-options-menu">
+                  <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
                     <a-menu-item key="grid">
-                      <a-button type="text" size="small" @click="toggleGridOption" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <a-checkbox v-model:checked="showGrid" @click.stop style="margin-right: 8px;" />
-                        </template>
-                        Show Grid
-                      </a-button>
+                      <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
+                      Show Grid
                     </a-menu-item>
                     <a-menu-item key="legend">
-                      <a-button type="text" size="small" @click="toggleLegendOption" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <a-checkbox v-model:checked="showLegend" @click.stop style="margin-right: 8px;" />
-                        </template>
-                        Show Legend
-                      </a-button>
+                      <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
+                      Show Legend
                     </a-menu-item>
                     <a-menu-item key="smooth">
-                      <a-button type="text" size="small" @click="toggleSmoothOption" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <a-checkbox v-model:checked="smoothLines" @click.stop style="margin-right: 8px;" />
-                        </template>
-                        Smooth Lines
-                      </a-button>
+                      <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
+                      Smooth Lines
                     </a-menu-item>
                     <a-menu-item key="points">
-                      <a-button type="text" size="small" @click="togglePointsOption" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <a-checkbox v-model:checked="showPoints" @click.stop style="margin-right: 8px;" />
-                        </template>
-                        Show Points
-                      </a-button>
+                      <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
+                      Show Points
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="reset">
-                      <a-button type="text" size="small" @click="resetChartOptions" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <ReloadOutlined />
-                        </template>
-                        Reset to Default
-                      </a-button>
+                      <ReloadOutlined />
+                      Reset to Default
                     </a-menu-item>
                   </a-menu>
                 </template>
@@ -271,39 +203,23 @@
                   <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
-                  <a-menu class="export-options-menu">
+                  <a-menu class="export-options-menu" @click="handleExportMenu">
                     <a-menu-item key="png">
-                      <a-button type="text" size="small" @click="exportChart" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <FileImageOutlined />
-                        </template>
-                        Export as PNG
-                      </a-button>
+                      <FileImageOutlined />
+                      Export as PNG
                     </a-menu-item>
                     <a-menu-item key="jpg">
-                      <a-button type="text" size="small" @click="exportChartJPG" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <FileImageOutlined />
-                        </template>
-                        Export as JPG
-                      </a-button>
+                      <FileImageOutlined />
+                      Export as JPG
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="csv">
-                      <a-button type="text" size="small" @click="exportData" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <FileExcelOutlined />
-                        </template>
-                        Export Data (CSV)
-                      </a-button>
+                      <FileExcelOutlined />
+                      Export Data (CSV)
                     </a-menu-item>
                     <a-menu-item key="json">
-                      <a-button type="text" size="small" @click="exportDataJSON" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <FileTextOutlined />
-                        </template>
-                        Export Data (JSON)
-                      </a-button>
+                      <FileTextOutlined />
+                      Export Data (JSON)
                     </a-menu-item>
                   </a-menu>
                 </template>
@@ -331,22 +247,14 @@
                     <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
-                    <a-menu>
-                      <a-menu-item :disabled="!hasDisabledSeries">
-                        <a-button type="text" size="small" @click="enableAllSeries" style="width: 100%; text-align: left;" :disabled="!hasDisabledSeries">
-                          <template #icon>
-                            <!-- <SyncOutlined /> -->
-                          </template>
-                          Enable All
-                        </a-button>
+                    <a-menu @click="handleAllMenu">
+                      <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                        <CheckOutlined />
+                        Enable All
                       </a-menu-item>
-                      <a-menu-item :disabled="!hasEnabledSeries">
-                        <a-button type="text" size="small" @click="disableAllSeries" style="width: 100%; text-align: left;" :disabled="!hasEnabledSeries">
-                          <template #icon>
-                            <DisconnectOutlined />
-                          </template>
-                          Disable All
-                        </a-button>
+                      <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                        <DisconnectOutlined />
+                        Disable All
                       </a-menu-item>
                     </a-menu>
                   </template>
@@ -357,24 +265,14 @@
                     <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
-                    <a-menu>
-                      <a-menu-item :disabled="!hasAnalogSeries">
-                        <a-button type="text" size="small" @click="toggleAnalogSeries" style="width: 100%; text-align: left;" :disabled="!hasAnalogSeries">
-                          <template #icon>
-                            <!-- <SyncOutlined v-if="!allAnalogEnabled" />
-                            <DisconnectOutlined v-else /> -->
-                          </template>
-                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                        </a-button>
+                    <a-menu @click="handleByTypeMenu">
+                      <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                        <LineChartOutlined />
+                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
                       </a-menu-item>
-                      <a-menu-item :disabled="!hasDigitalSeries">
-                        <a-button type="text" size="small" @click="toggleDigitalSeries" style="width: 100%; text-align: left;" :disabled="!hasDigitalSeries">
-                          <template #icon>
-                            <!-- <SyncOutlined v-if="!allDigitalEnabled" />
-                            <DisconnectOutlined v-else /> -->
-                          </template>
-                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                        </a-button>
+                      <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                        <BarChartOutlined />
+                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
                       </a-menu-item>
                     </a-menu>
                   </template>
@@ -490,7 +388,14 @@ import {
   ExportOutlined,
   FileImageOutlined,
   FileOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  CheckOutlined,
+  DisconnectOutlined,
+  LineChartOutlined,
+  BarChartOutlined,
+  ClockCircleOutlined,
+  WifiOutlined,
+  LoadingOutlined
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
@@ -1472,6 +1377,90 @@ const stopRealTimeUpdates = () => {
   }
 }
 
+// Dropdown Menu Handlers
+const handleTimeBaseMenu = ({ key }: { key: string }) => {
+  setTimeBase(key)
+}
+
+const handleZoomMenu = ({ key }: { key: string }) => {
+  switch (key) {
+    case 'zoom-in':
+      zoomIn()
+      break
+    case 'zoom-out':
+      zoomOut()
+      break
+    case 'reset-zoom':
+      resetZoom()
+      break
+  }
+}
+
+const handleChartOptionsMenu = ({ key }: { key: string }) => {
+  switch (key) {
+    case 'grid':
+      toggleGridOption()
+      break
+    case 'legend':
+      toggleLegendOption()
+      break
+    case 'smooth':
+      toggleSmoothOption()
+      break
+    case 'points':
+      togglePointsOption()
+      break
+    case 'reset':
+      resetChartOptions()
+      break
+  }
+}
+
+const handleExportMenu = ({ key }: { key: string }) => {
+  switch (key) {
+    case 'png':
+      exportChart()
+      break
+    case 'jpg':
+      exportChartJPG()
+      break
+    case 'csv':
+      exportData()
+      break
+    case 'json':
+      exportDataJSON()
+      break
+  }
+}
+
+const handleAllMenu = ({ key }: { key: string }) => {
+  switch (key) {
+    case 'enable-all':
+      enableAllSeries()
+      break
+    case 'disable-all':
+      disableAllSeries()
+      break
+  }
+}
+
+const handleByTypeMenu = ({ key }: { key: string }) => {
+  switch (key) {
+    case 'toggle-analog':
+      toggleAnalogSeries()
+      break
+    case 'toggle-digital':
+      toggleDigitalSeries()
+      break
+  }
+}
+
+// Dropdown menu handlers
+const handleCancel = () => {
+  stopRealTimeUpdates()
+  timeSeriesModalVisible.value = false
+}
+
 // Utility functions
 const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
   if (data.length === 0) return 'N/A'
@@ -1663,11 +1652,6 @@ const toggleSmoothOption = () => {
 const togglePointsOption = () => {
   showPoints.value = !showPoints.value
   onChartOptionChange()
-}
-
-const handleCancel = () => {
-  stopRealTimeUpdates()
-  timeSeriesModalVisible.value = false
 }
 
 // Watchers
