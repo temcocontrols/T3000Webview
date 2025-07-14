@@ -18,17 +18,62 @@
             <!-- Time Base -->
             <div class="control-item">
               <a-typography-text class="control-label">Time Base:</a-typography-text>
-              <a-select v-model:value="timeBase" size="small" style="width: 120px;" @change="onTimeBaseChange">
-                <a-select-option value="5m">5 minutes</a-select-option>
-                <a-select-option value="15m">15 minutes</a-select-option>
-                <a-select-option value="30m">30 minutes</a-select-option>
-                <a-select-option value="1h">1 hour</a-select-option>
-                <a-select-option value="6h">6 hours</a-select-option>
-                <a-select-option value="12h">12 hours</a-select-option>
-                <a-select-option value="24h">24 hours</a-select-option>
-                <a-select-option value="7d">7 days</a-select-option>
-                <a-select-option value="custom">Custom Define</a-select-option>
-              </a-select>
+              <a-dropdown placement="bottomRight">
+                <a-button size="small" style="display: flex; align-items: center;">
+                  <span>{{ getTimeBaseLabel() }}</span>
+                  <DownOutlined style="margin-left: 4px;" />
+                </a-button>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item key="5m">
+                      <a-button type="text" size="small" @click="setTimeBase('5m')" style="width: 100%; text-align: left;">
+                        5 minutes
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="15m">
+                      <a-button type="text" size="small" @click="setTimeBase('15m')" style="width: 100%; text-align: left;">
+                        15 minutes
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="30m">
+                      <a-button type="text" size="small" @click="setTimeBase('30m')" style="width: 100%; text-align: left;">
+                        30 minutes
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="1h">
+                      <a-button type="text" size="small" @click="setTimeBase('1h')" style="width: 100%; text-align: left;">
+                        1 hour
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="6h">
+                      <a-button type="text" size="small" @click="setTimeBase('6h')" style="width: 100%; text-align: left;">
+                        6 hours
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="12h">
+                      <a-button type="text" size="small" @click="setTimeBase('12h')" style="width: 100%; text-align: left;">
+                        12 hours
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="24h">
+                      <a-button type="text" size="small" @click="setTimeBase('24h')" style="width: 100%; text-align: left;">
+                        24 hours
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-item key="7d">
+                      <a-button type="text" size="small" @click="setTimeBase('7d')" style="width: 100%; text-align: left;">
+                        7 days
+                      </a-button>
+                    </a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="custom">
+                      <a-button type="text" size="small" @click="setTimeBase('custom')" style="width: 100%; text-align: left;">
+                        Custom Define
+                      </a-button>
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </div>
 
             <!-- Navigation Arrows -->
@@ -753,6 +798,28 @@ const timeBaseLabel = computed(() => {
   }
   return labels[timeBase.value] || 'Unknown'
 })
+
+// Helper function to get time base label for dropdown button
+const getTimeBaseLabel = () => {
+  const labels = {
+    '5m': '5 minutes',
+    '15m': '15 minutes',
+    '30m': '30 minutes',
+    '1h': '1 hour',
+    '6h': '6 hours',
+    '12h': '12 hours',
+    '24h': '24 hours',
+    '7d': '7 days',
+    'custom': 'Custom Define'
+  }
+  return labels[timeBase.value] || '1 hour'
+}
+
+// Function to set time base from dropdown
+const setTimeBase = (value: string) => {
+  timeBase.value = value
+  onTimeBaseChange()
+}
 
 // Series control computed properties
 const hasEnabledSeries = computed(() => {
