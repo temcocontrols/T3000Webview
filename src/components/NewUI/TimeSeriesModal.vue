@@ -243,14 +243,6 @@
                         Export as JPG
                       </a-button>
                     </a-menu-item>
-                    <a-menu-item key="svg">
-                      <a-button type="text" size="small" @click="exportChartSVG" style="width: 100%; text-align: left;">
-                        <template #icon>
-                          <FileOutlined />
-                        </template>
-                        Export as SVG
-                      </a-button>
-                    </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="csv">
                       <a-button type="text" size="small" @click="exportData" style="width: 100%; text-align: left;">
@@ -291,7 +283,7 @@
                 <a-dropdown>
                   <a-button size="small" style="display: flex; align-items: center;">
                     <span>All</span>
-                    <!-- <DownOutlined style="margin-left: 4px;" /> -->
+                    <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
                     <a-menu>
@@ -1872,7 +1864,7 @@ onUnmounted(() => {
 
 .series-name {
   font-size: 12px;
-  font-weight: 600;
+  /* font-weight: 600; */
   margin-bottom: 2px;
   color: #262626;
   line-height: 1.3;
