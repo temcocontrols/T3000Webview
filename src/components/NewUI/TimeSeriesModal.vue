@@ -132,7 +132,7 @@
                 Historical
               </a-tag>
 
-              <!-- Connection Status -->
+              <!-- Connection Status
               <a-tag
                 :color="connectionStatus === 'connected' ? 'green' : connectionStatus === 'connecting' ? 'orange' : 'red'"
                 size="small">
@@ -143,7 +143,7 @@
                 </template>
                 {{ connectionStatus === 'connected' ? 'Online' : connectionStatus === 'connecting' ? 'Connecting' :
                 'Offline' }}
-              </a-tag>
+              </a-tag>-->
 
               <!-- Series Count -->
               <a-tag size="small">{{ visibleSeriesCount }} series</a-tag>
