@@ -229,7 +229,8 @@
               </a-dropdown>
             </div>
           </div>
-        </div>
+        <!-- End of left-panel content -->
+      </div>
       </div>
 
       <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
@@ -343,8 +344,9 @@
             </div>
           </div>
 
-          <!-- Custom Date Range (only shown when Custom Define is selected) -->
-          <div v-if="timeBase === 'custom'" class="control-section custom-date-section">
+          <!-- ...existing code... -->
+          <!-- Custom Date Range (only shown when Custom Define is selected) - moved to bottom of left panel -->
+          <div v-if="timeBase === 'custom'" class="control-section custom-date-section" style="margin-top: 24px;">
             <h4>Custom Range</h4>
             <a-space direction="vertical" size="small" style="width: 100%;">
               <a-date-picker v-model:value="customStartDate" placeholder="Start Date" size="small" style="width: 100%;"
