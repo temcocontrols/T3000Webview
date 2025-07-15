@@ -911,10 +911,10 @@ const getChartConfig = () => ({
             '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
             '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
             '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
-            '6h': { unit: 'minute', stepSize: 40 },     // Every 40 minutes
-            '12h': { unit: 'minute', stepSize: 15 },    // Every 15 minutes (0.4 hour)
-            '24h': { unit: 'minute', stepSize: 30 },    // Every 30 minutes (0.5 hours)
-            '7d': { unit: 'minute', stepSize: 120 }     // Every 120 minutes (2 hours)
+            '6h': { unit: 'minute', stepSize: 20 },     // Every 20 minutes
+            '12h': { unit: 'minute', stepSize: 40 },    // Every 40 minutes
+            '24h': { unit: 'minute', stepSize: 80 },    // Every 80 minutes
+            '7d': { unit: 'minute', stepSize: 360 }     // Every 360 minutes
           }
           const config = tickConfigs[timeBase.value] || tickConfigs['1h']
           return {
@@ -945,10 +945,10 @@ const getChartConfig = () => ({
               '15m': 6,   // 5 intervals + 1
               '30m': 6,   // 5 intervals + 1
               '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
-              '6h': 13,   // 12 intervals + 1 (0,10,20,30,40,50,60,70,80,90,100,110,120)
-              '12h': 13,  // 12 intervals + 1 (every 15 minutes)
-              '24h': 13,  // 12 intervals + 1 (every 30 minutes)
-              '7d': 13    // 12 intervals + 1 (every 120 minutes)
+              '6h': 19,   // 18 intervals + 1 (every 20 minutes)
+              '12h': 19,  // 18 intervals + 1 (every 40 minutes)
+              '24h': 19,  // 18 intervals + 1 (every 80 minutes)
+              '7d': 29    // 28 intervals + 1 (every 360 minutes)
             }
             return maxTicksConfigs[timeBase.value] || 7
           })(),
@@ -1054,10 +1054,10 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
       '15m': 1,    // Every 1 minute
       '30m': 1,    // Every 1 minute
       '1h': 5,     // Every 1 minute
-      '6h': 20,    // Every 10 minutes (optimal)
-      '12h': 15,   // Every 15 minutes (optimal)
-      '24h': 30,   // Every 30 minutes (optimal)
-      '7d': 120    // Every 120 minutes (2 hours) (optimal)
+      '6h': 20,    // Every 20 minutes (optimal)
+      '12h': 40,   // Every 40 minutes (optimal)
+      '24h': 80,   // Every 80 minutes (optimal)
+      '7d': 360    // Every 360 minutes (2 hours) (optimal)
     }
     return intervals[timeBase] || 1
   }
@@ -1265,10 +1265,10 @@ const updateChart = () => {
       '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
       '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
       '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
-      '6h': { unit: 'minute', stepSize: 40 },     // Every 40 minutes
-      '12h': { unit: 'minute', stepSize: 15 },    // Every 15 minutes (0.25 hour)
-      '24h': { unit: 'minute', stepSize: 30 },    // Every 30 minutes (0.5 hours)
-      '7d': { unit: 'minute', stepSize: 120 }     // Every 120 minutes (2 hours)
+      '6h': { unit: 'minute', stepSize: 20 },     // Every 20 minutes
+      '12h': { unit: 'minute', stepSize: 40 },    // Every 15 minutes (0.25 hour)
+      '24h': { unit: 'minute', stepSize: 80 },    // Every 30 minutes (0.5 hours)
+      '7d': { unit: 'minute', stepSize: 360 }     // Every 120 minutes (2 hours)
     }
     const tickConfig = tickConfigs[timeBase.value] || tickConfigs['1h']
 
@@ -1288,10 +1288,10 @@ const updateChart = () => {
       '15m': 6,   // 5 intervals + 1
       '30m': 6,   // 5 intervals + 1
       '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
-      '6h': 13,   // 12 intervals + 1 (0,10,20,30,40,50,60,70,80,90,100,110,120)
-      '12h': 13,  // 12 intervals + 1 (every 60 minutes)
-      '24h': 13,  // 12 intervals + 1 (every 120 minutes)
-      '7d': 13    // 12 intervals + 1 (every 840 minutes)
+      '6h': 19,   // 18 intervals + 1 (every 20 minutes)
+      '12h': 19,  // 18 intervals + 1 (every 40 minutes)
+      '24h': 19,  // 18 intervals + 1 (every 80 minutes)
+      '7d': 29    // 28 intervals + 1 (every 360 minutes)
     }
 
     xScale.ticks = {
