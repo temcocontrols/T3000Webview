@@ -767,9 +767,25 @@ const allAnalogEnabled = computed(() => {
   return analogSeries.value.length > 0 && analogSeries.value.every(series => series.visible)
 })
 
+
 const allDigitalEnabled = computed(() => {
   return digitalSeries.value.length > 0 && digitalSeries.value.every(series => series.visible)
 })
+
+// Helper to get the data interval (in minutes) for the current time base
+const getDataPointInterval = (timeBase: string): number => {
+  const intervals = {
+    '5m': 1,     // Every 1 minute
+    '15m': 1,    // Every 1 minute
+    '30m': 1,    // Every 1 minute
+    '1h': 5,     // Every 5 minutes
+    '6h': 20,    // Every 20 minutes
+    '12h': 40,   // Every 40 minutes
+    '24h': 80,   // Every 80 minutes
+    '7d': 360    // Every 360 minutes
+  }
+  return intervals[timeBase] || 1
+}
 
 // Chart configuration with Grafana-like styling
 const getChartConfig = () => ({
@@ -973,7 +989,10 @@ const getChartConfig = () => ({
           const now = new Date()
           const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
           const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-          return offsetTime.getTime()
+          // Extend the max slightly to ensure the last tick label is rendered
+          // This applies to all long timebases (6h, 12h, 24h, 7d) and is harmless for shorter ones
+          const dataInterval = getDataPointInterval(timeBase.value)
+          return offsetTime.getTime() + (dataInterval * 60 * 1000) / 10; // Extend by 10% of an interval
         })()
       },
       y: {
@@ -1320,7 +1339,10 @@ const updateChart = () => {
     const endTime = offsetTime
 
     xScale.min = startTime.getTime()
-    xScale.max = endTime.getTime()
+    // Extend the max slightly to ensure the last tick label is rendered
+    // This applies to all long timebases (6h, 12h, 24h, 7d) and is harmless for shorter ones
+    const dataInterval = getDataPointInterval(timeBase.value)
+    xScale.max = endTime.getTime() + (dataInterval * 60 * 1000) / 10; // Extend by 10% of an interval
   }
 
   // Update y-axis grid configuration
