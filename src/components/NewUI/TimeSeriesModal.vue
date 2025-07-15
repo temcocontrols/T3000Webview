@@ -24,7 +24,7 @@
                   <DownOutlined style="margin-left: 4px;" />
                 </a-button>
                 <template #overlay>
-                  <a-menu @click="handleTimeBaseMenu">
+                  <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
                     <a-menu-item key="5m">5 minutes</a-menu-item>
                     <a-menu-item key="15m">15 minutes</a-menu-item>
                     <a-menu-item key="30m">30 minutes</a-menu-item>
@@ -133,13 +133,16 @@
               </a-tag>
 
               <!-- Connection Status -->
-              <a-tag :color="connectionStatus === 'connected' ? 'green' : connectionStatus === 'connecting' ? 'orange' : 'red'" size="small">
+              <a-tag
+                :color="connectionStatus === 'connected' ? 'green' : connectionStatus === 'connecting' ? 'orange' : 'red'"
+                size="small">
                 <template #icon>
                   <WifiOutlined v-if="connectionStatus === 'connected'" />
                   <LoadingOutlined v-else-if="connectionStatus === 'connecting'" />
                   <DisconnectOutlined v-else />
                 </template>
-                {{ connectionStatus === 'connected' ? 'Online' : connectionStatus === 'connecting' ? 'Connecting' : 'Offline' }}
+                {{ connectionStatus === 'connected' ? 'Online' : connectionStatus === 'connecting' ? 'Connecting' :
+                'Offline' }}
               </a-tag>
 
               <!-- Series Count -->
@@ -247,7 +250,7 @@
                     <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
-                    <a-menu @click="handleAllMenu">
+                    <a-menu @click="handleAllMenu" class="all-dropdown-menu">
                       <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
                         <CheckOutlined />
                         Enable All
@@ -265,7 +268,7 @@
                     <DownOutlined style="margin-left: 4px;" />
                   </a-button>
                   <template #overlay>
-                    <a-menu @click="handleByTypeMenu">
+                    <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
                       <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
                         <LineChartOutlined />
                         {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
@@ -290,7 +293,8 @@
                 'series-empty': series.isEmpty
               }">
                 <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
-                  <div v-if="!series.isEmpty" class="series-color-indicator" :style="{ backgroundColor: series.color }"></div>
+                  <div v-if="!series.isEmpty" class="series-color-indicator" :style="{ backgroundColor: series.color }">
+                  </div>
                   <div class="series-info">
                     <span class="series-name">
                       {{ series.name }}
@@ -2135,7 +2139,7 @@ onUnmounted(() => {
 
 .section-time {
   flex-shrink: 1;
-  min-width: 280px;
+  min-width: 200px;
 }
 
 .section-info {
@@ -2238,7 +2242,6 @@ onUnmounted(() => {
   height: auto !important;
   padding: 4px 0 !important;
   line-height: 1.2 !important;
-  font-size: 12px !important;
   color: #262626 !important;
   display: flex !important;
   align-items: center !important;
@@ -2248,7 +2251,6 @@ onUnmounted(() => {
 :deep(.chart-options-menu .ant-btn .anticon),
 :deep(.zoom-options-menu .ant-btn .anticon),
 :deep(.export-options-menu .ant-btn .anticon) {
-  font-size: 12px !important;
   margin-right: 6px !important;
   color: #1890ff !important;
 }
@@ -2256,7 +2258,6 @@ onUnmounted(() => {
 :deep(.chart-options-menu .ant-btn span),
 :deep(.zoom-options-menu .ant-btn span),
 :deep(.export-options-menu .ant-btn span) {
-  font-size: 12px !important;
   color: #262626 !important;
 }
 
@@ -2338,7 +2339,6 @@ onUnmounted(() => {
 .export-options-menu .ant-menu-item,
 .export-options-menu .ant-btn,
 .export-options-menu .ant-btn span {
-  font-size: 12px !important;
   font-weight: 400 !important;
 }
 
@@ -2358,7 +2358,6 @@ onUnmounted(() => {
 
 .export-options-menu .ant-btn .anticon {
   margin-right: 8px !important;
-  font-size: 12px !important;
   display: inline-flex !important;
   align-items: center !important;
 }
@@ -2474,7 +2473,7 @@ onUnmounted(() => {
   background: #ffffff;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   color: #000;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 12px;
@@ -2646,7 +2645,7 @@ onUnmounted(() => {
 
 /* Override Ant Design tag styles more aggressively */
 :deep(.series-details .ant-tag) {
-  font-size:10px !important;
+  font-size: 10px !important;
   padding: 0 2px !important;
   line-height: 12px !important;
   height: 12px !important;
@@ -2913,4 +2912,15 @@ onUnmounted(() => {
     justify-content: center;
   }
 }
+</style>
+
+<style>
+
+ .t3-timeseries-modal .ant-dropdown-menu-title-content {
+    font-size: 12px !important;
+  }
+
+.ant-dropdown-menu-title-content {
+    font-size: 12px !important;
+  }
 </style>
