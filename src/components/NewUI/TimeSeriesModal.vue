@@ -800,6 +800,14 @@ const getChartConfig = () => ({
   options: {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        left: 10,
+        right: 20,  // Increased right padding to ensure last point is visible
+        top: 10,
+        bottom: 10
+      }
+    },
     interaction: {
       intersect: false,
       mode: 'index' as const
@@ -896,15 +904,29 @@ const getChartConfig = () => ({
     scales: {
       x: {
         type: 'time' as const,
-        time: {
-          unit: getTimeAxisUnit(),
-          stepSize: getTimeAxisStepSize(),
-          displayFormats: {
-            minute: 'HH:mm',
-            hour: 'HH:mm',
-            day: 'MM/DD'
+        time: (() => {
+          // Direct calculation based on timeBase selection
+          const tickConfigs = {
+            '5m': { unit: 'minute', stepSize: 1 },      // Every 1 minute
+            '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
+            '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
+            '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
+            '6h': { unit: 'hour', stepSize: 1 },       // Every 1 hour
+            '12h': { unit: 'hour', stepSize: 2 },      // Every 2 hours
+            '24h': { unit: 'hour', stepSize: 4 },      // Every 4 hours
+            '7d': { unit: 'day', stepSize: 1 }         // Every 1 day
           }
-        },
+          const config = tickConfigs[timeBase.value] || tickConfigs['1h']
+          return {
+            unit: config.unit,
+            stepSize: config.stepSize,
+            displayFormats: {
+              minute: 'HH:mm',
+              hour: 'HH:mm',
+              day: 'MM/DD'
+            }
+          }
+        })(),
         grid: {
           color: showGrid.value ? '#e0e0e0' : 'transparent',
           display: showGrid.value,
@@ -916,13 +938,43 @@ const getChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          maxTicksLimit: getTimeAxisMaxTicks(),
+          maxTicksLimit: (() => {
+            // Calculate max ticks based on timebase for proper grid division
+            const maxTicksConfigs = {
+              '5m': 6,    // 5 intervals + 1
+              '15m': 6,   // 5 intervals + 1
+              '30m': 6,   // 5 intervals + 1
+              '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
+              '6h': 7,    // 6 intervals + 1
+              '12h': 7,   // 6 intervals + 1
+              '24h': 7,   // 6 intervals + 1
+              '7d': 8     // 7 intervals + 1
+            }
+            return maxTicksConfigs[timeBase.value] || 7
+          })(),
           maxRotation: 0,
-          minRotation: 0
+          minRotation: 0,
+          includeBounds: true  // Force Chart.js to include boundary ticks
         },
-        // Set proper time window based on current timebase and navigation
-        min: getCurrentTimeWindow().min,
-        max: getCurrentTimeWindow().max
+        min: (() => {
+          // Calculate time window directly based on timeBase and navigation
+          const now = new Date()
+          const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
+          const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
+
+          const rangeMinutes = {
+            '5m': 5, '15m': 15, '30m': 30, '1h': 60, '6h': 360, '12h': 720, '24h': 1440, '7d': 10080
+          }[timeBase.value] || 60
+
+          return new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000).getTime()
+        })(),
+        max: (() => {
+          // Calculate end time - exact end of range to show all data points
+          const now = new Date()
+          const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
+          const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
+          return offsetTime.getTime()
+        })()
       },
       y: {
         // NEW: Extended Y-axis range to support both digital (0/1) and analog values
@@ -967,10 +1019,9 @@ const getTimeAxisUnit = (): 'minute' | 'hour' | 'day' => {
     case '5m':
     case '15m':
     case '30m':
+    case '1h':  // Changed: Use minute unit for 1h to show 10-minute intervals
       return 'minute'
-    case '1h':
     case '6h':
-      return 'hour'
     case '12h':
     case '24h':
       return 'hour'
@@ -990,7 +1041,7 @@ const getTimeAxisStepSize = (): number => {
     case '30m':
       return 5 // every 5 minutes
     case '1h':
-      return 1 // every 1 hour when using hour unit
+      return 10 // every 10 minutes for 1 hour timebase
     case '6h':
       return 1 // every 1 hour
     case '12h':
@@ -1013,7 +1064,7 @@ const getTimeAxisMaxTicks = (): number => {
     case '30m':
       return 7 // 7 ticks for 30 minutes
     case '1h':
-      return 7 // 7 ticks for 1 hour
+      return 6 // 6 ticks for 1 hour (every 10 minutes)
     case '6h':
       return 7 // 7 ticks for 6 hours
     case '12h':
@@ -1030,7 +1081,7 @@ const getTimeAxisMaxTicks = (): number => {
 // Time navigation tracking
 const timeOffset = ref(0) // Offset in minutes from current time
 
-// Add helper to get current time window with proper alignment
+// Add helper to get current time window with proper alignment (simplified)
 const getCurrentTimeWindow = () => {
   const now = new Date()
   // Align current time to exact minute
@@ -1050,11 +1101,17 @@ const getCurrentTimeWindow = () => {
 
 // Data generation and management - Updated to use 1-minute intervals
 const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPoint[] => {
-  const timeWindow = getCurrentTimeWindow()
-  const endTime = timeWindow.max
-  const startTime = timeWindow.min
+  const now = new Date()
+  // Align current time to exact minute
+  const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
 
-  // Generate data every 1 minute (60,000 ms intervals)
+  // Apply time offset for navigation
+  const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
+
+  const startTime = new Date(offsetTime.getTime() - timeRangeMinutes * 60 * 1000)
+  const endTime = offsetTime.getTime()
+
+  // Generate data every 1 minute, including the end point
   const dataPointCount = timeRangeMinutes + 1 // +1 to include both start and end points
   const series = dataSeries.value[seriesIndex]
   const data: DataPoint[] = []
@@ -1065,7 +1122,7 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
 
     for (let i = 0; i < dataPointCount; i++) {
       // Calculate timestamp: start time plus i minutes (1-minute intervals)
-      const timestamp = startTime + i * 60 * 1000
+      const timestamp = startTime.getTime() + i * 60 * 1000
 
       // Randomly change state (about 10% chance per point for realistic transitions)
       if (Math.random() < 0.1) {
@@ -1104,7 +1161,7 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
 
     for (let i = 0; i < dataPointCount; i++) {
       // Calculate timestamp: start time plus i minutes (1-minute intervals)
-      const timestamp = startTime + i * 60 * 1000
+      const timestamp = startTime.getTime() + i * 60 * 1000
 
       // Generate smooth sine wave with some noise for realistic analog data
       const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
@@ -1238,30 +1295,60 @@ const updateChart = () => {
       // Apply step-line for digital, smooth/straight for analog
       stepped: series.unitType === 'digital' ? 'middle' as const : false,
       tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
-      pointRadius: showPoints.value ? 3 : 0,
+      pointRadius: showPoints.value ? 3 : 1,  // Always show at least small points to ensure visibility
       pointHoverRadius: 6,
       pointBackgroundColor: series.color,
       pointBorderColor: '#fff',
-      pointBorderWidth: 2
+      pointBorderWidth: 2,
+      // Ensure point style makes end points visible
+      pointStyle: 'circle' as const
     }))
 
   // Update x-axis configuration based on current timebase and navigation
   if (chartInstance.options.scales?.x) {
     const xScale = chartInstance.options.scales.x as any
+
+    // Direct calculation based on timeBase selection
+    const tickConfigs = {
+      '5m': { unit: 'minute', stepSize: 1 },      // Every 1 minute
+      '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
+      '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
+      '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
+      '6h': { unit: 'hour', stepSize: 1 },       // Every 1 hour
+      '12h': { unit: 'hour', stepSize: 2 },      // Every 2 hours
+      '24h': { unit: 'hour', stepSize: 4 },      // Every 4 hours
+      '7d': { unit: 'day', stepSize: 1 }         // Every 1 day
+    }
+    const tickConfig = tickConfigs[timeBase.value] || tickConfigs['1h']
+
     xScale.time = {
-      unit: getTimeAxisUnit(),
-      stepSize: getTimeAxisStepSize(),
+      unit: tickConfig.unit,
+      stepSize: tickConfig.stepSize,
       displayFormats: {
         minute: 'HH:mm',
         hour: 'HH:mm',
         day: 'MM/DD'
       }
     }
+
+    // Calculate max ticks based on timebase for proper grid division
+    const maxTicksConfigs = {
+      '5m': 6,    // 5 intervals + 1
+      '15m': 6,   // 5 intervals + 1
+      '30m': 6,   // 5 intervals + 1
+      '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
+      '6h': 7,    // 6 intervals + 1
+      '12h': 7,   // 6 intervals + 1
+      '24h': 7,   // 6 intervals + 1
+      '7d': 8     // 7 intervals + 1
+    }
+
     xScale.ticks = {
       ...xScale.ticks,
-      maxTicksLimit: getTimeAxisMaxTicks(),
+      maxTicksLimit: maxTicksConfigs[timeBase.value] || 7,
       maxRotation: 0,
-      minRotation: 0
+      minRotation: 0,
+      includeBounds: true  // Force Chart.js to include boundary ticks
     }
     xScale.grid = {
       color: showGrid.value ? '#e0e0e0' : 'transparent',
@@ -1269,10 +1356,20 @@ const updateChart = () => {
       lineWidth: 1
     }
 
-    // Set proper time window
-    const timeWindow = getCurrentTimeWindow()
-    xScale.min = timeWindow.min
-    xScale.max = timeWindow.max
+    // Set proper time window directly based on timeBase and navigation
+    const now = new Date()
+    const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
+    const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
+
+    const rangeMinutes = {
+      '5m': 5, '15m': 15, '30m': 30, '1h': 60, '6h': 360, '12h': 720, '24h': 1440, '7d': 10080
+    }[timeBase.value] || 60
+
+    const startTime = new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000)
+    const endTime = offsetTime
+
+    xScale.min = startTime.getTime()
+    xScale.max = endTime.getTime()
   }
 
   // Update y-axis grid configuration
@@ -2247,8 +2344,8 @@ onUnmounted(() => {
 
 .chart-container {
   flex: 1;
-  padding: 8px;
-  /* Reduced padding */
+  padding: 12px;
+  /* Increased padding to ensure last point is visible */
   position: relative;
   min-height: 280px;
   /* Reduced min height */
