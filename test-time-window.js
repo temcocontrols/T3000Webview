@@ -47,21 +47,40 @@ const calculateTimeWindow = (timeBase, timeOffset = 0) => {
 
 const generateDataTimestamps = (timeBase, timeOffset = 0) => {
   const rangeMinutes = getTimeRangeMinutes(timeBase)
+
+  // Determine data point interval based on timebase
+  const getDataPointInterval = (timeBase) => {
+    const intervals = {
+      '5m': 1,     // Every 1 minute
+      '15m': 1,    // Every 1 minute
+      '30m': 1,    // Every 1 minute
+      '1h': 1,     // Every 1 minute
+      '6h': 10,    // Every 10 minutes
+      '12h': 30,   // Every 30 minutes
+      '24h': 60,   // Every 60 minutes
+      '7d': 240    // Every 240 minutes (4 hours)
+    }
+    return intervals[timeBase] || 1
+  }
+
+  const dataInterval = getDataPointInterval(timeBase)
+  const dataPointCount = Math.floor(rangeMinutes / dataInterval) + 1
+
   const now = new Date()
   const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
   const offsetTime = new Date(currentMinute.getTime() + timeOffset * 60 * 1000)
   const startTime = new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000)
 
-  const dataPointCount = rangeMinutes + 1 // +1 to include both start and end points
   const timestamps = []
 
   for (let i = 0; i < dataPointCount; i++) {
-    const timestamp = startTime.getTime() + i * 60 * 1000
+    const timestamp = startTime.getTime() + i * dataInterval * 60 * 1000
     timestamps.push(new Date(timestamp))
   }
 
   return {
     count: dataPointCount,
+    interval: dataInterval,
     first: timestamps[0],
     last: timestamps[timestamps.length - 1],
     all: timestamps
@@ -80,6 +99,7 @@ timebases.forEach(timebase => {
   console.log(`\n${timebase}:`)
   console.log(`  Range: ${window.range} minutes`)
   console.log(`  Tick Unit: ${tickConfig.unit}, Step: ${tickConfig.stepSize}, Max Ticks: ${tickConfig.maxTicks}`)
+  console.log(`  Data Interval: ${dataInfo.interval} minutes`)
   console.log(`  Window: ${window.start.toLocaleTimeString()} -> ${window.end.toLocaleTimeString()}`)
   console.log(`  Data Points: ${dataInfo.count}`)
   console.log(`  First Data: ${dataInfo.first.toLocaleTimeString()}`)
@@ -87,7 +107,7 @@ timebases.forEach(timebase => {
   console.log(`  Last point within window: ${dataInfo.last.getTime() <= window.max ? 'YES' : 'NO'}`)
 
   // Calculate expected grid divisions
-  const expectedTicks = Math.floor(window.range / (tickConfig.stepSize * (tickConfig.unit === 'hour' ? 60 : tickConfig.unit === 'day' ? 1440 : 1))) + 1
+  const expectedTicks = Math.floor(window.range / tickConfig.stepSize) + 1
   console.log(`  Expected ticks: ${expectedTicks} (configured max: ${tickConfig.maxTicks})`)
 })
 

@@ -1099,7 +1099,7 @@ const getCurrentTimeWindow = () => {
   }
 }
 
-// Data generation and management - Updated to use 1-minute intervals
+// Data generation and management - Updated to use timebase-specific intervals
 const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPoint[] => {
   const now = new Date()
   // Align current time to exact minute
@@ -1111,8 +1111,23 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
   const startTime = new Date(offsetTime.getTime() - timeRangeMinutes * 60 * 1000)
   const endTime = offsetTime.getTime()
 
-  // Generate data every 1 minute, including the end point
-  const dataPointCount = timeRangeMinutes + 1 // +1 to include both start and end points
+  // Determine data point interval based on timebase
+  const getDataPointInterval = (timeBase: string): number => {
+    const intervals = {
+      '5m': 1,     // Every 1 minute
+      '15m': 1,    // Every 1 minute
+      '30m': 1,    // Every 1 minute
+      '1h': 1,     // Every 1 minute
+      '6h': 10,    // Every 10 minutes
+      '12h': 30,   // Every 30 minutes
+      '24h': 60,   // Every 60 minutes
+      '7d': 240    // Every 240 minutes (4 hours)
+    }
+    return intervals[timeBase] || 1
+  }
+
+  const dataInterval = getDataPointInterval(timeBase.value)
+  const dataPointCount = Math.floor(timeRangeMinutes / dataInterval) + 1 // +1 to include both start and end points
   const series = dataSeries.value[seriesIndex]
   const data: DataPoint[] = []
 
@@ -1121,8 +1136,8 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
     let currentState = Math.random() > 0.5 ? 1 : 0
 
     for (let i = 0; i < dataPointCount; i++) {
-      // Calculate timestamp: start time plus i minutes (1-minute intervals)
-      const timestamp = startTime.getTime() + i * 60 * 1000
+      // Calculate timestamp: start time plus i * dataInterval minutes
+      const timestamp = startTime.getTime() + i * dataInterval * 60 * 1000
 
       // Randomly change state (about 10% chance per point for realistic transitions)
       if (Math.random() < 0.1) {
@@ -1160,8 +1175,8 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
     }
 
     for (let i = 0; i < dataPointCount; i++) {
-      // Calculate timestamp: start time plus i minutes (1-minute intervals)
-      const timestamp = startTime.getTime() + i * 60 * 1000
+      // Calculate timestamp: start time plus i * dataInterval minutes
+      const timestamp = startTime.getTime() + i * dataInterval * 60 * 1000
 
       // Generate smooth sine wave with some noise for realistic analog data
       const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
