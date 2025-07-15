@@ -557,7 +557,7 @@ const zoomLevel = ref(1)
 const customStartDate = ref<Dayjs | null>(null)
 const customEndDate = ref<Dayjs | null>(null)
 const isRealTime = ref(true)
-const updateInterval = ref(30000) // 30 seconds
+const updateInterval = ref(60000) // 60 seconds (1 minute) to match data generation interval
 const isLoading = ref(false)
 const showGrid = ref(true)
 const showLegend = ref(true)
@@ -897,6 +897,8 @@ const getChartConfig = () => ({
       x: {
         type: 'time' as const,
         time: {
+          unit: getTimeAxisUnit(),
+          stepSize: getTimeAxisStepSize(),
           displayFormats: {
             minute: 'HH:mm',
             hour: 'HH:mm',
@@ -904,16 +906,23 @@ const getChartConfig = () => ({
           }
         },
         grid: {
-          color: showGrid.value ? '#d0d0d0' : 'transparent',
-          display: showGrid.value
+          color: showGrid.value ? '#e0e0e0' : 'transparent',
+          display: showGrid.value,
+          lineWidth: 1
         },
         ticks: {
           color: '#595959',
           font: {
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
-          }
-        }
+          },
+          maxTicksLimit: getTimeAxisMaxTicks(),
+          maxRotation: 0,
+          minRotation: 0
+        },
+        // Set proper time window based on current timebase and navigation
+        min: getCurrentTimeWindow().min,
+        max: getCurrentTimeWindow().max
       },
       y: {
         // NEW: Extended Y-axis range to support both digital (0/1) and analog values
@@ -952,10 +961,101 @@ const getChartConfig = () => ({
   }
 })
 
-// Data generation and management
+// Helper functions for dynamic x-axis configuration based on timebase
+const getTimeAxisUnit = (): 'minute' | 'hour' | 'day' => {
+  switch (timeBase.value) {
+    case '5m':
+    case '15m':
+    case '30m':
+      return 'minute'
+    case '1h':
+    case '6h':
+      return 'hour'
+    case '12h':
+    case '24h':
+      return 'hour'
+    case '7d':
+      return 'day'
+    default:
+      return 'hour'
+  }
+}
+
+const getTimeAxisStepSize = (): number => {
+  switch (timeBase.value) {
+    case '5m':
+      return 1 // every 1 minute
+    case '15m':
+      return 3 // every 3 minutes
+    case '30m':
+      return 5 // every 5 minutes
+    case '1h':
+      return 1 // every 1 hour when using hour unit
+    case '6h':
+      return 1 // every 1 hour
+    case '12h':
+      return 2 // every 2 hours
+    case '24h':
+      return 3 // every 3 hours
+    case '7d':
+      return 1 // every 1 day
+    default:
+      return 1
+  }
+}
+
+const getTimeAxisMaxTicks = (): number => {
+  switch (timeBase.value) {
+    case '5m':
+      return 6 // 6 ticks for 5 minutes
+    case '15m':
+      return 6 // 6 ticks for 15 minutes
+    case '30m':
+      return 7 // 7 ticks for 30 minutes
+    case '1h':
+      return 7 // 7 ticks for 1 hour
+    case '6h':
+      return 7 // 7 ticks for 6 hours
+    case '12h':
+      return 7 // 7 ticks for 12 hours
+    case '24h':
+      return 9 // 9 ticks for 24 hours
+    case '7d':
+      return 8 // 8 ticks for 7 days
+    default:
+      return 10
+  }
+}
+
+// Time navigation tracking
+const timeOffset = ref(0) // Offset in minutes from current time
+
+// Add helper to get current time window with proper alignment
+const getCurrentTimeWindow = () => {
+  const now = new Date()
+  // Align current time to exact minute
+  const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
+
+  // Apply time offset for navigation
+  const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
+
+  const rangeMinutes = getTimeRangeMinutes(timeBase.value)
+  const startTime = new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000)
+
+  return {
+    min: startTime.getTime(),
+    max: offsetTime.getTime()
+  }
+}
+
+// Data generation and management - Updated to use 1-minute intervals
 const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPoint[] => {
-  const now = Date.now()
-  const points = Math.min(timeRangeMinutes * 2, 200) // 1 point every 30 seconds, max 200 points
+  const timeWindow = getCurrentTimeWindow()
+  const endTime = timeWindow.max
+  const startTime = timeWindow.min
+
+  // Generate data every 1 minute (60,000 ms intervals)
+  const dataPointCount = timeRangeMinutes + 1 // +1 to include both start and end points
   const series = dataSeries.value[seriesIndex]
   const data: DataPoint[] = []
 
@@ -963,8 +1063,9 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
     // Digital data: Generate step-like transitions between 0 and 1
     let currentState = Math.random() > 0.5 ? 1 : 0
 
-    for (let i = 0; i < points; i++) {
-      const timestamp = now - (points - i) * 30000 // 30 second intervals
+    for (let i = 0; i < dataPointCount; i++) {
+      // Calculate timestamp: start time plus i minutes (1-minute intervals)
+      const timestamp = startTime + i * 60 * 1000
 
       // Randomly change state (about 10% chance per point for realistic transitions)
       if (Math.random() < 0.1) {
@@ -1001,11 +1102,16 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
       range = 10
     }
 
-    for (let i = 0; i < points; i++) {
-      const timestamp = now - (points - i) * 30000 // 30 second intervals
-      const variation = Math.sin(i * 0.1) * range * 0.3 + (Math.random() * range * 0.4 - range * 0.2)
-      const value = Math.max(0, baseValue + variation) // Ensure non-negative values
-      data.push({ timestamp, value })
+    for (let i = 0; i < dataPointCount; i++) {
+      // Calculate timestamp: start time plus i minutes (1-minute intervals)
+      const timestamp = startTime + i * 60 * 1000
+
+      // Generate smooth sine wave with some noise for realistic analog data
+      const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
+      const noise = (Math.random() - 0.5) * (range / 5)
+      const value = baseValue + sineValue + noise
+
+      data.push({ timestamp, value: Math.round(value * 100) / 100 })
     }
   }
 
@@ -1037,7 +1143,14 @@ const initializeData = () => {
 }
 
 const addRealtimeDataPoint = () => {
-  const now = Date.now()
+  // Only add data if we're in real-time mode
+  if (!isRealTime.value) return
+
+  const now = new Date()
+  // Align to exact minute for consistent grid alignment
+  const alignedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
+  const timestamp = alignedTime.getTime()
+
   dataSeries.value.forEach((series, index) => {
     if (series.isEmpty) return
 
@@ -1046,8 +1159,8 @@ const addRealtimeDataPoint = () => {
     if (series.unitType === 'digital') {
       // Digital data: Randomly change state occasionally (simulate T3000 digital input changes)
       const lastValue = series.data.length > 0 ? series.data[series.data.length - 1].value : 0
-      // 5% chance to change state each update (simulating real digital state changes)
-      if (Math.random() < 0.05) {
+      // 3% chance to change state each update (simulating real digital state changes)
+      if (Math.random() < 0.03) {
         newValue = lastValue === 1 ? 0 : 1
       } else {
         newValue = lastValue
@@ -1077,11 +1190,15 @@ const addRealtimeDataPoint = () => {
       newValue = Math.max(0, lastValue + variation) // Ensure non-negative
     }
 
-    series.data.push({ timestamp: now, value: newValue })
+    // Only add new point if timestamp is different from last point (avoid duplicates)
+    const lastTimestamp = series.data.length > 0 ? series.data[series.data.length - 1].timestamp : 0
+    if (timestamp > lastTimestamp) {
+      series.data.push({ timestamp, value: newValue })
 
-    // Keep only the last 200 points for performance
-    if (series.data.length > 200) {
-      series.data.shift()
+      // Keep only the last 500 points for performance (approximately 8+ hours of data)
+      if (series.data.length > 500) {
+        series.data.shift()
+      }
     }
   })
 
@@ -1128,6 +1245,46 @@ const updateChart = () => {
       pointBorderWidth: 2
     }))
 
+  // Update x-axis configuration based on current timebase and navigation
+  if (chartInstance.options.scales?.x) {
+    const xScale = chartInstance.options.scales.x as any
+    xScale.time = {
+      unit: getTimeAxisUnit(),
+      stepSize: getTimeAxisStepSize(),
+      displayFormats: {
+        minute: 'HH:mm',
+        hour: 'HH:mm',
+        day: 'MM/DD'
+      }
+    }
+    xScale.ticks = {
+      ...xScale.ticks,
+      maxTicksLimit: getTimeAxisMaxTicks(),
+      maxRotation: 0,
+      minRotation: 0
+    }
+    xScale.grid = {
+      color: showGrid.value ? '#e0e0e0' : 'transparent',
+      display: showGrid.value,
+      lineWidth: 1
+    }
+
+    // Set proper time window
+    const timeWindow = getCurrentTimeWindow()
+    xScale.min = timeWindow.min
+    xScale.max = timeWindow.max
+  }
+
+  // Update y-axis grid configuration
+  if (chartInstance.options.scales?.y) {
+    const yScale = chartInstance.options.scales.y as any
+    yScale.grid = {
+      color: showGrid.value ? '#e0e0e0' : 'transparent',
+      display: showGrid.value,
+      lineWidth: 1
+    }
+  }
+
   chartInstance.update('none')
 }
 
@@ -1171,40 +1328,34 @@ const toggleDigitalSeries = () => {
 }
 
 
-// New control functions
+// New control functions - Updated to use timeOffset and regenerate data
 const moveTimeLeft = () => {
   if (isRealTime.value) return
 
-  // Move time window left by 15 minutes (or timebase/4)
-  const baseMinutes = getTimeRangeMinutes(timeBase.value)
-  const shiftMinutes = Math.max(baseMinutes / 4, 15)
+  // Move time window left by exactly the timebase period
+  const shiftMinutes = getTimeRangeMinutes(timeBase.value)
 
-  dataSeries.value.forEach((series) => {
-    series.data = series.data.map(point => ({
-      ...point,
-      timestamp: point.timestamp - (shiftMinutes * 60 * 1000)
-    }))
-  })
+  // Update the time offset to track navigation
+  timeOffset.value -= shiftMinutes
 
-  updateChart()
+  // Regenerate data for the new time window
+  initializeData()
+
   message.info(`Moved ${shiftMinutes} minutes back`)
 }
 
 const moveTimeRight = () => {
   if (isRealTime.value) return
 
-  // Move time window right by 15 minutes (or timebase/4)
-  const baseMinutes = getTimeRangeMinutes(timeBase.value)
-  const shiftMinutes = Math.max(baseMinutes / 4, 15)
+  // Move time window right by exactly the timebase period
+  const shiftMinutes = getTimeRangeMinutes(timeBase.value)
 
-  dataSeries.value.forEach((series) => {
-    series.data = series.data.map(point => ({
-      ...point,
-      timestamp: point.timestamp + (shiftMinutes * 60 * 1000)
-    }))
-  })
+  // Update the time offset to track navigation
+  timeOffset.value += shiftMinutes
 
-  updateChart()
+  // Regenerate data for the new time window
+  initializeData()
+
   message.info(`Moved ${shiftMinutes} minutes forward`)
 }
 
@@ -1324,6 +1475,8 @@ const setView = (viewNumber: number) => {
 // Event handlers
 const onTimeBaseChange = () => {
   if (timeBase.value !== 'custom') {
+    // Reset time offset when timebase changes
+    timeOffset.value = 0
     initializeData()
   }
 }
@@ -1337,6 +1490,10 @@ const onCustomDateChange = () => {
 
 const onRealTimeToggle = (checked: boolean) => {
   if (checked) {
+    // Reset time offset when switching to real-time
+    timeOffset.value = 0
+    // Regenerate data for current time
+    initializeData()
     startRealTimeUpdates()
   } else {
     stopRealTimeUpdates()
@@ -2090,7 +2247,7 @@ onUnmounted(() => {
 
 .chart-container {
   flex: 1;
-  padding: 12px;
+  padding: 8px;
   /* Reduced padding */
   position: relative;
   min-height: 280px;
@@ -2111,7 +2268,7 @@ onUnmounted(() => {
   background: #fafafa;
   border: 1px solid #e8e8e8;
   border-radius: 0px;
-  padding: 8px 12px;
+  padding: 4px 6px;
   margin-bottom: 5px;
   box-sizing: border-box;
 }
