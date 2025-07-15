@@ -84,12 +84,21 @@ export default {
           }
         });
     }
+
+    function navigateToLogin() {
+      // Get the current route path to redirect back after login
+      const currentPath = router.currentRoute.value.path;
+      console.log("Redirecting to login from:", currentPath);
+      router.push({ path: '/login', query: { redirect: currentPath } });
+    }
+
     return {
       logout,
       search,
       user,
       globalNav,
       isAdmin,
+      navigateToLogin,
     };
   },
 };
@@ -146,7 +155,7 @@ export default {
         </q-list>
       </q-menu>
     </q-btn>
-    <q-btn v-else flat label="Login" to="/login" />
+    <q-btn v-else flat label="Login" @click="navigateToLogin" />
   </q-toolbar>
 </template>
 

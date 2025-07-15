@@ -172,7 +172,7 @@
           <q-tab name="newui" no-caps label="New UI" @click="navigateTo('hvac/t2')" />
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
-          <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
+          <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" @click="navigateToLogin" /></div>
         </q-tabs>
         <q-separator />
         <q-tab-panels v-model="tab" class="tab-panel">
@@ -501,7 +501,7 @@
 <script lang="ts">
 
 import { defineComponent, ref, watch, onMounted } from 'vue'
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useQuasar } from "quasar"
 import { tools/*, user*/ } from "../lib/common";
 import { user } from "../lib/T3000/Hvac/Data/T3Data";
@@ -557,11 +557,20 @@ export default defineComponent({
     const currentDevice = ref(null);
     const deviceTabTitle = ref('Device (-)');
     const router = useRouter();
+    const route = useRoute();
 
     const navigateTo = (routeName) => {
       // console.log(router);
       router.push({ path: routeName });
     }
+
+    const navigateToLogin = () => {
+      // Navigate to login with current route as redirect parameter
+      router.push({
+        path: '/login',
+        query: { redirect: route.path }
+      });
+    };
 
     const $q = useQuasar();
     function menuActionEmit(action, val = null) {
@@ -613,7 +622,8 @@ export default defineComponent({
       currentDevice,
       deviceTabTitle,
       devVersion,
-      navigateTo
+      navigateTo,
+      navigateToLogin
     };
   },
 });

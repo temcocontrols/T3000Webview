@@ -130,7 +130,7 @@
           <q-tab name="file" no-caps label="File" />
           <!-- <q-tab name="edit" label="Edit" />
             <q-tab name="object" label="Object" /> -->
-          <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
+          <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" @click="navigateToLogin" /></div>
         </q-tabs>
         <q-separator />
         <q-tab-panels v-model="tab">
@@ -256,6 +256,7 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
 export default defineComponent({
   name: 'NewTopBar',
@@ -271,6 +272,8 @@ export default defineComponent({
   },
   emits: ["navGoBack", "lockToggle"],
   setup(props, { emit }) {
+    const router = useRouter();
+    const route = useRoute();
 
     const navGoBack = () => {
       // Emit event to parent to navigate back
@@ -282,10 +285,20 @@ export default defineComponent({
       emit('lockToggle');
     };
 
+    const navigateToLogin = () => {
+      // Navigate to login with current route as redirect parameter
+      console.log("Redirecting to login from:", route.path);
+      router.push({
+        path: '/login',
+        query: { redirect: route.path }
+      });
+    };
+
     return {
       tab: ref('home'),
       navGoBack,
-      lockToggle
+      lockToggle,
+      navigateToLogin
     };
   },
 });
