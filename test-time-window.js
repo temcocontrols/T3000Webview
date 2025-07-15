@@ -19,10 +19,10 @@ const getTickConfiguration = (timeBase) => {
     '15m': { unit: 'minute', stepSize: 3, maxTicks: 6 },     // 5 ticks, every 3 minutes
     '30m': { unit: 'minute', stepSize: 6, maxTicks: 6 },     // 5 ticks, every 6 minutes
     '1h': { unit: 'minute', stepSize: 5, maxTicks: 13 },     // 13 ticks, every 5 minutes
-    '6h': { unit: 'hour', stepSize: 1, maxTicks: 7 },       // 6 ticks, every 1 hour
-    '12h': { unit: 'hour', stepSize: 2, maxTicks: 7 },      // 6 ticks, every 2 hours
-    '24h': { unit: 'hour', stepSize: 4, maxTicks: 7 },      // 6 ticks, every 4 hours
-    '7d': { unit: 'day', stepSize: 1, maxTicks: 8 }         // 7 ticks, every 1 day
+    '6h': { unit: 'minute', stepSize: 30, maxTicks: 13 },    // 13 ticks, every 30 minutes
+    '12h': { unit: 'minute', stepSize: 60, maxTicks: 13 },   // 13 ticks, every 60 minutes
+    '24h': { unit: 'minute', stepSize: 120, maxTicks: 13 },  // 13 ticks, every 120 minutes
+    '7d': { unit: 'minute', stepSize: 840, maxTicks: 13 }    // 13 ticks, every 840 minutes
   }
   return configs[timeBase] || configs['1h']
 }
