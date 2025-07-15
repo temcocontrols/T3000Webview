@@ -911,10 +911,10 @@ const getChartConfig = () => ({
             '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
             '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
             '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
-            '6h': { unit: 'minute', stepSize: 30 },     // Every 30 minutes
-            '12h': { unit: 'minute', stepSize: 60 },    // Every 60 minutes (1 hour)
-            '24h': { unit: 'minute', stepSize: 120 },   // Every 120 minutes (2 hours)
-            '7d': { unit: 'minute', stepSize: 840 }     // Every 840 minutes (14 hours)
+            '6h': { unit: 'minute', stepSize: 40 },     // Every 40 minutes
+            '12h': { unit: 'minute', stepSize: 15 },    // Every 15 minutes (0.4 hour)
+            '24h': { unit: 'minute', stepSize: 30 },    // Every 30 minutes (0.5 hours)
+            '7d': { unit: 'minute', stepSize: 120 }     // Every 120 minutes (2 hours)
           }
           const config = tickConfigs[timeBase.value] || tickConfigs['1h']
           return {
@@ -945,10 +945,10 @@ const getChartConfig = () => ({
               '15m': 6,   // 5 intervals + 1
               '30m': 6,   // 5 intervals + 1
               '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
-              '6h': 13,   // 12 intervals + 1 (every 30 minutes)
-              '12h': 13,  // 12 intervals + 1 (every 60 minutes)
-              '24h': 13,  // 12 intervals + 1 (every 120 minutes)
-              '7d': 13    // 12 intervals + 1 (every 840 minutes)
+              '6h': 13,   // 12 intervals + 1 (0,10,20,30,40,50,60,70,80,90,100,110,120)
+              '12h': 13,  // 12 intervals + 1 (every 15 minutes)
+              '24h': 13,  // 12 intervals + 1 (every 30 minutes)
+              '7d': 13    // 12 intervals + 1 (every 120 minutes)
             }
             return maxTicksConfigs[timeBase.value] || 7
           })(),
@@ -1013,71 +1013,6 @@ const getChartConfig = () => ({
   }
 })
 
-// Helper functions for dynamic x-axis configuration based on timebase
-const getTimeAxisUnit = (): 'minute' | 'hour' | 'day' => {
-  switch (timeBase.value) {
-    case '5m':
-    case '15m':
-    case '30m':
-    case '1h':  // Changed: Use minute unit for 1h to show 10-minute intervals
-      return 'minute'
-    case '6h':
-    case '12h':
-    case '24h':
-      return 'hour'
-    case '7d':
-      return 'day'
-    default:
-      return 'hour'
-  }
-}
-
-const getTimeAxisStepSize = (): number => {
-  switch (timeBase.value) {
-    case '5m':
-      return 1 // every 1 minute
-    case '15m':
-      return 3 // every 3 minutes
-    case '30m':
-      return 5 // every 5 minutes
-    case '1h':
-      return 10 // every 10 minutes for 1 hour timebase
-    case '6h':
-      return 1 // every 1 hour
-    case '12h':
-      return 2 // every 2 hours
-    case '24h':
-      return 3 // every 3 hours
-    case '7d':
-      return 1 // every 1 day
-    default:
-      return 1
-  }
-}
-
-const getTimeAxisMaxTicks = (): number => {
-  switch (timeBase.value) {
-    case '5m':
-      return 6 // 6 ticks for 5 minutes
-    case '15m':
-      return 6 // 6 ticks for 15 minutes
-    case '30m':
-      return 7 // 7 ticks for 30 minutes
-    case '1h':
-      return 6 // 6 ticks for 1 hour (every 10 minutes)
-    case '6h':
-      return 7 // 7 ticks for 6 hours
-    case '12h':
-      return 7 // 7 ticks for 12 hours
-    case '24h':
-      return 9 // 9 ticks for 24 hours
-    case '7d':
-      return 8 // 8 ticks for 7 days
-    default:
-      return 10
-  }
-}
-
 // Time navigation tracking
 const timeOffset = ref(0) // Offset in minutes from current time
 
@@ -1111,17 +1046,18 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
   const startTime = new Date(offsetTime.getTime() - timeRangeMinutes * 60 * 1000)
   const endTime = offsetTime.getTime()
 
-  // Determine data point interval based on timebase
+  // Works
+  // Determine data point interval based on timebase (optimal recommendations)
   const getDataPointInterval = (timeBase: string): number => {
     const intervals = {
       '5m': 1,     // Every 1 minute
       '15m': 1,    // Every 1 minute
       '30m': 1,    // Every 1 minute
-      '1h': 1,     // Every 1 minute
-      '6h': 10,    // Every 10 minutes
-      '12h': 30,   // Every 30 minutes
-      '24h': 60,   // Every 60 minutes
-      '7d': 240    // Every 240 minutes (4 hours)
+      '1h': 5,     // Every 1 minute
+      '6h': 20,    // Every 10 minutes (optimal)
+      '12h': 15,   // Every 15 minutes (optimal)
+      '24h': 30,   // Every 30 minutes (optimal)
+      '7d': 120    // Every 120 minutes (2 hours) (optimal)
     }
     return intervals[timeBase] || 1
   }
@@ -1329,10 +1265,10 @@ const updateChart = () => {
       '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
       '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
       '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
-      '6h': { unit: 'minute', stepSize: 30 },     // Every 30 minutes
-      '12h': { unit: 'minute', stepSize: 60 },    // Every 60 minutes (1 hour)
-      '24h': { unit: 'minute', stepSize: 120 },   // Every 120 minutes (2 hours)
-      '7d': { unit: 'minute', stepSize: 840 }     // Every 840 minutes (14 hours)
+      '6h': { unit: 'minute', stepSize: 40 },     // Every 40 minutes
+      '12h': { unit: 'minute', stepSize: 15 },    // Every 15 minutes (0.25 hour)
+      '24h': { unit: 'minute', stepSize: 30 },    // Every 30 minutes (0.5 hours)
+      '7d': { unit: 'minute', stepSize: 120 }     // Every 120 minutes (2 hours)
     }
     const tickConfig = tickConfigs[timeBase.value] || tickConfigs['1h']
 
@@ -1352,7 +1288,7 @@ const updateChart = () => {
       '15m': 6,   // 5 intervals + 1
       '30m': 6,   // 5 intervals + 1
       '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
-      '6h': 13,   // 12 intervals + 1 (every 30 minutes)
+      '6h': 13,   // 12 intervals + 1 (0,10,20,30,40,50,60,70,80,90,100,110,120)
       '12h': 13,  // 12 intervals + 1 (every 60 minutes)
       '24h': 13,  // 12 intervals + 1 (every 120 minutes)
       '7d': 13    // 12 intervals + 1 (every 840 minutes)
