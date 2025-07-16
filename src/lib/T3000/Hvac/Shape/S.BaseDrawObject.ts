@@ -454,7 +454,8 @@ class BaseDrawObject {
     LogUtil.Debug("= S.BaseDrawObject: CreateDimensionAdjustmentKnobs input:", container, triggerElement, knobParams);
 
     // Create a deep copy of the knob parameters and calculate half knob size
-    let baseParams: any = $.extend(true, {}, knobParams);
+    // let baseParams: any = $.extend(true, {}, knobParams);
+    let baseParams: any = Utils1.DeepCopy(knobParams);
     const knobSizeHalf = baseParams.knobSize / 2;
 
     // Set additional parameters for the knob
@@ -892,7 +893,8 @@ class BaseDrawObject {
       : this.StyleRecord.Line.Thickness / 2;
 
     // Create a deep copy of the current frame object
-    const frameCopy: Rectangle = $.extend(true, {}, this.Frame);
+    // const frameCopy: Rectangle = $.extend(true, {}, this.Frame);
+    let frameCopy: Rectangle = Utils1.DeepCopy(this.Frame);
 
     // Inflate the copied frame by the border thickness on both axes
     Utils2.InflateRect(frameCopy, borderThickness, borderThickness);
@@ -1106,7 +1108,8 @@ class BaseDrawObject {
 
   GetLineChangeFrame() {
     LogUtil.Debug("= S.BaseDrawObject: GetLineChangeFrame input:", this.Frame);
-    let frame = $.extend(true, {}, this.Frame);
+    // let frame = $.extend(true, {}, this.Frame);
+    let frame: Rectangle = Utils1.DeepCopy(this.Frame);
     if (frame.width < OptConstant.Common.SegDefLen) {
       frame.width = OptConstant.Common.SegDefLen;
     }
@@ -1376,10 +1379,10 @@ class BaseDrawObject {
     // Show the appropriate contextual menu based on read-only status
     if (T3Gv.docUtil.IsReadOnly()) {
       // Show read-only context menu
-      UIUtil.ShowContextMenu(true, "", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "DrawObject", "ReadOnly");
     } else {
       // Show editable context menu
-      UIUtil.ShowContextMenu(true, "", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "DrawObject", "Editable");
     }
 
     LogUtil.Debug("= S.BaseDrawObject: RightClick output: Contextual menu shown");
@@ -1387,11 +1390,7 @@ class BaseDrawObject {
   }
 
   AdjustTextEditBackground(e: any, t: any): void {
-    LogUtil.Debug("= S.BaseDrawObject: AdjustTextEditBackground input:", { e, t });
-
-    // TODO: Implement the logic to adjust the text edit background as needed.
-
-    LogUtil.Debug("= S.BaseDrawObject: AdjustTextEditBackground output: completed");
+    LogUtil.Debug("= s.BaseDrawObject: AdjustTextEditBackground input:", { e, t });
   }
 
   SetTextContent(text: string): void {
@@ -1961,7 +1960,8 @@ class BaseDrawObject {
     const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Create a deep copy of this object's text style record
-    const textFormat = $.extend(true, {}, this.StyleRecord.Text);
+    // const textFormat = $.extend(true, {}, this.StyleRecord.Text);
+    const textFormat = Utils1.DeepCopy(this.StyleRecord.Text);
 
     // Update font information from session block
     textFormat.FontId = -1;// T3Gv.opt.GetFontIdByName(sessionBlock.def.lf.fontName);
@@ -4023,11 +4023,15 @@ class BaseDrawObject {
 
     // Determine which point is to the left most given the rotated points
     if (polyPoints[0].x < polyPoints[1].x) {
-      pointStartRef = $.extend(true, {}, polyPoints[0]);
-      pointEndRef = $.extend(true, {}, polyPoints[1]);
+      // pointStartRef = $.extend(true, {}, polyPoints[0]);
+      // pointEndRef = $.extend(true, {}, polyPoints[1]);
+      pointStartRef = Utils1.DeepCopy(polyPoints[0]);
+      pointEndRef = Utils1.DeepCopy(polyPoints[1]);
     } else {
-      pointStartRef = $.extend(true, {}, polyPoints[1]);
-      pointEndRef = $.extend(true, {}, polyPoints[0]);
+      // pointStartRef = $.extend(true, {}, polyPoints[1]);
+      // pointEndRef = $.extend(true, {}, polyPoints[0]);
+      pointStartRef = Utils1.DeepCopy(polyPoints[1]);
+      pointEndRef = Utils1.DeepCopy(polyPoints[0]);
     }
 
     // Calculate the text frame's position (centered between the two points)
@@ -4230,13 +4234,16 @@ class BaseDrawObject {
     Utils3.RotatePointsAboutCenter(this.Frame, - arcLength, polyPoints);
 
     if (polyPoints[0].x < polyPoints[1].x) {
-      pointStart = $.extend(true, {}, polyPoints[0]);
-      pointEnd = $.extend(true, {}, polyPoints[1]);
+      // pointStart = $.extend(true, {}, polyPoints[0]);
+      // pointEnd = $.extend(true, {}, polyPoints[1]);
+      pointStart = Utils1.DeepCopy(polyPoints[0]);
+      pointEnd = Utils1.DeepCopy(polyPoints[1]);
     }
     else {
-      pointStart = $.extend(true, {}, polyPoints[1]);
-      pointEnd = $.extend(true, {}, polyPoints[0]);
-
+      // pointStart = $.extend(true, {}, polyPoints[1]);
+      // pointEnd = $.extend(true, {}, polyPoints[0]);
+      pointStart = Utils1.DeepCopy(polyPoints[1]);
+      pointEnd = Utils1.DeepCopy(polyPoints[0]);
     }
 
     textDim.x = pointStart.x + (pointEnd.x - pointStart.x) / 2;
@@ -4430,12 +4437,16 @@ class BaseDrawObject {
     Utils3.RotatePointsAboutCenter(this.Frame, - arcLength, polyPoints);
 
     if (polyPoints[0].x < polyPoints[1].x) {
-      pointStart = $.extend(true, {}, polyPoints[0]);
-      pointEnd = $.extend(true, {}, polyPoints[1]);
+      // pointStart = $.extend(true, {}, polyPoints[0]);
+      // pointEnd = $.extend(true, {}, polyPoints[1]);
+      pointStart = Utils1.DeepCopy(polyPoints[0]);
+      pointEnd = Utils1.DeepCopy(polyPoints[1]);
     }
     else {
-      pointStart = $.extend(true, {}, polyPoints[1]);
-      pointEnd = $.extend(true, {}, polyPoints[0]);
+      // pointStart = $.extend(true, {}, polyPoints[1]);
+      // pointEnd = $.extend(true, {}, polyPoints[0]);
+      pointStart = Utils1.DeepCopy(polyPoints[1]);
+      pointEnd = Utils1.DeepCopy(polyPoints[0]);
     }
 
     textDim.x = pointStart.x + (pointEnd.x - pointStart.x) / 2;
@@ -5596,7 +5607,8 @@ class BaseDrawObject {
 
   GetAlignRect(): any {
     LogUtil.Debug("= S.BaseDrawObject: GetAlignRect - Input:", { Frame: this.Frame });
-    const alignRect = $.extend(true, {}, this.Frame);
+    // const alignRect = $.extend(true, {}, this.Frame);
+    const alignRect = Utils1.DeepCopy(this.Frame);
     LogUtil.Debug("= S.BaseDrawObject: GetAlignRect - Output:", { alignRect });
     return alignRect;
   }
@@ -6421,7 +6433,8 @@ class BaseDrawObject {
     LogUtil.Debug("= S.BaseDrawObject GetNotePos - Input:", { source, container });
 
     // Copy the source frame deeply to noteFrame
-    let noteFrame = $.extend(true, {}, source.Frame);
+    // let noteFrame = $.extend(true, {}, source.Frame);
+    let noteFrame = Utils1.DeepCopy(source.Frame);
 
     if (container) {
       noteFrame.x += container.frame.x;
@@ -6529,7 +6542,8 @@ class BaseDrawObject {
 
         if (parentStyleOverride) {
           // Create a deep copy of parent style and reset some properties
-          const parentStyleCopy = $.extend(true, {}, parentStyleOverride);
+          // const parentStyleCopy = $.extend(true, {}, parentStyleOverride);
+          const parentStyleCopy = Utils1.DeepCopy(parentStyleOverride);
           parentStyleCopy.glowColor = null;
           parentStyleCopy.iconID = null;
 

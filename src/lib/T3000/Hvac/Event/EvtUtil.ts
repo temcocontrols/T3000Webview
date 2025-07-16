@@ -22,85 +22,160 @@ import LogUtil from '../Util/LogUtil';
 
 /**
  * Utility class for handling various user interaction events on an SVG document.
- *
- * The EvtUtil class provides a collection of static methods to process and manage events such as:
- *
- * - Mouse movement: Tracks the cursor, converts window to document coordinates, and updates UI displays.
- * - Hammer tap, drag, pan, and pinch gestures: Supports opt slt selection, panning, zooming,
- *   shape tapping, drawing operations, and long-press actions.
- * - Shape interactions: Handles tap, double-tap, drag start, drag, and hold events for interacting with individual SVG shapes.
- * - Drawing and stamping operations: Provides factory functions for tracking drawing progress,
- *   releasing drawn objects, and finalizing stamp placements.
- * - Dimension text editing: Facilitates editing of dimension text with double-tap actions and lifts UI on virtual keyboard appearance.
- * - Action tracking: Provides generic action tracking and release mechanism for specialized event-driven interactions.
- *
- * @remarks
- * The methods in this class ensure that the UI remains responsive and consistent across different interaction modes.
- * They integrate with various other components, such as document utilities for coordinate conversion, zoom and scroll management,
- * and error handling systems to ensure smooth cleanup of resources during exceptions.
- *
- * @example
- * Usage example to handle mouse move events on an SVG element:
- *
- *   import { EvtUtil } from './EvtUtil';
- *
- *   const svgElement = document.getElementById('svg-element');
- *   svgElement.addEventListener('mousemove', (mouseEvent: MouseEvent) => {
- *     EvtUtil.Evt_MouseMove(mouseEvent);
- *   });
- *
- * Additional examples include using factory functions for shape events:
- *
- *   // For handling double-tap on a shape:
- *   const shape = getSomeShape();
- *   const handleDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(shape);
- *   shape.element.addEventListener('dblclick', handleDoubleTap);
- *
- * @public
+ * Includes proper event management and cleanup to prevent memory leaks.
  */
 class EvtUtil {
+  private static eventHandlers: Map<string, EventListener> = new Map();
+  private static hammerInstances: Map<string, any> = new Map();
+  private static isInitialized: boolean = false;
+
+  /**
+   * Initialize event handlers with proper cleanup management
+   */
+  static initialize(): void {
+    if (this.isInitialized) {
+      LogUtil.Warn('EvtUtil already initialized');
+      return;
+    }
+
+    try {
+      this.cleanup(); // Clean up any existing handlers
+      this.setupEventHandlers();
+      this.isInitialized = true;
+      LogUtil.Info('EvtUtil initialized successfully');
+    } catch (error) {
+      LogUtil.Error('Failed to initialize EvtUtil:', error);
+    }
+  }
+
+  /**
+   * Clean up all event handlers and instances
+   */
+  static cleanup(): void {
+    try {
+      // Remove DOM event listeners
+      this.eventHandlers.forEach((handler, event) => {
+        document.removeEventListener(event, handler);
+      });
+      this.eventHandlers.clear();
+
+      // Clean up jQuery events with namespace
+      $(document).off('.t3000-evt');
+      $('#svg-area').off('.t3000-evt');
+
+      // Destroy Hammer instances
+      this.hammerInstances.forEach((hammer, key) => {
+        if (hammer && typeof hammer.destroy === 'function') {
+          hammer.destroy();
+        }
+      });
+      this.hammerInstances.clear();
+
+      this.isInitialized = false;
+      LogUtil.Info('EvtUtil cleanup completed');
+    } catch (error) {
+      LogUtil.Error('Error during EvtUtil cleanup:', error);
+    }
+  }
+
+  /**
+   * Set up event handlers with proper registration
+   */
+  private static setupEventHandlers(): void {
+    // Mouse events
+    const mouseMoveHandler = this.Evt_MouseMove.bind(this);
+    const mouseWheelHandler = this.Evt_WorkAreaMouseWheel.bind(this);
+
+    // Store handlers for cleanup
+    this.eventHandlers.set('mousemove', mouseMoveHandler);
+    this.eventHandlers.set('wheel', mouseWheelHandler);
+
+    // Add event listeners
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('wheel', mouseWheelHandler, { passive: false });
+
+    // Set up Hammer.js instances
+    this.setupHammerHandlers();
+  }
+
+  /**
+   * Set up Hammer.js event handlers
+   */
+  private static setupHammerHandlers(): void {
+    const workArea = document.getElementById('svg-area');
+    if (!workArea) {
+      LogUtil.Warn('svg-area element not found, skipping Hammer setup');
+      return;
+    }
+
+    try {
+      // Note: This assumes Hammer is available globally or should be imported
+      // const hammer = new Hammer.Manager(workArea);
+
+      // For now, we'll use a placeholder and proper Hammer setup should be done when available
+      // TODO: Implement proper Hammer.js setup when library is available
+
+      LogUtil.Info('Hammer.js setup placeholder - implement when library is available');
+    } catch (error) {
+      LogUtil.Error('Failed to setup Hammer handlers:', error);
+    }
+  }
 
   /**
    * Handles mouse movement events over the SVG document
    * Tracks cursor position and updates coordinate display when mouse is within document bounds
    * @param mouseEvent - The mouse movement event
    */
-  static Evt_MouseMove(mouseEvent) {
+  static Evt_MouseMove(mouseEvent: MouseEvent): void {
+    try {
+      const svgDoc = T3Gv.opt?.svgDoc;
 
-    const svgDoc = T3Gv.opt.svgDoc;
+      if (!svgDoc) {
+        return;
+      }
 
-    if(svgDoc===null){
-      return;
-    }
+      const docInfo = svgDoc.docInfo;
+      if (!docInfo) {
+        LogUtil.Warn('SVG document info not available');
+        return;
+      }
 
-    const docInfo = svgDoc.docInfo;
+      // Validate mouse event properties
+      if (typeof mouseEvent.clientX !== 'number' || typeof mouseEvent.clientY !== 'number') {
+        LogUtil.Error('Invalid mouse event coordinates');
+        return;
+      }
 
-    // Check if mouse is within the document bounds
-    const isWithinBounds =
-      mouseEvent.clientX >= docInfo.dispX &&
-      mouseEvent.clientY >= docInfo.dispY &&
-      mouseEvent.clientX < docInfo.dispX + docInfo.dispWidth &&
-      mouseEvent.clientY < docInfo.dispY + docInfo.dispHeight;
+      // Check if mouse is within the document bounds
+      const isWithinBounds =
+        mouseEvent.clientX >= docInfo.dispX &&
+        mouseEvent.clientY >= docInfo.dispY &&
+        mouseEvent.clientX < docInfo.dispX + docInfo.dispWidth &&
+        mouseEvent.clientY < docInfo.dispY + docInfo.dispHeight;
 
-    if (isWithinBounds) {
-      // Convert window coordinates to document coordinates
-      const documentCoordinates = svgDoc.ConvertWindowToDocCoords(
-        mouseEvent.clientX,
-        mouseEvent.clientY
-      );
+      if (isWithinBounds) {
+        // Convert window coordinates to document coordinates
+        const documentCoordinates = svgDoc.ConvertWindowToDocCoords(
+          mouseEvent.clientX,
+          mouseEvent.clientY
+        );
 
-      // Show and update coordinates display
-      UIUtil.ShowXY(true);
-      UIUtil.UpdateDisplayCoordinates(
-        null,
-        documentCoordinates,
-        null,
-        null
-      );
-
-    } else {
-      // Hide coordinates display when outside document bounds
-      UIUtil.ShowXY(false);
+        if (documentCoordinates) {
+          // Show and update coordinates display
+          UIUtil.ShowXY(true);
+          UIUtil.UpdateDisplayCoordinates(
+            null,
+            documentCoordinates,
+            null,
+            null
+          );
+        }
+      } else {
+        // Hide coordinates display when outside document bounds
+        UIUtil.ShowXY(false);
+      }
+    } catch (error) {
+      LogUtil.Error('Error in Evt_MouseMove:', error);
     }
   }
 
@@ -124,7 +199,7 @@ class EvtUtil {
       SelectUtil.ClearSelectionClick();
 
       //Clear the context menu
-      UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+      UIUtil.ShowContextMenu(false, "WorkArea", "Default");
       UIUtil.ShowObjectConfig(false);
     }
 
@@ -140,9 +215,12 @@ class EvtUtil {
         event.gesture.center.clientX,
         event.gesture.center.clientY
       );
+
+      SelectUtil.ClearSelectionClick();
+      UIUtil.ShowContextMenu(true, "WorkArea", "Default");
     }
 
-    LogUtil.Debug("E.Evt WorkAreaHammerClick output:", isRightClick ? "right-click menu shown" : "selection cleared");
+    LogUtil.Debug("E.Evt WorkAreaHammerClick output:", isRightClick ? "right-click menu shown" : "selection cleared", "rClickParam:", T3Gv.opt.rClickParam);
     return false;
   }
 
@@ -155,7 +233,8 @@ class EvtUtil {
   static Evt_WorkAreaMouseWheel(event) {
     LogUtil.Debug("E.Evt WorkAreaMouseWheel input:", event);
 
-    let docUtil = new DocUtil();
+    // let docUtil = new DocUtil();
+    let docUtil = T3Gv.docUtil;
 
     if (event.ctrlKey) {
       // Get current cursor position
@@ -273,7 +352,7 @@ class EvtUtil {
         event.preventDefault();
         event.stopPropagation();
 
-        UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+        UIUtil.ShowContextMenu(false, "WorkArea", "Default");
         // UIUtil.ShowObjectConfig(false);
 
         LogUtil.Debug("E.Evt WorkAreaHammerDragStart output: right-click handled");

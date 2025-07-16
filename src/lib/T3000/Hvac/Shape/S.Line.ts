@@ -786,7 +786,7 @@ class Line extends BaseLine {
 
       joinedObject.UpdateDimensionFromText(joinedElement, dimensionText, { segment: 2 });
       ObjectUtil.AddToDirtyList(this.BlockID);
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     }
 
     LogUtil.Debug('S.Line - Output:', { newPoints, tempPoints, isStartPoint });

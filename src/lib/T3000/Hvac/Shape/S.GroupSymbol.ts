@@ -348,8 +348,11 @@ class GroupSymbol extends BaseSymbol {
     LogUtil.Debug("S.GroupSymbol - Resize input:", { svgElement, newDimensions, resizeInfo });
 
     const rotation = svgElement.GetRotation();
-    const previousBoundingBox = $.extend(true, {}, this.prevBBox);
-    const newBoundingBox = $.extend(true, {}, newDimensions);
+    // const previousBoundingBox = $.extend(true, {}, this.prevBBox);
+    // const newBoundingBox = $.extend(true, {}, newDimensions);
+    const previousBoundingBox = Utils1.DeepCopy(this.prevBBox);
+    const newBoundingBox = Utils1.DeepCopy(newDimensions);
+
     const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(previousBoundingBox, newBoundingBox, rotation);
 
     svgElement.SetSize(newDimensions.width, newDimensions.height);
@@ -416,7 +419,9 @@ class GroupSymbol extends BaseSymbol {
     frameHeight += adjustedKnobSize;
 
     // Calculate the group position by enlarging the frame by the knob size offset
-    let groupPosition = $.extend(true, {}, frame);
+    // let groupPosition = $.extend(true, {}, frame);
+    let groupPosition = Utils1.DeepCopy(frame);
+
     groupPosition.x -= adjustedKnobSize / 2;
     groupPosition.y -= adjustedKnobSize / 2;
     groupPosition.width += adjustedKnobSize;
@@ -601,7 +606,9 @@ class GroupSymbol extends BaseSymbol {
     // If side knobs are enabled, add additional knobs along the polyline of the shape
     if (useSideKnobs) {
       let copyOfThis = Utils1.DeepCopy(this);
-      copyOfThis.inside = $.extend(true, {}, copyOfThis.Frame);
+      // copyOfThis.inside = $.extend(true, {}, copyOfThis.Frame);
+      copyOfThis.inside = Utils1.DeepCopy(copyOfThis.Frame);
+
       let polyPoints = T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true, copyOfThis)
         .GetPolyPoints(OptConstant.Common.MaxPolyPoints, true, true, false, []);
       if (polyPoints) {
@@ -621,7 +628,7 @@ class GroupSymbol extends BaseSymbol {
     }
 
     // Add the rotate knob if rotation is enabled
-    const disableRotation = this.NoRotate() || this.NoGrow()|| knobProps.locked;
+    const disableRotation = this.NoRotate() || this.NoGrow() || knobProps.locked;
     const isNarrow = frame.width < 44;
     let hasConnectorHook = this.hooks.length > 0;
     if (hasConnectorHook) {

@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import StyleConstant from "../../Data/Constant/StyleConstant";
@@ -12,7 +10,6 @@ import MouseUtil from "../../Event/MouseUtil";
 import DynamicGuides from "../../Model/DynamicGuides";
 import LinkParameters from "../../Model/LinkParameters";
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -28,7 +25,6 @@ import HookUtil from './HookUtil';
 import PolyUtil from './PolyUtil';
 import DynamicUtil from './DynamicUtil';
 import TextUtil from './TextUtil';
-import QuasarUtil from '../Quasar/QuasarUtil';
 import UIUtil from '../UI/UIUtil';
 import ToolActUtil from './ToolActUtil';
 import LogUtil from '../../Util/LogUtil';
@@ -315,7 +311,8 @@ class LMEvtUtil {
         T3Gv.opt.linkParams.AutoInsert) {
 
         // Create a copy of the frame at the new position
-        frameCopy = $.extend(true, {}, targetObject.Frame);
+        // frameCopy = $.extend(true, {}, targetObject.Frame);
+        frameCopy = Utils1.DeepCopy(targetObject.Frame);
         frameCopy.x += position.x - T3Gv.opt.dragStartX;
         frameCopy.y += position.y - T3Gv.opt.dragStartY;
 
@@ -643,7 +640,7 @@ class LMEvtUtil {
     }
 
     // Complete the operation and clean up
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     if (!moveData) {
       if (waslastOpDuplicate) {
@@ -1078,7 +1075,8 @@ class LMEvtUtil {
       // Store target bounding box for snapping
       if (T3Gv.docUtil.docConfig.enableSnap &&
         currentId === T3Gv.opt.dragTargetId) {
-        T3Gv.opt.dragTargetBBox = $.extend(true, {}, objectFrame);
+        // T3Gv.opt.dragTargetBBox = $.extend(true, {}, objectFrame);
+        T3Gv.opt.dragTargetBBox = Utils1.DeepCopy(objectFrame);
       }
     }
 
@@ -1166,7 +1164,7 @@ class LMEvtUtil {
       //clear context menu
       const isRightClick = MouseUtil.IsRightClick(event);
       if (!isRightClick) {
-        UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+        UIUtil.ShowContextMenu(false, "WorkArea", "Default");
         // UIUtil.ShowObjectConfig(false);
       }
 
@@ -1433,7 +1431,8 @@ class LMEvtUtil {
       // Handle snapping to shapes if enabled
       if (DrawUtil.AllowSnapToShapes()) {
         const objectRect = drawingObject.GetSnapRect();
-        const offsetRect = $.extend(true, {}, objectRect);
+        // const offsetRect = $.extend(true, {}, objectRect);
+        const offsetRect = Utils1.DeepCopy(objectRect);
 
         // Apply current drag offsets
         offsetRect.x += T3Gv.opt.dragDeltaX;
@@ -1446,7 +1445,8 @@ class LMEvtUtil {
         if (snapTargetId >= 0) {
           // Get snap target rectangle
           const targetRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
-          const targetRectCopy = $.extend(true, {}, targetRect);
+          // const targetRectCopy = $.extend(true, {}, targetRect);
+          const targetRectCopy = Utils1.DeepCopy(targetRect);
 
           // Initialize dynamic guides for snapping
           const dynamicGuides = new DynamicGuides();

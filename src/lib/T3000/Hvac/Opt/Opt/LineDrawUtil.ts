@@ -196,7 +196,7 @@ class LineDraw {
     const table = targetObject.GetTable(false);
     const useTableRows = targetObject.hookflags & NvConstant.HookFlags.LcTableRows && table;
 
-    const allowUpdate = true;//SDJS.Collab.AllowMessage() && SDJS.Collab.BeginSecondaryEdit()
+    const allowUpdate = true;
     if (allowUpdate) {
       if (targetObject.RotationAngle) {
         switch (actionType) {
@@ -588,7 +588,6 @@ class LineDraw {
 
     // Add the new line to the document
     const newObjectId = DrawUtil.AddNewObject(newLine, !newLine.bOverrideDefaultStyleOnDraw, true);
-    // SDJS.Collab.AddNewBlockToSecondary(newObjectId);
 
     // Configure segment line directions based on arrow direction
     if (segmentLine) {
@@ -915,14 +914,6 @@ class LineDraw {
               }
             }
           }
-
-          // Update UI if this is a symbol with data
-          // if (isSymbolWithData) {
-          //   if (symbolId !== GetSelectedButton()) {
-          //     SetCurrentSymbol(symbolId);
-          //   }
-          //   UpdateShapeList(shapeObject, symbolId, symbolTitle, false);
-          // }
 
           // Complete the operation
           DrawUtil.CompleteOperation(modifiedObjects);

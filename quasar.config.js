@@ -28,7 +28,8 @@ module.exports = configure(function (/* ctx */) {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli/boot-files
     boot: [
-      //'antd'
+      'antd',
+      'performance'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#css
@@ -64,7 +65,7 @@ module.exports = configure(function (/* ctx */) {
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
       // publicPath: '/',
-      // analyze: true,
+      analyze: process.env.ANALYZE === 'true',
       env: {
         VERSION: process.env.npm_package_version,
         ...require("dotenv").config().parsed,
@@ -76,6 +77,139 @@ module.exports = configure(function (/* ctx */) {
       // distDir
 
       // extendViteConf (viteConf) {},
+      extendViteConf(viteConf) {
+        // Enable React JSX support for Grafana components
+        viteConf.esbuild = viteConf.esbuild || {};
+        viteConf.esbuild.jsx = 'automatic';
+        viteConf.esbuild.jsxImportSource = 'react';
+
+        // Optimize deps for React
+        viteConf.optimizeDeps = viteConf.optimizeDeps || {};
+        viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
+        viteConf.optimizeDeps.include.push(
+          'react',
+          'react-dom'
+        );
+
+        // Manual chunk splitting for better bundle optimization
+        viteConf.build = viteConf.build || {};
+        viteConf.build.rollupOptions = viteConf.build.rollupOptions || {};
+        viteConf.build.rollupOptions.output = viteConf.build.rollupOptions.output || {};
+
+        // Define manual chunks to split large dependencies
+        viteConf.build.rollupOptions.output.manualChunks = (id) => {
+          // Grafana libraries
+          if (id.includes('@grafana/')) {
+            return 'grafana';
+          }
+          // React libraries
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react';
+          }
+
+          // T3000 library chunks
+          if (id.includes('src/lib/T3000')) {
+            if (id.includes('T3000/Hvac/Data')) {
+              return 't3000-data';
+            }
+            if (id.includes('T3000/Hvac')) {
+              return 't3000-hvac';
+            }
+            if (id.includes('T3000')) {
+              return 't3000-core';
+            }
+          }
+
+          // Third-party library chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('fabric')) {
+              return 'fabric';
+            }
+            if (id.includes('echarts')) {
+              return 'echarts';
+            }
+            if (id.includes('lodash')) {
+              return 'lodash';
+            }
+            if (id.includes('vue3-moveable')) {
+              return 'moveable';
+            }
+            if (id.includes('vue3-selecto')) {
+              return 'selecto';
+            }
+            if (id.includes('@toast-ui')) {
+              return 'toast-ui';
+            }
+            if (id.includes('@uppy')) {
+              return 'uppy';
+            }
+            if (id.includes('@svgdotjs')) {
+              return 'svg';
+            }
+            // Group other large node_modules
+            if (id.includes('antd') || id.includes('ant-design')) {
+              return 'antd';
+            }
+            if (id.includes('quasar')) {
+              return 'quasar';
+            }
+            if (id.includes('vue')) {
+              return 'vue';
+            }
+          }
+
+          // Component chunks
+          if (id.includes('src/components')) {
+            if (id.includes('ObjectType') || id.includes('Canvas')) {
+              return 'drawing-components';
+            }
+            if (id.includes('FileUpload') || id.includes('Upload')) {
+              return 'upload-components';
+            }
+          }
+
+          // Page chunks
+          if (id.includes('src/pages')) {
+            if (id.includes('HvacDrawer')) {
+              return 'hvac-drawer';
+            }
+            if (id.includes('ModbusRegister')) {
+              return 'modbus-register';
+            }
+            if (id.includes('AppsLibrary')) {
+              return 'apps-library';
+            }
+          }
+        };
+
+        // Bundle analyzer configuration
+        if (process.env.ANALYZE === 'true') {
+          const { visualizer } = require('rollup-plugin-visualizer');
+          viteConf.build.rollupOptions.plugins = viteConf.build.rollupOptions.plugins || [];
+          viteConf.build.rollupOptions.plugins.push(
+            visualizer({
+              filename: 'dist/bundle-analyzer.html',
+              open: true,
+              gzipSize: true,
+              brotliSize: true,
+              template: 'treemap' // Use treemap for better visualization
+            })
+          );
+        }
+
+        // Performance optimizations
+        viteConf.build.chunkSizeWarningLimit = 300; // Warn for chunks > 300KB
+        viteConf.build.cssCodeSplit = true; // Split CSS into separate files
+
+        // Minification settings
+        viteConf.build.minify = 'terser';
+        viteConf.build.terserOptions = {
+          compress: {
+            drop_console: process.env.NODE_ENV === 'production',
+            drop_debugger: process.env.NODE_ENV === 'production'
+          }
+        };
+      },
       viteVuePluginOptions: {
         template: {
           compilerOptions: {

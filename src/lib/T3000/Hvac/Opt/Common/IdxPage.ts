@@ -33,10 +33,18 @@ class IdxPage {
 
   // wrap code for IndexPage's onMounted event
   initPage() {
+    LogUtil.Debug("= IdxPage: initPage ->");
+
     Hvac.WebClient.initMessageHandler();
     this.initGlobalNav();
     this.isLoggedIn();
+
+    LogUtil.Debug("= IdxPage: initPage / initMessageHandler,initGlobalNav,isLoggedIn");
+
     this.restoreAppState();
+
+    LogUtil.Debug("= IdxPage: initPage / restoreAppState");
+
     this.setDocMarginOffset();
     this.initPanzoom();
     this.initMessageClient();
@@ -45,6 +53,8 @@ class IdxPage {
     this.initWindowListener();
     this.refreshMoveableGuides();
     this.resetPanzoom();
+
+    LogUtil.Debug("= IdxPage: initPage / setDocMarginOffset,initPanzoom,initMessageClient,initScorller,initAutoSaveInterval,initWindowListener,refreshMoveableGuides,resetPanzoom");
   }
 
   initPage5() {
@@ -124,11 +134,19 @@ class IdxPage {
       return;
     }
 
+    LogUtil.Debug("= IdxPage: restoreAppState / webview is not defined, loading from local storage");
+    LogUtil.Debug("= IdxPage: restoreAppState / before loading localState the appState is", appState.value);
+
     const localState = Hvac.LsOpt.loadParsedAppStateLS();
+
+    LogUtil.Debug("= IdxPage: restoreAppState / after loading loadParsedAppStateLS localState is", localState);
+
     if (localState) {
       appState.value = localState;
       rulersGridVisible.value = appState.value.rulersGridVisible;
     }
+
+    LogUtil.Debug("= IdxPage: restoreAppState / after loading localState appState & rulersGridVisible are", appState.value,rulersGridVisible.value);
   }
 
   setDocMarginOffset() {

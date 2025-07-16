@@ -1001,7 +1001,8 @@ class Connector extends BaseDrawObject {
     const frame = this.Frame;
     let frameWidth = frame.width + scaledKnobSize;
     let frameHeight = frame.height + scaledKnobSize;
-    const adjustedFrame = $.extend(true, {}, frame);
+    // const adjustedFrame = $.extend(true, {}, frame);
+    const adjustedFrame = Utils1.DeepCopy(frame);
     adjustedFrame.x -= scaledKnobSize / 2;
     adjustedFrame.y -= scaledKnobSize / 2;
     adjustedFrame.width += scaledKnobSize;
@@ -1088,7 +1089,8 @@ class Connector extends BaseDrawObject {
       targetObject.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH*/) {
       for (let hookIndex = 0; hookIndex < targetObject.hooks.length; hookIndex++) {
         // Make a copy of current knob settings for restoration after modifications
-        const knobSettingsCopy = $.extend(true, {}, knobSettings);
+        // const knobSettingsCopy = $.extend(true, {}, knobSettings);
+        const knobSettingsCopy = Utils1.DeepCopy(knobSettings);
         let triggerIndex: number;
         if (bothSides) {
           // Depending on hook point type, set trigger index and remove previously added knob.
@@ -1133,7 +1135,8 @@ class Connector extends BaseDrawObject {
           hookKnob.SetUserData(triggerIndex);
           actionGroup.AddElement(hookKnob);
           // Restore knob settings from copy for next iteration.
-          knobSettings = $.extend(true, {}, knobSettingsCopy);
+          // knobSettings = $.extend(true, {}, knobSettingsCopy);
+          knobSettings = Utils1.DeepCopy(knobSettingsCopy);
         }
       }
     }
@@ -1251,7 +1254,8 @@ class Connector extends BaseDrawObject {
       let frameWidth = frameRect.width;
       let frameHeight = frameRect.height;
       // Extend the frame rectangle to include connection points
-      const extendedFrame = $.extend(true, {}, frameRect);
+      // const extendedFrame = $.extend(true, {}, frameRect);
+      const extendedFrame = Utils1.DeepCopy(frameRect);
       extendedFrame.x -= connectPtSize / 2;
       extendedFrame.y -= connectPtSize / 2;
       extendedFrame.width += connectPtSize;
@@ -1615,12 +1619,12 @@ class Connector extends BaseDrawObject {
         );
       }
 
-       // Show text menu
-       QuasarUtil.ShowContextMenu(true);
+      // Show text menu
+      UIUtil.ShowContextMenu(true, "Connector", "Editable");
 
     } else {
       // Show connector menu
-      QuasarUtil.ShowContextMenu(true);
+      QuasarUtil.ShowContextMenu(true, "Connector", "Default");
     }
   }
 
@@ -1649,7 +1653,7 @@ class Connector extends BaseDrawObject {
       }
     );
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug('S.Connector: HitAreaClick output');
   }
@@ -2609,7 +2613,8 @@ class Connector extends BaseDrawObject {
     const svgContainer = T3Gv.opt.actionSvgObject;
     const shapeElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Shape);
     const slopElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Slop);
-    const frameRect = $.extend(true, {}, this.Frame);
+    // const frameRect = $.extend(true, {}, this.Frame);
+    const frameRect = Utils1.DeepCopy(this.Frame);
     const styleFlags = OptConstant.AStyles;
     const connectorDefines = OptConstant.ConnectorDefines;
 
@@ -3281,7 +3286,7 @@ class Connector extends BaseDrawObject {
       }
 
       LayerUtil.ShowOverlayLayer();
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     } catch (error) {
       Instance.Shape.BaseShape.prototype.LMActionClickExpCleanup.call(this, error);
       T3Gv.opt.ExceptionCleanup(error);
@@ -3885,7 +3890,7 @@ class Connector extends BaseDrawObject {
     LogUtil.Debug("S.Connector: ChangeHook called with", { triggerEvent, isUserInitiated, additionalInfo });
 
     const styleConstants = OptConstant.AStyles;
-    const autoFormatFlags =0;
+    const autoFormatFlags = 0;
     const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const isLinear = (this.arraylist.styleflags & styleConstants.Linear) > 0;
     const isFlowConnector = this.arraylist.styleflags & styleConstants.FlowConn;
@@ -4017,7 +4022,7 @@ class Connector extends BaseDrawObject {
     const styleConstants = OptConstant.AStyles;
     const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const isFlowConnector = Boolean(this.arraylist.styleflags & styleConstants.FlowConn);
-    const autoFormatFlags =0;
+    const autoFormatFlags = 0;
 
     // Loop through each hook and delete associated text objects if they exist
     const hookCount = this.arraylist.hook.length;
@@ -4858,26 +4863,26 @@ class Connector extends BaseDrawObject {
 
     // Variable declarations with descriptive names
     let totalHooks,
-        hookIndex,
-        remainingHooks,
-        skipHookCount,
-        currentHook,
-        hookRect,
-        useTreeOverlap,
-        useStepFormatting,
-        isReverseColumn,
-        objectTypeConstants,
-        targetPoint = {},
-        newPoint = {},
-        profileRect = {},
-        sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false),
-        stepBuffer = [],
-        hasCoManagerParent = false,
-        coManagerInfo = {},
-        outputParams = {
-          lgap: 0
-        },
-        assistantHeight = 0;
+      hookIndex,
+      remainingHooks,
+      skipHookCount,
+      currentHook,
+      hookRect,
+      useTreeOverlap,
+      useStepFormatting,
+      isReverseColumn,
+      objectTypeConstants,
+      targetPoint = {},
+      newPoint = {},
+      profileRect = {},
+      sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false),
+      stepBuffer = [],
+      hasCoManagerParent = false,
+      coManagerInfo = {},
+      outputParams = {
+        lgap: 0
+      },
+      assistantHeight = 0;
 
     // Apply match size if flag is set
     if (this.arraylist.styleflags & OptConstant.AStyles.MatchSize) {
@@ -5150,7 +5155,7 @@ class Connector extends BaseDrawObject {
 
         // Track staggered vertical distance
         if (hasStagger && (hookIndex - skipHookCount) % 2 === 0 &&
-            staggerVerticalDistance < hookRect.vdist) {
+          staggerVerticalDistance < hookRect.vdist) {
           staggerVerticalDistance = hookRect.vdist;
         }
 
@@ -5466,13 +5471,13 @@ class Connector extends BaseDrawObject {
       if (totalHooks > skipHookCount) {
         let leftMostHook = this.arraylist.hook[skipHookCount];
         if (hasBothSides && !hasStagger && totalHooks > skipHookCount + 1 &&
-            this.arraylist.hook[skipHookCount + 1].gap > this.arraylist.hook[skipHookCount].gap) {
+          this.arraylist.hook[skipHookCount + 1].gap > this.arraylist.hook[skipHookCount].gap) {
           leftMostHook = this.arraylist.hook[skipHookCount + 1];
         }
 
         let rightMostHook = this.arraylist.hook[totalHooks - 1];
         if (hasBothSides && !hasStagger && totalHooks > skipHookCount + 1 &&
-            this.arraylist.hook[totalHooks - 2].gap > this.arraylist.hook[totalHooks - 1].gap) {
+          this.arraylist.hook[totalHooks - 2].gap > this.arraylist.hook[totalHooks - 1].gap) {
           rightMostHook = this.arraylist.hook[totalHooks - 2];
         }
 
@@ -5507,8 +5512,8 @@ class Connector extends BaseDrawObject {
 
             // For linear flow connectors, ensure left hook gap
             if (isLinear && isFlowConnector &&
-               (this.arraylist.flags & OptConstant.ArrayFlags.LeaveACl) === 0 &&
-               leftHook.gap === 0) {
+              (this.arraylist.flags & OptConstant.ArrayFlags.LeaveACl) === 0 &&
+              leftHook.gap === 0) {
               leftHook.gap = connectorWidth;
             }
             break;
@@ -5521,8 +5526,8 @@ class Connector extends BaseDrawObject {
 
             // For linear flow connectors, ensure right hook gap
             if (isLinear && isFlowConnector &&
-               (this.arraylist.flags & OptConstant.ArrayFlags.LeaveACr) === 0 &&
-               rightHook.gap === 0) {
+              (this.arraylist.flags & OptConstant.ArrayFlags.LeaveACr) === 0 &&
+              rightHook.gap === 0) {
               rightHook.gap = connectorWidth;
             }
         }
@@ -5682,8 +5687,8 @@ class Connector extends BaseDrawObject {
 
       // Check if hook position changed and mark parent for update if needed
       if (targetPoint.h != null &&
-          (!Utils2.IsEqual(targetPoint.h, newPoint.h) ||
-           !Utils2.IsEqual(targetPoint.v, newPoint.v))) {
+        (!Utils2.IsEqual(targetPoint.h, newPoint.h) ||
+          !Utils2.IsEqual(targetPoint.v, newPoint.v))) {
         OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.Move);
       }
     } else {
@@ -5802,9 +5807,9 @@ class Connector extends BaseDrawObject {
 
     // If profile has changed and tree overlap is used, mark connector for move
     if ((!Utils2.IsEqual(this.arraylist.profile.h, profileRect.h) ||
-        !Utils2.IsEqual(this.arraylist.profile.v, profileRect.v) ||
-        !Utils2.IsEqual(this.arraylist.profile.hdist, profileRect.hdist) ||
-        !Utils2.IsEqual(this.arraylist.profile.vdist, profileRect.vdist)) && useTreeOverlap) {
+      !Utils2.IsEqual(this.arraylist.profile.v, profileRect.v) ||
+      !Utils2.IsEqual(this.arraylist.profile.hdist, profileRect.hdist) ||
+      !Utils2.IsEqual(this.arraylist.profile.vdist, profileRect.vdist)) && useTreeOverlap) {
 
       OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
 
@@ -7326,7 +7331,7 @@ class Connector extends BaseDrawObject {
      * Calculates adjustment factor based on hookIndex range provided
      * This is used to distribute changes evenly across hooks
      */
-    const calculateAdjustmentFactor = function(startIndex, endIndex) {
+    const calculateAdjustmentFactor = function (startIndex, endIndex) {
       let hookObj,
         originalGap,
         tempValue = 0,
@@ -7405,7 +7410,7 @@ class Connector extends BaseDrawObject {
      * Adjusts positions for standard format (non-linear connectors)
      * This function redistributes spacing across hooks
      */
-    const adjustStandardFormat = function(startIndex, endIndex, isRightAdjustment) {
+    const adjustStandardFormat = function (startIndex, endIndex, isRightAdjustment) {
       let hookObj,
         nextHook,
         adjustmentFactor = 2,
@@ -7484,7 +7489,7 @@ class Connector extends BaseDrawObject {
      * Adjusts positions for linear format connectors
      * This function recalculates connector points for linear connectors
      */
-    const adjustLinearFormat = function(startIndex, endIndex, isRightAdjustment) {
+    const adjustLinearFormat = function (startIndex, endIndex, isRightAdjustment) {
       let hookObj,
         nextHook,
         triggerHook,
@@ -7497,7 +7502,7 @@ class Connector extends BaseDrawObject {
       const stepIncrement = isRightAdjustment ? 1 : 0;
 
       // Process stub hook connections
-      const processStub = function(hookIdx) {
+      const processStub = function (hookIdx) {
         if (hookIdx !== connectorDefines.ACl &&
           hookIdx !== connectorDefines.ACr) return;
 
@@ -7598,7 +7603,7 @@ class Connector extends BaseDrawObject {
      * Redistributes spacing for linear format connectors
      * This handles the complex case of linear connectors with balanced sides
      */
-    const redistributeLinearFormat = function(startIndex, endIndex, isRightAdjustment) {
+    const redistributeLinearFormat = function (startIndex, endIndex, isRightAdjustment) {
       let hookObj,
         nextHook,
         adjustmentFactor = 2,

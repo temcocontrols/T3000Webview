@@ -51,7 +51,7 @@ class HvConstant {
    */
   static LogConfig = {
     Debug: true,
-    Info: false,
+    Info: true,
     Error: true,
   }
 

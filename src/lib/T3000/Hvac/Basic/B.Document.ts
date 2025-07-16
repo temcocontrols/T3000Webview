@@ -1,5 +1,4 @@
 
-
 import T3Svg from "../Util/T3Svg"
 import $ from 'jquery'
 import Rect from './B.Rect'
@@ -24,7 +23,6 @@ import NvConstant from "../Data/Constant/NvConstant"
 import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
 import ForeignObject from './B.ForeignObject';
-import T3Util from "../Util/T3Util"
 import LogUtil from "../Util/LogUtil"
 
 /**
@@ -107,7 +105,6 @@ class Document extends Container {
 
     this.svgObj = T3Svg.svg($(this.parentElem)[0]);
     this.docInfo = new DocInfo();
-    // this.fontList = fontList;
     this.activeEdit = null;
     this.spellChecker = null;
     this.documentLayerId = null;

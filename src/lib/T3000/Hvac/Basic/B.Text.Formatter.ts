@@ -356,7 +356,7 @@ class Formatter {
         } else if (selectionLength) {
           this.rtData.charStyles.splice(startPosition, selectionLength);
         } else {
-          this.rtData.styles[0] = $.extend(true, {}, newTextData.styles[0]);
+          this.rtData.styles[0] =Utils1.DeepCopy(newTextData.styles[0]);
         }
 
         if (!skipCallback) {

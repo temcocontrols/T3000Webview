@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import Document from '../../Basic/B.Document';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
@@ -25,7 +23,6 @@ import TEData from "../../Model/TEData";
 import TextureList from "../../Model/TextureList";
 import '../../Util/T3Hammer';
 import T3Timer from "../../Util/T3Timer";
-import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
@@ -42,7 +39,6 @@ import OptCMUtil from "./OptCMUtil";
 import SelectUtil from "./SelectUtil";
 import SvgUtil from "./SvgUtil";
 import TextUtil from "./TextUtil";
-import LMEvtUtil from './LMEvtUtil';
 import ToolActUtil from './ToolActUtil';
 import DynamicGuides from '../../Model/DynamicGuides';
 import CursorConstant from '../../Data/Constant/CursorConstant';
@@ -52,10 +48,11 @@ import DynamicUtil from './DynamicUtil';
 import DSUtil from '../DS/DSUtil';
 import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
-import KeyboardConstant from '../Keyboard/KeyboardConstant';
-import IdxPage2 from '../Common/IdxPage2';
 import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
+import ToolAct2Util from './ToolAct2Util';
+import ShapeUtil from '../Shape/ShapeUtil';
+import DataOpt from '../Data/DataOpt';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -395,7 +392,7 @@ class OptUtil {
      * These elements form the structure of the drawing document
      */
     this.svgDocId = '#svg-area';                // CSS selector for the SVG container
-    this.svgDoc = null;                         // SVG document reference (initialized later)
+    // this.svgDoc = null;                         // SVG document reference (initialized later)
     this.svgObjectLayer = null;                 // Main layer for drawing content
     this.svgOverlayLayer = null;                // Layer for UI elements (not exported)
     this.svgHighlightLayer = null;              // Layer for selection highlights
@@ -715,16 +712,17 @@ class OptUtil {
     this.selectionState = new SelectionAttr(); // Current selection state
     // #endregion
 
+    this.InitBlockData();
+  }
+
+  InitBlockData() {
     // #region Block Creation & Initialization
     /**
      * Create persistent storage blocks and initialize the system
      * These setup basic data structures required for document management
      */
     // Create selected list block
-    const selectedListBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.SelectedListObject,
-      []
-    );
+    const selectedListBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.SelectedListObject, []);
     this.selectObjsBlockId = selectedListBlock.ID;
 
     // Create shape data block
@@ -739,10 +737,7 @@ class OptUtil {
     sdData.d_arrowsize = 1;
     sdData.CurrentTheme = null;
 
-    const sdDataBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.SDDataObject,
-      sdData
-    );
+    const sdDataBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.SDDataObject, sdData);
     this.sdDataBlockId = sdDataBlock.ID;
 
     // Create layers manager block
@@ -753,25 +748,16 @@ class OptUtil {
     layersManager.nlayers = 1;
     layersManager.activelayer = 0;
 
-    const layersManagerBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.LayersManagerObject,
-      layersManager
-    );
+    const layersManagerBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.LayersManagerObject, layersManager);
     this.layersManagerBlockId = layersManagerBlock.ID;
 
     // Create text edit block
     const teData = new TEData();
-    const tDataBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.TEDataObject,
-      teData
-    );
+    const tDataBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TEDataObject, teData);
     this.teDataBlockId = tDataBlock.ID;
 
     // Create links list block
-    const linksBlock = T3Gv.stdObj.CreateBlock(
-      StateConstant.StoredObjectType.LinkListObject,
-      []
-    );
+    const linksBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.LinkListObject, []);
     this.linksBlockId = linksBlock.ID;
     // #endregion
   }
@@ -781,10 +767,13 @@ class OptUtil {
    * This is the main setup method that prepares the SVG document, UI elements, and system state
    * It creates necessary data structures for managing shapes, selections, and user interactions
    */
-  Initialize() {
+  Initialize(isReInitialize = false) {
     ObjectUtil.PreserveUndoState(true);
-    UIUtil.InitSvgDocument();
+
+    UIUtil.InitSvgDocument(isReInitialize);
+
     UIUtil.InitT3GvOpt();
+
     this.sVGroot = this.svgDoc.svgObj.node;
     SelectUtil.UpdateSelectionAttributes(null);
     this.BuildarrowHlkTables();
@@ -2665,7 +2654,8 @@ class OptUtil {
         }
         // Avoid copying functions
         else if (sourceType !== 'function') {
-          targetObject[propertyName] = $.extend(true, new sourceValue.constructor(), sourceValue);
+          // targetObject[propertyName] = $.extend(true, new sourceValue.constructor(), sourceValue);
+          targetObject[propertyName] = Object.assign(new sourceValue.constructor(), Utils1.DeepCopy(sourceValue));
         }
       }
       // Handle existing target properties
@@ -2687,7 +2677,8 @@ class OptUtil {
         // Avoid copying functions
         else if (targetType !== 'function') {
           // Create a copy of the existing object to preserve its type
-          const targetCopy = $.extend(true, new targetValue.constructor(), targetValue);
+          // const targetCopy = $.extend(true, new targetValue.constructor(), targetValue);
+          const targetCopy = Object.assign(new targetValue.constructor(), Utils1.DeepCopy(targetValue));
           targetObject[propertyName] = targetCopy;
 
           // Recursively apply properties
@@ -5286,7 +5277,8 @@ class OptUtil {
         // Only include visible, non-title block objects
         if (currentObject && (currentObject.flags & FLAG_NOT_VISIBLE) === 0 && !isTitleBlock) {
           // Create a deep copy of the object's rectangle
-          objectRect = $.extend(true, {}, currentObject.r);
+          // objectRect = $.extend(true, {}, currentObject.r);
+          objectRect = Utils1.DeepCopy(currentObject.r);
 
           // Initialize union rectangle with first object
           if (unionRect === undefined) {
@@ -5552,7 +5544,8 @@ class OptUtil {
     // Handle snap-to-shapes if enabled
     if (!isSnapDisabled && DrawUtil.AllowSnapToShapes()) {
       objectRect = targetObject.GetSnapRect();
-      targetRect = $.extend(true, {}, objectRect);
+      // targetRect = $.extend(true, {}, objectRect);
+      targetRect = Utils1.DeepCopy(objectRect);
       targetRect.x += T3Gv.opt.dragDeltaX;
       targetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5562,7 +5555,8 @@ class OptUtil {
       if (snapTargetId >= 0) {
         // Get snap target rectangle
         objectRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
-        adjustedTargetRect = $.extend(true, {}, objectRect);
+        // adjustedTargetRect = $.extend(true, {}, objectRect);
+        adjustedTargetRect = Utils1.DeepCopy(objectRect);
         adjustedTargetRect.x += T3Gv.opt.dragDeltaX;
         adjustedTargetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5597,7 +5591,8 @@ class OptUtil {
     // Handle grid snapping if enabled
     if (T3Gv.docUtil.docConfig.enableSnap && !isSnapDisabled) {
       objectRect = targetObject.GetSnapRect();
-      targetRect = $.extend(true, {}, objectRect);
+      // targetRect = $.extend(true, {}, objectRect);
+      targetRect = Utils1.DeepCopy(objectRect);
       targetRect.x += T3Gv.opt.dragDeltaX;
       targetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5637,7 +5632,8 @@ class OptUtil {
       }
       // Use regular rect snapping
       else {
-        targetRect = $.extend(true, {}, objectRect);
+        // targetRect = $.extend(true, {}, objectRect);
+        targetRect = Utils1.DeepCopy(objectRect);
         targetRect.x += T3Gv.opt.dragDeltaX;
         targetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5951,7 +5947,7 @@ class OptUtil {
         let imageWidth = width;
 
         // Calculate position to center the image in work area
-        const centerPosition = self.CalcWorkAreaCenterUL(imageWidth, imageHeight);
+        const centerPosition = self.CalcWorkAreaCenterCoords(imageWidth, imageHeight);
 
         // Create a transparent style for the image container
         const transparentStyle = new QuickStyle();
@@ -6137,7 +6133,7 @@ class OptUtil {
             ObjectUtil.AddToDirtyList(targetObjectId);
 
             // Complete the operation
-            DrawUtil.CompleteOperation(null);
+            DrawUtil.CompleteOperation();
           }
         } else {
           // Create new image shape
@@ -6228,45 +6224,59 @@ class OptUtil {
   }
 
   /**
-   * Calculates the upper-left coordinates to center an object in the work area
-   * This function finds the position where an object with the given dimensions
-   * would be centered in the current view of the work area.
+   * Calculates the center coordinates of the work area in document space.
    *
-   * The function:
-   * 1. Calculates the center point of the current view
-   * 2. Adjusts for the object dimensions to find upper-left position
-   * 3. Converts window coordinates to document coordinates
-   * 4. Ensures minimum position of 10,10 to avoid edge placement
+   * This method determines the center point of the SVG document's display area,
+   * adjusts for the provided element's dimensions, and converts these coordinates
+   * from window/screen space to document space.
    *
-   * @param width - The width of the object to center
-   * @param height - The height of the object to center
-   * @returns Object with x,y coordinates in document space for upper-left position
+   * @param width - The width of the element to center in document units
+   * @param height - The height of the element to center in document units
+   * @returns Document coordinates object with x and y properties representing the centered position,
+   *          with minimum values clamped at (10,10)
    */
-  CalcWorkAreaCenterUL(width, height) {
+  CalcWorkAreaCenterCoords(width, height) {
     const svgDoc = this.svgDoc;
 
-    // Calculate the center point in window coordinates
-    const windowCenterX =
-      svgDoc.docInfo.dispX +
-      svgDoc.docInfo.dispWidth / 2 -
-      (width / 2) * svgDoc.docInfo.docToScreenScale;
+    /*
+    Calculate the center point in window coordinates
 
-    const windowCenterY =
-      svgDoc.docInfo.dispY +
-      svgDoc.docInfo.dispHeight / 2 -
-      (height / 2) * svgDoc.docInfo.docToScreenScale;
+    svgDoc.docInfo.dispX: The starting X position of the display area/viewport
+    svgDoc.docInfo.dispWidth / 2: Half the width of the display area (finding its center point)
+    (width / 2) * svgDoc.docInfo.docToScreenScale: Half the width of the element being positioned, converted from document units to screen units
+    */
+    const centerX = svgDoc.docInfo.dispX + svgDoc.docInfo.dispWidth / 2 - (width / 2) * svgDoc.docInfo.docToScreenScale;
+    const centerY = svgDoc.docInfo.dispY + svgDoc.docInfo.dispHeight / 2 - (height / 2) * svgDoc.docInfo.docToScreenScale;
 
     // Convert window coordinates to document coordinates
-    const docCoords = svgDoc.ConvertWindowToDocCoords(windowCenterX, windowCenterY);
+    const docCoords = svgDoc.ConvertWindowToDocCoords(centerX, centerY);
 
     // Ensure minimum positioning of 10,10
-    if (docCoords.x < 10) {
-      docCoords.x = 10;
-    }
+    docCoords.x = docCoords.x < 10 ? 10 : docCoords.x;
+    docCoords.y = docCoords.y < 10 ? 10 : docCoords.y;
 
-    if (docCoords.y < 10) {
-      docCoords.y = 10;
-    }
+    return docCoords;
+  }
+
+  /**
+   * Converts window coordinates to document coordinates with minimum positioning constraints.
+   *
+   * @param coordsX - The x-coordinate in window space
+   * @param coordsY - The y-coordinate in window space
+   * @returns The converted coordinates in document space, with x and y values guaranteed to be at least 10
+   */
+  CalcDocCoords(coordsX, coordsY) {
+    // Convert coordinates from window to document space
+    const svgDoc = this.svgDoc;
+
+    let newX = svgDoc.docInfo.dispX + coordsX * svgDoc.docInfo.docToScreenScale;
+    let newY = svgDoc.docInfo.dispY + coordsY * svgDoc.docInfo.docToScreenScale;
+
+    const docCoords = svgDoc.ConvertWindowToDocCoords(newX, newY);
+
+    // Ensure minimum positioning of 10,10
+    docCoords.x = docCoords.x < 10 ? 10 : docCoords.x;
+    docCoords.y = docCoords.y < 10 ? 10 : docCoords.y;
 
     return docCoords;
   }
@@ -6305,7 +6315,7 @@ class OptUtil {
       }
 
       // Complete the operation
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     } else {
       // Show error if no objects are selected and forceToggle is false
       LogUtil.Debug("= O.OptUtil  Lock - Error: No objects selected");
@@ -6357,7 +6367,7 @@ class OptUtil {
         }
 
         // Calculate position to center the SVG in work area
-        const centerPosition = this.CalcWorkAreaCenterUL(finalHeight, finalWidth);
+        const centerPosition = this.CalcWorkAreaCenterCoords(finalHeight, finalWidth);
 
         // Create a transparent style for the SVG container
         const transparentStyle = new QuickStyle();
@@ -6534,7 +6544,8 @@ class OptUtil {
     if (existingObject) {
       shapeObject = existingObject;
       hasPolyList = true;
-      originalFrame = $.extend(true, {}, shapeObject.Frame);
+      // originalFrame = $.extend(true, {}, shapeObject.Frame);
+      originalFrame = Utils1.DeepCopy(shapeObject.Frame);
     } else {
       shapeObject = ObjectUtil.GetObjectPtr(objectId, false);
 
@@ -6552,7 +6563,8 @@ class OptUtil {
       if (objectBlock == null) return;
 
       shapeObject = objectBlock.Data;
-      originalFrame = $.extend(true, {}, shapeObject.Frame);
+      // originalFrame = $.extend(true, {}, shapeObject.Frame);
+      originalFrame = Utils1.DeepCopy(shapeObject.Frame);
     }
 
     // Handle existing polylist
@@ -6563,7 +6575,8 @@ class OptUtil {
       T3Gv.opt.GetClosedPolyDim(shapeObject);
       if (!Utils2.IsEqual(shapeObject.polylist.dim.x, originalFrame.width)) {
         const tempObject = Utils1.DeepCopy(shapeObject);
-        tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+        // tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+        tempObject.inside = Utils1.DeepCopy(shapeObject.Frame);
 
         // Scale the object
         Instance.Shape.PolyLine.prototype.ScaleObject.call(
@@ -6611,7 +6624,8 @@ class OptUtil {
     }
 
     // Set inside property before returning
-    polyLineObject.inside = $.extend(true, {}, shapeObject.Frame);
+    // polyLineObject.inside = $.extend(true, {}, shapeObject.Frame);
+    polyLineObject.inside = Utils1.DeepCopy(shapeObject.Frame);
 
     return polyLineObject;
   }
@@ -6634,7 +6648,8 @@ class OptUtil {
       const polyLine = new Instance.Shape.PolyLine(tempShape);
 
       // Initialize dimensions
-      polyLine.inside = $.extend(true, {}, shapeObject.Frame);
+      // polyLine.inside = $.extend(true, {}, shapeObject.Frame);
+      polyLine.inside = Utils1.DeepCopy(shapeObject.Frame);
       polyLine.polylist.dim.x = 0;
       polyLine.polylist.dim.y = 0;
 
@@ -6941,7 +6956,7 @@ class OptUtil {
 
       // Add to dirty list for rendering
       ObjectUtil.AddToDirtyList(targetObjectId, true);
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
 
       // Update displayed coordinates
       const dimensions = targetObject.GetDimensionsForDisplay();
@@ -7012,7 +7027,7 @@ class OptUtil {
       ObjectUtil.AddToDirtyList(selectedObjects[index]);
     }
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
   }
 
   /**
@@ -7077,7 +7092,7 @@ class OptUtil {
       // Add to dirty list for rendering
       ObjectUtil.AddToDirtyList(selectedObjects[index]);
     }
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
   }
 
   /**
@@ -7214,178 +7229,154 @@ class OptUtil {
   }
 
   AddToLibrary() {
-    // Get currently selected objects from selection manager
-    const selectObjs = T3Gv.stdObj.GetObject(this.selectObjsBlockId);
-    LogUtil.Debug("= U.OptUtil AddToLibrary - selectObjs:", selectObjs);
-    const selectedObjects = selectObjs.Data;
-    LogUtil.Debug("= U.OptUtil AddToLibrary - selectedObjects:", selectedObjects);
-    const objectCount = selectedObjects.length;
+    const selectedObj = T3Gv.stdObj.GetObject(this.selectObjsBlockId);
+    const selectedData = selectedObj.Data;
 
-    LogUtil.Debug("= U.OptUtil AddToLibrary - T3Gv.stdObj:", T3Gv.stdObj);
+    LogUtil.Debug("= u.OptUtil: AddToLibrary - Selected Object, Selected Data, Object Count", selectedObj, selectedData, selectedData.length);
 
     // Check if any objects are selected
-    if (objectCount === 0) {
-      LogUtil.Debug("= O.OptUtil  AddToLibrary - Error: No objects selected");
+    if (selectedData.length === 0) {
+      LogUtil.Debug("= u.OptUtil: AddToLibrary - Error: No objects selected");
       return false;
     }
 
     // Process each selected object
     const libraryItems = [];
-    for (let i = 0; i < objectCount; i++) {
-      // const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[i], false);
-      const currentObject = T3Gv.stdObj.GetObject(selectedObjects[i]);
-      LogUtil.Debug("= U.OptUtil AddToLibrary - currentObject:", currentObject);
+    selectedData.forEach(objectId => {
+      const currentObject = T3Gv.stdObj.GetObject(objectId);
       if (currentObject) {
         // Create a deep copy of the object for the library
         const libraryItem = Utils1.DeepCopy(currentObject);
         libraryItems.push(libraryItem);
       }
-    }
+    });
 
-    LogUtil.Debug("= O.OptUtil  AddToLibrary - Added objects to library:", libraryItems.length);
+    // Serialize the library items - handle circular references by custom serialization
+    const serializedItems = JSON.stringify(libraryItems, (key, value) => {
+      // Skip functions and handle special object types
+      if (typeof value === 'function') {
+        return undefined;
+      }
+      return value;
+    });
 
-    // Convert library items to JSON string to store in local storage
-    try {
-      // Serialize the library items - handle circular references by custom serialization
-      const serializedItems = JSON.stringify(libraryItems, (key, value) => {
-        // Skip functions and handle special object types
-        if (typeof value === 'function') {
-          return undefined;
-        }
-        return value;
-      });
+    // Save to local storage with the key "t3.library"
+    DataOpt.SaveT3Library(serializedItems);
 
-      // Save to local storage with the key "t3.library"
-      localStorage.setItem('t3.library', serializedItems);
-
-      LogUtil.Debug("= O.OptUtil  AddToLibrary - Successfully saved to local storage", {
-        itemCount: libraryItems.length,
-        storageKey: 't3.library',
-        sizeInBytes: serializedItems.length
-      });
-    } catch (error) {
-      // Handle storage errors (quota exceeded, etc.)
-      LogUtil.Debug("= O.OptUtil  AddToLibrary - Error saving to local storage:", error);
-      return false;
-    }
+    LogUtil.Debug("= u.OptUtil: AddToLibrary - Successfully saved to local storage", {
+      itemCount: libraryItems.length,
+      storageKey: 't3.library',
+      sizeInBytes: serializedItems.length
+    });
 
     // save new library to t3
     Hvac.IdxPage2.addToNewLibrary();
-
     return libraryItems;
   }
 
+  /**
+   * Loads objects from the library stored in local storage and renders them to the document
+   * This function retrieves serialized objects from local storage, recreates them in the document,
+   * and positions them appropriately in the current view.
+   *
+   * @returns Boolean indicating whether library objects were successfully loaded
+   */
   LoadLibrary() {
-    LogUtil.Debug("= O.OptUtil  LoadLibrary - Input: No parameters");
+    // Retrieve stored library items from local storage
+    const libraries = DataOpt.LoadT3Library();
 
-    try {
-      // Retrieve stored library items from local storage
-      const serializedItems = localStorage.getItem('t3.library');
-
-      if (!serializedItems) {
-        LogUtil.Debug("= O.OptUtil  LoadLibrary - No library items found in storage");
-        return false;
-      }
-
-      // Parse the JSON string back to objects
-      const libraryItems = JSON.parse(serializedItems);
-
-      if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
-        LogUtil.Debug("= O.OptUtil  LoadLibrary - Invalid or empty library data");
-        return false;
-      }
-
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
-
-      // Clear any current selection
-      this.CloseEdit(true);
-
-      // Calculate position for placing the shapes
-      const centerPosition = this.CalcWorkAreaCenterUL(500, 500);
-      let offsetX = 0;
-      let offsetY = 0;
-      const padding = 20; // Space between objects
-
-      // Track newly created objects for selection
-      const newObjectIds = [];
-
-      // Process each library item
-      for (let i = 0; i < libraryItems.length; i++) {
-        const libraryItem = libraryItems[i];
-
-        if (!libraryItem.Data) {
-          continue;
-        }
-
-        // Create a new object based on stored data
-        try {
-          const originalObject = libraryItem.Data;
-
-          // Clone the object data but create a proper instance based on type
-          let newObject;
-
-          // Determine the object type and create appropriate instance
-          switch (originalObject.objecttype) {
-            case PolygonConstant.ShapeTypes.RECTANGLE:
-              newObject = new Instance.Shape.Rect(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.OVAL:
-              newObject = new Instance.Shape.Oval(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.LINE:
-              newObject = new Instance.Shape.BaseLine(originalObject);
-              break;
-            case PolygonConstant.ShapeTypes.POLYGON:
-              newObject = new Instance.Shape.PolyLine(originalObject);
-              break;
-            // Add additional types as needed
-            default:
-              // Default to base shape for unknown types
-              newObject = new Instance.Shape.BaseDrawObject(originalObject);
-          }
-
-          if (newObject) {
-            // Position the object relative to center position with offset
-            newObject.SetShapeOrigin(
-              centerPosition.x + offsetX,
-              centerPosition.y + offsetY,
-              null,
-              false
-            );
-
-            // Add the new object to document
-            const newObjectId = DrawUtil.AddNewObject(newObject, false, true);
-            if (newObjectId >= 0) {
-              newObjectIds.push(newObjectId);
-
-              // Update offset for next object
-              offsetX += newObject.Frame.width + padding;
-
-              // Wrap to next row if needed
-              if (offsetX > 800) {
-                offsetX = 0;
-                offsetY += 200 + padding;
-              }
-            }
-          }
-        } catch (objError) {
-          LogUtil.Debug("= O.OptUtil  LoadLibrary - Error creating object:", objError);
-        }
-      }
-
-      // Select all newly created objects
-      if (newObjectIds.length > 0) {
-        this.SelectObjects(newObjectIds, false, true);
-        SvgUtil.RenderAllSVGObjects();
-        DrawUtil.CompleteOperation(newObjectIds);
-      }
-
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
-      return true;
-    } catch (error) {
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Error:", error);
+    if (!libraries || libraries.length === 0) {
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - No library items found in storage");
       return false;
     }
+
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - rck:", T3Gv.opt.rClickParam);
+
+    // Calculate the coordinates for placing the library objects, by default at (100, 100)
+    const hasRck = T3Gv.opt.rClickParam && T3Gv.opt.rClickParam.hitPoint.x && T3Gv.opt.rClickParam.hitPoint.y;
+
+    const coordsX = hasRck ? T3Gv.opt.rClickParam.hitPoint.x : 100;
+    const coordsY = hasRck ? T3Gv.opt.rClickParam.hitPoint.y : 100;
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - coordsX,coordsY:", coordsX, coordsY);
+
+    const docCoords = this.CalcDocCoords(coordsX, coordsY);
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - docCoords:", docCoords);
+
+    // Track newly created objects for selection
+    const libObjectIds = [];
+
+    // Track the offset from first shape's original position to desired position
+    let firstShapeOrigX = null;
+    let firstShapeOrigY = null;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    // Process each library item
+    libraries.forEach((libraryItem, index) => {
+      if (!libraryItem.Data) {
+        return;
+      }
+
+      const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
+
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - ConvertPlanObjectToShape:", shapeData);
+
+      if (!shapeData) {
+        return;
+      }
+
+      // Keep original frame for reference
+      const originalFrame = Utils1.DeepCopy(shapeData.Frame);
+
+      // For the first shape, calculate the offset between its original position
+      // and the target position (coordsX, coordsY)
+      if (firstShapeOrigX === null) {
+        firstShapeOrigX = originalFrame.x;
+        firstShapeOrigY = originalFrame.y;
+
+        // Calculate offset from original to desired position
+        offsetX = coordsX - firstShapeOrigX;
+        offsetY = coordsY - firstShapeOrigY;
+      }
+
+      // Apply the calculated offset to maintain relative positioning
+      const newX = originalFrame.x + offsetX;
+      const newY = originalFrame.y + offsetY;
+
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - Positioning shape:", {
+        index,
+        original: { x: originalFrame.x, y: originalFrame.y },
+        new: { x: newX, y: newY },
+        offset: { x: offsetX, y: offsetY }
+      });
+
+      // Set the new position for the shape
+      shapeData.SetShapeOrigin(newX, newY, null, false);
+
+      // Add the new object to document
+      const newObjectId = DrawUtil.AddNewObject(shapeData, false, false);
+
+      if (newObjectId < 0) {
+        return;
+      }
+
+      libObjectIds.push(newObjectId);
+
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - newObject,newObjectId:", shapeData, newObjectId);
+
+    });
+
+    if (libObjectIds.length <= 0) {
+      return false;
+    }
+
+    this.CloseEdit(true);
+    SvgUtil.RenderAllSVGObjects();
+    DrawUtil.CompleteOperation(libObjectIds);
+
+    T3Gv.opt.rClickParam = null;
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - Output: Successfully loaded and rendered", libObjectIds.length, libObjectIds);
+    return true;
   }
 
   /**
@@ -7811,7 +7802,7 @@ class OptUtil {
     this.nudgeOpen = false;
 
     // Complete the current operation with null parameter
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug("= O.OptUtil  CloseOpenNudge - Input/Output: Nudge closed and operation completed");
   }
@@ -8004,6 +7995,124 @@ class OptUtil {
   CommentUngroup(commentThreadIds) { }
 
   CommentGroup(commentThreadIds) { }
+
+  /**
+   * Ungroups a native symbol/group into its component parts
+   * This function extracts the shapes from a native symbol, scales and positions them
+   * to match the original group's dimensions, and optionally regroups them.
+   *
+   * The process involves:
+   * 1. Reading the symbol data from the buffer
+   * 2. Calculating appropriate scaling factors
+   * 3. Positioning the extracted shapes to match the original group
+   * 4. Optionally creating a new group to contain the shapes
+   *
+   * @param nativeGroupId - ID of the native group/symbol to ungroup
+   * @param unusedParam - Unused parameter (kept for interface compatibility)
+   * @param skipRegrouping - When true, doesn't regroup extracted shapes
+   * @returns Array of object IDs (either the new group ID or individual shape IDs)
+   */
+  UngroupNative(nativeGroupId, unusedParam, skipRegrouping) {
+    let nativeGroupObject, symbolObject, newGroupObject;
+    let scaleFactorX, scaleFactorY, shapeCount;
+    let shapeIndex, offsetX, offsetY;
+    let resultObjects = [];
+    let ungroupData = {
+      selectedList: []
+    };
+
+    // Get the native group object and its associated symbol
+    nativeGroupObject = ObjectUtil.GetObjectPtr(nativeGroupId, false);
+
+    // Proceed only if it's a native group with valid symbol ID
+    if (nativeGroupObject.NativeID >= 0 &&
+      (symbolObject = ObjectUtil.GetObjectPtr(nativeGroupObject.NativeID, false))) {
+
+      // Extract shapes from the symbol
+      ShapeUtil.ReadSymbolFromBuffer(
+        symbolObject, 0, 0, 0, false, false, ungroupData,
+        false, false, false, false, false
+      );
+
+      // Process extracted shapes if any were found
+      if (ungroupData.selectedList.length) {
+        shapeCount = ungroupData.selectedList.length;
+
+        // Calculate bounding rectangle of all shapes
+        let shapesRect = this.GetListSRect(ungroupData.selectedList);
+
+        // Calculate scaling factors to match original group dimensions
+        scaleFactorX = nativeGroupObject.Frame.width / shapesRect.width;
+        scaleFactorY = nativeGroupObject.Frame.height / shapesRect.height;
+
+        // Calculate center point for scaling
+        let centerPoint = {
+          x: nativeGroupObject.Frame.x + nativeGroupObject.Frame.width / 2,
+          y: nativeGroupObject.Frame.y + nativeGroupObject.Frame.height / 2
+        };
+
+        // Set offset to match original group position
+        offsetX = nativeGroupObject.Frame.x;
+        offsetY = nativeGroupObject.Frame.y;
+
+        // If scaling is approximately 1:1 or we have only one shape, just offset shapes
+        if ((Utils2.IsEqual(100 * scaleFactorX, 100) &&
+          Utils2.IsEqual(100 * scaleFactorY, 100)) ||
+          !(shapeCount > 1)) {
+
+          for (shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++) {
+            nativeGroupId = ungroupData.selectedList[shapeIndex];
+            ObjectUtil.GetObjectPtr(nativeGroupId, false).OffsetShape(offsetX, offsetY);
+          }
+        }
+        // Otherwise, scale and position each shape
+        else {
+          for (shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++) {
+            nativeGroupId = ungroupData.selectedList[shapeIndex];
+            ObjectUtil.GetObjectPtr(nativeGroupId, false).ScaleObject(
+              offsetX, offsetY, centerPoint, 0,
+              scaleFactorX, scaleFactorY, true
+            );
+          }
+        }
+
+        // Create a new group for the shapes if there are multiple shapes and we're not skipping regrouping
+        if (shapeCount > 1 && !skipRegrouping) {
+          nativeGroupId = ToolAct2Util.GroupSelectedShapes(true, ungroupData.selectedList, false);
+          newGroupObject = ObjectUtil.GetObjectPtr(nativeGroupId, false);
+
+          resultObjects.push(nativeGroupId);
+
+          // Set group properties to match the original native group
+          newGroupObject.InitialGroupBounds.x = 0;
+          newGroupObject.InitialGroupBounds.y = 0;
+          newGroupObject.Frame = Utils1.DeepCopy(nativeGroupObject.Frame);
+          newGroupObject.RotationAngle = nativeGroupObject.RotationAngle;
+
+          // Copy flip states from the original group
+          newGroupObject.extraflags = Utils2.SetFlag(
+            newGroupObject.extraflags,
+            OptConstant.ExtraFlags.FlipHoriz,
+            (nativeGroupObject.extraflags & OptConstant.ExtraFlags.FlipHoriz) > 0
+          );
+
+          newGroupObject.extraflags = Utils2.SetFlag(
+            newGroupObject.extraflags,
+            OptConstant.ExtraFlags.FlipVert,
+            (nativeGroupObject.extraflags & OptConstant.ExtraFlags.FlipVert) > 0
+          );
+
+          newGroupObject.UpdateFrame(newGroupObject.Frame);
+        }
+        // Otherwise just return the first shape
+        else {
+          resultObjects.push(ungroupData.selectedList[0]);
+        }
+      }
+    }
+
+    return resultObjects;
+  }
 }
 
 export default OptUtil

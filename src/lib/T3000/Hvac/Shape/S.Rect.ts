@@ -1,15 +1,11 @@
 
-
 import BaseShape from './S.BaseShape'
 import Utils2 from "../Util/Utils2";
-import T3Gv from '../Data/T3Gv'
-import $ from 'jquery';
 import Point from '../Model/Point'
 import Instance from '../Data/Instance/Instance';
 import NvConstant from '../Data/Constant/NvConstant'
 import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import LogUtil from '../Util/LogUtil';
 

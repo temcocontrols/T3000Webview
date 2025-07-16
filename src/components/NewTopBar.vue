@@ -103,7 +103,7 @@
   <div class="tool-bar-container">
     <div class="left-panel">
       <div class="tool-title">
-        <span>T3000 Havc</span>
+        <span>T3000 Hvac</span>
       </div>
       <div class="tool-btns">
         <q-btn dense flat round icon="menu" size="sm" @click="lockToggle" />

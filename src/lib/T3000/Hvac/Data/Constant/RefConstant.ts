@@ -1,9 +1,12 @@
 
 import { ref } from "vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
+import { EventFormState, CalendarEvent } from "../Constant/T3Interface"
 
+// Interface definition for context menu configuration
+export interface ICtxMenuConfig { isShow: boolean; from: string; type: string; }
+export const ctxMenuConfig = ref<ICtxMenuConfig>({ isShow: false, from: "", type: "" });
 
-export const contextMenuShow = ref<boolean>(false);
 export const objectConfigShow = ref<boolean>(false);
 export const globalMsgShow = ref<boolean>(false);
 export const commonMsg = ref<string>("");
@@ -60,14 +63,41 @@ export const importJsonDialog = ref<ImportJsonDialog>({ addedCount: 0, active: f
 
 export const clipboardFull = ref<boolean>(false); // State of the clipboard
 
+export const zoomScale = ref<number>(1); // Current zoom scale
+export const zoomStep = ref<number>(0.25); // Zoom step value
+export const showRulers = ref<boolean>(false); // Show rulers on the canvas
+export const showGrid = ref<boolean>(false); // Show grid on the canvas
 
+// New ui's top menu
+export const topMenuCurrent = ref<string[]>(['dashboard']);
 
+// New schedule modal component
+export const scheduleModalVisible = ref<boolean>(false);
+export const selectedSchedule = ref(null);
+export const scheduleItemData = ref({});
 
+export const scheduleModalNVisible = ref<boolean>(false);
 
+export const currentDate = ref<Date>(new Date());
+export const modalTitle = ref<string>("Schedule full label test title");
+export const schInfo = ref<string>("T3-TB / Test Schedule / Panel 1 / Schedule 1");
+export const tuiEvents = ref<any[]>([]); // Array to hold events for the calendar
+export const schEventList = ref<CalendarEvent[]>([]); // Array to hold schedule events
 
+// Global
+export const topNavVisible = ref<boolean>(true);
+export const leftNavVisible = ref<boolean>(true);
+export const rightNavVisible = ref<boolean>(true);
 
+export const scheduleLockVisible = ref<boolean>(true);
 
+// Annual schedule
+export const annualScheduleVisible = ref<boolean>(false);
+export const annualScheduleData = ref<any[]>([]); // Array to hold annual schedule data
 
+// Trend Log
+export const trendLogData = ref<any[]>([]); // Array to hold trend log data
+export const trendLogVisible = ref<boolean>(false); // Visibility state of the trend log
 
 
 

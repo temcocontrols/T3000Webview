@@ -14,7 +14,7 @@ import IdxPage2 from "./Opt/Common/IdxPage2";
 const Hvac = {
   PageMain: new PageMain(),
   UI: new T3Opt(),
-  Doc: new DocUtil(),
+  // Doc: new DocUtil(),
   KiOpt: new KeyInsertOpt(),
   QuasarUtil: new QuasarUtil(),
   LsOpt: new LsOpt(),

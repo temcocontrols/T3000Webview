@@ -416,7 +416,8 @@ class ArcLine extends BaseLine {
     let targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
     // Adjust the rectangle boundaries.
-    let adjustedRect = $.extend(true, {}, rect);
+    // let adjustedRect = $.extend(true, {}, rect);
+    let adjustedRect = Utils1.DeepCopy(rect);
     adjustedRect.x -= adjustedKnobSize / 2;
     adjustedRect.y -= adjustedKnobSize / 2;
     adjustedRect.width += adjustedKnobSize;

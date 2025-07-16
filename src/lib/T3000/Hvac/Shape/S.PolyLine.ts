@@ -509,20 +509,27 @@ class PolyLine extends BaseLine {
           if (this.StyleRecord && this.StyleRecord.Line &&
             (this.StyleRecord.Line.BThick || (this instanceof Instance.Shape.PolyLineContainer))) {
             // When line has thickness or the object is a PolyLineContainer.
-            this.inside = $.extend(true, {}, boundingRect);
-            this.Frame = $.extend(true, {}, boundingRect);
+            // this.inside = $.extend(true, {}, boundingRect);
+            // this.Frame = $.extend(true, {}, boundingRect);
+            this.inside = Utils1.DeepCopy(boundingRect);
+            this.Frame = Utils1.DeepCopy(boundingRect);
+
             lineThickness = this.StyleRecord.Line.Thickness;
             Utils2.InflateRect(this.inside, -lineThickness / 2, -lineThickness / 2);
           } else {
-            this.inside = $.extend(true, {}, boundingRect);
-            this.Frame = $.extend(true, {}, boundingRect);
+            // this.inside = $.extend(true, {}, boundingRect);
+            // this.Frame = $.extend(true, {}, boundingRect);
+            this.inside = Utils1.DeepCopy(boundingRect);
+            this.Frame = Utils1.DeepCopy(boundingRect);
+
             if (this.StyleRecord && this.StyleRecord.Line) {
               lineThickness = this.StyleRecord.Line.Thickness;
             }
           }
         } else {
           // For non-closed polyline, simply update the frame.
-          this.Frame = $.extend(true, {}, boundingRect);
+          // this.Frame = $.extend(true, {}, boundingRect);
+          this.Frame = Utils1.DeepCopy(boundingRect);
         }
       }
     }
@@ -793,7 +800,9 @@ class PolyLine extends BaseLine {
           // Prepare an array of points to rotate: current sub-segment start, shape center clone, and current sub-segment end.
           rotatedPoints = [];
           rotatedPoints.push({ ...firstPoint });
-          const shapeCenterClone = $.extend(true, {}, shapeCenter);
+          // const shapeCenterClone = $.extend(true, {}, shapeCenter);
+          const shapeCenterClone = Utils1.DeepCopy(shapeCenter);
+
           rotatedPoints.push(shapeCenterClone);
           rotatedPoints.push({ ...secondPoint });
 
@@ -830,7 +839,8 @@ class PolyLine extends BaseLine {
     this.LineTextX = bestGlobalAdjustment / accumulateLength;
     this.LineTextY = bestDeltaY;
     if (this.LineTextX) {
-      this.trect = $.extend(true, {}, svgShape.trect);
+      // this.trect = $.extend(true, {}, svgShape.trect);
+      this.trect = Utils1.DeepCopy(svgShape.trect);
     }
 
     LogUtil.Debug("S.PolyLine: CalcTextPosition output", {
@@ -1118,7 +1128,7 @@ class PolyLine extends BaseLine {
       }
 
       SvgUtil.ShowSVGSelectionState(svgElement.GetID(), true);
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     }
 
     LogUtil.Debug("S.PolyLine: AddCorner - output: Corner added successfully");
@@ -1171,7 +1181,9 @@ class PolyLine extends BaseLine {
     // Get a copy of the PolyLine frame.
     let frame = this.Frame;
     // Increase the frame size by a padding of adjustedKnobSize for proper knob placement.
-    let paddedFrame = $.extend(true, {}, frame);
+    // let paddedFrame = $.extend(true, {}, frame);
+    let paddedFrame = Utils1.DeepCopy(frame);
+
     paddedFrame.x -= adjustedKnobSize / 2;
     paddedFrame.y -= adjustedKnobSize / 2;
     paddedFrame.width += adjustedKnobSize;
@@ -1185,7 +1197,8 @@ class PolyLine extends BaseLine {
     let groupHeight = frame.height + adjustedKnobSize;
 
     // Clone the frame for later use.
-    let frameClone = $.extend(true, {}, frame);
+    // let frameClone = $.extend(true, {}, frame);
+    let frameClone = Utils1.DeepCopy(frame);
 
     // Setup default knob properties.
     let knobProps: any = {
@@ -1363,8 +1376,8 @@ class PolyLine extends BaseLine {
     knobProps.strokeSize = 1;
     knobProps.strokeColor = "green";
 
-    let u=1;
-    let p=1;
+    let u = 1;
+    let p = 1;
 
     for (let segmentIndex = 1; segmentIndex < segmentsCount; segmentIndex++) {
       // For curved segments such as ARCLINE, set adjustment knob position.
@@ -4536,7 +4549,7 @@ class PolyLine extends BaseLine {
       ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug("S.PolyLine: UpdateDimensionFromTextObj output", { text, userData });
   }
@@ -5084,7 +5097,8 @@ class PolyLine extends BaseLine {
         x: this.polylist.segs[hitSegmentIndex - 1].pt.x + translationX / scaleFactors.x,
         y: this.polylist.segs[hitSegmentIndex - 1].pt.y + translationY / scaleFactors.y
       };
-      this.polylist.segs[hitSegmentIndex - 1].pt = $.extend(true, {}, updatedPointBefore);
+      // this.polylist.segs[hitSegmentIndex - 1].pt = $.extend(true, {}, updatedPointBefore);
+      this.polylist.segs[hitSegmentIndex - 1].pt = Utils1.DeepCopy(updatedPointBefore);
     }
     // Update the segment at hitSegmentIndex if applicable.
     if (hitSegmentIndex !== this.polylist.segs.length - 1) {
@@ -5092,7 +5106,8 @@ class PolyLine extends BaseLine {
         x: this.polylist.segs[hitSegmentIndex].pt.x + translationX / scaleFactors.x,
         y: this.polylist.segs[hitSegmentIndex].pt.y + translationY / scaleFactors.y
       };
-      this.polylist.segs[hitSegmentIndex].pt = $.extend(true, {}, updatedPointAt);
+      // this.polylist.segs[hitSegmentIndex].pt = $.extend(true, {}, updatedPointAt);
+      this.polylist.segs[hitSegmentIndex].pt = Utils1.DeepCopy(updatedPointAt);
     }
 
     // Get the SVG element for the current block.

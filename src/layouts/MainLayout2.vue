@@ -1,27 +1,40 @@
 <template>
-  <div class="app-container">
-   <a-layout class="layout">
-    <MyHeader />
-    <a-layout-content class="main-content">
-      <slot>
-        <router-view />
-      </slot>
-    </a-layout-content>
-  </a-layout>
-  </div>
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
+      <MyHeader />
+    </q-header>
+
+    <q-page-container>
+      <router-view />
+    </q-page-container>
+  </q-layout>
 </template>
 
 <script setup lang="ts">
 import MyHeader from '../components/NewUI/Header.vue'
-// These imports are commented out in the original code
-// import Hero from '../components/NewUI/Hero.vue'
-// import CardGrid from '../components/NewUI/CardGrid.vue'
-// import Features from '../components/NewUI/Features.vue'
-// import MyFooter from '../components/NewUI/Footer.vue'
 </script>
 
-<style>
-.app-container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+<style scoped>
+/* Quasar layout styles */
+.q-layout {
+  background-color: #f5f5f5;
 }
+
+.q-header {
+  background: #fff;
+  color: #000;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+.q-page-container {
+  padding: 0;
+  background-color: #f5f5f5;
+}
+
+/* If transparent doesn't work as expected, try using a white background */
+/*
+.layout, .ant-layout {
+  background-color: white !important;
+}
+*/
 </style>

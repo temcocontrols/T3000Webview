@@ -1,10 +1,8 @@
 
 
-import HvConstant from '../Data/Constant/HvConstant'
 import DataObj from '../Data/State/DataObj'
 import T3Gv from '../Data/T3Gv'
 import SegmentData from '../Model/SegmentData'
-import $ from 'jquery'
 import StateConstant from '../Data/State/StateConstant'
 import { Dialog } from 'quasar'
 
@@ -69,7 +67,8 @@ class Utils1 {
     }
 
     const objectInstance = getInstance(sourceObject);
-    const clonedObject = $.extend(true, objectInstance, sourceObject);
+    // const clonedObject = $.extend(true, objectInstance, sourceObject);
+    const clonedObject = Utils1.DeepCopy({ ...objectInstance, ...sourceObject });
 
     if (sourceObject.Data !== null && sourceObject.Data instanceof Object) {
       clonedObject.Data = Utils1.DeepCopy(sourceObject.Data);
@@ -97,6 +96,7 @@ class Utils1 {
     } else {
       result = undefined;
 
+      /*
       $.each(StateConstant.StoredObjectType, function (key, type) {
         try {
           if (storedObject.Type === type) {
@@ -107,6 +107,18 @@ class Utils1 {
           throw error;
         }
       });
+      */
+
+      for (const [key, type] of Object.entries(StateConstant.StoredObjectType)) {
+        try {
+          if (storedObject.Type === type) {
+            result = new storedObject.constructor({});
+            break; // Exit the loop when a match is found
+          }
+        } catch (error) {
+          throw error;
+        }
+      }
     }
 
     return result;
@@ -479,13 +491,13 @@ class Utils1 {
     if (Math.abs(cosAngle) < 0.0001) cosAngle = 0;
 
     // Translate point to origin (relative to center)
-    const relativeX = pointToRotate.x - centerPoint.x;
-    const relativeY = pointToRotate.y - centerPoint.y;
+    const relativeX = pointToRotate.x - (centerPoint?.x ?? 0);
+    const relativeY = pointToRotate.y - (centerPoint?.y ?? 0);
 
     // Apply rotation matrix
     const rotatedPoint = {
-      x: relativeX * cosAngle + relativeY * sinAngle + centerPoint.x,
-      y: -relativeX * sinAngle + relativeY * cosAngle + centerPoint.y
+      x: relativeX * cosAngle + relativeY * sinAngle + (centerPoint?.x ?? 0),
+      y: -relativeX * sinAngle + relativeY * cosAngle + (centerPoint?.y ?? 0)
     };
 
     return rotatedPoint;

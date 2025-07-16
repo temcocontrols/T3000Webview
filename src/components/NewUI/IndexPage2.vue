@@ -13,7 +13,7 @@
           :object="appStateV2.items[appStateV2.activeItemIndex]" :selected-count="appStateV2.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+          :grpNav="grpNav" :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
         </NewTopToolBar2>
         <div class="main-area">
           <div id="left-panel" class="left-panel">
@@ -34,13 +34,13 @@
               </div>
               <div id="v-ruler" class="document-ruler-left">
               </div>
-              <!-- <a-dropdown :trigger="['contextmenu']"> -->
-              <div id="svg-area" class="svg-area">
-              </div>
-              <!-- <template #overlay>
-                  <T3ContextMenu v-if="contextMenuShow"></T3ContextMenu>
+              <a-dropdown :trigger="['contextmenu']">
+                <div id="svg-area" class="svg-area">
+                </div>
+                <template #overlay>
+                  <T3ContextMenu v-if="ctxMenuConfig.isShow" :ctxMenuConfig="ctxMenuConfig"></T3ContextMenu>
                 </template>
-</a-dropdown> -->
+              </a-dropdown>
             </div>
             <div id="doc-toolbar" class="doc-toolbar">
             </div>
@@ -49,7 +49,7 @@
       </div>
     </div>
 
-    <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
+    <!-- <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
       <q-list>
         <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
           <q-item-section avatar>
@@ -157,10 +157,10 @@
           </q-item-section>
         </q-item>
       </q-list>
-    </q-menu>
+    </q-menu> -->
 
     <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]"
-      @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
+      :object="appStateV2.items[appStateV2.activeItemIndex]" @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
     </ObjectConfigNew>
 
   </q-page>
@@ -242,7 +242,7 @@
           </q-btn>
           <q-select :option-label="entryLabel" label="Type or select Entry" option-value="id" filled use-input
             hide-selected fill-input input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
-            @filter="selectPanelFilterFn" class="grow" @update:model-value="insertT3EntrySelect(value)" autofocus
+            @filter="selectPanelFilterFn" class="grow" @update:model-value="insertT3EntrySelect($event)" autofocus
             @focus="insertT3DefaultLoadData">
             <template v-slot:option="scope">
               <q-item v-bind="scope.itemProps">
@@ -303,7 +303,7 @@
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
       <q-separator />
-      <DeviceInfo2 :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel" @testSendMsg="testSendMsg">
+      <DeviceInfo2 :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel">
       </DeviceInfo2>
     </q-card>
   </q-dialog>
@@ -314,7 +314,7 @@ import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerR
 import { useQuasar, useMeta, QVueGlobals } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
 import KeyController from "keycon";
-import { cloneDeep } from "lodash";
+// Import lodash functions as needed
 import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
@@ -327,7 +327,7 @@ import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
-import { startsWith } from "lodash";
+// lodash functions imported above as _
 import HRuler from "src/components/HRuler.vue";
 import VRuler from "src/components/VRuler.vue";
 import HVGrid from "src/components/HVGrid.vue";
@@ -344,7 +344,7 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
-import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { ctxMenuConfig, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 import {
@@ -374,6 +374,95 @@ useMeta(metaData);
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q: QVueGlobals = useQuasar(); // Access Quasar framework instance
 
+// Create bound method references to preserve 'this' context
+const hvacUI = Hvac.UI;
+const hvacIdxPage2 = Hvac.IdxPage2;
+
+// Bind all methods to preserve context
+const boundMethods = {
+  // UI methods
+  initializeUI: hvacUI.Initialize.bind(hvacUI),
+  
+  // IdxPage2 methods
+  initQuasar: hvacIdxPage2.initQuasar.bind(hvacIdxPage2),
+  initPage: hvacIdxPage2.initPage.bind(hvacIdxPage2),
+  updateDeviceModel: hvacIdxPage2.updateDeviceModel.bind(hvacIdxPage2),
+  showMoreDevices: hvacIdxPage2.showMoreDevices.bind(hvacIdxPage2),
+  viewportMouseMoved: hvacIdxPage2.viewportMouseMoved.bind(hvacIdxPage2),
+  refreshObjects: hvacIdxPage2.refreshObjects.bind(hvacIdxPage2),
+  addActionToHistory: hvacIdxPage2.addActionToHistory.bind(hvacIdxPage2),
+  onDrag: hvacIdxPage2.onDrag.bind(hvacIdxPage2),
+  onDragEnd: hvacIdxPage2.onDragEnd.bind(hvacIdxPage2),
+  onDragGroupStart: hvacIdxPage2.onDragGroupStart.bind(hvacIdxPage2),
+  onDragGroup: hvacIdxPage2.onDragGroup.bind(hvacIdxPage2),
+  onDragGroupEnd: hvacIdxPage2.onDragGroupEnd.bind(hvacIdxPage2),
+  onSelectoDragStart: hvacIdxPage2.onSelectoDragStart.bind(hvacIdxPage2),
+  onSelectoSelectEnd: hvacIdxPage2.onSelectoSelectEnd.bind(hvacIdxPage2),
+  selectGroup: hvacIdxPage2.selectGroup.bind(hvacIdxPage2),
+  onResizeStart: hvacIdxPage2.onResizeStart.bind(hvacIdxPage2),
+  onResize: hvacIdxPage2.onResize.bind(hvacIdxPage2),
+  onResizeEnd: hvacIdxPage2.onResizeEnd.bind(hvacIdxPage2),
+  onRotate: hvacIdxPage2.onRotate.bind(hvacIdxPage2),
+  onResizeGroup: hvacIdxPage2.onResizeGroup.bind(hvacIdxPage2),
+  onResizeGroupEnd: hvacIdxPage2.onResizeGroupEnd.bind(hvacIdxPage2),
+  onRotateGroupStart: hvacIdxPage2.onRotateGroupStart.bind(hvacIdxPage2),
+  onRotateGroup: hvacIdxPage2.onRotateGroup.bind(hvacIdxPage2),
+  addLibItem: hvacIdxPage2.addLibItem.bind(hvacIdxPage2),
+  selectTool: hvacIdxPage2.selectTool.bind(hvacIdxPage2),
+  rotate90: hvacIdxPage2.rotate90.bind(hvacIdxPage2),
+  flipH: hvacIdxPage2.flipH.bind(hvacIdxPage2),
+  flipV: hvacIdxPage2.flipV.bind(hvacIdxPage2),
+  bringToFront: hvacIdxPage2.bringToFront.bind(hvacIdxPage2),
+  sendToBack: hvacIdxPage2.sendToBack.bind(hvacIdxPage2),
+  removeObject: hvacIdxPage2.removeObject.bind(hvacIdxPage2),
+  duplicateObject: hvacIdxPage2.duplicateObject.bind(hvacIdxPage2),
+  cloneObject: hvacIdxPage2.cloneObject.bind(hvacIdxPage2),
+  selectObject: hvacIdxPage2.selectObject.bind(hvacIdxPage2),
+  T3UpdateEntryField: hvacIdxPage2.T3UpdateEntryField.bind(hvacIdxPage2),
+  selectPanelFilterFn: hvacIdxPage2.selectPanelFilterFn.bind(hvacIdxPage2),
+  insertT3EntrySelect: hvacIdxPage2.insertT3EntrySelect.bind(hvacIdxPage2),
+  insertT3EntryOnSave: hvacIdxPage2.insertT3EntryOnSave.bind(hvacIdxPage2),
+  save: hvacIdxPage2.save.bind(hvacIdxPage2),
+  newProject: hvacIdxPage2.newProject.bind(hvacIdxPage2),
+  deleteSelected: hvacIdxPage2.deleteSelected.bind(hvacIdxPage2),
+  drawWeldObject: hvacIdxPage2.drawWeldObject.bind(hvacIdxPage2),
+  drawWeldObjectCanvas: hvacIdxPage2.drawWeldObjectCanvas.bind(hvacIdxPage2),
+  getDuctPoints: hvacIdxPage2.getDuctPoints.bind(hvacIdxPage2),
+  isDuctOverlap: hvacIdxPage2.isDuctOverlap.bind(hvacIdxPage2),
+  checkIsOverlap: hvacIdxPage2.checkIsOverlap.bind(hvacIdxPage2),
+  weldSelected: hvacIdxPage2.weldSelected.bind(hvacIdxPage2),
+  undoAction: hvacIdxPage2.undoAction.bind(hvacIdxPage2),
+  redoAction: hvacIdxPage2.redoAction.bind(hvacIdxPage2),
+  readFile: hvacIdxPage2.readFile.bind(hvacIdxPage2),
+  saveLibImage: hvacIdxPage2.saveLibImage.bind(hvacIdxPage2),
+  gaugeSettingsDialogAction: hvacIdxPage2.gaugeSettingsDialogAction.bind(hvacIdxPage2),
+  gaugeSettingsSave: hvacIdxPage2.gaugeSettingsSave.bind(hvacIdxPage2),
+  exportToJsonAction: hvacIdxPage2.exportToJsonAction.bind(hvacIdxPage2),
+  executeImportFromJson: hvacIdxPage2.executeImportFromJson.bind(hvacIdxPage2),
+  duplicateSelected: hvacIdxPage2.duplicateSelected.bind(hvacIdxPage2),
+  groupSelected: hvacIdxPage2.groupSelected.bind(hvacIdxPage2),
+  ungroupSelected: hvacIdxPage2.ungroupSelected.bind(hvacIdxPage2),
+  reloadPanelsData: hvacIdxPage2.reloadPanelsData.bind(hvacIdxPage2),
+  entryLabel: hvacIdxPage2.entryLabel.bind(hvacIdxPage2),
+  lockToggle: hvacIdxPage2.lockToggle.bind(hvacIdxPage2),
+  objectClicked: hvacIdxPage2.objectClicked.bind(hvacIdxPage2),
+  changeEntryValue: hvacIdxPage2.changeEntryValue.bind(hvacIdxPage2),
+  autoManualToggle: hvacIdxPage2.autoManualToggle.bind(hvacIdxPage2),
+  ObjectRightClicked: hvacIdxPage2.ObjectRightClicked.bind(hvacIdxPage2),
+  toggleClicked: hvacIdxPage2.toggleClicked.bind(hvacIdxPage2),
+  setTheSettingContextMenuVisible: hvacIdxPage2.setTheSettingContextMenuVisible.bind(hvacIdxPage2),
+  navGoBack: hvacIdxPage2.navGoBack.bind(hvacIdxPage2),
+  objectSettingsUnchanged: hvacIdxPage2.objectSettingsUnchanged.bind(hvacIdxPage2),
+  addToLibrary: hvacIdxPage2.addToLibrary.bind(hvacIdxPage2),
+  addToNewLibrary: hvacIdxPage2.addToNewLibrary.bind(hvacIdxPage2),
+  bringSelectedToFront: hvacIdxPage2.bringSelectedToFront.bind(hvacIdxPage2),
+  sendSelectedToBack: hvacIdxPage2.sendSelectedToBack.bind(hvacIdxPage2),
+  rotate90Selected: hvacIdxPage2.rotate90Selected.bind(hvacIdxPage2),
+  saveSelectedToClipboard: hvacIdxPage2.saveSelectedToClipboard.bind(hvacIdxPage2),
+  pasteFromClipboard: hvacIdxPage2.pasteFromClipboard.bind(hvacIdxPage2),
+  deleteLibItem: hvacIdxPage2.deleteLibItem.bind(hvacIdxPage2)
+};
+
 // Computed property for loading panels progress
 const loadingPanelsProgress: ComputedRef<number> = computed(() => {
   if (T3000_Data.value.loadingPanel === null) return 100;
@@ -388,23 +477,31 @@ if (process.env.DEV) {
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
     T3000_Data.value.panelsRanges = data.ranges;
-    selectPanelOptions.value = T3000_Data.value.panelsData;
+    // selectPanelOptions is computed from T3000_Data.panelsData, no need to assign
   });
 }
 
 // Lifecycle hook for component mount
 onMounted(() => {
-  Hvac.UI.Initialize($q); // Initialize the HVAC UI
-  Hvac.IdxPage2.initQuasar($q);
-  Hvac.IdxPage2.initPage();
+  try {
+    // Initialize the HVAC UI with proper binding
+    boundMethods.initializeUI($q);
+    
+    // Initialize IdxPage2 with proper binding
+    boundMethods.initQuasar($q);
+    boundMethods.initPage();
+  } catch (error) {
+    console.error('Error during component initialization:', error);
+    // Don't throw to prevent component from failing completely
+  }
 });
 
 function updateDeviceModel(isActive: boolean, data: any): void {
-  Hvac.IdxPage2.updateDeviceModel(isActive, data);
+  boundMethods.updateDeviceModel(isActive, data);
 }
 
 function showMoreDevices(): void {
-  Hvac.IdxPage2.showMoreDevices();
+  boundMethods.showMoreDevices();
 }
 
 onBeforeUnmount(() => { })
@@ -417,17 +514,17 @@ onUnmounted(() => {
 });
 
 function viewportMouseMoved(e: MouseEvent): void {
-  Hvac.IdxPage2.viewportMouseMoved(e);
+  boundMethods.viewportMouseMoved(e);
 }
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects(): void {
-  Hvac.IdxPage2.refreshObjects();
+  boundMethods.refreshObjects();
 }
 
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title: string): void {
-  Hvac.IdxPage2.addActionToHistory(title);
+  boundMethods.addActionToHistory(title);
 }
 
 // Handles click events on group elements
@@ -442,57 +539,57 @@ function onDragStart(e: any): void {
 
 // Handles dragging of an element
 function onDrag(e: any): void {
-  Hvac.IdxPage2.onDrag(e);
+  boundMethods.onDrag(e);
 }
 
 // Ends the dragging of an element
 function onDragEnd(e: any): void {
-  Hvac.IdxPage2.onDragEnd(e);
+  boundMethods.onDragEnd(e);
 }
 
 // Starts dragging a group of elements
 function onDragGroupStart(e: any): void {
-  Hvac.IdxPage2.onDragGroupStart(e);
+  boundMethods.onDragGroupStart(e);
 }
 
 // Handles dragging of a group of elements
 function onDragGroup(e: any): void {
-  Hvac.IdxPage2.onDragGroup(e);
+  boundMethods.onDragGroup(e);
 }
 
 // Ends the dragging of a group of elements
 function onDragGroupEnd(e: any): void {
-  Hvac.IdxPage2.onDragGroupEnd(e);
+  boundMethods.onDragGroupEnd(e);
 }
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e: any): void {
-  Hvac.IdxPage2.onSelectoDragStart(e);
+  boundMethods.onSelectoDragStart(e);
 }
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e: any): void {
-  Hvac.IdxPage2.onSelectoSelectEnd(e);
+  boundMethods.onSelectoSelectEnd(e);
 }
 
 // Selects a group of elements by their group ID
 function selectGroup(id: string): void {
-  Hvac.IdxPage2.selectGroup(id);
+  boundMethods.selectGroup(id);
 }
 
 // Starts resizing an element
 function onResizeStart(e: any): void {
-  Hvac.IdxPage2.onResizeStart(e);
+  boundMethods.onResizeStart(e);
 }
 
 // Handles resizing of an element
 function onResize(e: any): void {
-  Hvac.IdxPage2.onResize(e);
+  boundMethods.onResize(e);
 }
 
 // Ends the resizing of an element
 function onResizeEnd(e: any): void {
-  Hvac.IdxPage2.onResizeEnd(e);
+  boundMethods.onResizeEnd(e);
 }
 
 // Starts rotating an element
@@ -502,7 +599,7 @@ function onRotateStart(e: any): void {
 
 // Handles rotating of an element
 function onRotate(e: any): void {
-  Hvac.IdxPage2.onRotate(e);
+  boundMethods.onRotate(e);
 }
 
 // Refreshes objects on rotate end
@@ -522,77 +619,77 @@ function onResizeGroupStart(e: any): void {
 
 // Handles resizing of a group of elements
 function onResizeGroup(e: any): void {
-  Hvac.IdxPage2.onResizeGroup(e);
+  boundMethods.onResizeGroup(e);
 }
 
 // Ends the resizing of a group of elements and updates the app state
 function onResizeGroupEnd(e: any): void {
-  Hvac.IdxPage2.onResizeGroupEnd(e);
+  boundMethods.onResizeGroupEnd(e);
 }
 
 // Starts rotating a group of elements and adds the action to the history
 function onRotateGroupStart(e: any): void {
-  Hvac.IdxPage2.onRotateGroupStart(e);
+  boundMethods.onRotateGroupStart(e);
 }
 
 // Handles rotating of a group of elements and updates their state
 function onRotateGroup(e: any): void {
-  Hvac.IdxPage2.onRotateGroup(e);
+  boundMethods.onRotateGroup(e);
 }
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items: any[], size: any, pos: any): void {
-  Hvac.IdxPage2.addLibItem(items, size, pos);
+  boundMethods.addLibItem(items, size, pos);
 }
 
 // Select a tool and set its type
 function selectTool(tool: any, type: string = "default"): void {
-  Hvac.IdxPage2.selectTool(tool, type);
+  boundMethods.selectTool(tool, type);
 }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item: any, minues: boolean = false): void {
-  Hvac.IdxPage2.rotate90(item, minues);
+  boundMethods.rotate90(item, minues);
 }
 
 // Flip an item horizontally
 function flipH(item: any): void {
-  Hvac.IdxPage2.flipH(item);
+  boundMethods.flipH(item);
 }
 
 // Flip an item vertically
 function flipV(item: any): void {
-  Hvac.IdxPage2.flipV(item);
+  boundMethods.flipV(item);
 }
 
 // Bring an item to the front by increasing its z-index
 function bringToFront(item: any): void {
-  Hvac.IdxPage2.bringToFront(item);
+  boundMethods.bringToFront(item);
 }
 
 // Send an item to the back by decreasing its z-index
 function sendToBack(item: any): void {
-  Hvac.IdxPage2.sendToBack(item);
+  boundMethods.sendToBack(item);
 }
 
 // Remove an item from the app state
 function removeObject(item: any): void {
-  Hvac.IdxPage2.removeObject(item);
+  boundMethods.removeObject(item);
 }
 
 // Duplicate an item and select the new copy
 function duplicateObject(i: any): void {
-  Hvac.IdxPage2.duplicateObject(i);
+  boundMethods.duplicateObject(i);
 }
 
 // Clone an object and adjust its position slightly
 function cloneObject(i: any, group: any = undefined): void {
-  Hvac.IdxPage2.cloneObject(i, group);
+  boundMethods.cloneObject(i, group);
 }
 
 // Select an object and update the app state
 function selectObject(item: any): void {
-  Hvac.IdxPage2.selectObject(item);
+  boundMethods.selectObject(item);
 }
 
 // Handle right-click selection
@@ -602,7 +699,7 @@ function selectByRightClick(e: MouseEvent): void {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key: string, obj: any): void {
-  Hvac.IdxPage2.T3UpdateEntryField(key, obj);
+  boundMethods.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value
@@ -624,16 +721,16 @@ function linkT3EntrySaveV2(): void {
 // Filter function for selecting panels in the UI
 function selectPanelFilterFn(val: string, update: Function): void {
   LogUtil.Debug("selectPanelFilterFn")
-  Hvac.IdxPage2.selectPanelFilterFn(val, update);
+  boundMethods.selectPanelFilterFn(val, update);
 }
 
 // Insert Key Function
 function insertT3EntrySelect(value: any): void {
-  Hvac.IdxPage2.insertT3EntrySelect(value);
+  boundMethods.insertT3EntrySelect(value);
 }
 
 function insertT3EntryOnSave(): void {
-  Hvac.IdxPage2.insertT3EntryOnSave();
+  boundMethods.insertT3EntryOnSave();
 }
 
 function insertT3DefaultLoadData(): void {
@@ -642,7 +739,7 @@ function insertT3DefaultLoadData(): void {
 // Save the current app state, optionally displaying a notification
 function save(notify: boolean = false, saveToT3: boolean = false): void {
   LogUtil.Debug("= IdxPage save", notify, saveToT3);
-  Hvac.IdxPage2.save(notify, saveToT3);
+  boundMethods.save(notify, saveToT3);
 }
 
 function refreshMoveable(): void {
@@ -651,7 +748,7 @@ function refreshMoveable(): void {
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject(): void {
-  Hvac.IdxPage2.newProject();
+  boundMethods.newProject();
 }
 
 // Handle keyup event for keyboard control
@@ -771,43 +868,43 @@ function linkT3EntryDialogActionV2(): void {
 
 // Delete selected objects from the app state
 function deleteSelected(): void {
-  Hvac.IdxPage2.deleteSelected();
+  boundMethods.deleteSelected();
 }
 
 function drawWeldObject(selectedItems: any[]): void {
-  Hvac.IdxPage2.drawWeldObject(selectedItems);
+  boundMethods.drawWeldObject(selectedItems);
 }
 
 // Draw weld objects with canvas
 function drawWeldObjectCanvas(selectedItems: any[]): void {
-  Hvac.IdxPage2.drawWeldObjectCanvas(selectedItems);
+  boundMethods.drawWeldObjectCanvas(selectedItems);
 }
 
 function getDuctPoints(info: any): void {
-  Hvac.IdxPage2.getDuctPoints(info);
+  boundMethods.getDuctPoints(info);
 }
 
 function isDuctOverlap(partEl: any): void {
-  Hvac.IdxPage2.isDuctOverlap(partEl);
+  boundMethods.isDuctOverlap(partEl);
 }
 
 function checkIsOverlap(selectedItems: any[]): void {
-  Hvac.IdxPage2.checkIsOverlap(selectedItems);
+  boundMethods.checkIsOverlap(selectedItems);
 }
 
 // Weld selected objects into one shape
 function weldSelected(): void {
-  Hvac.IdxPage2.weldSelected();
+  boundMethods.weldSelected();
 }
 
 // Undo the last action
 function undoAction(): void {
-  Hvac.IdxPage2.undoAction();
+  boundMethods.undoAction();
 }
 
 // Redo the last undone action
 function redoAction(): void {
-  Hvac.IdxPage2.redoAction();
+  boundMethods.redoAction();
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -815,22 +912,22 @@ function handleFileUploaded(data: any): void { }
 
 // Read a file and return its data as a promise
 async function readFile(file: File): Promise<string> {
-  return Hvac.IdxPage2.readFile(file) as Promise<string>;
+  return boundMethods.readFile(file) as Promise<string>;
 }
 
 // Save an image to the library or online storage
 async function saveLibImage(file: File): Promise<void> {
-  Hvac.IdxPage2.saveLibImage(file);
+  boundMethods.saveLibImage(file);
 }
 
 // Open the gauge settings dialog with the provided item data
 function gaugeSettingsDialogAction(item: any): void {
-  Hvac.IdxPage2.gaugeSettingsDialogAction(item);
+  boundMethods.gaugeSettingsDialogAction(item);
 }
 
 // Save the gauge settings and update the app state
 function gaugeSettingsSave(item: any): void {
-  Hvac.IdxPage2.gaugeSettingsSave(item);
+  boundMethods.gaugeSettingsSave(item);
 }
 
 // Open the import JSON dialog
@@ -840,7 +937,7 @@ function importJsonAction(): void {
 
 // Export the current app state to a JSON file
 function exportToJsonAction(): void {
-  Hvac.IdxPage2.exportToJsonAction();
+  boundMethods.exportToJsonAction();
 }
 
 // Handle the addition of an imported JSON file
@@ -852,22 +949,22 @@ async function importJsonFileAdded(file: any): Promise<void> {
 
 // Execute the import of the JSON data into the app state
 function executeImportFromJson(): void {
-  Hvac.IdxPage2.executeImportFromJson();
+  boundMethods.executeImportFromJson();
 }
 
 // Duplicate the selected items in the app state
 function duplicateSelected(): void {
-  Hvac.IdxPage2.duplicateSelected();
+  boundMethods.duplicateSelected();
 }
 
 // Group the selected items together
 function groupSelected(): void {
-  Hvac.IdxPage2.groupSelected();
+  boundMethods.groupSelected();
 }
 
 // Ungroup the selected items
 function ungroupSelected(): void {
-  Hvac.IdxPage2.ungroupSelected();
+  boundMethods.ungroupSelected();
 }
 
 // Handle the menu action for the top toolbar

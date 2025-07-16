@@ -16,7 +16,7 @@ import AntdUtil from "../UI/AntdUtil";
 import {
   isDrawing, selectedTool, lastAction, clipboardFull, topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable,
   toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue, gaugeSettingsDialog, insertCount, objectsRef, cursorIconPos, continuesObjectTypes,
-  startTransform, snappable, keepRatio, selecto, targets, contextMenuShow, importJsonDialog
+  startTransform, snappable, keepRatio, selecto, targets, ctxMenuConfig, importJsonDialog
 } from "../../Data/Constant/RefConstant";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
 
@@ -2215,10 +2215,10 @@ class IdxPage2 {
 
     if (appStateV2.value.selectedTargets.length > 1 && !locked.value) {
       setTimeout(() => {
-        contextMenuShow.value = true;
+        ctxMenuConfig.value.isShow = true;
       }, 100);
     } else {
-      contextMenuShow.value = false;
+      ctxMenuConfig.value.isShow = false;
     }
 
     IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection

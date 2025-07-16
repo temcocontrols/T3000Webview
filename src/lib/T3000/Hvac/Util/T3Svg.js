@@ -1,4 +1,5 @@
 
+import { ErrorHandler, safeNodeAccess } from './ErrorHandler';
 
 // import { SVG, Element, extend, create } from "@svgdotjs/svg.js";
 
@@ -186,7 +187,15 @@ SVG.extend(SVG.Element, {
         );
       }
     } else {
-      var nodeName = this.node.nodeName;
+      // Safe node access for getting node name
+      const nodeName = safeNodeAccess(
+        () => this.node.nodeName,
+        { component: 'T3Svg', function: 'clone' }
+      );
+
+      if (!nodeName) {
+        return null; // Cannot clone without a valid node
+      }
 
       if (nodeName == "rect") {
         clone = this.parent[nodeName](this.attrs.width, this.attrs.height);
@@ -264,9 +273,17 @@ SVG.extend(SVG.Element, {
           this.lines[i].attr(name, value);
         }
       } else {
-        namespace != null
-          ? this.node.setAttributeNS(namespace, name, value)
-          : this.node.setAttribute(name, value);
+        // Safe node access for setting attributes
+        const node = safeNodeAccess(
+          () => this.node,
+          { component: 'T3Svg', function: 'attr' }
+        );
+
+        if (node) {
+          namespace != null
+            ? node.setAttributeNS(namespace, name, value)
+            : node.setAttribute(name, value);
+        }
       }
 
       if (this._isStyle(name)) {
@@ -346,9 +363,17 @@ SVG.extend(SVG.Element, {
         return this.attr("data-" + key);
       }
     } else {
-      value === null
-        ? this.node.removeAttribute("data-" + key)
-        : this.attr("data-" + key, JSON.stringify(value));
+      // Safe node access for data attributes
+      const node = safeNodeAccess(
+        () => this.node,
+        { component: 'T3Svg', function: 'data' }
+      );
+
+      if (node) {
+        value === null
+          ? node.removeAttribute("data-" + key)
+          : this.attr("data-" + key, JSON.stringify(value));
+      }
     }
 
     return this;
@@ -359,15 +384,47 @@ SVG.extend(SVG.Element, {
    * @returns {Object} Object with x, y, cx, cy, width, and height properties
    */
   bbox: function () {
-    var box = this.node.getBBox();
-    return {
-      x: box.x + this.trans.x,
-      y: box.y + this.trans.y,
-      cx: box.x + this.trans.x + box.width / 2,
-      cy: box.y + this.trans.y + box.height / 2,
-      width: box.width,
-      height: box.height,
-    };
+    const node = safeNodeAccess(
+      () => this.node,
+      { component: 'T3Svg', function: 'bbox' }
+    );
+
+    if (!node || typeof node.getBBox !== 'function') {
+      // Return default bbox if node is invalid
+      return {
+        x: 0,
+        y: 0,
+        cx: 0,
+        cy: 0,
+        width: 0,
+        height: 0,
+      };
+    }
+
+    try {
+      var box = node.getBBox();
+      return {
+        x: box.x + this.trans.x,
+        y: box.y + this.trans.y,
+        cx: box.x + this.trans.x + box.width / 2,
+        cy: box.y + this.trans.y + box.height / 2,
+        width: box.width,
+        height: box.height,
+      };
+    } catch (error) {
+      ErrorHandler.getInstance().handleError(
+        error,
+        { component: 'T3Svg', function: 'bbox', userAction: 'Getting bounding box' }
+      );
+      return {
+        x: 0,
+        y: 0,
+        cx: 0,
+        cy: 0,
+        width: 0,
+        height: 0,
+      };
+    }
   },
 
   /**
@@ -375,13 +432,41 @@ SVG.extend(SVG.Element, {
    * @returns {Object} Object with x, y, width, and height properties
    */
   rbox: function () {
-    var rect = this.node.getBoundingClientRect();
-    return {
-      x: rect.left,
-      y: rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
+    const node = safeNodeAccess(
+      () => this.node,
+      { component: 'T3Svg', function: 'rbox' }
+    );
+
+    if (!node || typeof node.getBoundingClientRect !== 'function') {
+      // Return default rbox if node is invalid
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      };
+    }
+
+    try {
+      var rect = node.getBoundingClientRect();
+      return {
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+    } catch (error) {
+      ErrorHandler.getInstance().handleError(
+        error,
+        { component: 'T3Svg', function: 'rbox', userAction: 'Getting client rectangle' }
+      );
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      };
+    }
   },
 
   /**
@@ -403,7 +488,14 @@ SVG.extend(SVG.Element, {
    * @returns {SVG.Element} The element itself for method chaining
    */
   show: function () {
-    this.node.style.display = "";
+    const node = safeNodeAccess(
+      () => this.node,
+      { component: 'T3Svg', function: 'show' }
+    );
+
+    if (node && node.style) {
+      node.style.display = "";
+    }
     return this;
   },
 
@@ -412,7 +504,14 @@ SVG.extend(SVG.Element, {
    * @returns {SVG.Element} The element itself for method chaining
    */
   hide: function () {
-    this.node.style.display = "none";
+    const node = safeNodeAccess(
+      () => this.node,
+      { component: 'T3Svg', function: 'hide' }
+    );
+
+    if (node && node.style) {
+      node.style.display = "none";
+    }
     return this;
   },
 
@@ -421,7 +520,12 @@ SVG.extend(SVG.Element, {
    * @returns {boolean} True if the element is visible
    */
   visible: function () {
-    return this.node.style.display != "none";
+    const node = safeNodeAccess(
+      () => this.node,
+      { component: 'T3Svg', function: 'visible' }
+    );
+
+    return node && node.style ? node.style.display != "none" : false;
   },
 
   /**
@@ -505,7 +609,20 @@ SVG.extend(SVG.Container, {
     if (!this.has(element)) {
       position = position == null ? this.children().length : position;
       this.children().splice(position, 0, element);
-      this.node.insertBefore(element.node, this.node.childNodes[position] || null);
+
+      // Safe node access for DOM manipulation
+      const thisNode = safeNodeAccess(
+        () => this.node,
+        { component: 'T3Svg', function: 'add' }
+      );
+      const elementNode = safeNodeAccess(
+        () => element.node,
+        { component: 'T3Svg', function: 'add' }
+      );
+
+      if (thisNode && elementNode) {
+        thisNode.insertBefore(elementNode, thisNode.childNodes[position] || null);
+      }
       element.parent = this;
     }
     return this;
@@ -571,7 +688,20 @@ SVG.extend(SVG.Container, {
     if (0 <= index && index < this.children().length) {
       var element = this.children()[index];
       this.children().splice(index, 1);
-      this.node.removeChild(element.node);
+
+      // Safe node access for DOM manipulation
+      const thisNode = safeNodeAccess(
+        () => this.node,
+        { component: 'T3Svg', function: 'removeAt' }
+      );
+      const elementNode = safeNodeAccess(
+        () => element.node,
+        { component: 'T3Svg', function: 'removeAt' }
+      );
+
+      if (thisNode && elementNode) {
+        thisNode.removeChild(elementNode);
+      }
       element.parent = null;
     }
     return this;
@@ -739,8 +869,25 @@ SVG.extend(SVG.Container, {
    */
   clear: function () {
     this._children = [];
-    while (this.node.hasChildNodes()) {
-      this.node.removeChild(this.node.lastChild);
+
+    // Safe node access for clearing children
+    const node = safeNodeAccess(
+      () => this.node,
+      { component: 'T3Svg', function: 'clear' }
+    );
+
+    if (node) {
+      while (node.hasChildNodes()) {
+        const lastChild = safeNodeAccess(
+          () => node.lastChild,
+          { component: 'T3Svg', function: 'clear' }
+        );
+        if (lastChild) {
+          node.removeChild(lastChild);
+        } else {
+          break; // Safety break to prevent infinite loop
+        }
+      }
     }
     return this;
   },

@@ -1,0 +1,325 @@
+
+# T3000 runtime data
+
+[0]	127 ''	unsigned char
+[1]	1 '\x1'	unsigned char
+[2]	4 '\x4'	unsigned char
+[3]	176 '°'	unsigned char
+[4]	136 'ˆ'	unsigned char
+[5]	0 '\0'	unsigned char
+[6]	2 '\x2'	unsigned char
+[7]	0 '\0'	unsigned char
+[8]	0 '\0'	unsigned char
+[9]	0 '\0'	unsigned char
+[10]	0 '\0'	unsigned char
+[11]	0 '\0'	unsigned char
+[12]	0 '\0'	unsigned char
+[13]	0 '\0'	unsigned char
+[14]	0 '\0'	unsigned char
+[15]	0 '\0'	unsigned char
+[16]	0 '\0'	unsigned char
+[17]	0 '\0'	unsigned char
+[18]	0 '\0'	unsigned char
+[19]	4 '\x4'	unsigned char
+[20]	0 '\0'	unsigned char
+[21]	0 '\0'	unsigned char
+[22]	0 '\0'	unsigned char
+[23]	0 '\0'	unsigned char
+[24]	0 '\0'	unsigned char
+[25]	0 '\0'	unsigned char
+[26]	0 '\0'	unsigned char
+[27]	0 '\0'	unsigned char
+[28]	0 '\0'	unsigned char
+[29]	0 '\0'	unsigned char
+[30]	0 '\0'	unsigned char
+[31]	0 '\0'	unsigned char
+[32]	0 '\0'	unsigned char
+[33]	0 '\0'	unsigned char
+[34]	0 '\0'	unsigned char
+[35]	0 '\0'	unsigned char
+[36]	0 '\0'	unsigned char
+[37]	0 '\0'	unsigned char
+[38]	0 '\0'	unsigned char
+[39]	0 '\0'	unsigned char
+[40]	0 '\0'	unsigned char
+[41]	0 '\0'	unsigned char
+[42]	0 '\0'	unsigned char
+[43]	0 '\0'	unsigned char
+[44]	0 '\0'	unsigned char
+[45]	0 '\0'	unsigned char
+
+{
+  "auto_manual": 0,
+  "calibration_h": 0,
+  "calibration_l": 0,
+  "calibration_sign": 1,
+  "command": "3CAL1",
+  "control": 1,
+  "data": [
+    127,
+    1,
+    4,
+    144,
+    136,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "decom": 0,
+  "description": "IN 25",
+  "digital_analog": 1,
+  "filter": 5,
+  "id": "HOL1",
+  "index": 0,
+  "label": "IN25",
+  "pid": 3,
+  "range": 0,
+  "type": "HOL",
+  "unit": 0,
+  "value": 0
+}
+
+{
+  "auto_manual": 0,
+  "calibration_h": 0,
+  "calibration_l": 0,
+  "calibration_sign": 1,
+  "command": "3CAL2",
+  "control": 1,
+  "data": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    128,
+    64,
+    32,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "decom": 0,
+  "description": "IN 26",
+  "digital_analog": 1,
+  "filter": 5,
+  "id": "HOL2",
+  "index": 1,
+  "label": "IN26",
+  "pid": 3,
+  "range": 0,
+  "type": "HOL",
+  "unit": 0,
+  "value": 0
+}
+
+{
+  "auto_manual": 0,
+  "calibration_h": 0,
+  "calibration_l": 0,
+  "calibration_sign": 1,
+  "command": "3CAL3",
+  "control": 1,
+  "data": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "decom": 0,
+  "description": "IN 27",
+  "digital_analog": 1,
+  "filter": 5,
+  "id": "HOL3",
+  "index": 2,
+  "label": "IN27",
+  "pid": 3,
+  "range": 0,
+  "type": "HOL",
+  "unit": 0,
+  "value": 0
+}
+
+{
+  "auto_manual": 0,
+  "calibration_h": 0,
+  "calibration_l": 0,
+  "calibration_sign": 1,
+  "command": "3CAL4",
+  "control": 1,
+  "data": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    8,
+    0,
+    0,
+    0,
+    0,
+    0,
+    16,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    128,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "decom": 0,
+  "description": "IN 28",
+  "digital_analog": 1,
+  "filter": 5,
+  "id": "HOL4",
+  "index": 3,
+  "label": "IN28",
+  "pid": 3,
+  "range": 0,
+  "type": "HOL",
+  "unit": 0,
+  "value": 0
+}

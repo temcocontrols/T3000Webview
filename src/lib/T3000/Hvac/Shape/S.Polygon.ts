@@ -204,7 +204,9 @@ class Polygon extends BaseShape {
     polygonShape.SetID(OptConstant.SVGElementClass.Shape);
 
     // Clone frame for modification.
-    const frameRect = $.extend(true, {}, this.Frame);
+    // const frameRect = $.extend(true, {}, this.Frame);
+    const frameRect = Utils1.DeepCopy(this.Frame);
+
     let styleRecord = this.StyleRecord;
     if (styleRecord.Line.BThick && this.polylist == null) {
       Utils2.InflateRect(frameRect, styleRecord.Line.BThick, styleRecord.Line.BThick);
@@ -407,9 +409,13 @@ class Polygon extends BaseShape {
 
     if (svgDoc != null) {
       const rotation = svgDoc.GetRotation();
-      const previousBoundingBox = $.extend(true, {}, this.prevBBox);
-      const newBoundingBox = $.extend(true, {}, newSize);
-      const adjustedBoundingBox = $.extend(true, {}, newSize);
+      // const previousBoundingBox = $.extend(true, {}, this.prevBBox);
+      // const newBoundingBox = $.extend(true, {}, newSize);
+      // const adjustedBoundingBox = $.extend(true, {}, newSize);
+      const previousBoundingBox = Utils1.DeepCopy(this.prevBBox);
+      const newBoundingBox = Utils1.DeepCopy(newSize);
+      const adjustedBoundingBox = Utils1.DeepCopy(newSize);
+
       const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(previousBoundingBox, newBoundingBox, rotation);
 
       if (this.StyleRecord.Line.BThick && this.polylist == null) {
@@ -469,9 +475,13 @@ class Polygon extends BaseShape {
     const rotation = svgDoc.GetRotation();
     this.SetDimensionLinesVisibility(svgDoc, false);
 
-    const previousFrame = $.extend(true, {}, this.Frame);
-    const newFrame = $.extend(true, {}, newSize);
-    const adjustedFrame = $.extend(true, {}, newSize);
+    // const previousFrame = $.extend(true, {}, this.Frame);
+    // const newFrame = $.extend(true, {}, newSize);
+    // const adjustedFrame = $.extend(true, {}, newSize);
+    const previousFrame = Utils1.DeepCopy(this.Frame);
+    const newFrame = Utils1.DeepCopy(newSize);
+    const adjustedFrame = Utils1.DeepCopy(newSize);
+
     const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(previousFrame, newFrame, rotation);
 
     if (this.StyleRecord.Line.BThick && this.polylist == null) {
@@ -1137,7 +1147,7 @@ class Polygon extends BaseShape {
       if (this.Frame.x < 0 || this.Frame.y < 0) {
         T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
       }
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
       LogUtil.Debug('S.Polygon: UpdateDimensionFromTextObj output: angleChange handled');
       return;
     }

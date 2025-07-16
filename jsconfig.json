@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
     "paths": {
       "src/*": ["src/*"],
       "app/*": ["*"],

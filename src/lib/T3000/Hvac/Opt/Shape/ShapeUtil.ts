@@ -27,6 +27,7 @@ import DataOpt from '../Data/DataOpt'
 import TextUtil from '../Opt/TextUtil'
 import T3Util from '../../Util/T3Util'
 import LogUtil from '../../Util/LogUtil'
+import T3Constant from '../../Data/Constant/T3Constant'
 
 class ShapeUtil {
 
@@ -423,6 +424,8 @@ class ShapeUtil {
       }
 
       if (boundingRect) {
+
+        /*
         if (adjustPosition) {
           offsetX = boundingRect.x < 0 ? -boundingRect.x : 0;
           offsetY = boundingRect.y < 0 ? -boundingRect.y : 0;
@@ -431,10 +434,30 @@ class ShapeUtil {
           offsetY = 0;
         }
 
-        offsetX += 20;
-        offsetY += 20;
+         offsetX += 20;
+         offsetY += 20;
+         */
 
-        LogUtil.Debug('= u.ShapeUtil: ReadSymbolFromBuffer/ offsetX:', offsetX, 'offsetY:', offsetY);
+        if (adjustPosition) {
+          if (T3Gv.opt.header.ClipboardType !== T3Constant.ClipboardType.LM) {
+            // For Library Manager, we adjust the position to avoid negative coordinates
+            offsetX = boundingRect.x < 0 ? -boundingRect.x : 0;
+            offsetY = boundingRect.y < 0 ? -boundingRect.y : 0;
+
+            // Set the padding to 20 temporarily
+            offsetX += 20;
+            offsetY += 20;
+          }
+          else {
+            offsetX = positionX - boundingRect.x;
+            offsetY = positionY - boundingRect.y;
+          }
+        } else {
+          offsetX = 0;
+          offsetY = 0;
+        }
+
+        LogUtil.Debug('= u.ShapeUtil: ReadSymbolFromBuffer/ offsetX:', offsetX, 'offsetY:', offsetY, "PositionX:", positionX, "PositionY:", positionY, "clipboardType:", T3Gv.opt.header.ClipboardType);
 
         // Apply offset if needed
         if (offsetX || offsetY) {

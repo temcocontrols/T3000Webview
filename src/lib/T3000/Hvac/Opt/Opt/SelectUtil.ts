@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import ShapeConstant from "../../Data/Constant/ShapeConstant";
@@ -42,6 +40,8 @@ class SelectUtil {
   static SelectObjectFromClick(event, svgElement, preserveSelection?) {
     LogUtil.Debug('O.Opt SelectObjectFromClick - Input:', { event, svgElement, preserveSelection });
 
+    OptCMUtil.CancelOperation();
+
     const visibleObjectCount = LayerUtil.ActiveVisibleZList().length;
     const shapeContainerType = NvConstant.FNObjectTypes.ShapeContainer;
 
@@ -78,7 +78,8 @@ class SelectUtil {
 
     // Get the selected list and check if object is already selected
     const selectedList = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
-    var indexInSelectedList = $.inArray(objectId, selectedList);
+    // var indexInSelectedList = $.inArray(objectId, selectedList);
+    const indexInSelectedList = selectedList.indexOf(objectId);
 
     // Prepare array with object to select
     let objectsToSelect = [];
@@ -139,7 +140,8 @@ class SelectUtil {
 
       // Handle existing target selection state
       if (selectedIndex >= 0) {
-        const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        // const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        const indexInSelectedList = selectedList.indexOf(selectedIndex);
         if (isMultipleSelection) {
           if (indexInSelectedList >= 0) {
             selectedIndex = -1;
@@ -157,7 +159,8 @@ class SelectUtil {
         const object = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (object) {
-          const indexInSelectedList = $.inArray(objectId, selectedList);
+          // const indexInSelectedList = $.inArray(objectId, selectedList);
+          const indexInSelectedList = selectedList.indexOf(objectId);
 
           // If object not in selection list, add it
           if (indexInSelectedList === -1) {
@@ -179,7 +182,9 @@ class SelectUtil {
 
       // Ensure selectedIndex is valid
       if (selectedIndex >= 0) {
-        const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        // const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        const indexInSelectedList = selectedList.indexOf(selectedIndex);
+
         if (indexInSelectedList < 0) {
           selectedIndex = -1;
         }
@@ -377,8 +382,16 @@ class SelectUtil {
     selectState.allowcopy = selectState.nselect > 0;
 
     // Create copy of selection attributes for UI
+
+    /*
     const selectionAttributes = new SelectionAttr();
     $.extend(true, selectionAttributes, selectState);
+    */
+
+    const selectionAttributes = Object.assign(
+      new SelectionAttr(),
+      Utils1.DeepCopy(selectState)
+    );
 
     // Handle pixel to point conversion for font size if needed
     if (T3Gv.docUtil.rulerConfig.showpixels && selectionAttributes.fontsize >= 0) {
@@ -890,8 +903,8 @@ class SelectUtil {
       return DSConstant.Contexts.DimensionText;
     }
     if (activeEditElement !== null && activeEditElement.ID === OptConstant.SVGElementClass.NoteText) {
-      LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.NoteText);
-      return DSConstant.Contexts.NoteText;
+      LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.Note);
+      return DSConstant.Contexts.Note;
     }
 
     // Handle default target selection.
@@ -1338,7 +1351,8 @@ class SelectUtil {
         // Handle auto-insert for lines
         if (isAttachMode && T3Gv.opt.linkParams.AutoInsert) {
           T3Gv.opt.linkParams.AutoPoints = [];
-          let frameRect = $.extend(true, {}, drawingObject.Frame);
+          // let frameRect = $.extend(true, {}, drawingObject.Frame);
+          let frameRect = Utils1.DeepCopy(drawingObject.Frame);
 
           // Adjust frame for rotation
           const rotationQuadrant = Math.floor((drawingObject.RotationAngle + 45) / 90);
@@ -1824,7 +1838,38 @@ class SelectUtil {
   static GetSelectedObject() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
     var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
-    return {selectedId: targetSelectionId, selectedObject: targetObject};
+    return { selectedId: targetSelectionId, selectedObject: targetObject };
+  }
+
+  static GetSelectedObjectList() {
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+
+    LogUtil.Debug("O.Opt GetSelectedObjectList - Input: No parameters");
+
+    // Array to hold actual object instances
+    const selectedObjects = [];
+
+    // Loop through selected object IDs
+    for (let i = 0; i < selectedList.length; i++) {
+      const objectId = selectedList[i];
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
+
+      // Only add valid objects
+      if (object) {
+        selectedObjects.push(object);
+      }
+    }
+
+    LogUtil.Debug("O.Opt GetSelectedObjectList - Output:", {
+      selectedCount: selectedList.length,
+      objectCount: selectedObjects.length
+    });
+
+    // Return both the IDs list and the objects list
+    return {
+      selectedList: selectedList,
+      selectedObjects: selectedObjects
+    };
   }
 }
 

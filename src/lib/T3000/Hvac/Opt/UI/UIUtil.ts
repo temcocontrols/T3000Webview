@@ -9,7 +9,6 @@ import NvConstant from '../../Data/Constant/NvConstant';
 import TextFmtData from "../../Model/TextFmtData";
 import OptConstant from "../../Data/Constant/OptConstant";
 import StyleConstant from "../../Data/Constant/StyleConstant";
-import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
 import RulerUtil from "../UI/RulerUtil";
 import OptCMUtil from "../Opt/OptCMUtil";
@@ -31,8 +30,9 @@ class UIUtil {
    * @param positionY - The Y position where to show the dropdown
    * @returns void
    */
-  static ShowContextMenu(isShow, element, positionX, positionY) {
-    QuasarUtil.ShowContextMenu(isShow);
+  static ShowContextMenu(isShow: boolean, from: string, type: string) {
+    LogUtil.Debug('= u.UIUtil: ShowContextMenu - Input:', { isShow, from, type });
+    QuasarUtil.ShowContextMenu(isShow, from, type);
   }
 
   static ShowObjectConfig(isShow) {
@@ -350,7 +350,7 @@ class UIUtil {
    * - Collaboration layer for multi-user functionality
    * It also configures event handlers for user interactions.
    */
-  static InitSvgDocument() {
+  static InitSvgDocument(isReInitialize = false) {
     // Get the session data from stored object
     const sdData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
     LogUtil.Debug("InitSvgDoc dim from T3Gv.stdObj without load storage data", T3Gv.opt.sdDataBlockId, T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
@@ -372,12 +372,8 @@ class UIUtil {
     var height = sdData.dim.y;
 
     // Initialize the document work area
-    T3Gv.docUtil.InitializeWorkArea({
-      svgAreaId: T3Gv.opt.svgDocId,
-      documentWidth: width,
-      documentHeight: height,
-      documentDPI: 100
-    });
+    const workAreaConfig = { svgAreaId: T3Gv.opt.svgDocId, documentWidth: width, documentHeight: height, documentDPI: 100 };
+    T3Gv.docUtil.InitializeWorkArea(workAreaConfig, isReInitialize);
   }
 
   static InitT3GvOpt() {

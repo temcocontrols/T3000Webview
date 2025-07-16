@@ -21,6 +21,8 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
 import DataOpt from '../Opt/Data/DataOpt'
 import LogUtil from '../Util/LogUtil'
 import HvConstant from '../Data/Constant/HvConstant'
+import { zoomScale } from '../Data/Constant/RefConstant'
+import RefUtil from '../Opt/Tool/RefUtil'
 
 /**
  * Represents a utility class for managing and configuring an SVG-based document.
@@ -131,9 +133,9 @@ class DocUtil {
     this.docConfig = new DocConfig();
 
     // UI display settings
-    this.docConfig.showRulers = true;
-    this.docConfig.showGrid = true;
-    this.docConfig.showPageDivider = true;
+    this.docConfig.showRulers = false;
+    this.docConfig.showGrid = false;
+    this.docConfig.showPageDivider = false;
 
     // Snap settings
     this.docConfig.enableSnap = true;
@@ -146,9 +148,9 @@ class DocUtil {
     this.docConfig.scale = true;
 
     // Spell check settings
-    this.docConfig.spellCheck = true;
-    this.docConfig.spellDict = true;
-    this.docConfig.spellFlags = true;
+    this.docConfig.spellCheck = false;
+    this.docConfig.spellDict = false;
+    this.docConfig.spellFlags = false;
 
     LogUtil.Debug("= U.DocUtil: InitDocConfig - Output:", this.docConfig);
   }
@@ -159,8 +161,8 @@ class DocUtil {
    * @param workAreaConfig - Configuration object for the work area
    * @returns void
    */
-  InitializeWorkArea(workAreaConfig: any): void {
-    LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
+  InitializeWorkArea(workAreaConfig: any, isReInitialize = false): void {
+    LogUtil.Info("= u.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
 
     // Use provided configuration or defaults
     workAreaConfig = workAreaConfig || {};
@@ -173,9 +175,13 @@ class DocUtil {
     this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
 
     // Initialize document-related properties
-    this.svgDoc = null;
-    this.hRulerDoc = null;
-    this.vRulerDoc = null;
+
+    if (!isReInitialize) {
+      this.svgDoc = null;
+      this.hRulerDoc = null;
+      this.vRulerDoc = null;
+    }
+
     this.rulerVis = true;
     this.gridVis = true;
     this.gridLayer = '_doc_grid';
@@ -205,13 +211,18 @@ class DocUtil {
     // Bind mouse move event handler
     $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
 
-    // Initialize SVG area with the configuration
-    this.InitSvgArea(workAreaConfig);
+    if (!isReInitialize) {
+      // Initialize SVG area with the configuration
+      this.InitSvgArea(workAreaConfig);
+    }
 
     // Initialize UI components visibility and content
     this.UpdateGridVisibility();
-    // this.UpdatePageDividerVisibility();
-    this.SetUpRulers();
+
+    if (!isReInitialize) {
+      this.SetUpRulers();
+    }
+
     this.UpdateGrid();
     this.UpdatePageDivider();
     this.UpdateWorkArea();
@@ -237,7 +248,7 @@ class DocUtil {
    * @returns void
    */
   InitSvgArea(configuration: any) {
-    LogUtil.Debug("= U.DocUtil: InitSvgArea - Input:", configuration);
+    LogUtil.Info("= u.DocUtil: InitSvgArea - Input:", configuration);
 
     // Use provided configuration or empty object as fallback
     configuration = configuration || {};
@@ -1182,12 +1193,12 @@ class DocUtil {
 
     // Initialize horizontal ruler document if not already set
     if (!this.hRulerDoc) {
-      this.hRulerDoc = new Document(this.hRulerAreaId, [] /* Globals.WebFonts */);
+      this.hRulerDoc = new Document(this.hRulerAreaId, []);
     }
 
     // Initialize vertical ruler document if not already set
     if (!this.vRulerDoc) {
-      this.vRulerDoc = new Document(this.vRulerAreaId, [] /* Globals.WebFonts */);
+      this.vRulerDoc = new Document(this.vRulerAreaId, []);
     }
 
     // Initialize ruler guides and state properties
@@ -1476,10 +1487,7 @@ class DocUtil {
    * @returns boolean - True if grid visibility was changed, false otherwise
    */
   UpdateGridVisibility(): boolean {
-    LogUtil.Debug("= U.DocUtil: UpdateGridVisibility - Input:", {
-      showGrid: this.docConfig.showGrid,
-      currentGridVisibility: this.gridVis
-    });
+    LogUtil.Debug("= u.DocUtil: UpdateGridVisibility - Input:", { showGrid: this.docConfig.showGrid, currentGridVisibility: this.gridVis });
 
     const gridLayer = this.svgDoc ? this.svgDoc.GetLayer(this.gridLayer) : null;
     let visibilityChanged = false;
@@ -1659,7 +1667,13 @@ class DocUtil {
    * @returns void
    */
   UpdatePageDivider(): void {
-    LogUtil.Debug("= U.DocUtil: UpdatePageDivider - Input: Updating page dividers");
+    LogUtil.Debug("= u.DocUtil: UpdatePageDivider - T3Gv.docUtil", T3Gv);
+
+    const showPageDivider = T3Gv.docUtil.docConfig.showPageDivider;
+
+    if (!showPageDivider) {
+      return;
+    }
 
     // Retrieve current work area and page divider layer
     const workArea = this.svgDoc.GetWorkArea();
@@ -2319,20 +2333,50 @@ class DocUtil {
     return readOnlyState;
   }
 
+  ZoomChange(newZoomScale, newZoomStep) {
+    LogUtil.Debug("= u.DocUtil: ZoomChange/ - Input:", { newZoomScale, newZoomStep });
+
+    const currentZoomFactor = T3Gv.docUtil.GetZoomFactor();
+    LogUtil.Debug("= u.DocUtil: ZoomChange/ - Current Zoom Factor:", currentZoomFactor);
+
+    const isZoomIn = newZoomScale > currentZoomFactor;
+
+    // Check if the new zoom scale is valid
+    if (newZoomScale && newZoomScale > 0) {
+      // Call ZoomInAndOut with the new zoom scale and step
+      this.ZoomInAndOut(isZoomIn, false, newZoomScale, newZoomStep);
+    }
+
+    LogUtil.Debug("= u.DocUtil: ZoomChange/ - Output: Zoom changed to", newZoomScale);
+  }
+
+  ZoomSpecify(zoomScale, skipCentering?) {
+    // Convert zoom factor to percentage and apply it
+    this.SetZoomLevel(100 * zoomScale, skipCentering);
+    DataOpt.SaveToLocalStorage();
+
+    // Update ref value zoom scale
+    T3Gv.docUtil.UpdateRefZoomScale(Number(zoomScale.toFixed(2)));
+
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(zoomScale.toFixed(2)));
+  }
+
   /**
    * Zooms in or out on the document by a factor of 0.25
    * @param isZoomIn - True to zoom in, false to zoom out
-   * @param eventSource - The source of the event triggering the zoom
+   * @param skipCentering - If true, prevents the view from automatically centering on content after zoom
    * @returns void
    */
-  ZoomInAndOut(isZoomIn, eventSource?) {
-    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Input:", { isZoomIn, eventSource });
+  ZoomInAndOut(isZoomIn, skipCentering?, newZoomScale?: number, newZoomStep?: number) {
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Input:", { isZoomIn, skipCentering });
 
-    const zoomStep = HvConstant.T3Config.Zoom.Step;
+    // Use the provided newZoomStep parameter when specified (from toolbar settings),  otherwise default to the standard zoom increment defined in T3Config.Zoom.Step
+    const zoomStep = newZoomStep ? newZoomStep : HvConstant.T3Config.Zoom.Step;
     const zoomMax = HvConstant.T3Config.Zoom.Max;
     const zoomMin = HvConstant.T3Config.Zoom.Min;
     const currentZoomFactor = T3Gv.docUtil.GetZoomFactor();
-    let newZoomFactor = 1;
+
+    let newZoomFactor = newZoomScale ? newZoomScale : 1;
 
     if (isZoomIn) {
       if (currentZoomFactor >= zoomMax) {
@@ -2341,7 +2385,12 @@ class DocUtil {
       }
 
       // Calculate new zoom factor
-      newZoomFactor = Math.ceil(currentZoomFactor / zoomStep) * zoomStep;
+      // newZoomFactor = Math.ceil(currentZoomFactor / zoomStep) * zoomStep;
+
+      // Fix floating-point precision issues
+      newZoomFactor = Math.round(currentZoomFactor / zoomStep) * zoomStep;
+      // Ensure we get a clean value with exactly 2 decimal places
+      newZoomFactor = parseFloat(newZoomFactor.toFixed(2));
 
       // If current zoom is already at a multiple of zoomStep, increase by one step
       if (newZoomFactor === currentZoomFactor) {
@@ -2359,7 +2408,12 @@ class DocUtil {
       }
 
       // Calculate new zoom factor
-      newZoomFactor = Math.floor(currentZoomFactor / zoomStep) * zoomStep;
+      //newZoomFactor = Math.floor(currentZoomFactor / zoomStep) * zoomStep;
+
+      // Fix floating-point precision issues
+      newZoomFactor = Math.round(currentZoomFactor / zoomStep) * zoomStep;
+      // Ensure we get a clean value with exactly 2 decimal places
+      newZoomFactor = parseFloat(newZoomFactor.toFixed(2));
 
       // If current zoom is already at a multiple of zoomStep, decrease by one step
       if (newZoomFactor === currentZoomFactor) {
@@ -2373,25 +2427,28 @@ class DocUtil {
     }
 
     // Convert zoom factor to percentage and apply it
-    this.SetZoomLevel(100 * newZoomFactor, eventSource);
+    this.SetZoomLevel(100 * newZoomFactor, skipCentering);
     DataOpt.SaveToLocalStorage();
 
-    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", newZoomFactor);
+    // Update ref value zoom scale
+    T3Gv.docUtil.UpdateRefZoomScale(Number(newZoomFactor.toFixed(2)));
+
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(newZoomFactor.toFixed(2)));
   }
 
   /**
    * Sets the zoom level of the document
    * @param zoomPct - The zoom level as a percentage (e.g., 100 for 100%)
-   * @param eventSource - The source of the event triggering the zoom change
+   * @param skipCentering - If true, prevents the view from automatically centering on content after zoom
    * @returns void
    */
-  SetZoomLevel(zoomPct, event?) {
-    LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Input: zoomPct, event?", { zoomPct, event });
+  SetZoomLevel(zoomPct, skipCentering?) {
+    LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Input: zoomPct, skipCentering?", { zoomPct, skipCentering });
 
     // Only proceed if zoom percentage is positive and we're not in idle state
     if (zoomPct > 0 && !this.inZoomIdle && T3Gv.opt) {
       // Convert percentage to factor (e.g., 100% -> 1.0)
-      UIUtil.SetDocumentScale(zoomPct / 100, event);
+      UIUtil.SetDocumentScale(zoomPct / 100, skipCentering);
       LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Applied zoom factor:", zoomPct / 100);
     } else {
       LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Zoom not applied. Conditions not met:", { validZoom: zoomPct > 0, notIdle: !this.inZoomIdle, optManagerExists: !!T3Gv.opt });
@@ -2457,6 +2514,38 @@ class DocUtil {
 
   ZoomOut() {
     this.ZoomInAndOut(false)
+  }
+
+  UpdateRefZoomScale(scale: number) {
+    zoomScale.value = scale;
+  }
+
+  LoadRulersSetting() {
+    const docSetting = DataOpt.LoadDocSettingData();
+    const showRulers = docSetting?.docConfig?.showRulers ?? true;
+    this.docConfig.showRulers = showRulers;
+    RefUtil.SetShowRulers(showRulers);
+    this.UpdateRulerVisibility();
+    LogUtil.Debug("= U.DocUtil: LoadRulersSetting - Output:", { showRulers });
+  }
+
+  LoadGridSetting() {
+    const docSetting = DataOpt.LoadDocSettingData();
+    const showGrid = docSetting?.docConfig?.showGrid ?? true;
+    this.docConfig.showGrid = showGrid;
+    RefUtil.SetShowGrid(showGrid);
+    this.UpdateGridVisibility();
+    LogUtil.Debug("= U.DocUtil: LoadGridSetting - Output:", { showGrid });
+  }
+
+  RemoveAllLayers() {
+    const layersManagerBlockId = T3Gv.opt.layersManagerBlockId;
+    const layersManager = ObjectUtil.GetObjectPtr(layersManagerBlockId, false);
+    const layers = layersManager.layers;
+
+    LogUtil.Info("= u.DocUtil: RemoveAllLayers - Input:", { layersManagerBlockId, layers });
+
+    this.svgDoc.RemoveLayer("0");
   }
 }
 

@@ -193,7 +193,7 @@ class TextUtil {
 
       // Complete operation if needed and not prevented
       if (operationRequired && !preventCompleteOperation) {
-        DrawUtil.CompleteOperation(null);
+        DrawUtil.CompleteOperation();
       } else {
         ObjectUtil.PreserveUndoState(false);
         SvgUtil.RenderDirtySVGObjects();
@@ -543,7 +543,8 @@ class TextUtil {
           } else {
             // Variables for positioning and sizing
             let centerX, centerY, growResult, targetShape;
-            let originalFrame = $.extend(true, {}, shape.Frame);
+            // let originalFrame = $.extend(true, {}, shape.Frame);
+            let originalFrame = Utils1.DeepCopy(shape.Frame);
             let newFrame = null;
 
             // Check if shape is in a group
@@ -560,7 +561,8 @@ class TextUtil {
                 if (!Utils2.IsEqual(minTextWidth, textRect.width) ||
                   !Utils2.IsEqual(minTextHeight, textRect.height)) {
 
-                  newFrame = $.extend(true, {}, shape.Frame);
+                  // newFrame = $.extend(true, {}, shape.Frame);
+                  newFrame = Utils1.DeepCopy(shape.Frame);
 
                   // Standard text growth
                   shape.TRectToFrame(minTextRect, false);
@@ -1302,7 +1304,7 @@ class TextUtil {
           messageData.theSelectedRange.anchor = 0;
           messageData.theSelectedRange.end = textLength;
         }
-      } else if (textData && textData.EditorID === SDJS.Collab.EditorID) {
+      } else if (textData && textData.EditorID === cl.EditorID) {
         // Use selected range from collab message data
         selectedRange = textData.Data.theSelectedRange;
       }
@@ -1356,7 +1358,7 @@ class TextUtil {
         );
       } else {
         // Replace standard text if needed
-        const isLocalEdit = (textData == null );
+        const isLocalEdit = (textData == null);
         const isSelfCollabMessage = (textData != null);
       }
 

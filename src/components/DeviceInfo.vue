@@ -94,7 +94,7 @@
 
           <q-item-section top>
             <q-item-label caption class="select-title">
-              Element Count
+              Element
             </q-item-label>
             <q-item-label>
               <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.elementCount }}</span>
@@ -164,7 +164,7 @@
               <q-item-label class="q-mt-sm header-title">Label</q-item-label>
             </q-item-section>
             <q-item-section top class="col-2">
-              <q-item-label class="q-mt-sm header-title">Element Count</q-item-label>
+              <q-item-label class="q-mt-sm header-title">Element</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
@@ -206,6 +206,7 @@ import { T3Data } from '../lib/T3000/Hvac/Data/T3Data'
 import { globalMsg } from '../lib/T3000/Hvac/Data/T3Data'
 import MessageType from 'src/lib/T3000/Hvac/Opt/Socket/MessageType'
 import GlobalMsgModel from 'src/lib/T3000/Hvac/Model/GlobalMsgModel'
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
 export default defineComponent({
   name: 'DeviceInfo',
@@ -410,7 +411,7 @@ export default defineComponent({
     };
 
     const saveCurrentSelection = () => {
-      // console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      LogUtil.Debug('= Dvi: saveCurrentSelection / currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       if (currentDevice.value.device === '' || currentDevice.value.graphic === -1) {
         $q.notify({
@@ -426,8 +427,13 @@ export default defineComponent({
           Hvac.WsClient.clearInitialDataInterval();
 
           Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
+
+          LogUtil.Debug('= Dvi: saveCurrentSelection / currentDevice saved:', [currentDevice.value.device, currentDevice.value.graphic]);
+
           Hvac.DeviceOpt.addPresetsData();
           Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
+
+          LogUtil.Debug('= Dvi: saveCurrentSelection / GetInitialData called:', [currentDevice.value.device, currentDevice.value.graphic]);
 
           // sync t3 appState data to ls [deviceAppState]
           // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();

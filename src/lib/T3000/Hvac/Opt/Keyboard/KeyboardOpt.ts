@@ -70,7 +70,8 @@ class KeyboardOpt {
         commands.push(new KeyboardUtil().BuildCommand('Cut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.X, toolUtil.Cut, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('Paste', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.V, toolUtil.Paste, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('Undo', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Z, toolUtil.Undo, toolUtil));
-        commands.push(new KeyboardUtil().BuildCommand('Redo', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Y, toolUtil.Redo, toolUtil));
+        commands.push(new KeyboardUtil().BuildCommand('Redo', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.B, toolUtil.Redo, toolUtil));
+        commands.push(new KeyboardUtil().BuildCommand('Reset', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.R, toolUtil.ClearAndRest, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('SelectAll', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.A, toolUtil.SelectAllObjects, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('Delete', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.None, KeyboardConstant.Keys.Delete, toolUtil.DeleteSelectedObjects, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('Cancel', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.None, KeyboardConstant.Keys.Escape, toolUtil.CancelOperation, toolUtil));
@@ -109,7 +110,7 @@ class KeyboardOpt {
         commands.push(new KeyboardUtil().BuildCommand('Cut', KeyboardConstant.Contexts.Text, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.X, toolUtil.Cut, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('Paste', KeyboardConstant.Contexts.Text, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.V, toolUtil.Paste, toolUtil));
         commands.push(new KeyboardUtil().BuildCommand('Undo', KeyboardConstant.Contexts.Text, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Z, toolUtil.Undo, toolUtil));
-        commands.push(new KeyboardUtil().BuildCommand('Redo', KeyboardConstant.Contexts.Text, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Y, toolUtil.Redo, toolUtil));
+        commands.push(new KeyboardUtil().BuildCommand('Redo', KeyboardConstant.Contexts.Text, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.B, toolUtil.Redo, toolUtil));
         break;
       case KeyboardConstant.Contexts.Navigation:
         break;
@@ -186,7 +187,8 @@ class KeyboardOpt {
     let index = 0;
     let toolUtil = new ToolUtil();
     let kybUtil = new KeyboardUtil();
-    let docUtil = new DocUtil();
+    // let docUtil = new DocUtil();
+    let docUtil = T3Gv.docUtil;
     let arrowKeyOpt = new ArrowKeyOpt();
 
     // Check if arrows are used and shape insert should be disabled

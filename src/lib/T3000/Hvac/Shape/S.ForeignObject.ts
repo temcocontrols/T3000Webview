@@ -1,7 +1,7 @@
+
 import BaseShape from './S.BaseShape'
 import Utils2 from "../Util/Utils2";
 import T3Gv from '../Data/T3Gv'
-import $ from 'jquery';
 import Point from '../Model/Point'
 import Instance from '../Data/Instance/Instance';
 import NvConstant from '../Data/Constant/NvConstant'
@@ -9,6 +9,7 @@ import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
 import LogUtil from '../Util/LogUtil';
+import Utils1 from '../Util/Utils1';
 
 /**
  * Represents an SVG foreignObject shape that can contain HTML content and Vue components.
@@ -71,7 +72,8 @@ class ForeignObject extends BaseShape {
     const shapeContainer = renderer.CreateShape(OptConstant.CSType.ShapeContainer);
 
     // Clone the frame and apply necessary adjustments
-    const adjustedFrame = $.extend(true, {}, this.Frame);
+    // const adjustedFrame = $.extend(true, {}, this.Frame);
+    const adjustedFrame = Utils1.DeepCopy(this.Frame);
     const styleRecord = this.StyleRecord;
 
     // Process style attributes through any hooks

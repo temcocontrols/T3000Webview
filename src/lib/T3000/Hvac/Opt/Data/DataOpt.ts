@@ -48,27 +48,23 @@ import OptConstant from '../../Data/Constant/OptConstant'
  */
 class DataOpt {
 
-  //Constant key for storing clipboard data in localStorage
+  //CLIPBOARD_KEY: key for storing clipboard data
+  //STATE_KEY: key for storing state data
+  //OBJECT_STORE_KEY: key for storing object store data
+  //CURRENT_OBJECT_SEQ_ID_KEY: key for storing current object sequence ID
+  //APP_STATE_V2: key for storing application state V2 data
+  //DRAW_KEY: key for storing drawing data
+  //LIBRARY_KEY: key for storing library data
+
   static readonly CLIPBOARD_KEY: string = "t3.clipboard";
-
-  //Constant key for storing state data in localStorage
   static readonly STATE_KEY: string = "t3.state";
-
-  //Constant key for storing object store data in localStorage
   static readonly OBJECT_STORE_KEY: string = "t3.dataStore";
-
-  //Constant key for storing current object sequence ID in localStorage
   static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "t3.currentObjSeqId";
-
-  //Constant key for storing application state V2 data in localStorage vs appState used in v1
   static readonly APP_STATE_V2: string = "t3.stateV2";
-
-  //Constant key for storing drawing data in localStorage
   static readonly DRAW_KEY: string = "t3.draw";
-
   static readonly DOC_INFO_KEY: string = "t3.doc";
-
   static readonly GLOBAL_CONFIG_KEY: string = "t3.config";
+  static readonly LIBRARY_KEY: string = "t3.library";
 
   /**
    * Initializes all stored data from localStorage after global data has been initialized
@@ -461,6 +457,12 @@ class DataOpt {
     }
   }
 
+  static SaveDataWithoutStringify(key: string, data: any): void {
+    if (data) {
+      localStorage.setItem(key, data);
+    }
+  }
+
   /**
    * Initializes state and object store with default values
    * Creates new instances of state, object store, and clipboard
@@ -491,6 +493,7 @@ class DataOpt {
     localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
     localStorage.removeItem(this.APP_STATE_V2);
     localStorage.removeItem(this.DRAW_KEY);
+    localStorage.removeItem(this.DOC_INFO_KEY);
   }
 
   static LoadT3Config(): any {
@@ -499,6 +502,14 @@ class DataOpt {
 
   static SaveT3Config(config: any): void {
     this.SaveData(this.GLOBAL_CONFIG_KEY, config);
+  }
+
+  static LoadT3Library(): any {
+    return this.LoadData(this.LIBRARY_KEY) || [];
+  }
+
+  static SaveT3Library(library: any): void {
+    this.SaveDataWithoutStringify(this.LIBRARY_KEY, library);
   }
 
   /**

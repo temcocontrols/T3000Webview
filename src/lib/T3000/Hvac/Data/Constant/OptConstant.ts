@@ -373,9 +373,9 @@ class OptConstant {
      * Default shape dimensions
      * Provides standard sizes for newly created shapes
      */
-    ShapeWidth: 150,
-    ShapeHeight: 75,
-    ShapeSquare: 100,
+    ShapeWidth: 120,
+    ShapeHeight: 50,
+    ShapeSquare: 60,
 
     /**
      * Maximum hops for shape detection
@@ -768,7 +768,7 @@ class OptConstant {
     SnapToGridTL: 262144,        // Snap to grid top-left
     SnapToGridC: 524288,         // Snap to grid center
     SnapToShapesOff: 1048576,    // Turn off snap to shapes
-    ShowPageDividers: 2097152,  // Show page dividers
+    ShowPageDividers: 2097152,   // Show page dividers
     AutoGrowTopLeft: 4194304,
   }
 

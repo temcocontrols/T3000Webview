@@ -14,6 +14,7 @@ import QuasarUtil from "../Quasar/QuasarUtil";
 import HvConstant from "../../Data/Constant/HvConstant";
 import DataOpt from "../Data/DataOpt";
 import LogUtil from "../../Util/LogUtil";
+import T3Constant from "../../Data/Constant/T3Constant";
 
 class ToolOpt {
 
@@ -31,6 +32,11 @@ class ToolOpt {
   SelectAct(event) {
     LogUtil.Debug('= O.ToolOpt SelectAct - Input:', { event });
     this.tul.CancelOperation();
+  }
+
+  SelectAllObjects() {
+    LogUtil.Debug('= O.ToolOpt SelectAllObjects - Input:', { event });
+    this.tul.SelectAllObjects();
   }
 
   /**
@@ -178,7 +184,7 @@ class ToolOpt {
    */
   PasteActRightClickAct(event) {
     const isRightClick = true;
-    this.tul.Paste(true);
+    this.tul.Paste(isRightClick);
     LogUtil.Debug('= O.ToolOpt PasteActRightClickAct - Output: Pasted objects with right click context menu', isRightClick);
   }
 
@@ -553,7 +559,27 @@ class ToolOpt {
     try {
       T3Gv.opt.CloseEdit();
       T3Gv.docUtil.SetZoomLevel(HvConstant.T3Config.Zoom.Default * 100);
+      T3Gv.docUtil.UpdateRefZoomScale(HvConstant.T3Config.Zoom.Default);
     } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
+
+  ClearAct() {
+    try {
+      T3Gv.opt.CloseEdit();
+      this.tul.ClearAndRest();
+      LogUtil.Debug('= O.ToolOpt ClearAct - Output: Cleared all shapes and data');
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
+
+  ClearContextMenu() {
+    try {
+      QuasarUtil.ShowContextMenu(false, "DocumentArea", "Default");
+    }
+    catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }
   }

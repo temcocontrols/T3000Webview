@@ -361,7 +361,8 @@ class ToolActUtil {
     }
     // Get target object's frame (deep-copy using jQuery.extend)
     const targetObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
-    const targetFrame = $.extend(true, {}, targetObject.Frame);
+    // const targetFrame = $.extend(true, {}, targetObject.Frame);
+    const targetFrame = Utils1.DeepCopy(targetObject.Frame);
     const targetHeight = targetFrame.height;
     const targetWidth = targetFrame.width;
 
@@ -403,7 +404,7 @@ class ToolActUtil {
       ObjectUtil.AddToDirtyList(objectId);
     }
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
     LogUtil.Debug("O.Opt MakeSameSize - Output:", "Completed");
   }
 
@@ -456,7 +457,7 @@ class ToolActUtil {
             currentObject.Flip(flipType);
           }
         }
-        DrawUtil.CompleteOperation(null);
+        DrawUtil.CompleteOperation();
       }
     }
 
@@ -647,6 +648,7 @@ class ToolActUtil {
         this.PasteLM(T3Gv.opt.header.ClipboardBuffer, T3Gv.opt.header.clipboardJson);
         LogUtil.Debug("O.Opt PasteObjects - Output: LM content pasted");
       } else {
+        this.PasteLM(T3Gv.opt.header.ClipboardBuffer, T3Gv.opt.header.clipboardJson);
         LogUtil.Debug("O.Opt PasteObjects - Output: No pasteable content found");
       }
     } catch (error) {
@@ -796,7 +798,7 @@ class ToolActUtil {
         }
 
         if (alignmentPerformed) {
-          DrawUtil.CompleteOperation(null);
+          DrawUtil.CompleteOperation();
         } else {
           LogUtil.Debug("O.Opt AlignShapes - Output: AlignHooked & UnBlockMessages");
         }
@@ -947,7 +949,7 @@ class ToolActUtil {
           }
         }
         if (selectionOverride == null) {
-          DrawUtil.CompleteOperation(null);
+          DrawUtil.CompleteOperation();
         }
       }
     }
@@ -1296,7 +1298,10 @@ class ToolActUtil {
 
       // Otherwise update the clipboard buffer and clipboard type.
       T3Gv.opt.header.ClipboardBuffer = ShapeUtil.WriteSelect(sortedObjects, false, true, false);
-      T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
+      // T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
+      // T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.None;
+
+      LogUtil.Debug("= u.ToolActUtil: CopyObjectsCommon/ - ClipboardType: ", T3Gv.opt.header.ClipboardType);
 
       // Refresh the selected objects list by removing any objects that are not visible.
       const updatedSelectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
@@ -1523,7 +1528,7 @@ class ToolActUtil {
    * @returns The ID of the new group or false if grouping failed
    */
   static GroupSelected(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration) {
-    new ToolAct2Util().GroupSelectedShapes(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration);
+    ToolAct2Util.GroupSelectedShapes(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration);
   }
 
   /**
@@ -1531,7 +1536,7 @@ class ToolActUtil {
   * @returns {boolean} True if the ungroup operation was performed, false otherwise.
   */
   static UnGroupSelected() {
-    new ToolAct2Util().UngroupSelectedShapes();
+    ToolAct2Util.UngroupSelectedShapes();
   }
 
   /**
