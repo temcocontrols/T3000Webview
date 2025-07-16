@@ -97,7 +97,7 @@ const testDataLoading = async () => {
   console.log('[NavigationTest] Testing data loading...');
 
   // Import and test the T3000 API
-  const { t3000Api } = await import('../components/NewUI/chart/api');
+  const { t3000Api } = await import('../../components/NewUI/chart/api');
 
   try {
     const testResponse = await t3000Api.getData({
