@@ -148,27 +148,27 @@ const routes = [
       },
       {
         path: 'grafana-demo',
-        component: createOptimizedComponent(() => import('src/pages/GrafanaDemo.vue'), "GrafanaDemo", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/GrafanaDemo.vue'), "GrafanaDemo", { category: 'normal' })
       },
       {
         path: 'navigation-test',
-        component: createOptimizedComponent(() => import('src/pages/NavigationTest.vue'), "NavigationTest", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/NavigationTest.vue'), "NavigationTest", { category: 'normal' })
       },
       {
         path: 'chartjs-dashboard',
-        component: createOptimizedComponent(() => import('src/pages/ChartJsDashboard.vue'), "ChartJsDashboard", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/ChartJsDashboard.vue'), "ChartJsDashboard", { category: 'normal' })
       },
       {
         path: 'grafana-timeseries',
-        component: createOptimizedComponent(() => import('src/pages/GrafanaTimeSeriesDemo.vue'), "GrafanaTimeSeriesDemo", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/GrafanaTimeSeriesDemo.vue'), "GrafanaTimeSeriesDemo", { category: 'normal' })
       },
       {
         path: 'grafana-react',
-        component: createOptimizedComponent(() => import('src/pages/GrafanaReactDemo.vue'), "GrafanaReactDemo", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/GrafanaReactDemo.vue'), "GrafanaReactDemo", { category: 'normal' })
       },
       {
         path: 'timeseries-dashboard',
-        component: createOptimizedComponent(() => import('src/pages/TimeSeriesDashboard.vue'), "TimeSeriesDashboard", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/TimeSeriesDashboard.vue'), "TimeSeriesDashboard", { category: 'normal' })
       }
     ]
   },
@@ -228,18 +228,18 @@ const routes = [
   // Diagnostic page for testing
   {
     path: "/diagnostic",
-    component: () => import("../pages/DiagnosticPage.vue")
+    component: () => import("../pages/V2/DiagnosticPage.vue")
   },
   // Error fallback page for severe failures
   {
     path: "/error-fallback",
-    component: createOptimizedComponent(() => import("pages/PageFallback.vue"), "PageFallback", { category: 'fast' }),
+    component: createOptimizedComponent(() => import("pages/V2/PageFallback.vue"), "PageFallback", { category: 'fast' }),
   },
   // Always leave this as last one,
   // but you can also remove it
   {
     path: "/:catchAll(.*)*",
-    component: createOptimizedComponent(() => import("pages/ErrorNotFound.vue"), "ErrorNotFound", { category: 'fast' }),
+    component: createOptimizedComponent(() => import("pages/V2/ErrorNotFound.vue"), "ErrorNotFound", { category: 'fast' }),
   },
 ];
 

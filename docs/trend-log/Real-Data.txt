@@ -1,0 +1,28 @@
+
+
+#
+
+{
+  "command": "3MON1",
+  "hour_interval_time": 0,
+  "id": "MON1",
+  "index": 0,
+  "label": "TRL11111",
+  "minute_interval_time": 15,
+  "pid": 3,
+  "second_interval_time": 0,
+  "status": 1,
+  "type": "MON"
+},
+{
+  "command": "3MON2",
+  "hour_interval_time": 0,
+  "id": "MON2",
+  "index": 1,
+  "label": "TL222222",
+  "minute_interval_time": 15,
+  "pid": 3,
+  "second_interval_time": 0,
+  "status": 0,
+  "type": "MON"
+}

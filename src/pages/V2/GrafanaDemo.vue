@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { reactive, onBeforeUnmount, onErrorCaptured } from 'vue';
 import GrafanaChart from '../components/NewUI/GrafanaChart.vue';
-import type { T3000Config } from '../components/NewUI/chart/types';
+import type { T3000Config } from '../../components/NewUI/chart/types';
 
 // HVAC System Configuration
 const hvacConfig = reactive<T3000Config>({
