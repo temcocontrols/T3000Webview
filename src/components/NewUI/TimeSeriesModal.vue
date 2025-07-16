@@ -297,15 +297,15 @@
                   <div v-if="!series.isEmpty" class="series-color-indicator" :style="{ backgroundColor: series.color }">
                   </div>
                   <div class="series-info">
-                    <span class="series-name">
-                      {{ series.name }}
+                    <div class="series-name-line">
+                      <span class="series-name">{{ series.name }}</span>
+                      <span v-if="!series.isEmpty" class="series-inline-tags">
+                        <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
+                          {{ series.itemType }}
+                        </a-tag>
+                        <span class="unit-info">{{ series.unit }}</span>
+                      </span>
                       <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
-                    </span>
-                    <div v-if="!series.isEmpty" class="series-details">
-                      <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
-                        {{ series.itemType }}
-                      </a-tag>
-                      <span class="unit-info">{{ series.unit }}</span>
                     </div>
                   </div>
                   <div class="series-controls" v-if="!series.isEmpty">
@@ -632,10 +632,13 @@ const generateDataSeries = (): SeriesConfig[] => {
   ]
 
   const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
+  const panelIds = [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3] // Panel IDs for each item
 
   return baseSeries.map((name, index) => {
     const unitCode = unitCodes[index]
     const unitInfo = getUnitInfo(unitCode)
+    const panelId = panelIds[index]
+    const itemNumber = (index % 7) + 1 // Generate numbers 1-7, then repeat
 
     let unit: string
     let digitalStates: [string, string] | undefined
@@ -650,6 +653,9 @@ const generateDataSeries = (): SeriesConfig[] => {
       digitalStates = undefined
     }
 
+    // Generate new format: panelId + itemType + itemNumber (e.g., "2VAR20", "3Input5")
+    const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}` // +19 to start from 20
+
     return {
       name: name,
       color: colors[index % colors.length],
@@ -660,7 +666,7 @@ const generateDataSeries = (): SeriesConfig[] => {
       unitType: unitInfo.type,
       unitCode: unitCode,
       digitalStates: digitalStates,
-      itemType: itemTypes[index]
+      itemType: formattedItemType // Use the new format
     }
   })
 }
@@ -2164,6 +2170,35 @@ onUnmounted(() => {
   gap: 2px;
 }
 
+.series-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.series-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #262626;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.series-inline-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.series-inline-tags .ant-tag {
+  margin: 0;
+  font-size: 10px;
+  padding: 1px 4px;
+  line-height: 1.2;
+}
+
 .series-details {
   display: flex;
   align-items: center;
@@ -2173,13 +2208,14 @@ onUnmounted(() => {
 
 .unit-info {
   color: #595959;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   background: rgba(0, 0, 0, 0.04);
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 1px 3px;
+  border-radius: 2px;
   white-space: nowrap;
   border: 1px solid rgba(0, 0, 0, 0.06);
+  line-height: 1.2;
 }
 
 .series-controls {
