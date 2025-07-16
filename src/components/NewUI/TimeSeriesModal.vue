@@ -229,8 +229,8 @@
               </a-dropdown>
             </div>
           </div>
-        <!-- End of left-panel content -->
-      </div>
+          <!-- End of left-panel content -->
+        </div>
       </div>
 
       <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
@@ -404,6 +404,7 @@ import {
   LoadingOutlined
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
+import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {
@@ -562,7 +563,7 @@ const isRealTime = ref(true)
 const updateInterval = ref(60000) // 60 seconds (1 minute) to match data generation interval
 const isLoading = ref(false)
 const showGrid = ref(true)
-const showLegend = ref(true)
+const showLegend = ref(false)  // Hide legend by default to give more space to chart
 const smoothLines = ref(false)
 const showPoints = ref(false)
 const lastUpdateTime = ref(new Date().toLocaleTimeString())
@@ -1912,6 +1913,8 @@ watch(() => props.visible, (newVal) => {
 
 // Lifecycle
 onMounted(() => {
+  LogUtil.Debug('TimeSeriesChart mounted: scheduleItemData is ', scheduleItemData.value);
+
   if (props.visible) {
     nextTick(() => {
       initializeData()
@@ -2319,11 +2322,11 @@ onUnmounted(() => {
 
 .chart-container {
   flex: 1;
-  padding: 12px;
-  /* Increased padding to ensure last point is visible */
+  padding: 8px;
+  /* Reduced padding to give more space to chart */
   position: relative;
-  min-height: 280px;
-  /* Reduced min height */
+  min-height: 320px;
+  /* Increased min height since legend is removed */
   display: flex;
   flex-direction: column;
 }
@@ -2331,8 +2334,8 @@ onUnmounted(() => {
 .chart-canvas {
   width: 100% !important;
   height: 100% !important;
-  min-height: 260px;
-  /* Reduced min height */
+  min-height: 300px;
+  /* Increased min height since legend is removed */
 }
 
 /* Top Controls Bar Styling */
@@ -3144,12 +3147,11 @@ onUnmounted(() => {
 </style>
 
 <style>
-
- .t3-timeseries-modal .ant-dropdown-menu-title-content {
-    font-size: 12px !important;
-  }
+.t3-timeseries-modal .ant-dropdown-menu-title-content {
+  font-size: 12px !important;
+}
 
 .ant-dropdown-menu-title-content {
-    font-size: 12px !important;
-  }
+  font-size: 12px !important;
+}
 </style>

@@ -3148,7 +3148,7 @@ function objectDoubleClicked(item) {
     trendLogData.value = [];
     trendLogVisible.value = true;
 
-    LogUtil.Debug('= idx: objectDoubleClicked MON Trend Log', trendLogData.value, trendLogVisible.value);
+    LogUtil.Debug('= idx: objectDoubleClicked MON Trend Log',scheduleItemData.value, trendLogData.value, trendLogVisible.value);
   }
 
   T3UIUtil.SetNavVisiblity(false);
