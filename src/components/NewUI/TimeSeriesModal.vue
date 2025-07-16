@@ -293,8 +293,12 @@
                 'series-disabled': !series.visible,
                 'series-empty': series.isEmpty
               }">
-                <div class="series-header" @click="series.isEmpty ? null : toggleSeries(index)">
-                  <div v-if="!series.isEmpty" class="series-color-indicator" :style="{ backgroundColor: series.color }">
+                <div class="series-header" @click="series.isEmpty ? null : toggleSeriesVisibility(index, $event)">
+                  <div v-if="!series.isEmpty"
+                       class="series-toggle-indicator"
+                       :class="{ 'active': series.visible, 'inactive': !series.visible }"
+                       :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
+                    <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
                   </div>
                   <div class="series-info">
                     <div class="series-name-line">
@@ -316,7 +320,6 @@
                         <RightOutlined v-else class="expand-icon" />
                       </template>
                     </a-button>
-                    <a-switch v-model:checked="series.visible" size="small" @change="onSeriesVisibilityChange(index)" />
                   </div>
                   <div class="series-controls" v-else>
                     <span class="empty-placeholder">—</span>
@@ -1584,10 +1587,16 @@ const onSeriesVisibilityChange = (index) => {
   toggleSeries(index)
 }
 
-const toggleSeries = (index: number) => {
+const toggleSeriesVisibility = (index: number, event?: Event) => {
+  // Stop event propagation to prevent triggering parent handlers
+  if (event && typeof event.stopPropagation === 'function') {
+    event.stopPropagation()
+  }
+
   if (dataSeries.value[index].isEmpty) return
   dataSeries.value[index].visible = !dataSeries.value[index].visible
   updateChart()
+  LogUtil.Debug(`Toggled visibility for series ${dataSeries.value[index].name} to ${dataSeries.value[index].visible}`)
 }
 
 const toggleSeriesExpansion = (index: number, event?: Event) => {
@@ -1595,6 +1604,8 @@ const toggleSeriesExpansion = (index: number, event?: Event) => {
   if (event && typeof event.stopPropagation === 'function') {
     event.stopPropagation()
   }
+
+  if (dataSeries.value[index].isEmpty) return
 
   if (expandedSeries.value.has(index)) {
     expandedSeries.value.delete(index)
@@ -2140,11 +2151,8 @@ onUnmounted(() => {
   padding: 6px 10px;
   cursor: pointer;
   gap: 8px;
-  transition: background-color 0.2s ease;
-}
-
-.series-header:hover:not(.series-empty .series-header) {
-  background-color: rgba(0, 100, 200, 0.04);
+  border-radius: 6px;
+  margin: 1px 0;
 }
 
 .series-color-indicator {
@@ -2153,6 +2161,45 @@ onUnmounted(() => {
   border-radius: 2px;
   flex-shrink: 0;
   opacity: 0.8;
+}
+
+.series-toggle-indicator {
+  width: 32px;
+  height: 20px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.series-toggle-indicator.active {
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.series-toggle-indicator.inactive {
+  opacity: 0.6;
+  background-color: #d9d9d9 !important;
+}
+
+.toggle-inner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: white;
+  transition: all 0.3s ease;
+  transform: translateX(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-inner.visible {
+  transform: translateX(12px);
 }
 
 .series-name {
@@ -2168,6 +2215,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 .series-name-line {
