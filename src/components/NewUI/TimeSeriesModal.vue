@@ -240,7 +240,7 @@
             <div class="data-series-header">
               <!-- Line 1: Title with modal title and series count -->
               <div class="header-line-1">
-                <h5>{{ modalTitle }} - Data Series ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h5>
+                <h7>{{ modalTitle }} - Data Series ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
               </div>
 
               <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
@@ -2040,9 +2040,10 @@ onUnmounted(() => {
 .header-line-1,
 .header-line-2 {
   padding-left: 0;
+  margin-bottom: 5px;
 }
 
-.header-line-1 h5 {
+.header-line-1 h7 {
   margin: 0;
   color: #262626;
   font-size: 13px;
@@ -2164,9 +2165,9 @@ onUnmounted(() => {
 }
 
 .series-toggle-indicator {
-  width: 32px;
-  height: 20px;
-  border-radius: 12px;
+  width: 24px;
+  height: 16px;
+  border-radius: 10px;
   flex-shrink: 0;
   cursor: pointer;
   position: relative;
@@ -2174,7 +2175,7 @@ onUnmounted(() => {
   border: 2px solid transparent;
   display: flex;
   align-items: center;
-  padding: 2px;
+  padding: 1px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -2189,8 +2190,8 @@ onUnmounted(() => {
 }
 
 .toggle-inner {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background-color: white;
   transition: all 0.3s ease;
@@ -2199,7 +2200,7 @@ onUnmounted(() => {
 }
 
 .toggle-inner.visible {
-  transform: translateX(12px);
+  transform: translateX(8px);
 }
 
 .series-name {
@@ -2270,7 +2271,10 @@ onUnmounted(() => {
 .series-controls {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .expand-toggle {
@@ -2283,6 +2287,7 @@ onUnmounted(() => {
   color: #8c8c8c !important;
   border: none !important;
   background: transparent !important;
+  flex-shrink: 0;
 }
 
 .expand-toggle:hover {
