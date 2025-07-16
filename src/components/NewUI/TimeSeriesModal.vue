@@ -26,13 +26,13 @@
                 <template #overlay>
                   <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
                     <a-menu-item key="5m">5 minutes</a-menu-item>
-                    <a-menu-item key="15m">15 minutes</a-menu-item>
+                    <a-menu-item key="10m">10 minutes</a-menu-item>
                     <a-menu-item key="30m">30 minutes</a-menu-item>
                     <a-menu-item key="1h">1 hour</a-menu-item>
-                    <a-menu-item key="6h">6 hours</a-menu-item>
+                    <a-menu-item key="4h">4 hours</a-menu-item>
                     <a-menu-item key="12h">12 hours</a-menu-item>
-                    <a-menu-item key="24h">24 hours</a-menu-item>
-                    <a-menu-item key="7d">7 days</a-menu-item>
+                    <a-menu-item key="1d">1 day</a-menu-item>
+                    <a-menu-item key="4d">4 days</a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="custom">Custom Define</a-menu-item>
                   </a-menu>
@@ -676,15 +676,16 @@ const generateDataSeries = (): SeriesConfig[] => {
 
 const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
 
-// Get internal interval value from props - both intervals are in SECONDS
+// Get internal interval value from props - combine minute and second intervals
 const getInternalIntervalSeconds = (): number => {
-  const minuteInterval = props.itemData?.t3Entry?.minute_interval_time
-  const secondInterval = props.itemData?.t3Entry?.second_interval_time
+  const minuteInterval = props.itemData?.t3Entry?.minute_interval_time || 0
+  const secondInterval = props.itemData?.t3Entry?.second_interval_time || 0
 
-  if (minuteInterval && minuteInterval > 0) {
-    return minuteInterval // Already in seconds
-  } else if (secondInterval && secondInterval > 0) {
-    return secondInterval // Already in seconds
+  // Calculate total interval: minute_interval_time * 60 + second_interval_time
+  const totalIntervalSeconds = minuteInterval * 60 + secondInterval
+
+  if (totalIntervalSeconds > 0) {
+    return totalIntervalSeconds
   } else {
     // Default fallback - convert timebase minutes to seconds
     return getDataPointInterval(timeBase.value) * 60
@@ -760,13 +761,13 @@ const visibleSeriesCount = computed(() => {
 const timeBaseLabel = computed(() => {
   const labels = {
     '5m': 'Last 5 minutes',
-    '15m': 'Last 15 minutes',
+    '10m': 'Last 10 minutes',
     '30m': 'Last 30 minutes',
     '1h': 'Last 1 hour',
-    '6h': 'Last 6 hours',
+    '4h': 'Last 4 hours',
     '12h': 'Last 12 hours',
-    '24h': 'Last 24 hours',
-    '7d': 'Last 7 days'
+    '1d': 'Last 1 day',
+    '4d': 'Last 4 days'
   }
   return labels[timeBase.value] || 'Unknown'
 })
@@ -775,13 +776,13 @@ const timeBaseLabel = computed(() => {
 const getTimeBaseLabel = () => {
   const labels = {
     '5m': '5 minutes',
-    '15m': '15 minutes',
+    '10m': '10 minutes',
     '30m': '30 minutes',
     '1h': '1 hour',
-    '6h': '6 hours',
+    '4h': '4 hours',
     '12h': '12 hours',
-    '24h': '24 hours',
-    '7d': '7 days',
+    '1d': '1 day',
+    '4d': '4 days',
     'custom': 'Custom Define'
   }
   return labels[timeBase.value] || '1 hour'
@@ -839,13 +840,13 @@ const allDigitalEnabled = computed(() => {
 const getDataPointInterval = (timeBase: string): number => {
   const intervals = {
     '5m': 1,     // Every 1 minute
-    '15m': 1,    // Every 1 minute
-    '30m': 1,    // Every 1 minute
+    '10m': 1,    // Every 1 minute
+    '30m': 2,    // Every 2 minutes
     '1h': 5,     // Every 5 minutes
-    '6h': 20,    // Every 20 minutes
-    '12h': 40,   // Every 40 minutes
-    '24h': 80,   // Every 80 minutes
-    '7d': 360    // Every 360 minutes
+    '4h': 15,    // Every 15 minutes
+    '12h': 30,   // Every 30 minutes
+    '1d': 60,    // Every 60 minutes (1 hour)
+    '4d': 240    // Every 240 minutes (4 hours)
   }
   return intervals[timeBase] || 1
 }
@@ -1222,14 +1223,14 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
 
 const getTimeRangeMinutes = (range: string): number => {
   const ranges = {
-    '5m': 5,
-    '15m': 15,
-    '30m': 30,
-    '1h': 60,
-    '6h': 360,
-    '12h': 720,
-    '24h': 1440,
-    '7d': 10080
+    '5m': 5,        // 5 minutes
+    '10m': 10,      // 10 minutes
+    '30m': 30,      // 30 minutes
+    '1h': 60,       // 1 hour
+    '4h': 240,      // 4 hours
+    '12h': 720,     // 12 hours
+    '1d': 1440,     // 1 day
+    '4d': 5760      // 4 days
   }
   return ranges[range] || 60
 }
