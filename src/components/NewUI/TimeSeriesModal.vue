@@ -304,9 +304,9 @@
                     <div class="series-name-line">
                       <span class="series-name">{{ series.name }}</span>
                       <span v-if="!series.isEmpty" class="series-inline-tags">
-                        <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
+                        <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
                           {{ series.itemType }}
-                        </a-tag>
+                        </a-tag> -->
                         <span class="unit-info">{{ series.unit }}</span>
                       </span>
                       <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
