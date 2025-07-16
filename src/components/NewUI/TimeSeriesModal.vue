@@ -676,6 +676,57 @@ const generateDataSeries = (): SeriesConfig[] => {
 
 const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
 
+// Get internal interval value from props - both intervals are in SECONDS
+const getInternalIntervalSeconds = (): number => {
+  const minuteInterval = props.itemData?.t3Entry?.minute_interval_time
+  const secondInterval = props.itemData?.t3Entry?.second_interval_time
+
+  if (minuteInterval && minuteInterval > 0) {
+    return minuteInterval // Already in seconds
+  } else if (secondInterval && secondInterval > 0) {
+    return secondInterval // Already in seconds
+  } else {
+    // Default fallback - convert timebase minutes to seconds
+    return getDataPointInterval(timeBase.value) * 60
+  }
+}
+
+// Round interval to standard values for x-axis labels (input/output in seconds)
+const getRoundedIntervalSeconds = (intervalSec: number): number => {
+  if (intervalSec <= 5) return 5
+  if (intervalSec <= 10) return 10
+  if (intervalSec <= 15) return 15
+  if (intervalSec <= 20) return 20
+  if (intervalSec <= 30) return 30
+  if (intervalSec <= 60) return 60
+
+  // For larger intervals, convert to minutes and round
+  const minutes = intervalSec / 60
+  if (minutes <= 5) return 5 * 60
+  if (minutes <= 10) return 10 * 60
+  if (minutes <= 15) return 15 * 60
+  if (minutes <= 20) return 20 * 60
+  if (minutes <= 30) return 30 * 60
+
+  // Round to nearest hour
+  const hours = Math.round(minutes / 60)
+  return hours * 60 * 60
+}
+
+// Computed property to track current interval for debugging
+const currentDataInterval = computed(() => {
+  const internalSec = getInternalIntervalSeconds()
+  const roundedSec = getRoundedIntervalSeconds(internalSec)
+
+  console.log(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
+    minuteInterval: props.itemData?.t3Entry?.minute_interval_time,
+    secondInterval: props.itemData?.t3Entry?.second_interval_time,
+    timeBase: timeBase.value
+  })
+
+  return { internalSec, roundedSec }
+})
+
 // Chart references
 const chartContainer = ref<HTMLElement>()
 const chartCanvas = ref<HTMLCanvasElement>()
@@ -933,22 +984,32 @@ const getChartConfig = () => ({
       x: {
         type: 'time' as const,
         time: (() => {
-          // Direct calculation based on timeBase selection
-          const tickConfigs = {
-            '5m': { unit: 'minute', stepSize: 1 },      // Every 1 minute
-            '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
-            '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
-            '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
-            '6h': { unit: 'minute', stepSize: 20 },     // Every 20 minutes
-            '12h': { unit: 'minute', stepSize: 40 },    // Every 40 minutes
-            '24h': { unit: 'minute', stepSize: 80 },    // Every 80 minutes
-            '7d': { unit: 'minute', stepSize: 360 }     // Every 360 minutes
+          // Use rounded interval for clean x-axis labels
+          const roundedIntervalSec = getRoundedIntervalSeconds(getInternalIntervalSeconds())
+
+          // Determine appropriate unit and step size based on rounded interval
+          let unit: 'second' | 'minute' | 'hour'
+          let stepSize: number
+
+          if (roundedIntervalSec < 60) {
+            // Use seconds for intervals under 1 minute
+            unit = 'second'
+            stepSize = roundedIntervalSec
+          } else if (roundedIntervalSec < 3600) {
+            // Use minutes for intervals under 1 hour
+            unit = 'minute'
+            stepSize = roundedIntervalSec / 60
+          } else {
+            // Use hours for larger intervals
+            unit = 'hour'
+            stepSize = roundedIntervalSec / 3600
           }
-          const config = tickConfigs[timeBase.value] || tickConfigs['1h']
+
           return {
-            unit: config.unit,
-            stepSize: config.stepSize,
+            unit: unit,
+            stepSize: stepSize,
             displayFormats: {
+              second: 'HH:mm:ss',
               minute: 'HH:mm',
               hour: 'HH:mm',
               day: 'MM/DD'
@@ -1093,8 +1154,10 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
     return intervals[timeBase] || 1
   }
 
-  const dataInterval = getDataPointInterval(timeBase.value)
-  const dataPointCount = Math.floor(timeRangeMinutes / dataInterval) + 1 // +1 to include both start and end points
+  // Use internal interval from props (in seconds) for accurate data generation
+  const dataIntervalSeconds = getInternalIntervalSeconds()
+  const dataIntervalMinutes = dataIntervalSeconds / 60
+  const dataPointCount = Math.floor(timeRangeMinutes / dataIntervalMinutes) + 1 // +1 to include both start and end points
   const series = dataSeries.value[seriesIndex]
   const data: DataPoint[] = []
 
@@ -1103,8 +1166,8 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
     let currentState = Math.random() > 0.5 ? 1 : 0
 
     for (let i = 0; i < dataPointCount; i++) {
-      // Calculate timestamp: start time plus i * dataInterval minutes
-      const timestamp = startTime.getTime() + i * dataInterval * 60 * 1000
+      // Calculate timestamp: start time plus i * dataInterval in seconds (converted to milliseconds)
+      const timestamp = startTime.getTime() + i * dataIntervalSeconds * 1000
 
       // Randomly change state (about 10% chance per point for realistic transitions)
       if (Math.random() < 0.1) {
@@ -1142,8 +1205,8 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
     }
 
     for (let i = 0; i < dataPointCount; i++) {
-      // Calculate timestamp: start time plus i * dataInterval minutes
-      const timestamp = startTime.getTime() + i * dataInterval * 60 * 1000
+      // Calculate timestamp: start time plus i * dataInterval in seconds (converted to milliseconds)
+      const timestamp = startTime.getTime() + i * dataIntervalSeconds * 1000
 
       // Generate smooth sine wave with some noise for realistic analog data
       const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
@@ -1290,23 +1353,29 @@ const updateChart = () => {
   if (chartInstance.options.scales?.x) {
     const xScale = chartInstance.options.scales.x as any
 
-    // Direct calculation based on timeBase selection
-    const tickConfigs = {
-      '5m': { unit: 'minute', stepSize: 1 },      // Every 1 minute
-      '15m': { unit: 'minute', stepSize: 3 },     // Every 3 minutes
-      '30m': { unit: 'minute', stepSize: 6 },     // Every 6 minutes
-      '1h': { unit: 'minute', stepSize: 5 },      // Every 5 minutes
-      '6h': { unit: 'minute', stepSize: 20 },     // Every 20 minutes
-      '12h': { unit: 'minute', stepSize: 40 },    // Every 15 minutes (0.25 hour)
-      '24h': { unit: 'minute', stepSize: 80 },    // Every 30 minutes (0.5 hours)
-      '7d': { unit: 'minute', stepSize: 360 }     // Every 120 minutes (2 hours)
+    // Use rounded interval for clean x-axis labels
+    const roundedIntervalSec = getRoundedIntervalSeconds(getInternalIntervalSeconds())
+
+    // Determine appropriate unit and step size based on rounded interval
+    let unit: 'second' | 'minute' | 'hour'
+    let stepSize: number
+
+    if (roundedIntervalSec < 60) {
+      unit = 'second'
+      stepSize = roundedIntervalSec
+    } else if (roundedIntervalSec < 3600) {
+      unit = 'minute'
+      stepSize = roundedIntervalSec / 60
+    } else {
+      unit = 'hour'
+      stepSize = roundedIntervalSec / 3600
     }
-    const tickConfig = tickConfigs[timeBase.value] || tickConfigs['1h']
 
     xScale.time = {
-      unit: tickConfig.unit,
-      stepSize: tickConfig.stepSize,
+      unit: unit,
+      stepSize: stepSize,
       displayFormats: {
+        second: 'HH:mm:ss',
         minute: 'HH:mm',
         hour: 'HH:mm',
         day: 'MM/DD'
@@ -1584,7 +1653,7 @@ const onRealTimeToggle = (checked: boolean) => {
 
 const onSeriesVisibilityChange = (index) => {
   LogUtil.Debug(`Toggling visibility for series ${dataSeries.value[index].name}`)
-  toggleSeries(index)
+  toggleSeriesVisibility(index)
 }
 
 const toggleSeriesVisibility = (index: number, event?: Event) => {
