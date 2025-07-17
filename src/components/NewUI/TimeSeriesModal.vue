@@ -64,30 +64,30 @@
           <div class="controls-section section-zoom">
             <!-- Zoom Controls -->
             <div class="control-item">
-              <a-dropdown placement="bottomRight">
-                <a-button size="small" style="display: flex; align-items: center;">
-                  <ZoomInOutlined style="margin-right: 4px;" />
-                  <span>Zoom</span>
-                  <DownOutlined style="margin-left: 4px;" />
+              <a-button-group size="small">
+                <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)">
+                  <template #icon>
+                    <ZoomOutOutlined />
+                  </template>
+                  <span>Zoom Out</span>
                 </a-button>
-                <template #overlay>
-                  <a-menu class="zoom-options-menu" @click="handleZoomMenu">
-                    <a-menu-item key="zoom-in">
-                      <ZoomInOutlined />
-                      Zoom In
-                    </a-menu-item>
-                    <a-menu-item key="zoom-out">
-                      <ZoomOutOutlined />
-                      Zoom Out
-                    </a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item key="reset-zoom">
-                      <ReloadOutlined />
-                      Reset Zoom
-                    </a-menu-item>
-                  </a-menu>
+                <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)">
+                  <template #icon>
+                    <ZoomInOutlined />
+                  </template>
+                  <span>Zoom In</span>
+                </a-button>
+              </a-button-group>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="control-item">
+              <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 1 hour timebase">
+                <template #icon>
+                  <ReloadOutlined />
                 </template>
-              </a-dropdown>
+                <span>Reset</span>
+              </a-button>
             </div>
 
             <!-- View Buttons -->
@@ -770,17 +770,17 @@ const debugDataIntervals = () => {
   console.log('=== DATA INTERVAL DEBUG ===')
   console.log(`Expected interval: ${getInternalIntervalSeconds()} seconds`)
   console.log(`TimeBase: ${timeBase.value}`)
-  
+
   visibleSeries.forEach((series, index) => {
     if (series.data.length < 2) return
-    
+
     const intervals = []
     for (let i = 1; i < Math.min(series.data.length, 6); i++) { // Check first 5 intervals
       const timeDiff = series.data[i].timestamp - series.data[i-1].timestamp
       const intervalSec = timeDiff / 1000
       intervals.push(intervalSec)
     }
-    
+
     const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length
     console.log(`Series ${index + 1} (${series.name}):`)
     console.log(`  Data points: ${series.data.length}`)
@@ -863,6 +863,20 @@ const getTimeBaseLabel = () => {
   }
   return labels[timeBase.value] || '1 hour'
 }
+
+// Timebase progression for zoom functionality (shorter to longer)
+const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
+
+// Computed properties for zoom button states
+const canZoomIn = computed(() => {
+  const currentIndex = timebaseProgression.indexOf(timeBase.value)
+  return currentIndex > 0 // Can zoom in if not already at shortest timebase
+})
+
+const canZoomOut = computed(() => {
+  const currentIndex = timebaseProgression.indexOf(timeBase.value)
+  return currentIndex >= 0 && currentIndex < timebaseProgression.length - 1 // Can zoom out if not at longest timebase
+})
 
 // Function to set time base from dropdown
 const setTimeBase = (value: string) => {
@@ -955,7 +969,7 @@ const getChartConfig = () => ({
             x: point.timestamp,
             y: point.value
           }))
-        
+
         return {
           label: series.name,
           data: sortedData,
@@ -1330,10 +1344,10 @@ const initializeData = () => {
       series.data = generateMockData(index, minutes)
     }
   })
-  
+
   // Debug data intervals to verify correct generation
   debugDataIntervals()
-  
+
   updateChart()
 }
 
@@ -1429,7 +1443,7 @@ const updateChart = () => {
           x: point.timestamp,
           y: point.value
         }))
-      
+
       return {
         label: series.name,
         data: sortedData,
@@ -1588,58 +1602,30 @@ const moveTimeRight = () => {
 }
 
 const zoomIn = () => {
-  if (zoomLevel.value < 4) {
-    zoomLevel.value = Math.min(zoomLevel.value * 1.5, 4)
-
-    if (chartInstance) {
-      const xScale = chartInstance.scales.x
-      const range = xScale.max - xScale.min
-      const newRange = range / 1.5
-      const center = (xScale.max + xScale.min) / 2
-
-      chartInstance.options.scales.x.min = center - newRange / 2
-      chartInstance.options.scales.x.max = center + newRange / 2
-      chartInstance.update('none')
-    }
-
-    message.info(`Zoomed to ${Math.round(zoomLevel.value * 100)}%`)
+  const currentIndex = timebaseProgression.indexOf(timeBase.value)
+  if (currentIndex > 0) {
+    const newTimebase = timebaseProgression[currentIndex - 1]
+    timeBase.value = newTimebase
+    onTimeBaseChange()
+    message.info(`Zoomed in to ${getTimeBaseLabel()}`)
   }
 }
 
 const zoomOut = () => {
-  if (zoomLevel.value > 0.25) {
-    zoomLevel.value = Math.max(zoomLevel.value / 1.5, 0.25)
-
-    if (chartInstance) {
-      const xScale = chartInstance.scales.x
-      const range = xScale.max - xScale.min
-      const newRange = range * 1.5
-      const center = (xScale.max + xScale.min) / 2
-
-      chartInstance.options.scales.x.min = center - newRange / 2
-      chartInstance.options.scales.x.max = center + newRange / 2
-      chartInstance.update('none')
-    }
-
-    message.info(`Zoomed to ${Math.round(zoomLevel.value * 100)}%`)
+  const currentIndex = timebaseProgression.indexOf(timeBase.value)
+  if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
+    const newTimebase = timebaseProgression[currentIndex + 1]
+    timeBase.value = newTimebase
+    onTimeBaseChange()
+    message.info(`Zoomed out to ${getTimeBaseLabel()}`)
   }
 }
 
-const resetZoom = () => {
-  zoomLevel.value = 1.0
-
-  if (chartInstance) {
-    // Reset to original data range
-    const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
-    const now = Date.now()
-    const startTime = now - timeRangeMinutes * 60 * 1000
-
-    chartInstance.options.scales.x.min = startTime
-    chartInstance.options.scales.x.max = now
-    chartInstance.update('none')
-  }
-
-  message.info('Zoom reset to 100%')
+const resetToDefaultTimebase = () => {
+  timeBase.value = '1h'
+  timeOffset.value = 0 // Reset time navigation as well
+  onTimeBaseChange()
+  message.info('Reset to default 1 hour timebase')
 }
 
 const setView = (viewNumber: number) => {
@@ -1780,23 +1766,14 @@ const handleTimeBaseMenu = ({ key }: { key: string }) => {
 }
 
 const handleZoomMenu = ({ key }: { key: string }) => {
-  switch (key) {
-    case 'zoom-in':
-      zoomIn()
-      break
-    case 'zoom-out':
-      zoomOut()
-      break
-    case 'reset-zoom':
-      resetZoom()
-      break
-  }
+  // This function is no longer used since zoom is now handled by icon buttons
+  // Keeping for backward compatibility if referenced elsewhere
 }
 
 const handleChartOptionsMenu = ({ key }: { key: string }) => {
   switch (key) {
     case 'grid':
-     
+
     case 'json':
       exportDataJSON()
       break
@@ -1810,6 +1787,23 @@ const handleAllMenu = ({ key }: { key: string }) => {
       break
     case 'disable-all':
       disableAllSeries()
+      break
+  }
+}
+
+const handleExportMenu = ({ key }: { key: string }) => {
+  switch (key) {
+    case 'png':
+      exportChartPNG()
+      break
+    case 'jpg':
+      exportChartJPG()
+      break
+    case 'csv':
+      exportData()
+      break
+    case 'json':
+      exportDataJSON()
       break
   }
 }
@@ -1935,6 +1929,17 @@ const exportData = () => {
 }
 
 // Additional Export Methods
+const exportChartPNG = () => {
+  if (!chartInstance) return
+
+  const link = document.createElement('a')
+  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
+  link.href = chartInstance.toBase64Image('image/png', 1.0)
+  link.click()
+
+  message.success('Chart exported as PNG successfully')
+}
+
 const exportChartJPG = () => {
   if (!chartInstance) return
 
