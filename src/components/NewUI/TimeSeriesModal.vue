@@ -1215,10 +1215,16 @@ const getChartConfig = () => ({
           includeBounds: true  // Force Chart.js to include boundary ticks
         },
         min: (() => {
+          if (timeBase.value === 'custom' && customStartDate.value) {
+            return customStartDate.value.valueOf()
+          }
           const bounds = getDataSeriesTimeBounds()
           return bounds.min
         })(),
         max: (() => {
+          if (timeBase.value === 'custom' && customEndDate.value) {
+            return customEndDate.value.valueOf()
+          }
           const bounds = getDataSeriesTimeBounds()
           return bounds.max
         })()
@@ -1366,6 +1372,69 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
   return data
 }
 
+// Generate data for custom date range
+const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: Date): DataPoint[] => {
+  const totalMinutes = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+
+  // Use appropriate interval based on the total time range
+  let dataIntervalMinutes: number
+  if (totalMinutes <= 60) {
+    dataIntervalMinutes = 1 // 1 minute intervals for short ranges
+  } else if (totalMinutes <= 720) {
+    dataIntervalMinutes = 5 // 5 minute intervals for up to 12 hours
+  } else if (totalMinutes <= 2880) {
+    dataIntervalMinutes = 15 // 15 minute intervals for up to 2 days
+  } else {
+    dataIntervalMinutes = 60 // 1 hour intervals for longer ranges
+  }
+
+  const dataPointCount = Math.floor(totalMinutes / dataIntervalMinutes) + 1
+  const series = dataSeries.value[seriesIndex]
+  const data: DataPoint[] = []
+
+  if (series.unitType === 'digital') {
+    // Digital data: Generate step-like transitions between 0 and 1
+    let currentState = Math.random() > 0.5 ? 1 : 0
+
+    for (let i = 0; i < dataPointCount; i++) {
+      const timestamp = startDate.getTime() + i * dataIntervalMinutes * 60 * 1000
+
+      // Randomly change state (about 10% chance per point for realistic transitions)
+      if (Math.random() < 0.1) {
+        currentState = currentState === 1 ? 0 : 1
+      }
+
+      data.push({ timestamp, value: currentState })
+    }
+  } else {
+    // Analog data: Generate realistic sensor data
+    const baseValue = 20 + seriesIndex * 10 // Different base values for different series
+    let range = 20
+
+    // Determine appropriate range based on series
+    if (series.unit === '°F' || series.unit === '°C') {
+      range = 15 // Temperature range
+    } else if (series.unit === '%') {
+      range = 30 // Humidity/percentage range
+    } else {
+      range = 10
+    }
+
+    for (let i = 0; i < dataPointCount; i++) {
+      const timestamp = startDate.getTime() + i * dataIntervalMinutes * 60 * 1000
+
+      // Generate smooth sine wave with some noise for realistic analog data
+      const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
+      const noise = (Math.random() - 0.5) * (range / 5)
+      const value = baseValue + sineValue + noise
+
+      data.push({ timestamp, value: Math.round(value * 100) / 100 })
+    }
+  }
+
+  return data
+}
+
 const getTimeRangeMinutes = (range: string): number => {
   const ranges = {
     '5m': 5,        // 5 minutes
@@ -1381,12 +1450,23 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = () => {
-  const minutes = getTimeRangeMinutes(timeBase.value)
-  dataSeries.value.forEach((series, index) => {
-    if (!series.isEmpty) {
-      series.data = generateMockData(index, minutes)
-    }
-  })
+  if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+    // For custom date range, use actual custom dates
+    const customDuration = customEndDate.value.diff(customStartDate.value, 'minute')
+    dataSeries.value.forEach((series, index) => {
+      if (!series.isEmpty) {
+        series.data = generateCustomDateData(index, customStartDate.value.toDate(), customEndDate.value.toDate())
+      }
+    })
+  } else {
+    // For standard timebase, use existing logic
+    const minutes = getTimeRangeMinutes(timeBase.value)
+    dataSeries.value.forEach((series, index) => {
+      if (!series.isEmpty) {
+        series.data = generateMockData(index, minutes)
+      }
+    })
+  }
 
   // Debug data intervals to verify correct generation (disabled for production)
   // debugDataIntervals()
@@ -1742,6 +1822,11 @@ const onCustomDateChange = () => {
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
     // Generate data for custom date range
     initializeData()
+    // Force chart recreation to ensure proper axis scaling
+    if (chartInstance) {
+      chartInstance.destroy()
+      createChart()
+    }
   }
 }
 
