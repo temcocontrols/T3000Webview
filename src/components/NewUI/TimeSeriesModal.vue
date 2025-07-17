@@ -66,12 +66,12 @@
             <div class="control-item">
               <a-button-group size="small">
                 <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
-                          style="display: flex; align-items: center; gap: 4px;">
+                          style="display: flex; align-items: center; gap: 2px;">
                   <ZoomOutOutlined />
                   <span>Zoom Out</span>
                 </a-button>
                 <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
-                          style="display: flex; align-items: center; gap: 4px;">
+                          style="display: flex; align-items: center; gap: 2px;">
                   <ZoomInOutlined />
                   <span>Zoom In</span>
                 </a-button>
@@ -81,7 +81,7 @@
             <!-- Reset Button -->
             <div class="control-item">
               <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 1 hour timebase"
-                        style="display: flex; align-items: center; gap: 4px;">
+                        style="display: flex; align-items: center; gap: 2px;">
                 <ReloadOutlined />
                 <span>Reset</span>
               </a-button>
@@ -728,12 +728,8 @@ const getXAxisTickConfig = (timeBase: string) => {
 
 // Get proper display format based on time range
 const getDisplayFormat = (timeBase: string): string => {
-  // For day-based ranges, show date + time
-  if (timeBase === '1d' || timeBase === '4d') {
-    return 'MM/dd HH:mm'
-  }
-  // For all others, show time only
-  return 'HH:mm'
+  // Always show date + time for all timebases
+  return 'dd/MM HH:mm'
 }
 
 // Handle custom timebase case - divide into 12 ticks
@@ -749,11 +745,11 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
   if (tickIntervalMinutes < 60) {
     unit = 'minute'
     stepSize = tickIntervalMinutes
-    displayFormat = 'HH:mm'
+    displayFormat = 'dd/MM HH:mm'
   } else {
     unit = 'hour'
     stepSize = Math.ceil(tickIntervalMinutes / 60)
-    displayFormat = totalMinutes > 1440 ? 'MM/dd HH:mm' : 'HH:mm' // Show date if > 1 day
+    displayFormat = 'dd/MM HH:mm' // Always show date + time
   }
 
   return { unit, stepSize, displayFormat }
@@ -792,11 +788,12 @@ const currentDataInterval = computed(() => {
   const internalSec = getInternalIntervalSeconds()
   const roundedSec = getRoundedIntervalSeconds(internalSec)
 
-  console.log(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
-    minuteInterval: props.itemData?.t3Entry?.minute_interval_time,
-    secondInterval: props.itemData?.t3Entry?.second_interval_time,
-    timeBase: timeBase.value
-  })
+  // Disabled debug logging for production
+  // console.log(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
+  //   minuteInterval: props.itemData?.t3Entry?.minute_interval_time,
+  //   secondInterval: props.itemData?.t3Entry?.second_interval_time,
+  //   timeBase: timeBase.value
+  // })
 
   return { internalSec, roundedSec }
 })
@@ -1129,7 +1126,7 @@ const getChartConfig = () => ({
             displayFormats: {
               minute: displayFormat,
               hour: displayFormat,
-              day: 'MM/dd HH:mm'
+              day: 'dd/MM HH:mm'
             },
             // Ensure Chart.js doesn't skip data points
             minUnit: 'second' as const
@@ -1338,8 +1335,8 @@ const initializeData = () => {
     }
   })
 
-  // Debug data intervals to verify correct generation
-  debugDataIntervals()
+  // Debug data intervals to verify correct generation (disabled for production)
+  // debugDataIntervals()
 
   updateChart()
 }
@@ -1471,7 +1468,7 @@ const updateChart = () => {
       displayFormats: {
         minute: displayFormat,
         hour: displayFormat,
-        day: 'MM/dd HH:mm'
+        day: 'dd/MM HH:mm'
       },
       // Remove round to prevent timestamp rounding that affects line drawing
       minUnit: 'second'
@@ -1628,11 +1625,11 @@ const setView = (viewNumber: number) => {
   const viewConfigs = {
     1: {
       showGrid: true,
-      showLegend: true,
+      showLegend: false,
       smoothLines: false,
       showPoints: false,
       title: 'Standard View',
-      description: 'Grid lines and legend enabled for comprehensive data analysis'
+      description: 'Grid lines enabled for comprehensive data analysis'
     },
     2: {
       showGrid: false,
@@ -1644,7 +1641,7 @@ const setView = (viewNumber: number) => {
     },
     3: {
       showGrid: true,
-      showLegend: true,
+      showLegend: false,
       smoothLines: true,
       showPoints: false,
       title: 'Detailed View',
@@ -3062,5 +3059,9 @@ onUnmounted(() => {
 
 .ant-dropdown-menu-title-content {
   font-size: 12px !important;
+}
+
+.ant-modal-content{
+  padding: 10px 14px !important;
 }
 </style>
