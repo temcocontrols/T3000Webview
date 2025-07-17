@@ -779,10 +779,13 @@ const getDisplayFormat = (timeBase: string): string => {
   return 'dd/MM HH:mm'
 }
 
-// Handle custom timebase case - divide into 12 ticks
+// Handle custom timebase case - divide into 12 ticks with better distribution
 const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
   const totalMinutes = Math.floor((customEndDate.getTime() - customStartDate.getTime()) / (1000 * 60))
-  const tickIntervalMinutes = Math.ceil(totalMinutes / 12) // Divide into 12 ticks
+
+  // Use fewer ticks for better readability and ensure we don't overcrowd the axis
+  const maxTicks = 10
+  const tickIntervalMinutes = Math.ceil(totalMinutes / maxTicks)
 
   // Determine appropriate unit based on interval
   let unit: 'minute' | 'hour'
@@ -799,7 +802,7 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
     displayFormat = 'dd/MM HH:mm' // Always show date + time
   }
 
-  return { unit, stepSize, displayFormat }
+  return { unit, stepSize, displayFormat, maxTicks }
 }
 
 // Debug function to verify data generation intervals
@@ -1197,6 +1200,12 @@ const getChartConfig = () => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           maxTicksLimit: (() => {
+            // Handle custom timebase separately
+            if (timeBase.value === 'custom') {
+              const customConfig = getCustomTickConfig(customStartDate.value.toDate(), customEndDate.value.toDate())
+              return customConfig.maxTicks
+            }
+
             // Calculate max ticks based on timebase for proper grid division
             const maxTicksConfigs = {
               '5m': 6,    // 5 intervals + 1
@@ -1388,7 +1397,8 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
     dataIntervalMinutes = 60 // 1 hour intervals for longer ranges
   }
 
-  const dataPointCount = Math.floor(totalMinutes / dataIntervalMinutes) + 1
+  // Calculate number of complete intervals + ensure endpoint is included
+  const numCompleteIntervals = Math.floor(totalMinutes / dataIntervalMinutes)
   const series = dataSeries.value[seriesIndex]
   const data: DataPoint[] = []
 
@@ -1396,8 +1406,12 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
     // Digital data: Generate step-like transitions between 0 and 1
     let currentState = Math.random() > 0.5 ? 1 : 0
 
-    for (let i = 0; i < dataPointCount; i++) {
+    // Generate data points for complete intervals
+    for (let i = 0; i <= numCompleteIntervals; i++) {
       const timestamp = startDate.getTime() + i * dataIntervalMinutes * 60 * 1000
+
+      // Don't exceed the end date
+      if (timestamp > endDate.getTime()) break
 
       // Randomly change state (about 10% chance per point for realistic transitions)
       if (Math.random() < 0.1) {
@@ -1405,6 +1419,13 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
       }
 
       data.push({ timestamp, value: currentState })
+    }
+
+    // Always ensure the exact end point is included
+    const lastPoint = data[data.length - 1]
+    if (!lastPoint || lastPoint.timestamp < endDate.getTime()) {
+      // Keep the same state for the endpoint
+      data.push({ timestamp: endDate.getTime(), value: currentState })
     }
   } else {
     // Analog data: Generate realistic sensor data
@@ -1420,15 +1441,32 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
       range = 10
     }
 
-    for (let i = 0; i < dataPointCount; i++) {
+    // Generate data points for complete intervals
+    for (let i = 0; i <= numCompleteIntervals; i++) {
       const timestamp = startDate.getTime() + i * dataIntervalMinutes * 60 * 1000
 
+      // Don't exceed the end date
+      if (timestamp > endDate.getTime()) break
+
       // Generate smooth sine wave with some noise for realistic analog data
-      const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
+      const totalDataPoints = numCompleteIntervals + 1
+      const sineValue = Math.sin((i / totalDataPoints) * Math.PI * 2) * (range / 3)
       const noise = (Math.random() - 0.5) * (range / 5)
       const value = baseValue + sineValue + noise
 
       data.push({ timestamp, value: Math.round(value * 100) / 100 })
+    }
+
+    // Always ensure the exact end point is included
+    const lastPoint = data[data.length - 1]
+    if (!lastPoint || lastPoint.timestamp < endDate.getTime()) {
+      // Generate value for the endpoint using same formula
+      const totalDataPoints = numCompleteIntervals + 1
+      const sineValue = Math.sin((totalDataPoints / totalDataPoints) * Math.PI * 2) * (range / 3)
+      const noise = (Math.random() - 0.5) * (range / 5)
+      const value = baseValue + sineValue + noise
+
+      data.push({ timestamp: endDate.getTime(), value: Math.round(value * 100) / 100 })
     }
   }
 
