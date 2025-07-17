@@ -17,7 +17,7 @@
           <div class="controls-section section-time">
             <!-- Time Base -->
             <div class="control-item">
-              <a-typography-text class="control-label">Time Base:</a-typography-text>
+              <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
               <a-dropdown placement="bottomRight">
                 <a-button size="small" style="display: flex; align-items: center;">
                   <span>{{ getTimeBaseLabel() }}</span>
@@ -65,16 +65,14 @@
             <!-- Zoom Controls -->
             <div class="control-item">
               <a-button-group size="small">
-                <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)">
-                  <template #icon>
-                    <ZoomOutOutlined />
-                  </template>
+                <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
+                          style="display: flex; align-items: center; gap: 4px;">
+                  <ZoomOutOutlined />
                   <span>Zoom Out</span>
                 </a-button>
-                <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)">
-                  <template #icon>
-                    <ZoomInOutlined />
-                  </template>
+                <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
+                          style="display: flex; align-items: center; gap: 4px;">
+                  <ZoomInOutlined />
                   <span>Zoom In</span>
                 </a-button>
               </a-button-group>
@@ -82,10 +80,9 @@
 
             <!-- Reset Button -->
             <div class="control-item">
-              <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 1 hour timebase">
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
+              <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 1 hour timebase"
+                        style="display: flex; align-items: center; gap: 4px;">
+                <ReloadOutlined />
                 <span>Reset</span>
               </a-button>
             </div>
@@ -733,7 +730,7 @@ const getXAxisTickConfig = (timeBase: string) => {
 const getDisplayFormat = (timeBase: string): string => {
   // For day-based ranges, show date + time
   if (timeBase === '1d' || timeBase === '4d') {
-    return 'MM/DD HH:mm'
+    return 'MM/dd HH:mm'
   }
   // For all others, show time only
   return 'HH:mm'
@@ -756,7 +753,7 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
   } else {
     unit = 'hour'
     stepSize = Math.ceil(tickIntervalMinutes / 60)
-    displayFormat = totalMinutes > 1440 ? 'MM/DD HH:mm' : 'HH:mm' // Show date if > 1 day
+    displayFormat = totalMinutes > 1440 ? 'MM/dd HH:mm' : 'HH:mm' // Show date if > 1 day
   }
 
   return { unit, stepSize, displayFormat }
@@ -1119,7 +1116,7 @@ const getChartConfig = () => ({
               displayFormats: {
                 minute: customConfig.displayFormat,
                 hour: customConfig.displayFormat,
-                day: 'MM/DD HH:mm'
+                day: 'MM/dd HH:mm'
               },
               // Ensure Chart.js doesn't skip data points
               minUnit: 'second' as const
@@ -1136,7 +1133,7 @@ const getChartConfig = () => ({
             displayFormats: {
               minute: displayFormat,
               hour: displayFormat,
-              day: 'MM/DD HH:mm'
+              day: 'MM/dd HH:mm'
             },
             // Ensure Chart.js doesn't skip data points
             minUnit: 'second' as const
@@ -1478,7 +1475,7 @@ const updateChart = () => {
       displayFormats: {
         minute: displayFormat,
         hour: displayFormat,
-        day: 'MM/DD HH:mm'
+        day: 'MM/dd HH:mm'
       },
       // Remove round to prevent timestamp rounding that affects line drawing
       minUnit: 'second'
