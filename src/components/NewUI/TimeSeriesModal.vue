@@ -992,10 +992,6 @@ const getChartConfig = () => ({
     maintainAspectRatio: false,
     // Disable automatic data reduction to ensure all points are drawn
     elements: {
-      point: {
-        radius: showPoints.value ? 3 : 0,
-        hoverRadius: 6
-      },
       line: {
         borderWidth: 2,
         // Ensure all data points are connected, no skipping
@@ -1451,7 +1447,7 @@ const updateChart = () => {
         // Apply step-line for digital, smooth/straight for analog
         stepped: series.unitType === 'digital' ? 'middle' as const : false,
         tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
-        pointRadius: showPoints.value ? 3 : 1,  // Always show at least small points to ensure visibility
+        pointRadius: showPoints.value ? 3 : 0,  // Hide points completely when disabled
         pointHoverRadius: 6,
         pointBackgroundColor: series.color,
         pointBorderColor: '#fff',
@@ -1650,7 +1646,7 @@ const setView = (viewNumber: number) => {
       showGrid: true,
       showLegend: true,
       smoothLines: true,
-      showPoints: true,
+      showPoints: false,
       title: 'Detailed View',
       description: 'All features enabled for maximum data visualization detail'
     }
@@ -2052,6 +2048,9 @@ watch(() => props.visible, (newVal) => {
 // Lifecycle
 onMounted(() => {
   LogUtil.Debug('TimeSeriesChart mounted: scheduleItemData is ', scheduleItemData.value);
+
+  // Apply default view configuration to ensure settings are properly initialized
+  setView(1)
 
   if (props.visible) {
     nextTick(() => {
