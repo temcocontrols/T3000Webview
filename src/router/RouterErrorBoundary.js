@@ -52,10 +52,18 @@ export class RouterErrorBoundary {
   handleRouterError(error) {
     LogUtil.Error('[Router] Router error:', error);
 
-    // Handle specific Selecto/Gesto errors
-    if (error.message && (error.message.includes('gesto') || error.message.includes('selecto'))) {
-      LogUtil.Debug('[Router] Selecto/Gesto related error detected during navigation (safely ignored):', error.message);
-      // Don't treat this as a critical error
+    // Handle specific Selecto/Gesto errors (including stack trace matches)
+    const errorMessage = error.message || '';
+    const errorStack = error.stack || '';
+
+    if (errorMessage.includes('gesto') ||
+        errorMessage.includes('selecto') ||
+        errorMessage.includes('can\'t access property "unset"') ||
+        errorStack.includes('SelectoManager') ||
+        errorStack.includes('Selecto.vue') ||
+        errorStack.includes('gesto')) {
+      LogUtil.Debug('[Router] Selecto/Gesto related error detected during navigation (safely ignored):', errorMessage);
+      // Don't treat this as a critical error - just log and continue
       return;
     }
 

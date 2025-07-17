@@ -11,7 +11,7 @@ interface ErrorContext {
   componentInfo?: any;
 }
 
-enum ErrorSeverity {
+export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
@@ -136,6 +136,20 @@ class ErrorHandler {
     window.addEventListener('unhandledrejection', (event) => {
       const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
 
+      // Check if this is a Selecto/Gesto error (safe to ignore)
+      const isSelectoError = error.message.includes('gesto') ||
+                            error.message.includes('selecto') ||
+                            error.message.includes('can\'t access property "unset"') ||
+                            error.stack?.includes('SelectoManager') ||
+                            error.stack?.includes('Selecto.vue') ||
+                            error.stack?.includes('gesto');
+
+      if (isSelectoError) {
+        LogUtil.Debug('[ErrorHandler] Selecto/Gesto error detected and ignored:', error.message);
+        event.preventDefault();
+        return;
+      }
+
       // Check if this is a node-related error
       const isNodeError = error.message.includes('node is undefined') ||
                          error.message.includes('node is null') ||
@@ -186,6 +200,20 @@ class ErrorHandler {
     // Handle global errors
     window.addEventListener('error', (event) => {
       const error = event.error || new Error(event.message);
+
+      // Check if this is a Selecto/Gesto error (safe to ignore)
+      const isSelectoError = error.message.includes('gesto') ||
+                            error.message.includes('selecto') ||
+                            error.message.includes('can\'t access property "unset"') ||
+                            error.stack?.includes('SelectoManager') ||
+                            error.stack?.includes('Selecto.vue') ||
+                            error.stack?.includes('gesto');
+
+      if (isSelectoError) {
+        LogUtil.Debug('[ErrorHandler] Selecto/Gesto error detected and ignored:', error.message);
+        event.preventDefault();
+        return;
+      }
 
       instance.handleError(
         error,
@@ -301,7 +329,7 @@ function withErrorBoundary<T extends any[], R>(
   };
 }
 
-export { ErrorHandler, ErrorSeverity, withErrorBoundary };
+export { ErrorHandler, withErrorBoundary };
 export type { ErrorContext, ErrorReport };
 
 // Re-export safe node access for convenience

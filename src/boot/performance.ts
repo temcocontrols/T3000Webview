@@ -6,7 +6,7 @@ import { t3000Cache } from 'src/lib/performance/AdvancedCache.js';
 import { performanceMonitor } from 'src/lib/performance/PerformanceMonitor.js';
 import { asyncTimeoutManager } from 'src/lib/performance/AsyncComponentTimeoutManager.js';
 import { chunkLoadingManager } from 'src/lib/performance/ChunkLoadingManager.js';
-import { ErrorHandler } from 'src/lib/T3000/Hvac/Util/ErrorHandler';
+import { ErrorHandler, ErrorSeverity } from 'src/lib/T3000/Hvac/Util/ErrorHandler';
 import { NodeDebugger } from 'src/lib/debug/NodeDebugger.js';
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 
@@ -19,6 +19,44 @@ export default boot(async ({ app, router }) => {
 
     // Initialize global error handling
     ErrorHandler.initializeGlobalHandling();
+
+    // Add Vue-specific error handling
+    app.config.errorHandler = (error, instance, info) => {
+      const errorHandler = ErrorHandler.getInstance();
+
+      // Convert unknown error to Error instance
+      const errorInstance = error instanceof Error ? error : new Error(String(error));
+
+      // Check if this is a Selecto/Gesto error (safe to ignore)
+      const isSelectoError = errorInstance.message?.includes('gesto') ||
+                            errorInstance.message?.includes('selecto') ||
+                            errorInstance.message?.includes('can\'t access property "unset"') ||
+                            errorInstance.stack?.includes('SelectoManager') ||
+                            errorInstance.stack?.includes('Selecto.vue') ||
+                            errorInstance.stack?.includes('gesto');
+
+      if (isSelectoError) {
+        LogUtil.Debug('[Vue ErrorHandler] Selecto/Gesto error detected and ignored:', errorInstance.message);
+        console.log('[Vue ErrorHandler] Selecto error safely ignored:', errorInstance.message);
+        return;
+      }
+
+      errorHandler.handleError(
+        errorInstance,
+        {
+          component: instance?.$options.name || 'UnknownComponent',
+          function: 'Vue lifecycle',
+          userAction: info || 'Vue component error',
+          componentInfo: {
+            name: instance?.$options.name,
+            is: instance?.$options.is,
+            propsData: instance?.$props
+          }
+        },
+        ErrorSeverity.HIGH
+      );
+    };
+
     LogUtil.Debug('[Boot] Global error handling initialized');
 
     // Start DOM mutation monitoring in development
