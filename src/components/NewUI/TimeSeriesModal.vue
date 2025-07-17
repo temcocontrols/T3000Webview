@@ -347,7 +347,6 @@
             </div>
           </div>
 
-          <!-- ...existing code... -->
           <!-- Custom Date Range (only shown when Custom Define is selected) - moved to bottom of left panel -->
           <div v-if="timeBase === 'custom'" class="control-section custom-date-section" style="margin-top: 24px;">
             <h4>Custom Range</h4>
@@ -714,6 +713,83 @@ const getRoundedIntervalSeconds = (intervalSec: number): number => {
   return hours * 60 * 60
 }
 
+// Get x-axis tick configuration based on timebase
+const getXAxisTickConfig = (timeBase: string) => {
+  const configs = {
+    '5m': { stepMinutes: 1, unit: 'minute' },     // Every 1 minute
+    '10m': { stepMinutes: 2, unit: 'minute' },    // Every 2 minutes
+    '30m': { stepMinutes: 5, unit: 'minute' },    // Every 5 minutes
+    '1h': { stepMinutes: 10, unit: 'minute' },    // Every 10 minutes
+    '4h': { stepMinutes: 30, unit: 'minute' },    // Every 30 minutes
+    '12h': { stepMinutes: 60, unit: 'hour' },     // Every 1 hour (60 minutes)
+    '1d': { stepMinutes: 120, unit: 'hour' },     // Every 2 hours (120 minutes)
+    '4d': { stepMinutes: 480, unit: 'hour' }      // Every 8 hours (480 minutes)
+  }
+
+  return configs[timeBase] || { stepMinutes: 10, unit: 'minute' }
+}
+
+// Get proper display format based on time range
+const getDisplayFormat = (timeBase: string): string => {
+  // For day-based ranges, show date + time
+  if (timeBase === '1d' || timeBase === '4d') {
+    return 'MM/DD HH:mm'
+  }
+  // For all others, show time only
+  return 'HH:mm'
+}
+
+// Handle custom timebase case - divide into 12 ticks
+const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
+  const totalMinutes = Math.floor((customEndDate.getTime() - customStartDate.getTime()) / (1000 * 60))
+  const tickIntervalMinutes = Math.ceil(totalMinutes / 12) // Divide into 12 ticks
+
+  // Determine appropriate unit based on interval
+  let unit: 'minute' | 'hour'
+  let stepSize: number
+  let displayFormat: string
+
+  if (tickIntervalMinutes < 60) {
+    unit = 'minute'
+    stepSize = tickIntervalMinutes
+    displayFormat = 'HH:mm'
+  } else {
+    unit = 'hour'
+    stepSize = Math.ceil(tickIntervalMinutes / 60)
+    displayFormat = totalMinutes > 1440 ? 'MM/DD HH:mm' : 'HH:mm' // Show date if > 1 day
+  }
+
+  return { unit, stepSize, displayFormat }
+}
+
+// Debug function to verify data generation intervals
+const debugDataIntervals = () => {
+  const visibleSeries = dataSeries.value.filter(series => series.visible && !series.isEmpty)
+  if (visibleSeries.length === 0) return
+
+  console.log('=== DATA INTERVAL DEBUG ===')
+  console.log(`Expected interval: ${getInternalIntervalSeconds()} seconds`)
+  console.log(`TimeBase: ${timeBase.value}`)
+  
+  visibleSeries.forEach((series, index) => {
+    if (series.data.length < 2) return
+    
+    const intervals = []
+    for (let i = 1; i < Math.min(series.data.length, 6); i++) { // Check first 5 intervals
+      const timeDiff = series.data[i].timestamp - series.data[i-1].timestamp
+      const intervalSec = timeDiff / 1000
+      intervals.push(intervalSec)
+    }
+    
+    const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length
+    console.log(`Series ${index + 1} (${series.name}):`)
+    console.log(`  Data points: ${series.data.length}`)
+    console.log(`  Average interval: ${avgInterval.toFixed(1)} seconds`)
+    console.log(`  First intervals: ${intervals.map(i => i.toFixed(1)).join(', ')} seconds`)
+  })
+  console.log('=========================')
+}
+
 // Computed property to track current interval for debugging
 const currentDataInterval = computed(() => {
   const internalSec = getInternalIntervalSeconds()
@@ -851,35 +927,70 @@ const getDataPointInterval = (timeBase: string): number => {
   return intervals[timeBase] || 1
 }
 
+// Helper to get min/max timestamp from all visible data series
+const getDataSeriesTimeBounds = () => {
+  const allPoints = dataSeries.value
+    .filter(series => series.visible && !series.isEmpty)
+    .flatMap(series => series.data)
+    .map(point => point.timestamp)
+  if (allPoints.length === 0) return { min: undefined, max: undefined }
+  return {
+    min: Math.min(...allPoints),
+    max: Math.max(...allPoints)
+  }
+}
+
 // Chart configuration with Grafana-like styling
 const getChartConfig = () => ({
   type: 'line' as const,
   data: {
     datasets: dataSeries.value
       .filter(series => series.visible && !series.isEmpty)
-      .map(series => ({
-        label: series.name,
-        data: series.data.map(point => ({
-          x: point.timestamp,
-          y: point.value
-        })),
-        borderColor: series.color,
-        backgroundColor: series.color + '20',
-        borderWidth: 2,
-        fill: false,
-        // NEW: Digital units use step-line, analog units use smooth/straight lines
-        stepped: series.unitType === 'digital' ? 'middle' as const : false,
-        tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
-        pointRadius: showPoints.value ? 3 : 0,
-        pointHoverRadius: 6,
-        pointBackgroundColor: series.color,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2
-      }))
+      .map(series => {
+        // Ensure data points are sorted by timestamp for proper line drawing
+        const sortedData = series.data
+          .slice()
+          .sort((a, b) => a.timestamp - b.timestamp)
+          .map(point => ({
+            x: point.timestamp,
+            y: point.value
+          }))
+        
+        return {
+          label: series.name,
+          data: sortedData,
+          borderColor: series.color,
+          backgroundColor: series.color + '20',
+          borderWidth: 2,
+          fill: false,
+          // NEW: Digital units use step-line, analog units use smooth/straight lines
+          stepped: series.unitType === 'digital' ? 'middle' as const : false,
+          tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
+          pointRadius: showPoints.value ? 3 : 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: series.color,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          // Ensure line segments are drawn between all consecutive points
+          spanGaps: false
+        }
+      })
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
+    // Disable automatic data reduction to ensure all points are drawn
+    elements: {
+      point: {
+        radius: showPoints.value ? 3 : 0,
+        hoverRadius: 6
+      },
+      line: {
+        borderWidth: 2,
+        // Ensure all data points are connected, no skipping
+        skipNull: false
+      }
+    },
     layout: {
       padding: {
         left: 10,
@@ -985,36 +1096,36 @@ const getChartConfig = () => ({
       x: {
         type: 'time' as const,
         time: (() => {
-          // Use rounded interval for clean x-axis labels
-          const roundedIntervalSec = getRoundedIntervalSeconds(getInternalIntervalSeconds())
-
-          // Determine appropriate unit and step size based on rounded interval
-          let unit: 'second' | 'minute' | 'hour'
-          let stepSize: number
-
-          if (roundedIntervalSec < 60) {
-            // Use seconds for intervals under 1 minute
-            unit = 'second'
-            stepSize = roundedIntervalSec
-          } else if (roundedIntervalSec < 3600) {
-            // Use minutes for intervals under 1 hour
-            unit = 'minute'
-            stepSize = roundedIntervalSec / 60
-          } else {
-            // Use hours for larger intervals
-            unit = 'hour'
-            stepSize = roundedIntervalSec / 3600
+          // Handle custom timebase separately
+          if (timeBase.value === 'custom') {
+            const customConfig = getCustomTickConfig(customStartDate.value.toDate(), customEndDate.value.toDate())
+            return {
+              unit: customConfig.unit,
+              stepSize: customConfig.stepSize,
+              displayFormats: {
+                minute: customConfig.displayFormat,
+                hour: customConfig.displayFormat,
+                day: 'MM/DD HH:mm'
+              },
+              // Ensure Chart.js doesn't skip data points
+              minUnit: 'second' as const
+            }
           }
 
+          // Use new tick configuration based on timebase
+          const tickConfig = getXAxisTickConfig(timeBase.value)
+          const displayFormat = getDisplayFormat(timeBase.value)
+
           return {
-            unit: unit,
-            stepSize: stepSize,
+            unit: tickConfig.unit as 'minute' | 'hour',
+            stepSize: tickConfig.stepMinutes,
             displayFormats: {
-              second: 'HH:mm:ss',
-              minute: 'HH:mm',
-              hour: 'HH:mm',
-              day: 'MM/DD'
-            }
+              minute: displayFormat,
+              hour: displayFormat,
+              day: 'MM/DD HH:mm'
+            },
+            // Ensure Chart.js doesn't skip data points
+            minUnit: 'second' as const
           }
         })(),
         grid: {
@@ -1047,26 +1158,12 @@ const getChartConfig = () => ({
           includeBounds: true  // Force Chart.js to include boundary ticks
         },
         min: (() => {
-          // Calculate time window directly based on timeBase and navigation
-          const now = new Date()
-          const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
-          const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-
-          const rangeMinutes = {
-            '5m': 5, '15m': 15, '30m': 30, '1h': 60, '6h': 360, '12h': 720, '24h': 1440, '7d': 10080
-          }[timeBase.value] || 60
-
-          return new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000).getTime()
+          const bounds = getDataSeriesTimeBounds()
+          return bounds.min
         })(),
         max: (() => {
-          // Calculate end time - exact end of range to show all data points
-          const now = new Date()
-          const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
-          const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-          // Extend the max slightly to ensure the last tick label is rendered
-          // This applies to all long timebases (6h, 12h, 24h, 7d) and is harmless for shorter ones
-          const dataInterval = getDataPointInterval(timeBase.value)
-          return offsetTime.getTime() + (dataInterval * 60 * 1000) / 10; // Extend by 10% of an interval
+          const bounds = getDataSeriesTimeBounds()
+          return bounds.max
         })()
       },
       y: {
@@ -1092,15 +1189,6 @@ const getChartConfig = () => ({
             return typeof value === 'number' ? value.toFixed(1) : value
           }
         }
-      }
-    },
-    elements: {
-      line: {
-        borderWidth: 2
-      },
-      point: {
-        radius: showPoints.value ? 3 : 0,
-        hoverRadius: 6
       }
     }
   }
@@ -1242,6 +1330,10 @@ const initializeData = () => {
       series.data = generateMockData(index, minutes)
     }
   })
+  
+  // Debug data intervals to verify correct generation
+  debugDataIntervals()
+  
   updateChart()
 }
 
@@ -1328,71 +1420,66 @@ const updateChart = () => {
 
   chartInstance.data.datasets = dataSeries.value
     .filter(series => series.visible && !series.isEmpty && series.data.length > 0)
-    .map(series => ({
-      label: series.name,
-      data: series.data.map(point => ({
-        x: point.timestamp,
-        y: point.value
-      })),
-      borderColor: series.color,
-      backgroundColor: series.color + '20',
-      borderWidth: 2,
-      fill: false,
-      // Apply step-line for digital, smooth/straight for analog
-      stepped: series.unitType === 'digital' ? 'middle' as const : false,
-      tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
-      pointRadius: showPoints.value ? 3 : 1,  // Always show at least small points to ensure visibility
-      pointHoverRadius: 6,
-      pointBackgroundColor: series.color,
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      // Ensure point style makes end points visible
-      pointStyle: 'circle' as const
-    }))
-
-  // Update x-axis configuration based on current timebase and navigation
+    .map(series => {
+      // Ensure data points are sorted by timestamp for proper line drawing
+      const sortedData = series.data
+        .slice()
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map(point => ({
+          x: point.timestamp,
+          y: point.value
+        }))
+      
+      return {
+        label: series.name,
+        data: sortedData,
+        borderColor: series.color,
+        backgroundColor: series.color + '20',
+        borderWidth: 2,
+        fill: false,
+        // Apply step-line for digital, smooth/straight for analog
+        stepped: series.unitType === 'digital' ? 'middle' as const : false,
+        tension: series.unitType === 'analog' && smoothLines.value ? 0.4 : 0,
+        pointRadius: showPoints.value ? 3 : 1,  // Always show at least small points to ensure visibility
+        pointHoverRadius: 6,
+        pointBackgroundColor: series.color,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        // Ensure point style makes end points visible
+        pointStyle: 'circle' as const,
+        // Ensure line segments are drawn between all consecutive points
+        spanGaps: false
+      }
+    })  // Update x-axis configuration based on current timebase and navigation
   if (chartInstance.options.scales?.x) {
     const xScale = chartInstance.options.scales.x as any
 
-    // Use rounded interval for clean x-axis labels
-    const roundedIntervalSec = getRoundedIntervalSeconds(getInternalIntervalSeconds())
-
-    // Determine appropriate unit and step size based on rounded interval
-    let unit: 'second' | 'minute' | 'hour'
-    let stepSize: number
-
-    if (roundedIntervalSec < 60) {
-      unit = 'second'
-      stepSize = roundedIntervalSec
-    } else if (roundedIntervalSec < 3600) {
-      unit = 'minute'
-      stepSize = roundedIntervalSec / 60
-    } else {
-      unit = 'hour'
-      stepSize = roundedIntervalSec / 3600
-    }
+    // Use new tick configuration based on timebase
+    const tickConfig = getXAxisTickConfig(timeBase.value)
+    const displayFormat = getDisplayFormat(timeBase.value)
 
     xScale.time = {
-      unit: unit,
-      stepSize: stepSize,
+      unit: tickConfig.unit,
+      stepSize: tickConfig.stepMinutes,
       displayFormats: {
-        second: 'HH:mm:ss',
-        minute: 'HH:mm',
-        hour: 'HH:mm',
-        day: 'MM/DD'
-      }
+        minute: displayFormat,
+        hour: displayFormat,
+        day: 'MM/DD HH:mm'
+      },
+      // Remove round to prevent timestamp rounding that affects line drawing
+      minUnit: 'second'
     }
 
     // Calculate max ticks based on timebase for proper grid division
     const maxTicksConfigs = {
-      '5m': 6,    // 5 intervals + 1
-      '15m': 6,   // 5 intervals + 1
-      '30m': 6,   // 5 intervals + 1
-      '1h': 13,   // 12 intervals + 1 (0,5,10,15,20,25,30,35,40,45,50,55,60)
-      '6h': 19,   // 18 intervals + 1 (every 20 minutes)
-      '12h': 19,  // 18 intervals + 1 (every 40 minutes)
-      '24h': 19,  // 18 intervals + 1 (every 80 minutes)
-      '7d': 29    // 28 intervals + 1 (every 360 minutes)
+      '5m': 6,    // 5 intervals + 1 (every 1 minute)
+      '10m': 6,   // 5 intervals + 1 (every 2 minutes)
+      '30m': 7,   // 6 intervals + 1 (every 5 minutes)
+      '1h': 7,    // 6 intervals + 1 (every 10 minutes)
+      '4h': 9,    // 8 intervals + 1 (every 30 minutes)
+      '12h': 13,  // 12 intervals + 1 (every 1 hour)
+      '1d': 13,   // 12 intervals + 1 (every 2 hours)
+      '4d': 13    // 12 intervals + 1 (every 8 hours)
     }
 
     xScale.ticks = {
@@ -1408,23 +1495,12 @@ const updateChart = () => {
       lineWidth: 1
     }
 
-    // Set proper time window directly based on timeBase and navigation
-    const now = new Date()
-    const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
-    const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-
-    const rangeMinutes = {
-      '5m': 5, '15m': 15, '30m': 30, '1h': 60, '6h': 360, '12h': 720, '24h': 1440, '7d': 10080
-    }[timeBase.value] || 60
-
-    const startTime = new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000)
-    const endTime = offsetTime
-
-    xScale.min = startTime.getTime()
-    // Extend the max slightly to ensure the last tick label is rendered
-    // This applies to all long timebases (6h, 12h, 24h, 7d) and is harmless for shorter ones
-    const dataInterval = getDataPointInterval(timeBase.value)
-    xScale.max = endTime.getTime() + (dataInterval * 60 * 1000) / 10; // Extend by 10% of an interval
+    // Set x-axis bounds based on actual data to ensure lines are drawn at true intervals
+    const bounds = getDataSeriesTimeBounds()
+    if (bounds.min !== undefined && bounds.max !== undefined) {
+      xScale.min = bounds.min
+      xScale.max = bounds.max
+    }
   }
 
   // Update y-axis grid configuration
@@ -1720,34 +1796,7 @@ const handleZoomMenu = ({ key }: { key: string }) => {
 const handleChartOptionsMenu = ({ key }: { key: string }) => {
   switch (key) {
     case 'grid':
-      toggleGridOption()
-      break
-    case 'legend':
-      toggleLegendOption()
-      break
-    case 'smooth':
-      toggleSmoothOption()
-      break
-    case 'points':
-      togglePointsOption()
-      break
-    case 'reset':
-      resetChartOptions()
-      break
-  }
-}
-
-const handleExportMenu = ({ key }: { key: string }) => {
-  switch (key) {
-    case 'png':
-      exportChart()
-      break
-    case 'jpg':
-      exportChartJPG()
-      break
-    case 'csv':
-      exportData()
-      break
+     
     case 'json':
       exportDataJSON()
       break
@@ -1784,7 +1833,7 @@ const handleCancel = () => {
 
 // Utility functions
 const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
-  if (data.length === 0) return 'N/A'
+  if (data.length ===  0) return 'N/A'
 
   const lastValue = data[data.length - 1].value
 
@@ -2938,307 +2987,6 @@ onUnmounted(() => {
 
   :global(.t3-timeseries-modal .ant-modal-content) {
     padding: 8px 10px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .top-controls-bar {
-    padding: 4px 6px;
-  }
-
-  .controls-section {
-    padding: 4px 6px;
-    gap: 3px;
-  }
-
-  .status-tags {
-    gap: 2px;
-  }
-
-  .status-tags .ant-tag {
-    font-size: 9px !important;
-    padding: 1px 3px !important;
-    line-height: 16px !important;
-    margin: 0 !important;
-  }
-
-  .chart-title {
-    font-size: 11px;
-  }
-
-  .control-label {
-    font-size: 10px !important;
-  }
-
-  /* Compact select and buttons for small screens */
-  .section-time .ant-select {
-    width: 100% !important;
-    max-width: 140px;
-  }
-
-  .section-zoom .ant-btn-group .ant-btn {
-    min-width: 50px;
-    font-size: 10px;
-    padding: 0 6px;
-  }
-
-  .section-options .ant-btn {
-    font-size: 10px;
-    padding: 0 6px;
-  }
-
-  /* Stack elements vertically in sections for very small screens */
-  .section-time .control-item,
-  .section-zoom .control-item {
-    width: 100%;
-  }
-
-  .section-time .ant-btn-group {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .section-zoom .ant-btn-group {
-    width: 100%;
-    justify-content: center;
-  }
-
-  :global(.t3-timeseries-modal .ant-modal) {
-    width: 98vw !important;
-    margin: 5px auto !important;
-  }
-
-  :global(.t3-timeseries-modal .ant-modal-content) {
-    padding: 6px 8px !important;
-  }
-}
-
-@media (min-width: 768px) {
-  .controls-left {
-    overflow: hidden;
-  }
-}
-
-/* Make series details tags much smaller */
-.series-details .ant-tag {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-  margin: 0 !important;
-  border-radius: 2px !important;
-  min-width: auto !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-  border-width: 1px !important;
-}
-
-/* Override Ant Design tag styles more aggressively */
-:deep(.series-details .ant-tag) {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-  margin: 0 !important;
-  border-radius: 2px !important;
-  min-width: auto !important;
-  box-sizing: border-box !important;
-}
-
-:deep(.series-details .ant-tag-blue) {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-}
-
-:deep(.series-details .ant-tag-green) {
-  font-size: 10px !important;
-  padding: 0 2px !important;
-  line-height: 12px !important;
-  height: 12px !important;
-}
-</style>
-
-<!-- Modal Content Padding Override -->
-<style>
-/* Override ant-modal-content padding from default 20,24 to 10,14 */
-.t3-timeseries-modal .ant-modal-content {
-  padding: 10px 14px !important;
-}
-</style>
-
-<style scoped>
-/* Additional robustness for top-controls-bar */
-.top-controls-bar * {
-  box-sizing: border-box;
-}
-
-/* Force single-line behavior for control labels */
-.control-label {
-  white-space: nowrap !important;
-  font-size: 11px !important;
-  flex-shrink: 0;
-}
-
-/* Ensure dropdowns don't break layout */
-.control-item .ant-btn {
-  white-space: nowrap !important;
-  flex-shrink: 0;
-}
-
-.control-item .ant-select {
-  flex-shrink: 0;
-}
-
-/* Prevent button groups from wrapping */
-.control-item .ant-btn-group {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-/* Force chart info elements to stay compact */
-.status-tags .ant-tag {
-  flex-shrink: 0;
-  white-space: nowrap;
-  font-size: 10px !important;
-  padding: 0 4px !important;
-  line-height: 18px !important;
-}
-
-/* Override any ant design min-width constraints */
-.top-controls-bar .ant-select-selector {
-  min-width: auto !important;
-}
-
-.top-controls-bar .ant-btn {
-  min-width: auto !important;
-}
-
-/* Ensure proper overflow handling */
-.controls-group {
-  overflow: hidden;
-}
-
-/* Responsive design for sectioned top bar */
-@media (max-width: 1200px) {
-  .section-info {
-    min-width: 250px;
-  }
-
-  .section-time {
-    min-width: 240px;
-  }
-
-  .status-tags .ant-tag {
-    font-size: 9px !important;
-    padding: 0 3px !important;
-  }
-
-  .chart-title {
-    font-size: 13px;
-  }
-}
-
-@media (max-width: 768px) {
-  .controls-group {
-    flex-direction: column;
-    gap: 6px;
-    align-items: stretch;
-  }
-
-  .controls-section {
-    padding: 6px 8px;
-    min-height: auto;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .section-divider {
-    display: none;
-  }
-
-  .section-time,
-  .section-info,
-  .section-zoom,
-  .section-options {
-    min-width: auto;
-    width: 100%;
-    flex: none;
-  }
-
-  .section-time {
-    background: rgba(0, 100, 200, 0.05);
-    border-radius: 4px;
-    border: 1px solid rgba(0, 100, 200, 0.1);
-  }
-
-  .section-info {
-    background: rgba(255, 140, 0, 0.05);
-    border-radius: 4px;
-    border: 1px solid rgba(255, 140, 0, 0.1);
-  }
-
-  .section-zoom {
-    background: rgba(0, 150, 0, 0.05);
-    border-radius: 4px;
-    border: 1px solid rgba(0, 150, 0, 0.1);
-  }
-
-  .section-options {
-    background: rgba(130, 0, 130, 0.05);
-    border-radius: 4px;
-    border: 1px solid rgba(130, 0, 130, 0.1);
-  }
-
-  .status-tags {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 4px;
-    width: 100%;
-  }
-
-  .chart-title {
-    text-align: left;
-    font-size: 12px;
-    margin-bottom: 4px;
-  }
-
-  .chart-title-compact {
-    width: 100%;
-    margin-bottom: 4px;
-  }
-
-  .control-item {
-    gap: 4px;
-    flex-wrap: wrap;
-  }
-
-  /* Ensure Time Base controls don't overflow */
-  .section-time .control-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-  }
-
-  .section-time .control-label {
-    font-size: 11px;
-    margin-bottom: 2px;
-  }
-
-  /* Make button groups wrap on mobile */
-  .section-time .ant-btn-group,
-  .section-zoom .ant-btn-group {
-    flex-wrap: wrap;
-  }
-
-  /* Optimize View buttons for mobile */
-  .section-zoom .ant-btn-group .ant-btn {
-    min-width: 60px;
-    font-size: 11px;
   }
 }
 
