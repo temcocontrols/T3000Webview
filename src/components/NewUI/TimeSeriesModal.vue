@@ -343,17 +343,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Custom Date Range (only shown when Custom Define is selected) - moved to bottom of left panel -->
-          <div v-if="timeBase === 'custom'" class="control-section custom-date-section" style="margin-top: 24px;">
-            <h4>Custom Range</h4>
-            <a-space direction="vertical" size="small" style="width: 100%;">
-              <a-date-picker v-model:value="customStartDate" placeholder="Start Date" size="small" style="width: 100%;"
-                @change="onCustomDateChange" />
-              <a-date-picker v-model:value="customEndDate" placeholder="End Date" size="small" style="width: 100%;"
-                @change="onCustomDateChange" />
-            </a-space>
-          </div>
         </div>
 
         <!-- Right Panel: Chart -->
@@ -368,6 +357,61 @@
       <div v-if="isLoading" class="loading-overlay">
         <a-spin size="large" />
         <div class="loading-text">Loading trend log data...</div>
+      </div>
+    </a-modal>
+
+    <!-- Custom Date Range Modal -->
+    <a-modal v-model:visible="customDateModalVisible" title="X Axis" :width="320" centered
+             @ok="applyCustomDateRange" @cancel="cancelCustomDateRange">
+      <div class="custom-date-modal">
+        <!-- Start Time Row -->
+        <a-row :gutter="8" class="date-time-row">
+          <a-col :span="4" class="label-col">
+            <label class="time-label">Start:</label>
+          </a-col>
+          <a-col :span="11">
+            <a-date-picker v-model:value="customStartDate" placeholder="Date" size="small"
+                          style="width: 100%; font-size: 11px;" format="DD/MM/YYYY" />
+          </a-col>
+          <a-col :span="9">
+            <a-time-picker v-model:value="customStartTime" placeholder="Time" size="small"
+                          style="width: 100%; font-size: 11px;" format="HH:mm" />
+          </a-col>
+        </a-row>
+
+        <!-- End Time Row -->
+        <a-row :gutter="8" class="date-time-row">
+          <a-col :span="4" class="label-col">
+            <label class="time-label">End:</label>
+          </a-col>
+          <a-col :span="11">
+            <a-date-picker v-model:value="customEndDate" placeholder="Date" size="small"
+                          style="width: 100%; font-size: 11px;" format="DD/MM/YYYY" />
+          </a-col>
+          <a-col :span="9">
+            <a-time-picker v-model:value="customEndTime" placeholder="Time" size="small"
+                          style="width: 100%; font-size: 11px;" format="HH:mm" />
+          </a-col>
+        </a-row>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <a-space size="small">
+            <a-button size="small" @click="setQuickRange('today')">Today</a-button>
+            <a-button size="small" @click="setQuickRange('yesterday')">Yesterday</a-button>
+            <a-button size="small" @click="setQuickRange('thisWeek')">This Week</a-button>
+            <a-button size="small" @click="setQuickRange('lastWeek')">Last Week</a-button>
+          </a-space>
+        </div>
+
+        <!-- Range Summary -->
+        <div v-if="customStartDate && customEndDate && customStartTime && customEndTime" class="range-summary">
+          <a-alert type="info" show-icon size="small">
+            <template #message>
+              <span class="range-text">{{ formatDateTimeRange() }}</span>
+            </template>
+          </a-alert>
+        </div>
       </div>
     </a-modal>
   </a-config-provider>
@@ -558,6 +602,9 @@ const currentView = ref(1)
 const zoomLevel = ref(1)
 const customStartDate = ref<Dayjs | null>(null)
 const customEndDate = ref<Dayjs | null>(null)
+const customStartTime = ref<Dayjs | null>(null)
+const customEndTime = ref<Dayjs | null>(null)
+const customDateModalVisible = ref(false)
 const isRealTime = ref(true)
 const updateInterval = ref(60000) // 60 seconds (1 minute) to match data generation interval
 const isLoading = ref(false)
@@ -874,6 +921,12 @@ const canZoomOut = computed(() => {
 
 // Function to set time base from dropdown
 const setTimeBase = (value: string) => {
+  if (value === 'custom') {
+    // Open custom date modal instead of directly setting timebase
+    customDateModalVisible.value = true
+    return
+  }
+
   timeBase.value = value
   onTimeBaseChange()
 }
@@ -1690,6 +1743,94 @@ const onCustomDateChange = () => {
     // Generate data for custom date range
     initializeData()
   }
+}
+
+// Custom Date Modal Functions
+const applyCustomDateRange = () => {
+  if (customStartDate.value && customEndDate.value && customStartTime.value && customEndTime.value) {
+    // Combine date and time
+    const startDateTime = customStartDate.value
+      .hour(customStartTime.value.hour())
+      .minute(customStartTime.value.minute())
+      .second(0)
+      .millisecond(0)
+
+    const endDateTime = customEndDate.value
+      .hour(customEndTime.value.hour())
+      .minute(customEndTime.value.minute())
+      .second(0)
+      .millisecond(0)
+
+    // Validation
+    if (endDateTime.isBefore(startDateTime)) {
+      message.error('End time must be after start time')
+      return
+    }
+
+    // Update the existing customStartDate and customEndDate with combined date+time
+    customStartDate.value = startDateTime
+    customEndDate.value = endDateTime
+
+    // Set timebase to custom and apply changes
+    timeBase.value = 'custom'
+    customDateModalVisible.value = false
+    onCustomDateChange()
+    message.success('Custom date range applied successfully')
+  } else {
+    message.error('Please select both start and end date/time')
+  }
+}
+
+const cancelCustomDateRange = () => {
+  customDateModalVisible.value = false
+  // Reset selections if needed
+}
+
+const setQuickRange = (range: string) => {
+  const now = dayjs()
+
+  switch (range) {
+    case 'today':
+      customStartDate.value = now.startOf('day')
+      customEndDate.value = now.endOf('day')
+      customStartTime.value = dayjs().hour(0).minute(0)
+      customEndTime.value = dayjs().hour(23).minute(59)
+      break
+    case 'yesterday':
+      const yesterday = now.subtract(1, 'day')
+      customStartDate.value = yesterday.startOf('day')
+      customEndDate.value = yesterday.endOf('day')
+      customStartTime.value = dayjs().hour(0).minute(0)
+      customEndTime.value = dayjs().hour(23).minute(59)
+      break
+    case 'thisWeek':
+      customStartDate.value = now.startOf('week')
+      customEndDate.value = now.endOf('week')
+      customStartTime.value = dayjs().hour(0).minute(0)
+      customEndTime.value = dayjs().hour(23).minute(59)
+      break
+    case 'lastWeek':
+      const lastWeek = now.subtract(1, 'week')
+      customStartDate.value = lastWeek.startOf('week')
+      customEndDate.value = lastWeek.endOf('week')
+      customStartTime.value = dayjs().hour(0).minute(0)
+      customEndTime.value = dayjs().hour(23).minute(59)
+      break
+  }
+}
+
+const formatDateTimeRange = () => {
+  if (customStartDate.value && customEndDate.value && customStartTime.value && customEndTime.value) {
+    const start = customStartDate.value
+      .hour(customStartTime.value.hour())
+      .minute(customStartTime.value.minute())
+    const end = customEndDate.value
+      .hour(customEndTime.value.hour())
+      .minute(customEndTime.value.minute())
+
+    return `${start.format('DD/MM/YYYY HH:mm')} - ${end.format('DD/MM/YYYY HH:mm')}`
+  }
+  return ''
 }
 
 const onRealTimeToggle = (checked: boolean) => {
@@ -3049,6 +3190,78 @@ onUnmounted(() => {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Custom Date Modal Styles */
+.custom-date-modal {
+  padding: 10px 0;
+}
+
+.date-time-row {
+  margin-bottom: 14px;
+  align-items: center;
+}
+
+.label-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+}
+
+.time-label {
+  font-weight: 500;
+  color: #262626;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.custom-date-modal .ant-picker {
+  height: 28px !important;
+  font-size: 11px !important;
+}
+
+.custom-date-modal .ant-picker-input > input {
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+}
+
+.quick-actions {
+  margin: 16px 0 10px 0;
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 4px;
+  border: 1px solid #f0f0f0;
+}
+
+.quick-actions .ant-space {
+  width: 100%;
+  justify-content: center;
+}
+
+.quick-actions .ant-btn {
+  font-size: 10px;
+  padding: 0 6px;
+  height: 22px;
+}
+
+.range-summary {
+  margin-top: 10px;
+}
+
+.range-summary .ant-alert {
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.range-summary .ant-alert-message {
+  font-weight: 500;
+}
+
+.range-text {
+  font-size: 10px;
+  color: #1890ff;
 }
 </style>
 
