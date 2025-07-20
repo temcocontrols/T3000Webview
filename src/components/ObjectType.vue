@@ -126,7 +126,7 @@
       <Wall v-else-if="(item?.type ?? '') === 'Wall'" class="room-temperature" v-bind="item.settings" />
       <Weld v-else-if="(item?.type ?? '') === 'Weld'" class="weld" v-bind:weldModel="item"
         @update-weld-model="updateWeldModel" />
-      <img class="img-object" v-else-if="(item?.type ?? '').startsWith('IMG-')" :src="item.image.path" />
+      <img class="img-object" v-else-if="typeof (item?.type) === 'string' && item.type.startsWith('IMG-')" :src="item.image.path" />
 
       <CircleEl v-else-if="(item?.type ?? '') === 'G_Circle'" class="circle" v-bind="item.settings" />
       <RectangleEl v-else-if="(item?.type ?? '') === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />

@@ -258,6 +258,7 @@ class WebSocketClient {
     this.messageModel.setMessage(MessageType.LOAD_GRAPHIC_ENTRY, panelId, graphicId, null, serialNumber);
 
     this.messageModel.message.entryIndex = data.entryIndex;
+    this.messageModel.message.viewitem = data.entryIndex; // for compatibility
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);

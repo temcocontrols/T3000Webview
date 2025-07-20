@@ -292,7 +292,7 @@ class IdxPage {
         };
       });
 
-      Hvac.WebClient.GetEntries(null, null, etries);
+      Hvac.WebClient.GetEntries(null, etries?.index, etries);
 
     }, 10000);
   }

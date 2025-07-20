@@ -97,6 +97,7 @@ class WebViewClient {
     this.message.panelId = data.panelId;
     this.message.entryIndex = data.entryIndex;
     this.message.entryType = data.entryType;
+    this.message.viewitem = data.entryIndex;
 
     this.messageData = this.message;
   }
@@ -116,6 +117,7 @@ class WebViewClient {
     this.message.filename = data.filename;
     this.message.fileLength = data.fileLength;
     this.message.fileData = data.fileData;
+    this.message.viewitem = data.entryIndex;
 
     this.messageData = this.message;
   }
@@ -131,7 +133,9 @@ class WebViewClient {
 
     this.message = {};
     this.message.action = MessageType.LOAD_GRAPHIC_ENTRY;
+    this.message.panelId = data.panelId;
     this.message.entryIndex = data.entryIndex;
+    this.message.viewitem = data.entryIndex;
 
     this.messageData = this.message;
   }
@@ -353,7 +357,7 @@ class WebViewClient {
       this.HandleSaveLibraryDataRes(msgData);
     }
 
-    if(msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
+    if (msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
       this.HandleSaveNewLibraryDataRes(msgData);
     }
 

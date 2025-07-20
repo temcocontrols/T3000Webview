@@ -550,10 +550,11 @@
 
                     <CanvasShape v-if="
                       (item?.type ?? '') === 'Weld_General' ||
-                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + (item?.type ?? '')"
-                      :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                      @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                      @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item"
+                      :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
+                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                      @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
 
                     <WallExterior v-if="(item?.type ?? '') === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
@@ -752,7 +753,6 @@ import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
-import { startsWith } from "lodash";
 import HRuler from "src/components/HRuler.vue";
 import VRuler from "src/components/VRuler.vue";
 import HVGrid from "src/components/HVGrid.vue";
@@ -3129,7 +3129,7 @@ function reloadPanelsData() {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-   console.log('entryLabel - ', option);
+  console.log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
@@ -3175,7 +3175,6 @@ function lockToggle() {
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
 
-  setTheSettingContextMenuVisible();
 
   // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
   if (!locked.value) return;
@@ -3234,6 +3233,8 @@ function objectClicked(item) {
     item.t3Entry.control = item.t3Entry.control === 1 ? 0 : 1;
     T3UpdateEntryField("control", item);
   }
+
+  setTheSettingContextMenuVisible();
 }
 
 // Updates an entry value
