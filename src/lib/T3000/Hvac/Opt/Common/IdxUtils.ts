@@ -110,6 +110,8 @@ class IdxUtils {
   }
 
   // Refresh linked entries with updated panel data
+
+  /*
   static refreshLinkedEntries(panelData) {
     appState.value.items
       .filter((i) => i.t3Entry?.type)
@@ -128,6 +130,40 @@ class IdxUtils {
           linkedEntry.value = newLkValue;
           item.t3Entry = linkedEntry;
           IdxUtils.refreshObjectStatus(item);
+        }
+      });
+  }
+  */
+  static refreshLinkedEntries(panelData) {
+    appState.value.items
+      .filter((i) => i.t3Entry?.type)
+      .forEach((item, idx) => {
+        const linkedEntry = panelData.find(
+          (ii) =>
+            ii.index === item.t3Entry.index &&
+            ii.type === item.t3Entry.type &&
+            ii.pid === item.t3Entry.pid
+        );
+        if (linkedEntry && linkedEntry.id) {
+          const tempBefore = linkedEntry.value;
+          let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
+          LogUtil.Debug(`[refreshLinkedEntries] Item #${idx}:`, {
+            itemIndex: item.t3Entry.index,
+            itemType: item.t3Entry.type,
+            itemPid: item.t3Entry.pid,
+            valueBefore: tempBefore,
+            valueAfter: newLkValue,
+            linkedEntry: linkedEntry
+          });
+          linkedEntry.value = newLkValue;
+          item.t3Entry = linkedEntry;
+          IdxUtils.refreshObjectStatus(item);
+        } else {
+          LogUtil.Debug(`[refreshLinkedEntries] No linked entry found for item #${idx}:`, {
+            itemIndex: item.t3Entry.index,
+            itemType: item.t3Entry.type,
+            itemPid: item.t3Entry.pid
+          });
         }
       });
   }
@@ -192,7 +228,7 @@ class IdxUtils {
   }
 
   // new function to save t3 library data
-  static saveNewLib(){
+  static saveNewLib() {
     // Filter out online images and objects from the library
     const libImages = toRaw(library.value.images.filter((item) => !item.online));
     const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));

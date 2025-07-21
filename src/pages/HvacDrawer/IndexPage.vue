@@ -1980,7 +1980,6 @@ function selectoDragCondition(e) {
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
   console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
-  // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
   addActionToHistory("Link object to T3000 entry");
 
   if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {

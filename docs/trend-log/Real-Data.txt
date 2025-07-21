@@ -26,3 +26,134 @@
   "status": 0,
   "type": "MON"
 }
+
+{
+        "an_inputs": 10,
+        "command": "3MON1",
+        "hour_interval_time": 0,
+        "id": "MON1",
+        "index": 0,
+        "input": [
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 0,
+                "point_type": 2,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 1,
+                "point_type": 2,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 0,
+                "point_type": 3,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 1,
+                "point_type": 3,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 2,
+                "point_type": 2,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 3,
+                "point_type": 2,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 4,
+                "point_type": 2,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 2,
+                "point_type": 3,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 3,
+                "point_type": 3,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 4,
+                "point_type": 3,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 0,
+                "point_type": 1,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 1,
+                "point_type": 1,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 2,
+                "point_type": 1,
+                "sub_panel": 0
+            },
+            {
+                "network": 0,
+                "panel": 3,
+                "point_number": 3,
+                "point_type": 1,
+                "sub_panel": 0
+            }
+        ],
+        "label": "TRL11111",
+        "minute_interval_time": 0,
+        "num_inputs": 14,
+        "pid": 3,
+        "range": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1
+        ],
+        "second_interval_time": 15,
+        "status": 1,
+        "type": "MON"
+    }
