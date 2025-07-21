@@ -607,7 +607,7 @@ class IdxPage {
       this.autoSaveInterval = setInterval(() => {
         LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
-      }, 30000);
+      }, 5000);
     }, 10000);
   }
 

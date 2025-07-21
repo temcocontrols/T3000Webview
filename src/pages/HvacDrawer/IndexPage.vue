@@ -22,12 +22,6 @@
   left: 0px;
   right: 0px;
   width: auto;
-  /* background-color: aquamarine; */
-  /*
-   padding-left: v-bind("documentAreaPosition.workAreaPadding");
-   position: fixed;
-   margin-top: 37px;
-  */
   flex: 1;
   margin-top: 1px;
   position: relative;
@@ -37,8 +31,6 @@
   position: relative;
   background-color: #ebeced;
   height: 100%;
-  /* background: red; */
-
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
   height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 }
@@ -47,7 +39,6 @@
   width: 20px;
   height: 20px;
   background-color: #ebeced;
-  /* background-color: blue; */
   position: absolute;
   overflow: hidden;
   left: 1px;
@@ -58,11 +49,8 @@
   position: absolute;
   overflow: hidden;
   background-color: #ebeced;
-  /* background-color: #416990; */
   top: 1px;
   left: 22px;
-  /* padding-left: 22px; */
-  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
   height: 20px;
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
 
@@ -72,7 +60,6 @@
   position: absolute;
   overflow: hidden;
   background-color: #ebeced;
-  /* background-color: #0f77de; */
   width: 20px;
   left: 1px;
   top: 22px;
@@ -82,13 +69,8 @@
 .hv-grid {
   position: absolute;
   background-color: #ebeced;
-  /* background-color: #b25b5b; */
   inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px);
-  height: calc(100vh - 97px); */
-
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-
   height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
   overflow: hidden;
 }
@@ -98,46 +80,19 @@
   background-color: transparent;
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
-  /* width: calc(100vw v-bind("documentAreaPosition.wpwWOffset")); */
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
   height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  /* overflow: hidden scroll; */
-  /* overflow: scroll; */
-  /* background-color: aquamarine; */
   overflow: hidden;
 }
 
 .viewport {
-  /* width: 100%;
-  height: calc(100vh - 36px);
-  overflow: scroll;
-  position: relative;
-  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: rgb(7, 115, 115); */
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 68px); */
-  /* width: v-bind("documentAreaPosition.wiewPortWH.width"); */
-  /* height: v-bind("documentAreaPosition.wiewPortWH.height"); */
-
-  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
   height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-
-
-  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: #e5e7eb; */
-
-  /* background-color: chartreuse; */
 }
 
 .default-svg {
   width: 100%;
   height: 100%;
-  /* background-color: #0d09ec; */
 }
 </style>
 
@@ -147,7 +102,6 @@
 
       <div class="top-area">
         <!-- Top Toolbar -->
-        <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
@@ -689,13 +643,6 @@
           </q-circular-progress>
         </div>
       </q-card-section>
-
-      <!-- <q-separator />
-
-      <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!insertT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
-      </q-card-actions> -->
     </q-card>
   </q-dialog>
 
@@ -739,16 +686,15 @@ import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerR
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
-import KeyController /* , { getCombi, getKey } */ from "keycon";
+import KeyController from "keycon";
 import { cloneDeep } from "lodash";
-// import panzoom from "panzoom";
 import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data, user,*/ /*globalNav,*/ demoDeviceData } from "../../lib/common";
+import { tools, demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -777,38 +723,16 @@ import {
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
-// const isBuiltInEdge = ref(false);
 
 // Meta information for the application
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
-
-// // Ruler & Grid default value
-// const documentAreaPosition = ref(
-//   {
-//     workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
-//     hRuler: { width: 0, height: 20 },
-//     vRuler: { width: 20, height: 0 },
-//     hvGrid: { width: 0, height: 0 },
-
-//     //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-//     //height: calc(100vh - 68px);
-//     wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" },
-//     widthOffset: '128px',
-//     heightOffset: isBuiltInEdge.value ? '68px' : '115px',
-//   });
-
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
-// const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
-// const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
-// const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
-
-// const insertT3EntryDialog = ref({ activate: false, data: {} })
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -824,10 +748,6 @@ const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: f
 // const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
-// // Panel options for selection
-// const selectPanelOptions = ref(T3000_Data.value.panelsData);
-// let getPanelsInterval = null; // Interval for fetching panel data
-
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
   if (T3000_Data.value.loadingPanel === null) return 100;
@@ -838,7 +758,6 @@ const loadingPanelsProgress = computed(() => {
 });
 
 const clipboardFull = ref(false); // State of the clipboard
-
 
 const zoom = Hvac.IdxPage.zoom;
 
@@ -852,236 +771,15 @@ if (process.env.DEV) {
   });
 }
 
-// Initialization of empty project and library structures
-// let panzoomInstance = null;
-// const emptyProject = {
-//   version: process.env.VERSION,
-//   items: [],
-//   selectedTargets: [],
-//   elementGuidelines: [],
-//   itemsCount: 0,
-//   groupCount: 0,
-//   activeItemIndex: null,
-//   viewportTransform: { x: 0, y: 0, scale: 1 },
-// };
-// const emptyLib = {
-//   version: process.env.VERSION,
-//   imagesCount: 0,
-//   objLibItemsCount: 0,
-//   images: [],
-//   objLib: [],
-// };
-
-// State references for the library and application state
-// const library = ref(cloneDeep(emptyLib));
-// const appState = ref(cloneDeep(emptyProject));
-// const undoHistory = ref([]); // History for undo actions
-// const redoHistory = ref([]); // History for redo actions
-// const locked = ref(false); // State to lock or unlock the interface
-// const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-// const rulersGridVisible = ref(true);
-
-// const deviceModel = ref({ active: false, data: {} });
-// const deviceAppState = ref([]);
-
-// const handleScroll = (event) => {
-
-//   // Reset the h,v ruler's width for scrolling
-//   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
-//   documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
-
-//   // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
-//   // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
-
-//   // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
-
-//   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
-//   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
-// };
-
 // Lifecycle hook for component mount
 onMounted(() => {
-
-  // // Set global navigation properties
-  // globalNav.value.title = "HVAC Drawer";
-  // globalNav.value.back = null;
-  // globalNav.value.home = "/";
-
-  // isLoggedIn(); // Check if user is logged in
-
-  // // Restore app state from local storage if not in a webview
-  // if (!window.chrome?.webview?.postMessage) {
-  //   const localState = localStorage.getItem("appState");
-  //   if (localState) {
-  //     appState.value = JSON.parse(localState);
-  //     rulersGridVisible.value = appState.value.rulersGridVisible;
-  //   }
-  // }
-
-  // if (window.chrome?.webview) {
-  //   isBuiltInEdge.value = true;
-  //   documentAreaPosition.value.widthOffset = '128px';
-  //   documentAreaPosition.value.heightOffset = '68px';
-
-  //   viewportMargins.top = 56;
-  // }
-  // else {
-  //   isBuiltInEdge.value = false;
-  //   viewportMargins.top = 95 + 20 + 2;
-  // }
-
-  // // Save the state before the window is unloaded
-  // window.addEventListener("beforeunload", function (event) {
-  //   // save();
-  //   Hvac.IdxPage.clearAutoSaveInterval();
-  //   Hvac.WsClient.clearInitialDataInterval();
-  // });
-
-  // // Initialize panzoom for viewport
-  // panzoomInstance = panzoom(viewport.value, {
-  //   maxZoom: 4,
-  //   minZoom: 0.1,
-  //   zoomDoubleClickSpeed: 1,
-  //   filterKey: function (/* e, dx, dy, dz */) {
-  //     // don't let panzoom handle this event:
-  //     return true;
-  //   },
-  //   beforeMouseDown: function (e) {
-  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
-  //     var shouldIgnore = !e.altKey;
-  //     return shouldIgnore;
-  //   },
-  //   // Add the focal point for zooming to be the center of the viewport
-  //   // transformOrigin: { x: 0.5, y: 0.5 },
-  // });
-
-  // // Update the viewport transform on panzoom transform event
-  // panzoomInstance.on("transform", function (e) {
-
-  //   const pzTrs = e.getTransform();
-  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
-
-  //   appState.value.viewportTransform = e.getTransform();
-  //   triggerRef(appState);
-
-  //   restDocumentAreaPosition(e.getTransform());
-  // });
-
   Hvac.IdxPage.initQuasar($q);
-
   Hvac.IdxPage.initPage();
-
-
-  // // Request initial data and panels list if in a webview
-  // window.chrome?.webview?.postMessage({
-  //   action: 1, // GET_INITIAL_DATA
-  // });
-
-  // window.chrome?.webview?.postMessage({
-  //   action: 4, // GET_PANELS_LIST
-  // });
-
-  // // Set intervals for fetching panel and entry data if in a webview
-  // if (window.chrome?.webview?.postMessage) {
-  //   getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
-  //     action: 4, // GET_PANELS_LIST
-  //   });
-
-  //   setInterval(function () {
-  //     if (getLinkedEntries().length === 0) return;
-  //     window.chrome?.webview?.postMessage({
-  //       action: 6, // GET_ENTRIES
-  //       data: getLinkedEntries().map((ii) => {
-  //         return {
-  //           panelId: ii.t3Entry.pid,
-  //           index: ii.t3Entry.index,
-  //           type: T3_Types[ii.t3Entry.type],
-  //         };
-  //       }),
-  //     });
-  //   }, 10000);
-  // }
-
-  // Refresh moveable guides after a short delay
-  // setTimeout(() => {
-  //   refreshMoveableGuides();
-  // }, 100);
-
-  // // Viewport wrapper scroll event listener
-  // const div = document.querySelector('.viewport-wrapper');
-  // div.addEventListener('scroll', handleScroll);
-
-  // // Init ruler and grid default value
-  // documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-  // documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-  // documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-
-  // If accessed from an external browser
-  // initExternalBrowserOpt();
 });
-
-// function initExternalBrowserOpt() {
-
-//   if (isBuiltInEdge.value) {
-//     return;
-//   }
-
-//   // connect to the ws://localhost:9104 websocket server
-//   Hvac.WsClient.connect();
-
-//   // check if need to show the device list dialog
-//   setTimeout(() => {
-//     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-//     if (!currentDevice) {
-//       deviceModel.value.active = true;
-//     }
-//     else {
-//       deviceModel.value.active = false;
-//       deviceModel.value.data = currentDevice;
-
-//       console.log('=== indexPage.currentDevice load from local storage', currentDevice);
-
-//       // load device appstate
-//       //Hvac.DeviceOpt.refreshDeviceAppState();
-//       Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
-
-//       // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
-//       // console.log('=== indexPage.deviceModel changed', deviceModel.value);
-//     }
-//   }, 1000);
-
-//   setInterval(function () {
-//     if (getLinkedEntries().length === 0) return;
-
-//     const data = getLinkedEntries().map((ii) => {
-//       return {
-//         panelId: ii.t3Entry.pid,
-//         index: ii.t3Entry.index,
-//         type: T3_Types[ii.t3Entry.type],
-//       };
-//     });
-
-//     Hvac.WsClient.GetEntries(data);
-
-//     /*
-//     window.chrome?.webview?.postMessage({
-//       action: 6, // GET_ENTRIES
-//       data: getLinkedEntries().map((ii) => {
-//         return {
-//           panelId: ii.t3Entry.pid,
-//           index: ii.t3Entry.index,
-//           type: T3_Types[ii.t3Entry.type],
-//         };
-//       }),
-//     });
-//     */
-//   }, 10000);
-// }
 
 function updateDeviceModel(isActive, data) {
   console.log('= Idx updateDeviceModel ===', isActive, data)
@@ -1108,38 +806,6 @@ function showMoreDevices() {
   Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
-/*
-function refreshDeviceAppState() {
-  const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
-  // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
-
-  if (existAppState) {
-    // appState.value = cloneDeep(existAppState);
-    appState.value = existAppState;
-  }
-  else {
-    appState.value = cloneDeep(emptyProject);
-    appState.value.rulersGridVisible = rulersGridVisible.value;
-  }
-}
-*/
-
-// function saveDeviceAppState(clearSelected) {
-//   // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
-
-//   if (clearSelected) {
-//     appState.value.selectedTargets = [];
-//   }
-
-//   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
-
-//   // Post a save action to T3
-//   const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-//   const panelId = currentDevice.deviceId;
-//   const graphicId = currentDevice.graphic;
-
-//   Hvac.WsClient.SaveGraphic(panelId, graphicId);
-// }
 
 onBeforeUnmount(() => {
 
@@ -1147,207 +813,15 @@ onBeforeUnmount(() => {
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
-  // appState.value.selectedTargets = [];
-
-  // if (panzoomInstance?.dispose) return;
-  // panzoomInstance?.dispose();
-
   Hvac.IdxPage.clearAutoSaveInterval();
   Hvac.WsClient.clearInitialDataInterval();
   Hvac.IdxPage.clearIdx();
 });
 
-// Handle messages from the webview
-// window.chrome?.webview?.addEventListener("message", (arg) => {
-//   console.log("= Idx Received a message from webview", arg.data.action, arg.data);
-
-//   // Handle various actions based on message data
-//   if (!"action" in arg.data) return;
-
-/* move to WebViewClient.ts
-if (arg.data.action === "GET_PANELS_LIST_RES") {
-  if (arg.data.data?.length) {
-    T3000_Data.value.panelsList = arg.data.data;
-    T3000_Data.value.loadingPanel = 0;
-    window.chrome?.webview?.postMessage({
-      action: 0, // GET_PANEL_DATA
-      panelId: T3000_Data.value.panelsList[0].panel_number,
-    });
-  }
-}
-*/
-
-// if (arg.data.action === "UPDATE_ENTRY_RES") {
-//   // Handle update entry response
-// }
-
-/*
-if (arg.data.action === "GET_INITIAL_DATA_RES") {
-  if (arg.data.data) {
-    arg.data.data = JSON.parse(arg.data.data);
-  }
-
-  appState.value = arg.data.data;
-  rulersGridVisible.value = appState.value.rulersGridVisible;
-
-  grpNav.value = [arg.data.entry];
-  if (arg.data.library) {
-    arg.data.library = JSON.parse(arg.data.library);
-    library.value = arg.data.library;
-  }
-  setTimeout(() => {
-    IdxUtils.refreshMoveableGuides();
-  }, 100);
-}
-*/
-
-/*
-if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-  if (arg.data.data) {
-    arg.data.data = JSON.parse(arg.data.data);
-  }
-  appState.value = arg.data.data;
-  if (grpNav.value.length > 1) {
-    const navItem = grpNav.value[grpNav.value.length - 2];
-    if (
-      navItem.index !== arg.data.entry.index ||
-      navItem.pid !== arg.data.entry.pid
-    ) {
-      grpNav.value.push(arg.data.entry);
-    } else {
-      grpNav.value.pop();
-    }
-  } else {
-    grpNav.value.push(arg.data.entry);
-  }
-
-  setTimeout(() => {
-    IdxUtils.refreshMoveableGuides();
-  }, 100);
-}
-*/
-
-// if (arg.data.action === "GET_PANEL_DATA_RES") {
-//   // if (getPanelsInterval && arg.data?.panel_id) {
-//   //   clearInterval(getPanelsInterval);
-//   // }
-
-//   if (arg.data?.panel_id) {
-//     Hvac.IdxPage.clearGetPanelsInterval();
-//   }
-
-//   if (arg.data?.panel_id) {
-
-//     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
-//     if (check1) {
-//       T3000_Data.value.loadingPanel++;
-//       const index = T3000_Data.value.loadingPanel;
-//       window.chrome?.webview?.postMessage({
-//         action: 0, // GET_PANEL_DATA
-//         panelId: T3000_Data.value.panelsList[index].panel_number,
-//       });
-//     }
-
-//     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
-//     if (check2) {
-//       T3000_Data.value.loadingPanel = null;
-//     }
-
-//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-//       (item) => item.pid !== arg.data.panel_id
-//     );
-
-//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-//       arg.data.data
-//     );
-
-//     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-//     selectPanelOptions.value = T3000_Data.value.panelsData;
-
-//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-//       (item) => item.pid !== arg.data.panel_id
-//     );
-
-//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
-
-//     refreshLinkedEntries(arg.data.data);
-//   }
-// }
-
-// if (arg.data.action === "GET_ENTRIES_RES") {
-//   arg.data.data.forEach((item) => {
-//     const itemIndex = T3000_Data.value.panelsData.findIndex(
-//       (ii) =>
-//         ii.index === item.index &&
-//         ii.type === item.type &&
-//         ii.pid === item.pid
-//     );
-//     if (itemIndex !== -1) {
-//       T3000_Data.value.panelsData[itemIndex] = item;
-//     }
-//   });
-
-//   if (!linkT3EntryDialog.value.active) {
-//     selectPanelOptions.value = T3000_Data.value.panelsData;
-//   }
-//   refreshLinkedEntries(arg.data.data);
-// }
-
-// if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-//   if (arg.data.data?.status === true) {
-//     if (!savedNotify.value) return;
-//     $q.notify({
-//       message: "Saved successfully.",
-//       color: "primary",
-//       icon: "check_circle",
-//       actions: [
-//         {
-//           label: "Dismiss",
-//           color: "white",
-//           handler: () => {
-//             /* ... */
-//           },
-//         },
-//       ],
-//     });
-//   } else {
-//     $q.notify({
-//       message: "Error, not saved!",
-//       color: "negative",
-//       icon: "error",
-//       actions: [
-//         {
-//           label: "Dismiss",
-//           color: "white",
-//           handler: () => {
-//             /* ... */
-//           },
-//         },
-//       ],
-//     });
-//   }
-// }
-
-// if (arg.data.action === "SAVE_IMAGE_RES") {
-//   library.value.imagesCount++;
-//   library.value.images.push({
-//     id: "IMG-" + library.value.imagesCount,
-//     name: arg.data.data.name,
-//     path: arg.data.data.path,
-//     online: false,
-//   });
-//   saveLib();
-// }
-
-// });
-
 function viewportMouseMoved(e) {
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
-
-  // console.log('Viewport mouse moved cursorIconPos:', "mouse",
-
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
   // process drawing ducts
@@ -1373,24 +847,12 @@ function viewportMouseMoved(e) {
     // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // console.log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
-
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
     appState.value.items[appState.value.activeItemIndex].width = distance;
     refreshObjects();
   }
 }
-// // Refreshes the guidelines for the moveable elements
-// function refreshMoveableGuides() {
-//   appState.value.elementGuidelines = [];
-//   const lines = document.querySelectorAll(
-//     `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
-//   );
-//   Array.from(lines).forEach(function (el) {
-//     appState.value.elementGuidelines.push(el);
-//   });
-// }
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
@@ -1441,7 +903,6 @@ function onDrag(e) {
   const item = appState.value.items.find(
     (item) => `moveable-item-${item.id}` === e.target.id
   );
-  // item.translate = e.beforeTranslate;
   e.target.style.transform = e.transform;
 }
 
@@ -1493,7 +954,6 @@ function onDragGroupEnd(e) {
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
-  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
   const target = e.inputEvent.target;
   if (
     moveable.value.isMoveableElement(target) ||
@@ -1507,7 +967,6 @@ function onSelectoDragStart(e) {
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
-  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
   if (e?.selected && !e?.inputEvent?.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
@@ -1588,9 +1047,6 @@ function onResizeStart(e) {
 
 // Handles resizing of an element
 function onResize(e) {
-  // appState.value.items[itemIndex].width = e.width
-  // appState.value.items[itemIndex].height = e.height
-  // appState.value.items[itemIndex].translate = e.drag.beforeTranslate;
   const item = appState.value.items.find(
     (item) => `moveable-item-${item.id}` === e.target.id
   );
@@ -1725,12 +1181,6 @@ function addObject(item, group = undefined, addToHistory = true) {
   return item;
 }
 
-// const viewportMargins = {
-//   // top: 36,93
-//   top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
-//   left: 106 + 20 + 2,
-// };
-
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
   const elements = [];
@@ -1772,23 +1222,10 @@ function addLibItem(items, size, pos) {
       }, 1);
     }, 10);
   }, 10);
-  /* setTimeout(() => {
-    moveable.value.request(
-      "resizable",
-      {
-        offsetWidth: e.rect.width * scalPercentage,
-        offsetHeight: e.rect.height * scalPercentage,
-      },
-      true
-    );
-    refreshMoveable();
-  }, 60); */
 }
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  // T3000Util.HvacLog('2 onSelectoDragEnd', e);
-
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -1906,15 +1343,6 @@ function selectTool(tool, type = "default") {
   selectedTool.value.type = type;
 }
 
-// // Refresh the moveable object's rectangle after a short delay
-// function refreshMoveable() {
-//   // const targetsCache = cloneDeep(appState.value.selectedTargets);
-//   // appState.value.selectedTargets = [];
-//   setTimeout(() => {
-//     moveable.value.updateRect();
-//   }, 1);
-// }
-
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
   if (!item) return;
@@ -2007,42 +1435,11 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-
-  /*
-  // console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
-  // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
-  // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
-  if (!obj.t3Entry) return;
-  let fieldVal = obj.t3Entry[key];
-
-  const tempFieldBefore = fieldVal;
-
-  if (Math.abs(fieldVal) >= 1000) {
-    fieldVal = fieldVal / 1000;
-  }
-
-  if (key === "value" || key === "control") {
-    IdxUtils.refreshObjectStatus(obj);
-  }
-  window.chrome?.webview?.postMessage({
-    action: 3, // UPDATE_ENTRY
-    field: key,
-    value: fieldVal,
-    panelId: obj.t3Entry.pid,
-    entryIndex: obj.t3Entry.index,
-    entryType: T3_Types[obj.t3Entry.type],
-  });
-
-  console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
-  */
-
   Hvac.IdxPage.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value
 function DisplayFieldValueChanged(value) {
-  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', value);
-  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', appState.value);
   save(false, true);
 }
 
@@ -2053,8 +1450,6 @@ function selectoDragCondition(e) {
 
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
-  console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
-  // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
   addActionToHistory("Link object to T3000 entry");
 
   if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
@@ -2138,8 +1533,6 @@ function insertT3EntrySelect(value) {
   insertT3EntryOnSave();
 
   insertCount.value++;
-
-  // console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
 }
 
 function insertT3EntryOnSave() {
@@ -2176,27 +1569,7 @@ function insertT3EntryOnSave() {
 }
 
 function insertT3DefaultLoadData() {
-  // selectPanelOptions.value = T3000_Data.value.panelsData;
-  // selectPanelFilterFn('', (fn) => {
-  //   selectPanelOptions.value = T3000_Data.value.panelsData;
-  // });
-  // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
-
-// // Refresh the status of an object based on its T3 entry
-// function refreshObjectStatus(item) {
-//   if (item.t3Entry && item.settings?.active !== undefined) {
-//     item.settings.active = getObjectActiveValue(item);
-//   }
-
-//   if (
-//     item.t3Entry &&
-//     item.t3Entry.decom !== undefined &&
-//     item.settings?.inAlarm !== undefined
-//   ) {
-//     item.settings.inAlarm = !!item.t3Entry.decom;
-//   }
-// }
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false, saveToT3 = false) {
@@ -2207,48 +1580,6 @@ function refreshMoveable() {
   Hvac.IdxPage.refreshMoveable();
 }
 
-// function save(notify = false) {
-//   console.log('= Idx save notify', rulersGridVisible.value);
-//   savedNotify.value = notify;
-//   const data = cloneDeep(toRaw(appState.value));
-
-//   // recalculate the items count
-//   const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
-//   data.itemsCount = nonZeroWidthItemsCount;
-//   // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
-//   // console.log('==== Save appState:', appState.value);
-//   console.log('= Idx save data', data);
-
-//   data.selectedTargets = [];
-//   data.elementGuidelines = [];
-
-//   if (isBuiltInEdge.value) {
-//     // window.chrome?.webview?.postMessage({
-//     //   action: 2, // SAVE_GRAPHIC
-//     //   data,
-//     // });
-//     Hvac.WebClient.SaveGraphicData(null, null, data);
-//   }
-//   else {
-//     localStorage.setItem("appState", JSON.stringify(data));
-
-//     // save device data and related appState
-//     if (!isBuiltInEdge.value) {
-//       saveDeviceAppState();
-//     }
-//   }
-
-//   /*
-//   window.chrome?.webview?.postMessage({
-//     action: 2, // SAVE_GRAPHIC
-//     data,
-//   });
-
-//   if (!window.chrome?.webview?.postMessage) {
-//     localStorage.setItem("appState", JSON.stringify(data));
-//   }
-//   */
-// }
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject() {
@@ -2261,33 +1592,11 @@ function newProject() {
       persistent: true,
     })
       .onOk(() => {
-        /*
-        appState.value = cloneDeep(emptyProject);
-        undoHistory.value = [];
-        redoHistory.value = [];
-        refreshMoveable();
-
-        if (!window.chrome?.webview?.postMessage) {
-          localStorage.removeItem("appState");
-        }
-        */
-
         Hvac.IdxPage.newProject();
       })
       .onCancel(() => { });
     return;
   }
-
-  /*
-  appState.value = cloneDeep(emptyProject);
-  undoHistory.value = [];
-  redoHistory.value = [];
-  refreshMoveable();
-
-  if (!window.chrome?.webview?.postMessage) {
-    localStorage.removeItem("appState");
-  }
-  */
 
   Hvac.IdxPage.newProject();
 }
@@ -2584,9 +1893,6 @@ function drawWeldObjectCanvas(selectedItems) {
     translate: [newMinX, minY],
     width: newWidth,
     height: newHeight,
-    // translate: [transX, minY],
-    // width: width * scalPercentage,
-    // height: height * scalPercentage,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
@@ -2633,10 +1939,6 @@ function checkIsOverlap(selectedItems) {
 
   selectedItems.map((item) => {
     const { width, height, translate, rotate } = item;
-
-    // const element = document.querySelector(`#moveable-item-${item.id}`);
-    // const elRect = element.getBoundingClientRect();
-    // const elInfo = getElementInfo(element);
 
     const startEl = document.querySelector(
       `#moveable-item-${item.id} .duct-start`
@@ -2685,7 +1987,6 @@ function weldSelected() {
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
   const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
-  // console.log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
   if (isAllGeneral || isAllDuct) {
     drawWeldObjectCanvas(selectedItems);
@@ -2789,8 +2090,6 @@ async function saveLibImage(file) {
   else {
     Hvac.WsClient.SaveImage(message);
   }
-
-  // window.chrome?.webview?.postMessage(message);
 }
 
 const gaugeSettingsDialog = ref({
@@ -2831,13 +2130,6 @@ function exportToJsonAction() {
   a.download = "HVAC_Drawer_Project.json";
   a.click();
 }
-
-// // Get all items linked to a T3 entry
-// function getLinkedEntries() {
-//   const items = appState.value.items;
-//   if (items.length === 0) return [];
-//   return toRaw(appState.value).items.filter((i) => i.t3Entry);
-// }
 
 // Handle the addition of an imported JSON file
 async function importJsonFileAdded(file) {
@@ -2902,24 +2194,6 @@ function executeImportFromJson() {
   }, 100);
   Hvac.IdxPage.refreshMoveable();
 }
-
-// // Computed property for zoom control
-// const zoom = computed({
-//   // Getter for zoom value
-//   get() {
-//     return parseInt(appState.value.viewportTransform.scale * 100);
-//   },
-//   // Setter for zoom value
-//   set(newValue) {
-//     if (!newValue) return;
-//     appState.value.viewportTransform.scale = newValue / 100;
-//     panzoomInstance.smoothZoomAbs(
-//       appState.value.viewportTransform.x,
-//       appState.value.viewportTransform.y,
-//       newValue / 100
-//     );
-//   },
-// });
 
 // Duplicate the selected items in the app state
 function duplicateSelected() {
@@ -3101,32 +2375,6 @@ function reloadPanelsData() {
   }
 }
 
-// // Refresh linked entries with updated panel data
-// function refreshLinkedEntries(panelData) {
-//   appState.value.items
-//     .filter((i) => i.t3Entry?.type)
-//     .forEach((item) => {
-//       const linkedEntry = panelData.find(
-//         (ii) =>
-//           ii.index === item.t3Entry.index &&
-//           ii.type === item.t3Entry.type &&
-//           ii.pid === item.t3Entry.pid
-//       );
-//       if (linkedEntry && linkedEntry.id) {
-
-//         const tempBefore = linkedEntry.value;
-
-//         let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
-//         linkedEntry.value = newLkValue;
-//         item.t3Entry = linkedEntry;
-
-//         console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
-
-//         refreshObjectStatus(item);
-//       }
-//     });
-// }
-
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
   console.log('entryLabel - ', option);
@@ -3152,31 +2400,8 @@ function lockToggle() {
   IdxPage.restDocumentAreaPosition();
 }
 
-// function restDocumentAreaPosition(pzXY) {
-//   const div = document.querySelector('.full-area');
-//   documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
-//   documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
-//   documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
-//   documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
-//   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-//   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-//   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-//   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
-//   documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
-
-//   if (isBuiltInEdge.value) {
-//     documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
-//   }
-//   else {
-//     documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
-//   }
-// }
-
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
-
-
-  // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
 
@@ -3239,7 +2464,6 @@ function objectClicked(item) {
 
 // Updates an entry value
 function changeEntryValue(refItem, newVal, control) {
-  // console.log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
   const key = control ? "control" : "value";
   const item = appState.value.items.find((i) => i.id === refItem.id);
   item.t3Entry[key] = newVal;
@@ -3248,7 +2472,6 @@ function changeEntryValue(refItem, newVal, control) {
 
 // Toggles the auto/manual mode of an item
 function autoManualToggle(item) {
-  // console.log('33333333 IndexPage.vue->autoManualToggle->item, locked value', item, locked.value);
   if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
   T3UpdateEntryField("auto_manual", item);
@@ -3268,17 +2491,9 @@ const toggleNumberValue = ref(0);
 
 
 function ObjectRightClicked(item, ev) {
-  // ev.preventDefault();
-
-  // console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
-  // console.log('ObjectRightClicked->ev,item', item);
-
   if (item.t3Entry !== null) {
 
     showSettingMenu.value = true;
-
-    // console.log('ObjectRightClicked->item.t3Entry', item.t3Entry);
-
     // Load the default auto_manual value
     if (item.t3Entry.auto_manual === 1) {
       toggleModeValue.value = "Manual";
@@ -3323,12 +2538,6 @@ function ObjectRightClicked(item, ev) {
 }
 
 function toggleClicked(item, type, ev) {
-  // ev.preventDefault();
-  // console.log('toggleClicked->item,type', item, type, ev);
-  // console.log('toggleClicked->toggleModeValue,toggleValueValue',
-  //   toggleModeValue.value, toggleValueValue.value);
-  // console.log('toggleClicked->before item', item.t3Entry)
-
   if (type === "mode") {
 
     // Disable the value field if the mode is set to Auto
