@@ -187,8 +187,8 @@ class IdxPage {
     const transform = Hvac.QuasarUtil.getLocalSettings('transform');
 
     if (transform) {
-      // panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
-      // panzoomInstance.moveTo(transform.x, transform.y);
+      panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
+      panzoomInstance.moveTo(transform.x, transform.y);
     }
   }
 
@@ -568,13 +568,7 @@ class IdxPage {
 
     if (!isBuiltInEdge.value) {
       const grpSwitch = DataOpt.LoadGrpSwitch();
-      if (
-        grpSwitch &&
-        grpSwitch.panelId != null &&
-        grpSwitch.panelId !== "" &&
-        grpSwitch.entryIndex != null &&
-        grpSwitch.entryIndex !== ""
-      ) {
+      if (!grpSwitch) {
         Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
       }
     }
@@ -625,7 +619,7 @@ class IdxPage {
       this.autoSaveInterval = setInterval(() => {
         LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
-      }, 10000);
+      }, 30000);
     }, 10000);
   }
 
