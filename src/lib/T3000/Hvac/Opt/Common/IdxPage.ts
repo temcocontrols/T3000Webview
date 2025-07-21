@@ -14,6 +14,7 @@ import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
 import T3Util from "../../Util/T3Util"
 import LogUtil from "../../Util/LogUtil"
+import DataOpt from "../Data/DataOpt"
 
 let panzoomInstance = null;
 
@@ -215,7 +216,7 @@ class IdxPage {
 
   static restDocumentAreaPosition(pzXY) {
     const div = document.querySelector('.full-area');
-    if(!div) return;
+    if (!div) return;
 
     documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
     documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
@@ -566,18 +567,29 @@ class IdxPage {
     Hvac.LsOpt.saveAppState(data);
 
     if (!isBuiltInEdge.value) {
-      // Save current appState to ls deviceAppState
-      Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
+      const grpSwitch = DataOpt.LoadGrpSwitch();
+      if (
+        grpSwitch &&
+        grpSwitch.panelId != null &&
+        grpSwitch.panelId !== "" &&
+        grpSwitch.entryIndex != null &&
+        grpSwitch.entryIndex !== ""
+      ) {
+        Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
+      }
     }
   }
 
   // Save data to T3000
   saveToT3000() {
-    // Prepare data
     const data = this.prepareSaveData();
 
+    const grpSwitch = DataOpt.LoadGrpSwitch();
+
     if (isBuiltInEdge.value) {
-      Hvac.WebClient.SaveGraphicData(null, null, data);
+      let panelId = grpSwitch?.panelId || null;
+      let graphicId = grpSwitch?.entryIndex + 1 || null;
+      Hvac.WebClient.SaveGraphicData(panelId, graphicId, data);
     }
     else {
       const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
@@ -588,8 +600,14 @@ class IdxPage {
 
       // Post a save action to T3
       const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-      const panelId = currentDevice?.deviceId;
-      const graphicId = currentDevice?.graphic;
+      let panelId = currentDevice?.deviceId;
+      let graphicId = currentDevice?.graphic;
+
+      // If grpSwitch is enabled, use its panelId and entryIndex
+      if (grpSwitch) {
+        panelId = grpSwitch.panelId || panelId;
+        graphicId = grpSwitch.entryIndex + 1 || graphicId;
+      }
 
       if (panelId && graphicId) {
         Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
@@ -607,7 +625,7 @@ class IdxPage {
       this.autoSaveInterval = setInterval(() => {
         LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
-      }, 5000);
+      }, 10000);
     }, 10000);
   }
 

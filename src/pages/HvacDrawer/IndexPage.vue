@@ -723,6 +723,7 @@ import {
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
+import DataOpt from "src/lib/T3000/Hvac/Opt/Data/DataOpt";
 
 // Meta information for the application
 // Set the meta information
@@ -2411,6 +2412,9 @@ function objectClicked(item) {
       entryIndex: item.t3Entry.index,
     };
 
+    // Use this value for saving the swtiched grp related data
+    DataOpt.SaveGrpSwitch(message);
+
     if (isBuiltInEdge.value) {
       Hvac.WebClient.LoadGraphicEntry(message);
     }
@@ -2613,6 +2617,8 @@ function navGoBack() {
       panelId: item.pid,
       entryIndex: item.index,
     };
+
+    DataOpt.RemoveLatestGrpSwitch();
 
     if (isBuiltInEdge.value) {
       Hvac.WebClient.LoadGraphicEntry(message);

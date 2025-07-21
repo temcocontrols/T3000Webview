@@ -647,9 +647,9 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:25.0721.01");
+export const devVersion = ref("V:25.0721.02");
 
-export const localSettings = ref({ version: "V:25.0721.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.0721.02", transform: 0 });
 
 export const T3Data = {
   deviceList: ref([]),

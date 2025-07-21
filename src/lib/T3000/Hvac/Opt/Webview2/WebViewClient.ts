@@ -74,7 +74,7 @@ class WebViewClient {
 
   FormatMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
     this.setMessageData(action, panelId, viewitem, data);
-    this.messageData = this.message;//JSON.stringify(this.message);
+    this.messageData = this.message;
   }
 
   FormatUpdateEntryData(data: any) {
