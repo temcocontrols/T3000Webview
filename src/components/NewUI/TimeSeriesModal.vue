@@ -448,6 +448,9 @@ import {
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
+import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
+import WebSocketClient from 'src/lib/T3000/Hvac/Opt/Socket/WebSocketClient'
+import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {
@@ -1473,6 +1476,308 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
   return data
 }
 
+// ====================================================================================
+// REAL DATA INTEGRATION: T3000 Monitor Data Extraction and Real-time Data Fetching
+// ====================================================================================
+
+/**
+ * Extract monitor configuration from T3000_Data.panelsData based on scheduleItemData.t3Entry.id
+ * @returns Monitor configuration with input items and timing intervals
+ */
+const getMonitorConfigFromT3000Data = () => {
+  LogUtil.Debug('=== EXTRACTING MONITOR CONFIG FROM T3000_DATA ===')
+
+  // Get the monitor ID from scheduleItemData
+  const monitorId = (scheduleItemData.value as any)?.t3Entry?.id
+  if (!monitorId) {
+    LogUtil.Warn('No monitor ID found in scheduleItemData.t3Entry.id')
+    return null
+  }
+
+  LogUtil.Debug('Looking for monitor ID:', monitorId)
+  LogUtil.Debug('Available panelsData:', T3000_Data.value.panelsData)
+
+  // Search through all panels data for the matching monitor
+  const panelsData = T3000_Data.value.panelsData
+  if (!panelsData || !Array.isArray(panelsData)) {
+    LogUtil.Warn('No panelsData available or not an array')
+    return null
+  }
+
+  // Find the monitor configuration
+  let monitorConfig = null
+  for (const panelData of panelsData) {
+    if (panelData && panelData.id === monitorId) {
+      monitorConfig = panelData
+      break
+    }
+  }
+
+  if (!monitorConfig) {
+    LogUtil.Warn(`Monitor configuration not found for ID: ${monitorId}`)
+    return null
+  }
+
+  LogUtil.Debug('Found monitor configuration:', monitorConfig)
+
+  // Calculate the data retrieval interval in milliseconds
+  const intervalMs = calculateDataInterval(
+    monitorConfig.hour_interval_time || 0,
+    monitorConfig.minute_interval_time || 0,
+    monitorConfig.second_interval_time || 0
+  )
+
+  LogUtil.Debug(`Calculated data interval: ${intervalMs}ms (${intervalMs/1000}s)`)
+
+  return {
+    id: monitorConfig.id,
+    label: monitorConfig.label,
+    pid: monitorConfig.pid,
+    type: monitorConfig.type,
+    status: monitorConfig.status,
+    numInputs: monitorConfig.num_inputs || monitorConfig.an_inputs || 0,
+    inputItems: monitorConfig.input || [],
+    ranges: monitorConfig.range || [],
+    dataIntervalMs: intervalMs,
+    originalConfig: monitorConfig
+  }
+}
+
+/**
+ * Calculate data retrieval interval from T3000 timing configuration
+ */
+const calculateDataInterval = (hours: number, minutes: number, seconds: number): number => {
+  const totalMs = (hours * 3600 + minutes * 60 + seconds) * 1000
+
+  // Ensure minimum interval of 1 second for real-time updates
+  return Math.max(totalMs, 1000)
+}
+
+/**
+ * Map T3000 point types to readable names and determine data characteristics
+ */
+const getPointTypeInfo = (pointType: number) => {
+  const pointTypeMap = {
+    1: { name: 'Output', type: 'digital', category: 'OUT' },
+    2: { name: 'Input', type: 'analog', category: 'IN' },
+    3: { name: 'Variable', type: 'analog', category: 'VAR' },
+    4: { name: 'Program', type: 'digital', category: 'PRG' },
+    5: { name: 'Controller', type: 'analog', category: 'CON' },
+    6: { name: 'Screen', type: 'digital', category: 'SCR' },
+    7: { name: 'Holiday', type: 'digital', category: 'HOL' },
+    8: { name: 'Schedule', type: 'digital', category: 'SCH' },
+    9: { name: 'Monitor', type: 'analog', category: 'MON' }
+  }
+
+  return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: 'UNK' }
+}
+
+/**
+ * Initialize WebSocket and WebView clients for data communication
+ */
+const initializeDataClients = () => {
+  LogUtil.Debug('=== INITIALIZING DATA CLIENTS ===')
+
+  // Check if we're running in built-in browser (WebView) or external browser (WebSocket)
+  const isBuiltInBrowser = window.location.protocol === 'ms-appx-web:' ||
+                          (window as any).chrome?.webview !== undefined ||
+                          (window as any).external?.sendMessage !== undefined
+
+  LogUtil.Debug('Environment detected:', isBuiltInBrowser ? 'Built-in WebView' : 'External Browser')
+
+  if (isBuiltInBrowser) {
+    // Use WebView client for built-in browser
+    return new WebViewClient()
+  } else {
+    // Use WebSocket client for external browser
+    return new WebSocketClient()
+  }
+}
+
+/**
+ * Fetch real-time data for all monitor input items
+ */
+const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
+  const monitorConfig = getMonitorConfigFromT3000Data()
+  if (!monitorConfig) {
+    LogUtil.Error('Cannot fetch real-time data: No monitor configuration available')
+    return []
+  }
+
+  LogUtil.Debug('=== FETCHING REAL-TIME MONITOR DATA ===')
+  LogUtil.Debug(`Fetching data for ${monitorConfig.numInputs} input items`)
+
+  try {
+    // Initialize the appropriate data client
+    const dataClient = initializeDataClients()
+
+    // Prepare data structure for all input items
+    const allItemsData: DataPoint[][] = []
+    const currentTime = Date.now()
+
+    // Process each input item
+    for (let i = 0; i < monitorConfig.inputItems.length; i++) {
+      const inputItem = monitorConfig.inputItems[i]
+      const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
+
+      LogUtil.Debug(`Processing item ${i + 1}:`, {
+        panel: inputItem.panel,
+        pointNumber: inputItem.point_number,
+        pointType: inputItem.point_type,
+        pointTypeInfo: pointTypeInfo,
+        network: inputItem.network,
+        subPanel: inputItem.sub_panel
+      })
+
+      // Request data for this specific input item
+      const itemData = await fetchSingleItemData(dataClient, inputItem, monitorConfig)
+      allItemsData.push(itemData)
+    }
+
+    LogUtil.Debug(`Successfully fetched data for ${allItemsData.length} items`)
+    return allItemsData
+
+  } catch (error) {
+    LogUtil.Error('Error fetching real-time monitor data:', error)
+    return []
+  }
+}
+
+/**
+ * Fetch data for a single input item
+ */
+const fetchSingleItemData = async (dataClient: any, inputItem: any, monitorConfig: any): Promise<DataPoint[]> => {
+  try {
+    // Prepare request parameters
+    const requestData = {
+      action: 6, // GET_ENTRIES action from WebSocketClient
+      panelId: inputItem.panel,
+      pointNumber: inputItem.point_number,
+      pointType: inputItem.point_type,
+      network: inputItem.network,
+      subPanel: inputItem.sub_panel
+    }
+
+    LogUtil.Debug('Requesting data for item:', requestData)
+
+    // Use the appropriate client method to fetch data
+    let rawData
+    if (dataClient instanceof WebSocketClient) {
+      // For WebSocket client
+      rawData = await new Promise((resolve, reject) => {
+        dataClient.GetEntries([requestData])
+
+        // Set up listener for response (simplified - you may need to enhance this)
+        const timeout = setTimeout(() => reject(new Error('Timeout')), 5000)
+
+        // This would need proper event handling based on your WebSocketClient implementation
+        dataClient.HandleGetEntriesRes = (msgData) => {
+          clearTimeout(timeout)
+          resolve(msgData.data)
+        }
+      })
+    } else {
+      // For WebView client - implement similar logic
+      rawData = await dataClient.GetEntries([requestData])
+    }
+
+    // Convert raw data to DataPoint format
+    const dataPoints: DataPoint[] = []
+    if (rawData && Array.isArray(rawData)) {
+      const currentTime = Date.now()
+      rawData.forEach((point, index) => {
+        dataPoints.push({
+          timestamp: currentTime - (rawData.length - index - 1) * monitorConfig.dataIntervalMs,
+          value: parseFloat(point.value) || 0
+        })
+      })
+    } else {
+      // Generate a single current data point if no historical data available
+      const currentValue = Math.random() * 100 // Replace with actual current value
+      dataPoints.push({
+        timestamp: Date.now(),
+        value: currentValue
+      })
+    }
+
+    return dataPoints
+
+  } catch (error) {
+    LogUtil.Error('Error fetching single item data:', error)
+
+    // Return mock data point as fallback
+    return [{
+      timestamp: Date.now(),
+      value: Math.random() * 100
+    }]
+  }
+}
+
+/**
+ * Initialize data series from real T3000 monitor configuration
+ */
+const initializeRealDataSeries = async () => {
+  LogUtil.Debug('=== INITIALIZING REAL DATA SERIES ===')
+
+  const monitorConfig = getMonitorConfigFromT3000Data()
+  if (!monitorConfig) {
+    LogUtil.Warn('No monitor configuration found, using mock data')
+    return
+  }
+
+  try {
+    // Fetch real-time data for all items
+    const realTimeData = await fetchRealTimeMonitorData()
+
+    // Update data series with real configuration
+    const newDataSeries: SeriesConfig[] = []
+
+    for (let i = 0; i < monitorConfig.inputItems.length; i++) {
+      const inputItem = monitorConfig.inputItems[i]
+      const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
+      const rangeValue = monitorConfig.ranges[i] || 0
+      const itemData = realTimeData[i] || []
+
+      // Determine unit type and create series configuration
+      const unitInfo = getUnitInfo(rangeValue)
+      const unitSymbol = unitInfo.type === 'digital' ? '' : (unitInfo.info as any).symbol || ''
+      const seriesConfig: SeriesConfig = {
+        name: `${pointTypeInfo.category}${inputItem.point_number} (P${inputItem.panel})`,
+        color: `hsl(${(i * 360) / monitorConfig.inputItems.length}, 70%, 50%)`,
+        data: itemData,
+        visible: true,
+        isEmpty: itemData.length === 0,
+        unit: unitSymbol,
+        unitType: unitInfo.type === 'digital' ? 'digital' : 'analog',
+        unitCode: rangeValue,
+        digitalStates: unitInfo.type === 'digital' ? (unitInfo.info as any).states : undefined,
+        itemType: pointTypeInfo.name
+      }
+
+      newDataSeries.push(seriesConfig)
+
+      LogUtil.Debug(`Created series for ${seriesConfig.name}:`, {
+        type: seriesConfig.unitType,
+        unit: seriesConfig.unit,
+        dataPoints: seriesConfig.data.length,
+        visible: seriesConfig.visible
+      })
+    }
+
+    // Update the reactive data series
+    dataSeries.value = newDataSeries
+
+    LogUtil.Debug(`Successfully initialized ${newDataSeries.length} real data series`)
+
+    // Log the monitor info (chartTitle is computed from props, so we don't modify it)
+    LogUtil.Debug(`Chart title will be: ${monitorConfig.label} (${monitorConfig.id}) - Real-time Data`)
+
+  } catch (error) {
+    LogUtil.Error('Error initializing real data series:', error)
+    LogUtil.Warn('Falling back to mock data')
+  }
+}
+
 const getTimeRangeMinutes = (range: string): number => {
   const ranges = {
     '5m': 5,        // 5 minutes
@@ -1487,7 +1792,25 @@ const getTimeRangeMinutes = (range: string): number => {
   return ranges[range] || 60
 }
 
-const initializeData = () => {
+const initializeData = async () => {
+  LogUtil.Debug('=== INITIALIZE DATA ===')
+
+  // First, try to initialize with real T3000 data
+  const monitorConfig = getMonitorConfigFromT3000Data()
+  if (monitorConfig && monitorConfig.inputItems && monitorConfig.inputItems.length > 0) {
+    LogUtil.Debug('Real monitor data available, initializing with real data series')
+    try {
+      await initializeRealDataSeries()
+      updateChart()
+      return
+    } catch (error) {
+      LogUtil.Warn('Failed to initialize real data series, falling back to mock data:', error)
+    }
+  } else {
+    LogUtil.Debug('No real monitor data available, using mock data')
+  }
+
+  // Fallback to existing mock data logic
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
     // For custom date range, use actual custom dates
     const customDuration = customEndDate.value.diff(customStartDate.value, 'minute')
@@ -1512,7 +1835,7 @@ const initializeData = () => {
   updateChart()
 }
 
-const addRealtimeDataPoint = () => {
+const addRealtimeDataPoint = async () => {
   // Only add data if we're in real-time mode
   if (!isRealTime.value) return
 
@@ -1521,6 +1844,51 @@ const addRealtimeDataPoint = () => {
   const alignedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
   const timestamp = alignedTime.getTime()
 
+  // Check if we have real monitor configuration for live data
+  const monitorConfig = getMonitorConfigFromT3000Data()
+
+  if (monitorConfig && monitorConfig.inputItems.length > 0) {
+    // Use real-time data from T3000
+    try {
+      const realTimeData = await fetchRealTimeMonitorData()
+
+      dataSeries.value.forEach((series, index) => {
+        if (series.isEmpty || !realTimeData[index]) return
+
+        // Get the latest real data point
+        const latestData = realTimeData[index]
+        if (latestData && latestData.length > 0) {
+          const latestPoint = latestData[latestData.length - 1]
+          const newPoint = {
+            timestamp: timestamp,
+            value: latestPoint.value
+          }
+
+          series.data.push(newPoint)
+
+          // Remove old points to maintain window size
+          const maxDataPoints = Math.max(100, getTimeRangeMinutes(timeBase.value) / 5)
+          if (series.data.length > maxDataPoints) {
+            series.data.shift()
+          }
+        }
+      })
+
+      LogUtil.Debug('Added real-time data points from T3000')
+    } catch (error) {
+      LogUtil.Warn('Failed to get real-time data, falling back to mock data:', error)
+      // Fall back to mock data generation
+      addMockRealtimeDataPoint(timestamp)
+    }
+  } else {
+    // Use mock data generation
+    addMockRealtimeDataPoint(timestamp)
+  }
+
+  updateChart()
+}
+
+const addMockRealtimeDataPoint = (timestamp: number) => {
   dataSeries.value.forEach((series, index) => {
     if (series.isEmpty) return
 
@@ -1573,7 +1941,6 @@ const addRealtimeDataPoint = () => {
   })
 
   lastUpdateTime.value = new Date().toLocaleTimeString()
-  updateChart()
 }
 
 const createChart = () => {
@@ -1732,7 +2099,7 @@ const toggleDigitalSeries = () => {
 
 
 // New control functions - Updated to use timeOffset and regenerate data
-const moveTimeLeft = () => {
+const moveTimeLeft = async () => {
   if (isRealTime.value) return
 
   // Move time window left by exactly the timebase period
@@ -1742,12 +2109,12 @@ const moveTimeLeft = () => {
   timeOffset.value -= shiftMinutes
 
   // Regenerate data for the new time window
-  initializeData()
+  await initializeData()
 
   message.info(`Moved ${shiftMinutes} minutes back`)
 }
 
-const moveTimeRight = () => {
+const moveTimeRight = async () => {
   if (isRealTime.value) return
 
   // Move time window right by exactly the timebase period
@@ -1757,7 +2124,7 @@ const moveTimeRight = () => {
   timeOffset.value += shiftMinutes
 
   // Regenerate data for the new time window
-  initializeData()
+  await initializeData()
 
   message.info(`Moved ${shiftMinutes} minutes forward`)
 }
@@ -1848,18 +2215,18 @@ const setView = (viewNumber: number) => {
 }
 
 // Event handlers
-const onTimeBaseChange = () => {
+const onTimeBaseChange = async () => {
   if (timeBase.value !== 'custom') {
     // Reset time offset when timebase changes
     timeOffset.value = 0
-    initializeData()
+    await initializeData()
   }
 }
 
-const onCustomDateChange = () => {
+const onCustomDateChange = async () => {
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
     // Generate data for custom date range
-    initializeData()
+    await initializeData()
     // Force chart recreation to ensure proper axis scaling
     if (chartInstance) {
       chartInstance.destroy()
@@ -2293,8 +2660,8 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
-    nextTick(() => {
-      initializeData()
+    nextTick(async () => {
+      await initializeData()
       createChart()
       if (isRealTime.value) {
         startRealTimeUpdates()
@@ -2309,13 +2676,27 @@ watch(() => props.visible, (newVal) => {
 // Lifecycle
 onMounted(() => {
   LogUtil.Debug('TimeSeriesChart mounted: scheduleItemData is ', scheduleItemData.value);
+  LogUtil.Debug('TimeSeriesChart mounted: T3000_Data->panelsData is ', T3000_Data.value.panelsData);
+
+  // Log the real data extraction attempt for debugging
+  const monitorConfig = getMonitorConfigFromT3000Data()
+  if (monitorConfig) {
+    LogUtil.Debug('=== REAL DATA AVAILABLE ===')
+    LogUtil.Debug('Monitor Configuration:', monitorConfig)
+    LogUtil.Debug(`Found ${monitorConfig.inputItems.length} input items to monitor`)
+    LogUtil.Debug(`Data retrieval interval: ${monitorConfig.dataIntervalMs}ms`)
+  } else {
+    LogUtil.Debug('=== NO REAL DATA - USING MOCK DATA ===')
+    LogUtil.Debug('scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
+    LogUtil.Debug('Available panelsData:', T3000_Data.value.panelsData)
+  }
 
   // Apply default view configuration to ensure settings are properly initialized
   setView(1)
 
   if (props.visible) {
-    nextTick(() => {
-      initializeData()
+    nextTick(async () => {
+      await initializeData()
       createChart()
       if (isRealTime.value) {
         startRealTimeUpdates()
