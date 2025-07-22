@@ -135,6 +135,16 @@ class IdxUtils {
   }
   */
   static refreshLinkedEntries(panelData) {
+
+    const trlEntry = panelData.find((entry) => entry.label === 'TRL11111');
+    if (trlEntry) {
+      LogUtil.Debug('[refreshLinkedEntries] Found TRL11111:', trlEntry);
+    } else {
+      LogUtil.Debug('[refreshLinkedEntries] TRL11111 not found in panelData.');
+    }
+
+    LogUtil.Debug('[refreshLinkedEntries] Types in appState.value.items:', appState.value.items.map(item => item.t3Entry?.type));
+
     appState.value.items
       .filter((i) => i.t3Entry?.type)
       .forEach((item, idx) => {

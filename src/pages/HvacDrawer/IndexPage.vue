@@ -3161,7 +3161,7 @@ function objectDoubleClicked(item) {
  * @returns {String} - Formatted label string
  */
 function entryLabel(option) {
-  LogUtil.Debug("= Idx: entryLabel option:", option);
+  //LogUtil.Debug("= Idx: entryLabel option:", option);
 
   let prefix = "";
 

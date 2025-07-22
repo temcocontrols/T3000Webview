@@ -640,8 +640,8 @@ onMounted(() => {
 
   .ant-modal-body {
     border-radius: 0px;
-    margin-left: -15px;
-    margin-right: -15px;
+    /*margin-left: -15px;
+    margin-right: -15px;*/
     margin-top: 20px;
   }
 
