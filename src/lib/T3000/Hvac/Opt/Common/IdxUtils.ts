@@ -138,12 +138,12 @@ class IdxUtils {
 
     const trlEntry = panelData.find((entry) => entry.label === 'TRL11111');
     if (trlEntry) {
-      LogUtil.Debug('[refreshLinkedEntries] Found TRL11111:', trlEntry);
+      // LogUtil.Debug('[refreshLinkedEntries] Found TRL11111:', trlEntry);
     } else {
-      LogUtil.Debug('[refreshLinkedEntries] TRL11111 not found in panelData.');
+      // LogUtil.Debug('[refreshLinkedEntries] TRL11111 not found in panelData.');
     }
 
-    LogUtil.Debug('[refreshLinkedEntries] Types in appState.value.items:', appState.value.items.map(item => item.t3Entry?.type));
+    // LogUtil.Debug('[refreshLinkedEntries] Types in appState.value.items:', appState.value.items.map(item => item.t3Entry?.type));
 
     appState.value.items
       .filter((i) => i.t3Entry?.type)
@@ -157,23 +157,23 @@ class IdxUtils {
         if (linkedEntry && linkedEntry.id) {
           const tempBefore = linkedEntry.value;
           let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
-          LogUtil.Debug(`[refreshLinkedEntries] Item #${idx}:`, {
-            itemIndex: item.t3Entry.index,
-            itemType: item.t3Entry.type,
-            itemPid: item.t3Entry.pid,
-            valueBefore: tempBefore,
-            valueAfter: newLkValue,
-            linkedEntry: linkedEntry
-          });
+          // LogUtil.Debug(`[refreshLinkedEntries] Item #${idx}:`, {
+          //   itemIndex: item.t3Entry.index,
+          //   itemType: item.t3Entry.type,
+          //   itemPid: item.t3Entry.pid,
+          //   valueBefore: tempBefore,
+          //   valueAfter: newLkValue,
+          //   linkedEntry: linkedEntry
+          // });
           linkedEntry.value = newLkValue;
           item.t3Entry = linkedEntry;
           IdxUtils.refreshObjectStatus(item);
         } else {
-          LogUtil.Debug(`[refreshLinkedEntries] No linked entry found for item #${idx}:`, {
-            itemIndex: item.t3Entry.index,
-            itemType: item.t3Entry.type,
-            itemPid: item.t3Entry.pid
-          });
+          // LogUtil.Debug(`[refreshLinkedEntries] No linked entry found for item #${idx}:`, {
+          //   itemIndex: item.t3Entry.index,
+          //   itemType: item.t3Entry.type,
+          //   itemPid: item.t3Entry.pid
+          // });
         }
       });
   }

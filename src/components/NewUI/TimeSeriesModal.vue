@@ -120,7 +120,7 @@
                 <template #icon>
                   <SyncOutlined :spin="true" />
                 </template>
-                Live • Updated {{ lastUpdateTime }}
+                Live Updated {{ lastUpdateTime }}
               </a-tag>
               <a-tag color="blue" v-else size="small">
                 <template #icon>
@@ -319,7 +319,7 @@
                     </a-button>
                   </div>
                   <div class="series-controls" v-else>
-                    <span class="empty-placeholder">—</span>
+                    <span class="empty-placeholder">No data</span>
                   </div>
                 </div>
                 <div v-if="expandedSeries.has(index) && !series.isEmpty" class="series-stats">
@@ -1603,11 +1603,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
 
     const monitorConfig = getMonitorConfigFromT3000Data()
     if (!monitorConfig) {
-      LogUtil.Info('❌ TimeSeriesModal: No monitor config found, falling back to mock data')
+      LogUtil.Info('�?TimeSeriesModal: No monitor config found, falling back to mock data')
       return []
     }
 
-    LogUtil.Info('✅ TimeSeriesModal: Monitor config extracted:', monitorConfig)
+    LogUtil.Info('�?TimeSeriesModal: Monitor config extracted:', monitorConfig)
     LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
       id: monitorConfig.id,
       inputItemsCount: monitorConfig.inputItems?.length || 0,
@@ -1619,11 +1619,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     const dataClient = initializeDataClients()
 
     if (!dataClient) {
-      LogUtil.Info('❌ TimeSeriesModal: No data client available')
+      LogUtil.Info('�?TimeSeriesModal: No data client available')
       return []
     }
 
-    LogUtil.Info('✅ TimeSeriesModal: Data client initialized:', {
+    LogUtil.Info('�?TimeSeriesModal: Data client initialized:', {
       clientType: dataClient.constructor.name,
       hasGetEntriesMethod: typeof dataClient.GetEntries === 'function',
       clientMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)).filter(name => name.includes('Get'))
@@ -1640,18 +1640,28 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
 
     // Get panels data for device mapping
     const panelsData = T3000_Data.value.panelsData || []
-    LogUtil.Info('📊 TimeSeriesModal: Total panelsData count:', panelsData.length)
+    LogUtil.Info('PANELS TimeSeriesModal: Total panelsData count:', panelsData)
+    LogUtil.Info('PANELS TimeSeriesModal: PanelsData structure sample:', panelsData.slice(0, 2))
 
-    const currentPanelData = panelsData.find(panel => panel.pid === currentPanelId)
+    // Instead of finding a single panel, return all panelData for the currentPanelId
+    const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
     if (!currentPanelData) {
-      LogUtil.Info('❌ TimeSeriesModal: No panel data found for panelId:', currentPanelId)
-      LogUtil.Info('📊 TimeSeriesModal: Available panel PIDs:', panelsData.map(p => p.pid))
+      LogUtil.Info('ERROR TimeSeriesModal: No panel data found for panelId:', currentPanelData)
+      LogUtil.Info('PANELS TimeSeriesModal: Available panel PIDs:', panelsData.map(p => p.pid))
       return []
     }
 
-    LogUtil.Info('📋 TimeSeriesModal: Found panel data with', currentPanelData.length, 'devices')
-    LogUtil.Info('📋 TimeSeriesModal: Sample devices from panel:', currentPanelData.slice(0, 5).map(d => ({ id: d.id, label: d.label })))
+    // Use currentPanelData directly as devicesArray
+    let devicesArray = currentPanelData
+
+    if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
+      LogUtil.Info('ERROR TimeSeriesModal: No devices found in panel data')
+      return []
+    }
+
+    LogUtil.Info('DEVICES TimeSeriesModal: Found', devicesArray.length, 'devices in panel')
+    LogUtil.Info('DEVICES TimeSeriesModal: Sample devices from panel:', devicesArray.slice(0, 5).map(d => ({ id: d.id, label: d.label })))
 
     // Fetch data for all input items
     LogUtil.Info('🔄 TimeSeriesModal: Starting to fetch data for', monitorConfig.inputItems.length, 'input items')
@@ -1661,13 +1671,13 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
       return await fetchSingleItemData(dataClient, inputItem, {
         ...monitorConfig,
         panelId: currentPanelId,
-        panelData: currentPanelData,
+        panelData: devicesArray, // Use the extracted devices array
         itemIndex: index
       })
     })
 
     const allDataResults = await Promise.all(allDataPromises)
-    LogUtil.Info('✅ TimeSeriesModal: All data fetched successfully, results count:', allDataResults.length)
+    LogUtil.Info('�?TimeSeriesModal: All data fetched successfully, results count:', allDataResults.length)
 
     // Log detailed results
     allDataResults.forEach((result, index) => {
@@ -1681,7 +1691,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     return allDataResults
 
   } catch (error) {
-    LogUtil.Error('❌ TimeSeriesModal: Error fetching real-time monitor data:', error)
+    LogUtil.Error('�?TimeSeriesModal: Error fetching real-time monitor data:', error)
     return []
   }
 }
@@ -1717,7 +1727,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     const matchingDevice = findDeviceByGeneratedId(config.panelData, deviceId)
 
     if (!matchingDevice) {
-      LogUtil.Info(`❌ TimeSeriesModal: No device found with ID: ${deviceId}, leaving as empty`)
+      LogUtil.Info(`�?TimeSeriesModal: No device found with ID: ${deviceId}, leaving as empty`)
       LogUtil.Info(`🔍 TimeSeriesModal: Searched for "${deviceId}" in ${config.panelData.length} devices`)
       return [{
         timestamp: Date.now(),
@@ -1725,7 +1735,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       }]
     }
 
-    LogUtil.Info(`✅ TimeSeriesModal: Found matching device:`, matchingDevice)
+    LogUtil.Info(`�?TimeSeriesModal: Found matching device:`, matchingDevice)
 
     // Process the device value based on range type
     const processedValue = processDeviceValue(matchingDevice, rangeValue)
@@ -1757,7 +1767,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     return [resultDataPoint]
 
   } catch (error) {
-    LogUtil.Error('❌ TimeSeriesModal: Error fetching single item data:', error)
+    LogUtil.Error('�?TimeSeriesModal: Error fetching single item data:', error)
     return [{
       timestamp: Date.now(),
       value: 0
@@ -1773,7 +1783,7 @@ const initializeRealDataSeries = async () => {
 
   const monitorConfig = getMonitorConfigFromT3000Data()
   if (!monitorConfig) {
-    LogUtil.Info('❌ TimeSeriesModal: No monitor configuration found, using mock data')
+    LogUtil.Info('�?TimeSeriesModal: No monitor configuration found, using mock data')
     return
   }
 
@@ -1833,7 +1843,7 @@ const initializeRealDataSeries = async () => {
 
       newDataSeries.push(seriesConfig)
 
-      LogUtil.Info(`✅ TimeSeriesModal: Created series "${seriesConfig.name}":`, {
+      LogUtil.Info(`�?TimeSeriesModal: Created series "${seriesConfig.name}":`, {
         type: seriesConfig.unitType,
         unit: seriesConfig.unit,
         dataPoints: seriesConfig.data.length,
@@ -1978,10 +1988,10 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
       }
 
     } catch (error) {
-      LogUtil.Error('❌ TimeSeriesModal: Error calling GetEntries:', error)
+      LogUtil.Error('�?TimeSeriesModal: Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('❌ TimeSeriesModal: GetEntries method not available:', {
+    LogUtil.Error('�?TimeSeriesModal: GetEntries method not available:', {
       hasDataClient: !!dataClient,
       clientType: dataClient?.constructor?.name,
       availableMethods: dataClient ? Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)) : 'N/A'
@@ -1998,7 +2008,7 @@ const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{pane
   if (dataClient && dataClient.GetEntries) {
     dataClient.GetEntries(requests)
   } else {
-    LogUtil.Error('❌ TimeSeriesModal: No GetEntries method available on data client')
+    LogUtil.Error('�?TimeSeriesModal: No GetEntries method available on data client')
   }
 }
 
@@ -2011,14 +2021,14 @@ const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
   const matchingDevice = panelData.find(device => device.id === deviceId)
 
   if (matchingDevice) {
-    LogUtil.Info(`✅ TimeSeriesModal: Found device:`, {
+    LogUtil.Info(`�?TimeSeriesModal: Found device:`, {
       id: matchingDevice.id,
       value: matchingDevice.value,
       label: matchingDevice.label,
       unit: matchingDevice.unit
     })
   } else {
-    LogUtil.Info(`❌ TimeSeriesModal: No device found with ID: ${deviceId}`)
+    LogUtil.Info(`�?TimeSeriesModal: No device found with ID: ${deviceId}`)
   }
 
   return matchingDevice
@@ -2058,13 +2068,13 @@ const testCommunication = async () => {
   })
 
   if (!dataClient) {
-    LogUtil.Error('❌ TimeSeriesModal: Cannot proceed - no data client available')
+    LogUtil.Error('�?TimeSeriesModal: Cannot proceed - no data client available')
     return
   }
 
   // Test 2: Setup Response Handler
   setupGetEntriesResponseHandlers(dataClient)
-  LogUtil.Info('✅ TimeSeriesModal: Test 2 - Response handler setup complete')
+  LogUtil.Info('�?TimeSeriesModal: Test 2 - Response handler setup complete')
 
   // Test 3: Send Simple GET_ENTRIES Request
   try {
@@ -2084,11 +2094,11 @@ const testCommunication = async () => {
 
     // Wait a bit to see if response comes back
     setTimeout(() => {
-      LogUtil.Info('⏰ TimeSeriesModal: Test 3 - Timeout check (5 seconds elapsed)')
+      LogUtil.Info('�?TimeSeriesModal: Test 3 - Timeout check (5 seconds elapsed)')
     }, 5000)
 
   } catch (error) {
-    LogUtil.Error('❌ TimeSeriesModal: Test 3 - Error sending request:', error)
+    LogUtil.Error('�?TimeSeriesModal: Test 3 - Error sending request:', error)
   }
 
   LogUtil.Info('🏁 TimeSeriesModal: === MANUAL COMMUNICATION TEST COMPLETE ===')
@@ -2109,7 +2119,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
   })
 
   if (!dataClient) {
-    LogUtil.Error('❌ TimeSeriesModal: No dataClient provided to setupGetEntriesResponseHandlers')
+    LogUtil.Error('�?TimeSeriesModal: No dataClient provided to setupGetEntriesResponseHandlers')
     return
   }
 
@@ -2133,15 +2143,15 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('✅ TimeSeriesModal: Valid data array received, processing...')
+        LogUtil.Info('�?TimeSeriesModal: Valid data array received, processing...')
         updateChartWithNewData(msgData.data)
       } else if (msgData.data) {
         LogUtil.Info('⚠️ TimeSeriesModal: Data received but not array format:', msgData.data)
       } else {
-        LogUtil.Info('❌ TimeSeriesModal: No data in response or data is null/undefined')
+        LogUtil.Info('�?TimeSeriesModal: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('❌ TimeSeriesModal: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('�?TimeSeriesModal: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
@@ -2150,7 +2160,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
-        LogUtil.Error('❌ TimeSeriesModal: Error calling original handler:', error)
+        LogUtil.Error('�?TimeSeriesModal: Error calling original handler:', error)
       }
     } else {
       LogUtil.Info('ℹ️ TimeSeriesModal: No original handler to call')
@@ -2158,7 +2168,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     LogUtil.Info('📨 TimeSeriesModal: === GET_ENTRIES RESPONSE PROCESSING COMPLETE ===')
   }
 
-  LogUtil.Info('✅ TimeSeriesModal: GET_ENTRIES response handler setup complete')
+  LogUtil.Info('�?TimeSeriesModal: GET_ENTRIES response handler setup complete')
 }
 
 /**
@@ -2216,7 +2226,7 @@ const initializeData = async () => {
   // First, try to initialize with real T3000 data
   const monitorConfig = getMonitorConfigFromT3000Data()
   if (monitorConfig && monitorConfig.inputItems && monitorConfig.inputItems.length > 0) {
-    LogUtil.Info('✅ TimeSeriesModal: Real monitor data available, initializing with real data series')
+    LogUtil.Info('�?TimeSeriesModal: Real monitor data available, initializing with real data series')
     LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
       id: monitorConfig.id,
       inputItemsCount: monitorConfig.inputItems.length,
@@ -2230,7 +2240,7 @@ const initializeData = async () => {
       const realTimeData = await fetchRealTimeMonitorData()
 
       if (realTimeData && realTimeData.length > 0) {
-        LogUtil.Info('✅ TimeSeriesModal: Real data fetch successful, got', realTimeData.length, 'data series')
+        LogUtil.Info('�?TimeSeriesModal: Real data fetch successful, got', realTimeData.length, 'data series')
 
         // Log sample data for first few series
         realTimeData.slice(0, 3).forEach((seriesData, index) => {
@@ -2248,7 +2258,7 @@ const initializeData = async () => {
         LogUtil.Info('⚠️ TimeSeriesModal: Real data fetch returned empty results')
       }
     } catch (error) {
-      LogUtil.Error('❌ TimeSeriesModal: Failed to initialize real data series, falling back to mock data:', error)
+      LogUtil.Error('�?TimeSeriesModal: Failed to initialize real data series, falling back to mock data:', error)
     }
   } else {
     LogUtil.Info('ℹ️ TimeSeriesModal: No real monitor data available, using mock data')
@@ -3137,7 +3147,7 @@ onMounted(() => {
   // Test 1: Monitor Configuration Extraction
   const monitorConfig = getMonitorConfigFromT3000Data()
   if (monitorConfig) {
-    LogUtil.Info('✅ TEST 1 PASSED: Monitor Configuration Found')
+    LogUtil.Info('�?TEST 1 PASSED: Monitor Configuration Found')
     LogUtil.Info('📋 TimeSeriesModal: Monitor Configuration:', monitorConfig)
     LogUtil.Info(`📊 TimeSeriesModal: Found ${monitorConfig.inputItems.length} input items to monitor`)
     LogUtil.Info(`⏱️ TimeSeriesModal: Data retrieval interval: ${monitorConfig.dataIntervalMs}ms`)
@@ -3147,16 +3157,19 @@ onMounted(() => {
     monitorConfig.inputItems.forEach((inputItem, index) => {
       const deviceId = logDeviceMapping(inputItem, index, monitorConfig.ranges[index] || 0)
 
+      LogUtil.Info(`Device ID for input item ${index}:`, deviceId)
+
       // Test if we can find this device in panelsData
       const panelsData = T3000_Data.value.panelsData || []
-      const foundDevice = panelsData.find(panel =>
-        Array.isArray(panel) ? panel.find(device => device.id === deviceId) : false
-      )
+
+      LogUtil.Info('📊 TimeSeriesModal: panelsData:', panelsData)
+
+      const foundDevice = panelsData.find(device => device.id === deviceId)
 
       if (foundDevice) {
-        LogUtil.Info(`✅ TEST 2.${index + 1} PASSED: Device ${deviceId} found in panelsData`)
+        LogUtil.Info(`�?TEST 2.${index + 1} PASSED: Device ${deviceId} found in panelsData`)
       } else {
-        LogUtil.Info(`❌ TEST 2.${index + 1} FAILED: Device ${deviceId} NOT found in panelsData`)
+        LogUtil.Info(`�?TEST 2.${index + 1} FAILED: Device ${deviceId} NOT found in panelsData`)
       }
     })
 
@@ -3164,25 +3177,25 @@ onMounted(() => {
     LogUtil.Info('🔍 TimeSeriesModal: TEST 3 - Data Client Initialization:')
     const dataClient = initializeDataClients()
     if (dataClient) {
-      LogUtil.Info('✅ TEST 3 PASSED: Data client initialized:', dataClient.constructor.name)
+      LogUtil.Info('�?TEST 3 PASSED: Data client initialized:', dataClient.constructor.name)
       LogUtil.Info('🔧 TimeSeriesModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
     } else {
-      LogUtil.Info('❌ TEST 3 FAILED: No data client available')
+      LogUtil.Info('�?TEST 3 FAILED: No data client available')
     }
 
     // Test 4: Value Processing
     LogUtil.Info('🔍 TimeSeriesModal: TEST 4 - Value Processing Test:')
     // Test digital value processing
     const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
-    LogUtil.Info('✅ TEST 4.1 Digital Value Processing:', testDigitalValue)
+    LogUtil.Info('�?TEST 4.1 Digital Value Processing:', testDigitalValue)
 
     // Test analog value processing
     const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
-    LogUtil.Info('✅ TEST 4.2 Analog Value Processing:', testAnalogValue)
+    LogUtil.Info('�?TEST 4.2 Analog Value Processing:', testAnalogValue)
 
     LogUtil.Info('🏁 TimeSeriesModal: === T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
   } else {
-    LogUtil.Info('❌ TEST 1 FAILED: No Monitor Configuration Found')
+    LogUtil.Info('�?TEST 1 FAILED: No Monitor Configuration Found')
     LogUtil.Info('🔍 TimeSeriesModal: Debugging info:')
     LogUtil.Info('📊 TimeSeriesModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
     LogUtil.Info('📊 TimeSeriesModal: Available panelsData count:', T3000_Data.value.panelsData?.length || 0)
