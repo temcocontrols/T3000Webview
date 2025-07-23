@@ -629,69 +629,53 @@ const viewAlert = ref({
 // Series detail expansion state
 const expandedSeries = ref<Set<number>>(new Set())
 
+
+// Helper: Get device description from T3000_Data.value.panelsData
+const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
+  const panelsData = T3000_Data.value.panelsData
+  if (!panelsData || !Array.isArray(panelsData)) return ''
+  // Find the panel by id or pid
+  const panel = panelsData.find(
+    (p: any) => String(p.id) === String(panelId) || String(p.pid) === String(panelId)
+  )
+  if (!panel) return ''
+  // Map pointType to property name
+  let prop = ''
+  if (pointType === 1) prop = 'output'
+  else if (pointType === 2) prop = 'input'
+  else if (pointType === 3) prop = 'variable'
+  else return ''
+  const arr = panel[prop]
+  if (!arr || !Array.isArray(arr)) return ''
+  // pointNumber is usually 1-based
+  const item = arr[pointNumber - 1]
+  if (!item) return ''
+  return item.description || item.label || ''
+}
+
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
   const colors = [
-    '#E53E3E', // Bright Red
-    '#1E88E5', // Bright Blue
-    '#43A047', // Forest Green
-    '#FB8C00', // Deep Orange
-    '#8E24AA', // Deep Purple
-    '#00ACC1', // Cyan
-    '#FDD835', // Bright Yellow
-    '#F4511E', // Deep Orange Red
-    '#00695C', // Dark Teal
-    '#5D4037', // Brown
-    '#7B1FA2', // Dark Purple
-    '#C62828', // Dark Red
-    '#1565C0', // Dark Blue
-    '#2E7D32', // Dark Green
-    '#EF6C00', // Dark Orange
-    '#6A1B9A', // Deep Purple
-    '#0277BD', // Light Blue
-    '#388E3C', // Medium Green
-    '#F57C00', // Amber
-    '#7B1FA2', // Purple
-    '#0891B2'  // Cyan
+    '#E53E3E', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#00ACC1', '#FDD835', '#F4511E',
+    '#00695C', '#5D4037', '#7B1FA2', '#C62828', '#1565C0', '#2E7D32', '#EF6C00', '#6A1B9A',
+    '#0277BD', '#388E3C', '#F57C00', '#7B1FA2', '#0891B2'
   ]
-
   const baseSeries = [
     'BMC01E1E-1P1B', 'BMC01E1E-2P1B', 'BMC01E1E-3P1B', 'BMC01E1E-4P1B',
     'BMC01E1E-5P1B', 'BMC01E1E-6P1B', 'BMC01E1E-7P1B', 'BMC01E1E-8P1B',
     'BMC01E1E-9P1B', 'BMC01E1E-10P1B', 'BMC01E1E-11P1B', 'BMC01E1E-12P1B',
     'BMC01E1E-13P1B', 'BMC01E1E-14P1B'
   ]
-
-  // Mixed unit codes for demo - digital and analog combined
-  const unitCodes = [
-    31, // deg.Celsius (analog)
-    32, // deg.Fahrenheit (analog)
-    1,  // Off/On (digital)
-    2,  // Close/Open (digital)
-    54, // Percent (analog)
-    3,  // Stop/Start (digital)
-    44, // Volts (analog)
-    5,  // Normal/Alarm (digital)
-    49, // Watts (analog)
-    8,  // Auto/Manual (digital)
-    54, // Percent (analog)
-    11, // Inactive/Active (digital)
-    42, // CFM (analog)
-    18  // Standby/Running (digital)
-  ]
-
+  const unitCodes = [31,32,1,2,54,3,44,5,49,8,54,11,42,18]
   const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
-  const panelIds = [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3] // Panel IDs for each item
-
+  const panelIds = [2,2,2,2,2,2,2,2,3,3,3,3,3,3]
   return baseSeries.map((name, index) => {
     const unitCode = unitCodes[index]
     const unitInfo = getUnitInfo(unitCode)
     const panelId = panelIds[index]
-    const itemNumber = (index % 7) + 1 // Generate numbers 1-7, then repeat
-
+    const itemNumber = (index % 7) + 1
     let unit: string
     let digitalStates: [string, string] | undefined
-
     if (unitInfo.type === 'digital') {
       const digitalInfo = unitInfo.info as { label: string; states: [string, string] }
       unit = digitalInfo.label
@@ -701,21 +685,21 @@ const generateDataSeries = (): SeriesConfig[] => {
       unit = analogInfo.symbol
       digitalStates = undefined
     }
-
-    // Generate new format: panelId + itemType + itemNumber (e.g., "2VAR20", "3Input5")
-    const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}` // +19 to start from 20
-
+    // Use device description for name
+    let desc = getDeviceDescription(panelId, (unitInfo.type === 'digital' ? 1 : 2), itemNumber)
+    if (!desc) desc = name
+    const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}`
     return {
-      name: name,
+      name: desc,
       color: colors[index % colors.length],
       data: [],
-      visible: index < 7, // Only first 7 visible by default
+      visible: index < 7,
       unit: unit,
-      isEmpty: index >= 7, // Mark items 8-14 as empty by default
+      isEmpty: index >= 7,
       unitType: unitInfo.type,
       unitCode: unitCode,
       digitalStates: digitalStates,
-      itemType: formattedItemType // Use the new format
+      itemType: formattedItemType
     }
   })
 }

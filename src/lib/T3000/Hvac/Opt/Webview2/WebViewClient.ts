@@ -311,54 +311,28 @@ class WebViewClient {
     this.sendMessage(this.messageData);
   }
 
-  private processMessageData(msgData) {
+  // Message handler map for action-based dispatch
+  private messageHandlers: { [action: number]: (msgData: any) => void } = {
+    [MessageType.GET_PANEL_DATA_RES]: this.HandleGetPanelDataRes.bind(this),
+    [MessageType.GET_INITIAL_DATA_RES]: this.HandleGetInitialDataRes.bind(this),
+    [MessageType.SAVE_GRAPHIC_DATA_RES]: this.HandleSaveGraphicDataRes.bind(this),
+    [MessageType.UPDATE_ENTRY_RES]: this.HandleUpdateEntryRes.bind(this),
+    [MessageType.GET_PANELS_LIST_RES]: this.HandleGetPanelsListRes.bind(this),
+    [MessageType.GET_ENTRIES_RES]: this.HandleGetEntriesRes.bind(this),
+    [MessageType.LOAD_GRAPHIC_ENTRY_RES]: this.HandleLoadGraphicEntryRes.bind(this),
+    [MessageType.OPEN_ENTRY_EDIT_WINDOW_RES]: this.HandleOpenEntryEditWindowRes.bind(this),
+    [MessageType.SAVE_IMAGE_RES]: this.HandleSaveImageRes.bind(this),
+    [MessageType.SAVE_LIBRARY_DATA_RES]: this.HandleSaveLibraryDataRes.bind(this),
+    [MessageType.SAVE_NEW_LIBRARY_DATA_RES]: this.HandleSaveNewLibraryDataRes.bind(this),
+    [MessageType.DELETE_IMAGE_RES]: this.HandleDeleteImageRes.bind(this),
+  };
 
-    if (msgData.action === MessageType.GET_PANEL_DATA_RES) {
-      this.HandleGetPanelDataRes(msgData);
-    }
-
-    if (msgData.action === MessageType.GET_INITIAL_DATA_RES) {
-      this.HandleGetInitialDataRes(msgData);
-    }
-
-    if (msgData.action === MessageType.SAVE_GRAPHIC_DATA_RES) {
-      this.HandleSaveGraphicDataRes(msgData);
-    }
-
-    if (msgData.action === MessageType.UPDATE_ENTRY_RES) {
-      this.HandleUpdateEntryRes(msgData);
-    }
-
-    if (msgData.action === MessageType.GET_PANELS_LIST_RES) {
-      this.HandleGetPanelsListRes(msgData);
-    }
-
-    if (msgData.action === MessageType.GET_ENTRIES_RES) {
-      this.HandleGetEntriesRes(msgData);
-    }
-
-    if (msgData.action === MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      this.HandleLoadGraphicEntryRes(msgData);
-    }
-
-    if (msgData.action === MessageType.OPEN_ENTRY_EDIT_WINDOW_RES) {
-      this.HandleOpenEntryEditWindowRes(msgData);
-    }
-
-    if (msgData.action === MessageType.SAVE_IMAGE_RES) {
-      this.HandleSaveImageRes(msgData);
-    }
-
-    if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
-      this.HandleSaveLibraryDataRes(msgData);
-    }
-
-    if(msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
-      this.HandleSaveNewLibraryDataRes(msgData);
-    }
-
-    if (msgData.action === MessageType.DELETE_IMAGE_RES) {
-      this.HandleDeleteImageRes(msgData);
+  private processMessageData(msgData: any) {
+    const handler = this.messageHandlers[msgData.action];
+    if (handler) {
+      handler(msgData);
+    } else {
+      LogUtil.Warn('No handler for message action:', msgData.action, msgData);
     }
   }
 
