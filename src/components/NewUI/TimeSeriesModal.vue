@@ -79,7 +79,7 @@
 
             <!-- Reset Button -->
             <div class="control-item">
-              <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 1 hour timebase"
+              <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 5 minutes timebase"
                         style="display: flex; align-items: center; gap: 2px;">
                 <ReloadOutlined />
                 <span>Reset</span>
@@ -631,7 +631,7 @@ const timeSeriesModalVisible = computed({
 })
 
 // New reactive variables for top controls
-const timeBase = ref('1h')
+const timeBase = ref('5m')
 const currentView = ref(1)
 const zoomLevel = ref(1)
 const customStartDate = ref<Dayjs | null>(null)
@@ -677,27 +677,20 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
   const colors = [
-    '#E53E3E', // Bright Red
-    '#1E88E5', // Bright Blue
-    '#43A047', // Forest Green
-    '#FB8C00', // Deep Orange
-    '#8E24AA', // Deep Purple
-    '#00ACC1', // Cyan
-    '#FDD835', // Bright Yellow
-    '#F4511E', // Deep Orange Red
-    '#00695C', // Dark Teal
-    '#5D4037', // Brown
-    '#7B1FA2', // Dark Purple
-    '#C62828', // Dark Red
-    '#1565C0', // Dark Blue
-    '#2E7D32', // Dark Green
-    '#EF6C00', // Dark Orange
-    '#6A1B9A', // Deep Purple
-    '#0277BD', // Light Blue
-    '#388E3C', // Medium Green
-    '#F57C00', // Amber
-    '#7B1FA2', // Purple
-    '#0891B2'  // Cyan
+    '#FF0000', // Bright Red
+    '#0000FF', // Pure Blue
+    '#00AA00', // Pure Green
+    '#FF8000', // Orange
+    '#AA00AA', // Magenta
+    '#00AAAA', // Cyan
+    '#FFFF00', // Yellow
+    '#AA0000', // Dark Red
+    '#0066AA', // Steel Blue
+    '#AA6600', // Brown/Orange
+    '#6600AA', // Purple
+    '#006600', // Dark Green
+    '#FF6600', // Red-Orange
+    '#0000AA', // Navy Blue
   ]
 
   const baseSeries = [
@@ -1885,6 +1878,33 @@ const initializeRealDataSeries = async () => {
         dataPointsCount: itemData.length
       })
 
+      // *** DETAILED VALUE LOGGING FOR 14 ITEMS FROM T3000 ***
+      LogUtil.Info(`🔍 [SERIES ${i + 1}] T3000 Data Details:`, {
+        seriesNumber: i + 1,
+        panelId: inputItem.panel,
+        pointType: inputItem.point_type,
+        pointNumber: inputItem.point_number,
+        rangeValue: rangeValue,
+        dataType: rangeValue === 1 ? 'DIGITAL' : 'ANALOG',
+        rawDataPoints: itemData.length,
+        firstDataPoint: itemData[0] ? {
+          timestamp: itemData[0].timestamp,
+          value: itemData[0].value,
+          timestampReadable: new Date(itemData[0].timestamp).toISOString()
+        } : 'NO DATA',
+        lastDataPoint: itemData.length > 0 ? {
+          timestamp: itemData[itemData.length - 1].timestamp,
+          value: itemData[itemData.length - 1].value,
+          timestampReadable: new Date(itemData[itemData.length - 1].timestamp).toISOString()
+        } : 'NO DATA',
+        valueRange: itemData.length > 0 ? {
+          min: Math.min(...itemData.map(d => d.value)),
+          max: Math.max(...itemData.map(d => d.value)),
+          average: itemData.reduce((sum, d) => sum + d.value, 0) / itemData.length
+        } : 'NO DATA',
+        dataSource: itemData.length > 0 ? 'T3000_REAL_DATA' : 'NO_DATA_AVAILABLE'
+      })
+
       // Use device description for series name, always show as IN/OUT/VAR - Description
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
@@ -2307,7 +2327,13 @@ const initializeData = async () => {
   // First, try to initialize with real T3000 data
   const monitorConfig = getMonitorConfigFromT3000Data()
   if (monitorConfig && monitorConfig.inputItems && monitorConfig.inputItems.length > 0) {
-    LogUtil.Info('�?TimeSeriesModal: Real monitor data available, initializing with real data series')
+    LogUtil.Info('🌐 *** USING REAL T3000 DATA *** - TimeSeriesModal: Real monitor data available, initializing with real data series')
+    LogUtil.Info('📡 Real T3000 Data Source Info:', {
+      totalInputItems: monitorConfig.inputItems.length,
+      hasRanges: monitorConfig.ranges && monitorConfig.ranges.length > 0,
+      monitorId: monitorConfig.id,
+      dataType: 'REAL_T3000_DATA'
+    })
     LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
       id: monitorConfig.id,
       inputItemsCount: monitorConfig.inputItems.length,
@@ -2342,14 +2368,15 @@ const initializeData = async () => {
       LogUtil.Error('�?TimeSeriesModal: Failed to initialize real data series, falling back to mock data:', error)
     }
   } else {
-    LogUtil.Info('ℹ️ TimeSeriesModal: No real monitor data available, using mock data')
-    LogUtil.Info('📊 TimeSeriesModal: Monitor config status:', {
+    LogUtil.Info('🎭 *** USING MOCK DATA *** - TimeSeriesModal: No real monitor data available, using mock data')
+    LogUtil.Info('📊 Mock Data Configuration:', {
       configExists: !!monitorConfig,
       hasInputItems: !!(monitorConfig?.inputItems),
       inputItemsLength: monitorConfig?.inputItems?.length || 0,
       scheduleDataExists: !!scheduleItemData.value,
       scheduleId: (scheduleItemData.value as any)?.t3Entry?.id,
-      panelsDataLength: T3000_Data.value.panelsData?.length || 0
+      panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+      dataType: 'MOCK_DATA_FALLBACK'
     })
   }
 
@@ -2368,6 +2395,25 @@ const initializeData = async () => {
     dataSeries.value.forEach((series, index) => {
       if (!series.isEmpty) {
         series.data = generateMockData(index, minutes)
+
+        // *** MOCK DATA LOGGING FOR COMPARISON ***
+        LogUtil.Info(`🎭 [SERIES ${index + 1}] MOCK Data Generated:`, {
+          seriesNumber: index + 1,
+          dataType: series.unitType,
+          rangeValue: series.unitCode,
+          mockDataPoints: series.data.length,
+          firstMockValue: series.data[0] ? {
+            timestamp: series.data[0].timestamp,
+            value: series.data[0].value,
+            timestampReadable: new Date(series.data[0].timestamp).toISOString()
+          } : 'NO DATA',
+          valueRange: series.data.length > 0 ? {
+            min: Math.min(...series.data.map(d => d.value)),
+            max: Math.max(...series.data.map(d => d.value)),
+            average: series.data.reduce((sum, d) => sum + d.value, 0) / series.data.length
+          } : 'NO DATA',
+          dataSource: 'MOCK_DATA_GENERATED'
+        })
       }
     })
   }
@@ -2693,10 +2739,10 @@ const zoomOut = () => {
 }
 
 const resetToDefaultTimebase = () => {
-  timeBase.value = '1h'
+  timeBase.value = '5m'
   timeOffset.value = 0 // Reset time navigation as well
   onTimeBaseChange()
-  message.info('Reset to default 1 hour timebase')
+  message.info('Reset to default 5 minutes timebase')
 }
 
 const setView = (viewNumber: number) => {
