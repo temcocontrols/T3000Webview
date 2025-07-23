@@ -455,6 +455,8 @@ class WebSocketClient {
   public GetEntries(data: any[]) {
     // action: 6, // GET_ENTRIES
 
+    console.log('= ws: GetEntries / data:', data);
+
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
 

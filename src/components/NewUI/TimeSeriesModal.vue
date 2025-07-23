@@ -1598,117 +1598,114 @@ const initializeDataClients = () => {
  * Fetch real-time data for all monitor input items
  */
 const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
-  const monitorConfig = getMonitorConfigFromT3000Data()
-  if (!monitorConfig) {
-    LogUtil.Error('Cannot fetch real-time data: No monitor configuration available')
-    return []
-  }
-
-  LogUtil.Debug('=== FETCHING REAL-TIME MONITOR DATA ===')
-  LogUtil.Debug(`Fetching data for ${monitorConfig.numInputs} input items`)
-
   try {
-    // Initialize the appropriate data client
-    const dataClient = initializeDataClients()
+    LogUtil.Info('🔄 TimeSeriesModal: Starting real-time monitor data fetch...')
 
-    // Prepare data structure for all input items
-    const allItemsData: DataPoint[][] = []
-    const currentTime = Date.now()
-
-    // Process each input item
-    for (let i = 0; i < monitorConfig.inputItems.length; i++) {
-      const inputItem = monitorConfig.inputItems[i]
-      const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
-
-      LogUtil.Debug(`Processing item ${i + 1}:`, {
-        panel: inputItem.panel,
-        pointNumber: inputItem.point_number,
-        pointType: inputItem.point_type,
-        pointTypeInfo: pointTypeInfo,
-        network: inputItem.network,
-        subPanel: inputItem.sub_panel
-      })
-
-      // Request data for this specific input item
-      const itemData = await fetchSingleItemData(dataClient, inputItem, monitorConfig)
-      allItemsData.push(itemData)
+    const monitorConfig = getMonitorConfigFromT3000Data()
+    if (!monitorConfig) {
+      LogUtil.Info('❌ TimeSeriesModal: No monitor config found, falling back to mock data')
+      return []
     }
 
-    LogUtil.Debug(`Successfully fetched data for ${allItemsData.length} items`)
-    return allItemsData
+    LogUtil.Info('✅ TimeSeriesModal: Monitor config extracted:', monitorConfig)
+
+    // Initialize data client (returns single client based on environment)
+    const dataClient = initializeDataClients()
+
+    if (!dataClient) {
+      LogUtil.Info('❌ TimeSeriesModal: No data client available')
+      return []
+    }
+
+    // Setup message handlers for GET_ENTRIES responses
+    setupGetEntriesResponseHandlers(dataClient)
+
+    // Get current device for panelId - use the first available panel as fallback
+    const panelsList = T3000_Data.value.panelsList || []
+    const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+    LogUtil.Info('📊 TimeSeriesModal: Using panelId:', currentPanelId)
+
+    // Get panels data for device mapping
+    const panelsData = T3000_Data.value.panelsData || []
+    const currentPanelData = panelsData.find(panel => panel.pid === currentPanelId)
+
+    if (!currentPanelData) {
+      LogUtil.Info('❌ TimeSeriesModal: No panel data found for panelId:', currentPanelId)
+      return []
+    }
+
+    LogUtil.Info('📋 TimeSeriesModal: Found panel data with', currentPanelData.length, 'devices')
+
+    // Fetch data for all input items
+    const allDataPromises = monitorConfig.inputItems.map(async (inputItem, index) => {
+      return await fetchSingleItemData(dataClient, inputItem, {
+        ...monitorConfig,
+        panelId: currentPanelId,
+        panelData: currentPanelData,
+        itemIndex: index
+      })
+    })
+
+    const allDataResults = await Promise.all(allDataPromises)
+    LogUtil.Info('✅ TimeSeriesModal: All data fetched successfully, results count:', allDataResults.length)
+
+    return allDataResults
 
   } catch (error) {
-    LogUtil.Error('Error fetching real-time monitor data:', error)
+    LogUtil.Error('❌ TimeSeriesModal: Error fetching real-time monitor data:', error)
     return []
   }
 }
 
 /**
- * Fetch data for a single input item
+ * Fetch data for a single input item with enhanced device mapping
  */
-const fetchSingleItemData = async (dataClient: any, inputItem: any, monitorConfig: any): Promise<DataPoint[]> => {
+const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any): Promise<DataPoint[]> => {
   try {
-    // Prepare request parameters
-    const requestData = {
-      action: 6, // GET_ENTRIES action from WebSocketClient
-      panelId: inputItem.panel,
-      pointNumber: inputItem.point_number,
-      pointType: inputItem.point_type,
-      network: inputItem.network,
-      subPanel: inputItem.sub_panel
-    }
+    LogUtil.Info(`🔍 TimeSeriesModal: Processing input item:`, inputItem)
 
-    LogUtil.Debug('Requesting data for item:', requestData)
+    // Extract index from config (this should match the input item index in the array)
+    const itemIndex = config.itemIndex || 0
+    const rangeValue = config.ranges[itemIndex] || 0
 
-    // Use the appropriate client method to fetch data
-    let rawData
-    if (dataClient instanceof WebSocketClient) {
-      // For WebSocket client
-      rawData = await new Promise((resolve, reject) => {
-        dataClient.GetEntries([requestData])
+    // Log device mapping details
+    const deviceId = logDeviceMapping(inputItem, itemIndex, rangeValue)
 
-        // Set up listener for response (simplified - you may need to enhance this)
-        const timeout = setTimeout(() => reject(new Error('Timeout')), 5000)
+    // Find matching device in panelsData using generated device ID
+    const matchingDevice = findDeviceByGeneratedId(config.panelData, deviceId)
 
-        // This would need proper event handling based on your WebSocketClient implementation
-        dataClient.HandleGetEntriesRes = (msgData) => {
-          clearTimeout(timeout)
-          resolve(msgData.data)
-        }
-      })
-    } else {
-      // For WebView client - implement similar logic
-      rawData = await dataClient.GetEntries([requestData])
-    }
-
-    // Convert raw data to DataPoint format
-    const dataPoints: DataPoint[] = []
-    if (rawData && Array.isArray(rawData)) {
-      const currentTime = Date.now()
-      rawData.forEach((point, index) => {
-        dataPoints.push({
-          timestamp: currentTime - (rawData.length - index - 1) * monitorConfig.dataIntervalMs,
-          value: parseFloat(point.value) || 0
-        })
-      })
-    } else {
-      // Generate a single current data point if no historical data available
-      const currentValue = Math.random() * 100 // Replace with actual current value
-      dataPoints.push({
+    if (!matchingDevice) {
+      LogUtil.Info(`❌ TimeSeriesModal: No device found with ID: ${deviceId}, leaving as empty`)
+      return [{
         timestamp: Date.now(),
-        value: currentValue
-      })
+        value: 0
+      }]
     }
 
-    return dataPoints
+    LogUtil.Info(`✅ TimeSeriesModal: Found matching device:`, matchingDevice)
 
-  } catch (error) {
-    LogUtil.Error('Error fetching single item data:', error)
+    // Process the device value based on range type
+    const processedValue = processDeviceValue(matchingDevice, rangeValue)
+    LogUtil.Info(`📊 TimeSeriesModal: Processed value:`, processedValue)
 
-    // Return mock data point as fallback
+    // Send GET_ENTRIES request to get latest data from T3000
+    const deviceIndex = parseInt(matchingDevice.index) || 0
+    const deviceType = mapPointTypeToString(inputItem.point_type)
+
+    await sendGetEntriesRequest(dataClient, config.panelId, deviceIndex, deviceType)
+
+    // Return current data point with processed value
+    // Note: More data will come through the message handlers (HandleGetEntriesRes)
     return [{
       timestamp: Date.now(),
-      value: Math.random() * 100
+      value: processedValue.value
+    }]
+
+  } catch (error) {
+    LogUtil.Error('❌ TimeSeriesModal: Error fetching single item data:', error)
+    return [{
+      timestamp: Date.now(),
+      value: 0
     }]
   }
 }
@@ -1778,6 +1775,218 @@ const initializeRealDataSeries = async () => {
   }
 }
 
+// ====================================================================================
+// ENHANCED T3000 DEVICE MAPPING AND VALUE PROCESSING FUNCTIONS
+// ====================================================================================
+
+/**
+ * Generate device ID from point type
+ */
+const generateDeviceId = (pointType: number): string => {
+  const typeString = mapPointTypeToString(pointType)
+  const typeIndex = getPointTypeIndex(pointType)
+  return `${typeString}${typeIndex}`
+}
+
+/**
+ * Map point type number to string prefix
+ */
+const mapPointTypeToString = (pointType: number): string => {
+  if (pointType >= 0 && pointType <= 127) return 'IN'   // BAC_IN
+  if (pointType >= 128 && pointType <= 255) return 'OUT' // BAC_OUT
+  if (pointType >= 256 && pointType <= 383) return 'VAR' // BAC_VAR
+  return 'UNKNOWN'
+}
+
+/**
+ * Get the index within the point type range
+ */
+const getPointTypeIndex = (pointType: number): number => {
+  if (pointType >= 0 && pointType <= 127) return pointType + 1      // IN1-IN128
+  if (pointType >= 128 && pointType <= 255) return pointType - 127  // OUT1-OUT128
+  if (pointType >= 256 && pointType <= 383) return pointType - 255  // VAR1-VAR128
+  return 0
+}
+
+/**
+ * Process device value based on unit type and range
+ */
+const processDeviceValue = (device: any, rangeValue: number): { value: number; displayValue: string; unit: string } => {
+  const rawValue = parseFloat(device.value) || 0
+
+  // Digital units (range 0-22)
+  if (rangeValue >= 0 && rangeValue <= 22) {
+    const digitalValue = rawValue > 0 ? 1 : 0
+    const unitInfo = getUnitInfo(rangeValue)
+    const displayValue = unitInfo.type === 'digital' ? unitInfo.info.states[digitalValue] : digitalValue.toString()
+
+    return {
+      value: digitalValue,
+      displayValue,
+      unit: unitInfo.info.label
+    }
+  }
+
+  // Analog units (range 31-63)
+  if (rangeValue >= 31 && rangeValue <= 63) {
+    // Divide by 1000 if value > 1000
+    const processedValue = rawValue > 1000 ? rawValue / 1000 : rawValue
+    const unitInfo = getUnitInfo(rangeValue)
+
+    return {
+      value: processedValue,
+      displayValue: `${processedValue.toFixed(2)}`,
+      unit: unitInfo.type === 'analog' ? unitInfo.info.symbol || unitInfo.info.label : ''
+    }
+  }
+
+  // Unknown range - return as-is
+  return {
+    value: rawValue,
+    displayValue: rawValue.toString(),
+    unit: ''
+  }
+}
+
+/**
+ * Send GET_ENTRIES request for a single device
+ */
+const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceIndex: number, deviceType: string): Promise<void> => {
+  const requestData = [{
+    panelId: panelId,
+    index: deviceIndex,
+    type: deviceType
+  }]
+
+  LogUtil.Info(`📤 TimeSeriesModal: Sending GET_ENTRIES request:`, requestData)
+
+  if (dataClient && dataClient.GetEntries) {
+    dataClient.GetEntries(requestData)
+  } else {
+    LogUtil.Error('❌ TimeSeriesModal: No GetEntries method available on data client')
+  }
+}
+
+/**
+ * Send GET_ENTRIES requests for multiple devices
+ */
+const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{panelId: number, index: number, type: string}>): Promise<void> => {
+  LogUtil.Info(`📤 TimeSeriesModal: Sending batch GET_ENTRIES request for ${requests.length} devices:`, requests)
+
+  if (dataClient && dataClient.GetEntries) {
+    dataClient.GetEntries(requests)
+  } else {
+    LogUtil.Error('❌ TimeSeriesModal: No GetEntries method available on data client')
+  }
+}
+
+/**
+ * Enhanced device lookup with proper mapping
+ */
+const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
+  LogUtil.Info(`🔍 TimeSeriesModal: Looking for device with ID: ${deviceId}`)
+
+  const matchingDevice = panelData.find(device => device.id === deviceId)
+
+  if (matchingDevice) {
+    LogUtil.Info(`✅ TimeSeriesModal: Found device:`, {
+      id: matchingDevice.id,
+      value: matchingDevice.value,
+      label: matchingDevice.label,
+      unit: matchingDevice.unit
+    })
+  } else {
+    LogUtil.Info(`❌ TimeSeriesModal: No device found with ID: ${deviceId}`)
+  }
+
+  return matchingDevice
+}
+
+/**
+ * Log device mapping details for debugging
+ */
+const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => {
+  const deviceId = generateDeviceId(inputItem.point_type)
+  const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
+
+  LogUtil.Info(`📊 TimeSeriesModal: Input Item ${index + 1} Mapping:`, {
+    inputItem,
+    pointType: inputItem.point_type,
+    pointTypeInfo,
+    generatedDeviceId: deviceId,
+    rangeValue,
+    rangeType: rangeValue >= 0 && rangeValue <= 22 ? 'Digital' : rangeValue >= 31 && rangeValue <= 63 ? 'Analog' : 'Unknown'
+  })
+
+  return deviceId
+}
+
+/**
+ * Setup message handlers for GET_ENTRIES responses
+ */
+const setupGetEntriesResponseHandlers = (dataClient: any) => {
+  LogUtil.Info('🔧 TimeSeriesModal: Setting up GET_ENTRIES response handlers')
+
+  if (!dataClient) return
+
+  // Store original handler if it exists
+  const originalHandler = dataClient.HandleGetEntriesRes
+
+  // Create our custom handler
+  dataClient.HandleGetEntriesRes = (msgData: any) => {
+    LogUtil.Info('📨 TimeSeriesModal: Received GET_ENTRIES response:', msgData)
+
+    try {
+      if (msgData.data && Array.isArray(msgData.data)) {
+        // Process the received data and update our chart
+        updateChartWithNewData(msgData.data)
+      }
+    } catch (error) {
+      LogUtil.Error('❌ TimeSeriesModal: Error processing GET_ENTRIES response:', error)
+    }
+
+    // Call original handler if it existed
+    if (originalHandler && typeof originalHandler === 'function') {
+      originalHandler.call(dataClient, msgData)
+    }
+  }
+}
+
+/**
+ * Update chart with new data from GET_ENTRIES response
+ */
+const updateChartWithNewData = (newData: any[]) => {
+  LogUtil.Info('📈 TimeSeriesModal: Updating chart with new data:', newData)
+
+  const currentTime = Date.now()
+
+  // Update each data series with new values
+  newData.forEach((dataPoint, index) => {
+    if (index < dataSeries.value.length && dataSeries.value[index]) {
+      const newPoint: DataPoint = {
+        timestamp: currentTime,
+        value: parseFloat(dataPoint.value) || 0
+      }
+
+      // Add new point to series data
+      dataSeries.value[index].data.push(newPoint)
+
+      // Keep only recent data points (last 100 points to prevent memory issues)
+      const maxDataPoints = 100
+      if (dataSeries.value[index].data.length > maxDataPoints) {
+        dataSeries.value[index].data = dataSeries.value[index].data.slice(-maxDataPoints)
+      }
+
+      LogUtil.Info(`📊 TimeSeriesModal: Updated series ${index} with value: ${newPoint.value}`)
+    }
+  })
+
+  // Update the chart if it exists
+  if (chartInstance) {
+    updateChart()
+  }
+}
+
 const getTimeRangeMinutes = (range: string): number => {
   const ranges = {
     '5m': 5,        // 5 minutes
@@ -1793,21 +2002,55 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = async () => {
-  LogUtil.Debug('=== INITIALIZE DATA ===')
+  LogUtil.Info('🚀 TimeSeriesModal: Starting data initialization...')
 
   // First, try to initialize with real T3000 data
   const monitorConfig = getMonitorConfigFromT3000Data()
   if (monitorConfig && monitorConfig.inputItems && monitorConfig.inputItems.length > 0) {
-    LogUtil.Debug('Real monitor data available, initializing with real data series')
+    LogUtil.Info('✅ TimeSeriesModal: Real monitor data available, initializing with real data series')
+    LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
+      id: monitorConfig.id,
+      inputItemsCount: monitorConfig.inputItems.length,
+      rangesCount: monitorConfig.ranges.length,
+      dataInterval: monitorConfig.dataIntervalMs
+    })
+
     try {
-      await initializeRealDataSeries()
-      updateChart()
-      return
+      // Test the real data fetching system
+      LogUtil.Info('🔄 TimeSeriesModal: Testing real data fetch...')
+      const realTimeData = await fetchRealTimeMonitorData()
+
+      if (realTimeData && realTimeData.length > 0) {
+        LogUtil.Info('✅ TimeSeriesModal: Real data fetch successful, got', realTimeData.length, 'data series')
+
+        // Log sample data for first few series
+        realTimeData.slice(0, 3).forEach((seriesData, index) => {
+          LogUtil.Info(`📈 TimeSeriesModal: Series ${index} sample data:`, {
+            dataPointsCount: seriesData.length,
+            firstPoint: seriesData[0],
+            lastPoint: seriesData[seriesData.length - 1]
+          })
+        })
+
+        await initializeRealDataSeries()
+        updateChart()
+        return
+      } else {
+        LogUtil.Info('⚠️ TimeSeriesModal: Real data fetch returned empty results')
+      }
     } catch (error) {
-      LogUtil.Warn('Failed to initialize real data series, falling back to mock data:', error)
+      LogUtil.Error('❌ TimeSeriesModal: Failed to initialize real data series, falling back to mock data:', error)
     }
   } else {
-    LogUtil.Debug('No real monitor data available, using mock data')
+    LogUtil.Info('ℹ️ TimeSeriesModal: No real monitor data available, using mock data')
+    LogUtil.Info('📊 TimeSeriesModal: Monitor config status:', {
+      configExists: !!monitorConfig,
+      hasInputItems: !!(monitorConfig?.inputItems),
+      inputItemsLength: monitorConfig?.inputItems?.length || 0,
+      scheduleDataExists: !!scheduleItemData.value,
+      scheduleId: (scheduleItemData.value as any)?.t3Entry?.id,
+      panelsDataLength: T3000_Data.value.panelsData?.length || 0
+    })
   }
 
   // Fallback to existing mock data logic
@@ -2675,20 +2918,66 @@ watch(() => props.visible, (newVal) => {
 
 // Lifecycle
 onMounted(() => {
-  LogUtil.Debug('TimeSeriesChart mounted: scheduleItemData is ', scheduleItemData.value);
-  LogUtil.Debug('TimeSeriesChart mounted: T3000_Data->panelsData is ', T3000_Data.value.panelsData);
+  LogUtil.Info('🚀 TimeSeriesModal: Component mounted - starting comprehensive T3000 data integration test')
+  LogUtil.Info('📊 TimeSeriesModal: scheduleItemData:', scheduleItemData.value)
+  LogUtil.Info('📊 TimeSeriesModal: T3000_Data->panelsData length:', T3000_Data.value.panelsData?.length || 0)
 
-  // Log the real data extraction attempt for debugging
+  // === COMPREHENSIVE T3000 REAL DATA INTEGRATION TEST ===
+  LogUtil.Info('🔍 TimeSeriesModal: === STARTING T3000 REAL DATA INTEGRATION TEST ===')
+
+  // Test 1: Monitor Configuration Extraction
   const monitorConfig = getMonitorConfigFromT3000Data()
   if (monitorConfig) {
-    LogUtil.Debug('=== REAL DATA AVAILABLE ===')
-    LogUtil.Debug('Monitor Configuration:', monitorConfig)
-    LogUtil.Debug(`Found ${monitorConfig.inputItems.length} input items to monitor`)
-    LogUtil.Debug(`Data retrieval interval: ${monitorConfig.dataIntervalMs}ms`)
+    LogUtil.Info('✅ TEST 1 PASSED: Monitor Configuration Found')
+    LogUtil.Info('📋 TimeSeriesModal: Monitor Configuration:', monitorConfig)
+    LogUtil.Info(`📊 TimeSeriesModal: Found ${monitorConfig.inputItems.length} input items to monitor`)
+    LogUtil.Info(`⏱️ TimeSeriesModal: Data retrieval interval: ${monitorConfig.dataIntervalMs}ms`)
+
+    // Test 2: Device Mapping for each input item
+    LogUtil.Info('🔍 TimeSeriesModal: TEST 2 - Device Mapping for all input items:')
+    monitorConfig.inputItems.forEach((inputItem, index) => {
+      const deviceId = logDeviceMapping(inputItem, index, monitorConfig.ranges[index] || 0)
+
+      // Test if we can find this device in panelsData
+      const panelsData = T3000_Data.value.panelsData || []
+      const foundDevice = panelsData.find(panel =>
+        Array.isArray(panel) ? panel.find(device => device.id === deviceId) : false
+      )
+
+      if (foundDevice) {
+        LogUtil.Info(`✅ TEST 2.${index + 1} PASSED: Device ${deviceId} found in panelsData`)
+      } else {
+        LogUtil.Info(`❌ TEST 2.${index + 1} FAILED: Device ${deviceId} NOT found in panelsData`)
+      }
+    })
+
+    // Test 3: Data Client Initialization
+    LogUtil.Info('🔍 TimeSeriesModal: TEST 3 - Data Client Initialization:')
+    const dataClient = initializeDataClients()
+    if (dataClient) {
+      LogUtil.Info('✅ TEST 3 PASSED: Data client initialized:', dataClient.constructor.name)
+      LogUtil.Info('🔧 TimeSeriesModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
+    } else {
+      LogUtil.Info('❌ TEST 3 FAILED: No data client available')
+    }
+
+    // Test 4: Value Processing
+    LogUtil.Info('🔍 TimeSeriesModal: TEST 4 - Value Processing Test:')
+    // Test digital value processing
+    const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
+    LogUtil.Info('✅ TEST 4.1 Digital Value Processing:', testDigitalValue)
+
+    // Test analog value processing
+    const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
+    LogUtil.Info('✅ TEST 4.2 Analog Value Processing:', testAnalogValue)
+
+    LogUtil.Info('🏁 TimeSeriesModal: === T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
   } else {
-    LogUtil.Debug('=== NO REAL DATA - USING MOCK DATA ===')
-    LogUtil.Debug('scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
-    LogUtil.Debug('Available panelsData:', T3000_Data.value.panelsData)
+    LogUtil.Info('❌ TEST 1 FAILED: No Monitor Configuration Found')
+    LogUtil.Info('🔍 TimeSeriesModal: Debugging info:')
+    LogUtil.Info('📊 TimeSeriesModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
+    LogUtil.Info('📊 TimeSeriesModal: Available panelsData count:', T3000_Data.value.panelsData?.length || 0)
+    LogUtil.Info('📊 TimeSeriesModal: PanelsData sample:', T3000_Data.value.panelsData?.slice(0, 2))
   }
 
   // Apply default view configuration to ensure settings are properly initialized
