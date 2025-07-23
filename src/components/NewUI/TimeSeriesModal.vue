@@ -299,16 +299,16 @@
                   <div class="series-info">
                     <div class="series-name-line">
                       <div class="series-name-container">
+                        <span class="series-name">{{ series.description || series.name }}</span>
                         <q-chip
                           v-if="series.prefix"
                           :label="series.prefix"
-                          color="primary"
-                          text-color="white"
-                          size="sm"
+                          color="grey-4"
+                          text-color="grey-8"
+                          size="xs"
                           dense
-                          class="series-prefix-tag"
+                          class="series-prefix-tag-small"
                         />
-                        <span class="series-name">{{ series.description || series.name }}</span>
                       </div>
                       <span v-if="!series.isEmpty" class="series-inline-tags">
                         <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
@@ -3552,6 +3552,15 @@ onUnmounted(() => {
 .series-prefix-tag {
   margin: 0 !important;
   flex-shrink: 0;
+}
+
+.series-prefix-tag-small {
+  margin: 0 0 0 6px !important;
+  flex-shrink: 0;
+  font-size: 8px !important;
+  padding: 2px 6px !important;
+  height: auto !important;
+  line-height: 1.2 !important;
 }
 
 .series-name {
