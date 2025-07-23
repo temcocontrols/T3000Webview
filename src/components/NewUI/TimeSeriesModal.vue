@@ -634,48 +634,78 @@ const expandedSeries = ref<Set<number>>(new Set())
 const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
   const panelsData = T3000_Data.value.panelsData
   if (!panelsData || !Array.isArray(panelsData)) return ''
-  // Find the panel by id or pid
-  const panel = panelsData.find(
-    (p: any) => String(p.id) === String(panelId) || String(p.pid) === String(panelId)
+  const pointTypeInfo = getPointTypeInfo(pointType)
+  if (!pointTypeInfo || !pointTypeInfo.category) return ''
+  const idToFind = `${pointTypeInfo.category}${pointNumber+1}` // Adjusted to match T3000.rc format
+  const device = panelsData.find(
+    (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
   )
-  if (!panel) return ''
-  // Map pointType to property name
-  let prop = ''
-  if (pointType === 1) prop = 'output'
-  else if (pointType === 2) prop = 'input'
-  else if (pointType === 3) prop = 'variable'
-  else return ''
-  const arr = panel[prop]
-  if (!arr || !Array.isArray(arr)) return ''
-  // pointNumber is usually 1-based
-  const item = arr[pointNumber - 1]
-  if (!item) return ''
-  return item.description || item.label || ''
+  return device?.description || ''
 }
 
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
   const colors = [
-    '#E53E3E', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#00ACC1', '#FDD835', '#F4511E',
-    '#00695C', '#5D4037', '#7B1FA2', '#C62828', '#1565C0', '#2E7D32', '#EF6C00', '#6A1B9A',
-    '#0277BD', '#388E3C', '#F57C00', '#7B1FA2', '#0891B2'
+    '#E53E3E', // Bright Red
+    '#1E88E5', // Bright Blue
+    '#43A047', // Forest Green
+    '#FB8C00', // Deep Orange
+    '#8E24AA', // Deep Purple
+    '#00ACC1', // Cyan
+    '#FDD835', // Bright Yellow
+    '#F4511E', // Deep Orange Red
+    '#00695C', // Dark Teal
+    '#5D4037', // Brown
+    '#7B1FA2', // Dark Purple
+    '#C62828', // Dark Red
+    '#1565C0', // Dark Blue
+    '#2E7D32', // Dark Green
+    '#EF6C00', // Dark Orange
+    '#6A1B9A', // Deep Purple
+    '#0277BD', // Light Blue
+    '#388E3C', // Medium Green
+    '#F57C00', // Amber
+    '#7B1FA2', // Purple
+    '#0891B2'  // Cyan
   ]
+
   const baseSeries = [
     'BMC01E1E-1P1B', 'BMC01E1E-2P1B', 'BMC01E1E-3P1B', 'BMC01E1E-4P1B',
     'BMC01E1E-5P1B', 'BMC01E1E-6P1B', 'BMC01E1E-7P1B', 'BMC01E1E-8P1B',
     'BMC01E1E-9P1B', 'BMC01E1E-10P1B', 'BMC01E1E-11P1B', 'BMC01E1E-12P1B',
     'BMC01E1E-13P1B', 'BMC01E1E-14P1B'
   ]
-  const unitCodes = [31,32,1,2,54,3,44,5,49,8,54,11,42,18]
+
+  // Mixed unit codes for demo - digital and analog combined
+  const unitCodes = [
+    31, // deg.Celsius (analog)
+    32, // deg.Fahrenheit (analog)
+    1,  // Off/On (digital)
+    2,  // Close/Open (digital)
+    54, // Percent (analog)
+    3,  // Stop/Start (digital)
+    44, // Volts (analog)
+    5,  // Normal/Alarm (digital)
+    49, // Watts (analog)
+    8,  // Auto/Manual (digital)
+    54, // Percent (analog)
+    11, // Inactive/Active (digital)
+    42, // CFM (analog)
+    18  // Standby/Running (digital)
+  ]
+
   const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
-  const panelIds = [2,2,2,2,2,2,2,2,3,3,3,3,3,3]
+  const panelIds = [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3] // Panel IDs for each item
+
   return baseSeries.map((name, index) => {
     const unitCode = unitCodes[index]
     const unitInfo = getUnitInfo(unitCode)
     const panelId = panelIds[index]
-    const itemNumber = (index % 7) + 1
+    const itemNumber = (index % 7) + 1 // Generate numbers 1-7, then repeat
+
     let unit: string
     let digitalStates: [string, string] | undefined
+
     if (unitInfo.type === 'digital') {
       const digitalInfo = unitInfo.info as { label: string; states: [string, string] }
       unit = digitalInfo.label
@@ -685,21 +715,21 @@ const generateDataSeries = (): SeriesConfig[] => {
       unit = analogInfo.symbol
       digitalStates = undefined
     }
-    // Use device description for name
-    let desc = getDeviceDescription(panelId, (unitInfo.type === 'digital' ? 1 : 2), itemNumber)
-    if (!desc) desc = name
-    const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}`
+
+    // Generate new format: panelId + itemType + itemNumber (e.g., "2VAR20", "3Input5")
+    const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}` // +19 to start from 20
+
     return {
-      name: desc,
+      name: name,
       color: colors[index % colors.length],
       data: [],
-      visible: index < 7,
+      visible: index < 7, // Only first 7 visible by default
       unit: unit,
-      isEmpty: index >= 7,
+      isEmpty: index >= 7, // Mark items 8-14 as empty by default
       unitType: unitInfo.type,
       unitCode: unitCode,
       digitalStates: digitalStates,
-      itemType: formattedItemType
+      itemType: formattedItemType // Use the new format
     }
   })
 }
@@ -1727,7 +1757,8 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
 
     // Send GET_ENTRIES request to get latest data from T3000
     const deviceIndex = parseInt(matchingDevice.index) || 0
-    const deviceType = mapPointTypeToString(inputItem.point_type)
+    // const deviceType = mapPointTypeToString(inputItem.point_type)
+    const deviceType=inputItem.point_type
 
     LogUtil.Info(`📤 TimeSeriesModal: About to send GET_ENTRIES:`, {
       panelId: config.panelId,
@@ -1809,11 +1840,16 @@ const initializeRealDataSeries = async () => {
         dataPointsCount: itemData.length
       })
 
+      // Use device description for series name, always show as IN/OUT/VAR - Description
+      const prefix = pointTypeInfo.category
+      const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
+      const seriesName = `${prefix} - ${desc || `${prefix}${inputItem.point_number} (P${inputItem.panel})`}`
+
       // Determine unit type and create series configuration
       const unitInfo = getUnitInfo(rangeValue)
       const unitSymbol = unitInfo.type === 'digital' ? '' : (unitInfo.info as any).symbol || ''
       const seriesConfig: SeriesConfig = {
-        name: `${pointTypeInfo.category}${inputItem.point_number} (P${inputItem.panel})`,
+        name: seriesName,
         color: `hsl(${(i * 360) / monitorConfig.inputItems.length}, 70%, 50%)`,
         data: itemData,
         visible: true,
