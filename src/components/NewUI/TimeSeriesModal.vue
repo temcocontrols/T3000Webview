@@ -1,6 +1,5 @@
 <template>
   <a-config-provider :theme="{
-    algorithm: theme.defaultAlgorithm,
     token: {
       colorPrimary: '#0064c8',
       colorBgBase: '#ffffff',
@@ -299,7 +298,18 @@
                   </div>
                   <div class="series-info">
                     <div class="series-name-line">
-                      <span class="series-name">{{ series.name }}</span>
+                      <div class="series-name-container">
+                        <q-chip
+                          v-if="series.prefix"
+                          :label="series.prefix"
+                          color="primary"
+                          text-color="white"
+                          size="sm"
+                          dense
+                          class="series-prefix-tag"
+                        />
+                        <span class="series-name">{{ series.description || series.name }}</span>
+                      </div>
                       <span v-if="!series.isEmpty" class="series-inline-tags">
                         <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
                           {{ series.itemType }}
@@ -419,7 +429,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { message, notification, theme } from 'ant-design-vue'
+import { message, notification } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
@@ -577,6 +587,27 @@ interface SeriesConfig {
   unitCode: number                    // NEW: Unit code from T3000 (1-22 digital, 31-63 analog)
   digitalStates?: [string, string]   // NEW: State labels for digital units ['Low', 'High']
   itemType?: string                  // NEW: T3000 item type (VAR, Input, Output, HOL, etc.)
+  prefix?: string                    // NEW: Category prefix (IN, OUT, VAR, etc.)
+  description?: string               // NEW: Device description
+}
+
+/**
+ * Map T3000 point types to readable names and determine data characteristics
+ */
+const getPointTypeInfo = (pointType: number) => {
+  const pointTypeMap = {
+    1: { name: 'Output', type: 'digital', category: 'OUT' },
+    2: { name: 'Input', type: 'analog', category: 'IN' },
+    3: { name: 'Variable', type: 'analog', category: 'VAR' },
+    4: { name: 'Program', type: 'digital', category: 'PRG' },
+    5: { name: 'Controller', type: 'analog', category: 'CON' },
+    6: { name: 'Screen', type: 'digital', category: 'SCR' },
+    7: { name: 'Holiday', type: 'digital', category: 'HOL' },
+    8: { name: 'Schedule', type: 'digital', category: 'SCH' },
+    9: { name: 'Monitor', type: 'analog', category: 'MON' }
+  }
+
+  return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: 'UNK' }
 }
 
 interface Props {
@@ -696,11 +727,13 @@ const generateDataSeries = (): SeriesConfig[] => {
 
   const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
   const panelIds = [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3] // Panel IDs for each item
+  const pointTypes = [3, 2, 1, 7, 3, 2, 1, 7, 3, 2, 1, 7, 3, 2] // Point type numbers (3=VAR, 2=Input, 1=Output, 7=HOL)
 
   return baseSeries.map((name, index) => {
     const unitCode = unitCodes[index]
     const unitInfo = getUnitInfo(unitCode)
     const panelId = panelIds[index]
+    const pointType = pointTypes[index]
     const itemNumber = (index % 7) + 1 // Generate numbers 1-7, then repeat
 
     let unit: string
@@ -719,6 +752,10 @@ const generateDataSeries = (): SeriesConfig[] => {
     // Generate new format: panelId + itemType + itemNumber (e.g., "2VAR20", "3Input5")
     const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}` // +19 to start from 20
 
+    // Get point type info for prefix and description
+    const pointTypeInfo = getPointTypeInfo(pointType)
+    const description = getDeviceDescription(panelId, pointType, itemNumber)
+
     return {
       name: name,
       color: colors[index % colors.length],
@@ -729,7 +766,9 @@ const generateDataSeries = (): SeriesConfig[] => {
       unitType: unitInfo.type,
       unitCode: unitCode,
       digitalStates: digitalStates,
-      itemType: formattedItemType // Use the new format
+      itemType: formattedItemType, // Use the new format
+      prefix: pointTypeInfo.category, // Add prefix from category
+      description: description // Add description from T3000 data
     }
   })
 }
@@ -1568,25 +1607,6 @@ const calculateDataInterval = (hours: number, minutes: number, seconds: number):
 }
 
 /**
- * Map T3000 point types to readable names and determine data characteristics
- */
-const getPointTypeInfo = (pointType: number) => {
-  const pointTypeMap = {
-    1: { name: 'Output', type: 'digital', category: 'OUT' },
-    2: { name: 'Input', type: 'analog', category: 'IN' },
-    3: { name: 'Variable', type: 'analog', category: 'VAR' },
-    4: { name: 'Program', type: 'digital', category: 'PRG' },
-    5: { name: 'Controller', type: 'analog', category: 'CON' },
-    6: { name: 'Screen', type: 'digital', category: 'SCR' },
-    7: { name: 'Holiday', type: 'digital', category: 'HOL' },
-    8: { name: 'Schedule', type: 'digital', category: 'SCH' },
-    9: { name: 'Monitor', type: 'analog', category: 'MON' }
-  }
-
-  return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: 'UNK' }
-}
-
-/**
  * Initialize WebSocket and WebView clients for data communication
  */
 const initializeDataClients = () => {
@@ -1858,7 +1878,9 @@ const initializeRealDataSeries = async () => {
         unitType: unitInfo.type === 'digital' ? 'digital' : 'analog',
         unitCode: rangeValue,
         digitalStates: unitInfo.type === 'digital' ? (unitInfo.info as any).states : undefined,
-        itemType: pointTypeInfo.name
+        itemType: pointTypeInfo.name,
+        prefix: prefix, // Add prefix from category
+        description: desc || `${prefix}${inputItem.point_number} (P${inputItem.panel})` // Add description
       }
 
       newDataSeries.push(seriesConfig)
@@ -3518,6 +3540,18 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
+}
+
+.series-name-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.series-prefix-tag {
+  margin: 0 !important;
+  flex-shrink: 0;
 }
 
 .series-name {
