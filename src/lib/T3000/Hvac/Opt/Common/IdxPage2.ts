@@ -234,7 +234,7 @@ class IdxPage2 {
         deviceModel.value.active = false;
         deviceModel.value.data = currentDevice;
 
-        LogUtil.Debug('= IdxPage load from local storage', currentDevice);
+        // LogUtil.Debug('= IdxPage load from local storage', currentDevice);
 
         // load device appstate
         //Hvac.DeviceOpt.refreshDeviceAppState();
@@ -336,7 +336,7 @@ class IdxPage2 {
     // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
-        LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
+        // LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
       }, 30000);
     }, 10000);

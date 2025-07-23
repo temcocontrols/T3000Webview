@@ -210,7 +210,7 @@ class ErrorHandler {
                             error.stack?.includes('gesto');
 
       if (isSelectoError) {
-        LogUtil.Debug('[ErrorHandler] Selecto/Gesto error detected and ignored:', error.message);
+        // LogUtil.Debug('[ErrorHandler] Selecto/Gesto error detected and ignored:', error.message);
         event.preventDefault();
         return;
       }
@@ -226,7 +226,7 @@ class ErrorHandler {
       );
     });
 
-    LogUtil.Debug('Global error handling initialized');
+    // LogUtil.Debug('Global error handling initialized');
   }
 
   /**

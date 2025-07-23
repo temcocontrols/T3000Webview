@@ -11,7 +11,7 @@ const createOptimizedComponent = (importFn, name, options = {}) => {
     retryDelay = 1000
   } = options;
 
-  LogUtil.Debug(`Creating component: ${name} with timeout: ${timeout}ms`);
+  // LogUtil.Debug(`Creating component: ${name} with timeout: ${timeout}ms`);
 
   return defineAsyncComponent({
     loader: async () => {
@@ -37,7 +37,7 @@ const createOptimizedComponent = (importFn, name, options = {}) => {
 
       // For timeout errors, try to retry with longer timeout
       if (error.message.includes('timed out') && attempts < maxRetries) {
-        LogUtil.Debug(`Retrying component ${name} with extended timeout...`);
+        // LogUtil.Debug(`Retrying component ${name} with extended timeout...`);
         setTimeout(() => retry(), retryDelay * attempts);
       } else {
         LogUtil.Error(`Failed to load component ${name} after ${attempts} attempts`);
@@ -67,7 +67,7 @@ async function loadComponentWithRetry(importFn, name, maxRetries, retryDelay, ti
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      LogUtil.Debug(`Loading component: ${name} (attempt ${attempt}/${maxRetries})`);
+      // LogUtil.Debug(`Loading component: ${name} (attempt ${attempt}/${maxRetries})`);
 
       // Create a promise race between the import and a timeout
       const loadPromise = importFn();
@@ -78,23 +78,23 @@ async function loadComponentWithRetry(importFn, name, maxRetries, retryDelay, ti
       });
 
       const module = await Promise.race([loadPromise, timeoutPromise]);
-      LogUtil.Debug(`Successfully loaded component: ${name} on attempt ${attempt}`);
+      // LogUtil.Debug(`Successfully loaded component: ${name} on attempt ${attempt}`);
       return module;
 
     } catch (error) {
       lastError = error;
-      LogUtil.Debug(`Failed to load component ${name} on attempt ${attempt}:`, error.message);
+      // LogUtil.Debug(`Failed to load component ${name} on attempt ${attempt}:`, error.message);
 
       // If this isn't the last attempt, wait before retrying
       if (attempt < maxRetries) {
         const delay = retryDelay * attempt; // Exponential backoff
-        LogUtil.Debug(`Retrying component ${name} in ${delay}ms...`);
+        // LogUtil.Debug(`Retrying component ${name} in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
 
-  console.error(`Failed to load component ${name} after ${maxRetries} attempts`);
+  LogUtil.Error(`Failed to load component ${name} after ${maxRetries} attempts`);
   throw lastError;
 }
 

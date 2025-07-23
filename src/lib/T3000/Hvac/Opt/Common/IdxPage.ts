@@ -33,17 +33,17 @@ class IdxPage {
 
   // wrap code for IndexPage's onMounted event
   initPage() {
-    LogUtil.Debug("= IdxPage: initPage ->");
+    // LogUtil.Debug("= IdxPage: initPage ->");
 
     Hvac.WebClient.initMessageHandler();
     this.initGlobalNav();
     this.isLoggedIn();
 
-    LogUtil.Debug("= IdxPage: initPage / initMessageHandler,initGlobalNav,isLoggedIn");
+    // LogUtil.Debug("= IdxPage: initPage / initMessageHandler,initGlobalNav,isLoggedIn");
 
     this.restoreAppState();
 
-    LogUtil.Debug("= IdxPage: initPage / restoreAppState");
+    // LogUtil.Debug("= IdxPage: initPage / restoreAppState");
 
     this.setDocMarginOffset();
     this.initPanzoom();
@@ -54,7 +54,7 @@ class IdxPage {
     this.refreshMoveableGuides();
     this.resetPanzoom();
 
-    LogUtil.Debug("= IdxPage: initPage / setDocMarginOffset,initPanzoom,initMessageClient,initScorller,initAutoSaveInterval,initWindowListener,refreshMoveableGuides,resetPanzoom");
+    // LogUtil.Debug("= IdxPage: initPage / setDocMarginOffset,initPanzoom,initMessageClient,initScorller,initAutoSaveInterval,initWindowListener,refreshMoveableGuides,resetPanzoom");
   }
 
   initPage5() {
@@ -134,19 +134,19 @@ class IdxPage {
       return;
     }
 
-    LogUtil.Debug("= IdxPage: restoreAppState / webview is not defined, loading from local storage");
-    LogUtil.Debug("= IdxPage: restoreAppState / before loading localState the appState is", appState.value);
+    // LogUtil.Debug("= IdxPage: restoreAppState / webview is not defined, loading from local storage");
+    // LogUtil.Debug("= IdxPage: restoreAppState / before loading localState the appState is", appState.value);
 
     const localState = Hvac.LsOpt.loadParsedAppStateLS();
 
-    LogUtil.Debug("= IdxPage: restoreAppState / after loading loadParsedAppStateLS localState is", localState);
+    // LogUtil.Debug("= IdxPage: restoreAppState / after loading loadParsedAppStateLS localState is", localState);
 
     if (localState) {
       appState.value = localState;
       rulersGridVisible.value = appState.value.rulersGridVisible;
     }
 
-    LogUtil.Debug("= IdxPage: restoreAppState / after loading localState appState & rulersGridVisible are", appState.value,rulersGridVisible.value);
+    // LogUtil.Debug("= IdxPage: restoreAppState / after loading localState appState & rulersGridVisible are", appState.value,rulersGridVisible.value);
   }
 
   setDocMarginOffset() {
@@ -352,7 +352,7 @@ class IdxPage {
         deviceModel.value.active = false;
         deviceModel.value.data = currentDevice;
 
-        LogUtil.Debug('= IdxPage load from local storage', currentDevice);
+        // LogUtil.Debug('= IdxPage load from local storage', currentDevice);
 
         // load device appstate
         //Hvac.DeviceOpt.refreshDeviceAppState();
@@ -623,7 +623,7 @@ class IdxPage {
     // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
-        LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
+        // LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
       }, 30000);
     }, 10000);

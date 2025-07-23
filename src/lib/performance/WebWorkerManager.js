@@ -42,7 +42,7 @@ export class WebWorkerManager {
       // Process queued messages
       this.processMessageQueue();
 
-      LogUtil.Debug('[Worker Manager] Web Worker initialized');
+      // LogUtil.Debug('[Worker Manager] Web Worker initialized');
     } catch (error) {
       LogUtil.Error('[Worker Manager] Failed to initialize worker:', error);
       this.isSupported = false;
@@ -61,7 +61,7 @@ export class WebWorkerManager {
       if (error) {
         if (retryCount < this.maxRetries) {
           // Retry the message
-          LogUtil.Debug(`[Worker Manager] Retrying message ${id}, attempt ${retryCount + 1}`);
+          // LogUtil.Debug(`[Worker Manager] Retrying message ${id}, attempt ${retryCount + 1}`);
           setTimeout(() => {
             this.retryMessage(id);
           }, this.retryDelay * Math.pow(2, retryCount));
@@ -182,7 +182,7 @@ export class WebWorkerManager {
    * Fallback processing in main thread
    */
   async processInMainThread(message) {
-    LogUtil.Debug('[Worker Manager] Processing in main thread (fallback)');
+    // LogUtil.Debug('[Worker Manager] Processing in main thread (fallback)');
 
     const { type, data } = message;
 
@@ -386,7 +386,7 @@ export class WebWorkerManager {
       this.worker = null;
       this.isWorkerReady = false;
 
-      LogUtil.Debug('[Worker Manager] Worker terminated');
+      // LogUtil.Debug('[Worker Manager] Worker terminated');
     }
   }
 }

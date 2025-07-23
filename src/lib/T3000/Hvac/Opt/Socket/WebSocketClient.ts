@@ -62,7 +62,7 @@ class WebSocketClient {
   }
 
   private onOpen(event: Event) {
-    LogUtil.Info('= ws: connection opened:', event);
+    // LogUtil.Debug('= ws: connection opened:', event);
 
     this.retries = 0;
     // this.startPing();
@@ -77,7 +77,7 @@ class WebSocketClient {
   }
 
   private onMessage(event: MessageEvent) {
-    // LogUtil.Info('= Ws message received:', event.data);
+    // LogUtil.Debug('= Ws message received:', event.data);
     try {
       this.processMessage(event.data);
     } catch (error) {
@@ -86,7 +86,7 @@ class WebSocketClient {
   }
 
   private onClose(event: CloseEvent) {
-    LogUtil.Info('= ws: connection closed:', event);
+    // LogUtil.Debug('= ws: connection closed:', event);
     this.cleanup();
     if (!this.isDestroyed) {
       this.attemptReconnect();
@@ -155,14 +155,14 @@ class WebSocketClient {
 
   private attemptReconnect() {
     if (this.retries >= this.maxRetries || this.isDestroyed) {
-      LogUtil.Info("= ws: max retries reached or client destroyed. Giving up.");
+      // LogUtil.Debug("= ws: max retries reached or client destroyed. Giving up.");
       return;
     }
 
     // Use exponential backoff for reconnection delay
     const delay = Math.min(1000 * Math.pow(2, this.retries), 30000);
 
-    LogUtil.Info(`= ws: attempting to reconnect (${this.retries + 1}/${this.maxRetries}) in ${delay}ms`);
+    // LogUtil.Debug(`= ws: attempting to reconnect (${this.retries + 1}/${this.maxRetries}) in ${delay}ms`);
 
     this.reconnectTimeoutId = setTimeout(() => {
       this.retries++;
@@ -203,11 +203,11 @@ class WebSocketClient {
       try {
         const parsedMessage = JSON.parse(message);
         if (parsedMessage?.message.action !== 1&&parsedMessage?.message.action !== 6) {
-        LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+        LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
         }
       } catch {
         // If parsing fails, log normally
-        LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+        LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
       }
       } catch (error) {
       LogUtil.Error('Failed to send message:', error);
@@ -217,7 +217,7 @@ class WebSocketClient {
     } else {
       // Queue message for later
       this.messageQueue.push(message);
-      LogUtil.Info('= ws: sendMessage / socket not open, message queued. Ready state:', this.socket?.readyState);
+      LogUtil.Debug('= ws: sendMessage / socket not open, message queued. Ready state:', this.socket?.readyState);
 
       // If not connected, attempt to connect
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
@@ -232,7 +232,7 @@ class WebSocketClient {
       if (message) {
         try {
           this.socket.send(message);
-          LogUtil.Info('= ws: pending message sent:', message);
+          LogUtil.Debug('= ws: pending message sent:', message);
         } catch (error) {
           LogUtil.Error('Failed to send pending message:', error);
           // Put message back at the beginning of queue
@@ -247,7 +247,7 @@ class WebSocketClient {
     this.isDestroyed = true;
     this.cleanup();
     this.messageQueue = [];
-    LogUtil.Info('= ws: WebSocketClient destroyed');
+    LogUtil.Debug('= ws: WebSocketClient destroyed');
   }
 
   //#region  Format Message
@@ -546,20 +546,20 @@ class WebSocketClient {
         const data = JSON.parse(parsedData.data);
         const entry = parsedData.entry;
         const library = parsedData.library != undefined && parsedData.library !== "" ? JSON.parse(parsedData.library) : {};
-        LogUtil.Info('= ws: printLog / Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
+        LogUtil.Debug('= ws: printLog / Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
       }
       else {
-        LogUtil.Info('= ws: printLog / Received data:', parsedData);
+        LogUtil.Debug('= ws: printLog / Received data:', parsedData);
       }
     }
     catch (error) {
-      LogUtil.Info('= ws: printLog / Received data error', error);
+      LogUtil.Debug('= ws: printLog / Received data error', error);
     }
   }
 
   private processMessage(data: any) {
 
-    LogUtil.Info('= ws: printLog / received origin data', data);
+    LogUtil.Debug('= ws: printLog / received origin data', data);
 
     try {
       const parsedData = JSON.parse(data);
@@ -575,7 +575,7 @@ class WebSocketClient {
       this.processMessageData(parsedData);
       this.showSuccess(parsedData);
 
-      LogUtil.Info('= ========================');
+      LogUtil.Debug('= ========================');
     } catch (error) {
       T3Util.Error('= ws: processMessage/ failed to parse | process data:', error);
     }
@@ -639,7 +639,7 @@ class WebSocketClient {
 
   public HandleGetPanelDataRes(msgData) {
 
-    // LogUtil.Info('= ws: HandleGetPanelDataRes / msgData:', JSON.stringify(msgData, null, 2));
+    // LogUtil.Debug('= ws: HandleGetPanelDataRes / msgData:', JSON.stringify(msgData, null, 2));
     /*
      load graphic list from GET_PANEL_DATA_RES
      => action: 0, // GET_PANEL_DATA_RES
@@ -697,12 +697,12 @@ class WebSocketClient {
 
   public HandleGetInitialDataRes(msgData) {
 
-    LogUtil.Info('= ws: HandleGetInitialDataRes / msgData:', msgData);
+    LogUtil.Debug('= ws: HandleGetInitialDataRes / msgData:', msgData);
 
     const isCrtDevice = Hvac.DeviceOpt.isCurrentDeviceMessage(msgData);
 
     if (!isCrtDevice) {
-      LogUtil.Info('= ws: HandleGetInitialDataRes / not current device message, return');
+      LogUtil.Debug('= ws: HandleGetInitialDataRes / not current device message, return');
       return;
     }
 
@@ -715,7 +715,7 @@ class WebSocketClient {
     }
 
     const parsedAppStateData = JSON.parse(appStateData);
-    LogUtil.Info('= ws: HandleGetInitialDataRes / GET_INITIAL_DATA_RES msgData-appState | needRefresh:', parsedAppStateData, this.needRefresh);
+    LogUtil.Debug('= ws: HandleGetInitialDataRes / GET_INITIAL_DATA_RES msgData-appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
     if (!this.needRefresh) return;
 
@@ -764,7 +764,7 @@ class WebSocketClient {
 
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
-    LogUtil.Info('= ws: GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
+    LogUtil.Debug('= ws: GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
 
     // load the first panel's panel data by default
     const firstPanelId = data.length > 0 ? data[0].panel_number : null;
@@ -797,7 +797,7 @@ class WebSocketClient {
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
-    LogUtil.Info('= ws: GET_ENTRIES_RES', msgData.data);
+    LogUtil.Debug('= ws: GET_ENTRIES_RES', msgData.data);
 
     // TODO refer to WebViewClient-> HandleGetEntriesRes
     msgData.data.forEach((item) => {
@@ -867,7 +867,7 @@ class WebSocketClient {
 
   public HandleSaveNewLibraryDataRes(msgData) {
     // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
-    LogUtil.Info('= ws: Handle SAVE_NEW_LIBRARY_DATA_RES', msgData.data);
+    LogUtil.Debug('= ws: Handle SAVE_NEW_LIBRARY_DATA_RES', msgData.data);
   }
 
   public HandleDeleteImageRes(msgData) {
@@ -931,7 +931,7 @@ class WebSocketClient {
     const rspAction = response?.action ?? -1;
     const rspStatus = response?.data?.status ?? false;
 
-    LogUtil.Info('= ws: showSuccess | action:', rspAction, '| status:', rspStatus);
+    LogUtil.Debug('= ws: showSuccess | action:', rspAction, '| status:', rspStatus);
 
     if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
       Hvac.QuasarUtil.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
@@ -972,7 +972,7 @@ class WebSocketClient {
     if (!this.needRefresh) return;
     if (this.reloadInitialDataInterval) return;
 
-    // LogUtil.Info('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
+    // LogUtil.Debug('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
 
     // Set a timer to reload the initial data every 5 minutes
     this.reloadInitialDataInterval = setInterval(() => {
@@ -985,7 +985,7 @@ class WebSocketClient {
       }
     }, 2000);
 
-    // LogUtil.Info('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
+    // LogUtil.Debug('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
   }
 
   clearInitialDataInterval() {
@@ -994,7 +994,7 @@ class WebSocketClient {
     }
 
     this.reloadInitialDataInterval = null;
-    LogUtil.Info('= ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
+    LogUtil.Debug('= ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
   }
 }
 

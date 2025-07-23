@@ -11,11 +11,11 @@ import { NodeDebugger } from 'src/lib/debug/NodeDebugger.js';
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 
 export default boot(async ({ app, router }) => {
-  LogUtil.Debug('[Boot] Initializing T3000 Performance Optimizations...');
+  // LogUtil.Debug('[Boot] Initializing T3000 Performance Optimizations...');
 
   try {
     // Initialize chunk loading manager first to handle early chunk errors
-    LogUtil.Debug('[Boot] Chunk loading manager initialized');
+    // LogUtil.Debug('[Boot] Chunk loading manager initialized');
 
     // Initialize global error handling
     ErrorHandler.initializeGlobalHandling();
@@ -36,8 +36,8 @@ export default boot(async ({ app, router }) => {
                             errorInstance.stack?.includes('gesto');
 
       if (isSelectoError) {
-        LogUtil.Debug('[Vue ErrorHandler] Selecto/Gesto error detected and ignored:', errorInstance.message);
-        console.log('[Vue ErrorHandler] Selecto error safely ignored:', errorInstance.message);
+        // LogUtil.Debug('[Vue ErrorHandler] Selecto/Gesto error detected and ignored:', errorInstance.message);
+        // LogUtil.Debug('[Vue ErrorHandler] Selecto error safely ignored:', errorInstance.message);
         return;
       }
 
@@ -57,7 +57,7 @@ export default boot(async ({ app, router }) => {
       );
     };
 
-    LogUtil.Debug('[Boot] Global error handling initialized');
+    // LogUtil.Debug('[Boot] Global error handling initialized');
 
     // Start DOM mutation monitoring in development
     if (process.env.NODE_ENV === 'development') {
@@ -68,21 +68,21 @@ export default boot(async ({ app, router }) => {
     if (process.env.NODE_ENV === 'production' || window.location.search.includes('sw=true')) {
       const swRegistered = await serviceWorkerManager.register();
       if (swRegistered) {
-        LogUtil.Debug('[Boot] Service Worker registered successfully');
+        // LogUtil.Debug('[Boot] Service Worker registered successfully');
 
         // Setup update notifications
         serviceWorkerManager.on('updateAvailable', () => {
-          LogUtil.Debug('[Boot] Service Worker update available');
+          // LogUtil.Debug('[Boot] Service Worker update available');
           // You could show a notification to the user here
         });
 
         serviceWorkerManager.on('offline', () => {
-          LogUtil.Debug('[Boot] Application is offline');
+          // LogUtil.Debug('[Boot] Application is offline');
           // You could show offline indicator here
         });
 
         serviceWorkerManager.on('online', () => {
-          LogUtil.Debug('[Boot] Application is back online');
+          // LogUtil.Debug('[Boot] Application is back online');
           // You could hide offline indicator here
         });
       }
@@ -90,20 +90,20 @@ export default boot(async ({ app, router }) => {
 
     // Initialize Web Worker for background processing
     if (webWorkerManager.isSupported) {
-      LogUtil.Debug('[Boot] Web Worker Manager initialized');
+      // LogUtil.Debug('[Boot] Web Worker Manager initialized');
     } else {
-      LogUtil.Debug('[Boot] Web Workers not supported, falling back to main thread processing');
+      // LogUtil.Debug('[Boot] Web Workers not supported, falling back to main thread processing');
     }
 
     // Initialize chunk loading performance monitoring
     asyncTimeoutManager.monitorChunkLoading();
-    LogUtil.Debug('[Boot] Chunk loading performance monitoring enabled');
+    // LogUtil.Debug('[Boot] Chunk loading performance monitoring enabled');
 
     // Initialize Progressive Loader for images and data
-    LogUtil.Debug('[Boot] Progressive Loader initialized');
+    // LogUtil.Debug('[Boot] Progressive Loader initialized');
 
     // Initialize Async Component Timeout Manager
-    LogUtil.Debug('[Boot] Async Component Timeout Manager initialized');
+    // LogUtil.Debug('[Boot] Async Component Timeout Manager initialized');
     // The manager is automatically available through imports
 
     // Setup router hooks for performance monitoring
@@ -147,16 +147,16 @@ export default boot(async ({ app, router }) => {
     }
 
     // Initialize T3000 cache with some default settings
-    LogUtil.Debug('[Boot] T3000 Advanced Cache initialized');
+    // LogUtil.Debug('[Boot] T3000 Advanced Cache initialized');
 
     // Preload critical T3000 data if available
     try {
       const cachedData = await t3000Cache.export();
       if (cachedData && Object.keys(cachedData.data).length > 0) {
-        LogUtil.Debug('[Boot] Restored cached T3000 data:', Object.keys(cachedData.data).length, 'entries');
+        // LogUtil.Debug('[Boot] Restored cached T3000 data:', Object.keys(cachedData.data).length, 'entries');
       }
     } catch (error) {
-      LogUtil.Debug('[Boot] Failed to restore cached data:', error);
+      // LogUtil.Debug('[Boot] Failed to restore cached data:', error);
     }
 
     // Setup periodic cache cleanup
@@ -173,7 +173,7 @@ export default boot(async ({ app, router }) => {
       progressiveLoader: progressiveLoader
     };
 
-    LogUtil.Debug('[Boot] T3000 Performance Optimizations initialized successfully');
+    // LogUtil.Debug('[Boot] T3000 Performance Optimizations initialized successfully');
 
   } catch (error) {
     LogUtil.Error('[Boot] Failed to initialize performance optimizations:', error);

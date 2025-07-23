@@ -38,7 +38,7 @@ export default route(function (/* { store, ssrContext } */) {
   // Initialize router error boundary for better error handling
   if (process.env.CLIENT) {
     createRouterErrorBoundary(Router);
-    LogUtil.Debug('[Router] Error boundary initialized');
+    // LogUtil.Debug('[Router] Error boundary initialized');
   }
 
   return Router;
