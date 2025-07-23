@@ -707,22 +707,22 @@ const generateDataSeries = (): SeriesConfig[] => {
     'BMC01E1E-13P1B', 'BMC01E1E-14P1B'
   ]
 
-  // Mixed unit codes for demo - digital and analog combined
-  const unitCodes = [
-    31, // deg.Celsius (analog)
-    32, // deg.Fahrenheit (analog)
-    1,  // Off/On (digital)
-    2,  // Close/Open (digital)
-    54, // Percent (analog)
-    3,  // Stop/Start (digital)
-    44, // Volts (analog)
-    5,  // Normal/Alarm (digital)
-    49, // Watts (analog)
-    8,  // Auto/Manual (digital)
-    54, // Percent (analog)
-    11, // Inactive/Active (digital)
-    42, // CFM (analog)
-    18  // Standby/Running (digital)
+  // Range values for demo - 0 = analog, 1 = digital
+  const rangeValues = [
+    0, // analog (temperature)
+    0, // analog (temperature)
+    1, // digital (Off/On)
+    1, // digital (Close/Open)
+    0, // analog (Percent)
+    1, // digital (Stop/Start)
+    0, // analog (Volts)
+    1, // digital (Normal/Alarm)
+    0, // analog (Watts)
+    1, // digital (Auto/Manual)
+    0, // analog (Percent)
+    1, // digital (Inactive/Active)
+    0, // analog (CFM)
+    1  // digital (Standby/Running)
   ]
 
   const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
@@ -730,22 +730,26 @@ const generateDataSeries = (): SeriesConfig[] => {
   const pointTypes = [3, 2, 1, 7, 3, 2, 1, 7, 3, 2, 1, 7, 3, 2] // Point type numbers (3=VAR, 2=Input, 1=Output, 7=HOL)
 
   return baseSeries.map((name, index) => {
-    const unitCode = unitCodes[index]
-    const unitInfo = getUnitInfo(unitCode)
+    const rangeValue = rangeValues[index]
     const panelId = panelIds[index]
     const pointType = pointTypes[index]
     const itemNumber = (index % 7) + 1 // Generate numbers 1-7, then repeat
 
+    // Determine unit type based on range value: 0 = analog, 1 = digital
+    const isDigital = rangeValue === 1
+    const isAnalog = rangeValue === 0
+
     let unit: string
     let digitalStates: [string, string] | undefined
+    let unitType: 'digital' | 'analog'
 
-    if (unitInfo.type === 'digital') {
-      const digitalInfo = unitInfo.info as { label: string; states: [string, string] }
-      unit = digitalInfo.label
-      digitalStates = digitalInfo.states
+    if (isDigital) {
+      unitType = 'digital'
+      unit = ''
+      digitalStates = ['Low', 'High'] // Default digital states
     } else {
-      const analogInfo = unitInfo.info as { label: string; symbol: string }
-      unit = analogInfo.symbol
+      unitType = 'analog'
+      unit = '' // Will be determined based on context
       digitalStates = undefined
     }
 
@@ -763,8 +767,8 @@ const generateDataSeries = (): SeriesConfig[] => {
       visible: index < 7, // Only first 7 visible by default
       unit: unit,
       isEmpty: index >= 7, // Mark items 8-14 as empty by default
-      unitType: unitInfo.type,
-      unitCode: unitCode,
+      unitType: unitType,
+      unitCode: rangeValue, // Store the range value (0 or 1)
       digitalStates: digitalStates,
       itemType: formattedItemType, // Use the new format
       prefix: pointTypeInfo.category, // Add prefix from category
@@ -1394,31 +1398,35 @@ const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPo
       data.push({ timestamp, value: currentState })
     }
   } else {
-    // Analog data: Generate continuous values based on unit type
-    const unitCode = series.unitCode
+    // Analog data: Generate continuous values with realistic ranges
+    // For analog items (range = 0), generate values like 8000 as per your specification
+    const rangeValue = series.unitCode // This is now 0 or 1
     let baseValue: number
     let range: number
 
-    // Set realistic ranges based on unit type
-    if (unitCode === 31 || unitCode === 32) { // Temperature (°C/°F)
-      baseValue = unitCode === 31 ? 20 + seriesIndex * 2 : 68 + seriesIndex * 4
-      range = unitCode === 31 ? 10 : 18
-    } else if (unitCode === 54) { // Percent
-      baseValue = 50 + seriesIndex * 5
-      range = 30
-    } else if (unitCode === 44) { // Volts
-      baseValue = 12 + seriesIndex * 0.5
-      range = 2
-    } else if (unitCode === 49) { // Watts
-      baseValue = 100 + seriesIndex * 50
-      range = 50
-    } else if (unitCode === 42) { // CFM
-      baseValue = 500 + seriesIndex * 100
-      range = 200
+    if (rangeValue === 0) { // Analog
+      // Generate realistic analog values - some in thousands as per your example (8000)
+      if (seriesIndex % 4 === 0) {
+        // Temperature-like values in thousands (like 8000)
+        baseValue = 7000 + seriesIndex * 200
+        range = 1000
+      } else if (seriesIndex % 4 === 1) {
+        // Pressure values
+        baseValue = 1000 + seriesIndex * 100
+        range = 300
+      } else if (seriesIndex % 4 === 2) {
+        // Flow values
+        baseValue = 500 + seriesIndex * 50
+        range = 200
+      } else {
+        // Other analog values
+        baseValue = 100 + seriesIndex * 20
+        range = 50
+      }
     } else {
-      // Default for other analog units
-      baseValue = 10 + seriesIndex * 5
-      range = 10
+      // This shouldn't happen for analog branch, but safety fallback
+      baseValue = 100
+      range = 50
     }
 
     for (let i = 0; i < dataPointCount; i++) {
@@ -1484,17 +1492,34 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
       data.push({ timestamp: endDate.getTime(), value: currentState })
     }
   } else {
-    // Analog data: Generate realistic sensor data
-    const baseValue = 20 + seriesIndex * 10 // Different base values for different series
-    let range = 20
+    // Analog data: Generate realistic sensor data with large values as per specification
+    const rangeValue = series.unitCode // This is now 0 or 1
+    let baseValue: number
+    let range: number
 
-    // Determine appropriate range based on series
-    if (series.unit === '°F' || series.unit === '°C') {
-      range = 15 // Temperature range
-    } else if (series.unit === '%') {
-      range = 30 // Humidity/percentage range
+    if (rangeValue === 0) { // Analog
+      // Generate realistic analog values - some in thousands as per your example (8000)
+      if (seriesIndex % 4 === 0) {
+        // Temperature-like values in thousands (like 8000)
+        baseValue = 7000 + seriesIndex * 200
+        range = 1000
+      } else if (seriesIndex % 4 === 1) {
+        // Pressure values
+        baseValue = 1000 + seriesIndex * 100
+        range = 300
+      } else if (seriesIndex % 4 === 2) {
+        // Flow values
+        baseValue = 500 + seriesIndex * 50
+        range = 200
+      } else {
+        // Other analog values
+        baseValue = 100 + seriesIndex * 20
+        range = 50
+      }
     } else {
-      range = 10
+      // This shouldn't happen for analog branch, but safety fallback
+      baseValue = 100
+      range = 50
     }
 
     // Generate data points for complete intervals
@@ -1865,9 +1890,24 @@ const initializeRealDataSeries = async () => {
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
       const seriesName = `${prefix} - ${desc || `${prefix}${inputItem.point_number} (P${inputItem.panel})`}`
 
-      // Determine unit type and create series configuration
-      const unitInfo = getUnitInfo(rangeValue)
-      const unitSymbol = unitInfo.type === 'digital' ? '' : (unitInfo.info as any).symbol || ''
+      // Determine unit type based on range value: 0 = analog, 1 = digital
+      const isDigital = rangeValue === 1
+      const isAnalog = rangeValue === 0
+
+      let unitType: 'digital' | 'analog'
+      let unitSymbol: string
+      let digitalStates: [string, string] | undefined
+
+      if (isDigital) {
+        unitType = 'digital'
+        unitSymbol = ''
+        digitalStates = ['Low', 'High'] // Default digital states
+      } else {
+        unitType = 'analog'
+        unitSymbol = '' // Will be determined based on point type or context
+        digitalStates = undefined
+      }
+
       const seriesConfig: SeriesConfig = {
         name: seriesName,
         color: `hsl(${(i * 360) / monitorConfig.inputItems.length}, 70%, 50%)`,
@@ -1875,9 +1915,9 @@ const initializeRealDataSeries = async () => {
         visible: true,
         isEmpty: itemData.length === 0 || (itemData.length === 1 && itemData[0].value === 0),
         unit: unitSymbol,
-        unitType: unitInfo.type === 'digital' ? 'digital' : 'analog',
+        unitType: unitType,
         unitCode: rangeValue,
-        digitalStates: unitInfo.type === 'digital' ? (unitInfo.info as any).states : undefined,
+        digitalStates: digitalStates,
         itemType: pointTypeInfo.name,
         prefix: prefix, // Add prefix from category
         description: desc || `${prefix}${inputItem.point_number} (P${inputItem.panel})` // Add description
@@ -1956,29 +1996,28 @@ const getPointTypeIndex = (pointType: number): number => {
 const processDeviceValue = (device: any, rangeValue: number): { value: number; displayValue: string; unit: string } => {
   const rawValue = parseFloat(device.value) || 0
 
-  // Digital units (range 0-22)
-  if (rangeValue >= 0 && rangeValue <= 22) {
+  // Digital units (range = 1)
+  if (rangeValue === 1) {
     const digitalValue = rawValue > 0 ? 1 : 0
-    const unitInfo = getUnitInfo(rangeValue)
-    const displayValue = unitInfo.type === 'digital' ? unitInfo.info.states[digitalValue] : digitalValue.toString()
+    const displayValue = digitalValue === 1 ? 'High' : 'Low'
 
     return {
       value: digitalValue,
       displayValue,
-      unit: unitInfo.info.label
+      unit: ''
     }
   }
 
-  // Analog units (range 31-63)
-  if (rangeValue >= 31 && rangeValue <= 63) {
-    // Divide by 1000 if value > 1000
-    const processedValue = rawValue > 1000 ? rawValue / 1000 : rawValue
-    const unitInfo = getUnitInfo(rangeValue)
+  // Analog units (range = 0)
+  if (rangeValue === 0) {
+    // Use raw value directly for analog - this is the key change per your specification
+    // For example, if value is 8000, use 8000 directly for charting
+    const processedValue = rawValue
 
     return {
       value: processedValue,
       displayValue: `${processedValue.toFixed(2)}`,
-      unit: unitInfo.type === 'analog' ? unitInfo.info.symbol || unitInfo.info.label : ''
+      unit: ''
     }
   }
 
