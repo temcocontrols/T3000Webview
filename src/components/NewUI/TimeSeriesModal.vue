@@ -1284,15 +1284,17 @@ const getChartConfig = () => ({
           if (timeBase.value === 'custom' && customStartDate.value) {
             return customStartDate.value.valueOf()
           }
-          const bounds = getDataSeriesTimeBounds()
-          return bounds.min
+          // Always show proper time range even without data
+          const timeWindow = getCurrentTimeWindow()
+          return timeWindow.min
         })(),
         max: (() => {
           if (timeBase.value === 'custom' && customEndDate.value) {
             return customEndDate.value.valueOf()
           }
-          const bounds = getDataSeriesTimeBounds()
-          return bounds.max
+          // Always show proper time range even without data
+          const timeWindow = getCurrentTimeWindow()
+          return timeWindow.max
         })()
       },
       y: {
@@ -2014,7 +2016,14 @@ const initializeRealDataSeries = async () => {
       // Use device description for series name, always show as IN/OUT/VAR - Description
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
-      const seriesName = `${prefix} - ${desc || `${prefix}${inputItem.point_number} (P${inputItem.panel})`}`
+
+      // Don't show panel info if there's no data
+      let seriesName: string
+      if (itemData.length === 0) {
+        seriesName = `${prefix}${inputItem.point_number + 1}` // Just show "IN22" etc without (P3)
+      } else {
+        seriesName = `${prefix} - ${desc || `${prefix}${inputItem.point_number + 1} (P${inputItem.panel})`}`
+      }
 
       // Determine unit type based on range value: 0 = analog, 1 = digital
       const isDigital = rangeValue === 1
@@ -2039,7 +2048,7 @@ const initializeRealDataSeries = async () => {
         color: `hsl(${(i * 360) / monitorConfigData.inputItems.length}, 70%, 50%)`,
         data: itemData,
         visible: true,
-        isEmpty: itemData.length === 0 || (itemData.length === 1 && itemData[0].value === 0),
+        isEmpty: itemData.length === 0,
         unit: unitSymbol,
         unitType: unitType,
         unitCode: rangeValue,
@@ -2139,6 +2148,24 @@ const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
 const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
   let rawValue: number
 
+  // Enhanced logging for digital outputs (OUT1, OUT2) to understand data structure
+  if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
+    LogUtil.Info(`🔍 DIGITAL OUTPUT DEBUG - ${panelData.id} Full Device Data:`, {
+      id: panelData.id,
+      value: panelData.value,
+      control: panelData.control,
+      digital_analog: panelData.digital_analog,
+      range: panelData.range,
+      label: panelData.label,
+      unit: panelData.unit,
+      index: panelData.index,
+      auto_manual: panelData.auto_manual,
+      pid: panelData.pid,
+      isAnalogClassification: isAnalog,
+      allFields: Object.keys(panelData)
+    })
+  }
+
   if (isAnalog) {
     // Analog devices: use 'value' field
     rawValue = parseFloat(panelData.value) || 0
@@ -2148,13 +2175,47 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
       parsedValue: rawValue
     })
   } else {
-    // Digital devices: use 'control' field
-    rawValue = parseFloat(panelData.control) || 0
-    LogUtil.Info(`📊 TimeSeriesModal: Using digital control field:`, {
-      deviceId: panelData.id,
-      controlField: panelData.control,
-      parsedValue: rawValue
-    })
+    // Digital devices: For OUT1/OUT2, check multiple potential fields
+    if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
+      // Try different fields for digital outputs
+      const controlValue = parseFloat(panelData.control) || 0
+      const valueValue = parseFloat(panelData.value) || 0
+      const autoManualValue = parseFloat(panelData.auto_manual) || 0
+
+      // Use the field with the highest non-zero value, or control as fallback
+      if (valueValue > 0) {
+        rawValue = valueValue
+        LogUtil.Info(`📊 TimeSeriesModal: Digital output using 'value' field:`, {
+          deviceId: panelData.id,
+          selectedField: 'value',
+          selectedValue: rawValue
+        })
+      } else if (autoManualValue > 0) {
+        rawValue = autoManualValue
+        LogUtil.Info(`📊 TimeSeriesModal: Digital output using 'auto_manual' field:`, {
+          deviceId: panelData.id,
+          selectedField: 'auto_manual',
+          selectedValue: rawValue
+        })
+      } else {
+        rawValue = controlValue
+        LogUtil.Info(`📊 TimeSeriesModal: Digital output using 'control' field (fallback):`, {
+          deviceId: panelData.id,
+          selectedField: 'control',
+          selectedValue: rawValue
+        })
+      }
+    } else {
+      // Regular digital devices: use 'control' field
+      rawValue = parseFloat(panelData.control) || 0
+      LogUtil.Info(`📊 TimeSeriesModal: Using digital control field:`, {
+        deviceId: panelData.id,
+        controlField: panelData.control,
+        parsedValue: rawValue,
+        digitalAnalogFlag: panelData.digital_analog,
+        rangeField: panelData.range
+      })
+    }
   }
 
   return rawValue
@@ -3312,7 +3373,19 @@ const startRealTimeUpdates = () => {
   if (realtimeInterval) {
     clearInterval(realtimeInterval)
   }
-  realtimeInterval = setInterval(addRealtimeDataPoint, updateInterval.value)
+
+  // Use monitor config data interval if available, otherwise fallback to default
+  const monitorConfigData = monitorConfig.value
+  const dataInterval = monitorConfigData?.dataIntervalMs || updateInterval.value
+
+  LogUtil.Info('🔄 TimeSeriesModal: Starting real-time updates:', {
+    monitorInterval: monitorConfigData?.dataIntervalMs,
+    fallbackInterval: updateInterval.value,
+    actualInterval: dataInterval,
+    intervalSeconds: dataInterval / 1000
+  })
+
+  realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
 }
 
 const stopRealTimeUpdates = () => {
