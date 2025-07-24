@@ -553,6 +553,25 @@ class WebViewClient {
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
+    LogUtil.Debug('= Wv2: HandleGetEntriesRes START =================');
+    LogUtil.Debug('= Wv2: HandleGetEntriesRes / received data length:', msgData.data?.length || 0);
+    LogUtil.Debug('= Wv2: HandleGetEntriesRes / BEFORE - panelsData length:', T3000_Data.value.panelsData.length);
+
+    // Log sample of incoming data to see what's being updated
+    if (msgData.data && msgData.data.length > 0) {
+      LogUtil.Debug('= Wv2: HandleGetEntriesRes / sample incoming data (first 3):',
+        msgData.data.slice(0, 3).map(item => ({
+          id: item.id,
+          pid: item.pid,
+          index: item.index,
+          type: item.type,
+          hasInputArray: Array.isArray(item.input),
+          hasRangeArray: Array.isArray(item.range),
+          inputLength: item.input?.length,
+          rangeLength: item.range?.length
+        }))
+      );
+    }
 
     /*
     if (arg.data.action === "GET_ENTRIES_RES") {
@@ -575,15 +594,129 @@ class WebViewClient {
     }
     */
 
-    msgData.data.forEach((item) => {
+    msgData.data.forEach((item, itemIdx) => {
       const itemIndex = T3000_Data.value.panelsData.findIndex(
         (ii) =>
           ii.index === item.index &&
           ii.type === item.type &&
           ii.pid === item.pid
       );
+
       if (itemIndex !== -1) {
-        T3000_Data.value.panelsData[itemIndex] = item;
+        // Found existing item - log what we're about to replace
+        const existingItem = T3000_Data.value.panelsData[itemIndex];
+
+        LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: REPLACING existing item at index ${itemIndex}:`, {
+          id: existingItem.id,
+          pid: existingItem.pid,
+          type: existingItem.type,
+          existingHasInput: Array.isArray(existingItem.input),
+          existingInputLength: existingItem.input?.length,
+          existingHasRange: Array.isArray(existingItem.range),
+          existingRangeLength: existingItem.range?.length,
+          newHasInput: Array.isArray(item.input),
+          newInputLength: item.input?.length,
+          newHasRange: Array.isArray(item.range),
+          newRangeLength: item.range?.length
+        });
+
+        // 🚨 CRITICAL CHECK: Prevent data corruption!
+        // Don't replace detailed monitor configs with simplified versions
+        const existingIsDetailedMonitor = existingItem.type === 'MON' &&
+          (Array.isArray(existingItem.input) || Array.isArray(existingItem.range) || existingItem.num_inputs > 0);
+        const newIsSimplifiedMonitor = item.type === 'MON' &&
+          !Array.isArray(item.input) && !Array.isArray(item.range) && !item.num_inputs;
+
+        // Check for other potential data loss scenarios
+        const existingHasComplexData = this.hasComplexDataStructures(existingItem);
+        const newLacksComplexData = !this.hasComplexDataStructures(item);
+        const potentialDataLoss = existingHasComplexData && newLacksComplexData;
+
+        if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
+          LogUtil.Warn(`🚨 DATA CORRUPTION PREVENTED! Attempted to replace detailed monitor config with simplified version:`, {
+            id: item.id,
+            pid: item.pid,
+            existingDetails: {
+              input: !!existingItem.input,
+              range: !!existingItem.range,
+              num_inputs: existingItem.num_inputs,
+              inputLength: existingItem.input?.length
+            },
+            newDetails: {
+              input: !!item.input,
+              range: !!item.range,
+              num_inputs: item.num_inputs,
+              inputLength: item.input?.length
+            }
+          });
+
+          // Smart field comparison: only update fields that exist in both objects
+          // and are not critical complex structures
+          const criticalFields = ['input', 'range', 'num_inputs', 'an_inputs']; // Protect these arrays/complex fields
+          const existingKeys = Object.keys(existingItem);
+          const newKeys = Object.keys(item);
+          const commonFields = existingKeys.filter(key => newKeys.includes(key));
+          const fieldsToUpdate = commonFields.filter(key => !criticalFields.includes(key));
+
+          LogUtil.Debug(`📊 HandleGetEntriesRes / Smart field comparison for ${item.id}:`, {
+            existingKeys: existingKeys.length,
+            newKeys: newKeys.length,
+            commonFields: commonFields.length,
+            fieldsToUpdate: fieldsToUpdate.length,
+            criticalFieldsProtected: criticalFields.filter(cf => existingKeys.includes(cf)),
+            updateFields: fieldsToUpdate
+          });
+
+          // Update only the safe common fields
+          let updatedCount = 0;
+          fieldsToUpdate.forEach(field => {
+            if (existingItem[field] !== item[field]) {
+              LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' → '${item[field]}'`);
+              existingItem[field] = item[field];
+              updatedCount++;
+            }
+          });
+
+          LogUtil.Info(`✅ HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
+        } else if (potentialDataLoss) {
+          // Handle other types of potential data loss (not just monitors)
+          LogUtil.Warn(`⚠️ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
+            id: item.id,
+            pid: item.pid,
+            type: item.type,
+            existingComplexity: this.getDataComplexityInfo(existingItem),
+            newComplexity: this.getDataComplexityInfo(item)
+          });
+
+          // Use the same smart field comparison approach
+          const complexFields = this.getComplexFields(existingItem);
+          const existingKeys = Object.keys(existingItem);
+          const newKeys = Object.keys(item);
+          const commonFields = existingKeys.filter(key => newKeys.includes(key));
+          const fieldsToUpdate = commonFields.filter(key => !complexFields.includes(key));
+
+          let updatedCount = 0;
+          fieldsToUpdate.forEach(field => {
+            if (existingItem[field] !== item[field]) {
+              LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' → '${item[field]}'`);
+              existingItem[field] = item[field];
+              updatedCount++;
+            }
+          });
+
+          LogUtil.Info(`✅ HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
+        } else {
+          // Safe to do full replacement
+          T3000_Data.value.panelsData[itemIndex] = item;
+          LogUtil.Debug(`✅ HandleGetEntriesRes / Full replacement done for ${item.id}`);
+        }
+      } else {
+        LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
+          id: item.id,
+          pid: item.pid,
+          index: item.index,
+          type: item.type
+        });
       }
     });
 
@@ -593,6 +726,9 @@ class WebViewClient {
 
     IdxUtils.refreshLinkedEntries(msgData.data);
     IdxUtils.refreshLinkedEntries2(msgData.data);
+
+    LogUtil.Debug('= Wv2: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
+    LogUtil.Debug('= Wv2: HandleGetEntriesRes END ===================');
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
@@ -690,6 +826,100 @@ class WebViewClient {
   public HandleGetAllDevicesDataRes(msgData) {
     // action: 12, // GET_ALL_DEVICES_DATA_RES
   }
+
+  //#region Helper Methods for Data Integrity
+
+  /**
+   * Check if an object has complex data structures that shouldn't be lost
+   */
+  private hasComplexDataStructures(obj: any): boolean {
+    if (!obj || typeof obj !== 'object') return false;
+
+    // Check for arrays
+    const hasArrays = Object.values(obj).some(value => Array.isArray(value));
+
+    // Check for nested objects (excluding simple objects)
+    const hasNestedObjects = Object.values(obj).some(value =>
+      value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0
+    );
+
+    // Check for specific complex fields based on object type
+    const complexFieldsByType = {
+      'MON': ['input', 'range', 'num_inputs', 'an_inputs'],
+      'GRP': ['items', 'controls', 'children'],
+      'SCH': ['schedule', 'items', 'events'],
+      // Add more types as needed
+    };
+
+    const complexFields = complexFieldsByType[obj.type] || [];
+    const hasTypeSpecificComplexity = complexFields.some(field => obj[field] !== undefined);
+
+    return hasArrays || hasNestedObjects || hasTypeSpecificComplexity;
+  }
+
+  /**
+   * Get complexity information about an object for logging
+   */
+  private getDataComplexityInfo(obj: any): any {
+    if (!obj || typeof obj !== 'object') return { simple: true };
+
+    const arrays = Object.keys(obj).filter(key => Array.isArray(obj[key]));
+    const objects = Object.keys(obj).filter(key =>
+      obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])
+    );
+
+    return {
+      totalFields: Object.keys(obj).length,
+      arrays: arrays.length,
+      arrayFields: arrays,
+      objects: objects.length,
+      objectFields: objects,
+      hasComplexity: this.hasComplexDataStructures(obj)
+    };
+  }
+
+  /**
+   * Get list of complex fields that should be protected from overwriting
+   */
+  private getComplexFields(obj: any): string[] {
+    if (!obj || typeof obj !== 'object') return [];
+
+    const complexFields = [];
+
+    // Add arrays
+    Object.keys(obj).forEach(key => {
+      if (Array.isArray(obj[key])) {
+        complexFields.push(key);
+      }
+    });
+
+    // Add nested objects
+    Object.keys(obj).forEach(key => {
+      if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key]) && Object.keys(obj[key]).length > 0) {
+        complexFields.push(key);
+      }
+    });
+
+    // Add type-specific critical fields
+    const criticalFieldsByType = {
+      'MON': ['input', 'range', 'num_inputs', 'an_inputs'],
+      'GRP': ['items', 'controls', 'children'],
+      'SCH': ['schedule', 'items', 'events'],
+      'PID': ['parameters', 'settings', 'config'],
+      // Add more types as needed
+    };
+
+    const typeCriticalFields = criticalFieldsByType[obj.type] || [];
+    typeCriticalFields.forEach(field => {
+      if (obj[field] !== undefined && !complexFields.includes(field)) {
+        complexFields.push(field);
+      }
+    });
+
+    return complexFields;
+  }
+
+  //#endregion
 }
 
 export default WebViewClient

@@ -290,7 +290,11 @@ console.log('Panel 1 devices:', panelDevices.map(d => d.id));
 
 **Issue:** Detailed monitor configurations being overwritten with simplified versions
 
-**Root Cause:** `HandleGetEntriesRes` completely replaces existing entries without preserving critical data
+**Root Cause:** `HandleGetEntriesRes` in both `WebSocketClient.ts` and `WebViewClient.ts` completely replaces existing entries without preserving critical data
+
+**Affected Files:**
+- `src/lib/T3000/Hvac/Opt/Socket/WebSocketClient.ts` - HandleGetEntriesRes method
+- `src/lib/T3000/Hvac/Opt/Webview2/WebViewClient.ts` - HandleGetEntriesRes method
 
 **Example Corruption:**
 ```
@@ -316,10 +320,38 @@ AFTER (Corrupted):
 - Result: Critical `input` and `range` arrays are lost!
 
 **Fix Applied:**
-- Added data corruption detection in `HandleGetEntriesRes`
-- Prevents replacing detailed monitor configs with simplified versions
-- Uses safe field updates instead of complete object replacement
+- Added data corruption detection in `HandleGetEntriesRes` for both WebSocketClient and WebViewClient
+- Prevents replacing detailed monitor configs with simplified versions in both communication channels
+- Uses smart field comparison instead of complete object replacement in both clients
 - Added comprehensive logging to track all data modifications
+- Implemented identical helper methods (`hasComplexDataStructures`, `getDataComplexityInfo`, `getComplexFields`) in both clients
+
+**Smart Field Comparison Algorithm:**
+```typescript
+// 1. Identify critical/complex fields to protect
+const criticalFields = ['input', 'range', 'num_inputs', 'an_inputs'];
+const complexFields = this.getComplexFields(existingItem); // Arrays, nested objects, type-specific fields
+
+// 2. Find common fields between existing and new objects
+const existingKeys = Object.keys(existingItem);
+const newKeys = Object.keys(item);
+const commonFields = existingKeys.filter(key => newKeys.includes(key));
+
+// 3. Update only safe common fields
+const fieldsToUpdate = commonFields.filter(key => !complexFields.includes(key));
+fieldsToUpdate.forEach(field => {
+  if (existingItem[field] !== item[field]) {
+    existingItem[field] = item[field]; // Safe update
+  }
+});
+```
+
+**Enhanced Protection Features:**
+1. **Monitor-Specific Protection:** Prevents loss of `input`, `range`, `num_inputs` arrays
+2. **General Complexity Detection:** Protects any arrays and nested objects
+3. **Type-Specific Rules:** Different protection rules for MON, GRP, SCH, PID types
+4. **Smart Field Comparison:** Only updates fields that exist in both objects
+5. **Comprehensive Logging:** Tracks field updates, protection actions, complexity analysis
 
 **Prevention Logic:**
 ```typescript
@@ -334,9 +366,7 @@ if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
     if (item.hasOwnProperty(field)) existingItem[field] = item[field];
   });
 }
-```
-
-**Detailed Logging Added:** (See HandleGetPanelDataRes in WebSocketClient.ts)
+```**Detailed Logging Added:** (See HandleGetPanelDataRes in WebSocketClient.ts)
 ```typescript
 LogUtil.Debug('= ws: HandleGetPanelDataRes / received panel_id:', msgData?.panel_id);
 LogUtil.Debug('= ws: HandleGetPanelDataRes / received data length:', msgData?.data?.length || 0);
