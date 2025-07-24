@@ -616,6 +616,25 @@ class WebSocketClient {
      => { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
     */
 
+    LogUtil.Debug('= ws: HandleGetPanelDataRes START =================');
+    LogUtil.Debug('= ws: HandleGetPanelDataRes / received panel_id:', msgData?.panel_id);
+    LogUtil.Debug('= ws: HandleGetPanelDataRes / received data length:', msgData?.data?.length || 0);
+    LogUtil.Debug('= ws: HandleGetPanelDataRes / current loadingPanel:', T3000_Data.value.loadingPanel);
+    LogUtil.Debug('= ws: HandleGetPanelDataRes / total panels in list:', T3000_Data.value.panelsList.length);
+    LogUtil.Debug('= ws: HandleGetPanelDataRes / BEFORE - panelsData length:', T3000_Data.value.panelsData.length);
+
+    // Log sample data from the response to see what we're getting
+    if (msgData?.data && msgData.data.length > 0) {
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / sample received data items (first 3):',
+        msgData.data.slice(0, 3).map(item => ({
+          pid: item.pid,
+          index: item.index,
+          type: item.type,
+          label: item.label || item.description
+        }))
+      );
+    }
+
     Hvac.DeviceOpt.initGraphicList(msgData.data);
 
     // refer to WebViewClient-> HandleGetPanelDataRes
@@ -628,40 +647,83 @@ class WebSocketClient {
 
       const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
       if (check1) {
+        LogUtil.Debug('= ws: HandleGetPanelDataRes / triggering next panel load, increment loadingPanel from:', T3000_Data.value.loadingPanel);
         T3000_Data.value.loadingPanel++;
         const index = T3000_Data.value.loadingPanel;
+        const nextPanelId = T3000_Data.value.panelsList[index].panel_number;
+        LogUtil.Debug('= ws: HandleGetPanelDataRes / loading next panel at index:', index, 'panel_number:', nextPanelId);
         // window.chrome?.webview?.postMessage({
         //   action: 0, // GET_PANEL_DATA
         //   panelId: T3000_Data.value.panelsList[index].panel_number,
         // });
 
-        this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
+        this.GetPanelData(nextPanelId);
       }
 
       const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
       if (check2) {
+        LogUtil.Debug('= ws: HandleGetPanelDataRes / reached last panel, setting loadingPanel to null');
         T3000_Data.value.loadingPanel = null;
       }
+
+      // Log filtering operation
+      const beforeFilterLength = T3000_Data.value.panelsData.length;
+      const itemsToRemove = T3000_Data.value.panelsData.filter(item => item.pid === msgData.panel_id);
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / filtering out items with pid:', msgData.panel_id, 'found:', itemsToRemove.length, 'items to remove');
 
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== msgData.panel_id
       );
 
+      const afterFilterLength = T3000_Data.value.panelsData.length;
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / AFTER filter - panelsData length:', afterFilterLength, 'removed:', beforeFilterLength - afterFilterLength);
+
+      // Log concatenation operation
+      const newDataLength = msgData.data ? msgData.data.length : 0;
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / concatenating new data length:', newDataLength);
+
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
         msgData.data
       );
 
+      const finalLength = T3000_Data.value.panelsData.length;
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / AFTER concat - panelsData length:', finalLength, 'expected:', afterFilterLength + newDataLength);
+
+      // Log unique pid counts to see if we have duplicates
+      const pidCounts = {};
+      T3000_Data.value.panelsData.forEach(item => {
+        pidCounts[item.pid] = (pidCounts[item.pid] || 0) + 1;
+      });
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / PID distribution after concat:', pidCounts);
+
+      // Check for any unexpected duplicates
+      const duplicatePids = Object.keys(pidCounts).filter(pid => pidCounts[pid] > 1);
+      if (duplicatePids.length > 0) {
+        LogUtil.Debug('= ws: HandleGetPanelDataRes / WARNING: Found items with same PID after filtering!', duplicatePids);
+      }
+
       T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
       selectPanelOptions.value = T3000_Data.value.panelsData;
 
+      // Log ranges operation
+      const beforeRangesLength = T3000_Data.value.panelsRanges.length;
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== msgData.panel_id
       );
+      const afterRangesFilterLength = T3000_Data.value.panelsRanges.length;
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
+      const finalRangesLength = T3000_Data.value.panelsRanges.length;
+
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / ranges: before filter:', beforeRangesLength,
+        'after filter:', afterRangesFilterLength, 'after concat:', finalRangesLength,
+        'new ranges added:', msgData.ranges ? msgData.ranges.length : 0);
 
       IdxUtils.refreshLinkedEntries(msgData.data);
       IdxUtils.refreshLinkedEntries2(msgData.data);
+
+      LogUtil.Debug('= ws: HandleGetPanelDataRes / FINAL - panelsData length:', T3000_Data.value.panelsData.length);
+      LogUtil.Debug('= ws: HandleGetPanelDataRes END ===================');
     }
   }
 
