@@ -515,6 +515,69 @@ class T3000DataManager {
   }
 
   /**
+   * Get specific entry from panelsData with PID filtering and validation
+   */
+  public async getEntryByPid(entryId: string, pid: number, options: DataRequestOptions = {}): Promise<any> {
+    LogUtil.Info(`🔍 T3000DataManager: Requesting entry: ${entryId} with PID: ${pid}`)
+
+    // Log current panelsData structure for debugging
+    const panelsData = T3000_Data.value.panelsData
+    const pidCounts = {};
+    panelsData.forEach(item => {
+      pidCounts[item.pid] = (pidCounts[item.pid] || 0) + 1;
+    });
+    LogUtil.Info(`📊 T3000DataManager: Current panelsData PID distribution:`, pidCounts)
+    LogUtil.Info(`📊 T3000DataManager: Total panelsData items: ${panelsData.length}`)
+
+    const validation = await this.waitForDataReady({
+      ...options,
+      specificEntries: [entryId]
+    })
+
+    if (!validation.isValid) {
+      throw new Error(`Entry ${entryId} not available or invalid`)
+    }
+
+    // Filter by PID first, then find the entry
+    const pidFilteredData = panelsData.filter(item => item.pid === pid)
+    LogUtil.Info(`🔍 T3000DataManager: Found ${pidFilteredData.length} items with PID ${pid}`)
+
+    if (pidFilteredData.length === 0) {
+      LogUtil.Warn(`❌ T3000DataManager: No items found with PID ${pid}`)
+      LogUtil.Info(`📊 T3000DataManager: Available PIDs:`, Object.keys(pidCounts))
+      throw new Error(`No entries found with PID ${pid}`)
+    }
+
+    const entry = pidFilteredData.find(item =>
+      item.id === entryId ||
+      item.label === entryId ||
+      item.description?.includes(entryId)
+    )
+
+    if (!entry) {
+      LogUtil.Warn(`❌ T3000DataManager: Entry ${entryId} not found in PID ${pid} filtered data`)
+      LogUtil.Info(`🔍 T3000DataManager: Available entries for PID ${pid}:`,
+        pidFilteredData.slice(0, 5).map(item => ({
+          id: item.id,
+          label: item.label,
+          description: item.description,
+          pid: item.pid
+        }))
+      )
+      throw new Error(`Entry ${entryId} not found in PID ${pid} filtered data`)
+    }
+
+    LogUtil.Info(`✅ T3000DataManager: Entry found: ${entryId} with PID ${pid}`, {
+      id: entry.id,
+      label: entry.label,
+      description: entry.description,
+      pid: entry.pid,
+      type: entry.type
+    })
+    return entry
+  }
+
+  /**
    * Get entries matching a pattern or filter
    */
   public async getEntriesMatching(filter: (entry: any) => boolean, options: DataRequestOptions = {}): Promise<any[]> {

@@ -1574,14 +1574,27 @@ const calculateDataInterval = (hours: number, minutes: number, seconds: number):
 const getMonitorConfigFromT3000Data = async () => {
   LogUtil.Info('🔍 TimeSeriesModal: === ENHANCED MONITOR CONFIG EXTRACTION ===')
 
-  // Get the monitor ID from scheduleItemData
+  // Get the monitor ID and PID from scheduleItemData
   const monitorId = (scheduleItemData.value as any)?.t3Entry?.id
+  const panelId = (scheduleItemData.value as any)?.t3Entry?.pid
+
+  LogUtil.Info('📊 TimeSeriesModal: Monitor extraction info:', {
+    monitorId,
+    panelId,
+    fullT3Entry: (scheduleItemData.value as any)?.t3Entry
+  })
+
   if (!monitorId) {
     LogUtil.Warn('❌ TimeSeriesModal: No monitor ID found in scheduleItemData.t3Entry.id')
     return null
   }
 
-  LogUtil.Info(`🎯 TimeSeriesModal: Looking for monitor ID: ${monitorId}`)
+  if (!panelId && panelId !== 0) {
+    LogUtil.Warn('❌ TimeSeriesModal: No panel ID found in scheduleItemData.t3Entry.pid')
+    return null
+  }
+
+  LogUtil.Info(`🎯 TimeSeriesModal: Looking for monitor ID: ${monitorId} with PID: ${panelId}`)
 
   try {
     // Use enhanced data manager to wait for data readiness
@@ -1603,8 +1616,8 @@ const getMonitorConfigFromT3000Data = async () => {
       return null
     }
 
-    // Get the monitor entry using enhanced data manager
-    const monitorConfig = await t3000DataManager.getEntry(monitorId)
+    // Get the monitor entry using enhanced data manager with PID filtering
+    const monitorConfig = await t3000DataManager.getEntryByPid(monitorId, panelId)
 
     if (!monitorConfig) {
       LogUtil.Warn(`❌ TimeSeriesModal: Monitor configuration not found for ID: ${monitorId}`)
@@ -3718,6 +3731,11 @@ onMounted(async () => {
 
       // Test 3: Device Mapping for each input item
       LogUtil.Info('🔍 TimeSeriesModal: TEST 3 - Device Mapping for all input items:')
+
+      // Get the PID for filtering device searches
+      const searchPanelId = (scheduleItemData.value as any)?.t3Entry?.pid
+      LogUtil.Info(`📊 TimeSeriesModal: Using PID ${searchPanelId} for device searches`)
+
       for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
         const inputItem = monitorConfigData.inputItems[i]
         const rangeValue = monitorConfigData.ranges[i] || 0
@@ -3725,12 +3743,35 @@ onMounted(async () => {
 
         LogUtil.Info(`📊 TimeSeriesModal: Device ID for input item ${i}:`, deviceId)
 
-        // Test if we can find this device in panelsData using data manager
+        // Test if we can find this device in panelsData using data manager with PID filtering
         try {
-          const foundDevice = await t3000DataManager.getEntry(deviceId)
-          LogUtil.Info(`✅ TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData`, foundDevice)
+          if (searchPanelId !== undefined && searchPanelId !== null) {
+            const foundDevice = await t3000DataManager.getEntryByPid(deviceId, searchPanelId)
+            LogUtil.Info(`✅ TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
+              id: foundDevice.id,
+              label: foundDevice.label,
+              pid: foundDevice.pid,
+              type: foundDevice.type
+            })
+          } else {
+            LogUtil.Warn(`❌ TEST 3.${i + 1} SKIPPED: No PID available for device search`)
+          }
         } catch (error) {
-          LogUtil.Warn(`❌ TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData:`, error.message)
+          LogUtil.Warn(`❌ TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
+
+          // Fallback: Try to find device without PID filtering for comparison
+          try {
+            const foundDeviceAnyPid = await t3000DataManager.getEntry(deviceId)
+            LogUtil.Info(`🔍 TEST 3.${i + 1} FALLBACK: Device ${deviceId} found without PID filtering:`, {
+              id: foundDeviceAnyPid.id,
+              label: foundDeviceAnyPid.label,
+              pid: foundDeviceAnyPid.pid,
+              type: foundDeviceAnyPid.type,
+              note: `Found with PID ${foundDeviceAnyPid.pid} instead of expected PID ${searchPanelId}`
+            })
+          } catch (fallbackError) {
+            LogUtil.Warn(`❌ TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
+          }
         }
       }
 
