@@ -286,6 +286,56 @@ console.log('Panel 1 devices:', panelDevices.map(d => d.id));
   - The filtering logic has a bug
   - Race conditions occur during sequential loading
 
+### 🚨 CRITICAL: Data Corruption Issue in HandleGetEntriesRes
+
+**Issue:** Detailed monitor configurations being overwritten with simplified versions
+
+**Root Cause:** `HandleGetEntriesRes` completely replaces existing entries without preserving critical data
+
+**Example Corruption:**
+```
+BEFORE (Correct):
+{
+  "id": "MON1", "pid": 3, "type": "MON",
+  "input": [...14 items...], "range": [...14 items...],
+  "num_inputs": 14, "label": "TRL11111"
+}
+
+AFTER (Corrupted):
+{
+  "id": "MON1", "pid": 3, "type": "MON",
+  "label": "", "status": 0
+  // Missing: input, range, num_inputs arrays!
+}
+```
+
+**Technical Details:**
+- `HandleGetPanelDataRes` loads correct detailed monitor configs
+- Later, `HandleGetEntriesRes` receives simplified updates
+- Line 842: `T3000_Data.value.panelsData[itemIndex] = item;` does **complete replacement**
+- Result: Critical `input` and `range` arrays are lost!
+
+**Fix Applied:**
+- Added data corruption detection in `HandleGetEntriesRes`
+- Prevents replacing detailed monitor configs with simplified versions
+- Uses safe field updates instead of complete object replacement
+- Added comprehensive logging to track all data modifications
+
+**Prevention Logic:**
+```typescript
+const existingIsDetailedMonitor = existingItem.type === 'MON' &&
+  (Array.isArray(existingItem.input) || Array.isArray(existingItem.range) || existingItem.num_inputs > 0);
+const newIsSimplifiedMonitor = item.type === 'MON' &&
+  !Array.isArray(item.input) && !Array.isArray(item.range) && !item.num_inputs;
+
+if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
+  // Only update safe fields, preserve critical arrays
+  ['status', 'value', 'label', 'description'].forEach(field => {
+    if (item.hasOwnProperty(field)) existingItem[field] = item[field];
+  });
+}
+```
+
 **Detailed Logging Added:** (See HandleGetPanelDataRes in WebSocketClient.ts)
 ```typescript
 LogUtil.Debug('= ws: HandleGetPanelDataRes / received panel_id:', msgData?.panel_id);

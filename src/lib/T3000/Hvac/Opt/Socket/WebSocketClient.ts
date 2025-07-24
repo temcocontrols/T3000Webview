@@ -829,18 +829,99 @@ class WebSocketClient {
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
-    LogUtil.Debug('= ws: GET_ENTRIES_RES', msgData.data);
+    LogUtil.Debug('= ws: HandleGetEntriesRes START =================');
+    LogUtil.Debug('= ws: HandleGetEntriesRes / received data length:', msgData.data?.length || 0);
+    LogUtil.Debug('= ws: HandleGetEntriesRes / BEFORE - panelsData length:', T3000_Data.value.panelsData.length);
+
+    // Log sample of incoming data to see what's being updated
+    if (msgData.data && msgData.data.length > 0) {
+      LogUtil.Debug('= ws: HandleGetEntriesRes / sample incoming data (first 3):',
+        msgData.data.slice(0, 3).map(item => ({
+          id: item.id,
+          pid: item.pid,
+          index: item.index,
+          type: item.type,
+          hasInputArray: Array.isArray(item.input),
+          hasRangeArray: Array.isArray(item.range),
+          inputLength: item.input?.length,
+          rangeLength: item.range?.length
+        }))
+      );
+    }
 
     // TODO refer to WebViewClient-> HandleGetEntriesRes
-    msgData.data.forEach((item) => {
+    msgData.data.forEach((item, itemIdx) => {
       const itemIndex = T3000_Data.value.panelsData.findIndex(
         (ii) =>
           ii.index === item.index &&
           ii.type === item.type &&
           ii.pid === item.pid
       );
+
       if (itemIndex !== -1) {
-        T3000_Data.value.panelsData[itemIndex] = item;
+        // Found existing item - log what we're about to replace
+        const existingItem = T3000_Data.value.panelsData[itemIndex];
+
+        LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: REPLACING existing item at index ${itemIndex}:`, {
+          id: existingItem.id,
+          pid: existingItem.pid,
+          type: existingItem.type,
+          existingHasInput: Array.isArray(existingItem.input),
+          existingInputLength: existingItem.input?.length,
+          existingHasRange: Array.isArray(existingItem.range),
+          existingRangeLength: existingItem.range?.length,
+          newHasInput: Array.isArray(item.input),
+          newInputLength: item.input?.length,
+          newHasRange: Array.isArray(item.range),
+          newRangeLength: item.range?.length
+        });
+
+        // 🚨 CRITICAL CHECK: Prevent data corruption!
+        // Don't replace detailed monitor configs with simplified versions
+        const existingIsDetailedMonitor = existingItem.type === 'MON' &&
+          (Array.isArray(existingItem.input) || Array.isArray(existingItem.range) || existingItem.num_inputs > 0);
+        const newIsSimplifiedMonitor = item.type === 'MON' &&
+          !Array.isArray(item.input) && !Array.isArray(item.range) && !item.num_inputs;
+
+        if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
+          LogUtil.Warn(`🚨 DATA CORRUPTION PREVENTED! Attempted to replace detailed monitor config with simplified version:`, {
+            id: item.id,
+            pid: item.pid,
+            existingDetails: {
+              input: !!existingItem.input,
+              range: !!existingItem.range,
+              num_inputs: existingItem.num_inputs,
+              inputLength: existingItem.input?.length
+            },
+            newDetails: {
+              input: !!item.input,
+              range: !!item.range,
+              num_inputs: item.num_inputs,
+              inputLength: item.input?.length
+            }
+          });
+
+          // Instead of full replacement, only update safe fields
+          const safeFields = ['status', 'value', 'label', 'description'];
+          safeFields.forEach(field => {
+            if (item.hasOwnProperty(field)) {
+              existingItem[field] = item[field];
+            }
+          });
+
+          LogUtil.Info(`✅ HandleGetEntriesRes / Safe partial update applied for ${item.id}`);
+        } else {
+          // Safe to do full replacement
+          T3000_Data.value.panelsData[itemIndex] = item;
+          LogUtil.Debug(`✅ HandleGetEntriesRes / Full replacement done for ${item.id}`);
+        }
+      } else {
+        LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
+          id: item.id,
+          pid: item.pid,
+          index: item.index,
+          type: item.type
+        });
       }
     });
 
@@ -849,6 +930,9 @@ class WebSocketClient {
     }
     IdxUtils.refreshLinkedEntries(msgData.data);
     IdxUtils.refreshLinkedEntries2(msgData.data);
+
+    LogUtil.Debug('= ws: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
+    LogUtil.Debug('= ws: HandleGetEntriesRes END ===================');
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
