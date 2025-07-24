@@ -461,6 +461,7 @@ import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
 import WebSocketClient from 'src/lib/T3000/Hvac/Opt/Socket/WebSocketClient'
 import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
+import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {
@@ -647,6 +648,9 @@ const showLegend = ref(false)  // Hide legend by default to give more space to c
 const smoothLines = ref(false)
 const showPoints = ref(false)
 const lastUpdateTime = ref(new Date().toLocaleTimeString())
+
+// Reactive monitor configuration
+const monitorConfig = ref(null as any)
 
 // Connection and status tracking
 const connectionStatus = ref<'connected' | 'connecting' | 'disconnected'>('connected')
@@ -1552,69 +1556,6 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
 // ====================================================================================
 
 /**
- * Extract monitor configuration from T3000_Data.panelsData based on scheduleItemData.t3Entry.id
- * @returns Monitor configuration with input items and timing intervals
- */
-const getMonitorConfigFromT3000Data = () => {
-  LogUtil.Debug('=== EXTRACTING MONITOR CONFIG FROM T3000_DATA ===')
-
-  // Get the monitor ID from scheduleItemData
-  const monitorId = (scheduleItemData.value as any)?.t3Entry?.id
-  if (!monitorId) {
-    LogUtil.Warn('No monitor ID found in scheduleItemData.t3Entry.id')
-    return null
-  }
-
-  LogUtil.Debug('Looking for monitor ID:', monitorId)
-  LogUtil.Debug('Available panelsData:', T3000_Data.value.panelsData)
-
-  // Search through all panels data for the matching monitor
-  const panelsData = T3000_Data.value.panelsData
-  if (!panelsData || !Array.isArray(panelsData)) {
-    LogUtil.Warn('No panelsData available or not an array')
-    return null
-  }
-
-  // Find the monitor configuration
-  let monitorConfig = null
-  for (const panelData of panelsData) {
-    if (panelData && panelData.id === monitorId) {
-      monitorConfig = panelData
-      break
-    }
-  }
-
-  if (!monitorConfig) {
-    LogUtil.Warn(`Monitor configuration not found for ID: ${monitorId}`)
-    return null
-  }
-
-  LogUtil.Debug('Found monitor configuration:', monitorConfig)
-
-  // Calculate the data retrieval interval in milliseconds
-  const intervalMs = calculateDataInterval(
-    monitorConfig.hour_interval_time || 0,
-    monitorConfig.minute_interval_time || 0,
-    monitorConfig.second_interval_time || 0
-  )
-
-  LogUtil.Debug(`Calculated data interval: ${intervalMs}ms (${intervalMs/1000}s)`)
-
-  return {
-    id: monitorConfig.id,
-    label: monitorConfig.label,
-    pid: monitorConfig.pid,
-    type: monitorConfig.type,
-    status: monitorConfig.status,
-    numInputs: monitorConfig.num_inputs || monitorConfig.an_inputs || 0,
-    inputItems: monitorConfig.input || [],
-    ranges: monitorConfig.range || [],
-    dataIntervalMs: intervalMs,
-    originalConfig: monitorConfig
-  }
-}
-
-/**
  * Calculate data retrieval interval from T3000 timing configuration
  */
 const calculateDataInterval = (hours: number, minutes: number, seconds: number): number => {
@@ -1623,6 +1564,108 @@ const calculateDataInterval = (hours: number, minutes: number, seconds: number):
   // Ensure minimum interval of 1 second for real-time updates
   return Math.max(totalMs, 1000)
 }
+
+/**
+ * Enhanced monitor configuration extraction using T3000DataManager
+ * @returns Monitor configuration with input items and timing intervals
+ */
+const getMonitorConfigFromT3000Data = async () => {
+  LogUtil.Info('🔍 TimeSeriesModal: === ENHANCED MONITOR CONFIG EXTRACTION ===')
+
+  // Get the monitor ID from scheduleItemData
+  const monitorId = (scheduleItemData.value as any)?.t3Entry?.id
+  if (!monitorId) {
+    LogUtil.Warn('❌ TimeSeriesModal: No monitor ID found in scheduleItemData.t3Entry.id')
+    return null
+  }
+
+  LogUtil.Info(`🎯 TimeSeriesModal: Looking for monitor ID: ${monitorId}`)
+
+  try {
+    // Use enhanced data manager to wait for data readiness
+    LogUtil.Info('⏳ TimeSeriesModal: Waiting for T3000_Data readiness...')
+    const validation = await t3000DataManager.waitForDataReady({
+      timeout: 15000, // 15 seconds timeout
+      specificEntries: [monitorId],
+      requireFresh: true
+    })
+
+    LogUtil.Info('✅ TimeSeriesModal: Data validation result:', validation)
+
+    if (!validation.isValid) {
+      LogUtil.Error('❌ TimeSeriesModal: Data validation failed', {
+        missingData: validation.missingData,
+        staleData: validation.staleData,
+        entriesCount: validation.entriesCount
+      })
+      return null
+    }
+
+    // Get the monitor entry using enhanced data manager
+    const monitorConfig = await t3000DataManager.getEntry(monitorId)
+
+    if (!monitorConfig) {
+      LogUtil.Warn(`❌ TimeSeriesModal: Monitor configuration not found for ID: ${monitorId}`)
+      return null
+    }
+
+    LogUtil.Info('✅ TimeSeriesModal: Found monitor configuration:', monitorConfig)
+
+    // Calculate the data retrieval interval in milliseconds
+    const intervalMs = calculateDataInterval(
+      monitorConfig.hour_interval_time || 0,
+      monitorConfig.minute_interval_time || 0,
+      monitorConfig.second_interval_time || 0
+    )
+
+    // Extract input items from the configuration
+    const inputItems = []
+    const ranges = []
+
+    // Parse input items based on monitor configuration structure
+    for (let i = 1; i <= 14; i++) {
+      const panelKey = `input${i}_panel`
+      const pointKey = `input${i}_point`
+      const rangeKey = `input${i}_range`
+
+      if (monitorConfig[panelKey] !== undefined && monitorConfig[pointKey] !== undefined) {
+        inputItems.push({
+          panel: monitorConfig[panelKey],
+          point: monitorConfig[pointKey],
+          index: i - 1
+        })
+        ranges.push(monitorConfig[rangeKey] || 0)
+      }
+    }
+
+    const result = {
+      id: monitorConfig.id,
+      label: monitorConfig.label || monitorConfig.description || `Monitor ${monitorId}`,
+      pid: monitorConfig.pid,
+      type: monitorConfig.type,
+      status: monitorConfig.status,
+      numInputs: inputItems.length,
+      inputItems: inputItems,
+      ranges: ranges,
+      dataIntervalMs: intervalMs,
+      originalConfig: monitorConfig
+    }
+
+    LogUtil.Info('🎯 TimeSeriesModal: Processed monitor configuration:', {
+      id: result.id,
+      inputItemsCount: result.inputItems.length,
+      rangesCount: result.ranges.length,
+      dataInterval: result.dataIntervalMs
+    })
+
+    return result
+
+  } catch (error) {
+    LogUtil.Error('❌ TimeSeriesModal: Error extracting monitor config:', error)
+    return null
+  }
+}
+
 
 /**
  * Initialize WebSocket and WebView clients for data communication
@@ -1653,18 +1696,19 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
   try {
     LogUtil.Info('🔄 TimeSeriesModal: Starting real-time monitor data fetch...')
 
-    const monitorConfig = getMonitorConfigFromT3000Data()
-    if (!monitorConfig) {
+    // Use the reactive monitor config
+    const monitorConfigData = monitorConfig.value
+    if (!monitorConfigData) {
       LogUtil.Info('�?TimeSeriesModal: No monitor config found, falling back to mock data')
       return []
     }
 
     LogUtil.Info('�?TimeSeriesModal: Monitor config extracted:', monitorConfig)
     LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
-      id: monitorConfig.id,
-      inputItemsCount: monitorConfig.inputItems?.length || 0,
-      rangesCount: monitorConfig.ranges?.length || 0,
-      dataInterval: monitorConfig.dataIntervalMs
+      id: monitorConfigData.id,
+      inputItemsCount: monitorConfigData.inputItems?.length || 0,
+      rangesCount: monitorConfigData.ranges?.length || 0,
+      dataInterval: monitorConfigData.dataIntervalMs
     })
 
     // Initialize data client (returns single client based on environment)
@@ -1716,12 +1760,12 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     LogUtil.Info('DEVICES TimeSeriesModal: Sample devices from panel:', devicesArray.slice(0, 5).map(d => ({ id: d.id, label: d.label })))
 
     // Fetch data for all input items
-    LogUtil.Info('🔄 TimeSeriesModal: Starting to fetch data for', monitorConfig.inputItems.length, 'input items')
+    LogUtil.Info('🔄 TimeSeriesModal: Starting to fetch data for', monitorConfigData.inputItems.length, 'input items')
 
-    const allDataPromises = monitorConfig.inputItems.map(async (inputItem, index) => {
-      LogUtil.Info(`🔄 TimeSeriesModal: Processing input item ${index + 1}/${monitorConfig.inputItems.length}`)
+    const allDataPromises = monitorConfigData.inputItems.map(async (inputItem, index) => {
+      LogUtil.Info(`🔄 TimeSeriesModal: Processing input item ${index + 1}/${monitorConfigData.inputItems.length}`)
       return await fetchSingleItemData(dataClient, inputItem, {
-        ...monitorConfig,
+        ...monitorConfigData,
         panelId: currentPanelId,
         panelData: devicesArray, // Use the extracted devices array
         itemIndex: index
@@ -1834,16 +1878,16 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
 const initializeRealDataSeries = async () => {
   LogUtil.Info('🚀 TimeSeriesModal: === INITIALIZING REAL DATA SERIES ===')
 
-  const monitorConfig = getMonitorConfigFromT3000Data()
-  if (!monitorConfig) {
+  const monitorConfigData = monitorConfig.value
+  if (!monitorConfigData) {
     LogUtil.Info('�?TimeSeriesModal: No monitor configuration found, using mock data')
     return
   }
 
   LogUtil.Info('📊 TimeSeriesModal: Starting real data series initialization with config:', {
-    inputItemsCount: monitorConfig.inputItems?.length,
-    rangesCount: monitorConfig.ranges?.length,
-    id: monitorConfig.id
+    inputItemsCount: monitorConfigData.inputItems?.length,
+    rangesCount: monitorConfigData.ranges?.length,
+    id: monitorConfigData.id
   })
 
   try {
@@ -1865,13 +1909,13 @@ const initializeRealDataSeries = async () => {
     // Update data series with real configuration
     const newDataSeries: SeriesConfig[] = []
 
-    for (let i = 0; i < monitorConfig.inputItems.length; i++) {
-      const inputItem = monitorConfig.inputItems[i]
+    for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
+      const inputItem = monitorConfigData.inputItems[i]
       const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
-      const rangeValue = monitorConfig.ranges[i] || 0
+      const rangeValue = monitorConfigData.ranges[i] || 0
       const itemData = realTimeData[i] || []
 
-      LogUtil.Info(`📊 TimeSeriesModal: Processing series ${i + 1}/${monitorConfig.inputItems.length}:`, {
+      LogUtil.Info(`📊 TimeSeriesModal: Processing series ${i + 1}/${monitorConfigData.inputItems.length}:`, {
         inputItem,
         pointTypeInfo,
         rangeValue,
@@ -1930,7 +1974,7 @@ const initializeRealDataSeries = async () => {
 
       const seriesConfig: SeriesConfig = {
         name: seriesName,
-        color: `hsl(${(i * 360) / monitorConfig.inputItems.length}, 70%, 50%)`,
+        color: `hsl(${(i * 360) / monitorConfigData.inputItems.length}, 70%, 50%)`,
         data: itemData,
         visible: true,
         isEmpty: itemData.length === 0 || (itemData.length === 1 && itemData[0].value === 0),
@@ -1969,7 +2013,7 @@ const initializeRealDataSeries = async () => {
     LogUtil.Debug(`Successfully initialized ${newDataSeries.length} real data series`)
 
     // Log the monitor info (chartTitle is computed from props, so we don't modify it)
-    LogUtil.Debug(`Chart title will be: ${monitorConfig.label} (${monitorConfig.id}) - Real-time Data`)
+    LogUtil.Debug(`Chart title will be: ${monitorConfigData.label} (${monitorConfigData.id}) - Real-time Data`)
 
   } catch (error) {
     LogUtil.Error('Error initializing real data series:', error)
@@ -2325,20 +2369,20 @@ const initializeData = async () => {
   LogUtil.Info('🚀 TimeSeriesModal: Starting data initialization...')
 
   // First, try to initialize with real T3000 data
-  const monitorConfig = getMonitorConfigFromT3000Data()
-  if (monitorConfig && monitorConfig.inputItems && monitorConfig.inputItems.length > 0) {
+  const monitorConfigData = monitorConfig.value
+  if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
     LogUtil.Info('🌐 *** USING REAL T3000 DATA *** - TimeSeriesModal: Real monitor data available, initializing with real data series')
     LogUtil.Info('📡 Real T3000 Data Source Info:', {
-      totalInputItems: monitorConfig.inputItems.length,
-      hasRanges: monitorConfig.ranges && monitorConfig.ranges.length > 0,
-      monitorId: monitorConfig.id,
+      totalInputItems: monitorConfigData.inputItems.length,
+      hasRanges: monitorConfigData.ranges && monitorConfigData.ranges.length > 0,
+      monitorId: monitorConfigData.id,
       dataType: 'REAL_T3000_DATA'
     })
     LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
-      id: monitorConfig.id,
-      inputItemsCount: monitorConfig.inputItems.length,
-      rangesCount: monitorConfig.ranges.length,
-      dataInterval: monitorConfig.dataIntervalMs
+      id: monitorConfigData.id,
+      inputItemsCount: monitorConfigData.inputItems.length,
+      rangesCount: monitorConfigData.ranges.length,
+      dataInterval: monitorConfigData.dataIntervalMs
     })
 
     try {
@@ -2370,9 +2414,9 @@ const initializeData = async () => {
   } else {
     LogUtil.Info('🎭 *** USING MOCK DATA *** - TimeSeriesModal: No real monitor data available, using mock data')
     LogUtil.Info('📊 Mock Data Configuration:', {
-      configExists: !!monitorConfig,
-      hasInputItems: !!(monitorConfig?.inputItems),
-      inputItemsLength: monitorConfig?.inputItems?.length || 0,
+      configExists: !!monitorConfigData,
+      hasInputItems: !!(monitorConfigData?.inputItems),
+      inputItemsLength: monitorConfigData?.inputItems?.length || 0,
       scheduleDataExists: !!scheduleItemData.value,
       scheduleId: (scheduleItemData.value as any)?.t3Entry?.id,
       panelsDataLength: T3000_Data.value.panelsData?.length || 0,
@@ -2434,9 +2478,9 @@ const addRealtimeDataPoint = async () => {
   const timestamp = alignedTime.getTime()
 
   // Check if we have real monitor configuration for live data
-  const monitorConfig = getMonitorConfigFromT3000Data()
+  const monitorConfigData = monitorConfig.value
 
-  if (monitorConfig && monitorConfig.inputItems.length > 0) {
+  if (monitorConfigData && monitorConfigData.inputItems.length > 0) {
     // Use real-time data from T3000
     try {
       const realTimeData = await fetchRealTimeMonitorData()
@@ -3263,70 +3307,89 @@ watch(() => props.visible, (newVal) => {
 })
 
 // Lifecycle
-onMounted(() => {
-  LogUtil.Info('🚀 TimeSeriesModal: Component mounted - starting comprehensive T3000 data integration test')
+onMounted(async () => {
+  LogUtil.Info('🚀 TimeSeriesModal: Component mounted - starting enhanced T3000 data integration test')
   LogUtil.Info('📊 TimeSeriesModal: scheduleItemData:', scheduleItemData.value)
-  LogUtil.Info('📊 TimeSeriesModal: T3000_Data->panelsData length:', T3000_Data.value.panelsData?.length || 0)
+  LogUtil.Info('📊 TimeSeriesModal: Initial T3000_Data readiness:', t3000DataManager.getReadinessState())
 
-  // === COMPREHENSIVE T3000 REAL DATA INTEGRATION TEST ===
-  LogUtil.Info('🔍 TimeSeriesModal: === STARTING T3000 REAL DATA INTEGRATION TEST ===')
+  // === ENHANCED T3000 REAL DATA INTEGRATION TEST ===
+  LogUtil.Info('🔍 TimeSeriesModal: === STARTING ENHANCED T3000 REAL DATA INTEGRATION TEST ===')
 
-  // Test 1: Monitor Configuration Extraction
-  const monitorConfig = getMonitorConfigFromT3000Data()
-  if (monitorConfig) {
-    LogUtil.Info('�?TEST 1 PASSED: Monitor Configuration Found')
-    LogUtil.Info('📋 TimeSeriesModal: Monitor Configuration:', monitorConfig)
-    LogUtil.Info(`📊 TimeSeriesModal: Found ${monitorConfig.inputItems.length} input items to monitor`)
-    LogUtil.Info(`⏱️ TimeSeriesModal: Data retrieval interval: ${monitorConfig.dataIntervalMs}ms`)
+  try {
+    // Test 1: Data Manager Readiness Check
+    LogUtil.Info('🔍 TimeSeriesModal: TEST 1 - Data Manager Readiness Check')
+    const initialReadiness = t3000DataManager.getReadinessState()
+    LogUtil.Info(`📊 TimeSeriesModal: Initial data readiness: ${initialReadiness}`)
+    LogUtil.Info(`📊 TimeSeriesModal: Loading progress: ${t3000DataManager.loadingProgress}%`)
 
-    // Test 2: Device Mapping for each input item
-    LogUtil.Info('🔍 TimeSeriesModal: TEST 2 - Device Mapping for all input items:')
-    monitorConfig.inputItems.forEach((inputItem, index) => {
-      const deviceId = logDeviceMapping(inputItem, index, monitorConfig.ranges[index] || 0)
+    // Test 2: Enhanced Monitor Configuration Extraction
+    LogUtil.Info('🔍 TimeSeriesModal: TEST 2 - Enhanced Monitor Configuration Extraction')
+    const monitorConfigData = await getMonitorConfigFromT3000Data()
 
-      LogUtil.Info(`Device ID for input item ${index}:`, deviceId)
+    if (monitorConfigData) {
+      // Set the reactive monitor config variable for all functions to use
+      monitorConfig.value = monitorConfigData
 
-      // Test if we can find this device in panelsData
-      const panelsData = T3000_Data.value.panelsData || []
+      LogUtil.Info('✅ TEST 2 PASSED: Monitor Configuration Found')
+      LogUtil.Info('📋 TimeSeriesModal: Monitor Configuration:', monitorConfigData)
+      LogUtil.Info(`📊 TimeSeriesModal: Found ${monitorConfigData.inputItems.length} input items to monitor`)
+      LogUtil.Info(`⏱️ TimeSeriesModal: Data retrieval interval: ${monitorConfigData.dataIntervalMs}ms`)
 
-      LogUtil.Info('📊 TimeSeriesModal: panelsData:', panelsData)
+      // Test 3: Device Mapping for each input item
+      LogUtil.Info('🔍 TimeSeriesModal: TEST 3 - Device Mapping for all input items:')
+      for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
+        const inputItem = monitorConfigData.inputItems[i]
+        const rangeValue = monitorConfigData.ranges[i] || 0
+        const deviceId = logDeviceMapping(inputItem, i, rangeValue)
 
-      const foundDevice = panelsData.find(device => device.id === deviceId)
+        LogUtil.Info(`📊 TimeSeriesModal: Device ID for input item ${i}:`, deviceId)
 
-      if (foundDevice) {
-        LogUtil.Info(`�?TEST 2.${index + 1} PASSED: Device ${deviceId} found in panelsData`)
-      } else {
-        LogUtil.Info(`�?TEST 2.${index + 1} FAILED: Device ${deviceId} NOT found in panelsData`)
+        // Test if we can find this device in panelsData using data manager
+        try {
+          const foundDevice = await t3000DataManager.getEntry(deviceId)
+          LogUtil.Info(`✅ TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData`, foundDevice)
+        } catch (error) {
+          LogUtil.Warn(`❌ TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData:`, error.message)
+        }
       }
-    })
 
-    // Test 3: Data Client Initialization
-    LogUtil.Info('🔍 TimeSeriesModal: TEST 3 - Data Client Initialization:')
-    const dataClient = initializeDataClients()
-    if (dataClient) {
-      LogUtil.Info('�?TEST 3 PASSED: Data client initialized:', dataClient.constructor.name)
-      LogUtil.Info('🔧 TimeSeriesModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
+      // Test 4: Data Client Initialization
+      LogUtil.Info('🔍 TimeSeriesModal: TEST 4 - Data Client Initialization:')
+      const dataClient = initializeDataClients()
+      if (dataClient) {
+        LogUtil.Info('✅ TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
+        LogUtil.Info('🔧 TimeSeriesModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
+      } else {
+        LogUtil.Warn('❌ TEST 4 FAILED: No data client available')
+      }
+
+      // Test 5: Value Processing
+      LogUtil.Info('🔍 TimeSeriesModal: TEST 5 - Value Processing Test:')
+      // Test digital value processing
+      const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
+      LogUtil.Info('✅ TEST 5.1 Digital Value Processing:', testDigitalValue)
+
+      // Test analog value processing
+      const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
+      LogUtil.Info('✅ TEST 5.2 Analog Value Processing:', testAnalogValue)
+
+      LogUtil.Info('🏁 TimeSeriesModal: === ENHANCED T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
     } else {
-      LogUtil.Info('�?TEST 3 FAILED: No data client available')
+      LogUtil.Warn('❌ TEST 2 FAILED: No Monitor Configuration Found')
+      LogUtil.Info('🔍 TimeSeriesModal: Debugging info:')
+      LogUtil.Info('📊 TimeSeriesModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
+
+      // Try to get detailed validation information
+      try {
+        const validation = await t3000DataManager.validateData()
+        LogUtil.Info('📊 TimeSeriesModal: Data validation details:', validation)
+      } catch (validationError) {
+        LogUtil.Error('❌ TimeSeriesModal: Data validation failed:', validationError)
+      }
     }
 
-    // Test 4: Value Processing
-    LogUtil.Info('🔍 TimeSeriesModal: TEST 4 - Value Processing Test:')
-    // Test digital value processing
-    const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
-    LogUtil.Info('�?TEST 4.1 Digital Value Processing:', testDigitalValue)
-
-    // Test analog value processing
-    const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
-    LogUtil.Info('�?TEST 4.2 Analog Value Processing:', testAnalogValue)
-
-    LogUtil.Info('🏁 TimeSeriesModal: === T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
-  } else {
-    LogUtil.Info('�?TEST 1 FAILED: No Monitor Configuration Found')
-    LogUtil.Info('🔍 TimeSeriesModal: Debugging info:')
-    LogUtil.Info('📊 TimeSeriesModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
-    LogUtil.Info('📊 TimeSeriesModal: Available panelsData count:', T3000_Data.value.panelsData?.length || 0)
-    LogUtil.Info('📊 TimeSeriesModal: PanelsData sample:', T3000_Data.value.panelsData?.slice(0, 2))
+  } catch (error) {
+    LogUtil.Error('❌ TimeSeriesModal: Enhanced data integration test failed:', error)
   }
 
   // Apply default view configuration to ensure settings are properly initialized

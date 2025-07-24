@@ -202,9 +202,9 @@ class WebSocketClient {
       // Parse message to check action type
       try {
         const parsedMessage = JSON.parse(message);
-        if (parsedMessage?.message.action !== 1&&parsedMessage?.message.action !== 6) {
+        // if (parsedMessage?.message.action !== 1&&parsedMessage?.message.action !== 6) {
         LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
-        }
+        // }
       } catch {
         // If parsing fails, log normally
         LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
