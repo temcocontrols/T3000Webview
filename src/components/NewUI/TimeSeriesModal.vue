@@ -4226,6 +4226,7 @@ onUnmounted(() => {
   border: 1px solid #e8e8e8;
   border-radius: 0px;
   padding: 4px 6px;
+  padding-right: 15px;
   margin-bottom: 5px;
   box-sizing: border-box;
 }
