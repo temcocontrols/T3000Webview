@@ -1625,24 +1625,41 @@ const getMonitorConfigFromT3000Data = async () => {
     // Parse input items based on actual monitor configuration structure
     // monitorConfig has 'input' array with objects and 'range' array
     if (monitorConfig.input && Array.isArray(monitorConfig.input)) {
+      LogUtil.Info(`🔍 TimeSeriesModal: Extracting ${monitorConfig.input.length} input items from monitor config`)
+
       for (let i = 0; i < monitorConfig.input.length; i++) {
         const inputItem = monitorConfig.input[i]
         if (inputItem && inputItem.panel !== undefined && inputItem.point_number !== undefined) {
           inputItems.push({
             panel: inputItem.panel,
             point_number: inputItem.point_number,
+            index: i,
             point_type: inputItem.point_type,
             network: inputItem.network,
-            sub_panel: inputItem.sub_panel,
-            index:i
+            sub_panel: inputItem.sub_panel
           })
 
           // Get corresponding range value
           const rangeValue = (monitorConfig.range && monitorConfig.range[i]) ? monitorConfig.range[i] : 0
           ranges.push(rangeValue)
+
+          // **DEBUG FIRST ITEM SPECIFICALLY**
+          if (i === 0) {
+            LogUtil.Info(`🚨 FIRST ITEM (index 0) EXTRACTION DEBUG:`, {
+              inputItem,
+              extractedRangeValue: rangeValue,
+              monitorConfigRangeArray: monitorConfig.range,
+              rangeAtIndex0: monitorConfig.range ? monitorConfig.range[0] : 'NO_RANGE_ARRAY',
+              expectedDeviceId: `IN${inputItem.point_number + 1}` // Should be IN1 for point_number=0
+            })
+          }
+
+          LogUtil.Info(`📝 TimeSeriesModal: Item ${i}: point_type=${inputItem.point_type}, point_number=${inputItem.point_number}, range=${rangeValue}`)
         }
       }
     }
+
+    LogUtil.Info(`✅ TimeSeriesModal: Extracted ranges array:`, ranges)
 
     const result = {
       id: monitorConfig.id,
@@ -1696,26 +1713,62 @@ const initializeDataClients = () => {
 }
 
 /**
+ * Wait for panelsData to be available and populated
+ */
+const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> => {
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < timeoutMs) {
+    const panelsData = T3000_Data.value.panelsData || []
+
+    if (panelsData.length > 0) {
+      LogUtil.Info(`✅ TimeSeriesModal: PanelsData loaded with ${panelsData.length} devices`)
+      return true
+    }
+
+    LogUtil.Info(`⏳ TimeSeriesModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+
+  LogUtil.Warn(`❌ TimeSeriesModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
+  return false
+}
+
+/**
  * Fetch real-time data for all monitor input items
  */
 const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
   try {
     LogUtil.Info('🔄 TimeSeriesModal: Starting real-time monitor data fetch...')
 
+    // Set loading state
+    isLoading.value = true
+
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Info('�?TimeSeriesModal: No monitor config found, falling back to mock data')
+      LogUtil.Info('❌ TimeSeriesModal: No monitor config found, falling back to mock data')
+      isLoading.value = false
       return []
     }
 
-    LogUtil.Info('�?TimeSeriesModal: Monitor config extracted:', monitorConfig)
+    LogUtil.Info('✅ TimeSeriesModal: Monitor config extracted:', monitorConfig)
     LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
       id: monitorConfigData.id,
       inputItemsCount: monitorConfigData.inputItems?.length || 0,
       rangesCount: monitorConfigData.ranges?.length || 0,
       dataInterval: monitorConfigData.dataIntervalMs
     })
+
+    // Wait for panelsData to be available
+    LogUtil.Info('⏳ TimeSeriesModal: Waiting for panelsData to load...')
+    const panelsDataReady = await waitForPanelsData(10000)
+
+    if (!panelsDataReady) {
+      LogUtil.Error('❌ TimeSeriesModal: PanelsData not available, cannot proceed')
+      isLoading.value = false
+      return []
+    }
 
     // Initialize data client (returns single client based on environment)
     const dataClient = initializeDataClients()
@@ -1793,8 +1846,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     return allDataResults
 
   } catch (error) {
-    LogUtil.Error('�?TimeSeriesModal: Error fetching real-time monitor data:', error)
+    LogUtil.Error('❌ TimeSeriesModal: Error fetching real-time monitor data:', error)
     return []
+  } finally {
+    // Clear loading state
+    isLoading.value = false
   }
 }
 
@@ -1825,11 +1881,11 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       config.panelData.map(device => ({ id: device.id, label: device.label, value: device.value }))
     )
 
-    // Find matching device in panelsData using generated device ID
-    const matchingDevice = findDeviceByGeneratedId(config.panelData, deviceId)
+    // Find matching device in panelsData using new enhanced lookup
+    const matchingDevice = findPanelDataDevice(inputItem, config.panelData)
 
     if (!matchingDevice) {
-      LogUtil.Info(`�?TimeSeriesModal: No device found with ID: ${deviceId}, leaving as empty`)
+      LogUtil.Info(`❌ TimeSeriesModal: No device found with ID: ${deviceId}, leaving as empty`)
       LogUtil.Info(`🔍 TimeSeriesModal: Searched for "${deviceId}" in ${config.panelData.length} devices`)
       return [{
         timestamp: Date.now(),
@@ -1837,9 +1893,9 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       }]
     }
 
-    LogUtil.Info(`�?TimeSeriesModal: Found matching device:`, matchingDevice)
+    LogUtil.Info(`✅ TimeSeriesModal: Found matching device:`, matchingDevice)
 
-    // Process the device value based on range type
+    // Process the device value using enhanced logic with panel data + input range
     const processedValue = processDeviceValue(matchingDevice, rangeValue)
     LogUtil.Info(`📊 TimeSeriesModal: Processed value:`, processedValue)
 
@@ -2032,6 +2088,155 @@ const initializeRealDataSeries = async () => {
 // ====================================================================================
 
 /**
+ * Find panel data device by generated device ID
+ */
+const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
+  const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
+
+  LogUtil.Info(`🔍 TimeSeriesModal: Looking for device with ID: ${deviceId}`, {
+    inputItem,
+    generatedDeviceId: deviceId,
+    availableDevices: panelsData.map(d => d.id)
+  })
+
+  const device = panelsData.find(device => device.id === deviceId)
+
+  if (!device) {
+    LogUtil.Warn(`❌ TimeSeriesModal: Device ${deviceId} not found in panelsData`)
+    return null
+  }
+
+  LogUtil.Info(`✅ TimeSeriesModal: Found device ${deviceId}:`, device)
+  return device
+}
+
+/**
+ * Determine if device is analog or digital from panel data and input range
+ */
+const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
+  // Primary: Use input range value (0=analog, 1=digital)
+  const isAnalogByRange = inputRangeValue === 0
+
+  // Secondary: Use panel data digital_analog field (1=analog, 0=digital)
+  const isAnalogByPanelData = panelData.digital_analog === 1
+
+  LogUtil.Info(`🔍 TimeSeriesModal: Device type determination:`, {
+    deviceId: panelData.id,
+    inputRangeValue,
+    isAnalogByRange,
+    panelDataDigitalAnalog: panelData.digital_analog,
+    isAnalogByPanelData,
+    finalDecision: isAnalogByRange
+  })
+
+  // Use input range as primary source of truth
+  return isAnalogByRange
+}
+
+/**
+ * Get the correct value from panel data based on device type
+ */
+const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
+  let rawValue: number
+
+  if (isAnalog) {
+    // Analog devices: use 'value' field
+    rawValue = parseFloat(panelData.value) || 0
+    LogUtil.Info(`📊 TimeSeriesModal: Using analog value field:`, {
+      deviceId: panelData.id,
+      valueField: panelData.value,
+      parsedValue: rawValue
+    })
+  } else {
+    // Digital devices: use 'control' field
+    rawValue = parseFloat(panelData.control) || 0
+    LogUtil.Info(`📊 TimeSeriesModal: Using digital control field:`, {
+      deviceId: panelData.id,
+      controlField: panelData.control,
+      parsedValue: rawValue
+    })
+  }
+
+  return rawValue
+}
+
+/**
+ * Get analog unit symbol based on range value
+ */
+const getAnalogUnit = (range: number): string => {
+  const analogUnits: { [key: number]: string } = {
+    0: '',           // Unused/default
+    31: '°C',        // deg.Celsius
+    32: '°F',        // deg.Fahrenheit
+    33: 'ft/min',    // Feet per Min
+    34: 'Pa',        // Pascals
+    35: 'kPa',       // KPascals
+    36: 'psi',       // lbs/sqr.inch
+    37: 'inWC',      // inches of WC
+    38: 'W',         // Watts
+    39: 'kW',        // KWatts
+    40: 'kWh',       // KWH
+    41: 'V',         // Volts
+    42: 'kV',        // KV
+    43: 'A',         // Amps
+    44: 'mA',        // ma
+    45: 'CFM',       // CFM
+    46: 's',         // Seconds
+    47: 'min',       // Minutes
+    48: 'h',         // Hours
+    49: 'days',      // Days
+    50: 'time',      // Time
+    51: 'Ω',         // Ohms
+    52: '%',         // %
+    53: '%RH',       // %RH
+    54: 'p/min',     // p/min
+    55: 'counts',    // Counts
+    56: '%Open',     // %Open
+    57: 'kg',        // Kg
+    58: 'L/h',       // L/Hour
+    59: 'GPH',       // GPH
+    60: 'gal',       // GAL
+    61: 'ft³',       // CF
+    62: 'BTU',       // BTU
+    63: 'm³/h'       // CMH
+  }
+
+  return analogUnits[range] || ''
+}
+
+/**
+ * Get digital unit labels based on range value
+ */
+const getDigitalUnit = (range: number): { low: string; high: string } => {
+  const digitalUnits: { [key: number]: { low: string; high: string } } = {
+    1: { low: 'Off', high: 'On' },
+    2: { low: 'Close', high: 'Open' },
+    3: { low: 'Stop', high: 'Start' },
+    4: { low: 'Disable', high: 'Enable' },
+    5: { low: 'Normal', high: 'Alarm' },
+    6: { low: 'Normal', high: 'High' },
+    7: { low: 'Normal', high: 'Low' },
+    8: { low: 'No', high: 'Yes' },
+    9: { low: 'Cool', high: 'Heat' },
+    10: { low: 'Unoccupy', high: 'Occupy' },
+    11: { low: 'Low', high: 'High' },
+    12: { low: 'On', high: 'Off' },
+    13: { low: 'Open', high: 'Close' },
+    14: { low: 'Start', high: 'Stop' },
+    15: { low: 'Enable', high: 'Disable' },
+    16: { low: 'Alarm', high: 'Normal' },
+    17: { low: 'High', high: 'Normal' },
+    18: { low: 'Low', high: 'Normal' },
+    19: { low: 'Yes', high: 'No' },
+    20: { low: 'Heat', high: 'Cool' },
+    21: { low: 'Occupy', high: 'Unoccupy' },
+    22: { low: 'High', high: 'Low' }
+  }
+
+  return digitalUnits[range] || { low: 'Low', high: 'High' }
+}
+
+/**
  * Generate device ID from inputItem (point_type + point_number)
  */
 const generateDeviceId = (pointType: number, pointNumber: number): string => {
@@ -2076,41 +2281,98 @@ const mapPointTypeToString = (pointType: number): string => {
  */
 
 /**
- * Process device value based on unit type and range
+ * Process device value based on panel data and input range
  */
-const processDeviceValue = (device: any, rangeValue: number): { value: number; displayValue: string; unit: string } => {
-  const rawValue = parseFloat(device.value) || 0
+const processDeviceValue = (panelData: any, inputRangeValue: number): { value: number; displayValue: string; unit: string } => {
+  // Determine if device is analog or digital
+  const isAnalog = isAnalogDevice(panelData, inputRangeValue)
 
-  // Digital units (range = 1)
-  if (rangeValue === 1) {
-    const digitalValue = rawValue > 0 ? 1 : 0
-    const displayValue = digitalValue === 1 ? 'High' : 'Low'
+  // Get the correct raw value from panel data
+  const rawValue = getDeviceValue(panelData, isAnalog)
 
-    return {
-      value: digitalValue,
-      displayValue,
-      unit: ''
-    }
+  // **CRITICAL DEBUG FOR FIRST ITEM ISSUE**
+  if (panelData.id === 'IN1') {
+    LogUtil.Info(`🚨 FIRST ITEM DEBUG - IN1 Processing:`, {
+      deviceId: panelData.id,
+      inputRangeValue,
+      isAnalog,
+      rawValue,
+      panelDataValue: panelData.value,
+      panelDataControl: panelData.control,
+      panelDataDigitalAnalog: panelData.digital_analog,
+      panelDataRange: panelData.range,
+      willDivideBy1000: isAnalog
+    })
   }
 
-  // Analog units (range = 0)
-  if (rangeValue === 0) {
-    // Use raw value directly for analog - this is the key change per your specification
-    // For example, if value is 8000, use 8000 directly for charting
-    const processedValue = rawValue
+  if (isAnalog) {
+    // Analog processing: only divide by 1000 if value is larger than 1000
+    // This handles cases where some values are already in correct scale
+    let processedValue: number
+    if (rawValue > 1000) {
+      processedValue = rawValue / 1000
+      LogUtil.Info(`📊 TimeSeriesModal: Large analog value divided by 1000:`, {
+        deviceId: panelData.id,
+        rawValue,
+        processedValue,
+        operation: 'DIVIDED_BY_1000'
+      })
+    } else {
+      processedValue = rawValue
+      LogUtil.Info(`📊 TimeSeriesModal: Small analog value used as-is:`, {
+        deviceId: panelData.id,
+        rawValue,
+        processedValue,
+        operation: 'USED_AS_IS'
+      })
+    }
+
+    const unit = getAnalogUnit(panelData.range)
+
+    LogUtil.Info(`📊 TimeSeriesModal: Analog value processing:`, {
+      deviceId: panelData.id,
+      rawValue,
+      processedValue,
+      unit,
+      panelDataRange: panelData.range
+    })
+
+    // **ADDITIONAL DEBUG FOR FIRST ITEM**
+    if (panelData.id === 'IN1') {
+      LogUtil.Info(`🚨 FIRST ITEM FINAL RESULT:`, {
+        deviceId: 'IN1',
+        rawValue,
+        processedValue,
+        wasLargerThan1000: rawValue > 1000,
+        expectedIfRawWas8000: 8000 / 1000,
+        expectedIfRawWas8: 8,
+        actualResult: processedValue
+      })
+    }
 
     return {
       value: processedValue,
       displayValue: `${processedValue.toFixed(2)}`,
+      unit: unit
+    }
+  } else {
+    // Digital processing: use control value as-is with state labels
+    const digitalStates = getDigitalUnit(panelData.range)
+    const displayValue = rawValue > 0 ? `1 (${digitalStates.high})` : `0 (${digitalStates.low})`
+
+    LogUtil.Info(`📊 TimeSeriesModal: Digital value processing:`, {
+      deviceId: panelData.id,
+      rawValue,
+      displayValue,
+      digitalStates,
+      panelDataRange: panelData.range
+    })
+
+    return {
+      value: rawValue,
+      displayValue: displayValue,
       unit: ''
     }
-  }
-
-  // Unknown range - return as-is
-  return {
-    value: rawValue,
-    displayValue: rawValue.toString(),
-    unit: ''
   }
 }
 
@@ -2215,7 +2477,7 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
   const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
   const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
 
-  LogUtil.Info(`📊 TimeSeriesModal: Input Item ${index + 1} Mapping:`, {
+  LogUtil.Info(`📊 TimeSeriesModal: Input Item ${index + 1} Enhanced Mapping:`, {
     inputItem,
     pointType: inputItem.point_type,
     pointNumber: inputItem.point_number,
@@ -2227,7 +2489,18 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
       deviceIndex: inputItem.point_number + 1,
       formula: `${mapPointTypeToString(inputItem.point_type)}${inputItem.point_number + 1}`
     },
-    rangeType: rangeValue >= 0 && rangeValue <= 22 ? 'Digital' : rangeValue >= 31 && rangeValue <= 63 ? 'Analog' : 'Unknown'
+    rangeAnalysis: {
+      inputRange: rangeValue,
+      isAnalogByRange: rangeValue === 0,
+      isDigitalByRange: rangeValue === 1,
+      rangeCategory: rangeValue === 0 ? 'Analog' : rangeValue === 1 ? 'Digital' : 'Unknown'
+    },
+    processingPlan: {
+      willUseValueField: rangeValue === 0,
+      willUseControlField: rangeValue === 1,
+      willDivideBy1000: rangeValue === 0,
+      willShowDigitalStates: rangeValue === 1
+    }
   })
 
   return deviceId
