@@ -1622,19 +1622,25 @@ const getMonitorConfigFromT3000Data = async () => {
     const inputItems = []
     const ranges = []
 
-    // Parse input items based on monitor configuration structure
-    for (let i = 1; i <= 14; i++) {
-      const panelKey = `input${i}_panel`
-      const pointKey = `input${i}_point`
-      const rangeKey = `input${i}_range`
+    // Parse input items based on actual monitor configuration structure
+    // monitorConfig has 'input' array with objects and 'range' array
+    if (monitorConfig.input && Array.isArray(monitorConfig.input)) {
+      for (let i = 0; i < monitorConfig.input.length; i++) {
+        const inputItem = monitorConfig.input[i]
+        if (inputItem && inputItem.panel !== undefined && inputItem.point_number !== undefined) {
+          inputItems.push({
+            panel: inputItem.panel,
+            point_number: inputItem.point_number,
+            point_type: inputItem.point_type,
+            network: inputItem.network,
+            sub_panel: inputItem.sub_panel,
+            index:i
+          })
 
-      if (monitorConfig[panelKey] !== undefined && monitorConfig[pointKey] !== undefined) {
-        inputItems.push({
-          panel: monitorConfig[panelKey],
-          point: monitorConfig[pointKey],
-          index: i - 1
-        })
-        ranges.push(monitorConfig[rangeKey] || 0)
+          // Get corresponding range value
+          const rangeValue = (monitorConfig.range && monitorConfig.range[i]) ? monitorConfig.range[i] : 0
+          ranges.push(rangeValue)
+        }
       }
     }
 
@@ -2181,6 +2187,14 @@ const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
 
 /**
  * Log device mapping details for debugging
+ *
+ *  {
+      "network": 0,
+      "panel": 3,
+      "point_number": 11,
+      "point_type": 2,
+      "sub_panel": 0
+    }
  */
 const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => {
   const deviceId = generateDeviceId(inputItem.point_type)
