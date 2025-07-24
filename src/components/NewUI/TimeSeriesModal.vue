@@ -2032,33 +2032,48 @@ const initializeRealDataSeries = async () => {
 // ====================================================================================
 
 /**
- * Generate device ID from point type
+ * Generate device ID from inputItem (point_type + point_number)
  */
-const generateDeviceId = (pointType: number): string => {
+const generateDeviceId = (pointType: number, pointNumber: number): string => {
   const typeString = mapPointTypeToString(pointType)
-  const typeIndex = getPointTypeIndex(pointType)
-  return `${typeString}${typeIndex}`
+  const deviceIndex = pointNumber + 1  // Convert 0-based to 1-based
+  return `${typeString}${deviceIndex}`
 }
 
 /**
- * Map point type number to string prefix
+ * Map point type number to string prefix based on BAC definitions
+ * T3000 point_type values are 1-based, but BAC defines are 0-based
+ * So we subtract 1 from point_type to get the correct BAC define
  */
 const mapPointTypeToString = (pointType: number): string => {
-  if (pointType >= 0 && pointType <= 127) return 'IN'   // BAC_IN
-  if (pointType >= 128 && pointType <= 255) return 'OUT' // BAC_OUT
-  if (pointType >= 256 && pointType <= 383) return 'VAR' // BAC_VAR
-  return 'UNKNOWN'
+  const bacDefine = pointType - 1; // Convert T3000 1-based to BAC 0-based
+
+  switch (bacDefine) {
+    case 0: return 'OUT'    // BAC_OUT = 0
+    case 1: return 'IN'     // BAC_IN = 1
+    case 2: return 'VAR'    // BAC_VAR = 2
+    case 3: return 'PID'    // BAC_PID = 3
+    case 4: return 'SCH'    // BAC_SCH = 4
+    case 5: return 'HOL'    // BAC_HOL = 5
+    case 6: return 'PRG'    // BAC_PRG = 6
+    case 7: return 'TBL'    // BAC_TBL = 7
+    case 8: return 'DMON'   // BAC_DMON = 8
+    case 9: return 'AMON'   // BAC_AMON = 9
+    case 10: return 'GRP'   // BAC_GRP = 10
+    case 11: return 'AY'    // BAC_AY = 11
+    case 12: return 'ALARMM' // BAC_ALARMM = 12
+    case 13: return 'UNIT'  // BAC_UNIT = 13
+    case 14: return 'USER_NAME' // BAC_USER_NAME = 14
+    case 15: return 'ALARMS' // BAC_ALARMS = 15
+    case 16: return 'WR_TIME' // BAC_WR_TIME = 16
+    case 17: return 'AR_Y'  // BAC_AR_Y = 17
+    default: return 'UNKNOWN'
+  }
 }
 
 /**
- * Get the index within the point type range
+ * Get point type info for debugging (using existing function)
  */
-const getPointTypeIndex = (pointType: number): number => {
-  if (pointType >= 0 && pointType <= 127) return pointType + 1      // IN1-IN128
-  if (pointType >= 128 && pointType <= 255) return pointType - 127  // OUT1-OUT128
-  if (pointType >= 256 && pointType <= 383) return pointType - 255  // VAR1-VAR128
-  return 0
-}
 
 /**
  * Process device value based on unit type and range
@@ -2197,15 +2212,21 @@ const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
     }
  */
 const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => {
-  const deviceId = generateDeviceId(inputItem.point_type)
+  const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
   const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
 
   LogUtil.Info(`📊 TimeSeriesModal: Input Item ${index + 1} Mapping:`, {
     inputItem,
     pointType: inputItem.point_type,
+    pointNumber: inputItem.point_number,
     pointTypeInfo,
     generatedDeviceId: deviceId,
     rangeValue,
+    deviceIdBreakdown: {
+      typeString: mapPointTypeToString(inputItem.point_type),
+      deviceIndex: inputItem.point_number + 1,
+      formula: `${mapPointTypeToString(inputItem.point_type)}${inputItem.point_number + 1}`
+    },
     rangeType: rangeValue >= 0 && rangeValue <= 22 ? 'Digital' : rangeValue >= 31 && rangeValue <= 63 ? 'Analog' : 'Unknown'
   })
 
