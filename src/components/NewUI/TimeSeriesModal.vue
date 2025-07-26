@@ -757,6 +757,9 @@ const generateDataSeries = (): SeriesConfig[] => {
     const pointTypeInfo = getPointTypeInfo(pointType)
     const description = getDeviceDescription(panelId, pointType, itemNumber)
 
+    // 🔧 FIX #3: Create clean description for tooltips (no panel info)
+    const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${itemNumber + 1}`
+
     return {
       name: name,
       color: colors[index % colors.length],
@@ -769,7 +772,7 @@ const generateDataSeries = (): SeriesConfig[] => {
       digitalStates: digitalStates,
       itemType: formattedItemType, // Use the new format
       prefix: pointTypeInfo.category, // Add prefix from category
-      description: description // Add description from T3000 data
+      description: cleanDescription // 🔧 FIX #3: Use clean description for tooltips
     }
   })
 }
@@ -1173,14 +1176,19 @@ const getChartConfig = () => ({
             const series = dataSeries.value.find(s => s.name === context.dataset.label)
             if (!series) return `${context.dataset.label}: ${context.parsed.y}`
 
-            // Different formatting for digital vs analog
+            // 🔧 FIX #3: Use clean description without panel info for tooltip
+            const cleanLabel = series.description || series.prefix || context.dataset.label
+
+            // 🔧 FIX #2: Different formatting for digital vs analog
             if (series.unitType === 'digital') {
               const stateIndex = context.parsed.y === 1 ? 1 : 0
               const stateText = series.digitalStates?.[stateIndex] || (context.parsed.y === 1 ? 'High' : 'Low')
-              return `${context.dataset.label}: ${stateText} (${context.parsed.y})`
+              // Digital outputs: show only state text, no unit symbol
+              return `${cleanLabel}: ${stateText}`
             } else {
+              // Analog outputs: show value with unit
               const unit = series.unit || ''
-              return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}${unit}`
+              return `${cleanLabel}: ${context.parsed.y.toFixed(2)}${unit}`
             }
           },
           labelColor: (context: any) => {
@@ -1284,7 +1292,7 @@ const getChartConfig = () => ({
           if (timeBase.value === 'custom' && customStartDate.value) {
             return customStartDate.value.valueOf()
           }
-          // Always show proper time range even without data
+          // 🔧 FIX #1: Always show proper time range even without data
           const timeWindow = getCurrentTimeWindow()
           return timeWindow.min
         })(),
@@ -1292,7 +1300,7 @@ const getChartConfig = () => ({
           if (timeBase.value === 'custom' && customEndDate.value) {
             return customEndDate.value.valueOf()
           }
-          // Always show proper time range even without data
+          // 🔧 FIX #1: Always show proper time range even without data
           const timeWindow = getCurrentTimeWindow()
           return timeWindow.max
         })()
@@ -2030,12 +2038,18 @@ const initializeRealDataSeries = async () => {
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
 
-      // Don't show panel info if there's no data
+      // Create clean name for tooltip (without panel info) and full name for display
       let seriesName: string
+      let cleanDescription: string
+
       if (itemData.length === 0) {
         seriesName = `${prefix}${inputItem.point_number + 1}` // Just show "IN22" etc without (P3)
+        cleanDescription = seriesName
       } else {
+        // Full name for left panel display
         seriesName = `${prefix} - ${desc || `${prefix}${inputItem.point_number + 1} (P${inputItem.panel})`}`
+        // 🔧 FIX #3: Clean description for tooltips (remove panel info)
+        cleanDescription = desc ? `${prefix} - ${desc}` : `${prefix}${inputItem.point_number + 1}`
       }
 
       // Determine unit type based on range value: 0 = analog, 1 = digital
@@ -2068,7 +2082,7 @@ const initializeRealDataSeries = async () => {
         digitalStates: digitalStates,
         itemType: pointTypeInfo.name,
         prefix: prefix, // Add prefix from category
-        description: desc || `${prefix}${inputItem.point_number} (P${inputItem.panel})` // Add description
+        description: cleanDescription // 🔧 FIX #3: Use clean description for tooltips
       }
 
       newDataSeries.push(seriesConfig)
@@ -3052,12 +3066,11 @@ const updateChart = () => {
       lineWidth: 1
     }
 
-    // Set x-axis bounds based on actual data to ensure lines are drawn at true intervals
-    const bounds = getDataSeriesTimeBounds()
-    if (bounds.min !== undefined && bounds.max !== undefined) {
-      xScale.min = bounds.min
-      xScale.max = bounds.max
-    }
+    // 🔧 FIX #1: Always use the current time window, not data bounds
+    // This ensures x-axis always shows correct timebase ticks regardless of data state
+    const timeWindow = getCurrentTimeWindow()
+    xScale.min = timeWindow.min
+    xScale.max = timeWindow.max
   }
 
   // Update y-axis grid configuration

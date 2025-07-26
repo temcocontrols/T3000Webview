@@ -189,6 +189,18 @@ class WebSocketClient {
   }
 
   sendMessage(message: string) {
+
+    // // TEMP DEBUG: Only send GET_PANEL_DATA messages, ignore others
+    // try {
+    //   const parsed = JSON.parse(message);
+    //   if (parsed.message.action !== MessageType.GET_PANEL_DATA) {
+    //     LogUtil.Debug('TEMP DEBUG: Skipping non-GET_PANEL_DATA message:', parsed.message.action );
+    //     return;
+    //   }
+    // } catch (e) {
+    //   LogUtil.Debug('TEMP DEBUG: Failed to parse message, sending anyway:', message);
+    // }
+
     if (this.isDestroyed) {
       LogUtil.Error('Cannot send message: WebSocketClient has been destroyed');
       return;
