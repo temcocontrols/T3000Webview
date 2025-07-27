@@ -56,7 +56,7 @@ class T3000DataManager {
   private readonly CACHE_DURATION = 30000 // 30 seconds
 
   // Configuration
-  private readonly DEFAULT_TIMEOUT = 15000 // 15 seconds
+  private readonly DEFAULT_TIMEOUT = 30000 // 30 seconds - Fixed communication timeout (not tied to polling interval)
   private readonly MAX_RETRY_ATTEMPTS = 3
   private readonly STALE_DATA_THRESHOLD = 60000 // 1 minute
 

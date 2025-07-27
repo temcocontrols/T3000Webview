@@ -641,7 +641,49 @@ const customStartTime = ref<Dayjs | null>(null)
 const customEndTime = ref<Dayjs | null>(null)
 const customDateModalVisible = ref(false)
 const isRealTime = ref(true)
-const updateInterval = ref(60000) // 60 seconds (1 minute) to match data generation interval
+
+// Dynamic interval calculation based on T3000 monitorConfig
+const calculateT3000Interval = (monitorConfig: any): number => {
+  if (!monitorConfig) {
+    LogUtil.Warn('📊 TimeSeriesModal: No monitorConfig available, using default 60s interval')
+    return 60000 // Default fallback: 1 minute
+  }
+
+  LogUtil.Info('🔍 TimeSeriesModal: Raw monitorConfig received:', monitorConfig)
+
+  const {
+    hour_interval_time = 0,
+    minute_interval_time = 0,  // Default to 0, let T3000 config override
+    second_interval_time = 0
+  } = monitorConfig
+
+  // Convert to milliseconds
+  const totalSeconds = (hour_interval_time * 3600) +
+                      (minute_interval_time * 60) +
+                      second_interval_time
+
+  // If no intervals specified at all, default to 1 minute, otherwise use calculated value
+  const intervalMs = totalSeconds > 0
+    ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
+    : 60000  // Default 1 minute if all intervals are 0
+
+  LogUtil.Info('🔄 TimeSeriesModal: Calculated T3000 interval:', {
+    hour_interval_time,
+    minute_interval_time,
+    second_interval_time,
+    totalSeconds,
+    intervalMs,
+    intervalMinutes: intervalMs / 60000
+  })
+
+  return intervalMs
+}
+
+// Dynamic update interval based on T3000 configuration
+const updateInterval = computed(() => {
+  return calculateT3000Interval(monitorConfig.value)
+})
+
 const isLoading = ref(false)
 const showGrid = ref(true)
 const showLegend = ref(false)  // Hide legend by default to give more space to chart
@@ -1121,7 +1163,7 @@ const getChartConfig = () => ({
     },
     interaction: {
       intersect: false,
-      mode: 'index' as const
+      mode: 'index' as const  // 🎯 Back to index mode for now
     },
     plugins: {
       legend: {
@@ -1566,16 +1608,6 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
 // ====================================================================================
 
 /**
- * Calculate data retrieval interval from T3000 timing configuration
- */
-const calculateDataInterval = (hours: number, minutes: number, seconds: number): number => {
-  const totalMs = (hours * 3600 + minutes * 60 + seconds) * 1000
-
-  // Ensure minimum interval of 1 second for real-time updates
-  return Math.max(totalMs, 1000)
-}
-
-/**
  * Enhanced monitor configuration extraction using T3000DataManager
  * @returns Monitor configuration with input items and timing intervals
  */
@@ -1634,12 +1666,8 @@ const getMonitorConfigFromT3000Data = async () => {
 
     LogUtil.Info('✅ TimeSeriesModal: Found monitor configuration:', monitorConfig)
 
-    // Calculate the data retrieval interval in milliseconds
-    const intervalMs = calculateDataInterval(
-      monitorConfig.hour_interval_time || 0,
-      monitorConfig.minute_interval_time || 0,
-      monitorConfig.second_interval_time || 0
-    )
+    // Calculate the data retrieval interval in milliseconds using the unified function
+    const intervalMs = calculateT3000Interval(monitorConfig)
 
     // Extract input items from the configuration
     const inputItems = []
@@ -2500,7 +2528,24 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
       }
 
       if (dataClient.messageData) {
-        LogUtil.Info(`📜 TimeSeriesModal: Last message data:`, dataClient.messageData)
+        const currentTime = new Date()
+        const timeString = currentTime.toLocaleTimeString() + '.' + currentTime.getMilliseconds().toString().padStart(3, '0')
+        LogUtil.Info(`📜 TimeSeriesModal: Last message data [${timeString}]:`, dataClient.messageData)
+
+        // Track request timing for interval analysis
+        if (!window.t3000RequestTimes) window.t3000RequestTimes = []
+        window.t3000RequestTimes.push({
+          timestamp: currentTime.getTime(),
+          timeString: timeString
+        })
+
+        // Log interval if we have previous requests
+        if (window.t3000RequestTimes.length > 1) {
+          const lastTwoRequests = window.t3000RequestTimes.slice(-2)
+          const intervalMs = lastTwoRequests[1].timestamp - lastTwoRequests[0].timestamp
+          const intervalSec = Math.round(intervalMs / 1000)
+          LogUtil.Info(`⏱️ TimeSeriesModal: Request interval: ${intervalSec}s (${intervalMs}ms) - Previous: ${lastTwoRequests[0].timeString}, Current: ${lastTwoRequests[1].timeString}`)
+        }
       }
 
     } catch (error) {
@@ -2869,9 +2914,28 @@ const addRealtimeDataPoint = async () => {
   if (!isRealTime.value) return
 
   const now = new Date()
-  // Align to exact minute for consistent grid alignment
-  const alignedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
-  const timestamp = alignedTime.getTime()
+  const callTimeString = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0')
+
+  // Track polling calls for interval verification
+  if (!window.t3000PollingCalls) window.t3000PollingCalls = []
+  window.t3000PollingCalls.push({
+    timestamp: now.getTime(),
+    timeString: callTimeString
+  })
+
+  // Log interval between polling calls
+  if (window.t3000PollingCalls.length > 1) {
+    const lastTwoCalls = window.t3000PollingCalls.slice(-2)
+    const intervalMs = lastTwoCalls[1].timestamp - lastTwoCalls[0].timestamp
+    const intervalSec = Math.round(intervalMs / 1000)
+    LogUtil.Info(`🔄 TimeSeriesModal: addRealtimeDataPoint called [${callTimeString}] - Interval: ${intervalSec}s since last call (${lastTwoCalls[0].timeString})`)
+  } else {
+    LogUtil.Info(`🔄 TimeSeriesModal: addRealtimeDataPoint called [${callTimeString}] - First call`)
+  }
+
+  // 🔧 Use actual timestamp for real data points (not aligned to minutes)
+  // This allows showing multiple data points per minute interval
+  const timestamp = now.getTime()
 
   // Check if we have real monitor configuration for live data
   const monitorConfigData = monitorConfig.value
@@ -3404,12 +3468,30 @@ const startRealTimeUpdates = () => {
   const monitorConfigData = monitorConfig.value
   const dataInterval = monitorConfigData?.dataIntervalMs || updateInterval.value
 
-  LogUtil.Info('🔄 TimeSeriesModal: Starting real-time updates:', {
-    monitorInterval: monitorConfigData?.dataIntervalMs,
-    fallbackInterval: updateInterval.value,
-    actualInterval: dataInterval,
-    intervalSeconds: dataInterval / 1000
+  // 🔍 DEBUG: Add detailed logging to trace interval calculation
+  const setupTime = new Date()
+  const setupTimeString = setupTime.toLocaleTimeString() + '.' + setupTime.getMilliseconds().toString().padStart(3, '0')
+
+  LogUtil.Info(`🔄 TimeSeriesModal: Starting real-time updates [${setupTimeString}] with detailed interval analysis:`, {
+    'monitorConfig.value exists': !!monitorConfig.value,
+    'monitorConfigData': monitorConfigData,
+    'monitorConfigData?.dataIntervalMs': monitorConfigData?.dataIntervalMs,
+    'updateInterval.value (computed)': updateInterval.value,
+    'actualInterval selected': dataInterval,
+    intervalSeconds: dataInterval / 1000,
+    intervalMinutes: dataInterval / 60000,
+    'Raw monitorConfig': monitorConfig.value
   })
+
+  // 🔍 If using computed updateInterval, log the calculation details
+  if (!monitorConfigData?.dataIntervalMs) {
+    LogUtil.Info('📊 TimeSeriesModal: Using computed updateInterval, calculating from monitorConfig:')
+    const calculatedInterval = calculateT3000Interval(monitorConfig.value)
+    LogUtil.Info('📊 TimeSeriesModal: Calculated interval result:', calculatedInterval)
+  }
+
+  // Track when timer starts
+  LogUtil.Info(`⏰ TimeSeriesModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
 
   realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
 }
