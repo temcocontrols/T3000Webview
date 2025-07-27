@@ -1,0 +1,316 @@
+use tokio::time::{Duration, interval};
+use tokio_cron_scheduler::{JobScheduler, Job};
+use chrono::Utc;
+use anyhow::{Result, Context};
+use std::sync::Arc;
+
+use super::manager::DataM/// Collect data for a specific trend log item
+async fn collect_trend_log_item_data(
+    data_manager: Arc<DataManager>,
+    trend_log: &TrendLog,
+    item: &TrendLogItem
+) -> Result<()> {
+    // TODO: This is where you would interface with T3000 to get actual data
+    // For now, we'll simulate the process
+
+    println!(
+        "Collecting data for monitoring point {} in trend log {} (order {})",
+        item.monitoring_point_id, trend_log.log_id, item.point_order
+    );
+
+    // TODO: Look up the actual monitoring point details using monitoring_point_id
+    // For now, simulate the process
+    let mock_data = simulate_t3000_data_fetch(item).await?;
+
+    // Cache the real-time data
+    let cache_entry = RealtimeDataCache {
+        id: None,
+        monitoring_point_id: item.monitoring_point_id,
+        device_id: trend_log.device_id, // Get device_id from trend_log
+        point_type: 0, // TODO: Get from monitoring point lookup
+        point_number: 0, // TODO: Get from monitoring point lookup
+        value: mock_data.value,
+        quality: mock_data.quality,
+        timestamp: mock_data.timestamp,
+        data_type: mock_data.data_type,
+        unit_code: mock_data.unit_code,
+        is_fresh: 1,
+        cache_duration: 60,
+        created_at: Some(Utc::now().timestamp()),
+        updated_at: Some(Utc::now().timestamp()),
+    };ypes::*;
+
+/// Background data collector that polls T3000 and caches data
+pub struct DataCollector {
+    data_manager: Arc<DataManager>,
+    scheduler: JobScheduler,
+    is_running: Arc<tokio::sync::RwLock<bool>>,
+}
+
+impl DataCollector {
+    /// Create a new data collector
+    pub async fn new(data_manager: Arc<DataManager>) -> Result<Self> {
+        let scheduler = JobScheduler::new().await
+            .context("Failed to create job scheduler")?;
+
+        Ok(DataCollector {
+            data_manager,
+            scheduler,
+            is_running: Arc::new(tokio::sync::RwLock::new(false)),
+        })
+    }
+
+    /// Start background data collection
+    pub async fn start(&self) -> Result<()> {
+        {
+            let mut running = self.is_running.write().await;
+            if *running {
+                return Ok(()); // Already running
+            }
+            *running = true;
+        }
+
+        // Start the scheduler
+        self.scheduler.start().await
+            .context("Failed to start job scheduler")?;
+
+        // Schedule periodic tasks
+        self.schedule_trend_log_collection().await?;
+        self.schedule_cache_cleanup().await?;
+        self.schedule_data_cleanup().await?;
+
+        println!("Data collector started successfully");
+        Ok(())
+    }
+
+    /// Stop background data collection
+    pub async fn stop(&mut self) -> Result<()> {
+        {
+            let mut running = self.is_running.write().await;
+            if !*running {
+                return Ok(()); // Already stopped
+            }
+            *running = false;
+        }
+
+        self.scheduler.shutdown().await
+            .context("Failed to stop job scheduler")?;
+
+        println!("Data collector stopped");
+        Ok(())
+    }
+
+    /// Schedule trend log data collection based on individual intervals
+    async fn schedule_trend_log_collection(&self) -> Result<()> {
+        let data_manager = Arc::clone(&self.data_manager);
+
+        // Schedule a job that runs every minute to check for trend logs that need updates
+        let job = Job::new_async("0 * * * * *", move |_uuid, _l| {
+            let dm = Arc::clone(&data_manager);
+            Box::pin(async move {
+                if let Err(e) = collect_trend_log_data(dm).await {
+                    eprintln!("Error collecting trend log data: {}", e);
+                }
+            })
+        })?;
+
+        self.scheduler.add(job).await
+            .context("Failed to schedule trend log collection")?;
+
+        Ok(())
+    }
+
+    /// Schedule cache cleanup (remove stale data)
+    async fn schedule_cache_cleanup(&self) -> Result<()> {
+        let data_manager = Arc::clone(&self.data_manager);
+
+        // Run cache cleanup every 10 minutes
+        let job = Job::new_async("0 */10 * * * *", move |_uuid, _l| {
+            let dm = Arc::clone(&data_manager);
+            Box::pin(async move {
+                if let Err(e) = cleanup_cache(dm).await {
+                    eprintln!("Error cleaning up cache: {}", e);
+                }
+            })
+        })?;
+
+        self.scheduler.add(job).await
+            .context("Failed to schedule cache cleanup")?;
+
+        Ok(())
+    }
+
+    /// Schedule old data cleanup (if retention policy is set)
+    async fn schedule_data_cleanup(&self) -> Result<()> {
+        let data_manager = Arc::clone(&self.data_manager);
+
+        // Run data cleanup daily at 2 AM
+        let job = Job::new_async("0 0 2 * * *", move |_uuid, _l| {
+            let dm = Arc::clone(&data_manager);
+            Box::pin(async move {
+                if let Err(e) = cleanup_old_data(dm).await {
+                    eprintln!("Error cleaning up old data: {}", e);
+                }
+            })
+        })?;
+
+        self.scheduler.add(job).await
+            .context("Failed to schedule data cleanup")?;
+
+        Ok(())
+    }
+
+    /// Manually trigger data collection for all active trend logs
+    pub async fn collect_all_trend_logs(&self) -> Result<()> {
+        collect_trend_log_data(Arc::clone(&self.data_manager)).await
+    }
+
+    /// Manually trigger cache cleanup
+    pub async fn cleanup_cache(&self) -> Result<usize> {
+        cleanup_cache(Arc::clone(&self.data_manager)).await
+    }
+}
+
+/// Collect data for all active trend logs that need updates
+async fn collect_trend_log_data(data_manager: Arc<DataManager>) -> Result<()> {
+    let now = Utc::now().timestamp();
+
+    // Get all active trend logs
+    let trend_logs = data_manager.get_active_trend_logs(None).await?;
+
+    for trend_log in trend_logs {
+        // Check if this trend log needs an update
+        if should_update_trend_log(&trend_log, now).await? {
+            // Get trend log items (up to 14 items)
+            let items = data_manager.get_trend_log_items(trend_log.id.unwrap()).await?;
+
+            // Collect data for each item
+            for item in items {
+                if let Err(e) = collect_trend_log_item_data(&data_manager, &trend_log, &item).await {
+                    eprintln!("Error collecting data for trend log item {}: {}", item.id.unwrap_or(-1), e);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Check if a trend log needs to be updated based on its interval
+async fn should_update_trend_log(trend_log: &TrendLog, current_time: i64) -> Result<bool> {
+    let interval_seconds = trend_log.total_interval_seconds();
+
+    if interval_seconds <= 0 {
+        return Ok(false); // Invalid interval
+    }
+
+    // TODO: Check the last update time from database
+    // For now, assume we should update if enough time has passed
+    // This would be implemented by checking the latest timestamp in timeseries_data
+
+    Ok(true) // Temporary: always update
+}
+
+/// Collect data for a specific trend log item
+async fn collect_trend_log_item_data(
+    data_manager: &DataManager,
+    trend_log: &TrendLog,
+    item: &TrendLogItem
+) -> Result<()> {
+    // TODO: This is where you would interface with T3000 to get actual data
+    // For now, we'll simulate the process
+
+    println!(
+        "Collecting data for device {} point {}/{} (trend log {})",
+        item.device_id, item.point_type, item.point_number, trend_log.log_id
+    );
+
+    // Simulate getting data from T3000
+    let mock_data = simulate_t3000_data_fetch(item).await?;
+
+    // Cache the real-time data
+    let cache_entry = RealtimeDataCache {
+        id: None,
+        device_id: item.device_id,
+        point_type: item.point_type,
+        point_number: item.point_number,
+        value: mock_data.value,
+        timestamp: mock_data.timestamp,
+        data_type: mock_data.data_type.clone(),
+        unit_code: mock_data.unit_code,
+        is_fresh: 1,
+        cache_duration: data_manager.get_config().cache_duration_seconds,
+        created_at: Some(Utc::now().timestamp()),
+        updated_at: Some(Utc::now().timestamp()),
+    };
+
+    data_manager.cache_realtime_data(&cache_entry).await?;
+
+    // Store in time series history
+    let ts_data = TimeSeriesData {
+        id: None,
+        device_id: item.device_id,
+        point_type: item.point_type,
+        point_number: item.point_number,
+        trend_log_id: trend_log.id,
+        value: mock_data.value,
+        timestamp: mock_data.timestamp,
+        interval_seconds: trend_log.total_interval_seconds(),
+        data_quality: 1, // Assume good quality
+    };
+
+    data_manager.store_timeseries_data(&[ts_data]).await?;
+
+    Ok(())
+}
+
+/// Simulate fetching data from T3000 (replace with actual T3000 interface)
+async fn simulate_t3000_data_fetch(item: &TrendLogItem) -> Result<DataPoint> {
+    // TODO: Replace this with actual T3000 communication
+    // This could use your existing WebSocket or direct C++ interface
+
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+
+    // Simulate different data types based on point type
+    let (value, data_type, unit_code) = match item.point_type {
+        1 => (rng.gen_range(0.0..1.0_f64).round(), "digital".to_string(), Some(1)), // Output (digital)
+        2 => (rng.gen_range(10.0..30.0), "analog".to_string(), Some(0)), // Input (analog temperature)
+        3 => (rng.gen_range(0.0..100.0), "analog".to_string(), Some(0)), // Variable (analog percentage)
+        _ => (rng.gen_range(0.0..1.0_f64).round(), "digital".to_string(), Some(1)), // Default digital
+    };
+
+    Ok(DataPoint {
+        device_id: item.device_id,
+        point_type: item.point_type,
+        point_number: item.point_number,
+        value,
+        timestamp: Utc::now().timestamp(),
+        data_type,
+        unit_code,
+        unit_symbol: None,
+        description: None,
+    })
+}
+
+/// Clean up stale cache entries
+async fn cleanup_cache(data_manager: Arc<DataManager>) -> Result<usize> {
+    let cleaned_count = data_manager.cleanup_stale_cache().await?;
+
+    if cleaned_count > 0 {
+        println!("Cleaned up {} stale cache entries", cleaned_count);
+    }
+
+    Ok(cleaned_count)
+}
+
+/// Clean up old data based on retention policy
+async fn cleanup_old_data(data_manager: Arc<DataManager>) -> Result<usize> {
+    let cleaned_count = data_manager.cleanup_old_data().await?;
+
+    if cleaned_count > 0 {
+        println!("Cleaned up {} old data records", cleaned_count);
+    }
+
+    Ok(cleaned_count)
+}
