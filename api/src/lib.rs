@@ -3,6 +3,7 @@ use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 
 pub mod app_state;
 pub mod auth;
+pub mod data_management;
 pub mod db_connection;
 pub mod entity;
 pub mod error;
