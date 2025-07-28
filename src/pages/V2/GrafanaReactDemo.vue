@@ -2,7 +2,7 @@
   <q-page class="grafana-react-demo-page">
     <div class="page-header">
       <h1>Grafana UI React Integration Demo</h1>
-      <p>Using actual Grafana data structures (@grafana/data) with React components in Vue 3</p>
+      <p>Using T3000 native charting with Vue 3 components</p>
     </div>
 
     <div class="demo-container">
@@ -55,7 +55,7 @@
           <div class="info-item">
             <h4>Grafana Data Structures</h4>
             <ul>
-              <li>✅ <code>@grafana/data</code> v12.0.2</li>
+              <li>✅ <code>T3000 Native Charts</code> v1.0.0</li>
               <li>✅ <code>MutableDataFrame</code> for series</li>
               <li>✅ <code>FieldType.time</code> and <code>FieldType.number</code></li>
               <li>✅ <code>TimeRange</code> and <code>PanelData</code></li>

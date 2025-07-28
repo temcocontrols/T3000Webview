@@ -135,7 +135,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useMeta } from 'quasar'
-import GrafanaTimeSeries from '../components/NewUI/GrafanaTimeSeries.vue'
+import GrafanaTimeSeries from '../../components/NewUI/GrafanaTimeSeries.vue'
 
 // Meta information
 useMeta({ title: "Grafana Time Series Demo" })

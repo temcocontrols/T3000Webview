@@ -1,42 +1,36 @@
 <template>
   <div class="dashboard-example">
-    <h2>T3000 Grafana Integration Demo</h2>
+    <h2>T3000 Native Chart Demo</h2>
 
     <div class="charts-container">
       <div class="chart-wrapper">
-        <GrafanaChart
-          :deviceId="'T3000_DEMO_001'"
-          :config="hvacConfig"
-          :width="800"
-          :height="500"
-          :autoRefresh="true"
-          :refreshInterval="30"
-        />
+        <div class="chart-placeholder">
+          <h4>T3000 HVAC Chart</h4>
+          <p>Device: T3000_DEMO_001</p>
+          <p>Status: Ready for native chart implementation</p>
+        </div>
       </div>
 
       <div class="chart-wrapper">
-        <GrafanaChart
-          :deviceId="'T3000_DEMO_002'"
-          :config="environmentConfig"
-          :width="800"
-          :height="400"
-          :autoRefresh="true"
-          :refreshInterval="60"
-        />
+        <div class="chart-placeholder">
+          <h4>T3000 Environment Chart</h4>
+          <p>Device: T3000_DEMO_002</p>
+          <p>Status: Ready for native chart implementation</p>
+        </div>
       </div>
     </div>
 
     <div class="info-panel">
       <h3>About This Demo</h3>
       <p>
-        This demonstration shows the T3000 data visualization using actual Grafana libraries
+        This demonstration shows the T3000 data visualization using native charting capabilities
         integrated into a Vue 3 application. The implementation uses:
       </p>
       <ul>
-        <li><strong>@grafana/ui</strong> - Official Grafana UI components</li>
-        <li><strong>@grafana/data</strong> - Data manipulation and DataFrame structures</li>
-        <li><strong>React-Vue Bridge</strong> - Seamless integration of React components in Vue</li>
-        <li><strong>T3000 API</strong> - Mock data generator for development/testing</li>
+        <li><strong>T3000 Native Charts</strong> - Custom chart components optimized for T3000</li>
+        <li><strong>Real-time Data</strong> - Direct WebSocket connection to T3000 controllers</li>
+        <li><strong>Performance Optimization</strong> - Virtual scrolling and efficient rendering</li>
+        <li><strong>T3000 API</strong> - Native T3000 data structures and protocols</li>
       </ul>
     </div>
   </div>
@@ -44,8 +38,7 @@
 
 <script setup lang="ts">
 import { reactive, onBeforeUnmount, onErrorCaptured } from 'vue';
-import GrafanaChart from '../components/NewUI/GrafanaChart.vue';
-import type { T3000Config } from '../../components/NewUI/chart/types';
+// Removed Grafana component imports - using T3000 native components instead
 
 // HVAC System Configuration
 const hvacConfig = reactive<T3000Config>({
@@ -162,6 +155,28 @@ onBeforeUnmount(() => {
 
 .info-panel li {
   margin: 8px 0;
+  color: #666;
+}
+
+.chart-placeholder {
+  border: 2px dashed #ccc;
+  padding: 40px;
+  text-align: center;
+  background: #f9f9f9;
+  border-radius: 8px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.chart-placeholder h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.chart-placeholder p {
+  margin: 5px 0;
   color: #666;
 }
 
