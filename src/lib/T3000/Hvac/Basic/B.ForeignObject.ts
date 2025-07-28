@@ -8,6 +8,7 @@ import T3Util from '../Util/T3Util';
 
 /**
  * Represents an SVG foreignObject element that can contain HTML content, including Vue components.
+ * SECURITY: Implements secure HTML content handling to prevent XSS attacks.
  *
  * ForeignObject allows embedding HTML content within SVG, providing a bridge between
  * vector graphics and HTML/CSS layout. This is particularly useful for integrating
@@ -131,13 +132,30 @@ class ForeignObject extends Element {
 
   /**
    * Destroys the Vue component if one is mounted
+   * SECURITY: Safely clears innerHTML to prevent XSS
    */
   DestroyVueComponent() {
     if (this.vueInstance) {
       this.vueInstance.$destroy();
       this.vueInstance = null;
-      this.svgObj.node.innerHTML = '';
+      // SECURITY: Safe innerHTML clearing
+      this.svgObj.node.textContent = '';
     }
+  }
+
+  /**
+   * Securely set HTML content in the foreign object
+   * @param content HTML content to set (will be sanitized)
+   */
+  setSecureHTML(content: string) {
+    // Dynamic import to avoid circular dependencies
+    import('../../Security/T3SecurityUtil').then(({ T3Security }) => {
+      const sanitizedContent = T3Security.sanitizeHTML(content, true);
+      this.svgObj.node.innerHTML = sanitizedContent;
+    }).catch(() => {
+      // Fallback: Use textContent for security
+      this.svgObj.node.textContent = content;
+    });
   }
 
   /**

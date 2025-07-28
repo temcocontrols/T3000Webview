@@ -2736,13 +2736,16 @@ SVG.extend(SVG.ForeignObject, {
   },
 
   /**
-   * Sets HTML content inside the foreignObject
+   * Sets HTML content inside the foreignObject (SECURITY: Sanitized)
    * @param {HTMLElement|string} content - HTML element or HTML string to add
    * @returns {SVG.ForeignObject} The foreignObject element for method chaining
    */
   html: function(content) {
     if (typeof content === 'string') {
-      this.node.innerHTML = content;
+      // Security: Use a simple sanitization approach for now
+      const div = document.createElement('div');
+      div.textContent = content;
+      this.node.innerHTML = div.innerHTML;
     } else if (content instanceof HTMLElement) {
       this.node.innerHTML = '';
       this.node.appendChild(content);
