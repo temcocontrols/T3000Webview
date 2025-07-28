@@ -1,139 +1,192 @@
 import { ref, reactive } from 'vue'
-import { DataFrame, FieldType, dateTime, TimeRange, PanelData, LoadingState } from '@grafana/data'
-import type {
-  T3000Config,
-  T3000ApiResponse,
-  T3000DataPoint
-} from './types'
-import { t3000Api } from './api'
+
+// T3000 native chart interfaces
+export interface T3000ChartData {
+  time: number;
+  value: number;
+  label?: string;
+}
+
+export interface T3000TimeRange {
+  from: Date;
+  to: Date;
+}
+
+export interface T3000DataSeries {
+  name: string;
+  data: T3000ChartData[];
+  unit?: string;
+  color?: string;
+}
+
+export interface T3000ChartState {
+  loading: boolean;
+  series: T3000DataSeries[];
+  timeRange: T3000TimeRange;
+  error?: string;
+}
+
+export interface T3000Config {
+  panelId: string;
+  refreshInterval?: number;
+  timeRange?: T3000TimeRange;
+}
+
+export interface T3000ApiResponse {
+  success: boolean;
+  data: T3000ChartData[];
+  error?: string;
+}
+
+export interface T3000DataPoint {
+  timestamp: number;
+  value: number;
+  quality?: string;
+}
+
+// Mock API for demonstration
+const t3000Api = {
+  async fetchData(config: T3000Config): Promise<T3000ApiResponse> {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Generate sample data
+    const now = Date.now();
+    const data: T3000ChartData[] = [];
+
+    for (let i = 0; i < 100; i++) {
+      data.push({
+        time: now - (i * 60000), // 1 minute intervals
+        value: Math.random() * 100,
+        label: `Point ${i}`
+      });
+    }
+
+    return {
+      success: true,
+      data: data.reverse() // Chronological order
+    };
+  }
+};
 
 export function useT3000Chart(config: T3000Config) {
   // Reactive state
   const isLoading = ref(false)
   const error = ref<string>('')
 
-  // Grafana-compatible data structure
-  const data = ref<PanelData>({
-    state: LoadingState.NotStarted,
+  // T3000 native data structure
+  const data = ref<T3000ChartState>({
+    loading: false,
     series: [],
     timeRange: {
-      from: dateTime().subtract(30, 'minutes'),
-      to: dateTime(),
-      raw: { from: 'now-30m', to: 'now' }
+      from: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+      to: new Date()
     }
   })
 
-  const timeRange = ref<TimeRange>({
-    from: dateTime().subtract(30, 'minutes'),
-    to: dateTime(),
-    raw: { from: 'now-30m', to: 'now' }
+  // Time range for queries
+  const timeRange = ref<T3000TimeRange>({
+    from: new Date(Date.now() - 30 * 60 * 1000),
+    to: new Date()
   })
 
-  // Convert T3000 data to Grafana DataFrame format
-  const convertToDataFrames = (apiResponse: T3000ApiResponse): DataFrame[] => {
-    const dataFrames: DataFrame[] = []
+  // Convert T3000 API response to chart series
+  const convertToSeries = (apiResponse: T3000ApiResponse): T3000DataSeries[] => {
+    if (!apiResponse.success || !apiResponse.data) {
+      return [];
+    }
 
-    Object.entries(apiResponse.channels).forEach(([channelId, channelData]) => {
-      if (channelData.values.length === 0) return
-
-      const timeField = {
-        name: 'Time',
-        type: FieldType.time,
-        values: channelData.values.map(point => point.time),
-        config: {}
-      }
-
-      const valueField = {
-        name: channelData.name,
-        type: FieldType.number,
-        values: channelData.values.map(point => point.value),
-        config: {
-          unit: channelData.unit,
-          displayName: channelData.name,
-          color: { mode: 'palette-classic' }
-        }
-      }
-
-      const dataFrame: DataFrame = {
-        name: channelData.name,
-        refId: `channel_${channelId}`,
-        fields: [timeField, valueField],
-        length: channelData.values.length
-      }
-
-      dataFrames.push(dataFrame)
-    })
-
-    return dataFrames
+    return [{
+      name: `Panel ${config.panelId}`,
+      data: apiResponse.data,
+      unit: '°C', // Default unit
+      color: '#1f77b4'
+    }];
   }
 
-  // Load data from T3000 API
-  const loadData = async (): Promise<void> => {
+  // Fetch data from T3000 API
+  const fetchData = async (): Promise<void> => {
     try {
-      isLoading.value = true
-      error.value = ''
+      isLoading.value = true;
+      data.value.loading = true;
+      error.value = '';
 
-      data.value.state = LoadingState.Loading
-
-      // Map field names to channel IDs for the mock API
-      const channelIds = config.fields.analog.concat(config.fields.digital).map((name, index) => index + 1);
-
-      console.log('[useT3000Chart] Loading data with config:', {
-        deviceId: config.deviceId,
-        channelIds,
-        timeRange: {
-          from: timeRange.value.from.valueOf(),
-          to: timeRange.value.to.valueOf(),
-          raw: timeRange.value.raw
-        }
+      const response = await t3000Api.fetchData({
+        ...config,
+        timeRange: timeRange.value
       });
 
-      const response = await t3000Api.getData({
-        deviceId: parseInt(config.deviceId) || 123,
-        timeRange: timeRange.value,
-        channels: channelIds // Pass channel IDs instead of field names
-      })
+      if (response.success) {
+        const series = convertToSeries(response);
 
-      console.log('[useT3000Chart] API response:', response);
-
-      const dataFrames = convertToDataFrames(response)
-
-      console.log('[useT3000Chart] Converted DataFrames:', dataFrames);
-
-      data.value = {
-        ...data.value,
-        state: LoadingState.Done,
-        series: dataFrames,
-        timeRange: timeRange.value
+        data.value = {
+          loading: false,
+          series,
+          timeRange: timeRange.value
+        };
+      } else {
+        throw new Error(response.error || 'Failed to fetch data');
       }
-
-      console.log('[useT3000Chart] Final data state:', data.value);
-
-    } catch (err) {
-      console.error('Failed to load T3000 data:', err)
-      error.value = err instanceof Error ? err.message : 'Failed to load data'
-      data.value.state = LoadingState.Error
+    } catch (err: any) {
+      error.value = err.message || 'An error occurred';
+      data.value.loading = false;
+      data.value.error = error.value;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
 
   // Update time range
-  const updateTimeRange = (newTimeRange: TimeRange): void => {
-    timeRange.value = newTimeRange
-    data.value.timeRange = newTimeRange
-    loadData()
+  const updateTimeRange = (newTimeRange: T3000TimeRange): void => {
+    timeRange.value = newTimeRange;
+    data.value.timeRange = newTimeRange;
+    fetchData(); // Refresh data with new time range
+  }
+
+  // Refresh data
+  const refresh = (): void => {
+    fetchData();
+  }
+
+  // Auto-refresh setup
+  let refreshInterval: NodeJS.Timeout | null = null;
+
+  const startAutoRefresh = (intervalMs: number = 30000): void => {
+    stopAutoRefresh();
+    refreshInterval = setInterval(fetchData, intervalMs);
+  }
+
+  const stopAutoRefresh = (): void => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+      refreshInterval = null;
+    }
+  }
+
+  // Initialize
+  if (config.refreshInterval) {
+    startAutoRefresh(config.refreshInterval);
   }
 
   return {
-    // Grafana-compatible state
+    // State
     data,
-    timeRange,
     isLoading,
     error,
+    timeRange,
 
     // Methods
+    fetchData,
     updateTimeRange,
-    loadData
+    refresh,
+    startAutoRefresh,
+    stopAutoRefresh,
+
+    // Computed properties
+    hasData: () => data.value.series.length > 0,
+    isEmpty: () => data.value.series.length === 0,
+    hasError: () => !!error.value
   }
 }
+
+export default useT3000Chart;
