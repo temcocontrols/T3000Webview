@@ -404,7 +404,7 @@ Required Documentation:
 ### Current System Flow Analysis
 ```
 Current Architecture:
-WebView (JavaScript) 
+WebView (JavaScript)
     ↓ postMessage
 T3000 C++ Application
     ↓ reads hardware devices
@@ -550,20 +550,20 @@ private:
 public:
     // Initialize with existing T3000 SQLite connection
     bool Initialize(sqlite3* existingDb);
-    
+
     // Start BACnet services
     bool StartServices();
     void StopServices();
-    
+
     // Integration with existing T3000 WebView message system
     void HandleWebViewBACnetRequest(const std::string& jsonMessage);
     std::string ProcessBACnetDataRequest(int deviceId, const std::string& timeRange);
-    
+
     // Device management
     std::vector<BACnetDevice> GetDiscoveredDevices();
     bool AddDevice(const std::string& ipAddress, int port = 47808);
     bool RemoveDevice(int deviceId);
-    
+
     // Configuration
     void SetPollingInterval(int seconds) { m_pollIntervalSeconds = seconds; }
     void EnableDiscovery(bool enable) { m_discoveryEnabled = enable; }
@@ -572,19 +572,19 @@ private:
     // Background operations
     void PollingLoop();
     void DiscoveryLoop();
-    
+
     // BACnet operations
     bool DiscoverDevicesOnNetwork();
     bool PollDevice(const BACnetDevice& device);
     std::vector<BACnetObject> ReadDeviceObjects(const BACnetDevice& device);
     bool ReadObjectBlock(const BACnetDevice& device, std::vector<BACnetObject>& objects);
     float ReadObjectIndividual(const BACnetDevice& device, int objectType, int objectInstance);
-    
+
     // Database operations
     bool StoreBACnetDeviceData(const BACnetDevice& device, const std::vector<BACnetObject>& objects);
     bool UpdateRealtimeCache(const BACnetDevice& device, const std::vector<BACnetObject>& objects);
     bool CreateBACnetTables();
-    
+
     // Utility functions
     std::string FormatBACnetResponse(const std::vector<BACnetObject>& data);
     void LogBACnetError(const std::string& error);
@@ -596,29 +596,29 @@ bool T3000BACnetManager::Initialize(sqlite3* existingDb) {
     m_isRunning = false;
     m_discoveryEnabled = true;
     m_pollIntervalSeconds = 300; // 5 minutes default
-    
+
     // Create BACnet tables if they don't exist
     if (!CreateBACnetTables()) {
         return false;
     }
-    
+
     // Initialize BACnet library
     // TODO: Initialize chosen BACnet library here
-    
+
     return true;
 }
 
 bool T3000BACnetManager::StartServices() {
     m_isRunning = true;
-    
+
     // Start discovery thread
     if (m_discoveryEnabled) {
         m_discoveryThread = std::thread(&T3000BACnetManager::DiscoveryLoop, this);
     }
-    
+
     // Start polling thread
     m_pollingThread = std::thread(&T3000BACnetManager::PollingLoop, this);
-    
+
     return true;
 }
 
@@ -631,7 +631,7 @@ void T3000BACnetManager::PollingLoop() {
                     PollDevice(device);
                 }
             }
-            
+
             // Sleep until next poll cycle
             std::this_thread::sleep_for(std::chrono::seconds(m_pollIntervalSeconds));
         }
@@ -644,22 +644,22 @@ void T3000BACnetManager::PollingLoop() {
 void T3000BACnetManager::HandleWebViewBACnetRequest(const std::string& jsonMessage) {
     // Parse JSON message from WebView
     // Example: {"action": "BACNET_TREND_DATA", "deviceId": 123, "startTime": "...", "endTime": "..."}
-    
+
     // Query SQLite for BACnet trend data
     std::string query = R"(
         SELECT bd.device_name, bo.object_name, bo.object_type, bo.object_instance,
                ts.value, ts.timestamp, ts.interval_seconds
         FROM timeseries_data_2025 ts
-        JOIN bacnet_objects bo ON ts.bacnet_device_id = bo.device_id 
-            AND ts.bacnet_object_type = bo.object_type 
+        JOIN bacnet_objects bo ON ts.bacnet_device_id = bo.device_id
+            AND ts.bacnet_object_type = bo.object_type
             AND ts.bacnet_object_instance = bo.object_instance
         JOIN bacnet_devices bd ON bo.device_id = bd.device_id
-        WHERE ts.data_source = 'bacnet' 
+        WHERE ts.data_source = 'bacnet'
             AND ts.timestamp BETWEEN ? AND ?
             AND bd.device_id = ?
         ORDER BY ts.timestamp DESC
     )";
-    
+
     // Execute query and format response
     // Send response back to WebView through existing T3000 bridge
 }
@@ -681,7 +681,7 @@ class T3000BACnetBridge {
             autoAdd: true
         });
     }
-    
+
     // Request BACnet trend data (similar to existing pattern)
     static RequestBACnetTrendData(deviceId, pointList, timeRange) {
         window.chrome?.webview?.postMessage({
@@ -694,7 +694,7 @@ class T3000BACnetBridge {
             maxPoints: 1000
         });
     }
-    
+
     // Enhanced entry update with BACnet support
     static UpdateBACnetPoint(deviceId, objectType, objectInstance, value) {
         window.chrome?.webview?.postMessage({
@@ -707,7 +707,7 @@ class T3000BACnetBridge {
             timestamp: Date.now()
         });
     }
-    
+
     // Handle BACnet responses (extend existing handler)
     static HandleBACnetResponse(data) {
         switch(data.action) {
@@ -766,7 +766,7 @@ impl WebviewApi {
             .order_by_desc(bacnet_devices::Column::LastDiscovered)
             .all(&self.db)
             .await?;
-            
+
         Ok(devices.into_iter().map(|d| BACnetDevice {
             id: d.id,
             device_id: d.device_id,
@@ -778,7 +778,7 @@ impl WebviewApi {
             last_discovered: d.last_discovered,
         }).collect())
     }
-    
+
     // Get BACnet trend data (compatible with existing trend API)
     pub async fn get_bacnet_trend_data(
         &self,
@@ -795,23 +795,23 @@ impl WebviewApi {
             .filter(timeseries_data_2025::Column::BacnetDeviceId.eq(device_id))
             .filter(timeseries_data_2025::Column::Timestamp.between(start_time, end_time))
             .order_by_desc(timeseries_data_2025::Column::Timestamp);
-            
+
         if !object_types.is_empty() {
             query = query.filter(timeseries_data_2025::Column::BacnetObjectType.is_in(object_types));
         }
-        
+
         if let Some(limit) = max_points {
             query = query.limit(limit as u64);
         }
-        
+
         let results = query.all(&self.db).await?;
-        
+
         // Transform to BACnetTrendData format
         // Implementation details...
-        
+
         Ok(trend_data)
     }
-    
+
     // Unified trend data endpoint (legacy + BACnet)
     pub async fn get_unified_trend_data(
         &self,
@@ -822,17 +822,17 @@ impl WebviewApi {
         include_bacnet: bool
     ) -> Result<Vec<UnifiedTrendData>, DbErr> {
         let mut all_data = Vec::new();
-        
+
         if include_legacy {
             let legacy_data = self.get_legacy_trend_data(device_id, start_time, end_time).await?;
             all_data.extend(legacy_data);
         }
-        
+
         if include_bacnet {
             let bacnet_data = self.get_bacnet_trend_data(device_id, vec![], start_time, end_time, None).await?;
             all_data.extend(bacnet_data.into_iter().map(|d| d.to_unified()));
         }
-        
+
         // Sort by timestamp and return unified format
         all_data.sort_by_key(|d| d.timestamp);
         Ok(all_data)
@@ -901,7 +901,7 @@ The phased implementation approach allows for iterative development and testing,
 
 **Document Status:** Comprehensive Integration Analysis Complete
 **Next Review:** Pending T3000 source code analysis and BACnet library selection
-**Related Documents:** 
+**Related Documents:**
 - T3000-BACnet-Integration-Analysis.md (Detailed C++ implementation)
 - BACnet-Library-Evaluation.md (To be created)
 - Database-Migration-Guide.md (To be created)
