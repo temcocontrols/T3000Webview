@@ -9,6 +9,8 @@
 
 This document analyzes the requirements for implementing a new data polling system that will replace Temco's proprietary trend log structures with standard BACnet polling methods, integrating with SQLite for data archiving and visualization.
 
+**Updated Context:** Based on user requirements for T3000 source code integration covering T3000 panel, browser-only, and hybrid scenarios with T3-TB device support.
+
 ## Current System Analysis
 
 ### Existing T3000 Data Collection

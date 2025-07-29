@@ -6,153 +6,277 @@
 
 ## Overview
 
-This document provides a detailed technical roadmap for implementing the BACnet-based data polling system that will replace Temco's proprietary trend log structures with standard BACnet protocols and TimeScaleDB storage.
+This document provides a detailed technical roadmap for implementing the BACnet-based data polling system that will replace Temco's proprietary trend log structures with standard BACnet protocols and SQLite storage.
 
-## Architecture Overview
+**Updated Status:** ✅ T3000 source code analysis complete with symbolic link access established.
 
-### System Components
+## CRITICAL DISCOVERY: T3000 Already Has BACnet Implementation! 🎯
 
-```mermaid
-graph TB
-    A[BACnet Device Discovery] --> B[Device Capability Assessment]
-    B --> C{Block Read Support?}
-    C -->|Yes| D[Block Read Polling]
-    C -->|No| E[Individual Point Polling]
-    D --> F[Data Validation]
-    E --> F
-    F --> G[TimeScaleDB Storage]
-    G --> H[T3000 UI Integration]
-    H --> I[Trend Visualization]
+**Major Finding**: T3000 contains a complete, production-ready BACnet stack that eliminates the need for external libraries like Node-BACnet.
 
-    J[Configuration Management] --> A
-    K[Error Handling & Retry] --> D
-    K --> E
-    L[Performance Monitoring] --> G
+### **Existing T3000 BACnet Infrastructure:**
+
+#### 1. **Complete C# BACnet Stack**
+- **`System.IO.BACnet`** namespace with full protocol implementation
+- **`BACnetClient.cs`**: 2,724 lines of mature BACnet client code
+- **`TrendLogDisplay.cs`**: Complete BACnet trend log visualization (375 lines)
+- **Supports**: WHO-IS/I-AM, ReadProperty, ReadPropertyMultiple, WriteProperty, COV
+
+#### 2. **T3000 WebView Integration (Already Exists!)**
+- **`BacnetWebView.cpp`**: WebView2 integration with 2,487 lines of code
+- **`webview_run_server()`**: Server function already implemented
+- **`HandleWebViewMsg()`**: JSON message processing framework
+- **WebView Message Types**: Pre-defined enum for communication
+
+#### 3. **BACnet Tools & UI**
+- **`TemcoStandardBacnetTool`**: Complete BACnet testing and management tool
+- **YABE Integration**: `BacnetExplore/Yabe/` - BACnet browser
+- **Native C++ Library**: `BacNetDllforVc/` - Core BACnet functionality
+
+#### 4. **Device & Data Management**
+- **SQLite Integration**: CppSQLite3 already used throughout T3000
+- **Building Database**: Established patterns in `g_strCurBuildingDatabasefilePath`
+- **Device Communication**: Serial, Ethernet, WiFi, Modbus RTU, BACnet IP & MSTP
+
+## REVISED IMPLEMENTATION STRATEGY
+
+### Instead of Node-BACnet: **Extend Existing T3000 BACnet Stack**
+
+#### Phase 1: Extend T3000 BACnet Message Types
+```cpp
+// Add to existing WEBVIEW_MESSAGE_TYPE enum in BacnetWebView.cpp
+enum WEBVIEW_MESSAGE_TYPE
+{
+    // ... existing types ...
+    BACNET_DISCOVER_DEVICES = 15,
+    BACNET_START_TREND_POLLING = 16,
+    BACNET_STOP_TREND_POLLING = 17,
+    BACNET_GET_TREND_DATA = 18,
+    BACNET_CONFIG_POLLING = 19
+};
 ```
 
-### Technology Stack
+#### Phase 2: Extend HandleWebViewMsg for BACnet Operations
+```cpp
+// Add to existing HandleWebViewMsg function in BacnetWebView.cpp
+void HandleWebViewMsg(CString msg, CString &outmsg, int msg_source = 0)
+{
+    // ... existing switch cases ...
 
-#### Database Layer
-```
-TimeScaleDB Components:
-- PostgreSQL base with time-series extensions
-- Hypertables for time-series optimization
-- Continuous aggregates for historical data
-- Data retention policies
-- Compression for long-term storage
+    case WEBVIEW_MESSAGE_TYPE::BACNET_DISCOVER_DEVICES:
+        DiscoverBACnetT3TBDevices(json, tempjson);
+        break;
+
+    case WEBVIEW_MESSAGE_TYPE::BACNET_START_TREND_POLLING:
+        StartBACnetTrendPolling(json, tempjson);
+        break;
+
+    case WEBVIEW_MESSAGE_TYPE::BACNET_GET_TREND_DATA:
+        GetBACnetTrendData(json, tempjson);
+        break;
+}
 ```
 
-#### BACnet Protocol Layer
-```
-BACnet Library Options:
-1. BACnet4J (Java-based, mature)
-2. BACpypes (Python-based, flexible)
-3. OpenBAC (C/C++, performance-focused)
-4. Node-BACnet (JavaScript/Node.js)
-5. Custom implementation based on YABE
+#### Phase 3: Utilize Existing BACnet Classes
+```cpp
+// Leverage existing T3000 BACnet implementation
+#include "TemcoStandardBacnetToolScr/BACnetClient.h"
+#include "TemcoStandardBacnetToolScr/T3000BacnetTool.h"
+
+void DiscoverBACnetT3TBDevices(Json::Value& request, Json::Value& response)
+{
+    // Use existing BacnetClient from T3000BacnetTool
+    System::IO::BACnet::BacnetClient* client = GetExistingBACnetClient();
+
+    // Leverage existing device discovery functionality
+    // Target T3-TB devices specifically (device types 84, 203)
+}
 ```
 
-#### Application Layer
+#### Phase 4: Database Integration with Existing SQLite
+```cpp
+// Extend existing T3000 database patterns
+void StoreBACnetTrendData(int deviceId, BacnetObjectId objectId, BacnetValue value)
+{
+    // Use existing CppSQLite3 patterns from T3000
+    CppSQLite3DB database;
+    database.open(g_strCurBuildingDatabasefilePath);
+
+    // Extend existing Building table or create BACnet-specific tables
+    CString sql;
+    sql.Format(_T("INSERT INTO bacnet_sensor_data (device_id, object_type, object_instance, value, timestamp) VALUES (%d, %d, %d, %f, %d)"),
+               deviceId, objectId.type, objectId.instance, value, time(NULL));
+
+    database.execDML(sql);
+}
 ```
-Core Services:
-- Device Discovery Service
-- Polling Orchestrator
-- Data Validation Engine
-- Storage Manager
-- Configuration Service
-- Monitoring and Alerting
-```
+
+## IMPLEMENTATION PHASES (REVISED)
+
+### Phase 1: Extend Existing T3000 BACnet Integration ⚡
+**Duration**: 1-2 weeks
+**Leverage**: Existing `BacnetWebView.cpp`, `HandleWebViewMsg()`, `BACnetClient.cs`
+
+1. **Add BACnet Message Types**: Extend existing `WEBVIEW_MESSAGE_TYPE` enum
+2. **Enhance WebView Handler**: Add BACnet cases to `HandleWebViewMsg()`
+3. **Device Discovery**: Use existing `BacnetClient` for T3-TB device discovery
+4. **Testing**: Validate with existing `TemcoStandardBacnetTool`
+
+### Phase 2: T3-TB Specific Polling Engine 🎯
+**Duration**: 2-3 weeks
+**Leverage**: Existing `TrendLogDisplay.cs`, device type constants
+
+1. **T3-TB Object Mapping**: Configure for device types 84 (8DI/8DO) and 203 (11AI)
+2. **Polling Implementation**: Use existing BACnet ReadPropertyMultiple
+3. **Data Storage**: Extend current SQLite database schema
+4. **WebView Communication**: Stream data via existing message framework
+
+### Phase 3: UI Integration with T3000 🖥️
+**Duration**: 1-2 weeks
+**Leverage**: Existing trend log UI, WebView integration
+
+1. **Trend Visualization**: Extend existing trend log display components
+2. **Device Management**: Integrate with existing BACnet device list UI
+3. **Configuration UI**: Use existing dialog patterns for polling setup
+4. **Real-time Updates**: Via existing WebView message streaming
+
+### Phase 4: Production Optimization 🚀
+**Duration**: 1-2 weeks
+**Leverage**: Existing error handling, performance patterns
+
+1. **Error Handling**: Use existing T3000 error management patterns
+2. **Performance**: Optimize using existing background threading
+3. **Integration Testing**: With existing T3000 device communication
+4. **Documentation**: Update existing BACnet tool documentation
+
+## ADVANTAGES OF USING EXISTING T3000 BACNET STACK
+
+### ✅ **Technical Benefits**
+- **Mature Codebase**: 2,724+ lines of proven BACnet implementation
+- **Native Performance**: C++ implementation vs. Node.js overhead
+- **Seamless Integration**: Uses existing T3000 patterns and infrastructure
+- **Advanced Features**: Block reads, segmentation, MSTP support built-in
+
+### ✅ **Development Benefits**
+- **Faster Implementation**: Extend existing vs. build from scratch
+- **Lower Risk**: Proven technology already in production
+- **Better Testing**: Can use existing `TemcoStandardBacnetTool` for validation
+- **Consistent Architecture**: Follows T3000 design patterns
+
+### ✅ **Maintenance Benefits**
+- **Single Codebase**: No external library dependencies
+- **Existing Support**: T3000 team already maintains BACnet stack
+- **Known Performance**: Battle-tested in production environments
+- **Future Compatibility**: Guaranteed compatibility with T3000 evolution
+
+## NEXT IMMEDIATE ACTIONS
+
+### Week 1: Analysis & Planning
+1. **Study Existing Code**: Deep dive into `BACnetClient.cs` and `TrendLogDisplay.cs`
+2. **Test Current Tools**: Use `TemcoStandardBacnetTool` to discover and poll T3-TB devices
+3. **Plan Integration**: Map existing BACnet functions to trend log requirements
+
+### Week 2: Core Extension
+1. **Extend Message Types**: Add BACnet trend polling to `WEBVIEW_MESSAGE_TYPE`
+2. **Implement Handlers**: Add BACnet cases to `HandleWebViewMsg()`
+3. **Test Integration**: Verify WebView ↔ BACnet communication
+
+### Week 3: T3-TB Implementation
+1. **Device Discovery**: Target T3-TB devices using existing discovery
+2. **Object Mapping**: Configure AI/DI/DO objects for device types 84/203
+3. **Polling Engine**: Implement using existing ReadPropertyMultiple
+
+This approach leverages **existing, proven T3000 BACnet infrastructure** instead of introducing new dependencies, resulting in faster development, better integration, and lower maintenance overhead.
 
 ## Technical Implementation Details
 
-### 1. TimeScaleDB Setup and Configuration
+### 1. SQLite Setup and Configuration
 
 #### Installation Requirements
 ```sql
--- TimeScaleDB Installation (PostgreSQL Extension)
--- 1. Install PostgreSQL 14+
--- 2. Install TimescaleDB extension
--- 3. Create database and enable extension
+-- SQLite Integration (Embedded Database)
+-- 1. Use existing T3000 CppSQLite3 infrastructure
+-- 2. Extend current database schema
+-- 3. Maintain compatibility with existing T3000 data
 
-CREATE DATABASE t3000_timeseries;
-\c t3000_timeseries
-CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- Following T3000 pattern from ApplyGraphicLabelsDlg.cpp:
+#include "../SQLiteDriver/CppSQLite3.h"
+
+CppSQLite3DB SqliteDBBuilding;
+SqliteDBBuilding.open((UTF8MBSTR)g_strCurBuildingDatabasefilePath);
 ```
 
 #### Schema Design
 ```sql
--- Device registry table
-CREATE TABLE devices (
-    device_id SERIAL PRIMARY KEY,
-    bacnet_device_id INTEGER UNIQUE NOT NULL,
-    device_name VARCHAR(255) NOT NULL,
-    ip_address INET,
+-- Extend existing T3000 database schema
+-- Device registry table (enhance existing)
+CREATE TABLE IF NOT EXISTS bacnet_device_mapping (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id INTEGER NOT NULL,
+    bacnet_device_instance INTEGER UNIQUE NOT NULL,
+    device_name TEXT NOT NULL,
+    ip_address TEXT,
     port INTEGER DEFAULT 47808,
     vendor_id INTEGER,
-    model_name VARCHAR(255),
-    firmware_version VARCHAR(100),
-    supports_block_read BOOLEAN DEFAULT FALSE,
-    last_seen TIMESTAMPTZ DEFAULT NOW(),
-    status VARCHAR(50) DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    model_name TEXT,
+    firmware_version TEXT,
+    supports_block_read INTEGER DEFAULT 0,
+    last_seen INTEGER DEFAULT (strftime('%s', 'now')),
+    status TEXT DEFAULT 'active',
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
 -- Object registry table
-CREATE TABLE bacnet_objects (
-    object_id SERIAL PRIMARY KEY,
-    device_id INTEGER REFERENCES devices(device_id),
-    object_type VARCHAR(50) NOT NULL, -- AI, AO, DI, DO, etc.
+CREATE TABLE IF NOT EXISTS bacnet_objects (
+    object_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id INTEGER REFERENCES bacnet_device_mapping(device_id),
+    object_type TEXT NOT NULL, -- 'AI', 'AO', 'DI', 'DO', etc.
     object_instance INTEGER NOT NULL,
-    object_name VARCHAR(255),
+    object_name TEXT,
     description TEXT,
-    units VARCHAR(50),
+    units TEXT,
     cov_increment REAL,
     poll_interval INTEGER DEFAULT 30, -- seconds
-    enabled BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    enabled INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
     UNIQUE(device_id, object_type, object_instance)
 );
 
 -- Main time-series data table
-CREATE TABLE sensor_data (
-    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+CREATE TABLE IF NOT EXISTS bacnet_sensor_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     device_id INTEGER NOT NULL,
     object_id INTEGER NOT NULL REFERENCES bacnet_objects(object_id),
-    object_type VARCHAR(50) NOT NULL,
+    object_type TEXT NOT NULL,
     object_instance INTEGER NOT NULL,
-    value DOUBLE PRECISION,
-    quality VARCHAR(50) DEFAULT 'good',
-    raw_value JSONB, -- Store original BACnet value for debugging
+    value REAL,
+    quality TEXT DEFAULT 'good',
+    raw_value TEXT, -- Store original BACnet value for debugging
     poll_duration_ms INTEGER, -- Performance tracking
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
--- Create hypertable for time-series optimization
-SELECT create_hypertable('sensor_data', 'timestamp', chunk_time_interval => INTERVAL '1 hour');
-
 -- Create indexes for common queries
-CREATE INDEX idx_sensor_data_device_time ON sensor_data (device_id, timestamp DESC);
-CREATE INDEX idx_sensor_data_object_time ON sensor_data (object_id, timestamp DESC);
-CREATE INDEX idx_sensor_data_type_time ON sensor_data (object_type, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_bacnet_sensor_data_device_time
+    ON bacnet_sensor_data (device_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_bacnet_sensor_data_object_time
+    ON bacnet_sensor_data (object_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_bacnet_sensor_data_type_time
+    ON bacnet_sensor_data (object_type, timestamp DESC);
 
--- Continuous aggregates for common queries
-CREATE MATERIALIZED VIEW sensor_data_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', timestamp) AS hour,
-    device_id,
-    object_id,
-    object_type,
-    AVG(value) as avg_value,
-    MIN(value) as min_value,
-    MAX(value) as max_value,
-    COUNT(*) as sample_count
-FROM sensor_data
-GROUP BY hour, device_id, object_id, object_type;
-
--- Data retention policy
-SELECT add_retention_policy('sensor_data', INTERVAL '90 days');
+-- Polling coordination for multi-client access
+CREATE TABLE IF NOT EXISTS bacnet_polling_coordination (
+    id INTEGER PRIMARY KEY,
+    device_id INTEGER NOT NULL,
+    client_type TEXT NOT NULL, -- 'panel', 'browser', 'hybrid'
+    client_id TEXT NOT NULL,
+    last_poll_time INTEGER,
+    poll_interval INTEGER,
+    is_active INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
 ```
 
 ### 2. BACnet Implementation Strategy
@@ -502,6 +626,452 @@ class ErrorHandler {
 }
 ```
 
+## Implementation Phases
+
+### Phase 1: BACnet Library Installation and T3000 Integration
+
+#### Node-BACnet Library Setup
+```bash
+# Install BACnet library in WebView project
+npm install node-bacnet --save
+npm install @types/node-bacnet --save-dev
+```
+
+#### T3000 BACnet Bridge Implementation
+```typescript
+// src/lib/bacnet/BACnetT3000Bridge.ts
+import * as BACnet from 'node-bacnet';
+
+export class BACnetT3000Bridge {
+    private client: any;
+    private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
+    private activeDevices: Map<number, T3TBDevice> = new Map();
+
+    constructor() {
+        // Initialize BACnet client with T3000 compatible settings
+        this.client = new BACnet({
+            port: 47808,
+            interface: '0.0.0.0',
+            broadcastAddress: '255.255.255.255'
+        });
+    }
+
+    // Following T3000 webview_run_server pattern from BacnetWebView.cpp
+    async initializeT3000Integration(): Promise<void> {
+        try {
+            await this.client.open();
+            await this.initializeSQLiteSchema();
+
+            // Follow T3000 WebView message handling pattern
+            this.setupWebViewMessageHandling();
+
+            console.log('BACnet T3000 bridge initialized');
+        } catch (error) {
+            console.error('Failed to initialize BACnet bridge:', error);
+            throw error;
+        }
+    }
+
+    // Extend existing T3000 WebView message handling
+    // Based on HandleWebViewMsg pattern in T3000 source
+    handleT3000WebMessage(message: any): void {
+        switch (message.type) {
+            case 'bacnet_discover_devices':
+                this.discoverT3TBDevices();
+                break;
+            case 'bacnet_start_polling':
+                this.startPollingForDevice(message.deviceId);
+                break;
+            case 'bacnet_stop_polling':
+                this.stopPollingForDevice(message.deviceId);
+                break;
+            case 'bacnet_get_trend_data':
+                this.getTrendDataForObject(message.objectId, message.timeRange);
+                break;
+            // Integrate with existing T3000 message types
+            default:
+                console.warn('Unknown BACnet message type:', message.type);
+        }
+    }
+
+    // Follow T3000 AfxBeginThread pattern for background operations
+    private async discoverT3TBDevices(): Promise<void> {
+        // Implement T3-TB specific device discovery
+        // Target devices with constants: T3_TB (84), T3_TB_11I (203)
+        try {
+            const devices = await this.performWhoIsDiscovery();
+
+            // Filter for T3-TB devices based on vendor ID and model
+            const t3tbDevices = devices.filter(device =>
+                this.isT3TBDevice(device)
+            );
+
+            // Store in SQLite using T3000 CppSQLite3 pattern
+            await this.storeDiscoveredDevices(t3tbDevices);
+
+            // Notify WebView of discovered devices
+            this.notifyWebViewDiscoveryComplete(t3tbDevices);
+        } catch (error) {
+            console.error('T3-TB device discovery failed:', error);
+        }
+    }
+
+    // Implement T3-TB device identification
+    private isT3TBDevice(device: any): boolean {
+        // Based on T3000 source analysis:
+        // T3_TB: 84 (8DI/8DO)
+        // T3_TB_11I: 203 (11AI)
+        // Check vendor ID and model patterns
+        return device.vendorId === 644 && // Temco Controls vendor ID
+               (device.modelName?.includes('T3-TB') ||
+                device.deviceType === 84 ||
+                device.deviceType === 203);
+    }
+
+    // SQLite integration using T3000 CppSQLite3 patterns
+    private async initializeSQLiteSchema(): Promise<void> {
+        // Follow T3000 database patterns from ApplyGraphicLabelsDlg.cpp
+        // Use existing g_strCurBuildingDatabasefilePath approach
+        const dbPath = this.getT3000DatabasePath();
+
+        // Extend existing T3000 database with BACnet tables
+        await this.executeSQLiteSchema(dbPath);
+    }
+}
+
+// T3-TB Device Interface (based on T3000 source analysis)
+interface T3TBDevice {
+    deviceId: number;
+    deviceType: number; // 84 (T3_TB) or 203 (T3_TB_11I)
+    ipAddress: string;
+    port: number;
+    vendorId: number;
+    modelName: string;
+    analogInputs: number;   // 0 for T3_TB, 11 for T3_TB_11I
+    digitalInputs: number;  // 8 for T3_TB, 0 for T3_TB_11I
+    digitalOutputs: number; // 8 for T3_TB, 0 for T3_TB_11I
+    supportsBlockRead: boolean;
+    firmwareVersion?: string;
+}
+```
+
+### Phase 2: SQLite Database Enhancement
+
+#### Extend T3000 Database Schema
+```sql
+-- Following T3000 CppSQLite3 patterns
+-- Extend existing building database schema
+
+-- Add BACnet device mapping (integrate with existing device tables)
+ALTER TABLE Building ADD COLUMN bacnet_device_instance INTEGER;
+ALTER TABLE Building ADD COLUMN bacnet_vendor_id INTEGER;
+ALTER TABLE Building ADD COLUMN bacnet_model_name TEXT;
+ALTER TABLE Building ADD COLUMN supports_block_read INTEGER DEFAULT 0;
+
+-- Create BACnet-specific tables (new additions)
+CREATE TABLE IF NOT EXISTS bacnet_objects (
+    object_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER REFERENCES Building(Unique_ID),
+    object_type TEXT NOT NULL, -- 'AI', 'DI', 'DO'
+    object_instance INTEGER NOT NULL,
+    object_name TEXT,
+    description TEXT,
+    units TEXT,
+    poll_interval INTEGER DEFAULT 30,
+    enabled INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    UNIQUE(building_id, object_type, object_instance)
+);
+
+-- Enhanced sensor data table for BACnet trend logs
+CREATE TABLE IF NOT EXISTS bacnet_sensor_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    building_id INTEGER NOT NULL,
+    object_id INTEGER NOT NULL REFERENCES bacnet_objects(object_id),
+    object_type TEXT NOT NULL,
+    object_instance INTEGER NOT NULL,
+    value REAL,
+    quality TEXT DEFAULT 'good',
+    raw_value TEXT,
+    poll_duration_ms INTEGER,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
+
+-- Indexes for trend log performance
+CREATE INDEX IF NOT EXISTS idx_bacnet_data_building_time
+    ON bacnet_sensor_data (building_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_bacnet_data_object_time
+    ON bacnet_sensor_data (object_id, timestamp DESC);
+```
+
+### Phase 3: WebView Message Protocol Extension
+
+#### Extend T3000 WebView Communication
+```typescript
+// src/lib/webview/BACnetWebViewHandler.ts
+// Based on T3000 WebViewClient.ts and WebSocketClient.ts patterns
+
+export class BACnetWebViewHandler {
+    private bacnetBridge: BACnetT3000Bridge;
+    private webViewClient: WebViewClient;
+    private webSocketClient: WebSocketClient;
+
+    constructor() {
+        this.bacnetBridge = new BACnetT3000Bridge();
+
+        // Initialize existing T3000 WebView clients
+        this.webViewClient = new WebViewClient();
+        this.webSocketClient = new WebSocketClient();
+
+        this.setupBACnetMessageHandlers();
+    }
+
+    // Extend existing T3000 message handling
+    private setupBACnetMessageHandlers(): void {
+        // Extend WebViewClient for T3000 panel
+        this.webViewClient.addMessageHandler('bacnet', (message) => {
+            this.bacnetBridge.handleT3000WebMessage(message);
+        });
+
+        // Extend WebSocketClient for browser-only mode
+        this.webSocketClient.addMessageHandler('bacnet', (message) => {
+            this.bacnetBridge.handleT3000WebMessage(message);
+        });
+    }
+
+    // BACnet-specific message types for T3000 integration
+    sendBACnetDeviceList(devices: T3TBDevice[]): void {
+        const message = {
+            type: 'bacnet_device_list',
+            devices: devices,
+            timestamp: Date.now()
+        };
+
+        // Send to both T3000 panel and browser clients
+        this.webViewClient.sendMessage(message);
+        this.webSocketClient.broadcast(message);
+    }
+
+    sendBACnetTrendData(objectId: number, data: any[]): void {
+        const message = {
+            type: 'bacnet_trend_data',
+            objectId: objectId,
+            data: data,
+            timestamp: Date.now()
+        };
+
+        this.webViewClient.sendMessage(message);
+        this.webSocketClient.broadcast(message);
+    }
+}
+```
+
+### Phase 4: T3-TB Device Polling Implementation
+
+#### T3-TB Specific Polling Engine
+```typescript
+// src/lib/bacnet/T3TBPollingEngine.ts
+// Based on T3000 CTrendLogView and CTrendLogWnd patterns
+
+export class T3TBPollingEngine {
+    private devices: Map<number, T3TBDevice> = new Map();
+    private pollingIntervals: Map<number, NodeJS.Timeout> = new Map();
+    private bacnetClient: any;
+
+    constructor(bacnetClient: any) {
+        this.bacnetClient = bacnetClient;
+    }
+
+    // Start polling T3-TB device (replace T3000 trend log functionality)
+    async startT3TBPolling(device: T3TBDevice, intervalSeconds: number): Promise<void> {
+        try {
+            // Configure T3-TB specific object mapping
+            const objectMap = this.createT3TBObjectMap(device);
+
+            const interval = setInterval(async () => {
+                await this.pollT3TBDevice(device, objectMap);
+            }, intervalSeconds * 1000);
+
+            this.pollingIntervals.set(device.deviceId, interval);
+
+            console.log(`Started polling T3-TB device ${device.deviceId}`);
+        } catch (error) {
+            console.error(`Failed to start polling T3-TB device ${device.deviceId}:`, error);
+        }
+    }
+
+    // Create T3-TB specific object mapping
+    private createT3TBObjectMap(device: T3TBDevice): BACnetObjectMap {
+        const objectMap: BACnetObjectMap = {
+            analogInputs: [],
+            digitalInputs: [],
+            digitalOutputs: []
+        };
+
+        // Based on T3000 source analysis
+        if (device.deviceType === 84) { // T3_TB
+            // 8 Digital Inputs (DI 0-7)
+            for (let i = 0; i < 8; i++) {
+                objectMap.digitalInputs.push({
+                    objectType: 'DI',
+                    objectInstance: i,
+                    objectName: `DI_${i}`,
+                    pollEnabled: true
+                });
+            }
+
+            // 8 Digital Outputs (DO 0-7)
+            for (let i = 0; i < 8; i++) {
+                objectMap.digitalOutputs.push({
+                    objectType: 'DO',
+                    objectInstance: i,
+                    objectName: `DO_${i}`,
+                    pollEnabled: true
+                });
+            }
+        } else if (device.deviceType === 203) { // T3_TB_11I
+            // 11 Analog Inputs (AI 0-10)
+            for (let i = 0; i < 11; i++) {
+                objectMap.analogInputs.push({
+                    objectType: 'AI',
+                    objectInstance: i,
+                    objectName: `AI_${i}`,
+                    pollEnabled: true,
+                    units: 'unknown' // Will be read from device
+                });
+            }
+        }
+
+        return objectMap;
+    }
+
+    // Poll T3-TB device and store data (replace T3000 trend log storage)
+    private async pollT3TBDevice(device: T3TBDevice, objectMap: BACnetObjectMap): Promise<void> {
+        const startTime = performance.now();
+
+        try {
+            const pollResults: BACnetPollResult[] = [];
+
+            // Read all objects for this device
+            if (device.supportsBlockRead) {
+                // Use ReadPropertyMultiple for efficiency
+                const blockResults = await this.performBlockRead(device, objectMap);
+                pollResults.push(...blockResults);
+            } else {
+                // Fall back to individual reads
+                const individualResults = await this.performIndividualReads(device, objectMap);
+                pollResults.push(...individualResults);
+            }
+
+            const pollDuration = performance.now() - startTime;
+
+            // Store results in SQLite using T3000 patterns
+            await this.storePollResults(device, pollResults, pollDuration);
+
+            // Update T3000 WebView with new data (replace trend log updates)
+            this.notifyWebViewDataUpdate(device, pollResults);
+
+        } catch (error) {
+            console.error(`Polling failed for T3-TB device ${device.deviceId}:`, error);
+            await this.handlePollingError(device, error);
+        }
+    }
+}
+
+interface BACnetObjectMap {
+    analogInputs: BACnetObjectInfo[];
+    digitalInputs: BACnetObjectInfo[];
+    digitalOutputs: BACnetObjectInfo[];
+}
+
+interface BACnetObjectInfo {
+    objectType: 'AI' | 'DI' | 'DO';
+    objectInstance: number;
+    objectName: string;
+    pollEnabled: boolean;
+    units?: string;
+}
+
+interface BACnetPollResult {
+    objectType: string;
+    objectInstance: number;
+    value: any;
+    timestamp: number;
+    quality: string;
+}
+```
+
+## Testing Strategy
+
+### Integration Testing
+```typescript
+describe('T3000 BACnet Integration', () => {
+    let bacnetBridge: BACnetT3000Bridge;
+    let mockT3TBDevice: T3TBDevice;
+
+    beforeEach(() => {
+        bacnetBridge = new BACnetT3000Bridge();
+        mockT3TBDevice = createMockT3TBDevice();
+    });
+
+    test('should discover T3-TB devices correctly', async () => {
+        const devices = await bacnetBridge.discoverT3TBDevices();
+
+        expect(devices).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    deviceType: expect.oneOf([84, 203]),
+                    vendorId: 644
+                })
+            ])
+        );
+    });
+
+    test('should integrate with T3000 WebView messaging', async () => {
+        const message = {
+            type: 'bacnet_start_polling',
+            deviceId: mockT3TBDevice.deviceId
+        };
+
+        await bacnetBridge.handleT3000WebMessage(message);
+
+        // Verify polling started
+        expect(mockPollingEngine.isPolling(mockT3TBDevice.deviceId)).toBe(true);
+    });
+
+    test('should store data in SQLite using T3000 patterns', async () => {
+        const pollResults = createMockPollResults();
+
+        await bacnetBridge.storePollResults(mockT3TBDevice, pollResults, 150);
+
+        // Verify data stored in bacnet_sensor_data table
+        const storedData = await queryBACnetSensorData(mockT3TBDevice.deviceId);
+        expect(storedData).toHaveLength(pollResults.length);
+    });
+});
+```
+
+## Implementation Progress Tracking
+
+### Completed Items ✅
+- **T3000 Source Code Analysis**: Complete analysis of existing T3000 patterns including CTrendLogView, webview_run_server, CppSQLite3 usage, and T3-TB device support
+- **SQLite Integration Design**: Database schema design using existing T3000 CppSQLite3 infrastructure
+- **T3-TB Device Specification**: Identified device constants (T3_TB: 84, T3_TB_11I: 203) and I/O configurations
+- **WebView Message Protocol**: Designed extensions to existing HandleWebViewMsg pattern
+
+### Ready for Implementation 🚀
+1. **Phase 1**: Node-BACnet library installation and BACnetT3000Bridge class creation
+2. **Phase 2**: SQLite database schema enhancement following T3000 patterns
+3. **Phase 3**: WebView message handler extensions for BACnet operations
+4. **Phase 4**: T3-TB specific polling engine implementation
+
+### Next Action Items
+1. Install Node-BACnet library in current WebView project
+2. Create BACnetT3000Bridge class following documented T3000 source patterns
+3. Implement SQLite database extensions using existing CppSQLite3 infrastructure
+4. Test T3-TB device discovery and polling with actual hardware
+
 ## Testing Strategy
 
 ### Integration Testing
@@ -610,47 +1180,46 @@ class PollingMetrics {
 ## Next Steps
 
 ### Immediate Actions (Week 1)
-1. **Environment Setup**
-   - Install TimeScaleDB in development environment
-   - Set up basic database schema
-   - Research and select BACnet library
+1. **Node-BACnet Library Setup**
+   - Install node-bacnet in T3000 WebView project
+   - Create BACnetT3000Bridge class following T3000 source patterns
+   - Set up TypeScript interfaces for T3-TB devices
 
-2. **YABE Analysis**
-   - Download and analyze YABE source code
-   - Document block read implementation
-   - Extract reusable patterns and approaches
+2. **SQLite Database Enhancement**
+   - Extend existing T3000 database schema with BACnet tables
+   - Implement CppSQLite3 integration following T3000 patterns
+   - Test database operations with existing T3000 infrastructure
 
-3. **Device Inventory**
-   - Get comprehensive device list from Fandu
-   - Document device capabilities and limitations
-   - Plan testing approach
+3. **T3-TB Device Testing**
+   - Configure test environment with T3-TB devices
+   - Validate device discovery using identified device constants (84, 203)
+   - Test BACnet object mapping for digital and analog I/O
 
 ### Short-term Goals (Weeks 2-4)
-1. **Core Implementation**
-   - Basic device discovery
-   - Simple polling implementation
-   - Data storage pipeline
-   - Error handling framework
+1. **Core BACnet Implementation**
+   - Implement T3TBPollingEngine with device-specific object mapping
+   - Create WebView message handler extensions
+   - Integrate with existing T3000 WebViewClient and WebSocketClient
 
-2. **Testing Infrastructure**
-   - Unit tests for core components
-   - Integration tests with mock devices
-   - Performance benchmarking tools
+2. **T3000 Integration Testing**
+   - Test dual-client coordination (T3000 panel + browser)
+   - Validate SQLite data storage using T3000 database patterns
+   - Implement trend log replacement functionality
 
 ### Medium-term Goals (Weeks 5-8)
 1. **Advanced Features**
-   - Block read optimization
-   - AI-assisted configuration
-   - UI integration
-   - Performance monitoring
+   - Block read optimization for efficient polling
+   - Real-time data streaming to WebView
+   - Error handling and device failover
 
 2. **Production Readiness**
-   - Comprehensive error handling
-   - Deployment automation
-   - Documentation and training materials
+   - Performance optimization following T3000 threading patterns
+   - Comprehensive error handling and logging
+   - Integration with existing T3000 user interface
 
 ---
 
-**Document Status:** Technical Roadmap - Ready for Implementation
-**Review Required:** Architecture approval and resource allocation
-**Dependencies:** TimeScaleDB setup, BACnet library selection, device access
+**Document Status:** Implementation Ready - T3000 Source Code Analysis Complete
+**Review Required:** Begin Phase 1 implementation with Node-BACnet library
+**Dependencies:** Node-BACnet installation, T3-TB device access for testing
+**T3000 Integration:** Leverages existing CppSQLite3, WebView messaging, and device communication patterns
