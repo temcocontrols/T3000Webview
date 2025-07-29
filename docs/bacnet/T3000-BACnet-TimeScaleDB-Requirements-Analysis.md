@@ -399,49 +399,112 @@ Required Documentation:
 - User interface design specifications
 ```
 
-## T3000 C++ Integration Architecture Analysis
+## Comprehensive T3000 System Architecture Analysis
 
-### Current System Flow Analysis
+### Current Complete System Flow
 ```
-Current Architecture:
-WebView (JavaScript)
-    ↓ postMessage
-T3000 C++ Application
-    ↓ reads hardware devices
-Hardware Devices (Inputs/Outputs/Variables)
-    ↓ data flows back
-WebView receives message
-    ↓ calls
-Rust API (t3_webview_api.dll)
-    ↓ stores data
-SQLite Database
-    ↓ for history
-Rust API reads SQLite
-    ↓ displays
-Right Panel (Chart/Visualization)
+Current Architecture (Complete Picture):
+
+1. Build & Deployment:
+   WebView (Vue3 + TypeScript) → build → /webview/www/
+   Rust API → build → t3_webview_api.dll
+   T3000 C++ → build → T3000.exe + /webview/www/ + t3_webview_api.dll
+
+2. Runtime Architecture:
+   T3000.exe (Main Application)
+   ├── Built-in Edge Browser (localhost:9103) [Internal Users]
+   ├── Hardware Communication (Proprietary Protocols)
+   └── Backend Process:
+       ├── Rust WebServer (Port 9103) ← External Browser Access
+       ├── Rust WebSocket Server (Port 9104) ← Real-time Communication
+       └── t3_webview_api.dll
+
+3. Data Flow:
+   Hardware Devices (Inputs/Outputs/Variables)
+   ↓ proprietary protocols
+   T3000 C++ Application
+   ↓ edge message OR websocket message
+   WebView (Built-in Browser OR External Browser)
+   ↓ API calls
+   Rust API (t3_webview_api.dll)
+   ↓ stores/retrieves
+   SQLite Database (History Storage)
+
+4. Communication Channels:
+   - Built-in Edge Browser: postMessage ↔ T3000 C++
+   - External Browser: WebSocket ↔ Rust API ↔ T3000 C++
+   - Both share same message payloads, different transport
 ```
 
-### Proposed BACnet Integration Architecture
-```
-New Integrated Architecture:
-T3000 C++ Application
-├── Existing Hardware Communication (Legacy)
-├── NEW: BACnet Polling Service (Background Thread)
-│   ├── Device Discovery
-│   ├── Block/Individual Reading
-│   └── Direct SQLite Storage
-├── WebView Bridge (Enhanced)
-│   ├── Existing postMessage handlers
-│   └── NEW: BACnet data requests
-└── Shared SQLite Database
-    ├── Existing Tables (Legacy data)
-    ├── BACnet Tables (New data)
-    └── Unified Time Series Storage
+### Proposed BACnet Integration Architecture (Complete Solution)
 
-Rust API (t3_webview_api.dll)
-├── Existing Endpoints
-├── NEW: BACnet Data Endpoints
-└── Unified Data Access Layer
+```
+New Integrated BACnet Architecture:
+
+1. Shared BACnet Library Design:
+   ┌─────────────────────────────────────────────────────────┐
+   │                BACnet Shared Library                    │
+   │  ┌─────────────────┐    ┌─────────────────────────────┐ │
+   │  │   C++ Interface │    │     Rust FFI Interface     │ │
+   │  │ (for T3000.exe) │    │ (for t3_webview_api.dll)   │ │
+   │  └─────────────────┘    └─────────────────────────────┘ │
+   │  ┌─────────────────────────────────────────────────────┐ │
+   │  │            Core BACnet Engine (C++)                 │ │
+   │  │  • Device Discovery  • Block Reading               │ │
+   │  │  • Object Enumeration • Error Handling             │ │
+   │  └─────────────────────────────────────────────────────┘ │
+   └─────────────────────────────────────────────────────────┘
+
+2. Runtime Integration:
+   T3000.exe (Enhanced)
+   ├── Existing Hardware Communication (Legacy)
+   ├── NEW: T3000 BACnet Window/Panel
+   │   ├── Device List Display
+   │   ├── Real-time Data Monitoring
+   │   └── BACnet Configuration
+   ├── NEW: BACnet Polling Service (C++)
+   │   ├── Uses Shared BACnet Library
+   │   ├── Background Polling Thread
+   │   └── Direct SQLite Storage
+   ├── Built-in Edge Browser (localhost:9103)
+   └── Backend Process (Enhanced):
+       ├── Rust WebServer (Port 9103)
+       ├── Rust WebSocket Server (Port 9104)
+       ├── NEW: Rust BACnet Service (Optional)
+       │   ├── Uses Shared BACnet Library (via FFI)
+       │   ├── Triggered by WebSocket/HTTP requests
+       │   └── Fallback when T3000 BACnet disabled
+       └── Enhanced t3_webview_api.dll
+           └── Unified SQLite Access (Legacy + BACnet)
+
+3. Shared SQLite Database (Single Source of Truth):
+   SQLite Database (Enhanced Schema)
+   ├── Existing Tables (Legacy T3000 data)
+   ├── BACnet Tables (Device/Object registry)
+   ├── Unified Time Series (Legacy + BACnet data)
+   └── Access Methods:
+       ├── T3000 C++ (Direct SQLite API)
+       ├── Rust API (SeaORM)
+       └── Thread-safe concurrent access
+
+4. User Experience Scenarios:
+
+   Scenario A: T3000-Only Usage
+   User opens T3000.exe → Opens BACnet Panel
+   → T3000 starts BACnet polling → Stores to SQLite
+   → User views data in T3000 native window
+
+   Scenario B: Browser-Only Usage
+   User opens http://localhost:9103 (T3000 runs in background)
+   → Browser requests BACnet data via WebSocket
+   → Rust API triggers BACnet polling → Stores to SQLite
+   → TimeSeriesModal displays data in browser
+
+   Scenario C: Hybrid Usage
+   Both T3000 BACnet panel AND browser active
+   → Shared SQLite database serves both interfaces
+   → Real-time synchronization between views
+   → Consistent data across all interfaces
 ```
 
 ### Database Sharing Strategy - RECOMMENDED APPROACH
@@ -513,155 +576,506 @@ CREATE INDEX idx_bacnet_objects_lookup ON bacnet_objects(device_id, object_type,
 CREATE INDEX idx_timeseries_bacnet_lookup ON timeseries_data_2025(bacnet_device_id, bacnet_object_type, bacnet_object_instance, timestamp);
 ```
 
-### C++ vs C# Implementation Decision - RECOMMENDATION: C++
+### Shared BACnet Library Design - RECOMMENDED SOLUTION
 
-**C++ Implementation Advantages:**
-- ✅ **Native T3000 Integration**: Direct integration with existing C++ codebase
-- ✅ **Performance**: No interop overhead, native memory management
-- ✅ **Single Runtime**: No additional .NET runtime dependency
-- ✅ **Shared SQLite Handle**: Direct access to same database connection
-- ✅ **Thread Safety**: Easier integration with existing T3000 threading model
-- ✅ **Build Environment**: Consistent with existing T3000 build system
+**Architecture Decision: C++ Core Library with FFI Bindings**
 
-**Recommended C++ Implementation:**
 ```cpp
-// Integration into T3000 C++ Application
+// File: BACnetSharedLibrary.h
+// Shared library that can be used by both T3000 C++ and Rust API
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Export declarations for DLL
+#ifdef BACNET_EXPORTS
+#define BACNET_API __declspec(dllexport)
+#else
+#define BACNET_API __declspec(dllimport)
+#endif
+
+// Core data structures (C-compatible for FFI)
+typedef struct {
+    int device_id;
+    char device_name[64];
+    char ip_address[16];
+    int port;
+    int vendor_id;
+    char vendor_name[64];
+    char model_name[64];
+    int is_active;
+    long long last_discovered;
+} BACnetDeviceInfo;
+
+typedef struct {
+    int device_id;
+    int object_type;        // AI=0, AO=1, DI=3, DO=4
+    int object_instance;
+    char object_name[64];
+    float present_value;
+    char units[16];
+    char description[128];
+    long long last_updated;
+} BACnetObjectInfo;
+
+typedef struct {
+    BACnetDeviceInfo* devices;
+    int device_count;
+    int max_devices;
+} BACnetDeviceList;
+
+typedef struct {
+    BACnetObjectInfo* objects;
+    int object_count;
+    int max_objects;
+} BACnetObjectList;
+
+// Core BACnet Library Functions (Exported for both C++ and Rust)
+BACNET_API int BACnet_Initialize(const char* local_ip, int local_port);
+BACNET_API void BACnet_Shutdown();
+
+// Device Discovery
+BACNET_API int BACnet_DiscoverDevices(BACnetDeviceList* device_list, int timeout_ms);
+BACNET_API int BACnet_AddDevice(const char* ip_address, int port, int device_id);
+BACNET_API int BACnet_RemoveDevice(int device_id);
+
+// Object Reading
+BACNET_API int BACnet_ReadAllObjects(int device_id, BACnetObjectList* object_list);
+BACNET_API int BACnet_ReadObjectBlock(int device_id, int* object_types, int* object_instances,
+                                     int object_count, BACnetObjectList* results);
+BACNET_API float BACnet_ReadSingleObject(int device_id, int object_type, int object_instance);
+
+// Configuration
+BACNET_API void BACnet_SetPollingInterval(int seconds);
+BACNET_API void BACnet_SetRetryCount(int retries);
+BACNET_API void BACnet_SetTimeout(int timeout_ms);
+
+// Error Handling
+BACNET_API const char* BACnet_GetLastError();
+BACNET_API void BACnet_ClearError();
+
+// Memory Management
+BACNET_API void BACnet_FreeDeviceList(BACnetDeviceList* list);
+BACNET_API void BACnet_FreeObjectList(BACnetObjectList* list);
+
+#ifdef __cplusplus
+}
+#endif
+
+// C++ Wrapper Class (for T3000 use)
+#ifdef __cplusplus
+#include <vector>
+#include <string>
+#include <memory>
+
+class BACnetManager {
+private:
+    bool m_initialized;
+
+public:
+    BACnetManager();
+    ~BACnetManager();
+
+    bool Initialize(const std::string& localIp = "", int localPort = 47808);
+    void Shutdown();
+
+    std::vector<BACnetDeviceInfo> DiscoverDevices(int timeoutMs = 30000);
+    bool AddDevice(const std::string& ipAddress, int port, int deviceId);
+
+    std::vector<BACnetObjectInfo> ReadAllObjects(int deviceId);
+    std::vector<BACnetObjectInfo> ReadObjectBlock(int deviceId,
+        const std::vector<std::pair<int, int>>& objectIds);
+    float ReadSingleObject(int deviceId, int objectType, int objectInstance);
+
+    std::string GetLastError() const;
+};
+#endif
+```
+
+**Rust FFI Bindings:**
+```rust
+// File: src/bacnet_ffi.rs
+// Rust bindings for the shared BACnet library
+
+use std::ffi::{CStr, CString};
+use std::os::raw::{c_char, c_int, c_float, c_longlong};
+
+#[repr(C)]
+pub struct BACnetDeviceInfo {
+    pub device_id: c_int,
+    pub device_name: [c_char; 64],
+    pub ip_address: [c_char; 16],
+    pub port: c_int,
+    pub vendor_id: c_int,
+    pub vendor_name: [c_char; 64],
+    pub model_name: [c_char; 64],
+    pub is_active: c_int,
+    pub last_discovered: c_longlong,
+}
+
+#[repr(C)]
+pub struct BACnetObjectInfo {
+    pub device_id: c_int,
+    pub object_type: c_int,
+    pub object_instance: c_int,
+    pub object_name: [c_char; 64],
+    pub present_value: c_float,
+    pub units: [c_char; 16],
+    pub description: [c_char; 128],
+    pub last_updated: c_longlong,
+}
+
+#[repr(C)]
+pub struct BACnetDeviceList {
+    pub devices: *mut BACnetDeviceInfo,
+    pub device_count: c_int,
+    pub max_devices: c_int,
+}
+
+#[repr(C)]
+pub struct BACnetObjectList {
+    pub objects: *mut BACnetObjectInfo,
+    pub object_count: c_int,
+    pub max_objects: c_int,
+}
+
+#[link(name = "BACnetSharedLibrary")]
+extern "C" {
+    pub fn BACnet_Initialize(local_ip: *const c_char, local_port: c_int) -> c_int;
+    pub fn BACnet_Shutdown();
+
+    pub fn BACnet_DiscoverDevices(device_list: *mut BACnetDeviceList, timeout_ms: c_int) -> c_int;
+    pub fn BACnet_AddDevice(ip_address: *const c_char, port: c_int, device_id: c_int) -> c_int;
+
+    pub fn BACnet_ReadAllObjects(device_id: c_int, object_list: *mut BACnetObjectList) -> c_int;
+    pub fn BACnet_ReadSingleObject(device_id: c_int, object_type: c_int, object_instance: c_int) -> c_float;
+
+    pub fn BACnet_GetLastError() -> *const c_char;
+    pub fn BACnet_FreeDeviceList(list: *mut BACnetDeviceList);
+    pub fn BACnet_FreeObjectList(list: *mut BACnetObjectList);
+}
+
+// Rust wrapper for safe usage
+pub struct BACnetClient {
+    initialized: bool,
+}
+
+impl BACnetClient {
+    pub fn new() -> Self {
+        BACnetClient { initialized: false }
+    }
+
+    pub fn initialize(&mut self, local_ip: Option<&str>, local_port: u16) -> Result<(), String> {
+        let ip_cstr = match local_ip {
+            Some(ip) => CString::new(ip).map_err(|e| format!("Invalid IP: {}", e))?,
+            None => CString::new("").unwrap(),
+        };
+
+        let result = unsafe {
+            BACnet_Initialize(ip_cstr.as_ptr(), local_port as c_int)
+        };
+
+        if result == 0 {
+            self.initialized = true;
+            Ok(())
+        } else {
+            Err(self.get_last_error())
+        }
+    }
+
+    pub fn discover_devices(&self, timeout_ms: u32) -> Result<Vec<BACnetDeviceInfo>, String> {
+        if !self.initialized {
+            return Err("BACnet not initialized".to_string());
+        }
+
+        let mut device_list = BACnetDeviceList {
+            devices: std::ptr::null_mut(),
+            device_count: 0,
+            max_devices: 100,
+        };
+
+        let result = unsafe {
+            BACnet_DiscoverDevices(&mut device_list, timeout_ms as c_int)
+        };
+
+        if result == 0 {
+            let devices = unsafe {
+                std::slice::from_raw_parts(device_list.devices, device_list.device_count as usize)
+            }.to_vec();
+
+            unsafe { BACnet_FreeDeviceList(&mut device_list); }
+            Ok(devices)
+        } else {
+            Err(self.get_last_error())
+        }
+    }
+
+    pub fn read_all_objects(&self, device_id: i32) -> Result<Vec<BACnetObjectInfo>, String> {
+        if !self.initialized {
+            return Err("BACnet not initialized".to_string());
+        }
+
+        let mut object_list = BACnetObjectList {
+            objects: std::ptr::null_mut(),
+            object_count: 0,
+            max_objects: 1000,
+        };
+
+        let result = unsafe {
+            BACnet_ReadAllObjects(device_id as c_int, &mut object_list)
+        };
+
+        if result == 0 {
+            let objects = unsafe {
+                std::slice::from_raw_parts(object_list.objects, object_list.object_count as usize)
+            }.to_vec();
+
+            unsafe { BACnet_FreeObjectList(&mut object_list); }
+            Ok(objects)
+        } else {
+            Err(self.get_last_error())
+        }
+    }
+
+    fn get_last_error(&self) -> String {
+        unsafe {
+            let error_ptr = BACnet_GetLastError();
+            if error_ptr.is_null() {
+                "Unknown error".to_string()
+            } else {
+                CStr::from_ptr(error_ptr).to_string_lossy().to_string()
+            }
+        }
+    }
+}
+
+impl Drop for BACnetClient {
+    fn drop(&mut self) {
+        if self.initialized {
+            unsafe { BACnet_Shutdown(); }
+        }
+    }
+}
+```
+
+### T3000 C++ Integration (Enhanced for Complete System)
+
+**Enhanced T3000BACnetManager for Complete Integration:**
+```cpp
 // File: T3000BACnetManager.h
+// Integration into T3000 C++ Application
 
 #include "sqlite3.h"
+#include "BACnetSharedLibrary.h"  // Our shared library
 #include <thread>
 #include <vector>
 #include <memory>
-
-// Forward declarations for BACnet library
-struct BACnetDevice;
-struct BACnetObject;
+#include <mutex>
+#include <atomic>
 
 class T3000BACnetManager {
 private:
     sqlite3* m_sharedDatabase;           // Shared with existing T3000 SQLite
+    std::unique_ptr<BACnetManager> m_bacnetClient;
     std::thread m_pollingThread;
     std::thread m_discoveryThread;
-    std::vector<BACnetDevice> m_devices;
-    bool m_isRunning;
-    bool m_discoveryEnabled;
-    int m_pollIntervalSeconds;
+    std::vector<BACnetDeviceInfo> m_devices;
+    std::atomic<bool> m_isRunning;
+    std::atomic<bool> m_discoveryEnabled;
+    std::atomic<int> m_pollIntervalSeconds;
+    std::mutex m_devicesMutex;
+    std::mutex m_databaseMutex;
+
+    // Window/Panel integration for T3000 UI
+    HWND m_bacnetWindow;
+    bool m_windowVisible;
 
 public:
     // Initialize with existing T3000 SQLite connection
-    bool Initialize(sqlite3* existingDb);
+    bool Initialize(sqlite3* existingDb, const std::string& localIp = "");
 
-    // Start BACnet services
+    // Service management
     bool StartServices();
     void StopServices();
+    bool IsRunning() const { return m_isRunning; }
 
-    // Integration with existing T3000 WebView message system
+    // T3000 Window/Panel integration
+    bool CreateBACnetWindow(HWND parentWindow);
+    void ShowBACnetWindow(bool show);
+    void UpdateWindowDisplay();
+    LRESULT HandleWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    // WebView Bridge integration (existing pattern)
     void HandleWebViewBACnetRequest(const std::string& jsonMessage);
     std::string ProcessBACnetDataRequest(int deviceId, const std::string& timeRange);
 
-    // Device management
-    std::vector<BACnetDevice> GetDiscoveredDevices();
-    bool AddDevice(const std::string& ipAddress, int port = 47808);
-    bool RemoveDevice(int deviceId);
+    // Enhanced communication for Rust API coordination
+    void HandleRustAPIRequest(const std::string& action, const std::string& params);
+    std::string GetDeviceListJson();
+    std::string GetTrendDataJson(int deviceId, long long startTime, long long endTime);
 
-    // Configuration
-    void SetPollingInterval(int seconds) { m_pollIntervalSeconds = seconds; }
-    void EnableDiscovery(bool enable) { m_discoveryEnabled = enable; }
+    // Device management
+    std::vector<BACnetDeviceInfo> GetDiscoveredDevices();
+    bool AddDevice(const std::string& ipAddress, int port = 47808, int deviceId = -1);
+    bool RemoveDevice(int deviceId);
+    void RefreshDeviceList();
+
+    // Configuration management
+    void SetPollingInterval(int seconds);
+    void SetDiscoveryEnabled(bool enabled);
+    void SaveConfiguration();
+    void LoadConfiguration();
+
+    // Status and monitoring
+    int GetActiveDeviceCount();
+    long long GetLastPollTime();
+    std::string GetPollingStatus();
 
 private:
     // Background operations
     void PollingLoop();
     void DiscoveryLoop();
 
-    // BACnet operations
+    // BACnet operations using shared library
     bool DiscoverDevicesOnNetwork();
-    bool PollDevice(const BACnetDevice& device);
-    std::vector<BACnetObject> ReadDeviceObjects(const BACnetDevice& device);
-    bool ReadObjectBlock(const BACnetDevice& device, std::vector<BACnetObject>& objects);
-    float ReadObjectIndividual(const BACnetDevice& device, int objectType, int objectInstance);
+    bool PollDevice(const BACnetDeviceInfo& device);
+    bool PollAllDevices();
 
-    // Database operations
-    bool StoreBACnetDeviceData(const BACnetDevice& device, const std::vector<BACnetObject>& objects);
-    bool UpdateRealtimeCache(const BACnetDevice& device, const std::vector<BACnetObject>& objects);
+    // Database operations (thread-safe)
+    bool StoreBACnetDeviceData(const BACnetDeviceInfo& device,
+                              const std::vector<BACnetObjectInfo>& objects);
+    bool UpdateRealtimeCache(const BACnetDeviceInfo& device,
+                           const std::vector<BACnetObjectInfo>& objects);
     bool CreateBACnetTables();
+    bool ExecuteSQLWithLock(const std::string& sql, sqlite3_stmt** stmt = nullptr);
+
+    // Window/UI operations
+    void PopulateDeviceList();
+    void UpdateDeviceStatus(int deviceId, bool online);
+    void RefreshPollingStatus();
 
     // Utility functions
-    std::string FormatBACnetResponse(const std::vector<BACnetObject>& data);
+    std::string FormatBACnetResponse(const std::vector<BACnetObjectInfo>& data);
     void LogBACnetError(const std::string& error);
+    std::string GetConfigFilePath();
 };
 
-// Implementation File: T3000BACnetManager.cpp
-bool T3000BACnetManager::Initialize(sqlite3* existingDb) {
+// Implementation details for key methods
+bool T3000BACnetManager::Initialize(sqlite3* existingDb, const std::string& localIp) {
     m_sharedDatabase = existingDb;
     m_isRunning = false;
     m_discoveryEnabled = true;
     m_pollIntervalSeconds = 300; // 5 minutes default
+    m_windowVisible = false;
 
-    // Create BACnet tables if they don't exist
-    if (!CreateBACnetTables()) {
+    // Initialize shared BACnet library
+    m_bacnetClient = std::make_unique<BACnetManager>();
+    if (!m_bacnetClient->Initialize(localIp)) {
+        LogBACnetError("Failed to initialize BACnet library");
         return false;
     }
 
-    // Initialize BACnet library
-    // TODO: Initialize chosen BACnet library here
+    // Create BACnet tables if they don't exist
+    if (!CreateBACnetTables()) {
+        LogBACnetError("Failed to create BACnet database tables");
+        return false;
+    }
+
+    // Load saved configuration
+    LoadConfiguration();
 
     return true;
 }
 
-bool T3000BACnetManager::StartServices() {
-    m_isRunning = true;
+bool T3000BACnetManager::CreateBACnetWindow(HWND parentWindow) {
+    // Create native Windows dialog/window for BACnet management
+    // This will be a T3000-style window showing:
+    // - Device list with status indicators
+    // - Real-time value display
+    // - Polling configuration
+    // - Device discovery controls
 
-    // Start discovery thread
-    if (m_discoveryEnabled) {
-        m_discoveryThread = std::thread(&T3000BACnetManager::DiscoveryLoop, this);
-    }
-
-    // Start polling thread
-    m_pollingThread = std::thread(&T3000BACnetManager::PollingLoop, this);
+    // Implementation would use Windows API to create child window
+    // Similar to existing T3000 panels/dialogs
 
     return true;
-}
-
-void T3000BACnetManager::PollingLoop() {
-    while (m_isRunning) {
-        try {
-            // Poll all active devices
-            for (const auto& device : m_devices) {
-                if (device.isActive) {
-                    PollDevice(device);
-                }
-            }
-
-            // Sleep until next poll cycle
-            std::this_thread::sleep_for(std::chrono::seconds(m_pollIntervalSeconds));
-        }
-        catch (const std::exception& e) {
-            LogBACnetError("Polling error: " + std::string(e.what()));
-        }
-    }
 }
 
 void T3000BACnetManager::HandleWebViewBACnetRequest(const std::string& jsonMessage) {
-    // Parse JSON message from WebView
-    // Example: {"action": "BACNET_TREND_DATA", "deviceId": 123, "startTime": "...", "endTime": "..."}
+    // Enhanced to handle both built-in browser and external browser requests
+    // Parse JSON message and determine action
 
-    // Query SQLite for BACnet trend data
-    std::string query = R"(
-        SELECT bd.device_name, bo.object_name, bo.object_type, bo.object_instance,
-               ts.value, ts.timestamp, ts.interval_seconds
-        FROM timeseries_data_2025 ts
-        JOIN bacnet_objects bo ON ts.bacnet_device_id = bo.device_id
-            AND ts.bacnet_object_type = bo.object_type
-            AND ts.bacnet_object_instance = bo.object_instance
-        JOIN bacnet_devices bd ON bo.device_id = bd.device_id
-        WHERE ts.data_source = 'bacnet'
-            AND ts.timestamp BETWEEN ? AND ?
-            AND bd.device_id = ?
-        ORDER BY ts.timestamp DESC
-    )";
+    try {
+        // Parse JSON (using existing T3000 JSON library or simple parser)
+        // Handle different request types:
+        // - BACNET_DISCOVER: Start device discovery
+        // - BACNET_TREND_DATA: Get historical data
+        // - BACNET_DEVICE_LIST: Get current devices
+        // - BACNET_START_POLLING: Start/stop polling for specific device
 
-    // Execute query and format response
-    // Send response back to WebView through existing T3000 bridge
+        std::string response = ProcessBACnetRequest(jsonMessage);
+
+        // Send response back through existing T3000 WebView bridge
+        // This maintains compatibility with existing message system
+
+    } catch (const std::exception& e) {
+        LogBACnetError("Error handling WebView request: " + std::string(e.what()));
+    }
+}
+
+void T3000BACnetManager::HandleRustAPIRequest(const std::string& action, const std::string& params) {
+    // New method to handle requests from Rust API when external browser is used
+    // This allows Rust API to trigger BACnet operations when T3000 C++ polling is preferred
+
+    if (action == "start_polling") {
+        // Rust API requests T3000 to start BACnet polling
+        if (!m_isRunning) {
+            StartServices();
+        }
+    } else if (action == "get_devices") {
+        // Return device list to Rust API
+        std::string deviceJson = GetDeviceListJson();
+        // Send to Rust API through IPC or shared memory
+    } else if (action == "discover_devices") {
+        // Trigger device discovery
+        std::thread([this]() {
+            DiscoverDevicesOnNetwork();
+        }).detach();
+    }
+}
+
+bool T3000BACnetManager::PollDevice(const BACnetDeviceInfo& device) {
+    try {
+        // Use shared BACnet library to read all objects
+        auto objects = m_bacnetClient->ReadAllObjects(device.device_id);
+
+        if (!objects.empty()) {
+            // Store data in shared SQLite database
+            {
+                std::lock_guard<std::mutex> lock(m_databaseMutex);
+                StoreBACnetDeviceData(device, objects);
+                UpdateRealtimeCache(device, objects);
+            }
+
+            // Update T3000 window if visible
+            if (m_windowVisible) {
+                UpdateDeviceStatus(device.device_id, true);
+            }
+
+            return true;
+        }
+    } catch (const std::exception& e) {
+        LogBACnetError("Error polling device " + std::to_string(device.device_id) + ": " + e.what());
+
+        if (m_windowVisible) {
+            UpdateDeviceStatus(device.device_id, false);
+        }
+    }
+
+    return false;
 }
 ```
 
@@ -729,7 +1143,327 @@ class T3000BACnetBridge {
 
 **Enhanced t3_webview_api.dll:**
 ```rust
-// Extend existing Rust API with BACnet endpoints
+### Enhanced Rust API Integration (Complete t3_webview_api.dll Solution)
+
+**Enhanced Rust API with BACnet Support:**
+```rust
+// File: src/bacnet_service.rs
+// Enhanced Rust API for complete system integration
+
+use crate::bacnet_ffi::{BACnetClient, BACnetDeviceInfo, BACnetObjectInfo};
+use sea_orm::*;
+use tokio::sync::Mutex;
+use std::sync::Arc;
+use std::collections::HashMap;
+
+pub struct BACnetService {
+    client: Arc<Mutex<Option<BACnetClient>>>,
+    db: DatabaseConnection,
+    polling_active: Arc<Mutex<bool>>,
+    discovered_devices: Arc<Mutex<Vec<BACnetDeviceInfo>>>,
+}
+
+impl BACnetService {
+    pub fn new(db: DatabaseConnection) -> Self {
+        Self {
+            client: Arc::new(Mutex::new(None)),
+            db,
+            polling_active: Arc::new(Mutex::new(false)),
+            discovered_devices: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    // Initialize BACnet service (called when T3000 backend starts)
+    pub async fn initialize(&self, local_ip: Option<&str>) -> Result<(), String> {
+        let mut client_guard = self.client.lock().await;
+
+        let mut client = BACnetClient::new();
+        client.initialize(local_ip, 47808)?;
+
+        *client_guard = Some(client);
+        Ok(())
+    }
+
+    // WebSocket/HTTP endpoint handlers
+    pub async fn handle_discover_devices(&self, timeout_ms: u32) -> Result<Vec<BACnetDeviceInfo>, String> {
+        let client_guard = self.client.lock().await;
+
+        if let Some(ref client) = *client_guard {
+            let devices = client.discover_devices(timeout_ms)?;
+
+            // Store discovered devices in database
+            for device in &devices {
+                self.store_discovered_device(device).await?;
+            }
+
+            // Update cached device list
+            let mut devices_guard = self.discovered_devices.lock().await;
+            *devices_guard = devices.clone();
+
+            Ok(devices)
+        } else {
+            Err("BACnet client not initialized".to_string())
+        }
+    }
+
+    pub async fn handle_start_polling(&self, device_ids: Vec<i32>, interval_seconds: u32) -> Result<(), String> {
+        // Check if T3000 C++ is already handling polling
+        if self.is_t3000_polling_active().await {
+            return Ok(()); // T3000 handles polling, we just read from database
+        }
+
+        // Start Rust-based polling (fallback when T3000 not active)
+        let mut polling_guard = self.polling_active.lock().await;
+        if !*polling_guard {
+            *polling_guard = true;
+
+            let service = self.clone();
+            tokio::spawn(async move {
+                service.polling_loop(device_ids, interval_seconds).await;
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn handle_get_trend_data(
+        &self,
+        device_id: i32,
+        start_time: i64,
+        end_time: i64,
+        object_types: Option<Vec<i32>>
+    ) -> Result<Vec<BACnetTrendData>, String> {
+        // Query unified database (works regardless of polling source)
+        self.get_trend_data_from_db(device_id, start_time, end_time, object_types).await
+    }
+
+    // Coordination with T3000 C++
+    async fn is_t3000_polling_active(&self) -> bool {
+        // Check if T3000 C++ BACnet manager is running
+        // This could be done via:
+        // 1. Shared memory flag
+        // 2. Database status table
+        // 3. Named pipe/mutex
+        // 4. Recent data timestamps in database
+
+        // For now, check if we have recent BACnet data from T3000
+        let recent_cutoff = chrono::Utc::now().timestamp() - 600; // 10 minutes
+
+        match self.check_recent_bacnet_data(recent_cutoff).await {
+            Ok(has_recent) => has_recent,
+            Err(_) => false,
+        }
+    }
+
+    async fn check_recent_bacnet_data(&self, cutoff_timestamp: i64) -> Result<bool, DbErr> {
+        let count = timeseries_data_2025::Entity::find()
+            .filter(timeseries_data_2025::Column::DataSource.eq("bacnet"))
+            .filter(timeseries_data_2025::Column::Timestamp.gt(cutoff_timestamp))
+            .count(&self.db)
+            .await?;
+
+        Ok(count > 0)
+    }
+
+    // Fallback polling loop (when T3000 C++ is not active)
+    async fn polling_loop(&self, device_ids: Vec<i32>, interval_seconds: u32) {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(interval_seconds as u64));
+
+        loop {
+            interval.tick().await;
+
+            // Check if T3000 took over polling
+            if self.is_t3000_polling_active().await {
+                let mut polling_guard = self.polling_active.lock().await;
+                *polling_guard = false;
+                break; // T3000 is now handling polling
+            }
+
+            // Poll devices using shared BACnet library
+            for device_id in &device_ids {
+                if let Err(e) = self.poll_single_device(*device_id).await {
+                    eprintln!("Error polling device {}: {}", device_id, e);
+                }
+            }
+        }
+    }
+
+    async fn poll_single_device(&self, device_id: i32) -> Result<(), String> {
+        let client_guard = self.client.lock().await;
+
+        if let Some(ref client) = *client_guard {
+            let objects = client.read_all_objects(device_id)?;
+
+            // Store in database with "bacnet" source
+            self.store_polling_data(device_id, &objects).await?;
+
+            Ok(())
+        } else {
+            Err("BACnet client not initialized".to_string())
+        }
+    }
+
+    async fn store_discovered_device(&self, device: &BACnetDeviceInfo) -> Result<(), String> {
+        let device_model = bacnet_devices::ActiveModel {
+            device_id: Set(device.device_id),
+            device_name: Set(c_str_to_string(&device.device_name)),
+            ip_address: Set(c_str_to_string(&device.ip_address)),
+            port: Set(device.port),
+            vendor_id: Set(Some(device.vendor_id)),
+            vendor_name: Set(Some(c_str_to_string(&device.vendor_name))),
+            model_name: Set(Some(c_str_to_string(&device.model_name))),
+            is_active: Set(device.is_active),
+            last_discovered: Set(Some(device.last_discovered)),
+            created_at: Set(Some(chrono::Utc::now().timestamp())),
+            ..Default::default()
+        };
+
+        // Upsert device record
+        bacnet_devices::Entity::insert(device_model)
+            .on_conflict(
+                OnConflict::column(bacnet_devices::Column::DeviceId)
+                    .update_columns([
+                        bacnet_devices::Column::DeviceName,
+                        bacnet_devices::Column::IpAddress,
+                        bacnet_devices::Column::LastDiscovered,
+                    ])
+                    .to_owned()
+            )
+            .exec(&self.db)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        Ok(())
+    }
+
+    async fn store_polling_data(&self, device_id: i32, objects: &[BACnetObjectInfo]) -> Result<(), String> {
+        let timestamp = chrono::Utc::now().timestamp();
+
+        for object in objects {
+            // Store object metadata
+            let object_model = bacnet_objects::ActiveModel {
+                device_id: Set(object.device_id),
+                object_type: Set(object.object_type),
+                object_instance: Set(object.object_instance),
+                object_name: Set(c_str_to_string(&object.object_name)),
+                present_value: Set(object.present_value),
+                units: Set(Some(c_str_to_string(&object.units))),
+                description: Set(Some(c_str_to_string(&object.description))),
+                last_updated: Set(object.last_updated),
+                ..Default::default()
+            };
+
+            bacnet_objects::Entity::insert(object_model)
+                .on_conflict(
+                    OnConflict::columns([
+                        bacnet_objects::Column::DeviceId,
+                        bacnet_objects::Column::ObjectType,
+                        bacnet_objects::Column::ObjectInstance,
+                    ])
+                    .update_columns([
+                        bacnet_objects::Column::PresentValue,
+                        bacnet_objects::Column::LastUpdated,
+                    ])
+                    .to_owned()
+                )
+                .exec(&self.db)
+                .await
+                .map_err(|e| format!("Database error storing object: {}", e))?;
+
+            // Store time series data
+            let timeseries_model = timeseries_data_2025::ActiveModel {
+                device_id: Set(object.device_id),
+                point_type: Set(Some(object.object_type)),
+                point_number: Set(Some(object.object_instance)),
+                value: Set(object.present_value as f64),
+                timestamp: Set(timestamp),
+                interval_seconds: Set(300), // 5 minutes default
+                data_source: Set(Some("bacnet".to_string())),
+                bacnet_device_id: Set(Some(object.device_id)),
+                bacnet_object_type: Set(Some(object.object_type)),
+                bacnet_object_instance: Set(Some(object.object_instance)),
+                ..Default::default()
+            };
+
+            timeseries_data_2025::Entity::insert(timeseries_model)
+                .exec(&self.db)
+                .await
+                .map_err(|e| format!("Database error storing timeseries: {}", e))?;
+        }
+
+        Ok(())
+    }
+
+    async fn get_trend_data_from_db(
+        &self,
+        device_id: i32,
+        start_time: i64,
+        end_time: i64,
+        object_types: Option<Vec<i32>>
+    ) -> Result<Vec<BACnetTrendData>, String> {
+        let mut query = timeseries_data_2025::Entity::find()
+            .join(JoinType::InnerJoin, timeseries_data_2025::Relation::BacnetObjects.def())
+            .join(JoinType::InnerJoin, bacnet_objects::Relation::BacnetDevices.def())
+            .filter(timeseries_data_2025::Column::DataSource.eq("bacnet"))
+            .filter(timeseries_data_2025::Column::BacnetDeviceId.eq(device_id))
+            .filter(timeseries_data_2025::Column::Timestamp.between(start_time, end_time))
+            .order_by_desc(timeseries_data_2025::Column::Timestamp);
+
+        if let Some(types) = object_types {
+            query = query.filter(timeseries_data_2025::Column::BacnetObjectType.is_in(types));
+        }
+
+        let results = query.all(&self.db)
+            .await
+            .map_err(|e| format!("Database query error: {}", e))?;
+
+        // Transform to BACnetTrendData format
+        let trend_data: Vec<BACnetTrendData> = results.into_iter()
+            .map(|record| BACnetTrendData {
+                device_name: record.device_name.unwrap_or_default(),
+                object_name: record.object_name.unwrap_or_default(),
+                object_type: record.bacnet_object_type.unwrap_or(0),
+                object_instance: record.bacnet_object_instance.unwrap_or(0),
+                value: record.value as f32,
+                timestamp: record.timestamp,
+                units: record.units,
+            })
+            .collect();
+
+        Ok(trend_data)
+    }
+}
+
+// WebSocket/HTTP handlers integration
+impl WebviewApi {
+    pub async fn handle_bacnet_discover(&self) -> Result<Vec<BACnetDeviceInfo>, String> {
+        self.bacnet_service.handle_discover_devices(30000).await
+    }
+
+    pub async fn handle_bacnet_start_polling(&self, device_ids: Vec<i32>) -> Result<(), String> {
+        self.bacnet_service.handle_start_polling(device_ids, 300).await
+    }
+
+    pub async fn handle_bacnet_trend_data(
+        &self,
+        device_id: i32,
+        start_time: i64,
+        end_time: i64,
+        object_types: Option<Vec<i32>>
+    ) -> Result<Vec<BACnetTrendData>, String> {
+        self.bacnet_service.handle_get_trend_data(device_id, start_time, end_time, object_types).await
+    }
+}
+
+// Helper functions
+fn c_str_to_string(c_str: &[i8]) -> String {
+    let bytes: Vec<u8> = c_str.iter()
+        .take_while(|&&b| b != 0)
+        .map(|&b| b as u8)
+        .collect();
+    String::from_utf8_lossy(&bytes).to_string()
+}
+```
 // File: src/bacnet_api.rs
 
 use sea_orm::*;
@@ -840,50 +1574,301 @@ impl WebviewApi {
 }
 ```
 
-### Integration Timeline and Migration Strategy
+### Complete Implementation Strategy & Build Process
 
-**Phase 1: Foundation Setup (Week 1-2)**
-- Add BACnet tables to existing SQLite database
-- Select and integrate C++ BACnet library
-- Create T3000BACnetManager class stub
-- Test basic database connectivity
+**Recommended Implementation Approach:**
 
-**Phase 2: Basic BACnet Implementation (Week 3-4)**
-- Implement device discovery functionality
-- Add basic object reading (individual reads first)
-- Create database storage functions
-- Test with single BACnet device
+```
+Phase 1: Shared BACnet Library (Week 1-2)
+├── Create BACnetSharedLibrary.dll (C++ core)
+├── Implement C++ wrapper classes
+├── Create Rust FFI bindings
+├── Test basic device discovery and reading
+└── Validate cross-language compatibility
 
-**Phase 3: Enhanced Polling (Week 5-6)**
-- Implement block reading for efficiency
-- Add background polling threads
-- Integrate with existing T3000 threading model
-- Performance optimization
+Phase 2: Database Schema Enhancement (Week 2-3)
+├── Add BACnet tables to existing SQLite schema
+├── Test database access from both C++ and Rust
+├── Implement thread-safe concurrent access
+├── Create migration scripts for existing installations
+└── Performance testing with large datasets
 
-**Phase 4: WebView Integration (Week 7-8)**
-- Extend WebView message handlers
-- Enhance Rust API with BACnet endpoints
-- Update TimeSeriesModal for BACnet data
-- End-to-end testing
+Phase 3: T3000 C++ Integration (Week 3-5)
+├── Integrate T3000BACnetManager into T3000.exe
+├── Create native BACnet window/panel for T3000 UI
+├── Implement background polling service
+├── Add WebView message handlers for BACnet
+├── Test with existing T3000 functionality
+└── Ensure no impact on legacy operations
 
-**Phase 5: Production Readiness (Week 9-10)**
-- Error handling and recovery
-- Configuration management
-- Documentation and training
-- Deployment and validation
+Phase 4: Rust API Enhancement (Week 4-6)
+├── Add BACnet service to t3_webview_api.dll
+├── Implement WebSocket/HTTP endpoints for BACnet
+├── Add coordination logic with T3000 C++ polling
+├── Create fallback polling when T3000 not active
+├── Test external browser integration
+└── Validate TimeSeriesModal with BACnet data
 
-### Risk Mitigation Strategies
+Phase 5: Complete Integration Testing (Week 6-8)
+├── End-to-end testing with real BACnet devices
+├── Performance optimization and tuning
+├── Memory leak detection and cleanup
+├── Error handling and recovery testing
+├── Documentation and user training materials
+└── Production deployment preparation
+```
 
-**Technical Risks:**
-- **BACnet Library Compatibility**: Evaluate multiple libraries early, have fallback options
-- **Database Concurrency**: Use SQLite WAL mode, proper locking mechanisms
-- **Performance Impact**: Background threads, configurable polling intervals
-- **Memory Management**: Careful resource cleanup, memory leak detection
+**Build Process Integration:**
 
-**Integration Risks:**
-- **T3000 Compatibility**: Gradual integration, maintain existing functionality
-- **WebView Changes**: Minimal UI changes, backward compatibility
-- **Data Consistency**: Validation between legacy and BACnet data sources
+```
+Enhanced Build Pipeline:
+
+1. BACnet Shared Library Build:
+   BACnetSharedLibrary (C++) → BACnetSharedLibrary.dll
+   ├── Exports C API for cross-language use
+   ├── Includes chosen BACnet protocol library
+   └── Optimized for both T3000 and Rust usage
+
+2. T3000 Application Build (Enhanced):
+   T3000 C++ Project → T3000.exe
+   ├── Links BACnetSharedLibrary.dll
+   ├── Includes T3000BACnetManager
+   ├── Enhanced WebView message handling
+   └── New BACnet UI window/panel
+
+3. Rust API Build (Enhanced):
+   Rust API Project → t3_webview_api.dll
+   ├── Links BACnetSharedLibrary.dll (via FFI)
+   ├── Enhanced WebSocket/HTTP endpoints
+   ├── BACnet service coordination logic
+   └── Unified database access layer
+
+4. WebView Build (Minimal Changes):
+   Vue3 + TypeScript → /webview/www/
+   ├── Enhanced message types for BACnet
+   ├── TimeSeriesModal BACnet support
+   ├── Device discovery UI components
+   └── Backward compatibility maintained
+
+5. Deployment Package:
+   T3000 Release Folder
+   ├── T3000.exe (enhanced with BACnet)
+   ├── BACnetSharedLibrary.dll (new)
+   ├── t3_webview_api.dll (enhanced)
+   ├── /webview/www/ (enhanced)
+   ├── SQLite database (enhanced schema)
+   └── BACnet configuration files
+```
+
+**Runtime Coordination Strategy:**
+
+```
+Intelligent Polling Coordination:
+
+1. T3000 Application Startup:
+   ├── Initialize SQLite database (enhanced schema)
+   ├── Load BACnetSharedLibrary.dll
+   ├── Start backend process (Rust API with BACnet support)
+   ├── Check for saved BACnet configuration
+   └── Optionally start BACnet services based on user preference
+
+2. User Scenario A - T3000 BACnet Panel Usage:
+   User opens T3000 BACnet panel
+   ├── T3000BACnetManager starts polling
+   ├── Sets database flag "T3000_POLLING_ACTIVE"
+   ├── Rust API detects flag and defers to T3000
+   ├── Both UI (T3000 panel + browser) read from same database
+   └── Real-time synchronization via database triggers/notifications
+
+3. User Scenario B - Browser-Only Usage:
+   User opens http://localhost:9103 (T3000 runs minimized)
+   ├── Browser requests BACnet data via WebSocket
+   ├── Rust API checks "T3000_POLLING_ACTIVE" flag
+   ├── If false: Rust API starts BACnet polling
+   ├── If true: Rust API serves data from database
+   └── Seamless experience regardless of polling source
+
+4. User Scenario C - Hybrid Usage:
+   Both T3000 panel and browser active
+   ├── T3000 handles polling (primary)
+   ├── Browser gets real-time updates via WebSocket
+   ├── Database serves as single source of truth
+   ├── No duplicate polling overhead
+   └── Consistent data across all interfaces
+```
+
+**Database Coordination Design:**
+
+```sql
+-- Enhanced SQLite schema for coordination
+-- Add coordination table for intelligent polling
+
+CREATE TABLE bacnet_coordination (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    t3000_polling_active INTEGER DEFAULT 0,
+    rust_polling_active INTEGER DEFAULT 0,
+    last_t3000_poll INTEGER DEFAULT 0,
+    last_rust_poll INTEGER DEFAULT 0,
+    active_poller TEXT DEFAULT NULL, -- 't3000' or 'rust'
+    polling_interval INTEGER DEFAULT 300,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+    CHECK (id = 1) -- Ensure single row
+);
+
+-- Initialize coordination row
+INSERT INTO bacnet_coordination (id) VALUES (1);
+
+-- Triggers for automatic coordination
+CREATE TRIGGER update_coordination_timestamp
+AFTER UPDATE ON bacnet_coordination
+BEGIN
+    UPDATE bacnet_coordination SET updated_at = strftime('%s', 'now') WHERE id = 1;
+END;
+
+-- View for easy status checking
+CREATE VIEW bacnet_status AS
+SELECT
+    CASE
+        WHEN t3000_polling_active = 1 THEN 'T3000 Active'
+        WHEN rust_polling_active = 1 THEN 'Rust API Active'
+        ELSE 'No Active Polling'
+    END as polling_status,
+    active_poller,
+    datetime(last_t3000_poll, 'unixepoch') as last_t3000_poll_time,
+    datetime(last_rust_poll, 'unixepoch') as last_rust_poll_time,
+    polling_interval,
+    datetime(updated_at, 'unixepoch') as last_update
+FROM bacnet_coordination WHERE id = 1;
+```
+
+**Communication Protocol Design:**
+
+```javascript
+// Enhanced WebView message protocol
+// Supports both built-in browser and external browser
+
+// New BACnet message types (extend existing protocol)
+const BACnetMessageTypes = {
+    // Device management
+    BACNET_DISCOVER: 25,
+    BACNET_DISCOVER_RES: 'BACNET_DISCOVER_RES',
+    BACNET_ADD_DEVICE: 26,
+    BACNET_REMOVE_DEVICE: 27,
+
+    // Data requests
+    BACNET_TREND_DATA: 28,
+    BACNET_TREND_DATA_RES: 'BACNET_TREND_DATA_RES',
+    BACNET_REALTIME_DATA: 29,
+    BACNET_REALTIME_DATA_RES: 'BACNET_REALTIME_DATA_RES',
+
+    // Polling control
+    BACNET_START_POLLING: 30,
+    BACNET_STOP_POLLING: 31,
+    BACNET_POLLING_STATUS: 32,
+    BACNET_POLLING_STATUS_RES: 'BACNET_POLLING_STATUS_RES',
+
+    // Configuration
+    BACNET_CONFIG_GET: 33,
+    BACNET_CONFIG_SET: 34,
+    BACNET_CONFIG_RES: 'BACNET_CONFIG_RES',
+};
+
+// Enhanced bridge for universal usage
+class UniversalBACnetBridge {
+    static sendMessage(messageType, data) {
+        const message = {
+            action: messageType,
+            timestamp: Date.now(),
+            source: 'webview',
+            ...data
+        };
+
+        // Built-in browser: use postMessage
+        if (window.chrome?.webview?.postMessage) {
+            window.chrome.webview.postMessage(message);
+        }
+        // External browser: use WebSocket
+        else if (window.T3000WebSocket?.send) {
+            window.T3000WebSocket.send(JSON.stringify(message));
+        }
+        // Fallback: HTTP API
+        else {
+            this.sendHTTPRequest(message);
+        }
+    }
+
+    static requestBACnetDiscovery(timeout = 30000) {
+        this.sendMessage(BACnetMessageTypes.BACNET_DISCOVER, {
+            timeout: timeout,
+            autoAdd: true
+        });
+    }
+
+    static requestTrendData(deviceId, objectTypes, timeRange) {
+        this.sendMessage(BACnetMessageTypes.BACNET_TREND_DATA, {
+            deviceId: deviceId,
+            objectTypes: objectTypes,
+            startTime: timeRange.start,
+            endTime: timeRange.end,
+            maxPoints: 1000,
+            includeRealtime: true
+        });
+    }
+
+    static startPolling(deviceIds, interval = 300) {
+        this.sendMessage(BACnetMessageTypes.BACNET_START_POLLING, {
+            deviceIds: deviceIds,
+            intervalSeconds: interval,
+            preferT3000: true // Prefer T3000 polling when available
+        });
+    }
+}
+```
+
+### Next Steps and Recommendations
+
+**Immediate Actions Required:**
+
+1. **BACnet Library Selection**:
+   - Evaluate open-source options (YABE-based, BACnet4J, others)
+   - Test compatibility with T3000 build environment
+   - Verify license compatibility for commercial use
+
+2. **T3000 Source Code Access**:
+   - Provide specific files related to:
+     - SQLite database integration patterns
+     - WebView message handling implementation
+     - Window/dialog creation patterns
+     - Threading and background service patterns
+
+3. **Database Testing**:
+   - Test SQLite concurrent access patterns
+   - Validate performance with large datasets
+   - Test WAL mode for better concurrency
+
+4. **Development Environment Setup**:
+   - Set up build environment for shared library
+   - Test FFI integration between C++ and Rust
+   - Validate deployment scenarios
+
+**Risk Mitigation Priorities:**
+
+1. **Database Concurrency**: Implement robust locking and coordination
+2. **Memory Management**: Careful resource cleanup in shared library
+3. **Performance Impact**: Ensure BACnet polling doesn't affect T3000 performance
+4. **Backward Compatibility**: Maintain existing T3000 and WebView functionality
+
+**Success Metrics:**
+
+- ✅ Single SQLite database serves both T3000 and browser interfaces
+- ✅ Intelligent polling coordination (no duplicate network traffic)
+- ✅ Seamless user experience across all usage scenarios
+- ✅ Zero impact on existing T3000 functionality
+- ✅ TimeSeriesModal works with both legacy and BACnet data
+- ✅ Real-time synchronization between T3000 panel and browser
+
+This comprehensive solution provides a complete integration path while maintaining all existing functionality and providing the flexibility you need for different usage scenarios.
 
 ## Conclusion
 
