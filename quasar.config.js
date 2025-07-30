@@ -83,18 +83,37 @@ module.exports = configure(function (/* ctx */) {
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
 
-        // Optimize deps for React
+        // Optimize deps for React components (only for development)
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
-        viteConf.optimizeDeps.include.push(
-          'react',
-          'react-dom'
-        );
+        // Don't force include React to avoid development warnings
+        // viteConf.optimizeDeps.include.push('react', 'react-dom/client');
 
         // Manual chunk splitting for better bundle optimization
         viteConf.build = viteConf.build || {};
         viteConf.build.rollupOptions = viteConf.build.rollupOptions || {};
         viteConf.build.rollupOptions.output = viteConf.build.rollupOptions.output || {};
+
+        // Add React to externals to prevent bundling and allow CDN imports
+        viteConf.build.rollupOptions.external = viteConf.build.rollupOptions.external || [];
+        if (Array.isArray(viteConf.build.rollupOptions.external)) {
+          viteConf.build.rollupOptions.external.push('react', 'react-dom', 'react-dom/client');
+        } else {
+          const originalExternal = viteConf.build.rollupOptions.external;
+          viteConf.build.rollupOptions.external = (id, parent) => {
+            if (['react', 'react-dom', 'react-dom/client'].includes(id)) {
+              return true;
+            }
+            return originalExternal ? originalExternal(id, parent) : false;
+          };
+        }
+
+        // Map external dependencies to global variables
+        viteConf.build.rollupOptions.output.globals = {
+          'react': 'React',
+          'react-dom': 'ReactDOM',
+          'react-dom/client': 'ReactDOM'
+        };
 
         // Define manual chunks to split large dependencies
         viteConf.build.rollupOptions.output.manualChunks = (id) => {
