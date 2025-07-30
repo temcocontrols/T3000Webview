@@ -24,7 +24,7 @@ const locale = ref(enUs)
 </script>
 
 <style>
-/* html, body {
+html, body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -39,5 +39,5 @@ const locale = ref(enUs)
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 16px;
-} */
+}
 </style>
