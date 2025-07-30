@@ -88,105 +88,29 @@ module.exports = configure(function (/* ctx */) {
         viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
         // Include React and ReactDOM to ensure proper pre-bundling
         viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
+        // Include Vue to ensure proper initialization order with Ant Design
+        viteConf.optimizeDeps.include.push('vue', '@vue/runtime-dom');
+        // Include Uppy dependencies to ensure proper pre-bundling
+        viteConf.optimizeDeps.include.push('@uppy/core', '@uppy/vue', '@uppy/dashboard', '@uppy/image-editor', '@uppy/xhr-upload');
 
-        // Ensure React is properly resolved to prevent initialization issues
+        // Ensure React and Vue are properly resolved to prevent initialization issues
         viteConf.resolve = viteConf.resolve || {};
         viteConf.resolve.dedupe = viteConf.resolve.dedupe || [];
-        viteConf.resolve.dedupe.push('react', 'react-dom');
+        viteConf.resolve.dedupe.push('react', 'react-dom', 'vue');
 
-        // Manual chunk splitting for better bundle optimization
+        // Disable manual chunking completely - let Vite handle everything automatically
+        // This eliminates all chunking-related dependency issues like:
+        // - "undefined is not a function" in drawing-components
+        // - "Object.setPrototypeOf: expected an object or null, got undefined" in moveable
+        // - Vue/React initialization issues
+        // - Circular dependency problems
         viteConf.build = viteConf.build || {};
         viteConf.build.rollupOptions = viteConf.build.rollupOptions || {};
         viteConf.build.rollupOptions.output = viteConf.build.rollupOptions.output || {};
 
-        // Define manual chunks to split large dependencies
-        viteConf.build.rollupOptions.output.manualChunks = (id) => {
-          // Grafana libraries
-          if (id.includes('@grafana/')) {
-            return 'grafana';
-          }
-          // Don't separate React into its own chunk to avoid initialization issues
-          // Let Vite handle React bundling automatically with other dependencies
-          // if (id.includes('react') || id.includes('react-dom')) {
-          //   return 'react';
-          // }
-
-          // T3000 library chunks
-          if (id.includes('src/lib/T3000')) {
-            if (id.includes('T3000/Hvac/Data')) {
-              return 't3000-data';
-            }
-            if (id.includes('T3000/Hvac')) {
-              return 't3000-hvac';
-            }
-            if (id.includes('T3000')) {
-              return 't3000-core';
-            }
-          }
-
-          // Third-party library chunks
-          if (id.includes('node_modules')) {
-            if (id.includes('fabric')) {
-              return 'fabric';
-            }
-            if (id.includes('echarts')) {
-              return 'echarts';
-            }
-            if (id.includes('lodash')) {
-              return 'lodash';
-            }
-            if (id.includes('vue3-moveable')) {
-              return 'moveable';
-            }
-            if (id.includes('vue3-selecto')) {
-              return 'selecto';
-            }
-            if (id.includes('@toast-ui')) {
-              return 'toast-ui';
-            }
-            if (id.includes('@uppy')) {
-              return 'uppy';
-            }
-            if (id.includes('@svgdotjs')) {
-              return 'svg';
-            }
-            // Group other large node_modules
-            if (id.includes('antd') || id.includes('ant-design')) {
-              return 'antd';
-            }
-            if (id.includes('quasar')) {
-              return 'quasar';
-            }
-            if (id.includes('vue')) {
-              return 'vue';
-            }
-          }
-
-          // Component chunks
-          if (id.includes('src/components')) {
-            if (id.includes('ObjectType') || id.includes('Canvas')) {
-              return 'drawing-components';
-            }
-            if (id.includes('FileUpload') || id.includes('Upload')) {
-              return 'upload-components';
-            }
-          }
-
-          // Page chunks
-          if (id.includes('src/pages')) {
-            if (id.includes('HvacDrawer')) {
-              return 'hvac-drawer';
-            }
-            if (id.includes('ModbusRegister')) {
-              return 'modbus-register';
-            }
-            if (id.includes('AppsLibrary')) {
-              return 'apps-library';
-            }
-          }
-        };
-
-        // Bundle analyzer configuration
+        // Remove manual chunking entirely - let Vite's automatic chunking handle everything
+        // This will create larger but more stable bundles without dependency initialization issues
+        // viteConf.build.rollupOptions.output.manualChunks = undefined;        // Bundle analyzer configuration
         if (process.env.ANALYZE === 'true') {
           const { visualizer } = require('rollup-plugin-visualizer');
           viteConf.build.rollupOptions.plugins = viteConf.build.rollupOptions.plugins || [];
@@ -201,8 +125,8 @@ module.exports = configure(function (/* ctx */) {
           );
         }
 
-        // Performance optimizations
-        viteConf.build.chunkSizeWarningLimit = 300; // Warn for chunks > 300KB
+        // Performance optimizations - adjusted for no manual chunking
+        viteConf.build.chunkSizeWarningLimit = 1000; // Increased to 1MB since we'll have larger but more stable bundles
         viteConf.build.cssCodeSplit = true; // Split CSS into separate files
 
         // Minification settings
