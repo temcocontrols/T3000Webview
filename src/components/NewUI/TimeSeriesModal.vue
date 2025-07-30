@@ -1360,14 +1360,13 @@ const getChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          // NEW: Dynamic Y-axis labeling for mixed units
+          // Format y-axis numbers to remove decimal places (e.g., 60.0 → 60)
           callback: function (value: any) {
-            // For digital values (0 or 1), show cleaner labels
-            if (value === 0 || value === 1) {
-              return value.toString()
+            // Format all numeric values as integers (remove decimal places)
+            if (typeof value === 'number') {
+              return Math.round(value).toString()
             }
-            // For analog values, show with decimal places
-            return typeof value === 'number' ? value.toFixed(1) : value
+            return value?.toString() || ''
           }
         }
       }
