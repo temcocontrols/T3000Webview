@@ -83,37 +83,21 @@ module.exports = configure(function (/* ctx */) {
         viteConf.esbuild.jsx = 'automatic';
         viteConf.esbuild.jsxImportSource = 'react';
 
-        // Optimize deps for React components (only for development)
+        // Optimize deps for React components
         viteConf.optimizeDeps = viteConf.optimizeDeps || {};
         viteConf.optimizeDeps.include = viteConf.optimizeDeps.include || [];
-        // Don't force include React to avoid development warnings
-        // viteConf.optimizeDeps.include.push('react', 'react-dom/client');
+        // Include React and ReactDOM to ensure proper pre-bundling
+        viteConf.optimizeDeps.include.push('react', 'react-dom', 'react-dom/client');
+
+        // Ensure React is properly resolved to prevent initialization issues
+        viteConf.resolve = viteConf.resolve || {};
+        viteConf.resolve.dedupe = viteConf.resolve.dedupe || [];
+        viteConf.resolve.dedupe.push('react', 'react-dom');
 
         // Manual chunk splitting for better bundle optimization
         viteConf.build = viteConf.build || {};
         viteConf.build.rollupOptions = viteConf.build.rollupOptions || {};
         viteConf.build.rollupOptions.output = viteConf.build.rollupOptions.output || {};
-
-        // Add React to externals to prevent bundling and allow CDN imports
-        viteConf.build.rollupOptions.external = viteConf.build.rollupOptions.external || [];
-        if (Array.isArray(viteConf.build.rollupOptions.external)) {
-          viteConf.build.rollupOptions.external.push('react', 'react-dom', 'react-dom/client');
-        } else {
-          const originalExternal = viteConf.build.rollupOptions.external;
-          viteConf.build.rollupOptions.external = (id, parent) => {
-            if (['react', 'react-dom', 'react-dom/client'].includes(id)) {
-              return true;
-            }
-            return originalExternal ? originalExternal(id, parent) : false;
-          };
-        }
-
-        // Map external dependencies to global variables
-        viteConf.build.rollupOptions.output.globals = {
-          'react': 'React',
-          'react-dom': 'ReactDOM',
-          'react-dom/client': 'ReactDOM'
-        };
 
         // Define manual chunks to split large dependencies
         viteConf.build.rollupOptions.output.manualChunks = (id) => {
@@ -121,10 +105,11 @@ module.exports = configure(function (/* ctx */) {
           if (id.includes('@grafana/')) {
             return 'grafana';
           }
-          // React libraries
-          if (id.includes('react') || id.includes('react-dom')) {
-            return 'react';
-          }
+          // Don't separate React into its own chunk to avoid initialization issues
+          // Let Vite handle React bundling automatically with other dependencies
+          // if (id.includes('react') || id.includes('react-dom')) {
+          //   return 'react';
+          // }
 
           // T3000 library chunks
           if (id.includes('src/lib/T3000')) {
