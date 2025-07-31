@@ -500,7 +500,7 @@ New Integrated BACnet Architecture:
    User opens http://localhost:9103 (T3000 runs in background)
    → Browser requests BACnet data via WebSocket
    → Rust API triggers BACnet polling → Stores to SQLite
-   → TimeSeriesModal displays data in browser
+   → TrendLogModal displays data in browser
 
    Scenario C: Hybrid Usage
    Both T3000 BACnet panel AND browser active
@@ -1609,7 +1609,7 @@ Phase 4: Rust API Enhancement (Week 4-6)
 ├── Add coordination logic with T3000 C++ polling
 ├── Create fallback polling when T3000 not active
 ├── Test external browser integration
-└── Validate TimeSeriesModal with BACnet data
+└── Validate TrendLogModal with BACnet data
 
 Phase 5: Complete Integration Testing (Week 6-8)
 ├── End-to-end testing with real BACnet devices
@@ -1648,7 +1648,7 @@ Enhanced Build Pipeline:
 4. WebView Build (Minimal Changes):
    Vue3 + TypeScript → /webview/www/
    ├── Enhanced message types for BACnet
-   ├── TimeSeriesModal BACnet support
+   ├── TrendLogModal BACnet support
    ├── Device discovery UI components
    └── Backward compatibility maintained
 
@@ -1867,7 +1867,7 @@ class UniversalBACnetBridge {
 - ✅ Intelligent polling coordination (no duplicate network traffic)
 - ✅ Seamless user experience across all usage scenarios
 - ✅ Zero impact on existing T3000 functionality
-- ✅ TimeSeriesModal works with both legacy and BACnet data
+- ✅ TrendLogModal works with both legacy and BACnet data
 - ✅ Real-time synchronization between T3000 panel and browser
 
 This comprehensive solution provides a complete integration path while maintaining all existing functionality and providing the flexibility you need for different usage scenarios.

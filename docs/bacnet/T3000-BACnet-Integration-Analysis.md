@@ -51,7 +51,7 @@ m_webView->PostWebMessageAsJson(output);
 ### 3. Time Series Visualization
 
 **Current Implementation:**
-- **TimeSeriesModal.vue**: Chart.js-based Grafana-style interface
+- **TrendLogModal.vue**: Chart.js-based Grafana-style interface
 - **Double-click trigger**: Objects of type "MON" (TrendLog) in IndexPage.vue
 - **Real-time updates**: 30-second intervals with configurable time ranges
 - **7 Temperature series**: BMC01E1E-1P1B through BMC01E1E-7P1B
@@ -381,7 +381,7 @@ class T3000BACnetBridge {
 4. Validate data consistency between old and new systems
 
 **Phase 2: UI Enhancement**
-1. Update TimeSeriesModal.vue to support BACnet metadata
+1. Update TrendLogModal.vue to support BACnet metadata
 2. Add BACnet device discovery interface
 3. Enhanced configuration screens for BACnet polling
 4. Backward compatibility with existing trend log UI
@@ -406,7 +406,7 @@ class T3000BACnetBridge {
 - **Performance**: Adequate for typical building automation polling requirements
 
 ### 2. **Maintain SQLite Schema**
-- **Reason**: Preserve existing TimeSeriesModal and UI components
+- **Reason**: Preserve existing TrendLogModal and UI components
 - **Advantage**: Minimal UI changes required
 - **Migration**: Gradual transition with data validation
 

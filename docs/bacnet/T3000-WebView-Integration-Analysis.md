@@ -241,10 +241,10 @@ class BACnetDatabaseCoordinator {
 
 ### UI Integration Patterns
 
-#### Enhanced TimeSeriesModal.vue
+#### Enhanced TrendLogModal.vue
 ```typescript
 // Extend existing time series modal for BACnet data
-class BACnetTimeSeriesModal extends TimeSeriesModal {
+class BACnetTrendLogModal extends TrendLogModal {
     private bacnetMetadata: BACnetObjectMetadata;
 
     async loadBACnetData(deviceId: number, objectId: number): Promise<void> {

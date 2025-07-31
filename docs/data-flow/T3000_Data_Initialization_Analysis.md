@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document provides a comprehensive analysis of how `T3000_Data` is initialized and populated with actual device data in the T3000Webview application. The analysis was conducted to understand why the TimeSeriesModal component was experiencing issues finding devices during initial load.
+This document provides a comprehensive analysis of how `T3000_Data` is initialized and populated with actual device data in the T3000Webview application. The analysis was conducted to understand why the TrendLogModal component was experiencing issues finding devices during initial load.
 
 ## Key Finding
 
@@ -188,10 +188,10 @@ The system implements **sequential panel loading** to prevent race conditions:
 - `loadingPanel` state tracks current progress
 - Data readiness can be determined by checking `loadingPanel === null`
 
-## 8. TimeSeriesModal Integration Issues
+## 8. TrendLogModal Integration Issues
 
 ### Root Cause Analysis
-The TimeSeriesModal was experiencing device lookup failures because:
+The TrendLogModal was experiencing device lookup failures because:
 
 1. **Timing Issue:** Modal opened before T3000_Data was fully populated
 2. **Empty State:** Device lookup functions called on empty `panelsData` array
@@ -241,7 +241,7 @@ Real-time updates via HandleGetEntriesRes()
 - **HandleGetEntriesRes():** Lines 770-790 (WebSocketClient.ts)
 
 ### UI Components
-- **TimeSeriesModal.vue:** `src/components/NewUI/TimeSeriesModal.vue`
+- **TrendLogModal.vue:** `src/components/NewUI/TrendLogModal.vue`
 - **IndexPage.vue:** `src/pages/HvacDrawer/IndexPage.vue`
 
 ## 11. Debugging Tips
