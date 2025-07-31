@@ -299,16 +299,17 @@
                   <div class="series-info">
                     <div class="series-name-line">
                       <div class="series-name-container">
-                        <span class="series-name">{{ series.description || series.name }}</span>
+                        <span class="series-name">{{ getSeriesNameText(series) }}</span>
                         <q-chip
                           v-if="series.prefix"
-                          :label="series.prefix"
+                          :label="getChipLabelText(series.prefix)"
                           color="grey-4"
                           text-color="grey-8"
                           size="xs"
                           dense
                           class="series-prefix-tag-small"
                         />
+                        <!-- Series name processed with dedicated function, chip placed after -->
                       </div>
                       <span v-if="!series.isEmpty" class="series-inline-tags">
                         <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
@@ -609,6 +610,20 @@ const getPointTypeInfo = (pointType: number) => {
   }
 
   return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: 'UNK' }
+}
+
+// Function to generate chip label text for series prefix display
+const getChipLabelText = (prefix: string): string => {
+  // Currently returns the prefix as-is (IN, OUT, VAR, etc.)
+  // This function can be extended later to implement other logic
+  return prefix
+}
+
+// Function to process series names for display in the 14 items list
+const getSeriesNameText = (series: SeriesConfig): string => {
+  // Currently returns the series description or name as-is
+  // This function can be extended later to implement other logic for series name display
+  return series.description || series.name
 }
 
 interface Props {
@@ -2065,18 +2080,18 @@ const initializeRealDataSeries = async () => {
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
 
-      // Create clean name for tooltip (without panel info) and full name for display
+      // Create clean name without prefix as requested
       let seriesName: string
       let cleanDescription: string
 
       if (itemData.length === 0) {
-        seriesName = `${prefix}${inputItem.point_number + 1}` // Just show "IN22" etc without (P3)
+        seriesName = `${inputItem.point_number + 1}` // Just show "22" etc without prefix
         cleanDescription = seriesName
       } else {
-        // Full name for left panel display
-        seriesName = `${prefix} - ${desc || `${prefix}${inputItem.point_number + 1} (P${inputItem.panel})`}`
-        // 🔧 FIX #3: Clean description for tooltips (remove panel info)
-        cleanDescription = desc ? `${prefix} - ${desc}` : `${prefix}${inputItem.point_number + 1}`
+        // Name without prefix for left panel display
+        seriesName = desc || `${inputItem.point_number + 1} (P${inputItem.panel})`
+        // Clean description for tooltips (remove prefix)
+        cleanDescription = desc || `${inputItem.point_number + 1}`
       }
 
       // Determine unit type based on range value: 0 = analog, 1 = digital
