@@ -1,4 +1,4 @@
-// Test the optimal configurations implemented in TimeSeriesModal
+// Test the optimal configurations implemented in TrendLogModal
 const getTimeRangeMinutes = (range) => {
   const ranges = {
     '5m': 5, '15m': 15, '30m': 30, '1h': 60,

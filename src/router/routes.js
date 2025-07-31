@@ -168,7 +168,7 @@ const routes = [
       },
       {
         path: 'timeseries-dashboard',
-        component: createOptimizedComponent(() => import('src/pages/V2/TimeSeriesDashboard.vue'), "TimeSeriesDashboard", { category: 'normal' })
+        component: createOptimizedComponent(() => import('src/pages/V2/TrendLogDashboard.vue'), "TrendLogDashboard", { category: 'normal' })
       }
     ]
   },

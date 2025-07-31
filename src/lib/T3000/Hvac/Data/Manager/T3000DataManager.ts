@@ -10,7 +10,7 @@
  * - Comprehensive logging
  *
  * Created: 2025-07-24
- * Purpose: Fix TimeSeriesModal data access issues and ensure reliable data flow
+ * Purpose: Fix TrendLogModal data access issues and ensure reliable data flow
  */
 
 import { ref, computed, watch, nextTick } from 'vue'

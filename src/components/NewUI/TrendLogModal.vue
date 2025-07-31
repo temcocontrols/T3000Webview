@@ -7,7 +7,7 @@
       colorBorder: '#d9d9d9',
     },
   }">
-    <a-modal v-model:visible="timeSeriesModalVisible" :title="null" :width="1400" :footer="null"
+    <a-modal v-model:visible="trendLogModalVisible" :title="null" :width="1400" :footer="null"
       style="border-radius: 0px; top: 5px;" wrapClassName="t3-timeseries-modal" @cancel="handleCancel" centered>
       <!-- Top Controls Bar -->
       <div class="top-controls-bar">
@@ -641,7 +641,7 @@ const emit = defineEmits<{
 }>()
 
 // Reactive state
-const timeSeriesModalVisible = computed({
+const trendLogModalVisible = computed({
   get: () => props.visible,
   set: (value) => emit('update:visible', value)
 })
@@ -660,11 +660,11 @@ const isRealTime = ref(true)
 // Dynamic interval calculation based on T3000 monitorConfig
 const calculateT3000Interval = (monitorConfig: any): number => {
   if (!monitorConfig) {
-    LogUtil.Warn('📊 TimeSeriesModal: No monitorConfig available, using default 60s interval')
+    LogUtil.Warn('📊 TrendLogModal: No monitorConfig available, using default 60s interval')
     return 60000 // Default fallback: 1 minute
   }
 
-  LogUtil.Info('🔍 TimeSeriesModal: Raw monitorConfig received:', monitorConfig)
+  LogUtil.Info('🔍 TrendLogModal: Raw monitorConfig received:', monitorConfig)
 
   const {
     hour_interval_time = 0,
@@ -682,7 +682,7 @@ const calculateT3000Interval = (monitorConfig: any): number => {
     ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
     : 60000  // Default 1 minute if all intervals are 0
 
-  LogUtil.Info('🔄 TimeSeriesModal: Calculated T3000 interval:', {
+  LogUtil.Info('🔄 TrendLogModal: Calculated T3000 interval:', {
     hour_interval_time,
     minute_interval_time,
     second_interval_time,
@@ -1626,43 +1626,43 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
  * @returns Monitor configuration with input items and timing intervals
  */
 const getMonitorConfigFromT3000Data = async () => {
-  LogUtil.Info('🔍 TimeSeriesModal: === ENHANCED MONITOR CONFIG EXTRACTION ===')
+  LogUtil.Info('🔍 TrendLogModal: === ENHANCED MONITOR CONFIG EXTRACTION ===')
 
   // Get the monitor ID and PID from scheduleItemData
   const monitorId = (scheduleItemData.value as any)?.t3Entry?.id
   const panelId = (scheduleItemData.value as any)?.t3Entry?.pid
 
-  LogUtil.Info('📊 TimeSeriesModal: Monitor extraction info:', {
+  LogUtil.Info('📊 TrendLogModal: Monitor extraction info:', {
     monitorId,
     panelId,
     fullT3Entry: (scheduleItemData.value as any)?.t3Entry
   })
 
   if (!monitorId) {
-    LogUtil.Warn('❌ TimeSeriesModal: No monitor ID found in scheduleItemData.t3Entry.id')
+    LogUtil.Warn('❌ TrendLogModal: No monitor ID found in scheduleItemData.t3Entry.id')
     return null
   }
 
   if (!panelId && panelId !== 0) {
-    LogUtil.Warn('❌ TimeSeriesModal: No panel ID found in scheduleItemData.t3Entry.pid')
+    LogUtil.Warn('❌ TrendLogModal: No panel ID found in scheduleItemData.t3Entry.pid')
     return null
   }
 
-  LogUtil.Info(`🎯 TimeSeriesModal: Looking for monitor ID: ${monitorId} with PID: ${panelId}`)
+  LogUtil.Info(`🎯 TrendLogModal: Looking for monitor ID: ${monitorId} with PID: ${panelId}`)
 
   try {
     // Use enhanced data manager to wait for data readiness
-    LogUtil.Info('⏳ TimeSeriesModal: Waiting for T3000_Data readiness...')
+    LogUtil.Info('⏳ TrendLogModal: Waiting for T3000_Data readiness...')
     const validation = await t3000DataManager.waitForDataReady({
       timeout: 15000, // 15 seconds timeout
       specificEntries: [monitorId],
       requireFresh: true
     })
 
-    LogUtil.Info('✅ TimeSeriesModal: Data validation result:', validation)
+    LogUtil.Info('✅ TrendLogModal: Data validation result:', validation)
 
     if (!validation.isValid) {
-      LogUtil.Error('❌ TimeSeriesModal: Data validation failed', {
+      LogUtil.Error('❌ TrendLogModal: Data validation failed', {
         missingData: validation.missingData,
         staleData: validation.staleData,
         entriesCount: validation.entriesCount
@@ -1674,11 +1674,11 @@ const getMonitorConfigFromT3000Data = async () => {
     const monitorConfig = await t3000DataManager.getEntryByPid(monitorId, panelId)
 
     if (!monitorConfig) {
-      LogUtil.Warn(`❌ TimeSeriesModal: Monitor configuration not found for ID: ${monitorId}`)
+      LogUtil.Warn(`❌ TrendLogModal: Monitor configuration not found for ID: ${monitorId}`)
       return null
     }
 
-    LogUtil.Info('✅ TimeSeriesModal: Found monitor configuration:', monitorConfig)
+    LogUtil.Info('✅ TrendLogModal: Found monitor configuration:', monitorConfig)
 
     // Calculate the data retrieval interval in milliseconds using the unified function
     const intervalMs = calculateT3000Interval(monitorConfig)
@@ -1690,7 +1690,7 @@ const getMonitorConfigFromT3000Data = async () => {
     // Parse input items based on actual monitor configuration structure
     // monitorConfig has 'input' array with objects and 'range' array
     if (monitorConfig.input && Array.isArray(monitorConfig.input)) {
-      LogUtil.Info(`🔍 TimeSeriesModal: Extracting ${monitorConfig.input.length} input items from monitor config`)
+      LogUtil.Info(`🔍 TrendLogModal: Extracting ${monitorConfig.input.length} input items from monitor config`)
 
       for (let i = 0; i < monitorConfig.input.length; i++) {
         const inputItem = monitorConfig.input[i]
@@ -1719,12 +1719,12 @@ const getMonitorConfigFromT3000Data = async () => {
             })
           }
 
-          LogUtil.Info(`📝 TimeSeriesModal: Item ${i}: point_type=${inputItem.point_type}, point_number=${inputItem.point_number}, range=${rangeValue}`)
+          LogUtil.Info(`📝 TrendLogModal: Item ${i}: point_type=${inputItem.point_type}, point_number=${inputItem.point_number}, range=${rangeValue}`)
         }
       }
     }
 
-    LogUtil.Info(`✅ TimeSeriesModal: Extracted ranges array:`, ranges)
+    LogUtil.Info(`✅ TrendLogModal: Extracted ranges array:`, ranges)
 
     const result = {
       id: monitorConfig.id,
@@ -1739,7 +1739,7 @@ const getMonitorConfigFromT3000Data = async () => {
       originalConfig: monitorConfig
     }
 
-    LogUtil.Info('🎯 TimeSeriesModal: Processed monitor configuration:', {
+    LogUtil.Info('🎯 TrendLogModal: Processed monitor configuration:', {
       id: result.id,
       inputItemsCount: result.inputItems.length,
       rangesCount: result.ranges.length,
@@ -1749,7 +1749,7 @@ const getMonitorConfigFromT3000Data = async () => {
     return result
 
   } catch (error) {
-    LogUtil.Error('❌ TimeSeriesModal: Error extracting monitor config:', error)
+    LogUtil.Error('❌ TrendLogModal: Error extracting monitor config:', error)
     return null
   }
 }
@@ -1787,15 +1787,15 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
     const panelsData = T3000_Data.value.panelsData || []
 
     if (panelsData.length > 0) {
-      LogUtil.Info(`✅ TimeSeriesModal: PanelsData loaded with ${panelsData.length} devices`)
+      LogUtil.Info(`✅ TrendLogModal: PanelsData loaded with ${panelsData.length} devices`)
       return true
     }
 
-    LogUtil.Info(`⏳ TimeSeriesModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
+    LogUtil.Info(`⏳ TrendLogModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
     await new Promise(resolve => setTimeout(resolve, 500))
   }
 
-  LogUtil.Warn(`❌ TimeSeriesModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
+  LogUtil.Warn(`❌ TrendLogModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
   return false
 }
 
@@ -1804,7 +1804,7 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
  */
 const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
   try {
-    LogUtil.Info('🔄 TimeSeriesModal: Starting real-time monitor data fetch...')
+    LogUtil.Info('🔄 TrendLogModal: Starting real-time monitor data fetch...')
 
     // Set loading state
     isLoading.value = true
@@ -1812,13 +1812,13 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Info('❌ TimeSeriesModal: No monitor config found, falling back to mock data')
+      LogUtil.Info('❌ TrendLogModal: No monitor config found, falling back to mock data')
       isLoading.value = false
       return []
     }
 
-    LogUtil.Info('✅ TimeSeriesModal: Monitor config extracted:', monitorConfig)
-    LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
+    LogUtil.Info('✅ TrendLogModal: Monitor config extracted:', monitorConfig)
+    LogUtil.Info('📊 TrendLogModal: Monitor config details:', {
       id: monitorConfigData.id,
       inputItemsCount: monitorConfigData.inputItems?.length || 0,
       rangesCount: monitorConfigData.ranges?.length || 0,
@@ -1826,11 +1826,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     // Wait for panelsData to be available
-    LogUtil.Info('⏳ TimeSeriesModal: Waiting for panelsData to load...')
+    LogUtil.Info('⏳ TrendLogModal: Waiting for panelsData to load...')
     const panelsDataReady = await waitForPanelsData(10000)
 
     if (!panelsDataReady) {
-      LogUtil.Error('❌ TimeSeriesModal: PanelsData not available, cannot proceed')
+      LogUtil.Error('❌ TrendLogModal: PanelsData not available, cannot proceed')
       isLoading.value = false
       return []
     }
@@ -1839,11 +1839,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     const dataClient = initializeDataClients()
 
     if (!dataClient) {
-      LogUtil.Info('�?TimeSeriesModal: No data client available')
+      LogUtil.Info('�?TrendLogModal: No data client available')
       return []
     }
 
-    LogUtil.Info('�?TimeSeriesModal: Data client initialized:', {
+    LogUtil.Info('�?TrendLogModal: Data client initialized:', {
       clientType: dataClient.constructor.name,
       hasGetEntriesMethod: typeof dataClient.GetEntries === 'function',
       clientMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)).filter(name => name.includes('Get'))
@@ -1855,20 +1855,20 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Get current device for panelId - use the first available panel as fallback
     const panelsList = T3000_Data.value.panelsList || []
     const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
-    LogUtil.Info('📊 TimeSeriesModal: Using panelId:', currentPanelId)
-    LogUtil.Info('📊 TimeSeriesModal: Available panels:', panelsList.map(p => ({ id: p.panel_number, name: p.panel_name })))
+    LogUtil.Info('📊 TrendLogModal: Using panelId:', currentPanelId)
+    LogUtil.Info('📊 TrendLogModal: Available panels:', panelsList.map(p => ({ id: p.panel_number, name: p.panel_name })))
 
     // Get panels data for device mapping
     const panelsData = T3000_Data.value.panelsData || []
-    LogUtil.Info('PANELS TimeSeriesModal: Total panelsData count:', panelsData)
-    LogUtil.Info('PANELS TimeSeriesModal: PanelsData structure sample:', panelsData.slice(0, 2))
+    LogUtil.Info('PANELS TrendLogModal: Total panelsData count:', panelsData)
+    LogUtil.Info('PANELS TrendLogModal: PanelsData structure sample:', panelsData.slice(0, 2))
 
     // Instead of finding a single panel, return all panelData for the currentPanelId
     const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
     if (!currentPanelData) {
-      LogUtil.Info('ERROR TimeSeriesModal: No panel data found for panelId:', currentPanelData)
-      LogUtil.Info('PANELS TimeSeriesModal: Available panel PIDs:', panelsData.map(p => p.pid))
+      LogUtil.Info('ERROR TrendLogModal: No panel data found for panelId:', currentPanelData)
+      LogUtil.Info('PANELS TrendLogModal: Available panel PIDs:', panelsData.map(p => p.pid))
       return []
     }
 
@@ -1876,18 +1876,18 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     let devicesArray = currentPanelData
 
     if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
-      LogUtil.Info('ERROR TimeSeriesModal: No devices found in panel data')
+      LogUtil.Info('ERROR TrendLogModal: No devices found in panel data')
       return []
     }
 
-    LogUtil.Info('DEVICES TimeSeriesModal: Found', devicesArray.length, 'devices in panel')
-    LogUtil.Info('DEVICES TimeSeriesModal: Sample devices from panel:', devicesArray.slice(0, 5).map(d => ({ id: d.id, label: d.label })))
+    LogUtil.Info('DEVICES TrendLogModal: Found', devicesArray.length, 'devices in panel')
+    LogUtil.Info('DEVICES TrendLogModal: Sample devices from panel:', devicesArray.slice(0, 5).map(d => ({ id: d.id, label: d.label })))
 
     // Fetch data for all input items
-    LogUtil.Info('🔄 TimeSeriesModal: Starting to fetch data for', monitorConfigData.inputItems.length, 'input items')
+    LogUtil.Info('🔄 TrendLogModal: Starting to fetch data for', monitorConfigData.inputItems.length, 'input items')
 
     const allDataPromises = monitorConfigData.inputItems.map(async (inputItem, index) => {
-      LogUtil.Info(`🔄 TimeSeriesModal: Processing input item ${index + 1}/${monitorConfigData.inputItems.length}`)
+      LogUtil.Info(`🔄 TrendLogModal: Processing input item ${index + 1}/${monitorConfigData.inputItems.length}`)
       return await fetchSingleItemData(dataClient, inputItem, {
         ...monitorConfigData,
         panelId: currentPanelId,
@@ -1897,11 +1897,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     const allDataResults = await Promise.all(allDataPromises)
-    LogUtil.Info('�?TimeSeriesModal: All data fetched successfully, results count:', allDataResults.length)
+    LogUtil.Info('�?TrendLogModal: All data fetched successfully, results count:', allDataResults.length)
 
     // Log detailed results
     allDataResults.forEach((result, index) => {
-      LogUtil.Info(`📈 TimeSeriesModal: Series ${index} result:`, {
+      LogUtil.Info(`📈 TrendLogModal: Series ${index} result:`, {
         dataPointCount: result.length,
         firstValue: result[0]?.value,
         hasData: result.length > 0 && result[0]?.value !== 0
@@ -1911,7 +1911,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     return allDataResults
 
   } catch (error) {
-    LogUtil.Error('❌ TimeSeriesModal: Error fetching real-time monitor data:', error)
+    LogUtil.Error('❌ TrendLogModal: Error fetching real-time monitor data:', error)
     return []
   } finally {
     // Clear loading state
@@ -1924,8 +1924,8 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
  */
 const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any): Promise<DataPoint[]> => {
   try {
-    LogUtil.Info(`🔍 TimeSeriesModal: Processing input item:`, inputItem)
-    LogUtil.Info(`🔧 TimeSeriesModal: Config passed to fetchSingleItemData:`, {
+    LogUtil.Info(`🔍 TrendLogModal: Processing input item:`, inputItem)
+    LogUtil.Info(`🔧 TrendLogModal: Config passed to fetchSingleItemData:`, {
       panelId: config.panelId,
       itemIndex: config.itemIndex,
       panelDataLength: config.panelData?.length,
@@ -1936,13 +1936,13 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     const itemIndex = config.itemIndex || 0
     const rangeValue = config.ranges[itemIndex] || 0
 
-    LogUtil.Info(`📊 TimeSeriesModal: Processing item ${itemIndex}, range value: ${rangeValue}`)
+    LogUtil.Info(`📊 TrendLogModal: Processing item ${itemIndex}, range value: ${rangeValue}`)
 
     // Log device mapping details
     const deviceId = logDeviceMapping(inputItem, itemIndex, rangeValue)
 
     // Debug: Log all available devices in panelData
-    LogUtil.Info(`🔍 TimeSeriesModal: Available devices in panelData:`,
+    LogUtil.Info(`🔍 TrendLogModal: Available devices in panelData:`,
       config.panelData.map(device => ({ id: device.id, label: device.label, value: device.value }))
     )
 
@@ -1950,26 +1950,26 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     const matchingDevice = findPanelDataDevice(inputItem, config.panelData)
 
     if (!matchingDevice) {
-      LogUtil.Info(`❌ TimeSeriesModal: No device found with ID: ${deviceId}, leaving as empty`)
-      LogUtil.Info(`🔍 TimeSeriesModal: Searched for "${deviceId}" in ${config.panelData.length} devices`)
+      LogUtil.Info(`❌ TrendLogModal: No device found with ID: ${deviceId}, leaving as empty`)
+      LogUtil.Info(`🔍 TrendLogModal: Searched for "${deviceId}" in ${config.panelData.length} devices`)
       return [{
         timestamp: Date.now(),
         value: 0
       }]
     }
 
-    LogUtil.Info(`✅ TimeSeriesModal: Found matching device:`, matchingDevice)
+    LogUtil.Info(`✅ TrendLogModal: Found matching device:`, matchingDevice)
 
     // Process the device value using enhanced logic with panel data + input range
     const processedValue = processDeviceValue(matchingDevice, rangeValue)
-    LogUtil.Info(`📊 TimeSeriesModal: Processed value:`, processedValue)
+    LogUtil.Info(`📊 TrendLogModal: Processed value:`, processedValue)
 
     // Send GET_ENTRIES request to get latest data from T3000
     const deviceIndex = parseInt(matchingDevice.index) || 0
     // const deviceType = mapPointTypeToString(inputItem.point_type)
     const deviceType=inputItem.point_type
 
-    LogUtil.Info(`📤 TimeSeriesModal: About to send GET_ENTRIES:`, {
+    LogUtil.Info(`📤 TrendLogModal: About to send GET_ENTRIES:`, {
       panelId: config.panelId,
       deviceIndex,
       deviceType,
@@ -1986,12 +1986,12 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       value: processedValue.value
     }
 
-    LogUtil.Info(`📈 TimeSeriesModal: Returning data point for item ${itemIndex}:`, resultDataPoint)
+    LogUtil.Info(`📈 TrendLogModal: Returning data point for item ${itemIndex}:`, resultDataPoint)
 
     return [resultDataPoint]
 
   } catch (error) {
-    LogUtil.Error('�?TimeSeriesModal: Error fetching single item data:', error)
+    LogUtil.Error('�?TrendLogModal: Error fetching single item data:', error)
     return [{
       timestamp: Date.now(),
       value: 0
@@ -2003,15 +2003,15 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
  * Initialize data series from real T3000 monitor configuration
  */
 const initializeRealDataSeries = async () => {
-  LogUtil.Info('🚀 TimeSeriesModal: === INITIALIZING REAL DATA SERIES ===')
+  LogUtil.Info('🚀 TrendLogModal: === INITIALIZING REAL DATA SERIES ===')
 
   const monitorConfigData = monitorConfig.value
   if (!monitorConfigData) {
-    LogUtil.Info('�?TimeSeriesModal: No monitor configuration found, using mock data')
+    LogUtil.Info('�?TrendLogModal: No monitor configuration found, using mock data')
     return
   }
 
-  LogUtil.Info('📊 TimeSeriesModal: Starting real data series initialization with config:', {
+  LogUtil.Info('📊 TrendLogModal: Starting real data series initialization with config:', {
     inputItemsCount: monitorConfigData.inputItems?.length,
     rangesCount: monitorConfigData.ranges?.length,
     id: monitorConfigData.id
@@ -2019,10 +2019,10 @@ const initializeRealDataSeries = async () => {
 
   try {
     // Fetch real-time data for all items
-    LogUtil.Info('🔄 TimeSeriesModal: Fetching real-time data...')
+    LogUtil.Info('🔄 TrendLogModal: Fetching real-time data...')
     const realTimeData = await fetchRealTimeMonitorData()
 
-    LogUtil.Info('📈 TimeSeriesModal: Real-time data fetch completed:', {
+    LogUtil.Info('📈 TrendLogModal: Real-time data fetch completed:', {
       seriesCount: realTimeData.length,
       hasData: realTimeData.length > 0,
       sampleData: realTimeData.slice(0, 3).map((series, index) => ({
@@ -2042,7 +2042,7 @@ const initializeRealDataSeries = async () => {
       const rangeValue = monitorConfigData.ranges[i] || 0
       const itemData = realTimeData[i] || []
 
-      LogUtil.Info(`📊 TimeSeriesModal: Processing series ${i + 1}/${monitorConfigData.inputItems.length}:`, {
+      LogUtil.Info(`📊 TrendLogModal: Processing series ${i + 1}/${monitorConfigData.inputItems.length}:`, {
         inputItem,
         pointTypeInfo,
         rangeValue,
@@ -2129,7 +2129,7 @@ const initializeRealDataSeries = async () => {
 
       newDataSeries.push(seriesConfig)
 
-      LogUtil.Info(`�?TimeSeriesModal: Created series "${seriesConfig.name}":`, {
+      LogUtil.Info(`�?TrendLogModal: Created series "${seriesConfig.name}":`, {
         type: seriesConfig.unitType,
         unit: seriesConfig.unit,
         dataPoints: seriesConfig.data.length,
@@ -2142,7 +2142,7 @@ const initializeRealDataSeries = async () => {
     // Update the reactive data series
     dataSeries.value = newDataSeries
 
-    LogUtil.Info('🎉 TimeSeriesModal: Real data series initialization complete:', {
+    LogUtil.Info('🎉 TrendLogModal: Real data series initialization complete:', {
       totalSeries: newDataSeries.length,
       visibleSeries: newDataSeries.filter(s => s.visible && !s.isEmpty).length,
       emptySeries: newDataSeries.filter(s => s.isEmpty).length,
@@ -2171,7 +2171,7 @@ const initializeRealDataSeries = async () => {
 const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
   const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
 
-  LogUtil.Info(`🔍 TimeSeriesModal: Looking for device with ID: ${deviceId}`, {
+  LogUtil.Info(`🔍 TrendLogModal: Looking for device with ID: ${deviceId}`, {
     inputItem,
     generatedDeviceId: deviceId,
     availableDevices: panelsData.map(d => d.id)
@@ -2180,11 +2180,11 @@ const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
   const device = panelsData.find(device => device.id === deviceId)
 
   if (!device) {
-    LogUtil.Warn(`❌ TimeSeriesModal: Device ${deviceId} not found in panelsData`)
+    LogUtil.Warn(`❌ TrendLogModal: Device ${deviceId} not found in panelsData`)
     return null
   }
 
-  LogUtil.Info(`✅ TimeSeriesModal: Found device ${deviceId}:`, device)
+  LogUtil.Info(`✅ TrendLogModal: Found device ${deviceId}:`, device)
   return device
 }
 
@@ -2198,7 +2198,7 @@ const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
   // Secondary: Use panel data digital_analog field (1=analog, 0=digital)
   const isAnalogByPanelData = panelData.digital_analog === 1
 
-  LogUtil.Info(`🔍 TimeSeriesModal: Device type determination:`, {
+  LogUtil.Info(`🔍 TrendLogModal: Device type determination:`, {
     deviceId: panelData.id,
     inputRangeValue,
     isAnalogByRange,
@@ -2238,7 +2238,7 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
   if (isAnalog) {
     // Analog devices: use 'value' field
     rawValue = parseFloat(panelData.value) || 0
-    LogUtil.Info(`📊 TimeSeriesModal: Using analog value field:`, {
+    LogUtil.Info(`📊 TrendLogModal: Using analog value field:`, {
       deviceId: panelData.id,
       valueField: panelData.value,
       parsedValue: rawValue
@@ -2254,21 +2254,21 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
       // Use the field with the highest non-zero value, or control as fallback
       if (valueValue > 0) {
         rawValue = valueValue
-        LogUtil.Info(`📊 TimeSeriesModal: Digital output using 'value' field:`, {
+        LogUtil.Info(`📊 TrendLogModal: Digital output using 'value' field:`, {
           deviceId: panelData.id,
           selectedField: 'value',
           selectedValue: rawValue
         })
       } else if (autoManualValue > 0) {
         rawValue = autoManualValue
-        LogUtil.Info(`📊 TimeSeriesModal: Digital output using 'auto_manual' field:`, {
+        LogUtil.Info(`📊 TrendLogModal: Digital output using 'auto_manual' field:`, {
           deviceId: panelData.id,
           selectedField: 'auto_manual',
           selectedValue: rawValue
         })
       } else {
         rawValue = controlValue
-        LogUtil.Info(`📊 TimeSeriesModal: Digital output using 'control' field (fallback):`, {
+        LogUtil.Info(`📊 TrendLogModal: Digital output using 'control' field (fallback):`, {
           deviceId: panelData.id,
           selectedField: 'control',
           selectedValue: rawValue
@@ -2277,7 +2277,7 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
     } else {
       // Regular digital devices: use 'control' field
       rawValue = parseFloat(panelData.control) || 0
-      LogUtil.Info(`📊 TimeSeriesModal: Using digital control field:`, {
+      LogUtil.Info(`📊 TrendLogModal: Using digital control field:`, {
         deviceId: panelData.id,
         controlField: panelData.control,
         parsedValue: rawValue,
@@ -2441,7 +2441,7 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
     let processedValue: number
     if (rawValue > 1000) {
       processedValue = rawValue / 1000
-      LogUtil.Info(`📊 TimeSeriesModal: Large analog value divided by 1000:`, {
+      LogUtil.Info(`📊 TrendLogModal: Large analog value divided by 1000:`, {
         deviceId: panelData.id,
         rawValue,
         processedValue,
@@ -2449,7 +2449,7 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
       })
     } else {
       processedValue = rawValue
-      LogUtil.Info(`📊 TimeSeriesModal: Small analog value used as-is:`, {
+      LogUtil.Info(`📊 TrendLogModal: Small analog value used as-is:`, {
         deviceId: panelData.id,
         rawValue,
         processedValue,
@@ -2459,7 +2459,7 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
 
     const unit = getAnalogUnit(panelData.range)
 
-    LogUtil.Info(`📊 TimeSeriesModal: Analog value processing:`, {
+    LogUtil.Info(`📊 TrendLogModal: Analog value processing:`, {
       deviceId: panelData.id,
       rawValue,
       processedValue,
@@ -2490,7 +2490,7 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
     const digitalStates = getDigitalUnit(panelData.range)
     const displayValue = rawValue > 0 ? `1 (${digitalStates.high})` : `0 (${digitalStates.low})`
 
-    LogUtil.Info(`📊 TimeSeriesModal: Digital value processing:`, {
+    LogUtil.Info(`📊 TrendLogModal: Digital value processing:`, {
       deviceId: panelData.id,
       rawValue,
       displayValue,
@@ -2516,7 +2516,7 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
     type: deviceType
   }]
 
-  LogUtil.Info(`📤 TimeSeriesModal: Preparing GET_ENTRIES request:`, {
+  LogUtil.Info(`📤 TrendLogModal: Preparing GET_ENTRIES request:`, {
     panelId,
     deviceIndex,
     deviceType,
@@ -2528,13 +2528,13 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
 
   if (dataClient && dataClient.GetEntries) {
     try {
-      LogUtil.Info(`🚀 TimeSeriesModal: Calling GetEntries method on ${dataClient.constructor.name}`)
+      LogUtil.Info(`🚀 TrendLogModal: Calling GetEntries method on ${dataClient.constructor.name}`)
       const result = dataClient.GetEntries(requestData)
-      LogUtil.Info(`📨 TimeSeriesModal: GetEntries call completed, result:`, result)
+      LogUtil.Info(`📨 TrendLogModal: GetEntries call completed, result:`, result)
 
       // Log additional client state for debugging
       if (dataClient.socket) {
-        LogUtil.Info(`🔌 TimeSeriesModal: WebSocket state:`, {
+        LogUtil.Info(`🔌 TrendLogModal: WebSocket state:`, {
           readyState: dataClient.socket.readyState,
           readyStateText: ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][dataClient.socket.readyState],
           url: dataClient.socket.url
@@ -2544,7 +2544,7 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
       if (dataClient.messageData) {
         const currentTime = new Date()
         const timeString = currentTime.toLocaleTimeString() + '.' + currentTime.getMilliseconds().toString().padStart(3, '0')
-        LogUtil.Info(`📜 TimeSeriesModal: Last message data [${timeString}]:`, dataClient.messageData)
+        LogUtil.Info(`📜 TrendLogModal: Last message data [${timeString}]:`, dataClient.messageData)
 
         // Track request timing for interval analysis
         if (!window.t3000RequestTimes) window.t3000RequestTimes = []
@@ -2558,15 +2558,15 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
           const lastTwoRequests = window.t3000RequestTimes.slice(-2)
           const intervalMs = lastTwoRequests[1].timestamp - lastTwoRequests[0].timestamp
           const intervalSec = Math.round(intervalMs / 1000)
-          LogUtil.Info(`⏱️ TimeSeriesModal: Request interval: ${intervalSec}s (${intervalMs}ms) - Previous: ${lastTwoRequests[0].timeString}, Current: ${lastTwoRequests[1].timeString}`)
+          LogUtil.Info(`⏱️ TrendLogModal: Request interval: ${intervalSec}s (${intervalMs}ms) - Previous: ${lastTwoRequests[0].timeString}, Current: ${lastTwoRequests[1].timeString}`)
         }
       }
 
     } catch (error) {
-      LogUtil.Error('�?TimeSeriesModal: Error calling GetEntries:', error)
+      LogUtil.Error('�?TrendLogModal: Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('�?TimeSeriesModal: GetEntries method not available:', {
+    LogUtil.Error('�?TrendLogModal: GetEntries method not available:', {
       hasDataClient: !!dataClient,
       clientType: dataClient?.constructor?.name,
       availableMethods: dataClient ? Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)) : 'N/A'
@@ -2578,12 +2578,12 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
  * Send GET_ENTRIES requests for multiple devices
  */
 const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{panelId: number, index: number, type: string}>): Promise<void> => {
-  LogUtil.Info(`📤 TimeSeriesModal: Sending batch GET_ENTRIES request for ${requests.length} devices:`, requests)
+  LogUtil.Info(`📤 TrendLogModal: Sending batch GET_ENTRIES request for ${requests.length} devices:`, requests)
 
   if (dataClient && dataClient.GetEntries) {
     dataClient.GetEntries(requests)
   } else {
-    LogUtil.Error('�?TimeSeriesModal: No GetEntries method available on data client')
+    LogUtil.Error('�?TrendLogModal: No GetEntries method available on data client')
   }
 }
 
@@ -2591,19 +2591,19 @@ const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{pane
  * Enhanced device lookup with proper mapping
  */
 const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
-  LogUtil.Info(`🔍 TimeSeriesModal: Looking for device with ID: ${deviceId}`)
+  LogUtil.Info(`🔍 TrendLogModal: Looking for device with ID: ${deviceId}`)
 
   const matchingDevice = panelData.find(device => device.id === deviceId)
 
   if (matchingDevice) {
-    LogUtil.Info(`�?TimeSeriesModal: Found device:`, {
+    LogUtil.Info(`�?TrendLogModal: Found device:`, {
       id: matchingDevice.id,
       value: matchingDevice.value,
       label: matchingDevice.label,
       unit: matchingDevice.unit
     })
   } else {
-    LogUtil.Info(`�?TimeSeriesModal: No device found with ID: ${deviceId}`)
+    LogUtil.Info(`�?TrendLogModal: No device found with ID: ${deviceId}`)
   }
 
   return matchingDevice
@@ -2624,7 +2624,7 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
   const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
   const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
 
-  LogUtil.Info(`📊 TimeSeriesModal: Input Item ${index + 1} Enhanced Mapping:`, {
+  LogUtil.Info(`📊 TrendLogModal: Input Item ${index + 1} Enhanced Mapping:`, {
     inputItem,
     pointType: inputItem.point_type,
     pointNumber: inputItem.point_number,
@@ -2657,24 +2657,24 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
  * Debug function to test socket/webview communication manually
  */
 const testCommunication = async () => {
-  LogUtil.Info('🧪 TimeSeriesModal: === MANUAL COMMUNICATION TEST ===')
+  LogUtil.Info('🧪 TrendLogModal: === MANUAL COMMUNICATION TEST ===')
 
   // Test 1: Data Client Creation
   const dataClient = initializeDataClients()
-  LogUtil.Info('🔧 TimeSeriesModal: Test 1 - Data Client:', {
+  LogUtil.Info('🔧 TrendLogModal: Test 1 - Data Client:', {
     success: !!dataClient,
     type: dataClient?.constructor?.name,
     hasGetEntries: typeof dataClient?.GetEntries === 'function'
   })
 
   if (!dataClient) {
-    LogUtil.Error('�?TimeSeriesModal: Cannot proceed - no data client available')
+    LogUtil.Error('�?TrendLogModal: Cannot proceed - no data client available')
     return
   }
 
   // Test 2: Setup Response Handler
   setupGetEntriesResponseHandlers(dataClient)
-  LogUtil.Info('�?TimeSeriesModal: Test 2 - Response handler setup complete')
+  LogUtil.Info('�?TrendLogModal: Test 2 - Response handler setup complete')
 
   // Test 3: Send Simple GET_ENTRIES Request
   try {
@@ -2685,23 +2685,23 @@ const testCommunication = async () => {
       type: 'IN'
     }
 
-    LogUtil.Info('📤 TimeSeriesModal: Test 3 - Sending test GET_ENTRIES request:', testRequest)
+    LogUtil.Info('📤 TrendLogModal: Test 3 - Sending test GET_ENTRIES request:', testRequest)
 
     if (dataClient.GetEntries) {
       const result = (dataClient as any).GetEntries([testRequest])
-      LogUtil.Info('📨 TimeSeriesModal: Test 3 - Request sent, result:', result)
+      LogUtil.Info('📨 TrendLogModal: Test 3 - Request sent, result:', result)
     }
 
     // Wait a bit to see if response comes back
     setTimeout(() => {
-      LogUtil.Info('�?TimeSeriesModal: Test 3 - Timeout check (5 seconds elapsed)')
+      LogUtil.Info('�?TrendLogModal: Test 3 - Timeout check (5 seconds elapsed)')
     }, 5000)
 
   } catch (error) {
-    LogUtil.Error('�?TimeSeriesModal: Test 3 - Error sending request:', error)
+    LogUtil.Error('�?TrendLogModal: Test 3 - Error sending request:', error)
   }
 
-  LogUtil.Info('🏁 TimeSeriesModal: === MANUAL COMMUNICATION TEST COMPLETE ===')
+  LogUtil.Info('🏁 TrendLogModal: === MANUAL COMMUNICATION TEST COMPLETE ===')
 }
 
 // Add testCommunication to global scope for manual testing
@@ -2711,27 +2711,27 @@ const testCommunication = async () => {
  * Setup message handlers for GET_ENTRIES responses
  */
 const setupGetEntriesResponseHandlers = (dataClient: any) => {
-  LogUtil.Info('🔧 TimeSeriesModal: Setting up GET_ENTRIES response handlers')
-  LogUtil.Info('🔧 TimeSeriesModal: Client details:', {
+  LogUtil.Info('🔧 TrendLogModal: Setting up GET_ENTRIES response handlers')
+  LogUtil.Info('🔧 TrendLogModal: Client details:', {
     clientType: dataClient?.constructor?.name,
     hasHandleGetEntriesRes: typeof dataClient?.HandleGetEntriesRes === 'function',
     originalHandlerExists: !!dataClient?.HandleGetEntriesRes
   })
 
   if (!dataClient) {
-    LogUtil.Error('�?TimeSeriesModal: No dataClient provided to setupGetEntriesResponseHandlers')
+    LogUtil.Error('�?TrendLogModal: No dataClient provided to setupGetEntriesResponseHandlers')
     return
   }
 
   // Store original handler if it exists
   const originalHandler = dataClient.HandleGetEntriesRes
-  LogUtil.Info('💾 TimeSeriesModal: Stored original handler:', typeof originalHandler)
+  LogUtil.Info('💾 TrendLogModal: Stored original handler:', typeof originalHandler)
 
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
-    LogUtil.Info('📨 TimeSeriesModal: === GET_ENTRIES RESPONSE RECEIVED ===')
-    LogUtil.Info('📨 TimeSeriesModal: Full response data:', msgData)
-    LogUtil.Info('📨 TimeSeriesModal: Response structure:', {
+    LogUtil.Info('📨 TrendLogModal: === GET_ENTRIES RESPONSE RECEIVED ===')
+    LogUtil.Info('📨 TrendLogModal: Full response data:', msgData)
+    LogUtil.Info('📨 TrendLogModal: Response structure:', {
       hasData: !!msgData.data,
       dataType: typeof msgData.data,
       isArray: Array.isArray(msgData.data),
@@ -2743,39 +2743,39 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('�?TimeSeriesModal: Valid data array received, processing...')
+        LogUtil.Info('�?TrendLogModal: Valid data array received, processing...')
         updateChartWithNewData(msgData.data)
       } else if (msgData.data) {
-        LogUtil.Info('⚠️ TimeSeriesModal: Data received but not array format:', msgData.data)
+        LogUtil.Info('⚠️ TrendLogModal: Data received but not array format:', msgData.data)
       } else {
-        LogUtil.Info('�?TimeSeriesModal: No data in response or data is null/undefined')
+        LogUtil.Info('�?TrendLogModal: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('�?TimeSeriesModal: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('�?TrendLogModal: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
     if (originalHandler && typeof originalHandler === 'function') {
-      LogUtil.Info('🔄 TimeSeriesModal: Calling original HandleGetEntriesRes handler')
+      LogUtil.Info('🔄 TrendLogModal: Calling original HandleGetEntriesRes handler')
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
-        LogUtil.Error('�?TimeSeriesModal: Error calling original handler:', error)
+        LogUtil.Error('�?TrendLogModal: Error calling original handler:', error)
       }
     } else {
-      LogUtil.Info('ℹ️ TimeSeriesModal: No original handler to call')
+      LogUtil.Info('ℹ️ TrendLogModal: No original handler to call')
     }
-    LogUtil.Info('📨 TimeSeriesModal: === GET_ENTRIES RESPONSE PROCESSING COMPLETE ===')
+    LogUtil.Info('📨 TrendLogModal: === GET_ENTRIES RESPONSE PROCESSING COMPLETE ===')
   }
 
-  LogUtil.Info('�?TimeSeriesModal: GET_ENTRIES response handler setup complete')
+  LogUtil.Info('�?TrendLogModal: GET_ENTRIES response handler setup complete')
 }
 
 /**
  * Update chart with new data from GET_ENTRIES response
  */
 const updateChartWithNewData = (newData: any[]) => {
-  LogUtil.Info('📈 TimeSeriesModal: Updating chart with new data:', newData)
+  LogUtil.Info('📈 TrendLogModal: Updating chart with new data:', newData)
 
   const currentTime = Date.now()
 
@@ -2796,7 +2796,7 @@ const updateChartWithNewData = (newData: any[]) => {
         dataSeries.value[index].data = dataSeries.value[index].data.slice(-maxDataPoints)
       }
 
-      LogUtil.Info(`📊 TimeSeriesModal: Updated series ${index} with value: ${newPoint.value}`)
+      LogUtil.Info(`📊 TrendLogModal: Updated series ${index} with value: ${newPoint.value}`)
     }
   })
 
@@ -2821,19 +2821,19 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = async () => {
-  LogUtil.Info('🚀 TimeSeriesModal: Starting data initialization...')
+  LogUtil.Info('🚀 TrendLogModal: Starting data initialization...')
 
   // First, try to initialize with real T3000 data
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
-    LogUtil.Info('🌐 *** USING REAL T3000 DATA *** - TimeSeriesModal: Real monitor data available, initializing with real data series')
+    LogUtil.Info('🌐 *** USING REAL T3000 DATA *** - TrendLogModal: Real monitor data available, initializing with real data series')
     LogUtil.Info('📡 Real T3000 Data Source Info:', {
       totalInputItems: monitorConfigData.inputItems.length,
       hasRanges: monitorConfigData.ranges && monitorConfigData.ranges.length > 0,
       monitorId: monitorConfigData.id,
       dataType: 'REAL_T3000_DATA'
     })
-    LogUtil.Info('📊 TimeSeriesModal: Monitor config details:', {
+    LogUtil.Info('📊 TrendLogModal: Monitor config details:', {
       id: monitorConfigData.id,
       inputItemsCount: monitorConfigData.inputItems.length,
       rangesCount: monitorConfigData.ranges.length,
@@ -2842,15 +2842,15 @@ const initializeData = async () => {
 
     try {
       // Test the real data fetching system
-      LogUtil.Info('🔄 TimeSeriesModal: Testing real data fetch...')
+      LogUtil.Info('🔄 TrendLogModal: Testing real data fetch...')
       const realTimeData = await fetchRealTimeMonitorData()
 
       if (realTimeData && realTimeData.length > 0) {
-        LogUtil.Info('�?TimeSeriesModal: Real data fetch successful, got', realTimeData.length, 'data series')
+        LogUtil.Info('�?TrendLogModal: Real data fetch successful, got', realTimeData.length, 'data series')
 
         // Log sample data for first few series
         realTimeData.slice(0, 3).forEach((seriesData, index) => {
-          LogUtil.Info(`📈 TimeSeriesModal: Series ${index} sample data:`, {
+          LogUtil.Info(`📈 TrendLogModal: Series ${index} sample data:`, {
             dataPointsCount: seriesData.length,
             firstPoint: seriesData[0],
             lastPoint: seriesData[seriesData.length - 1]
@@ -2861,13 +2861,13 @@ const initializeData = async () => {
         updateChart()
         return
       } else {
-        LogUtil.Info('⚠️ TimeSeriesModal: Real data fetch returned empty results')
+        LogUtil.Info('⚠️ TrendLogModal: Real data fetch returned empty results')
       }
     } catch (error) {
-      LogUtil.Error('�?TimeSeriesModal: Failed to initialize real data series, falling back to mock data:', error)
+      LogUtil.Error('�?TrendLogModal: Failed to initialize real data series, falling back to mock data:', error)
     }
   } else {
-    LogUtil.Info('🎭 *** USING MOCK DATA *** - TimeSeriesModal: No real monitor data available, using mock data')
+    LogUtil.Info('🎭 *** USING MOCK DATA *** - TrendLogModal: No real monitor data available, using mock data')
     LogUtil.Info('📊 Mock Data Configuration:', {
       configExists: !!monitorConfigData,
       hasInputItems: !!(monitorConfigData?.inputItems),
@@ -2942,9 +2942,9 @@ const addRealtimeDataPoint = async () => {
     const lastTwoCalls = window.t3000PollingCalls.slice(-2)
     const intervalMs = lastTwoCalls[1].timestamp - lastTwoCalls[0].timestamp
     const intervalSec = Math.round(intervalMs / 1000)
-    LogUtil.Info(`🔄 TimeSeriesModal: addRealtimeDataPoint called [${callTimeString}] - Interval: ${intervalSec}s since last call (${lastTwoCalls[0].timeString})`)
+    LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - Interval: ${intervalSec}s since last call (${lastTwoCalls[0].timeString})`)
   } else {
-    LogUtil.Info(`🔄 TimeSeriesModal: addRealtimeDataPoint called [${callTimeString}] - First call`)
+    LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - First call`)
   }
 
   // 🔧 Use actual timestamp for real data points (not aligned to minutes)
@@ -3486,7 +3486,7 @@ const startRealTimeUpdates = () => {
   const setupTime = new Date()
   const setupTimeString = setupTime.toLocaleTimeString() + '.' + setupTime.getMilliseconds().toString().padStart(3, '0')
 
-  LogUtil.Info(`🔄 TimeSeriesModal: Starting real-time updates [${setupTimeString}] with detailed interval analysis:`, {
+  LogUtil.Info(`🔄 TrendLogModal: Starting real-time updates [${setupTimeString}] with detailed interval analysis:`, {
     'monitorConfig.value exists': !!monitorConfig.value,
     'monitorConfigData': monitorConfigData,
     'monitorConfigData?.dataIntervalMs': monitorConfigData?.dataIntervalMs,
@@ -3499,13 +3499,13 @@ const startRealTimeUpdates = () => {
 
   // 🔍 If using computed updateInterval, log the calculation details
   if (!monitorConfigData?.dataIntervalMs) {
-    LogUtil.Info('📊 TimeSeriesModal: Using computed updateInterval, calculating from monitorConfig:')
+    LogUtil.Info('📊 TrendLogModal: Using computed updateInterval, calculating from monitorConfig:')
     const calculatedInterval = calculateT3000Interval(monitorConfig.value)
-    LogUtil.Info('📊 TimeSeriesModal: Calculated interval result:', calculatedInterval)
+    LogUtil.Info('📊 TrendLogModal: Calculated interval result:', calculatedInterval)
   }
 
   // Track when timer starts
-  LogUtil.Info(`⏰ TimeSeriesModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
+  LogUtil.Info(`⏰ TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
 
   realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
 }
@@ -3579,7 +3579,7 @@ const handleByTypeMenu = ({ key }: { key: string }) => {
 // Dropdown menu handlers
 const handleCancel = () => {
   stopRealTimeUpdates()
-  timeSeriesModalVisible.value = false
+  trendLogModalVisible.value = false
 }
 
 // Utility functions
@@ -3811,22 +3811,22 @@ watch(() => props.visible, (newVal) => {
 
 // Lifecycle
 onMounted(async () => {
-  LogUtil.Info('🚀 TimeSeriesModal: Component mounted - starting enhanced T3000 data integration test')
-  LogUtil.Info('📊 TimeSeriesModal: scheduleItemData:', scheduleItemData.value)
-  LogUtil.Info('📊 TimeSeriesModal: Initial T3000_Data readiness:', t3000DataManager.getReadinessState())
+  LogUtil.Info('🚀 TrendLogModal: Component mounted - starting enhanced T3000 data integration test')
+  LogUtil.Info('📊 TrendLogModal: scheduleItemData:', scheduleItemData.value)
+  LogUtil.Info('📊 TrendLogModal: Initial T3000_Data readiness:', t3000DataManager.getReadinessState())
 
   // === ENHANCED T3000 REAL DATA INTEGRATION TEST ===
-  LogUtil.Info('🔍 TimeSeriesModal: === STARTING ENHANCED T3000 REAL DATA INTEGRATION TEST ===')
+  LogUtil.Info('🔍 TrendLogModal: === STARTING ENHANCED T3000 REAL DATA INTEGRATION TEST ===')
 
   try {
     // Test 1: Data Manager Readiness Check
-    LogUtil.Info('🔍 TimeSeriesModal: TEST 1 - Data Manager Readiness Check')
+    LogUtil.Info('🔍 TrendLogModal: TEST 1 - Data Manager Readiness Check')
     const initialReadiness = t3000DataManager.getReadinessState()
-    LogUtil.Info(`📊 TimeSeriesModal: Initial data readiness: ${initialReadiness}`)
-    LogUtil.Info(`📊 TimeSeriesModal: Loading progress: ${t3000DataManager.loadingProgress}%`)
+    LogUtil.Info(`📊 TrendLogModal: Initial data readiness: ${initialReadiness}`)
+    LogUtil.Info(`📊 TrendLogModal: Loading progress: ${t3000DataManager.loadingProgress}%`)
 
     // Test 2: Enhanced Monitor Configuration Extraction
-    LogUtil.Info('🔍 TimeSeriesModal: TEST 2 - Enhanced Monitor Configuration Extraction')
+    LogUtil.Info('🔍 TrendLogModal: TEST 2 - Enhanced Monitor Configuration Extraction')
     const monitorConfigData = await getMonitorConfigFromT3000Data()
 
     if (monitorConfigData) {
@@ -3834,23 +3834,23 @@ onMounted(async () => {
       monitorConfig.value = monitorConfigData
 
       LogUtil.Info('✅ TEST 2 PASSED: Monitor Configuration Found')
-      LogUtil.Info('📋 TimeSeriesModal: Monitor Configuration:', monitorConfigData)
-      LogUtil.Info(`📊 TimeSeriesModal: Found ${monitorConfigData.inputItems.length} input items to monitor`)
-      LogUtil.Info(`⏱️ TimeSeriesModal: Data retrieval interval: ${monitorConfigData.dataIntervalMs}ms`)
+      LogUtil.Info('📋 TrendLogModal: Monitor Configuration:', monitorConfigData)
+      LogUtil.Info(`📊 TrendLogModal: Found ${monitorConfigData.inputItems.length} input items to monitor`)
+      LogUtil.Info(`⏱️ TrendLogModal: Data retrieval interval: ${monitorConfigData.dataIntervalMs}ms`)
 
       // Test 3: Device Mapping for each input item
-      LogUtil.Info('🔍 TimeSeriesModal: TEST 3 - Device Mapping for all input items:')
+      LogUtil.Info('🔍 TrendLogModal: TEST 3 - Device Mapping for all input items:')
 
       // Get the PID for filtering device searches
       const searchPanelId = (scheduleItemData.value as any)?.t3Entry?.pid
-      LogUtil.Info(`📊 TimeSeriesModal: Using PID ${searchPanelId} for device searches`)
+      LogUtil.Info(`📊 TrendLogModal: Using PID ${searchPanelId} for device searches`)
 
       for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
         const inputItem = monitorConfigData.inputItems[i]
         const rangeValue = monitorConfigData.ranges[i] || 0
         const deviceId = logDeviceMapping(inputItem, i, rangeValue)
 
-        LogUtil.Info(`📊 TimeSeriesModal: Device ID for input item ${i}:`, deviceId)
+        LogUtil.Info(`📊 TrendLogModal: Device ID for input item ${i}:`, deviceId)
 
         // Test if we can find this device in panelsData using data manager with PID filtering
         try {
@@ -3885,17 +3885,17 @@ onMounted(async () => {
       }
 
       // Test 4: Data Client Initialization
-      LogUtil.Info('🔍 TimeSeriesModal: TEST 4 - Data Client Initialization:')
+      LogUtil.Info('🔍 TrendLogModal: TEST 4 - Data Client Initialization:')
       const dataClient = initializeDataClients()
       if (dataClient) {
         LogUtil.Info('✅ TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
-        LogUtil.Info('🔧 TimeSeriesModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
+        LogUtil.Info('🔧 TrendLogModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
       } else {
         LogUtil.Warn('❌ TEST 4 FAILED: No data client available')
       }
 
       // Test 5: Value Processing
-      LogUtil.Info('🔍 TimeSeriesModal: TEST 5 - Value Processing Test:')
+      LogUtil.Info('🔍 TrendLogModal: TEST 5 - Value Processing Test:')
       // Test digital value processing
       const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
       LogUtil.Info('✅ TEST 5.1 Digital Value Processing:', testDigitalValue)
@@ -3904,23 +3904,23 @@ onMounted(async () => {
       const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
       LogUtil.Info('✅ TEST 5.2 Analog Value Processing:', testAnalogValue)
 
-      LogUtil.Info('🏁 TimeSeriesModal: === ENHANCED T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
+      LogUtil.Info('🏁 TrendLogModal: === ENHANCED T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
     } else {
       LogUtil.Warn('❌ TEST 2 FAILED: No Monitor Configuration Found')
-      LogUtil.Info('🔍 TimeSeriesModal: Debugging info:')
-      LogUtil.Info('📊 TimeSeriesModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
+      LogUtil.Info('🔍 TrendLogModal: Debugging info:')
+      LogUtil.Info('📊 TrendLogModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
 
       // Try to get detailed validation information
       try {
         const validation = await t3000DataManager.validateData()
-        LogUtil.Info('📊 TimeSeriesModal: Data validation details:', validation)
+        LogUtil.Info('📊 TrendLogModal: Data validation details:', validation)
       } catch (validationError) {
-        LogUtil.Error('❌ TimeSeriesModal: Data validation failed:', validationError)
+        LogUtil.Error('❌ TrendLogModal: Data validation failed:', validationError)
       }
     }
 
   } catch (error) {
-    LogUtil.Error('❌ TimeSeriesModal: Enhanced data integration test failed:', error)
+    LogUtil.Error('❌ TrendLogModal: Enhanced data integration test failed:', error)
   }
 
   // Apply default view configuration to ensure settings are properly initialized

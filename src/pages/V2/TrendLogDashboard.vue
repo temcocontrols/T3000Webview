@@ -252,7 +252,7 @@
               <div class="control-group">
                 <h4>System Actions</h4>
                 <a-space direction="vertical" style="width: 100%;">
-                  <a-button type="primary" block @click="openTimeSeriesModal">
+                  <a-button type="primary" block @click="openTrendLogModal">
                     Open Time Series Modal
                   </a-button>
                   <a-button block @click="refreshAllData">Refresh All Data</a-button>
@@ -266,8 +266,8 @@
     </div>
 
     <!-- Time Series Modal for Testing -->
-    <TimeSeriesModal
-      v-model:visible="timeSeriesModalVisible"
+    <TrendLogModal
+      v-model:visible="trendLogModalVisible"
       :item-data="mockTrendLogItem"
     />
   </q-page>
@@ -280,10 +280,10 @@ import { ReloadOutlined, FullscreenOutlined } from '@ant-design/icons-vue'
 import GrafanaTimeSeries from 'src/components/NewUI/GrafanaTimeSeries.vue'
 import GrafanaTimeSeriesReactSimple from 'src/components/NewUI/GrafanaTimeSeriesReactSimple.vue'
 import GrafanaTimeSeriesSVG from 'src/components/NewUI/GrafanaTimeSeriesSVG.vue'
-import TimeSeriesModal from 'src/components/NewUI/TimeSeriesModal.vue'
+import TrendLogModal from 'src/components/NewUI/TrendLogModal.vue'
 
 defineOptions({
-  name: 'TimeSeriesDashboard'
+  name: 'TrendLogDashboard'
 })
 
 // Reactive state
@@ -295,7 +295,7 @@ const showGridLines = ref(true)
 const showLegends = ref(true)
 const smoothCurves = ref(false)
 const showDataPoints = ref(false)
-const timeSeriesModalVisible = ref(false)
+const trendLogModalVisible = ref(false)
 
 // System stats
 const systemStats = reactive({
@@ -427,8 +427,8 @@ const resetDashboard = () => {
   message.success('Dashboard reset to defaults')
 }
 
-const openTimeSeriesModal = () => {
-  timeSeriesModalVisible.value = true
+const openTrendLogModal = () => {
+  trendLogModalVisible.value = true
 }
 
 const refreshAllData = () => {

@@ -618,7 +618,7 @@
   <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible" />
   <ScheduleCalendar v-if="scheduleModalNVisible" :visible="scheduleModalNVisible" />
   <ScheduleAnnual v-if="annualScheduleVisible" :visible="annualScheduleVisible" />
-  <TimeSeriesModal
+  <TrendLogModal
     v-if="trendLogVisible"
     :visible="trendLogVisible"
     :item-data="scheduleItemData"
@@ -697,7 +697,7 @@ import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
 import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
 import ScheduleAnnual from "src/components/NewUI/ScheduleAnnual.vue";
-import TimeSeriesModal from "src/components/NewUI/TimeSeriesModal.vue";
+import TrendLogModal from "src/components/NewUI/TrendLogModal.vue";
 import T3UIUtil from "src/lib/T3000/Hvac/Opt/UI/T3UIUtil";
 import SelectoErrorHandler from "../../lib/performance/SelectoErrorHandler.js";
 
