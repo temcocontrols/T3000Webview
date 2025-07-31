@@ -1,4 +1,4 @@
-# TimeSeriesModal Mixed Units Implementation Analysis
+# TrendLogModal Mixed Units Implementation Analysis
 
 ## Requirements Summary
 

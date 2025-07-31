@@ -1,4 +1,4 @@
-# TimeSeriesModal Implementation Log
+# TrendLogModal Implementation Log
 
 ## Code Analysis & Implementation Details
 
@@ -14,7 +14,7 @@ const isRealTime = ref(true)
 const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
 
 // Computed properties for derived state
-const timeSeriesModalVisible = computed({
+const TrendLogModalVisible = computed({
   get: () => props.visible,
   set: (value) => emit('update:visible', value)
 })

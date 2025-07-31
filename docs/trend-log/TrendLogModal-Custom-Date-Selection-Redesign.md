@@ -1,12 +1,12 @@
-# TimeSeriesModal Custom Date Selection Redesign
+# TrendLogModal Custom Date Selection Redesign
 
 **Date**: July 18, 2025
-**Component**: `src/components/NewUI/TimeSeriesModal.vue`
+**Component**: `src/components/NewUI/TrendLogModal.vue`
 **Feature**: Custom Date Selection Popup Modal
 
 ## Overview
 
-Redesigned the custom date selection functionality in TimeSeriesModal from an inline form to a user-friendly popup modal with improved UX and better space utilization.
+Redesigned the custom date selection functionality in TrendLogModal from an inline form to a user-friendly popup modal with improved UX and better space utilization.
 
 ## Problem Statement
 
@@ -266,7 +266,7 @@ const setTimeBase = (value: string) => {
 The custom date selection redesign significantly improves the user experience with a modern, intuitive interface that provides better functionality while saving space in the main interface. The implementation follows Vue 3 and Ant Design best practices, ensuring maintainability and consistency with the rest of the application.
 
 **Files Modified**:
-- `src/components/NewUI/TimeSeriesModal.vue` - Complete redesign implementation
+- `src/components/NewUI/TrendLogModal.vue` - Complete redesign implementation
 
 **Key Metrics**:
 - **Code Quality**: Improved separation of concerns and reusability

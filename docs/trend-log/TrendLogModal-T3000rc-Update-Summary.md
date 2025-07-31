@@ -1,7 +1,7 @@
-# TimeSeriesModal T3000.rc Unit Updates Summary
+# TrendLogModal T3000.rc Unit Updates Summary
 
 ## Overview
-This document summarizes the updates made to the TimeSeriesModal component after analyzing the complete T3000.rc resource file to ensure 100% compatibility with official T3000 unit definitions.
+This document summarizes the updates made to the TrendLogModal component after analyzing the complete T3000.rc resource file to ensure 100% compatibility with official T3000 unit definitions.
 
 ## What Was Analyzed
 - **Source**: `docs/v0.2/trend-log/T3000.rc` (12,209 lines)
@@ -124,7 +124,7 @@ if (unitCode >= 0 && unitCode <= 22) {           // was >= 1
 ✅ **Backward Compatibility**: Previous implementations remain functional
 ✅ **Extended Functionality**: Support for environmental and industrial sensors
 
-## Impact on TimeSeriesModal Functionality
+## Impact on TrendLogModal Functionality
 
 ### Improved Features
 - **Accurate Tooltips**: Digital tooltips now show correct state text
@@ -153,10 +153,10 @@ if (unitCode >= 0 && unitCode <= 22) {           // was >= 1
 
 ## Files Modified
 
-1. **TimeSeriesModal.vue**: Updated DIGITAL_UNITS, ANALOG_UNITS, getUnitInfo()
+1. **TrendLogModal.vue**: Updated DIGITAL_UNITS, ANALOG_UNITS, getUnitInfo()
 2. **T3000.rc-Units-Analysis.md**: Complete analysis documentation
-3. **TimeSeriesModal-Mixed-Units-Implementation-Summary.md**: Added update section
+3. **TrendLogModal-Mixed-Units-Implementation-Summary.md**: Added update section
 
 ## Conclusion
 
-The TimeSeriesModal component is now fully synchronized with the official T3000.rc unit definitions, providing accurate visualization, tooltips, and statistics for all supported unit types while maintaining complete backward compatibility.
+The TrendLogModal component is now fully synchronized with the official T3000.rc unit definitions, providing accurate visualization, tooltips, and statistics for all supported unit types while maintaining complete backward compatibility.

@@ -1,7 +1,7 @@
-# T3000.rc Units Analysis and TimeSeriesModal Updates
+# T3000.rc Units Analysis and TrendLogModal Updates
 
 ## Overview
-Analysis of the T3000.rc file has revealed the complete and up-to-date unit definitions for both Digital Units and Variable Analog Units. This document compares the current TimeSeriesModal implementation with the T3000.rc definitions and provides recommended updates.
+Analysis of the T3000.rc file has revealed the complete and up-to-date unit definitions for both Digital Units and Variable Analog Units. This document compares the current TrendLogModal implementation with the T3000.rc definitions and provides recommended updates.
 
 ## T3000.rc Digital Units (Complete List)
 
@@ -135,7 +135,7 @@ PT 1K -200 to 300°C
 ## Key Differences Found
 
 ### Digital Units Issues:
-1. **Order discrepancies**: Current TimeSeriesModal has some units in different order
+1. **Order discrepancies**: Current TrendLogModal has some units in different order
 2. **Missing variations**: Some digital units have variations (e.g., "On/Off" vs "Off/On")
 3. **State order**: Some digital states are in reverse order in current implementation
 4. **Missing units**: Some digital units from T3000.rc are missing

@@ -70,8 +70,8 @@ const timestamp = now.getTime()  // Preserves 15s, 30s, 45s intervals
 #### **3. Enhanced Logging & Monitoring:**
 ```javascript
 // Added comprehensive timing logs
-LogUtil.Info(`🔄 TimeSeriesModal: addRealtimeDataPoint called [${timeString}] - Interval: ${intervalSec}s`)
-LogUtil.Info(`⏱️ TimeSeriesModal: Request interval: ${intervalSec}s`)
+LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${timeString}] - Interval: ${intervalSec}s`)
+LogUtil.Info(`⏱️ TrendLogModal: Request interval: ${intervalSec}s`)
 ```
 
 ### 📊 **Visual Behavior Achieved:**
@@ -141,7 +141,7 @@ private readonly DEFAULT_TIMEOUT = 15000 // 15 seconds - HARD-CODED!
 
 #### Problem 1: Hard-coded Update Interval
 ```javascript
-// TimeSeriesModal.vue - WRONG approach
+// TrendLogModal.vue - WRONG approach
 const updateInterval = ref(60000) // Fixed 60 seconds
 ```
 
@@ -213,7 +213,7 @@ function calculateT3000Interval(monitorConfig) {
 
 #### Fix 2: Dynamic Frontend Polling
 ```javascript
-// TimeSeriesModal.vue - CORRECT approach
+// TrendLogModal.vue - CORRECT approach
 const monitorConfigData = monitorConfig.value
 const dynamicInterval = calculateT3000Interval(monitorConfigData)
 
@@ -269,7 +269,7 @@ const fetchCurrentDataFromT3000 = async (monitorId) => {
 ```
 1. Start T3000 Application
 2. Start Web Browser
-3. Load TimeSeriesModal
+3. Load TrendLogModal
 4. Read monitorConfig (user's T3000 settings)
 5. Start polling loop based on user's interval settings
 ```
@@ -330,7 +330,7 @@ Efficiency: 1 useful request / 1 request = 100% efficiency!
 
 ### 🔧 **Next Steps**
 
-1. **Extract monitorConfig data** in TimeSeriesModal
+1. **Extract monitorConfig data** in TrendLogModal
 2. **Implement dynamic interval calculation** function
 3. **Update polling logic** to use calculated intervals
 4. **Update timeout logic** to match intervals

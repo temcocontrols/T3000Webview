@@ -1,8 +1,8 @@
-# TimeSeriesModal Component - Detailed Analysis & Log
+# TrendLogModal Component - Detailed Analysis & Log
 
 ## Overview
-**Component**: TimeSeriesModal.vue
-**Location**: `src/components/NewUI/TimeSeriesModal.vue`
+**Component**: TrendLogModal.vue
+**Location**: `src/components/NewUI/TrendLogModal.vue`
 **Framework**: Vue 3 + TypeScript + Ant Design + Chart.js
 **Purpose**: Professional time series chart modal for T3000 HVAC system data visualization
 **Date**: July 9, 2025
@@ -11,7 +11,7 @@
 
 ### 1. Template Structure
 ```
-TimeSeriesModal (a-modal)
+TrendLogModal (a-modal)
 ├── Top Controls Bar
 │   ├── Left Controls (Time Base, Navigation, Zoom, View Buttons)
 │   └── Right Controls (Chart Options, Export Options)

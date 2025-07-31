@@ -1,4 +1,4 @@
-# TimeSeriesModal Mixed Digital/Analog Implementation Summary
+# TrendLogModal Mixed Digital/Analog Implementation Summary
 
 ## What I've Learned and Implemented
 
@@ -189,12 +189,12 @@ The implementation is complete and ready for your T3000 integration. Let me know
 
 **Implementation Date**: July 10, 2025
 **Status**: ✅ Complete and Ready for T3000 Integration
-**Files Modified**: `src/components/NewUI/TimeSeriesModal.vue`
+**Files Modified**: `src/components/NewUI/TrendLogModal.vue`
 
 ## T3000.rc Analysis and Unit Updates (Latest)
 
 ### Overview
-After analyzing the complete T3000.rc resource file, we identified discrepancies between the TimeSeriesModal unit definitions and the actual T3000 unit specifications. This section documents the updates made to align with the official T3000.rc definitions.
+After analyzing the complete T3000.rc resource file, we identified discrepancies between the TrendLogModal unit definitions and the actual T3000 unit specifications. This section documents the updates made to align with the official T3000.rc definitions.
 
 ### Key Findings from T3000.rc Analysis
 
@@ -216,7 +216,7 @@ After analyzing the complete T3000.rc resource file, we identified discrepancies
    - Custom table units (Table 1-5)
    - Specific voltage/current ranges
 
-### Updates Made to TimeSeriesModal
+### Updates Made to TrendLogModal
 
 #### Digital Units
 - **Fixed unit 0**: Added "No Units" support
@@ -285,4 +285,4 @@ else if ((unitCode >= 31 && unitCode <= 63) || (unitCode >= 100 && unitCode <= 1
 3. **Range Specifications**: Ready for input/output range constraints
 4. **Sensor Tables**: Support for custom sensor table definitions
 
-This update ensures the TimeSeriesModal is fully synchronized with the official T3000 unit definitions while maintaining all existing functionality and providing a foundation for future enhancements.
+This update ensures the TrendLogModal is fully synchronized with the official T3000 unit definitions while maintaining all existing functionality and providing a foundation for future enhancements.

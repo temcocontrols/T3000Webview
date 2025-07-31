@@ -27,7 +27,7 @@ I've successfully implemented a professional Chart.js-based time series modal co
 
 ## Implementation Details
 
-### 1. TimeSeriesModal Component (`src/components/NewUI/TimeSeriesModal.vue`)
+### 1. TrendLogModal Component (`src/components/NewUI/TrendLogModal.vue`)
 
 **Layout Design (matching graphic.png):**
 - **Left Panel (300px fixed)**: Controls and series management
@@ -51,7 +51,7 @@ I've successfully implemented a professional Chart.js-based time series modal co
 - 📱 **Responsive Design**: Works on desktop, tablet, mobile
 - ⚡ **Performance Optimized**: Efficient data handling and rendering
 
-### 2. Dashboard Demo Page (`src/pages/TimeSeriesDashboard.vue`)
+### 2. Dashboard Demo Page (`src/pages/TrendLogDashboard.vue`)
 
 **Professional Dashboard Layout:**
 - **Main Grid**: Ant Design responsive grid system
@@ -64,7 +64,7 @@ I've successfully implemented a professional Chart.js-based time series modal co
 - `GrafanaTimeSeries` - Main Chart.js implementation
 - `GrafanaTimeSeriesReactSimple` - React-Vue bridge demo
 - `GrafanaTimeSeriesSVG` - Pure SVG implementation
-- `TimeSeriesModal` - Full modal experience
+- `TrendLogModal` - Full modal experience
 
 ### 3. IndexPage Integration
 
@@ -80,7 +80,7 @@ if (item.t3Entry?.type === "MON") {
 
 **Template Integration:**
 ```vue
-<TimeSeriesModal
+<TrendLogModal
   v-if="trendLogVisible"
   :visible="trendLogVisible"
   :item-data="scheduleItemData"
@@ -145,9 +145,9 @@ interface SeriesConfig {
 ```
 src/
 ├── components/NewUI/
-│   └── TimeSeriesModal.vue          # Main modal component
+│   └── TrendLogModal.vue          # Main modal component
 ├── pages/
-│   ├── TimeSeriesDashboard.vue      # Demo dashboard
+│   ├── TrendLogDashboard.vue      # Demo dashboard
 │   └── HvacDrawer/
 │       └── IndexPage.vue            # Updated with modal trigger
 └── router/
