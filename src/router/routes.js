@@ -115,6 +115,16 @@ const routes = [
     ],
   },
   {
+    path: "/trendlog",
+    component: createOptimizedComponent(() => import("layouts/MainLayout.vue"), "MainLayout", { category: 'critical' }),
+    children: [
+      {
+        path: "",
+        component: createOptimizedComponent(() => import("pages/TrendLog/IndexPage.vue"), "TrendLogIndexPage", { category: 'normal' }),
+      } 
+    ],
+  },
+  {
     path: '/new',
     component: createOptimizedComponent(() => import('layouts/MainLayout2.vue'), "MainLayout2", { category: 'critical' }),
     children: [
