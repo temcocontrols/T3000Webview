@@ -315,25 +315,25 @@ import { useQuasar, useMeta, QVueGlobals } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
 import KeyController from "keycon";
 // Import lodash functions as needed
-import ObjectType from "../../components/ObjectType.vue";
-import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
-import FileUpload from "../../components/FileUpload.vue";
-import TopToolbar from "../../components/TopToolbar.vue";
+import ObjectType from "../hvac/ObjectType.vue";
+import GaugeSettingsDialog from "../hvac/GaugeSettingsDialog.vue";
+import FileUpload from "../hvac/FileUpload.vue";
+import TopToolbar from "../hvac/TopToolbar.vue";
 import ToolsSidebar2 from "./ToolsSidebar2.vue";
-import ObjectConfig from "../../components/ObjectConfig.vue";
+import ObjectConfig from "../hvac/ObjectConfig.vue";
 import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
 import { tools, demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
-import CanvasType from "src/components/CanvasType.vue";
-import CanvasShape from "src/components/CanvasShape.vue";
+import CanvasType from "src/components/hvac/CanvasType.vue";
+import CanvasShape from "src/components/hvac/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
 // lodash functions imported above as _
-import HRuler from "src/components/HRuler.vue";
-import VRuler from "src/components/VRuler.vue";
-import HVGrid from "src/components/HVGrid.vue";
+import HRuler from "src/components/hvac/HRuler.vue";
+import VRuler from "src/components/hvac/VRuler.vue";
+import HVGrid from "src/components/hvac/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
-import NewTopBar from "src/components/NewTopBar.vue";
+import NewTopBar from "src/components/hvac/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
 import DeviceInfo2 from "src/components/NewUI/DeviceInfo2.vue";
 import NewTopToolBar2 from "src/components/NewUI/NewTopToolBar2.vue";
@@ -382,7 +382,7 @@ const hvacIdxPage2 = Hvac.IdxPage2;
 const boundMethods = {
   // UI methods
   initializeUI: hvacUI.Initialize.bind(hvacUI),
-  
+
   // IdxPage2 methods
   initQuasar: hvacIdxPage2.initQuasar.bind(hvacIdxPage2),
   initPage: hvacIdxPage2.initPage.bind(hvacIdxPage2),
@@ -486,7 +486,7 @@ onMounted(() => {
   try {
     // Initialize the HVAC UI with proper binding
     boundMethods.initializeUI($q);
-    
+
     // Initialize IdxPage2 with proper binding
     boundMethods.initQuasar($q);
     boundMethods.initPage();

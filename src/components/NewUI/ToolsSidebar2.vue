@@ -159,7 +159,7 @@
 
 import { ref, watch } from "vue";
 import { useQuasar } from "quasar";
-import FileUpload from "../FileUploadS3.vue";
+import FileUpload from "../hvac/FileUploadS3.vue";
 import { toolsCategories } from "../../lib/T3000/Hvac/Data/T3Data";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { NewTool } from "../../lib/T3000/Hvac/Data/T3Data";

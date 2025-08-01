@@ -33,7 +33,7 @@
 <script>
 import { computed, defineComponent, onMounted, onUpdated } from "vue";
 import { cloneDeep } from "lodash";
-import WeldType from "../WeldType.vue";
+import WeldType from "../hvac/WeldType.vue";
 
 export default defineComponent({
   name: "WeldEl",
