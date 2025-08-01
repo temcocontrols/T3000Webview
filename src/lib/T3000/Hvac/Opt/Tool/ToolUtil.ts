@@ -34,7 +34,7 @@ import ToolSvgData from "./ToolSvgData"
 import VueCircle from "src/components/Basic/Circle.vue";
 import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
-import ObjectType from "src/components/ObjectType.vue"
+import ObjectType from "src/components/hvac/ObjectType.vue"
 import QuasarUtil from "../Quasar/QuasarUtil"
 import LogUtil from "../../Util/LogUtil"
 import Hvac from "../../Hvac"

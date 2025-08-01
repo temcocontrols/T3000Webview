@@ -636,11 +636,11 @@ import {
   devices,
 } from "../../lib/common";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
-import UserTopBar from "../../components/UserTopBar.vue";
+import UserTopBar from "../../components/hvac/UserTopBar.vue";
 
 import RowActionsRenderer from "../../components/grid/RowActionsRenderer.vue";
 import SelectEditor from "../../components/grid/SelectEditor.vue";
-import FileUpload from "../../components/FileUploadS3.vue";
+import FileUpload from "../../components/hvac/FileUploadS3.vue";
 
 // Register the ServerSideRowModelModule for ag-Grid
 ModuleRegistry.registerModules([ServerSideRowModelModule]);

@@ -17,9 +17,9 @@ export function useIndexPageOptimizations() {
 
   // Lazy load heavy components
   const lazyComponents = {
-    ToolsSidebar: useLazyComponent(() => import('../../components/ToolsSidebar.vue')),
-    ObjectConfig: useLazyComponent(() => import('../../components/ObjectConfig.vue')),
-    DeviceInfo: useLazyComponent(() => import('../../components/DeviceInfo.vue')),
+    ToolsSidebar: useLazyComponent(() => import('../../components/hvac/ToolsSidebar.vue')),
+    ObjectConfig: useLazyComponent(() => import('../../components/hvac/ObjectConfig.vue')),
+    DeviceInfo: useLazyComponent(() => import('../../components/hvac/DeviceInfo.vue')),
     ScheduleModal: useLazyComponent(() => import('../../components/NewUI/ScheduleModal.vue')),
     ScheduleCalendar: useLazyComponent(() => import('../../components/NewUI/ScheduleCalendar.vue')),
     ScheduleAnnual: useLazyComponent(() => import('../../components/NewUI/ScheduleAnnual.vue'))

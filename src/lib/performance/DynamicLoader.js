@@ -15,11 +15,11 @@ export const lazyLoadKeyController = () => import('keycon');
 export const lazyLoadEcharts = () => import('echarts');
 
 // Lazy load heavy components
-export const lazyLoadGaugeSettings = () => import('../../components/GaugeSettingsDialog.vue');
-export const lazyLoadFileUpload = () => import('../../components/FileUpload.vue');
-export const lazyLoadObjectConfig = () => import('../../components/ObjectConfig.vue');
-export const lazyLoadCanvasType = () => import('../../components/CanvasType.vue');
-export const lazyLoadCanvasShape = () => import('../../components/CanvasShape.vue');
+export const lazyLoadGaugeSettings = () => import('../../components/hvac/GaugeSettingsDialog.vue');
+export const lazyLoadFileUpload = () => import('../../components/hvac/FileUpload.vue');
+export const lazyLoadObjectConfig = () => import('../../components/hvac/ObjectConfig.vue');
+export const lazyLoadCanvasType = () => import('../../components/hvac/CanvasType.vue');
+export const lazyLoadCanvasShape = () => import('../../components/hvac/CanvasShape.vue');
 
 // Dynamic loading state management
 export const dynamicLoaders = {

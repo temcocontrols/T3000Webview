@@ -242,8 +242,8 @@ export class ComponentLazyLoader {
     const processRoute = (route) => {
       if (route.component && typeof route.component === 'function') {
         route.component = this.createLazyComponent(route.component, {
-          loadingComponent: () => import('../../components/LoadingComponent.vue').catch(() => null),
-          errorComponent: () => import('../../components/ErrorComponent.vue').catch(() => null)
+          loadingComponent: () => import('../../components/hvac/LoadingComponent.vue').catch(() => null),
+          errorComponent: () => import('../../components/hvac/ErrorComponent.vue').catch(() => null)
         });
       }
 

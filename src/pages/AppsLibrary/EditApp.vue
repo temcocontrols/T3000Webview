@@ -21,7 +21,7 @@
 import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
-import FileUpload from "../../components/FileUploadS3.vue";
+import FileUpload from "../../components/hvac/FileUploadS3.vue";
 import { /*user,*/ globalNav, isAdmin } from "../../lib/common";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { liveApi } from "../../lib/api";

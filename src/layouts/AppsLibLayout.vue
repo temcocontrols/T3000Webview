@@ -10,7 +10,7 @@
 <script setup>
 import { onMounted } from "vue";
 import { globalNav } from "../lib/common";
-import UserTopBar from "../components/UserTopBar.vue";
+import UserTopBar from "../components/hvac/UserTopBar.vue";
 import { useMeta } from "quasar";
 
 useMeta({ title: "Application Library" });
