@@ -7,11 +7,14 @@ import DeviceItem from "./DeviceItem"
 
 import { T3Data } from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
-import Hvac from "../../Hvac"
+import LsOpt from "../Common/LsOpt"
 import T3Util from "../../Util/T3Util"
 import LogUtil from "../../Util/LogUtil"
 
 class DeviceOpt {
+
+  // Local storage operations
+  private lsOpt: LsOpt;
 
   // mock data
   public mockDeviceList: {};
@@ -28,6 +31,7 @@ class DeviceOpt {
   public currentDevice: {};
 
   constructor() {
+    this.lsOpt = new LsOpt();
     this.mockDeviceList = MockData.DeviceList;
     this.mockGraphicList = MockData.GraphicList;
     this.panelList = [];
@@ -137,7 +141,7 @@ class DeviceOpt {
       return 0;
     }
 
-    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
+    const deviceAppStateLS = this.lsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS) {
       const device = deviceAppStateLS.find(
@@ -162,7 +166,7 @@ class DeviceOpt {
     if (!tempAppState || !currentDevice) return;
 
     const parsedTempAppState = JSON.parse(tempAppState);
-    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS() || [];
+    const deviceAppStateLS = this.lsOpt.loadDeviceAppStateLS() || [];
 
     const deviceIndex = deviceAppStateLS.findIndex(
       opt =>
@@ -236,7 +240,7 @@ class DeviceOpt {
     }
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
+    const deviceAppStateLS = this.lsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -264,7 +268,7 @@ class DeviceOpt {
     }
 
     // localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
-    Hvac.LsOpt.saveDeviceAppState(deviceAppState.value);
+    this.lsOpt.saveDeviceAppState(deviceAppState.value);
 
     // load the element count
     this.refreshCurrentDeviceCount(deviceModel);
@@ -273,7 +277,7 @@ class DeviceOpt {
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
+    const deviceAppStateLS = this.lsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -297,7 +301,7 @@ class DeviceOpt {
   refreshCurrentDeviceCount(deviceModel) {
 
     // current device's element count
-    const appStateLs = Hvac.LsOpt.loadDeviceAppStateLS();
+    const appStateLs = this.lsOpt.loadDeviceAppStateLS();
     const currentDevice = this.getCurrentDevice();
 
     if (appStateLs) {
@@ -319,7 +323,7 @@ class DeviceOpt {
   // Refresh the graphic panel element count
   refreshGraphicPanelElementCount(currentDevice) {
 
-    const appStateLs = Hvac.LsOpt.loadDeviceAppStateLS();
+    const appStateLs = this.lsOpt.loadDeviceAppStateLS();
     if (!appStateLs) return;
 
     /*
@@ -485,7 +489,7 @@ class DeviceOpt {
     LogUtil.Debug('= Dvopt: addPresetsData / save the appState value to local storage', appState.value);
 
     // set the ls deviceAppState related value
-    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
+    const deviceAppStateLS = this.lsOpt.loadDeviceAppStateLS();
 
     LogUtil.Debug('= Dvopt: addPresetsData / load deviceAppStateLS', deviceAppStateLS);
 

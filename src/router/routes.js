@@ -55,7 +55,8 @@ function getTimeoutForComponent(name) {
     'HvacIndexPage2': 30000,
     'SVGEditor': 25000,
     'MainLayout': 20000,
-    'HvacIndexPage': 20000
+    'HvacIndexPage': 20000,
+    'TrendLogIndexPage': 25000  // 25 seconds for TrendLogIndexPage (complex dependencies)
   };
 
   return heavyComponents[name] || 15000; // Default 15 seconds
@@ -116,12 +117,12 @@ const routes = [
   },
   {
     path: "/trendlog",
-    component: createOptimizedComponent(() => import("layouts/MainLayout.vue"), "MainLayout", { category: 'critical' }),
+    component: createOptimizedComponent(() => import("layouts/TrendLogLayout.vue"), "TrendLogLayout", { category: 'critical' }),
     children: [
       {
         path: "",
         component: createOptimizedComponent(() => import("pages/TrendLog/IndexPage.vue"), "TrendLogIndexPage", { category: 'normal' }),
-      } 
+      }
     ],
   },
   {

@@ -4,7 +4,6 @@
 // Note: Migrated existing code from IndexPage for the window.chrome.webview part
 
 import MessageType from "../Socket/MessageType"
-import Hvac from "../../Hvac"
 import MessageModel from "../Socket/MessageModel"
 import IdxUtils from "../Common/IdxUtils"
 import { useQuasar } from "quasar"
@@ -34,8 +33,18 @@ class WebViewClient {
   // Access Quasar framework instance
   public $q: any;
 
+  // Dependency injection properties
+  private deviceOpt: any;
+  private idxPage: any;
+
   constructor() {
     this.message = {};
+  }
+
+  // Dependency injection method
+  setDependencies(deviceOpt: any, idxPage: any) {
+    this.deviceOpt = deviceOpt;
+    this.idxPage = idxPage;
   }
 
   initMessageHandler() {
@@ -160,7 +169,7 @@ class WebViewClient {
     this.message = {};
 
     // get the serial_number base on panelId
-    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+    const serialNumber = this.deviceOpt.getSerialNumber(panelId);
 
     if (action !== null && action !== undefined) {
       this.message.action = action;
@@ -349,7 +358,7 @@ class WebViewClient {
       // }
 
       if (arg.data?.panel_id) {
-        Hvac.IdxPage.clearGetPanelsInterval();
+        this.idxPage.clearGetPanelsInterval();
       }
 
       if (arg.data?.panel_id) {
@@ -396,7 +405,7 @@ class WebViewClient {
     // }
 
     if (msgData?.panel_id) {
-      Hvac.IdxPage.clearGetPanelsInterval();
+      this.idxPage.clearGetPanelsInterval();
     }
 
     if (msgData?.panel_id) {

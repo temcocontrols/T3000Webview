@@ -2,7 +2,6 @@
 
 import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
-import Hvac from "../../Hvac"
 import IdxUtils from '../Common/IdxUtils'
 import Utils1 from "../../Util/Utils1"
 import T3Util from "../../Util/T3Util"
@@ -27,7 +26,19 @@ class WebSocketClient {
   private isDestroyed: boolean = false;
   private messageQueue: string[] = [];
 
+  // Dependency injection - services will be injected after construction
+  private deviceOpt: any = null;
+  private idxPage: any = null;
+  private quasarUtil: any = null;
+
   constructor() { }
+
+  // Dependency injection method
+  public setDependencies(deviceOpt: any, idxPage: any, quasarUtil: any) {
+    this.deviceOpt = deviceOpt;
+    this.idxPage = idxPage;
+    this.quasarUtil = quasarUtil;
+  }
 
   public connect() {
     if (this.isDestroyed) {
@@ -267,7 +278,7 @@ class WebSocketClient {
   public FormatMessageData(action: number, panelId: number, viewitem: number, data: any) {
 
     // get the serial_number base on panelId
-    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+    const serialNumber = this.deviceOpt?.getSerialNumber(panelId) ?? -1;
 
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
@@ -291,13 +302,13 @@ class WebSocketClient {
 
     const panelId = data.panelId;
 
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice == undefined) return;
 
     const graphicId = currentDevice.graphic;
 
     // get the serial_number base on panelId
-    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+    const serialNumber = this.deviceOpt?.getSerialNumber(panelId) ?? -1;
 
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
@@ -326,13 +337,13 @@ class WebSocketClient {
     }
     */
 
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
 
     const panelId = currentDevice.panelId;
     const graphicId = currentDevice.graphic;
 
-    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+    const serialNumber = this.deviceOpt?.getSerialNumber(panelId) ?? -1;
 
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
@@ -355,13 +366,13 @@ class WebSocketClient {
     }
     */
 
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
 
     const panelId = data.panelId || currentDevice.panenId;
     const graphicId = currentDevice.graphic;
 
-    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+    const serialNumber = this.deviceOpt?.getSerialNumber(panelId) ?? -1;
 
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
@@ -383,13 +394,13 @@ class WebSocketClient {
     }
     */
 
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
 
     const panelId = data.panelId || currentDevice.panenId;
     const graphicId = currentDevice.graphic;
 
-    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+    const serialNumber = this.deviceOpt?.getSerialNumber(panelId) ?? -1;
 
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
@@ -469,7 +480,7 @@ class WebSocketClient {
 
     console.log('= ws: GetEntries / data:', data);
 
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
 
     const panelId = currentDevice.deviceId;
@@ -534,7 +545,7 @@ class WebSocketClient {
   public DeleteImage(imagePath: string) {
     // action: 11, // DELETE_IMAGE
 
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
 
     const panelId = currentDevice.deviceId;
@@ -647,12 +658,12 @@ class WebSocketClient {
       );
     }
 
-    Hvac.DeviceOpt.initGraphicList(msgData.data);
+    this.deviceOpt?.initGraphicList(msgData.data);
 
     // refer to WebViewClient-> HandleGetPanelDataRes
 
     if (msgData?.panel_id) {
-      Hvac.IdxPage.clearGetPanelsInterval();
+      this.idxPage?.clearGetPanelsInterval();
     }
 
     if (msgData?.panel_id) {
@@ -743,7 +754,7 @@ class WebSocketClient {
 
     LogUtil.Debug('= ws: HandleGetInitialDataRes / msgData:', msgData);
 
-    const isCrtDevice = Hvac.DeviceOpt.isCurrentDeviceMessage(msgData);
+    const isCrtDevice = this.deviceOpt?.isCurrentDeviceMessage(msgData);
 
     if (!isCrtDevice) {
       LogUtil.Debug('= ws: HandleGetInitialDataRes / not current device message, return');
@@ -764,16 +775,16 @@ class WebSocketClient {
     if (!this.needRefresh) return;
 
     // merge the appState data to the current appState
-    // Hvac.DeviceOpt.mergeAppState(parsedAppStateData);
+    // this.deviceOpt?.mergeAppState(parsedAppStateData);
 
     // sync t3 appState data to ls [deviceAppState]
-    Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+    this.deviceOpt?.syncTempAppStateToDeviceAppState();
 
     // load device appstate
-    Hvac.DeviceOpt.refreshDeviceAppState();
+    this.deviceOpt?.refreshDeviceAppState();
 
     // refresh the current device
-    Hvac.DeviceOpt.refreshCurrentDevice();
+    this.deviceOpt?.refreshCurrentDevice();
 
     // refer to WebViewClient-> HandleGetInitialDataRes
     grpNav.value = [msgData.entry];
@@ -787,7 +798,7 @@ class WebSocketClient {
     }, 100);
 
     this.clearInitialDataInterval();
-    Hvac.QuasarUtil.clearGlobalMsg("get_initial_data");
+    this.quasarUtil?.clearGlobalMsg("get_initial_data");
   }
 
   public HandleSaveGraphicRes(msgData) {
@@ -807,8 +818,8 @@ class WebSocketClient {
     if (data === undefined) return;
 
     // action: 4, // GET_PANELS_LIST_RES
-    Hvac.DeviceOpt.initDeviceList(data);
-    LogUtil.Debug('= ws: GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
+    this.deviceOpt?.initDeviceList(data);
+    LogUtil.Debug('= ws: GET_PANELS_LIST_RES', this.deviceOpt?.deviceList);
 
     // load the first panel's panel data by default
     const firstPanelId = data.length > 0 ? data[0].panel_number : null;
@@ -1064,7 +1075,7 @@ class WebSocketClient {
     this.GetPanelsList();
 
     // refresh appState
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
 
     const panelId = currentDevice?.deviceId;
     const graphicId = currentDevice?.graphic;
@@ -1113,11 +1124,11 @@ class WebSocketClient {
     LogUtil.Debug('= ws: showSuccess | action:', rspAction, '| status:', rspStatus);
 
     if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      Hvac.QuasarUtil.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
+      this.quasarUtil?.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
     }
 
     if (rspAction == MessageType.GET_INITIAL_DATA_RES) {
-      Hvac.QuasarUtil.ShowGET_INITIAL_DATA_RESSuccess();
+      this.quasarUtil?.ShowGET_INITIAL_DATA_RESSuccess();
     }
   }
 
@@ -1142,7 +1153,7 @@ class WebSocketClient {
       this.reloadInitialData();
 
       // add global error message for blocking auto save
-      Hvac.QuasarUtil.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
+      this.quasarUtil?.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
     }
   }
 
@@ -1155,7 +1166,7 @@ class WebSocketClient {
 
     // Set a timer to reload the initial data every 5 minutes
     this.reloadInitialDataInterval = setInterval(() => {
-      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const currentDevice = this.deviceOpt?.getCurrentDevice();
       const panelId = currentDevice?.deviceId;
       const graphicId = currentDevice?.graphic;
 
