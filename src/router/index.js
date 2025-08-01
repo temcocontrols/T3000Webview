@@ -7,7 +7,6 @@ import {
 } from "vue-router";
 import routes from "./routes";
 import { createRouterErrorBoundary } from "./RouterErrorBoundary.js";
-import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 /*
  * If not building with SSR mode, you can

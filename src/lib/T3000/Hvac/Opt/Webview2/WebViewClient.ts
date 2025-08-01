@@ -5,7 +5,6 @@
 
 import MessageType from "../Socket/MessageType"
 import MessageModel from "../Socket/MessageModel"
-import IdxUtils from "../Common/IdxUtils"
 import { useQuasar } from "quasar"
 import {
   T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify
@@ -36,15 +35,17 @@ class WebViewClient {
   // Dependency injection properties
   private deviceOpt: any;
   private idxPage: any;
+  private idxUtils: any;
 
   constructor() {
     this.message = {};
   }
 
   // Dependency injection method
-  setDependencies(deviceOpt: any, idxPage: any) {
+  setDependencies(deviceOpt: any, idxPage: any, idxUtils: any) {
     this.deviceOpt = deviceOpt;
     this.idxPage = idxPage;
+    this.idxUtils = idxUtils;
   }
 
   initMessageHandler() {
@@ -444,8 +445,8 @@ class WebViewClient {
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
 
-      IdxUtils.refreshLinkedEntries(msgData.data);
-      IdxUtils.refreshLinkedEntries2(msgData.data);
+      this.idxUtils.refreshLinkedEntries(msgData.data);
+      this.idxUtils.refreshLinkedEntries2(msgData.data);
     }
   }
 
@@ -483,7 +484,7 @@ class WebViewClient {
     }
 
     setTimeout(() => {
-      IdxUtils.refreshMoveableGuides();
+      this.idxUtils.refreshMoveableGuides();
     }, 100);
   }
 
@@ -525,7 +526,7 @@ class WebViewClient {
     //   }
     // }
 
-    IdxUtils.saveGraphicData(msgData, this.$q);
+    this.idxUtils.saveGraphicData(msgData, this.$q);
   }
 
   public HandleUpdateEntryRes(msgData) {
@@ -733,8 +734,8 @@ class WebViewClient {
       selectPanelOptions.value = T3000_Data.value.panelsData;
     }
 
-    IdxUtils.refreshLinkedEntries(msgData.data);
-    IdxUtils.refreshLinkedEntries2(msgData.data);
+    this.idxUtils.refreshLinkedEntries(msgData.data);
+    this.idxUtils.refreshLinkedEntries2(msgData.data);
 
     // LogUtil.Debug('= Wv2: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
     // LogUtil.Debug('= Wv2: HandleGetEntriesRes END ===================');
@@ -784,7 +785,7 @@ class WebViewClient {
     }
 
     setTimeout(() => {
-      IdxUtils.refreshMoveableGuides();
+      this.idxUtils.refreshMoveableGuides();
     }, 100);
   }
 
@@ -816,7 +817,7 @@ class WebViewClient {
       online: false,
     });
 
-    IdxUtils.saveLib();
+    this.idxUtils.saveLib();
   }
 
   public HandleSaveLibraryDataRes(msgData) {

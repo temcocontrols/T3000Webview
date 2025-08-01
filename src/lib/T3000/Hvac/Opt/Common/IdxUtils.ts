@@ -1,11 +1,22 @@
 
 import { appState, T3000_Data, ranges, library, savedNotify, isBuiltInEdge, appStateV2 } from '../../Data/T3Data'
 import { toRaw } from 'vue'
-import Hvac from '../../Hvac'
 import T3Util from '../../Util/T3Util';
 import LogUtil from '../../Util/LogUtil';
 
 class IdxUtils {
+
+  // Dependency injection properties
+  private static webClient: any;
+  private static deviceOpt: any;
+  private static wsClient: any;
+
+  // Set dependencies to avoid circular imports
+  static setDependencies(webClient: any, deviceOpt: any, wsClient: any) {
+    IdxUtils.webClient = webClient;
+    IdxUtils.deviceOpt = deviceOpt;
+    IdxUtils.wsClient = wsClient;
+  }
 
   // Get all items linked to a T3 entry
   static getLinkedEntries() {
@@ -227,13 +238,13 @@ class IdxUtils {
     // });
 
     if (isBuiltInEdge.value) {
-      Hvac.WebClient.SaveLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+      IdxUtils.webClient.SaveLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
     }
     else {
-      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const currentDevice = IdxUtils.deviceOpt.getCurrentDevice();
       const panelId = currentDevice?.panelId;
       const graphicId = currentDevice?.graphicId;
-      Hvac.WsClient.SaveLibraryData(panelId, graphicId, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+      IdxUtils.wsClient.SaveLibraryData(panelId, graphicId, { ...toRaw(library.value), images: libImages, objLib: libObjects });
     }
   }
 
@@ -250,13 +261,13 @@ class IdxUtils {
     // });
 
     if (isBuiltInEdge.value) {
-      Hvac.WebClient.SaveNewLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+      IdxUtils.webClient.SaveNewLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
     }
     else {
-      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const currentDevice = IdxUtils.deviceOpt.getCurrentDevice();
       const panelId = currentDevice?.panelId;
       const graphicId = currentDevice?.graphicId;
-      Hvac.WsClient.SaveNewLibraryData(panelId, graphicId, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+      IdxUtils.wsClient.SaveNewLibraryData(panelId, graphicId, { ...toRaw(library.value), images: libImages, objLib: libObjects });
     }
   }
 
