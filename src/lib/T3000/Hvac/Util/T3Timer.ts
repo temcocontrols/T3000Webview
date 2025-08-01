@@ -18,27 +18,60 @@ class T3Timer {
 
   /**
    * Sets an interval to repeatedly execute a callback
-   * @param callback - The function to be called on interval
+   * @param callback - The function to be called on interval or method name as string
    * @param intervalMs - Time in milliseconds between executions
    * @returns A unique timer identifier
    */
-  public setInterval(callback: Function, intervalMs: number): number {
+  public setInterval(callback: Function | string, intervalMs: number): number {
     const timerId = T3Timer.getNewTimerId();
-    const callExpression = T3Timer.buildCallExpression(this.context, timerId, arguments);
-    T3Timer.timerRegistry[timerId].timer = window.setInterval(callExpression, intervalMs);
+    T3Timer.timerRegistry[timerId] = {};
+
+    if (typeof callback === 'string') {
+      // Method name string - call on context
+      const methodName = callback;
+      T3Timer.timerRegistry[timerId].timer = window.setInterval(() => {
+        if (this.context && this.context[methodName]) {
+          this.context[methodName]();
+        }
+      }, intervalMs);
+    } else {
+      // Function reference - call directly
+      T3Timer.timerRegistry[timerId].timer = window.setInterval(() => {
+        callback.call(this.context);
+      }, intervalMs);
+    }
+
     return timerId;
   }
 
   /**
    * Sets a timeout to execute a callback once after a delay
-   * @param callback - The function to be called after delay
+   * @param callback - The function to be called after delay or method name as string
    * @param delayMs - Time in milliseconds to wait before execution
+   * @param ...args - Additional arguments to pass to the callback
    * @returns A unique timer identifier
    */
-  public setTimeout(callback: Function, delayMs: number): number {
+  public setTimeout(callback: Function | string, delayMs: number, ...args: any[]): number {
     const timerId = T3Timer.getNewTimerId();
-    T3Timer.buildCallExpression(this.context, timerId, arguments);
-    T3Timer.timerRegistry[timerId].timer = window.setTimeout(() => T3Timer.executeOnce(timerId), delayMs);
+    T3Timer.timerRegistry[timerId] = {};
+
+    if (typeof callback === 'string') {
+      // Method name string - call on context
+      const methodName = callback;
+      T3Timer.timerRegistry[timerId].timer = window.setTimeout(() => {
+        if (this.context && this.context[methodName]) {
+          this.context[methodName](...args);
+        }
+        T3Timer.timerRegistry[timerId] = null;
+      }, delayMs);
+    } else {
+      // Function reference - call directly
+      T3Timer.timerRegistry[timerId].timer = window.setTimeout(() => {
+        callback.call(this.context, ...args);
+        T3Timer.timerRegistry[timerId] = null;
+      }, delayMs);
+    }
+
     return timerId;
   }
 
@@ -60,52 +93,6 @@ class T3Timer {
   public clearTimeout(timerId: number): void {
     if (T3Timer.timerRegistry[timerId]) {
       window.clearTimeout(T3Timer.timerRegistry[timerId].timer);
-      T3Timer.timerRegistry[timerId] = null;
-    }
-  }
-
-  /**
-   * Builds a call expression string and stores necessary context and arguments
-   * @param context - The object context for the callback
-   * @param timerId - The timer identifier
-   * @param args - The original arguments passed to timer methods
-   * @returns A string representing the function call
-   */
-  private static buildCallExpression(context: any, timerId: number, args: IArguments): string {
-    let callExpression = '';
-    T3Timer.timerRegistry[timerId] = [];
-
-    if (context !== window) {
-      T3Timer.timerRegistry[timerId].obj = context;
-      callExpression = `T3Timer.timerRegistry[${timerId}].obj.`;
-    }
-
-    callExpression += `${args[0]}(`;
-
-    if (args.length > 2) {
-      T3Timer.timerRegistry[timerId][0] = args[2];
-      callExpression += `T3Timer.timerRegistry[${timerId}][0]`;
-
-      for (let i = 1; i + 2 < args.length; i++) {
-        T3Timer.timerRegistry[timerId][i] = args[i + 2];
-        callExpression += `, T3Timer.timerRegistry[${timerId}][${i}]`;
-      }
-    }
-
-    callExpression += ');';
-    T3Timer.timerRegistry[timerId].call = callExpression;
-
-    return callExpression;
-  }
-
-  /**
-   * Executes a call expression once and cleans up the registry entry
-   * @param timerId - The timer identifier to execute and clean up
-   */
-  private static executeOnce(timerId: number): void {
-    if (T3Timer.timerRegistry[timerId]) {
-      const callExpression = T3Timer.timerRegistry[timerId].call;
-      eval(callExpression);
       T3Timer.timerRegistry[timerId] = null;
     }
   }
