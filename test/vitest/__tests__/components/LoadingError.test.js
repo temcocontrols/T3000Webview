@@ -5,8 +5,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { Quasar } from 'quasar';
-import LoadingComponent from '../../../../src/components/LoadingComponent.vue';
-import ErrorComponent from '../../../../src/components/ErrorComponent.vue';
+import LoadingComponent from '../../../../src/components/hvac/LoadingComponent.vue';
+import ErrorComponent from '../../../../src/components/hvac/ErrorComponent.vue';
 
 // Mock Quasar components
 const mockQuasarComponents = {

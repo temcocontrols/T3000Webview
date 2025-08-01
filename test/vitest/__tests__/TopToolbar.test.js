@@ -1,4 +1,4 @@
-import TopToolbar from "../../../src/components/TopToolbar.vue";
+import TopToolbar from "../../../src/components/hvac/TopToolbar.vue";
 import { mount, DOMWrapper } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { Quasar } from "quasar";

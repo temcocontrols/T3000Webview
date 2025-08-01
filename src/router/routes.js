@@ -20,13 +20,13 @@ const createOptimizedComponent = (importFn, name, options = {}) => {
     loadingComponent: {
       template: `<SimpleLoadingComponent :message="'Loading component...'" :component-name="'${name}'" />`,
       components: {
-        SimpleLoadingComponent: () => import('../components/SimpleLoadingComponent.vue')
+        SimpleLoadingComponent: () => import('../components/hvac/SimpleLoadingComponent.vue')
       }
     },
     errorComponent: {
       template: `<SimpleErrorFallback :error="error" :component-name="'${name}'" />`,
       components: {
-        SimpleErrorFallback: () => import('../components/SimpleErrorFallback.vue')
+        SimpleErrorFallback: () => import('../components/hvac/SimpleErrorFallback.vue')
       },
       props: ['error']
     },

@@ -1,7 +1,7 @@
 import { mount, DOMWrapper } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { Quasar } from "quasar";
-import GaugeSettingsDialog from "../../../src/components/GaugeSettingsDialog.vue";
+import GaugeSettingsDialog from "../../../src/components/hvac/GaugeSettingsDialog.vue";
 
 describe("GaugeSettingsDialog.vue", () => {
   it("renders dialog with initial data", async () => {

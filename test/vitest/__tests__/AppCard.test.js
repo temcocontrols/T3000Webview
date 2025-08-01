@@ -1,4 +1,4 @@
-import AppCard from "../../../src/components/AppCard.vue";
+import AppCard from "../../../src/components/hvac/AppCard.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 
