@@ -458,8 +458,8 @@ import {
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
-import WebSocketClient from 'src/lib/T3000/Hvac/Opt/Socket/WebSocketClient'
 import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
+import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
@@ -1758,7 +1758,7 @@ const initializeDataClients = () => {
     return new WebViewClient()
   } else {
     // Use WebSocket client for external browser
-    return new WebSocketClient()
+    return Hvac.WsClient
   }
 }
 
