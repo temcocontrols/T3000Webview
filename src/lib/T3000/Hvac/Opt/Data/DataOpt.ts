@@ -592,6 +592,10 @@ class DataOpt {
     this.SaveData(this.GRP_SWITCH_KEY, grpSwitchArr);
     return removed;
   }
+
+  static ClearGrpSwitch(): void {
+    localStorage.removeItem(this.GRP_SWITCH_KEY);
+  }
 }
 
 export default DataOpt

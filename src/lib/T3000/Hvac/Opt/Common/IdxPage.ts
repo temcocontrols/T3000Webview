@@ -46,6 +46,7 @@ class IdxPage {
     this.initWindowListener();
     this.refreshMoveableGuides();
     this.resetPanzoom();
+    this.clearGrpSwitch();
   }
 
   initPage5() {
@@ -186,10 +187,16 @@ class IdxPage {
   resetPanzoom() {
     const transform = Hvac.QuasarUtil.getLocalSettings('transform');
 
+    /*
     if (transform) {
       panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
       panzoomInstance.moveTo(transform.x, transform.y);
     }
+    */
+  }
+
+  clearGrpSwitch(){
+    DataOpt.ClearGrpSwitch();
   }
 
   // Computed property for zoom control
@@ -619,7 +626,7 @@ class IdxPage {
       this.autoSaveInterval = setInterval(() => {
         LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
-      }, 30000);
+      }, 15000);
     }, 10000);
   }
 

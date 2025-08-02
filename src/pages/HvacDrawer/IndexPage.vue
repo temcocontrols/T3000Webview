@@ -783,7 +783,6 @@ onMounted(() => {
 });
 
 function updateDeviceModel(isActive, data) {
-  console.log('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
@@ -871,7 +870,6 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      console.log("= IdxPage addActionToHistory", title);
       save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
@@ -1726,11 +1724,9 @@ keycon.keydown(["insert"], (e) => {
 
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
-  console.log('= Idx linkT3EntryDialogAction appState:', appState.value);
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
   linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
-  console.log('= Idx linkT3EntryDialogAction linkT3EntryDialog.value.data:', linkT3EntryDialog.value.data);
 }
 
 // Delete selected objects from the app state
@@ -2378,7 +2374,6 @@ function reloadPanelsData() {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-  console.log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)

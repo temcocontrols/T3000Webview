@@ -899,7 +899,6 @@ onMounted(() => {
 // }
 
 function updateDeviceModel(isActive, data) {
-  LogUtil.Debug('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
@@ -1223,7 +1222,6 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      LogUtil.Debug("= IdxPage addActionToHistory", title);
       save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
@@ -2797,7 +2795,6 @@ function reloadPanelsData() {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-  // LogUtil.Debug('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
