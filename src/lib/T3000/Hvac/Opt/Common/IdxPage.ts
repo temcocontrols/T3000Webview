@@ -446,9 +446,6 @@ class IdxPage {
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {
-    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState before', appState.value);
-    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
-    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState after', appState.value);
     if (!obj.t3Entry) return;
     let fieldVal = obj.t3Entry[key];
 
