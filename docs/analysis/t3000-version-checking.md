@@ -6,11 +6,12 @@ T3000 uses a multi-layered version checking system that compares local and remot
 ## Version Checking Components
 
 ### 1. Local Version Storage
-- **File**: `CheckVersionPath.ini` (created in T3000 folder)
+- **File**: `CheckVersionPath.ini` (**Created dynamically by T3000**)
+- **Location**: `{T3000.exe directory}\Database\Firmware\CheckVersionPath.ini`
+- **Creation**: File is created when T3000 first checks for updates
 - **Key Sections**:
   - `[LastUpdateTime]` - Tracks when each product was last updated
   - `[Version]` - Stores current T3000 version number
-- **Location**: Dynamically created at runtime in T3000 installation folder
 
 ### 2. Version Variables
 ```cpp
@@ -39,31 +40,54 @@ local_version_date = GetPrivateProfileInt(_T("LastUpdateTime"), str_product_sect
 
 ## Manual Testing Triggers
 
-### Method 1: Delete Version INI File
-1. Navigate to T3000 installation folder
-2. Delete `CheckVersionPath.ini` file (if it exists)
-3. Start T3000 - this will force version check
-
-### Method 2: Modify Version Numbers
-1. Locate `CheckVersionPath.ini` in T3000 folder
-2. Edit `[Version]` section:
+### Method 1: Force Lower Version Number (RECOMMENDED for Source Builds)
+1. Close T3000 completely
+2. Navigate to your T3000 build output folder (where T3000.exe is located)
+3. Create the Database\Firmware subfolder if it doesn't exist:
+   ```cmd
+   mkdir "Database\Firmware"
+   ```
+4. Create `Database\Firmware\CheckVersionPath.ini` file with this content:
    ```ini
    [Version]
-   T3000=0
-   ```
-3. This forces T3000 to think it's version 0, triggering update
+   T3000=1
 
-### Method 3: Clear LastUpdateTime
-1. Edit `CheckVersionPath.ini`
-2. Set or clear `[LastUpdateTime]` entries:
-   ```ini
    [LastUpdateTime]
    T3000=0
    ```
+5. Start T3000 - this will force it to think it's version 1, triggering update check
 
-### Method 4: Use Update Dialog Directly
+**Note**: The file path is: `{Your T3000.exe folder}\Database\Firmware\CheckVersionPath.ini`
+
+### Method 2: Modify Source Code Version (For Development Testing)
+**Temporary modification for testing only:**
+1. In T3000 source: `T3000.cpp` around line 74
+2. Temporarily change:
+   ```cpp
+   T3000_Version = g_versionNO; // Original
+   ```
+   To:
+   ```cpp
+   T3000_Version = 1; // Force low version for testing
+   ```
+3. Rebuild T3000
+4. Run - will always think it's version 1
+
+### Method 3: Delete Version INI File
+1. Navigate to T3000 build output folder
+2. Delete `CheckVersionPath.ini` file (if it exists)
+3. Start T3000 - this will force version check
+
+### Method 4: Simulate Update Process Without Server
+**Create a test scenario:**
+1. Manually call the cache clearing function
+2. Copy WebView files to test deployment
+3. Test cache refresh behavior
+
+### Method 5: Use Update Dialog Directly
 - Menu: Help → Check for Updates
 - This triggers `T3000UpdateDlg.cpp` which calls `CheckForUpdate()`
+- **Note**: May show "already latest" for source builds
 
 ## Version Comparison Logic
 
@@ -100,34 +124,69 @@ if (PathFileExists(webviewCachePath))
 2. **Manual Update Trigger**: Test cache clearing when user manually checks for updates
 3. **Version Mismatch Detection**: Clear cache when version change detected
 
-## Testing Workflow
+## Testing Workflow for Source Code Builds
 
 ### Step 1: Prepare Test Environment
 ```bash
-# Create backup of current version info
-copy "C:\Program Files\T3000\CheckVersionPath.ini" "CheckVersionPath.ini.backup"
+# Navigate to your T3000 build output directory
+cd "D:\1025\github\temcocontrols\T3000_Building_Automation_System\Debug"
+# or wherever your built T3000.exe is located
+
+# Create backup if version file exists
+copy "CheckVersionPath.ini" "CheckVersionPath.ini.backup" 2>nul
 ```
 
-### Step 2: Force Update Detection
-```ini
-# Edit CheckVersionPath.ini to force update check
-[Version]
-T3000=0
+### Step 2: Force Update Detection (Choose One Method)
 
-[LastUpdateTime]
-T3000=0
+#### Option A: INI File Method (EASIEST)
+1. Navigate to your T3000 build folder
+2. Create the Database\Firmware subfolder:
+   ```cmd
+   mkdir "Database\Firmware"
+   ```
+3. Create `Database\Firmware\CheckVersionPath.ini` with:
+   ```ini
+   [Version]
+   T3000=1
+
+   [LastUpdateTime]
+   T3000=0
+   ```
+
+#### Option B: Source Code Method (FOR PERMANENT TESTING)
+In `T3000.cpp`, temporarily modify:
+```cpp
+// Find this line (around line 74):
+T3000_Version = g_versionNO;
+
+// Change to:
+T3000_Version = 1; // Always report version 1 for testing
 ```
+Then rebuild T3000.
 
-### Step 3: Monitor Cache Clearing
-1. Check WebView cache exists: `%LOCALAPPDATA%\T3000\EBWebView\`
-2. Trigger update check in T3000
-3. Verify cache directory is deleted/recreated
-4. Confirm WebView shows updated content
+### Step 3: Test Cache Clearing Integration
+1. **Check WebView cache exists**:
+   ```
+   dir "%LOCALAPPDATA%\T3000\EBWebView\"
+   ```
+2. **Make changes to WebView files** in your development:
+   - Modify files in `T3000Webview\dist\`
+   - Copy to `T3000\ResourceFile\webview\www\`
+3. **Trigger update check** in T3000
+4. **Verify cache directory** is deleted/recreated during update
+5. **Confirm WebView** shows updated content immediately
 
-### Step 4: Verify Integration
-- Test both automatic and manual update scenarios
-- Ensure cache clearing doesn't interfere with normal operation
-- Validate WebView refresh works after cache clear
+### Step 4: Direct Cache Testing (Alternative Method)
+If you want to test cache clearing without full update process:
+
+1. **Open T3000** and navigate to WebView (Modbus Register screen)
+2. **Close T3000**
+3. **Manually clear cache**:
+   ```cmd
+   rmdir /s /q "%LOCALAPPDATA%\T3000\EBWebView"
+   ```
+4. **Deploy new WebView files** to `T3000\ResourceFile\webview\www\`
+5. **Restart T3000** and check WebView - should show new content
 
 ## Implementation Notes
 
