@@ -1,12 +1,18 @@
 # Bug Tracking Index
 
-## Active Bugs
+## Resolved Issues
 
-### #001 - T3000 WebView Cache Not Cleared During Auto-Update
-**File**: `001-webview-cache-not-cleared.md`
-**Status**: IDENTIFIED - Fix Required in T3000 C++
+### T3000 WebView Cache Issue
+**File**: `webview-cache-issue-complete.md`
+**Status**: ✅ RESOLVED
 **Priority**: High
-**Summary**: T3000 auto-update doesn't clear WebView2 cache, causing stale content to be served
+**Summary**: Complete analysis and solution for T3000 WebView2 cache refresh issue during auto-updates
+
+This document contains:
+- Full problem description and root cause analysis
+- All attempted solutions and why they failed/succeeded
+- Final implemented solution using URL timestamp parameters
+- Testing verification and lessons learned
 
 ---
 

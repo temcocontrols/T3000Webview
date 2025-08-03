@@ -10,7 +10,7 @@ Technical analysis and research documentation:
 
 ### 📁 `/bugs/`
 Bug tracking and issue documentation:
-- **`001-webview-cache-not-cleared.md`** - Primary WebView cache clearing issue analysis and solution
+- **`webview-cache-issue-complete.md`** - Complete WebView cache issue analysis, all attempted solutions, and final resolution
 - **`README.md`** - Bug tracking guidelines and status overview
 
 ### 📁 `/project/`
