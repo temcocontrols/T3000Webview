@@ -56,8 +56,8 @@ void UpdateWebViewFiles()
 - `T3000/ResourceFile/webview/www/` - Deployment target
 
 **Bug Tracking**:
-- `docs/bugs/001-webview-cache-not-cleared.md` - Detailed bug report
-- `docs/CHANGELOG.md` - Progress log
+- `docs/bugs/webview2-cache-complete.md` - Complete consolidated documentation
+- `docs/bugs/README.md` - Documentation index
 
 **WebView Project** (working correctly):
 - Standard Vue.js/Quasar application
