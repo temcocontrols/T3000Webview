@@ -8,13 +8,13 @@
 
 ## 🔗 Direct T3000 Source Access
 
-**T3000 C++ Source**: Now accessible at `T3000_CPP_Source/` via symbolic link
+**T3000 C++ Source**: Now accessible at `T3000_Building_Automation_System_Source/` via symbolic link
 **Created by**: `scripts\link-t3000-source.bat`
 
 ## 🎯 The Fix (T3000 C++ Code Changes)
 
 ### Working Cache Clearing Code Found
-In `T3000_CPP_Source/T3000/MainFrm.cpp` line 16186:
+In `T3000_Building_Automation_System_Source/T3000/MainFrm.cpp` line 16186:
 
 ```cpp
 void CMainFrame::OnWebviewModbusregister()
@@ -50,7 +50,7 @@ void UpdateWebViewFiles()
 
 ## 📁 Key Files
 
-**T3000 C++ Source** (via `T3000_CPP_Source/`):
+**T3000 C++ Source** (via `T3000_Building_Automation_System_Source/`):
 - `T3000/MainFrm.cpp` - Contains working cache clearing example
 - `T3000/T3000UpdateDlg.cpp` - Update dialog (integration point)
 - `T3000/ResourceFile/webview/www/` - Deployment target

@@ -11,11 +11,11 @@ When T3000 performs an auto-update that copies new WebView files to `T3000\Resou
 
 ## Root Cause Analysis
 
-**Location**: T3000 C++ source code (accessible via `T3000_CPP_Source/` symbolic link)
+**Location**: T3000 C++ source code (accessible via `T3000_Building_Automation_System_Source/` symbolic link)
 
 **Issue**: T3000's auto-update process copies files but doesn't clear WebView2 cache.
 
-**Evidence**: In `T3000_CPP_Source/T3000/MainFrm.cpp` line 16186, the `OnWebviewModbusregister()` function already has working cache clearing code:
+**Evidence**: In `T3000_Building_Automation_System_Source/T3000/MainFrm.cpp` line 16186, the `OnWebviewModbusregister()` function already has working cache clearing code:
 
 ```cpp
 void CMainFrame::OnWebviewModbusregister()
@@ -70,7 +70,7 @@ Possible locations to add the cache clearing:
 
 ## Related Files
 
-**T3000 C++ Source** (via `T3000_CPP_Source/`):
+**T3000 C++ Source** (via `T3000_Building_Automation_System_Source/`):
 - `T3000/MainFrm.cpp` - Contains working cache clearing example
 - `T3000/T3000UpdateDlg.cpp` - Update dialog (potential integration point)
 - `T3000/BacnetWebView.cpp` - WebView2 management

@@ -19,10 +19,8 @@
 
 ### Files Created/Modified
 - ✅ `scripts/link-t3000-source.bat` - Direct access to T3000 C++ source
-- ✅ `T3000_CPP_Source/` - Symbolic link to T3000 source code
-- ✅ `docs/bugs/001-webview-cache-not-cleared.md` - Bug tracking
-
-### Files Removed (Not Needed for This Issue)
+- ✅ `T3000_Building_Automation_System_Source/` - Symbolic link to T3000 source code
+- ✅ `docs/bugs/001-webview-cache-not-cleared.md` - Bug tracking### Files Removed (Not Needed for This Issue)
 - ❌ Source browser components (direct access via symbolic link)
 - ❌ Complex integration libraries (issue is in T3000, not WebView)
 - ❌ Analysis documents (moved to bug tracking)
