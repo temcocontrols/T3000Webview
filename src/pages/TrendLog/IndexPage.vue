@@ -25,52 +25,6 @@
 -->
 <template>
   <div class="trend-log-page">
-    <div class="page-header">
-      <h1 class="page-title">{{ pageTitle }}</h1>
-
-      <!-- Parameter Details Section -->
-      <div class="parameter-details" v-if="hasValidParameters">
-        <div class="parameter-grid">
-          <div class="parameter-item">
-            <span class="parameter-label">Serial Number:</span>
-            <span class="parameter-value">{{ urlParams.sn }}</span>
-          </div>
-          <div class="parameter-item">
-            <span class="parameter-label">Panel ID:</span>
-            <span class="parameter-value">{{ urlParams.panel_id }}</span>
-          </div>
-          <div class="parameter-item">
-            <span class="parameter-label">Trend Log ID:</span>
-            <span class="parameter-value">{{ urlParams.trendlog_id }}</span>
-          </div>
-          <div class="parameter-item" v-if="urlParams.all_data">
-            <span class="parameter-label">Data Source:</span>
-            <span class="parameter-value data-source">
-              <span v-if="isJsonData" class="status-success">C++ JSON Data</span>
-              <span v-else class="status-warning">Legacy/API Data</span>
-            </span>
-          </div>
-        </div>
-        <div class="data-status" v-if="urlParams.all_data">
-          <span class="status-label">JSON Status:</span>
-          <span v-if="jsonValidationStatus === 'valid'" class="status-success">✓ Valid Structure</span>
-          <span v-else-if="jsonValidationStatus === 'error'" class="status-error">✗ Conversion Error</span>
-          <span v-else-if="jsonValidationStatus === 'invalid'" class="status-warning">⚠ Invalid Structure</span>
-          <span v-else class="status-pending">⧗ Validating...</span>
-        </div>
-      </div>
-
-      <p class="page-description">
-        <span v-if="hasValidParameters">
-          Real-time and historical data visualization for T3000 system
-        </span>
-        <span v-else>
-          Real-time and historical data visualization for T3000 systems (Demo Mode)
-        </span>
-      </p>
-
-    </div>
-
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-wrapper">
       <div class="loading-content">
@@ -89,11 +43,20 @@
     </div>
 
     <!-- Chart Content -->
-    <div v-else class="chart-wrapper">
+    <div v-else-if="hasScheduleItemData" class="chart-wrapper">
       <TrendLogChart
-        :itemData="currentItemData"
+        :itemData="scheduleItemData"
         :title="pageTitle"
       />
+    </div>
+
+    <!-- No Data State -->
+    <div v-else class="no-data-wrapper">
+      <div class="no-data-content">
+        <h3>No Data Available</h3>
+        <p>Please provide valid URL parameters to display trend log data.</p>
+        <button @click="loadTrendLogItemData" class="retry-button">Load Data</button>
+      </div>
     </div>
   </div>
 </template>
@@ -148,6 +111,12 @@ const getValidatedParameters = () => {
 const hasValidParameters = computed(() => {
   const params = urlParams.value
   return params.sn !== null && params.panel_id !== null && params.trendlog_id !== null
+})
+
+const hasScheduleItemData = computed(() => {
+  return scheduleItemData.value &&
+         typeof scheduleItemData.value === 'object' &&
+         Object.keys(scheduleItemData.value).length > 0
 })
 
 const isJsonData = computed(() => {
@@ -266,7 +235,7 @@ const formatDataFromQueryParams = () => {
 
   // Format for TrendLogChart
   const chartData = {
-    title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+    title: 'T3000 Trend Log Analysis',
     t3Entry: t3EntryData
   }
 
@@ -337,28 +306,37 @@ const loadTrendLogItemData = () => {
   }
 }
 
-// Clean computed property for TrendLogChart props - no side effects
-const currentItemData = computed(() => {
-  // Simply return the current trend log data for TrendLogChart
-  return trendLogItemData.value
-})// Watch for URL parameter changes
+// Watch for URL parameter changes and refresh scheduleItemData
 watch(
   () => route.query,
   () => {
+    LogUtil.Debug('URL parameters changed, refreshing data...')
     loadTrendLogItemData()
   },
   { immediate: false }
 )
 
-onMounted(() => {
-  LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
-
-  // Watch scheduleItemData changes
-  watch(() => scheduleItemData.value, (newValue, oldValue) => {
+// Watch scheduleItemData to ensure TrendLogChart receives updates
+watch(
+  () => scheduleItemData.value,
+  (newValue, oldValue) => {
     LogUtil.Debug('scheduleItemData changed:')
     LogUtil.Debug('Old value:', oldValue)
     LogUtil.Debug('New value:', newValue)
-  }, { immediate: true })
+
+    // Force reactivity update if needed
+    if (newValue && typeof newValue === 'object') {
+      LogUtil.Debug('scheduleItemData now has data, chart should be visible')
+    } else {
+      LogUtil.Debug('scheduleItemData is empty, chart should be hidden')
+    }
+  },
+  { immediate: true, deep: true }
+)
+
+onMounted(() => {
+  LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
+  LogUtil.Debug('Initial scheduleItemData state:', scheduleItemData.value)
 
   // Load and format data from query parameters
   loadTrendLogItemData()
@@ -373,100 +351,6 @@ onMounted(() => {
   padding: 0;
   background: #f5f5f5;
   overflow: hidden;
-}
-
-.page-header {
-  background: #ffffff;
-  border-bottom: 1px solid #e8e8e8;
-  padding: 16px 24px 12px;
-  flex-shrink: 0;
-}
-
-.page-title {
-  margin: 0 0 12px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
-  line-height: 1.2;
-}
-
-.parameter-details {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-}
-
-.parameter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 8px 16px;
-  margin-bottom: 8px;
-}
-
-.parameter-item {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-}
-
-.parameter-label {
-  font-weight: 500;
-  color: #495057;
-  margin-right: 8px;
-  min-width: 80px;
-}
-
-.parameter-value {
-  color: #212529;
-  font-weight: 600;
-}
-
-.data-source {
-  display: flex;
-  align-items: center;
-}
-
-.data-status {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  padding-top: 8px;
-  border-top: 1px solid #dee2e6;
-}
-
-.status-label {
-  font-weight: 500;
-  color: #495057;
-  margin-right: 8px;
-}
-
-.status-success {
-  color: #28a745;
-  font-weight: 500;
-}
-
-.status-warning {
-  color: #ffc107;
-  font-weight: 500;
-}
-
-.status-error {
-  color: #dc3545;
-  font-weight: 500;
-}
-
-.status-pending {
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.page-description {
-  margin: 0;
-  font-size: 14px;
-  color: #8c8c8c;
-  line-height: 1.4;
 }
 
 .chart-wrapper {
@@ -553,6 +437,37 @@ onMounted(() => {
   line-height: 1.5;
 }
 
+/* No data state styles */
+.no-data-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+.no-data-content {
+  text-align: center;
+  padding: 40px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+}
+
+.no-data-content h3 {
+  margin: 0 0 16px 0;
+  color: #8c8c8c;
+  font-size: 18px;
+}
+
+.no-data-content p {
+  margin: 0 0 24px 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .retry-button {
   background: #659dc5;
   color: white;
@@ -572,98 +487,14 @@ onMounted(() => {
   transform: translateY(1px);
 }
 
-/* URL params debug display */
-.url-params-debug {
-  padding: 8px 12px;
-  background: #f0f0f0;
-  border-radius: 4px;
-  border-left: 3px solid #659dc5;
-}
-
-.debug-button {
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #d9d9d9;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.debug-button:hover {
-  background: #e6f7ff;
-  border-color: #659dc5;
-}
-
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  .page-header {
-    padding: 12px 16px 8px;
-  }
-
-  .page-title {
-    font-size: 20px;
-    margin-bottom: 8px;
-  }
-
-  .parameter-details {
-    padding: 8px 12px;
-    margin-bottom: 8px;
-  }
-
-  .parameter-grid {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .parameter-item {
-    font-size: 12px;
-  }
-
-  .parameter-label {
-    min-width: 70px;
-  }
-
-  .data-status {
-    font-size: 12px;
-  }
-
-  .page-description {
-    font-size: 13px;
-  }
-
   .chart-wrapper {
     padding: 8px;
   }
 }
 
 @media (max-width: 480px) {
-  .page-header {
-    padding: 8px 12px 6px;
-  }
-
-  .page-title {
-    font-size: 18px;
-  }
-
-  .parameter-details {
-    padding: 6px 8px;
-  }
-
-  .parameter-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .parameter-label {
-    margin-bottom: 2px;
-  }
-
-  .page-description {
-    font-size: 12px;
-  }
-
   .chart-wrapper {
     padding: 4px;
   }
