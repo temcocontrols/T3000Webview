@@ -544,44 +544,17 @@ const testJsonParsing = () => {
   }
 }
 
-// Computed property for item data - formatted specifically for TrendLogChart
+// Computed property for item data - formats URL parameters into props for TrendLogChart
 const currentItemData = computed(() => {
-  // If we have trend log data from URL parameters, use it (already formatted for TrendLogChart)
+  // If we have trend log data from URL parameters, return it directly
   if (trendLogData.value) {
-    LogUtil.Debug('Using trendLogData for TrendLogChart:', trendLogData.value)
-
-    // CRITICAL: Update scheduleItemData so TrendLogChart can fetch real data
-    // TrendLogChart uses scheduleItemData for real data fetching, not props.itemData
-    if (trendLogData.value.t3Entry) {
-      LogUtil.Debug('Setting scheduleItemData for TrendLogChart real data integration')
-      scheduleItemData.value = trendLogData.value
-    }
-
+    LogUtil.Debug('Using trendLogData for TrendLogChart props:', trendLogData.value)
     return trendLogData.value
   }
 
-  // Otherwise, use the scheduleItemData fallback like TrendLogChart does
-  // But ensure it has the proper structure TrendLogChart expects
-  const fallbackData = scheduleItemData.value || {
-    title: 'T3000 Trend Log Analysis',
-    t3Entry: {
-      id: 'trend-log-1',
-      command: '1MON1',
-      label: 'T3000 Data Analysis',
-      pid: 1,
-      hour_interval_time: 0,
-      minute_interval_time: 0,
-      second_interval_time: 15,
-      num_inputs: 0,
-      input: [],
-      range: [],
-      status: 1,
-      type: "MON"
-    }
-  }
-
-  LogUtil.Debug('Using fallback data for TrendLogChart:', fallbackData)
-  return fallbackData
+  // Otherwise, return null so TrendLogChart uses its default behavior
+  LogUtil.Debug('No trendLogData available, TrendLogChart will use default behavior')
+  return null
 })// Watch for URL parameter changes
 watch(
   () => route.query,
@@ -595,48 +568,33 @@ onMounted(() => {
   // Load trend log data when the page loads
   loadTrendLogData()
 
-  // Debug: Log the data structure that will be passed to TrendLogChart
-  LogUtil.Debug('=== IndexPage Data Structure Debug ===')
+  // Simple debugging to verify URL parameter processing
+  LogUtil.Debug('=== IndexPage Props Formation ===')
   LogUtil.Debug('URL Parameters:', urlParams.value)
   LogUtil.Debug('Has Valid Parameters:', hasValidParameters.value)
-  LogUtil.Debug('Initial scheduleItemData:', scheduleItemData.value)
 
-  // Watch for changes in currentItemData and log them
+  // Watch for changes in currentItemData (props to TrendLogChart)
   watch(() => currentItemData.value, (newData) => {
-    LogUtil.Debug('=== Data passed to TrendLogChart ===')
-    LogUtil.Debug('Title:', newData?.title)
-    LogUtil.Debug('t3Entry structure:', {
-      id: newData?.t3Entry?.id,
-      pid: newData?.t3Entry?.pid,
-      label: newData?.t3Entry?.label,
-      command: newData?.t3Entry?.command,
-      inputCount: newData?.t3Entry?.input?.length,
-      rangeCount: newData?.t3Entry?.range?.length,
-      hasInputArray: Array.isArray(newData?.t3Entry?.input),
-      hasRangeArray: Array.isArray(newData?.t3Entry?.range)
-    })
+    LogUtil.Debug('=== Props passed to TrendLogChart ===')
+    if (newData) {
+      LogUtil.Debug('Title:', newData?.title)
+      LogUtil.Debug('t3Entry ID:', newData?.t3Entry?.id)
+      LogUtil.Debug('t3Entry PID:', newData?.t3Entry?.pid)
+      LogUtil.Debug('Input count:', newData?.t3Entry?.input?.length)
+      LogUtil.Debug('Range count:', newData?.t3Entry?.range?.length)
 
-    // Log panel distribution in input array
-    if (newData?.t3Entry?.input && Array.isArray(newData.t3Entry.input)) {
-      const panelCounts = newData.t3Entry.input.reduce((acc: any, input: any) => {
-        acc[input.panel] = (acc[input.panel] || 0) + 1
-        return acc
-      }, {})
-      LogUtil.Debug('Panel distribution in input array:', panelCounts)
+      // Log panel distribution
+      if (newData?.t3Entry?.input && Array.isArray(newData.t3Entry.input)) {
+        const panelCounts = newData.t3Entry.input.reduce((acc: any, input: any) => {
+          acc[input.panel] = (acc[input.panel] || 0) + 1
+          return acc
+        }, {})
+        LogUtil.Debug('Panel distribution:', panelCounts)
+      }
+    } else {
+      LogUtil.Debug('No props data - TrendLogChart will use default behavior')
     }
   }, { immediate: true })
-
-  // CRITICAL: Watch scheduleItemData changes to ensure TrendLogChart gets the data
-  watch(() => scheduleItemData.value, (newScheduleData) => {
-    LogUtil.Debug('=== scheduleItemData Updated (TrendLogChart will use this for real data) ===')
-    LogUtil.Debug('scheduleItemData t3Entry:', {
-      id: (newScheduleData as any)?.t3Entry?.id,
-      pid: (newScheduleData as any)?.t3Entry?.pid,
-      label: (newScheduleData as any)?.t3Entry?.label,
-      inputCount: (newScheduleData as any)?.t3Entry?.input?.length,
-      rangeCount: (newScheduleData as any)?.t3Entry?.range?.length
-    })
-  }, { immediate: true, deep: true })
 })
 </script>
 
