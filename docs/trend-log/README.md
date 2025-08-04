@@ -2,7 +2,7 @@
 
 ## 📖 Complete Guide
 
-**→ [T3000 Trend Log Complete Integration Guide](T3000-TrendLog-Complete-Integration-Guide.md)**
+**→ [T3000 Trend Log Complete Integration Guide](tlm-TrendLog-Complete-Integration-Guide.md)**
 
 This comprehensive guide contains everything you need to understand, implement, test, and maintain the T3000 trend log integration between C++ and Vue.js.
 
@@ -81,7 +81,7 @@ Vue.js Application
 
 ## Getting Started
 
-1. **Read the Complete Guide**: Start with the [Complete Integration Guide](T3000-TrendLog-Complete-Integration-Guide.md)
+1. **Read the Complete Guide**: Start with the [Complete Integration Guide](tlm-TrendLog-Complete-Integration-Guide.md)
 2. **Check Examples**: Review the code examples in the guide
 3. **Test Integration**: Use the provided test functions
 4. **Debug Issues**: Follow the troubleshooting section
