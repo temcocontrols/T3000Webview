@@ -107,9 +107,9 @@
           <!-- Section 3: Chart Info & Status -->
           <div class="controls-section section-info">
             <!-- Chart Title -->
-            <div class="control-item chart-title-compact">
+            <!-- <div class="control-item chart-title-compact">
               <h3 class="chart-title">{{ chartTitle }}</h3>
-            </div>
+            </div> -->
 
             <!-- Status Tags -->
             <div class="control-item status-tags">

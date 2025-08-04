@@ -116,7 +116,7 @@ const routes = [
     ],
   },
   {
-    path: "/trendlog",
+    path: "/trend-log",
     component: createOptimizedComponent(() => import("layouts/TrendLogLayout.vue"), "TrendLogLayout", { category: 'critical' }),
     children: [
       {
