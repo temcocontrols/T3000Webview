@@ -2,30 +2,35 @@
   TrendLog IndexPage - Standalone page for displaying T3000 trend logs
 
   URL Parameters:
-  - SN: Serial number of the T3000 device (required for real data)
-  - panelid: Panel ID within the device (required for real data)
-  - trendlogid: Specific trend log ID to display (required for real data)
-  - alldata: Optional flag for retrieving all data (optional)
+  - sn: Serial number of the T3000 device (required for real data)
+  - panel_id: Panel ID within the device (required for real data)
+  - trendlog_id: Specific trend log ID to display (required for real data)
+  - all_data: Monitor point data in URL-encoded JSON format (from C++ backend)
 
   Example URLs:
-  - Demo mode: http://localhost:3003/#/trendlog
-  - Real data: http://localhost:3003/#/trendlog?SN=123&panelid=3&trendlogid=1
-  - With alldata: http://localhost:3003/#/trendlog?SN=123&panelid=3&trendlogid=1&alldata=true
+  - Demo mode: http://localhost:3003/#/trend-log
+  - Real data: http://localhost:3003/#/trend-log?sn=123&panel_id=3&trendlog_id=1
+  - With JSON data: http://localhost:3003/#/trend-log?sn=123&panel_id=3&trendlog_id=1&all_data=<URL-encoded-JSON>
 
-  API Endpoints Attempted:
+  Data Flow:
+  1. C++ CBacnetMonitor::OnBnClickedBtnMonitorGraphic() generates JSON from Str_monitor_point
+  2. JSON is URL-encoded and passed as alldata parameter
+  3. IndexPage decodes and parses JSON to display trend log data
+  4. Falls back to API endpoints if JSON parsing fails
+  5. Falls back to demo data if API endpoints are unavailable
+
+  API Endpoints Attempted (if JSON parsing fails):
   1. Primary: /api/data/device/{panelid}/trend_logs/{trendlogid}
   2. Fallback: /api/modbus-registers/{trendlogid}
-
-  Falls back to demo data if API endpoints are unavailable.
 -->
 <template>
   <div class="trend-log-page">
     <div class="page-header">
       <h1 class="page-title">{{ pageTitle }}</h1>
       <p class="page-description">
-        <span v-if="urlParams.SN">
+        <span v-if="urlParams.sn">
           Real-time and historical data visualization for T3000 system
-          (SN: {{ urlParams.SN }}, Panel: {{ urlParams.panelid }}, Trend Log: {{ urlParams.trendlogid }})
+          (SN: {{ urlParams.sn }}, Panel: {{ urlParams.panel_id }}, Trend Log: {{ urlParams.trendlog_id }})
         </span>
         <span v-else>
           Real-time and historical data visualization for T3000 systems (Demo Mode)
@@ -33,23 +38,29 @@
       </p>
 
       <!-- URL Parameters Display (for debugging) -->
-      <div v-if="urlParams.SN || Object.keys(route.query).length > 0" class="url-params-debug" style="font-size: 12px; color: #666; margin-top: 8px;">
+      <div v-if="urlParams.sn || Object.keys(route.query).length > 0" class="url-params-debug" style="font-size: 12px; color: #666; margin-top: 8px;">
         <strong>Parameters:</strong>
-        <span v-if="urlParams.SN">
-          SN={{ urlParams.SN }},
-          Panel={{ urlParams.panelid }},
-          TrendLog={{ urlParams.trendlogid }}
-          <span v-if="urlParams.alldata">, AllData={{ urlParams.alldata }}</span>
+        <span v-if="urlParams.sn">
+          sn={{ urlParams.sn }},
+          panel_id={{ urlParams.panel_id }},
+          trendlog_id={{ urlParams.trendlog_id }}
+          <span v-if="urlParams.all_data">
+            <br>
+            all_data: {{ urlParams.all_data.length > 100 ? urlParams.all_data.substring(0, 100) + '...' : urlParams.all_data }}
+            <span v-if="urlParams.all_data.startsWith('{')"> (JSON Format)</span>
+            <span v-else-if="urlParams.all_data.match(/^[0-9A-Fa-f]+$/)"> (Legacy Hex Format)</span>
+            <span v-else> (URL-Encoded JSON)</span>
+          </span>
         </span>
         <span v-else>
           Demo Mode - Try these test URLs:
           <br>
-          <a href="#/trendlog?SN=123&panelid=3&trendlogid=1" style="color: #659dc5; text-decoration: none;">
-            ?SN=123&panelid=3&trendlogid=1
+          <a href="#/trend-log?sn=123&panel_id=3&trendlog_id=1" style="color: #659dc5; text-decoration: none;">
+            ?sn=123&panel_id=3&trendlog_id=1
           </a>
           <br>
-          <a href="#/trendlog?SN=456&panelid=5&trendlogid=2&alldata=true" style="color: #659dc5; text-decoration: none;">
-            ?SN=456&panelid=5&trendlogid=2&alldata=true
+          <a href="#/trend-log?sn=456&panel_id=5&trendlog_id=2&all_data=%7B%22test%22%3A%22json%22%7D" style="color: #659dc5; text-decoration: none;">
+            ?sn=456&panel_id=5&trendlog_id=2&all_data=(JSON)
           </a>
         </span>
 
@@ -61,8 +72,11 @@
           <button @click="testDemoData" class="debug-button" style="margin-right: 8px;">
             Test Demo
           </button>
-          <button @click="testRealData" class="debug-button" v-if="urlParams.SN">
+          <button @click="testRealData" class="debug-button" v-if="urlParams.sn">
             Test API
+          </button>
+          <button @click="testJsonParsing" class="debug-button" style="margin-left: 8px;" v-if="urlParams.all_data">
+            Test JSON
           </button>
         </div>
       </div>
@@ -115,13 +129,42 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 const trendLogData = ref<any>(null)
 
-// URL Parameters
+// URL Parameters with enhanced JSON handling
 const urlParams = computed(() => ({
-  SN: route.query.SN ? Number(route.query.SN) : null,
-  panelid: route.query.panelid ? Number(route.query.panelid) : null,
-  trendlogid: route.query.trendlogid ? Number(route.query.trendlogid) : null,
-  alldata: route.query.alldata as string || null
+  sn: route.query.sn ? Number(route.query.sn) : null,
+  panel_id: route.query.panel_id ? Number(route.query.panel_id) : null,
+  trendlog_id: route.query.trendlog_id ? Number(route.query.trendlog_id) : null,
+  all_data: route.query.all_data as string || null
 }))
+
+// Helper function to decode URL-encoded JSON
+const decodeUrlEncodedJson = (encodedString: string): any | null => {
+  try {
+    // Decode URL encoding
+    const decoded = decodeURIComponent(encodedString)
+    console.log('Decoded JSON string:', decoded)
+
+    // Parse JSON
+    const parsed = JSON.parse(decoded)
+    console.log('Parsed JSON object:', parsed)
+
+    return parsed
+  } catch (error) {
+    console.error('Failed to decode and parse JSON:', error)
+    console.error('Original encoded string:', encodedString)
+    return null
+  }
+}
+
+// Helper function to validate JSON structure
+const validateTrendLogJsonStructure = (data: any): boolean => {
+  return data &&
+         typeof data === 'object' &&
+         data.t3Entry &&
+         typeof data.t3Entry === 'object' &&
+         Array.isArray(data.t3Entry.input) &&
+         Array.isArray(data.t3Entry.range)
+}
 
 // Demo data function
 const getDemoData = () => {
@@ -266,22 +309,53 @@ const getDemoData = () => {
 }
 
 // Fetch real data function
-const fetchRealData = async (sn: number, panelid: number, trendlogid: number, alldata?: string) => {
+const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, all_data?: string) => {
   try {
     isLoading.value = true
     error.value = null
 
+    // If all_data is provided, try to parse it as JSON first (from C++ backend)
+    if (all_data) {
+      console.log('Processing all_data parameter:', all_data)
+
+      // Try to decode and parse JSON from C++ backend
+      const decodedJsonData = decodeUrlEncodedJson(all_data)
+      if (decodedJsonData && validateTrendLogJsonStructure(decodedJsonData)) {
+        console.log('Successfully parsed JSON data from C++ backend:', decodedJsonData)
+
+        // Update the parsed data with current parameters
+        const updatedData = {
+          ...decodedJsonData,
+          title: decodedJsonData.title || `Trend Log ${trendlog_id} (SN: ${sn})`,
+          id: trendlog_id
+        }
+
+        // Update t3Entry with current parameters
+        if (updatedData.t3Entry) {
+          updatedData.t3Entry.pid = panel_id
+          updatedData.t3Entry.label = updatedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
+          updatedData.t3Entry.command = updatedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
+          updatedData.t3Entry.id = updatedData.t3Entry.id || `MON${trendlog_id}`
+        }
+
+        return updatedData
+      } else {
+        console.log('Failed to parse all_data as JSON, treating as legacy hex data')
+      }
+    }
+
+    // Fallback to API endpoints if JSON parsing fails or no all_data provided
     // Primary API endpoint (adjust based on your backend implementation)
     // Based on the backend structure, the endpoint might be:
     // Option 1: Data management endpoint (if implemented)
-    let apiUrl = `/api/data/device/${panelid}/trend_logs/${trendlogid}`
+    let apiUrl = `/api/data/device/${panel_id}/trend_logs/${trendlog_id}`
 
     // Option 2: Direct modbus register endpoint (fallback)
-    const fallbackUrl = `/api/modbus-registers/${trendlogid}`
+    const fallbackUrl = `/api/modbus-registers/${trendlog_id}`
 
     const params = new URLSearchParams()
     if (sn) params.append('sn', sn.toString())
-    if (alldata) params.append('alldata', alldata)
+    if (all_data) params.append('all_data', all_data)
 
     const queryString = params.toString()
     const fullUrl = queryString ? `${apiUrl}?${queryString}` : apiUrl
@@ -308,10 +382,10 @@ const fetchRealData = async (sn: number, panelid: number, trendlogid: number, al
     // The backend might return data in a different structure
     if (data.data) {
       // If wrapped in an API response structure
-      return transformApiResponseToTrendLogFormat(data.data, sn, panelid, trendlogid)
+      return transformApiResponseToTrendLogFormat(data.data, sn, panel_id, trendlog_id)
     } else {
       // Direct response
-      return transformApiResponseToTrendLogFormat(data, sn, panelid, trendlogid)
+      return transformApiResponseToTrendLogFormat(data, sn, panel_id, trendlog_id)
     }
 
   } catch (err) {
@@ -323,14 +397,14 @@ const fetchRealData = async (sn: number, panelid: number, trendlogid: number, al
     console.log('Failed to fetch from API endpoints, using demo data')
 
     // Return demo data with actual parameters
-    return getDemoDataWithParams(sn, panelid, trendlogid, alldata)
+    return getDemoDataWithParams(sn, panel_id, trendlog_id, all_data)
   } finally {
     isLoading.value = false
   }
 }
 
 // Transform API response to the expected trend log format
-const transformApiResponseToTrendLogFormat = (apiData: any, sn: number, panelid: number, trendlogid: number) => {
+const transformApiResponseToTrendLogFormat = (apiData: any, sn: number, panel_id: number, trendlog_id: number) => {
   // If the API returns data in the exact format we need, return as-is
   if (apiData.t3Entry && apiData.settings) {
     return apiData
@@ -338,7 +412,7 @@ const transformApiResponseToTrendLogFormat = (apiData: any, sn: number, panelid:
 
   // Otherwise, transform the API data to match the expected format
   return {
-    title: apiData.name || apiData.label || `Trend Log ${trendlogid}`,
+    title: apiData.name || apiData.label || `Trend Log ${trendlog_id}`,
     active: apiData.status === 1 || apiData.active || true,
     type: apiData.type || "Temperature",
     translate: apiData.translate || [256.6363359569053, 321.74069633799525],
@@ -358,15 +432,15 @@ const transformApiResponseToTrendLogFormat = (apiData: any, sn: number, panelid:
     zindex: apiData.zindex || 1,
     t3Entry: {
       an_inputs: apiData.an_inputs || 12,
-      command: apiData.command || `${panelid}MON${trendlogid}`,
+      command: apiData.command || `${panel_id}MON${trendlog_id}`,
       hour_interval_time: apiData.hour_interval_time || 0,
-      id: apiData.id || `MON${trendlogid}`,
+      id: apiData.id || `MON${trendlog_id}`,
       index: apiData.index || 0,
       input: apiData.input || [],
-      label: apiData.label || `TRL_${sn}_${panelid}_${trendlogid}`,
+      label: apiData.label || `TRL_${sn}_${panel_id}_${trendlog_id}`,
       minute_interval_time: apiData.minute_interval_time || 0,
       num_inputs: apiData.num_inputs || 14,
-      pid: panelid,
+      pid: panel_id,
       range: apiData.range || [0, 0, 0, 4, 0, 0, 0, 7, 0, 0, 0, 0, 1, 1],
       second_interval_time: apiData.second_interval_time || 15,
       status: apiData.status || 1,
@@ -374,27 +448,60 @@ const transformApiResponseToTrendLogFormat = (apiData: any, sn: number, panelid:
     },
     showDimensions: true,
     cat: apiData.cat || "Duct",
-    id: trendlogid
+    id: trendlog_id
   }
 }
 
 // Enhanced demo data with real parameters
-const getDemoDataWithParams = (sn?: number, panelid?: number, trendlogid?: number, alldata?: string) => {
+const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: number, all_data?: string) => {
+  // First, try to parse all_data as JSON if it's provided
+  if (all_data) {
+    const decodedJsonData = decodeUrlEncodedJson(all_data)
+    if (decodedJsonData && validateTrendLogJsonStructure(decodedJsonData)) {
+      console.log('Using JSON data from all_data parameter as demo data')
+
+      // Update the JSON data with current parameters
+      const updatedData = {
+        ...decodedJsonData,
+        title: `Trend Log ${trendlog_id} (SN: ${sn}) - From C++`,
+        id: trendlog_id
+      }
+
+      if (sn && panel_id && trendlog_id && updatedData.t3Entry) {
+        updatedData.t3Entry.pid = panel_id
+        updatedData.t3Entry.label = updatedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
+        updatedData.t3Entry.command = updatedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
+        updatedData.t3Entry.id = updatedData.t3Entry.id || `MON${trendlog_id}`
+
+        // Update input points to use the actual panel ID if needed
+        if (Array.isArray(updatedData.t3Entry.input)) {
+          updatedData.t3Entry.input = updatedData.t3Entry.input.map((input: any) => ({
+            ...input,
+            panel: panel_id // Update panel ID to match the URL parameter
+          }))
+        }
+      }
+
+      return updatedData
+    }
+  }
+
+  // Fallback to original demo data
   const demoData = getDemoData()
 
   // Update demo data with actual parameters
-  if (sn && panelid && trendlogid) {
-    demoData.title = `Demo Trend Log ${trendlogid} (SN: ${sn})`
-    demoData.id = trendlogid
-    demoData.t3Entry.label = `TRL_${sn}_${panelid}_${trendlogid}`
-    demoData.t3Entry.pid = panelid
-    demoData.t3Entry.id = `MON${trendlogid}`
-    demoData.t3Entry.command = `${panelid}MON${trendlogid}`
+  if (sn && panel_id && trendlog_id) {
+    demoData.title = `Demo Trend Log ${trendlog_id} (SN: ${sn})`
+    demoData.id = trendlog_id
+    demoData.t3Entry.label = `TRL_${sn}_${panel_id}_${trendlog_id}`
+    demoData.t3Entry.pid = panel_id
+    demoData.t3Entry.id = `MON${trendlog_id}`
+    demoData.t3Entry.command = `${panel_id}MON${trendlog_id}`
 
     // Update input points to use the actual panel ID
     demoData.t3Entry.input = demoData.t3Entry.input.map(input => ({
       ...input,
-      panel: panelid
+      panel: panel_id
     }))
   }
 
@@ -403,16 +510,27 @@ const getDemoDataWithParams = (sn?: number, panelid?: number, trendlogid?: numbe
 
 // Load data based on URL parameters or use demo data
 const loadTrendLogData = async () => {
-  const { SN, panelid, trendlogid, alldata } = urlParams.value
+  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
+
+  console.log('Loading trend log data with parameters:', { sn, panel_id, trendlog_id, all_data: all_data ? `${all_data.length} chars` : 'none' })
 
   // Update page title based on parameters
-  if (SN && panelid && trendlogid) {
-    pageTitle.value = `Trend Log ${trendlogid} - Panel ${panelid} (SN: ${SN})`
-    trendLogData.value = await fetchRealData(SN, panelid, trendlogid, alldata || undefined)
+  if (sn && panel_id && trendlog_id) {
+    pageTitle.value = `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`
+
+    // Detect data source
+    if (all_data) {
+      const isJson = all_data.startsWith('{') || all_data.includes('%7B') // URL-encoded '{'
+      console.log(`Data source: ${isJson ? 'JSON from C++' : 'Legacy/API'}`)
+    }
+
+    trendLogData.value = await fetchRealData(sn, panel_id, trendlog_id, all_data || undefined)
   } else {
     pageTitle.value = 'T3000 Trend Log Analysis (Demo)'
     trendLogData.value = getDemoData()
   }
+
+  console.log('Final trend log data loaded:', trendLogData.value)
 }
 
 // Test functions for debugging
@@ -423,10 +541,33 @@ const testDemoData = () => {
 }
 
 const testRealData = async () => {
-  const { SN, panelid, trendlogid, alldata } = urlParams.value
-  if (SN && panelid && trendlogid) {
+  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
+  if (sn && panel_id && trendlog_id) {
     console.log('Testing real data fetch...')
-    trendLogData.value = await fetchRealData(SN, panelid, trendlogid, alldata || undefined)
+    trendLogData.value = await fetchRealData(sn, panel_id, trendlog_id, all_data || undefined)
+  }
+}
+
+const testJsonParsing = () => {
+  const { all_data } = urlParams.value
+  if (all_data) {
+    console.log('Testing JSON parsing...')
+    console.log('Raw all_data:', all_data)
+
+    const decoded = decodeUrlEncodedJson(all_data)
+    if (decoded) {
+      console.log('Successfully decoded JSON:', decoded)
+      const isValid = validateTrendLogJsonStructure(decoded)
+      console.log('JSON structure validation:', isValid ? 'PASSED' : 'FAILED')
+
+      if (isValid) {
+        console.log('Using decoded JSON as trend log data')
+        trendLogData.value = decoded
+        pageTitle.value = 'T3000 Trend Log Analysis (JSON Test)'
+      }
+    } else {
+      console.log('Failed to decode JSON')
+    }
   }
 }
 
