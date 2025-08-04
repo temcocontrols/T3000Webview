@@ -27,10 +27,42 @@
   <div class="trend-log-page">
     <div class="page-header">
       <h1 class="page-title">{{ pageTitle }}</h1>
+
+      <!-- Parameter Details Section -->
+      <div class="parameter-details" v-if="hasValidParameters">
+        <div class="parameter-grid">
+          <div class="parameter-item">
+            <span class="parameter-label">Serial Number:</span>
+            <span class="parameter-value">{{ urlParams.sn }}</span>
+          </div>
+          <div class="parameter-item">
+            <span class="parameter-label">Panel ID:</span>
+            <span class="parameter-value">{{ urlParams.panel_id }}</span>
+          </div>
+          <div class="parameter-item">
+            <span class="parameter-label">Trend Log ID:</span>
+            <span class="parameter-value">{{ urlParams.trendlog_id }}</span>
+          </div>
+          <div class="parameter-item" v-if="urlParams.all_data">
+            <span class="parameter-label">Data Source:</span>
+            <span class="parameter-value data-source">
+              <span v-if="isJsonData" class="status-success">C++ JSON Data</span>
+              <span v-else class="status-warning">Legacy/API Data</span>
+            </span>
+          </div>
+        </div>
+        <div class="data-status" v-if="urlParams.all_data">
+          <span class="status-label">JSON Status:</span>
+          <span v-if="jsonValidationStatus === 'valid'" class="status-success">✓ Valid Structure</span>
+          <span v-else-if="jsonValidationStatus === 'error'" class="status-error">✗ Conversion Error</span>
+          <span v-else-if="jsonValidationStatus === 'invalid'" class="status-warning">⚠ Invalid Structure</span>
+          <span v-else class="status-pending">⧗ Validating...</span>
+        </div>
+      </div>
+
       <p class="page-description">
-        <span v-if="urlParams.sn">
+        <span v-if="hasValidParameters">
           Real-time and historical data visualization for T3000 system
-          (SN: {{ urlParams.sn }}, Panel: {{ urlParams.panel_id }}, Trend Log: {{ urlParams.trendlog_id }})
         </span>
         <span v-else>
           Real-time and historical data visualization for T3000 systems (Demo Mode)
@@ -114,6 +146,7 @@ import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
 // Define component name
 defineOptions({
@@ -128,6 +161,7 @@ const pageTitle = ref('T3000 Trend Log Analysis')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const trendLogData = ref<any>(null)
+const jsonValidationStatus = ref<'pending' | 'valid' | 'invalid' | 'error' | null>(null)
 
 // URL Parameters with enhanced JSON handling
 const urlParams = computed(() => ({
@@ -137,33 +171,95 @@ const urlParams = computed(() => ({
   all_data: route.query.all_data as string || null
 }))
 
-// Helper function to decode URL-encoded JSON
+// Function to get and validate parameters
+const getValidatedParameters = () => {
+  const params = urlParams.value
+
+  // Check if we have the minimum required parameters
+  const hasRequiredParams = params.sn && params.panel_id && params.trendlog_id
+
+  return {
+    sn: params.sn,
+    panel_id: params.panel_id,
+    trendlog_id: params.trendlog_id,
+    all_data: params.all_data,
+    isValid: hasRequiredParams
+  }
+}
+
+// Computed properties for template
+const hasValidParameters = computed(() => {
+  const params = urlParams.value
+  return !!(params.sn && params.panel_id && params.trendlog_id)
+})
+
+const isJsonData = computed(() => {
+  const { all_data } = urlParams.value
+  if (!all_data) return false
+
+  // Check if it looks like JSON (starts with { or URL-encoded {)
+  return all_data.startsWith('{') || all_data.includes('%7B')
+})
+
+// Helper function to decode URL-encoded JSON with C++ error detection
 const decodeUrlEncodedJson = (encodedString: string): any | null => {
   try {
+    jsonValidationStatus.value = 'pending'
+
     // Decode URL encoding
     const decoded = decodeURIComponent(encodedString)
-    console.log('Decoded JSON string:', decoded)
+    LogUtil.Debug('Decoded JSON string:', decoded)
+
+    // Check for C++ JSON conversion error
+    if (decoded.includes('"error":"JSON conversion failed"') ||
+        decoded === '{"error":"JSON conversion failed"}') {
+      LogUtil.Debug('Detected C++ JSON conversion error')
+      jsonValidationStatus.value = 'error'
+      return null
+    }
 
     // Parse JSON
     const parsed = JSON.parse(decoded)
-    console.log('Parsed JSON object:', parsed)
+    LogUtil.Debug('Parsed JSON object:', parsed)
+
+    // Additional check for error object
+    if (parsed.error && parsed.error.includes('JSON conversion failed')) {
+      LogUtil.Debug('Detected C++ JSON conversion error in parsed object')
+      jsonValidationStatus.value = 'error'
+      return null
+    }
+
+    // Validate structure
+    const isValid = validateTrendLogJsonStructure(parsed)
+    jsonValidationStatus.value = isValid ? 'valid' : 'invalid'
 
     return parsed
   } catch (error) {
     console.error('Failed to decode and parse JSON:', error)
     console.error('Original encoded string:', encodedString)
+    jsonValidationStatus.value = 'invalid'
     return null
   }
 }
 
 // Helper function to validate JSON structure
 const validateTrendLogJsonStructure = (data: any): boolean => {
-  return data &&
-         typeof data === 'object' &&
-         data.t3Entry &&
-         typeof data.t3Entry === 'object' &&
-         Array.isArray(data.t3Entry.input) &&
-         Array.isArray(data.t3Entry.range)
+  if (!data || typeof data !== 'object') return false
+
+  // If it's a direct t3Entry object (from C++)
+  if (data.command && data.id && Array.isArray(data.input) && Array.isArray(data.range)) {
+    return true
+  }
+
+  // If it's wrapped in a structure with t3Entry
+  if (data.t3Entry &&
+      typeof data.t3Entry === 'object' &&
+      Array.isArray(data.t3Entry.input) &&
+      Array.isArray(data.t3Entry.range)) {
+    return true
+  }
+
+  return false
 }
 
 // Demo data function
@@ -308,39 +404,82 @@ const getDemoData = () => {
   }
 }
 
-// Fetch real data function
+// Fetch real data function with enhanced parameter validation
 const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, all_data?: string) => {
+  LogUtil.Debug('fetchRealData called with:', { sn, panel_id, trendlog_id, all_data: all_data ? 'present' : 'none' })
+
   try {
     isLoading.value = true
     error.value = null
 
+    // Get validated parameters
+    const validatedParams = getValidatedParameters()
+    if (!validatedParams.isValid) {
+      throw new Error('Invalid parameters: sn, panel_id, and trendlog_id are required')
+    }
+
     // If all_data is provided, try to parse it as JSON first (from C++ backend)
     if (all_data) {
-      console.log('Processing all_data parameter:', all_data)
+      LogUtil.Debug('Processing all_data parameter:', all_data.substring(0, 100) + '...')
 
       // Try to decode and parse JSON from C++ backend
       const decodedJsonData = decodeUrlEncodedJson(all_data)
-      if (decodedJsonData && validateTrendLogJsonStructure(decodedJsonData)) {
-        console.log('Successfully parsed JSON data from C++ backend:', decodedJsonData)
 
-        // Update the parsed data with current parameters
-        const updatedData = {
-          ...decodedJsonData,
-          title: decodedJsonData.title || `Trend Log ${trendlog_id} (SN: ${sn})`,
-          id: trendlog_id
+      // Check if C++ returned an error or if parsing failed
+      if (jsonValidationStatus.value === 'error') {
+        LogUtil.Debug('C++ JSON conversion failed, falling back to API/demo data')
+        // Don't return early, fall through to API endpoints
+      } else if (decodedJsonData && jsonValidationStatus.value === 'valid') {
+        LogUtil.Debug('Successfully parsed JSON data from C++ backend:', decodedJsonData)
+
+        // Handle direct t3Entry object from C++
+        let processedData
+        if (decodedJsonData.command && decodedJsonData.id) {
+          // Direct t3Entry object
+          processedData = {
+            title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+            active: true,
+            type: "Temperature",
+            translate: [256.6363359569053, 321.74069633799525],
+            width: 60,
+            height: 60,
+            rotate: 0,
+            scaleX: 1,
+            scaleY: 1,
+            settings: {
+              fillColor: "#659dc5",
+              titleColor: "inherit",
+              bgColor: "inherit",
+              textColor: "inherit",
+              fontSize: 16,
+              t3EntryDisplayField: "label"
+            },
+            zindex: 1,
+            t3Entry: decodedJsonData,
+            showDimensions: true,
+            cat: "Duct",
+            id: trendlog_id
+          }
+        } else {
+          // Wrapped structure
+          processedData = {
+            ...decodedJsonData,
+            title: decodedJsonData.title || `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+            id: trendlog_id
+          }
         }
 
-        // Update t3Entry with current parameters
-        if (updatedData.t3Entry) {
-          updatedData.t3Entry.pid = panel_id
-          updatedData.t3Entry.label = updatedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
-          updatedData.t3Entry.command = updatedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
-          updatedData.t3Entry.id = updatedData.t3Entry.id || `MON${trendlog_id}`
+        // Update with current parameters
+        if (processedData.t3Entry) {
+          processedData.t3Entry.pid = panel_id
+          processedData.t3Entry.label = processedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
+          processedData.t3Entry.command = processedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
+          processedData.t3Entry.id = processedData.t3Entry.id || `MON${trendlog_id}`
         }
 
-        return updatedData
+        return processedData
       } else {
-        console.log('Failed to parse all_data as JSON, treating as legacy hex data')
+        LogUtil.Debug('Failed to parse all_data as valid JSON, falling back to API endpoints')
       }
     }
 
@@ -360,14 +499,14 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
     const queryString = params.toString()
     const fullUrl = queryString ? `${apiUrl}?${queryString}` : apiUrl
 
-    console.log(`Attempting to fetch trend log data from: ${fullUrl}`)
+    LogUtil.Debug(`Attempting to fetch trend log data from: ${fullUrl}`)
 
     // Try primary endpoint first
     let response = await fetch(fullUrl)
 
     // If primary endpoint fails, try fallback
     if (!response.ok && response.status === 404) {
-      console.log(`Primary endpoint failed, trying fallback: ${fallbackUrl}`)
+      LogUtil.Debug(`Primary endpoint failed, trying fallback: ${fallbackUrl}`)
       const fallbackFullUrl = queryString ? `${fallbackUrl}?${queryString}` : fallbackUrl
       response = await fetch(fallbackFullUrl)
     }
@@ -394,7 +533,7 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
     console.error('Error fetching trend log data:', err)
 
     // Log the attempted URLs for debugging
-    console.log('Failed to fetch from API endpoints, using demo data')
+    LogUtil.Debug('Failed to fetch from API endpoints, using demo data')
 
     // Return demo data with actual parameters
     return getDemoDataWithParams(sn, panel_id, trendlog_id, all_data)
@@ -458,7 +597,7 @@ const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: num
   if (all_data) {
     const decodedJsonData = decodeUrlEncodedJson(all_data)
     if (decodedJsonData && validateTrendLogJsonStructure(decodedJsonData)) {
-      console.log('Using JSON data from all_data parameter as demo data')
+      LogUtil.Debug('Using JSON data from all_data parameter as demo data')
 
       // Update the JSON data with current parameters
       const updatedData = {
@@ -510,32 +649,45 @@ const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: num
 
 // Load data based on URL parameters or use demo data
 const loadTrendLogData = async () => {
-  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
+  LogUtil.Debug('Loading trend log data...')
 
-  console.log('Loading trend log data with parameters:', { sn, panel_id, trendlog_id, all_data: all_data ? `${all_data.length} chars` : 'none' })
+  // Get validated parameters
+  const validatedParams = getValidatedParameters()
+  LogUtil.Debug('Validated parameters:', validatedParams)
+
+  // Reset validation status
+  jsonValidationStatus.value = null
 
   // Update page title based on parameters
-  if (sn && panel_id && trendlog_id) {
+  if (validatedParams.isValid) {
+    const { sn, panel_id, trendlog_id, all_data } = validatedParams
     pageTitle.value = `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`
 
     // Detect data source
     if (all_data) {
       const isJson = all_data.startsWith('{') || all_data.includes('%7B') // URL-encoded '{'
-      console.log(`Data source: ${isJson ? 'JSON from C++' : 'Legacy/API'}`)
+      LogUtil.Debug(`Data source: ${isJson ? 'JSON from C++' : 'Legacy/API'}`)
     }
 
-    trendLogData.value = await fetchRealData(sn, panel_id, trendlog_id, all_data || undefined)
+    try {
+      trendLogData.value = await fetchRealData(sn!, panel_id!, trendlog_id!, all_data || undefined)
+    } catch (err) {
+      console.error('Error loading trend log data:', err)
+      error.value = err instanceof Error ? err.message : 'Failed to load trend log data'
+      // Fall back to demo data with parameters
+      trendLogData.value = getDemoDataWithParams(sn!, panel_id!, trendlog_id!, all_data || undefined)
+    }
   } else {
     pageTitle.value = 'T3000 Trend Log Analysis (Demo)'
     trendLogData.value = getDemoData()
   }
 
-  console.log('Final trend log data loaded:', trendLogData.value)
+  LogUtil.Debug('Final trend log data loaded:', trendLogData.value)
 }
 
 // Test functions for debugging
 const testDemoData = () => {
-  console.log('Testing demo data...')
+  LogUtil.Debug('Testing demo data...')
   trendLogData.value = getDemoData()
   pageTitle.value = 'T3000 Trend Log Analysis (Demo Test)'
 }
@@ -543,7 +695,7 @@ const testDemoData = () => {
 const testRealData = async () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
   if (sn && panel_id && trendlog_id) {
-    console.log('Testing real data fetch...')
+    LogUtil.Debug('Testing real data fetch...')
     trendLogData.value = await fetchRealData(sn, panel_id, trendlog_id, all_data || undefined)
   }
 }
@@ -551,22 +703,22 @@ const testRealData = async () => {
 const testJsonParsing = () => {
   const { all_data } = urlParams.value
   if (all_data) {
-    console.log('Testing JSON parsing...')
-    console.log('Raw all_data:', all_data)
+    LogUtil.Debug('Testing JSON parsing...')
+    LogUtil.Debug('Raw all_data:', all_data)
 
     const decoded = decodeUrlEncodedJson(all_data)
     if (decoded) {
-      console.log('Successfully decoded JSON:', decoded)
+      LogUtil.Debug('Successfully decoded JSON:', decoded)
       const isValid = validateTrendLogJsonStructure(decoded)
-      console.log('JSON structure validation:', isValid ? 'PASSED' : 'FAILED')
+      LogUtil.Debug('JSON structure validation:', isValid ? 'PASSED' : 'FAILED')
 
       if (isValid) {
-        console.log('Using decoded JSON as trend log data')
+        LogUtil.Debug('Using decoded JSON as trend log data')
         trendLogData.value = decoded
         pageTitle.value = 'T3000 Trend Log Analysis (JSON Test)'
       }
     } else {
-      console.log('Failed to decode JSON')
+      LogUtil.Debug('Failed to decode JSON')
     }
   }
 }
@@ -623,11 +775,83 @@ onMounted(() => {
 }
 
 .page-title {
-  margin: 0 0 4px 0;
+  margin: 0 0 12px 0;
   font-size: 24px;
   font-weight: 600;
   color: #262626;
   line-height: 1.2;
+}
+
+.parameter-details {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.parameter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.parameter-item {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.parameter-label {
+  font-weight: 500;
+  color: #495057;
+  margin-right: 8px;
+  min-width: 80px;
+}
+
+.parameter-value {
+  color: #212529;
+  font-weight: 600;
+}
+
+.data-source {
+  display: flex;
+  align-items: center;
+}
+
+.data-status {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  padding-top: 8px;
+  border-top: 1px solid #dee2e6;
+}
+
+.status-label {
+  font-weight: 500;
+  color: #495057;
+  margin-right: 8px;
+}
+
+.status-success {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.status-warning {
+  color: #ffc107;
+  font-weight: 500;
+}
+
+.status-error {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.status-pending {
+  color: #6c757d;
+  font-weight: 500;
 }
 
 .page-description {
@@ -772,6 +996,29 @@ onMounted(() => {
 
   .page-title {
     font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .parameter-details {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+
+  .parameter-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .parameter-item {
+    font-size: 12px;
+  }
+
+  .parameter-label {
+    min-width: 70px;
+  }
+
+  .data-status {
+    font-size: 12px;
   }
 
   .page-description {
@@ -790,6 +1037,19 @@ onMounted(() => {
 
   .page-title {
     font-size: 18px;
+  }
+
+  .parameter-details {
+    padding: 6px 8px;
+  }
+
+  .parameter-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .parameter-label {
+    margin-bottom: 2px;
   }
 
   .page-description {
