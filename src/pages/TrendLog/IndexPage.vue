@@ -69,49 +69,6 @@
         </span>
       </p>
 
-      <!-- URL Parameters Display (for debugging) -->
-      <div v-if="urlParams.sn || Object.keys(route.query).length > 0" class="url-params-debug" style="font-size: 12px; color: #666; margin-top: 8px;">
-        <strong>Parameters:</strong>
-        <span v-if="urlParams.sn">
-          sn={{ urlParams.sn }},
-          panel_id={{ urlParams.panel_id }},
-          trendlog_id={{ urlParams.trendlog_id }}
-          <span v-if="urlParams.all_data">
-            <br>
-            all_data: {{ urlParams.all_data.length > 100 ? urlParams.all_data.substring(0, 100) + '...' : urlParams.all_data }}
-            <span v-if="urlParams.all_data.startsWith('{')"> (JSON Format)</span>
-            <span v-else-if="urlParams.all_data.match(/^[0-9A-Fa-f]+$/)"> (Legacy Hex Format)</span>
-            <span v-else> (URL-Encoded JSON)</span>
-          </span>
-        </span>
-        <span v-else>
-          Demo Mode - Try these test URLs:
-          <br>
-          <a href="#/trend-log?sn=123&panel_id=3&trendlog_id=1" style="color: #659dc5; text-decoration: none;">
-            ?sn=123&panel_id=3&trendlog_id=1
-          </a>
-          <br>
-          <a href="#/trend-log?sn=456&panel_id=5&trendlog_id=2&all_data=%7B%22test%22%3A%22json%22%7D" style="color: #659dc5; text-decoration: none;">
-            ?sn=456&panel_id=5&trendlog_id=2&all_data=(JSON)
-          </a>
-        </span>
-
-        <!-- Debug buttons -->
-        <div style="margin-top: 8px;">
-          <button @click="loadTrendLogItemData" class="debug-button" style="margin-right: 8px;">
-            Reload Data
-          </button>
-          <button @click="testDemoData" class="debug-button" style="margin-right: 8px;">
-            Test Demo
-          </button>
-          <button @click="testRealData" class="debug-button" v-if="urlParams.sn">
-            Test API
-          </button>
-          <button @click="testJsonParsing" class="debug-button" style="margin-left: 8px;" v-if="urlParams.all_data">
-            Test JSON
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Loading State -->
@@ -175,8 +132,8 @@ const urlParams = computed(() => ({
 const getValidatedParameters = () => {
   const params = urlParams.value
 
-  // Check if we have the minimum required parameters
-  const hasRequiredParams = params.sn && params.panel_id && params.trendlog_id
+  // Check if we have the minimum required parameters (allow trendlog_id=0)
+  const hasRequiredParams = params.sn !== null && params.panel_id !== null && params.trendlog_id !== null
 
   return {
     sn: params.sn,
@@ -190,7 +147,7 @@ const getValidatedParameters = () => {
 // Computed properties for template
 const hasValidParameters = computed(() => {
   const params = urlParams.value
-  return !!(params.sn && params.panel_id && params.trendlog_id)
+  return params.sn !== null && params.panel_id !== null && params.trendlog_id !== null
 })
 
 const isJsonData = computed(() => {
@@ -262,68 +219,63 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
   return false
 }
 
-// Helper function to create demo input/range arrays for consistent structure
-const createDemoInputRangeArrays = (panel_id?: number) => {
-  const input = [
-    // 14 input items with real structure as per specification
-    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 1, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 2, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 3, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 4, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 5, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 6, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 17, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 8, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 10, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 11, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 22, point_type: 2, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 1, sub_panel: 0 },
-    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 1, sub_panel: 0 }
-  ]
+// Simple data formatter - convert query parameters to TrendLogChart format
+const formatDataFromQueryParams = () => {
+  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
-  // Range configuration as per specification
-  const range = [0, 0, 0, 4, 0, 0, 0, 7, 0, 0, 0, 0, 1, 1]
+  // Must have required parameters (allow trendlog_id=0)
+  if (sn === null || panel_id === null || trendlog_id === null) {
+    return null
+  }
 
-  return { input, range }
-}
+  let t3EntryData = null
 
-// Helper function to format scheduleItemData based on query parameters and current data
-const formatScheduleItemData = () => {
-  const { sn, panel_id, trendlog_id } = urlParams.value
+  // If all_data is provided, try to parse it
+  if (all_data) {
+    const decodedData = decodeUrlEncodedJson(all_data)
+    if (decodedData && jsonValidationStatus.value === 'valid') {
+      t3EntryData = decodedData.t3Entry || decodedData
+    }
+  }
 
-  // Get the actual data (either from trendLogItemData or create demo data)
-  let t3EntryData
-  if (trendLogItemData.value) {
-    // Use real data if available
-    t3EntryData = trendLogItemData.value.t3Entry || trendLogItemData.value
-  } else {
-    // Create demo data based on query parameters
-    const { input, range } = createDemoInputRangeArrays(panel_id)
+  // If no all_data or parsing failed, create basic structure
+  if (!t3EntryData) {
     t3EntryData = {
       an_inputs: 12,
-      command: `${panel_id || 3}MON${trendlog_id || 1}`,
+      command: `${panel_id}MON${trendlog_id}`,
       hour_interval_time: 0,
-      id: `MON${trendlog_id || 1}`,
+      id: `MON${trendlog_id}`,
       index: 0,
-      input,
-      label: `TRL${sn || 11111}_${panel_id || 3}_${trendlog_id || 1}`,
+      input: [],
+      label: `TRL${sn}_${panel_id}_${trendlog_id}`,
       minute_interval_time: 0,
       num_inputs: 14,
-      pid: panel_id || 3,
-      range,
+      pid: panel_id,
+      range: [],
       second_interval_time: 15,
       status: 1,
       type: "MON"
     }
   }
 
-  // Format as scheduleItemData structure
-  return {
+  // Ensure required fields are set
+  t3EntryData.pid = panel_id
+  t3EntryData.label = t3EntryData.label || `TRL${sn}_${panel_id}_${trendlog_id}`
+  t3EntryData.command = t3EntryData.command || `${panel_id}MON${trendlog_id}`
+  t3EntryData.id = t3EntryData.id || `MON${trendlog_id}`
+
+  // Format for TrendLogChart
+  const chartData = {
+    title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+    t3Entry: t3EntryData
+  }
+
+  // Format for scheduleItemData
+  const scheduleData = {
     active: false,
     cat: "TrendLog",
     height: 60,
-    id: trendlog_id || 1,
+    id: trendlog_id,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
@@ -339,365 +291,56 @@ const formatScheduleItemData = () => {
     },
     showDimensions: true,
     t3Entry: t3EntryData,
-    title: trendLogItemData.value?.title || `Trend Log ${trendlog_id || 1}`,
+    title: chartData.title,
     translate: [583, 68],
     type: "Monitor",
     width: 60,
     zindex: 1
   }
+
+  LogUtil.Debug('formatDataFromQueryParams created scheduleData:', scheduleData)
+  return { chartData, scheduleData }
 }
 
-// Demo data function - creates proper t3Entry structure for TrendLogChart
-const getDemoData = () => {
-  const { input, range } = createDemoInputRangeArrays()
-
-  return {
-    title: "Demo Trend Log",
-    t3Entry: {
-      an_inputs: 12,
-      command: "3MON1",
-      hour_interval_time: 0,
-      id: "MON1",
-      index: 0,
-      input,
-      label: "TRL11111",
-      minute_interval_time: 0,
-      num_inputs: 14,
-      pid: 3,
-      range,
-      second_interval_time: 15,
-      status: 1,
-      type: "MON"
-    }
-  }
-}
-
-// Fetch real data function - no API calls, uses TrendLogChart approach
-const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, all_data?: string) => {
-  LogUtil.Debug('fetchRealData called with:', { sn, panel_id, trendlog_id, all_data: all_data ? 'present' : 'none' })
+// Load data based on query parameters
+const loadTrendLogItemData = () => {
+  LogUtil.Debug('Loading trend log data from query parameters...')
+  LogUtil.Debug('Current scheduleItemData before update:', scheduleItemData.value)
 
   try {
     isLoading.value = true
     error.value = null
 
-    // Get validated parameters
-    const validatedParams = getValidatedParameters()
-    if (!validatedParams.isValid) {
-      throw new Error('Invalid parameters: sn, panel_id, and trendlog_id are required')
+    const formattedData = formatDataFromQueryParams()
+
+    if (formattedData) {
+      trendLogItemData.value = formattedData.chartData
+      scheduleItemData.value = formattedData.scheduleData
+      pageTitle.value = formattedData.chartData.title
+      LogUtil.Debug('Data formatted from query parameters:', formattedData)
+      LogUtil.Debug('scheduleItemData updated to:', scheduleItemData.value)
+    } else {
+      trendLogItemData.value = null
+      scheduleItemData.value = null
+      pageTitle.value = 'T3000 Trend Log Analysis'
+      LogUtil.Debug('No valid parameters provided')
+      LogUtil.Debug('scheduleItemData set to null')
     }
-
-    // If all_data is provided, try to parse it as JSON first (from C++ backend)
-    if (all_data) {
-      LogUtil.Debug('Processing all_data parameter:', all_data.substring(0, 100) + '...')
-
-      // Try to decode and parse JSON from C++ backend
-      const decodedJsonData = decodeUrlEncodedJson(all_data)
-
-      // Check if C++ returned an error or if parsing failed
-      if (jsonValidationStatus.value === 'error') {
-        LogUtil.Debug('C++ JSON conversion failed, falling back to demo data')
-        // Don't return early, fall through to demo data
-      } else if (decodedJsonData && jsonValidationStatus.value === 'valid') {
-        LogUtil.Debug('Successfully parsed JSON data from C++ backend:', decodedJsonData)
-
-        // Format data properly for TrendLogChart component
-        let processedData
-        if (decodedJsonData.command && decodedJsonData.id) {
-          // Direct t3Entry object from C++
-          processedData = {
-            title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-            t3Entry: decodedJsonData
-          }
-        } else if (decodedJsonData.t3Entry) {
-          // Wrapped structure with t3Entry
-          processedData = {
-            title: decodedJsonData.title || `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-            t3Entry: decodedJsonData.t3Entry
-          }
-        } else {
-          // Assume the whole object is the data structure
-          processedData = decodedJsonData
-        }
-
-        // Ensure t3Entry has required parameters for TrendLogChart
-        if (processedData.t3Entry) {
-          processedData.t3Entry.pid = panel_id
-          processedData.t3Entry.label = processedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
-          processedData.t3Entry.command = processedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
-          processedData.t3Entry.id = processedData.t3Entry.id || `MON${trendlog_id}`
-
-          // Ensure input array exists and is properly formatted
-          if (!Array.isArray(processedData.t3Entry.input)) {
-            processedData.t3Entry.input = []
-          }
-
-          // Ensure range array exists and matches input array length
-          if (!Array.isArray(processedData.t3Entry.range)) {
-            processedData.t3Entry.range = new Array(processedData.t3Entry.input.length).fill(0)
-          }
-        }
-
-        LogUtil.Debug('Formatted data for TrendLogChart:', processedData)
-        return processedData
-      } else {
-        LogUtil.Debug('Failed to parse all_data as valid JSON, falling back to demo data')
-      }
-    }
-
-    // No API calls - but we have valid parameters, so create proper data structure
-    LogUtil.Debug('✅ Using REAL query parameters (not demo data):', { sn, panel_id, trendlog_id })
-    LogUtil.Debug('No all_data provided, but we have valid parameters - creating data structure')
-
-    // Create proper t3Entry structure with the actual parameters
-    const { input, range } = createDemoInputRangeArrays(panel_id)
-    const realDataStructure = {
-      title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-      t3Entry: {
-        an_inputs: 12,
-        command: `${panel_id}MON${trendlog_id}`,
-        hour_interval_time: 0,
-        id: `MON${trendlog_id}`,
-        index: 0,
-        input,
-        label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-        minute_interval_time: 0,
-        num_inputs: 14,
-        pid: panel_id,
-        range,
-        second_interval_time: 15,
-        status: 1,
-        type: "MON"
-      }
-    }
-
-    LogUtil.Debug('Created real data structure from parameters:', realDataStructure)
-    return realDataStructure
 
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-    error.value = errorMessage
-    console.error('Error processing trend log data:', err)
-
-    // Return real data structure even on error (not demo data)
-    LogUtil.Debug('Error occurred, but still creating real data structure from parameters')
-    const { input, range } = createDemoInputRangeArrays(panel_id)
-    return {
-      title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-      t3Entry: {
-        an_inputs: 12,
-        command: `${panel_id}MON${trendlog_id}`,
-        hour_interval_time: 0,
-        id: `MON${trendlog_id}`,
-        index: 0,
-        input,
-        label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-        minute_interval_time: 0,
-        num_inputs: 14,
-        pid: panel_id,
-        range,
-        second_interval_time: 15,
-        status: 1,
-        type: "MON"
-      }
-    }
+    console.error('Error formatting data:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to format data'
+    trendLogItemData.value = null
+    scheduleItemData.value = null
   } finally {
     isLoading.value = false
   }
 }
 
-// Enhanced demo data with real parameters - formats data for TrendLogChart compatibility
-const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: number, all_data?: string) => {
-  // First, try to parse all_data as JSON if it's provided
-  if (all_data) {
-    const decodedJsonData = decodeUrlEncodedJson(all_data)
-    if (decodedJsonData && validateTrendLogJsonStructure(decodedJsonData)) {
-      LogUtil.Debug('Using JSON data from all_data parameter as demo data')
-
-      // Format the JSON data properly for TrendLogChart
-      let formattedData
-      if (decodedJsonData.command && decodedJsonData.id) {
-        // Direct t3Entry object from C++
-        formattedData = {
-          title: `Trend Log ${trendlog_id} (SN: ${sn}) - From C++`,
-          t3Entry: decodedJsonData
-        }
-      } else if (decodedJsonData.t3Entry) {
-        // Wrapped structure
-        formattedData = {
-          title: decodedJsonData.title || `Trend Log ${trendlog_id} (SN: ${sn}) - From C++`,
-          t3Entry: decodedJsonData.t3Entry
-        }
-      } else {
-        formattedData = decodedJsonData
-      }
-
-      // Update t3Entry with current parameters
-      if (sn && panel_id && trendlog_id && formattedData.t3Entry) {
-        formattedData.t3Entry.pid = panel_id
-        formattedData.t3Entry.label = formattedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
-        formattedData.t3Entry.command = formattedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
-        formattedData.t3Entry.id = formattedData.t3Entry.id || `MON${trendlog_id}`
-
-        // Update input points to use the actual panel ID if needed
-        if (Array.isArray(formattedData.t3Entry.input)) {
-          formattedData.t3Entry.input = formattedData.t3Entry.input.map((input: any) => ({
-            ...input,
-            panel: input.panel || panel_id // Use existing panel or fallback to URL panel_id
-          }))
-        }
-      }
-
-      return formattedData
-    }
-  }
-
-  // Fallback to structured demo data - optimized for TrendLogChart
-  const demoData = getDemoData()
-
-  // Update demo data with actual parameters if provided
-  if (sn && panel_id && trendlog_id) {
-    demoData.title = `Demo Trend Log ${trendlog_id} (SN: ${sn})`
-    demoData.t3Entry.label = `TRL${sn}_${panel_id}_${trendlog_id}`
-    demoData.t3Entry.pid = panel_id
-    demoData.t3Entry.id = `MON${trendlog_id}`
-    demoData.t3Entry.command = `${panel_id}MON${trendlog_id}`
-
-    // Create mixed panel data - some from requested panel, some from other panels
-    demoData.t3Entry.input = demoData.t3Entry.input.map((input, index) => ({
-      ...input,
-      // For demo: mix panels 2 and the requested panel_id to show left/right panel data
-      panel: index < 7 ? 2 : panel_id // First 7 items from panel 2, rest from requested panel
-    }))
-  }
-
-  return demoData
-}
-
-// Load data based on URL parameters or use demo data - no API calls like TrendLogChart
-const loadTrendLogItemData = async () => {
-  LogUtil.Debug('Loading trend log item data...')
-
-  // Get validated parameters
-  const validatedParams = getValidatedParameters()
-  LogUtil.Debug('Validated parameters:', validatedParams)
-
-  // Reset validation status
-  jsonValidationStatus.value = null
-
-  // Update page title based on parameters
-  if (validatedParams.isValid) {
-    const { sn, panel_id, trendlog_id, all_data } = validatedParams
-    pageTitle.value = `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`
-
-    // Detect data source
-    if (all_data) {
-      const isJson = all_data.startsWith('{') || all_data.includes('%7B') // URL-encoded '{'
-      LogUtil.Debug(`Data source: ${isJson ? 'JSON from C++' : 'Legacy/API'}`)
-    }
-
-    try {
-      // Process data using the same approach as TrendLogChart (no API calls)
-      trendLogItemData.value = await fetchRealData(sn!, panel_id!, trendlog_id!, all_data || undefined)
-    } catch (err) {
-      console.error('Error processing trend log data:', err)
-      error.value = err instanceof Error ? err.message : 'Failed to process trend log data'
-      // Fall back to real data structure (not demo) with parameters
-      const { input, range } = createDemoInputRangeArrays(panel_id)
-      trendLogItemData.value = {
-        title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-        t3Entry: {
-          an_inputs: 12,
-          command: `${panel_id}MON${trendlog_id}`,
-          hour_interval_time: 0,
-          id: `MON${trendlog_id}`,
-          index: 0,
-          input,
-          label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-          minute_interval_time: 0,
-          num_inputs: 14,
-          pid: panel_id,
-          range,
-          second_interval_time: 15,
-          status: 1,
-          type: "MON"
-        }
-      }
-    }
-  } else {
-    pageTitle.value = 'T3000 Trend Log Analysis (Demo)'
-    trendLogItemData.value = getDemoData()
-  }
-
-  LogUtil.Debug('Final trend log data loaded:', trendLogItemData.value)
-
-  // Trigger currentItemData computation to update scheduleItemData
-  // This ensures scheduleItemData is updated with the latest data
-  const updatedItemData = currentItemData.value
-  LogUtil.Debug('scheduleItemData updated after data load:', scheduleItemData.value)
-}
-
-// Test functions for debugging
-const testDemoData = () => {
-  LogUtil.Debug('Testing demo data...')
-  trendLogItemData.value = getDemoData()
-  pageTitle.value = 'T3000 Trend Log Analysis (Demo Test)'
-  // Trigger scheduleItemData update
-  const updatedItemData = currentItemData.value
-  LogUtil.Debug('scheduleItemData updated after demo test:', scheduleItemData.value)
-}
-
-const testRealData = async () => {
-  const { sn, panel_id, trendlog_id, all_data } = urlParams.value
-  if (sn && panel_id && trendlog_id) {
-    LogUtil.Debug('Testing data processing (no API calls)...')
-    trendLogItemData.value = await fetchRealData(sn, panel_id, trendlog_id, all_data || undefined)
-    // Trigger scheduleItemData update
-    const updatedItemData = currentItemData.value
-    LogUtil.Debug('scheduleItemData updated after real data test:', scheduleItemData.value)
-  }
-}
-
-const testJsonParsing = () => {
-  const { all_data } = urlParams.value
-  if (all_data) {
-    LogUtil.Debug('Testing JSON parsing...')
-    LogUtil.Debug('Raw all_data:', all_data)
-
-    const decoded = decodeUrlEncodedJson(all_data)
-    if (decoded) {
-      LogUtil.Debug('Successfully decoded JSON:', decoded)
-      const isValid = validateTrendLogJsonStructure(decoded)
-      LogUtil.Debug('JSON structure validation:', isValid ? 'PASSED' : 'FAILED')
-
-      if (isValid) {
-        LogUtil.Debug('Using decoded JSON as trend log data')
-        trendLogItemData.value = decoded
-        pageTitle.value = 'T3000 Trend Log Analysis (JSON Test)'
-        // Trigger scheduleItemData update
-        const updatedItemData = currentItemData.value
-        LogUtil.Debug('scheduleItemData updated after JSON test:', scheduleItemData.value)
-      }
-    } else {
-      LogUtil.Debug('Failed to decode JSON')
-    }
-  }
-}
-
-// Computed property for item data - formats URL parameters into props for TrendLogChart
+// Clean computed property for TrendLogChart props - no side effects
 const currentItemData = computed(() => {
-  // Always set scheduleItemData based on current query parameters and data
-  scheduleItemData.value = formatScheduleItemData()
-
-  LogUtil.Debug('scheduleItemData updated from query parameters:', scheduleItemData.value)
-
-  // Return the trend log data for TrendLogChart props (or null for default behavior)
-  if (trendLogItemData.value) {
-    LogUtil.Debug('Using trendLogItemData for TrendLogChart props:', trendLogItemData.value)
-    return trendLogItemData.value
-  } else {
-    LogUtil.Debug('No trendLogItemData available, TrendLogChart will use default behavior')
-    return null
-  }
+  // Simply return the current trend log data for TrendLogChart
+  return trendLogItemData.value
 })// Watch for URL parameter changes
 watch(
   () => route.query,
@@ -710,78 +353,15 @@ watch(
 onMounted(() => {
   LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
 
-  // Initialize scheduleItemData based on query parameters
-  scheduleItemData.value = formatScheduleItemData()
-  LogUtil.Debug('Initial scheduleItemData set on mount:', scheduleItemData.value)
-
-  // Load trend log data when the page loads
-  loadTrendLogItemData()
-
-  // Simple debugging to verify URL parameter processing
-  LogUtil.Debug('=== IndexPage Props Formation (same as HvacDrawer objectDoubleClicked) ===')
-  LogUtil.Debug('URL Parameters:', urlParams.value)
-  LogUtil.Debug('Has Valid Parameters:', hasValidParameters.value)
-
-  // Watch for changes in currentItemData (props to TrendLogChart)
-  watch(() => currentItemData.value, (newData) => {
-    LogUtil.Debug('=== Props passed to TrendLogChart ===')
-    if (newData) {
-      LogUtil.Debug('Title:', newData?.title)
-      LogUtil.Debug('t3Entry ID:', newData?.t3Entry?.id)
-      LogUtil.Debug('t3Entry PID:', newData?.t3Entry?.pid)
-      LogUtil.Debug('Input count:', newData?.t3Entry?.input?.length)
-      LogUtil.Debug('Range count:', newData?.t3Entry?.range?.length)
-
-      // Log panel distribution
-      if (newData?.t3Entry?.input && Array.isArray(newData.t3Entry.input)) {
-        const panelCounts = newData.t3Entry.input.reduce((acc: any, input: any) => {
-          acc[input.panel] = (acc[input.panel] || 0) + 1
-          return acc
-        }, {})
-        LogUtil.Debug('Panel distribution:', panelCounts)
-      }
-    } else {
-      LogUtil.Debug('No props data - TrendLogChart will use default behavior')
-    }
+  // Watch scheduleItemData changes
+  watch(() => scheduleItemData.value, (newValue, oldValue) => {
+    LogUtil.Debug('scheduleItemData changed:')
+    LogUtil.Debug('Old value:', oldValue)
+    LogUtil.Debug('New value:', newValue)
   }, { immediate: true })
 
-  // Watch scheduleItemData to confirm it matches HvacDrawer pattern
-  watch(() => scheduleItemData.value, (newScheduleData, oldScheduleData) => {
-    LogUtil.Debug('=== scheduleItemData Updated (matches HvacDrawer objectDoubleClicked pattern) ===')
-
-    if (!newScheduleData) {
-      LogUtil.Debug('⚠ scheduleItemData is NULL/UNDEFINED - This will cause TrendLogChart issues!')
-      return
-    }
-
-    LogUtil.Debug('scheduleItemData structure:', {
-      hasData: !!newScheduleData,
-      cat: (newScheduleData as any)?.cat,
-      id: (newScheduleData as any)?.id,
-      type: (newScheduleData as any)?.type,
-      title: (newScheduleData as any)?.title,
-      hasT3Entry: !!(newScheduleData as any)?.t3Entry,
-      hasSettings: !!(newScheduleData as any)?.settings
-    })
-
-    LogUtil.Debug('scheduleItemData t3Entry:', {
-      id: (newScheduleData as any)?.t3Entry?.id,
-      pid: (newScheduleData as any)?.t3Entry?.pid,
-      type: (newScheduleData as any)?.t3Entry?.type,
-      label: (newScheduleData as any)?.t3Entry?.label,
-      command: (newScheduleData as any)?.t3Entry?.command,
-      inputCount: (newScheduleData as any)?.t3Entry?.input?.length,
-      rangeCount: (newScheduleData as any)?.t3Entry?.range?.length,
-      status: (newScheduleData as any)?.t3Entry?.status
-    })
-
-    // Check if this is an update (not initial set)
-    if (oldScheduleData && oldScheduleData !== newScheduleData) {
-      LogUtil.Debug('📊 scheduleItemData UPDATED - TrendLogChart should refresh with new data')
-    } else if (!oldScheduleData) {
-      LogUtil.Debug('🆕 scheduleItemData INITIALIZED - Ready for TrendLogChart')
-    }
-  }, { immediate: true, deep: true })
+  // Load and format data from query parameters
+  loadTrendLogItemData()
 })
 </script>
 
