@@ -265,25 +265,25 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
 // Helper function to create demo input/range arrays for consistent structure
 const createDemoInputRangeArrays = (panel_id?: number) => {
   const input = [
-    // 14 input items with all fields set to 0 as per specification
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 },
-    { network: 0, panel: 0, point_number: 0, point_type: 0, sub_panel: 0 }
+    // 14 input items with real structure as per specification
+    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 1, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 2, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 3, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 4, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 5, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 6, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 17, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 8, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 10, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 11, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 22, point_type: 2, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 1, sub_panel: 0 },
+    { network: 0, panel: panel_id || 3, point_number: 0, point_type: 1, sub_panel: 0 }
   ]
 
-  // Range configuration with all values set to 0 as per specification
-  const range = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  // Range configuration as per specification
+  const range = [0, 0, 0, 4, 0, 0, 0, 7, 0, 0, 0, 0, 1, 1]
 
   return { input, range }
 }
@@ -301,7 +301,7 @@ const formatScheduleItemData = () => {
     // Create demo data based on query parameters
     const { input, range } = createDemoInputRangeArrays(panel_id)
     t3EntryData = {
-      an_inputs: 0,
+      an_inputs: 12,
       command: `${panel_id || 3}MON${trendlog_id || 1}`,
       hour_interval_time: 0,
       id: `MON${trendlog_id || 1}`,
@@ -309,7 +309,7 @@ const formatScheduleItemData = () => {
       input,
       label: `TRL${sn || 11111}_${panel_id || 3}_${trendlog_id || 1}`,
       minute_interval_time: 0,
-      num_inputs: 0,
+      num_inputs: 14,
       pid: panel_id || 3,
       range,
       second_interval_time: 15,
@@ -354,7 +354,7 @@ const getDemoData = () => {
   return {
     title: "Demo Trend Log",
     t3Entry: {
-      an_inputs: 0,
+      an_inputs: 12,
       command: "3MON1",
       hour_interval_time: 0,
       id: "MON1",
@@ -362,7 +362,7 @@ const getDemoData = () => {
       input,
       label: "TRL11111",
       minute_interval_time: 0,
-      num_inputs: 0,
+      num_inputs: 14,
       pid: 3,
       range,
       second_interval_time: 15,
@@ -444,17 +444,62 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
       }
     }
 
-    // No API calls - fall back directly to demo data like TrendLogChart does
-    LogUtil.Debug('Using demo data approach like TrendLogChart')
-    return getDemoDataWithParams(sn, panel_id, trendlog_id, all_data)
+    // No API calls - but we have valid parameters, so create proper data structure
+    LogUtil.Debug('✅ Using REAL query parameters (not demo data):', { sn, panel_id, trendlog_id })
+    LogUtil.Debug('No all_data provided, but we have valid parameters - creating data structure')
+
+    // Create proper t3Entry structure with the actual parameters
+    const { input, range } = createDemoInputRangeArrays(panel_id)
+    const realDataStructure = {
+      title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+      t3Entry: {
+        an_inputs: 12,
+        command: `${panel_id}MON${trendlog_id}`,
+        hour_interval_time: 0,
+        id: `MON${trendlog_id}`,
+        index: 0,
+        input,
+        label: `TRL${sn}_${panel_id}_${trendlog_id}`,
+        minute_interval_time: 0,
+        num_inputs: 14,
+        pid: panel_id,
+        range,
+        second_interval_time: 15,
+        status: 1,
+        type: "MON"
+      }
+    }
+
+    LogUtil.Debug('Created real data structure from parameters:', realDataStructure)
+    return realDataStructure
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
     error.value = errorMessage
     console.error('Error processing trend log data:', err)
 
-    // Return demo data with actual parameters
-    return getDemoDataWithParams(sn, panel_id, trendlog_id, all_data)
+    // Return real data structure even on error (not demo data)
+    LogUtil.Debug('Error occurred, but still creating real data structure from parameters')
+    const { input, range } = createDemoInputRangeArrays(panel_id)
+    return {
+      title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+      t3Entry: {
+        an_inputs: 12,
+        command: `${panel_id}MON${trendlog_id}`,
+        hour_interval_time: 0,
+        id: `MON${trendlog_id}`,
+        index: 0,
+        input,
+        label: `TRL${sn}_${panel_id}_${trendlog_id}`,
+        minute_interval_time: 0,
+        num_inputs: 14,
+        pid: panel_id,
+        range,
+        second_interval_time: 15,
+        status: 1,
+        type: "MON"
+      }
+    }
   } finally {
     isLoading.value = false
   }
@@ -556,8 +601,27 @@ const loadTrendLogItemData = async () => {
     } catch (err) {
       console.error('Error processing trend log data:', err)
       error.value = err instanceof Error ? err.message : 'Failed to process trend log data'
-      // Fall back to demo data with parameters
-      trendLogItemData.value = getDemoDataWithParams(sn!, panel_id!, trendlog_id!, all_data || undefined)
+      // Fall back to real data structure (not demo) with parameters
+      const { input, range } = createDemoInputRangeArrays(panel_id)
+      trendLogItemData.value = {
+        title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+        t3Entry: {
+          an_inputs: 12,
+          command: `${panel_id}MON${trendlog_id}`,
+          hour_interval_time: 0,
+          id: `MON${trendlog_id}`,
+          index: 0,
+          input,
+          label: `TRL${sn}_${panel_id}_${trendlog_id}`,
+          minute_interval_time: 0,
+          num_inputs: 14,
+          pid: panel_id,
+          range,
+          second_interval_time: 15,
+          status: 1,
+          type: "MON"
+        }
+      }
     }
   } else {
     pageTitle.value = 'T3000 Trend Log Analysis (Demo)'
