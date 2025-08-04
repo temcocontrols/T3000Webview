@@ -262,145 +262,52 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
   return false
 }
 
-// Demo data function
+// Demo data function - creates proper t3Entry structure for TrendLogChart
 const getDemoData = () => {
   return {
     title: "Demo Trend Log",
-    active: true,
-    type: "Temperature",
-    translate: [256.6363359569053, 321.74069633799525],
-    width: 60,
-    height: 60,
-    rotate: 0,
-    scaleX: 1,
-    scaleY: 1,
-    settings: {
-      fillColor: "#659dc5",
-      titleColor: "inherit",
-      bgColor: "inherit",
-      textColor: "inherit",
-      fontSize: 16,
-      t3EntryDisplayField: "label"
-    },
-    zindex: 1,
     t3Entry: {
-      an_inputs: 12,
-      command: "3MON1",
-      hour_interval_time: 0,
+      // Core monitor configuration
       id: "MON1",
-      index: 0,
-      input: [
-        {
-          network: 0,
-          panel: 3,
-          point_number: 0,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 1,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 2,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 0,
-          point_type: 3,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 4,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 5,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 6,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 17,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 8,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 10,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 11,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 22,
-          point_type: 2,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 0,
-          point_type: 1,
-          sub_panel: 0
-        },
-        {
-          network: 0,
-          panel: 3,
-          point_number: 0,
-          point_type: 1,
-          sub_panel: 0
-        }
-      ],
-      label: "TRL11111",
-      minute_interval_time: 0,
-      num_inputs: 14,
+      command: "3MON1",
+      label: "Demo Trend Log Monitor",
       pid: 3,
-      range: [0, 0, 0, 4, 0, 0, 0, 7, 0, 0, 0, 0, 1, 1],
+
+      // Timing configuration
+      hour_interval_time: 0,
+      minute_interval_time: 0,
       second_interval_time: 15,
+
+      // Input configuration (14 items showing left and right panel data)
+      num_inputs: 14,
+      input: [
+        // Left panel (panel: 2) - inputs 0-6
+        { network: 0, panel: 2, point_number: 0, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 2, point_number: 1, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 2, point_number: 2, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 2, point_number: 3, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 2, point_number: 4, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 2, point_number: 5, point_type: 3, sub_panel: 0 }, // Variable
+        { network: 0, panel: 2, point_number: 6, point_type: 1, sub_panel: 0 }, // Output
+
+        // Right panel (panel: 3) - inputs 7-13
+        { network: 0, panel: 3, point_number: 0, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 3, point_number: 1, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 3, point_number: 2, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 3, point_number: 3, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 3, point_number: 4, point_type: 2, sub_panel: 0 },
+        { network: 0, panel: 3, point_number: 5, point_type: 3, sub_panel: 0 }, // Variable
+        { network: 0, panel: 3, point_number: 6, point_type: 1, sub_panel: 0 }  // Output
+      ],
+
+      // Range configuration (0=analog, 1=digital) - matches input array
+      range: [0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1],
+
+      // Status and type
       status: 1,
-      type: "MON"
-    },
-    showDimensions: true,
-    cat: "Duct",
-    id: 4
+      type: "MON",
+      an_inputs: 12
+    }
   }
 }
 
@@ -432,51 +339,44 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
       } else if (decodedJsonData && jsonValidationStatus.value === 'valid') {
         LogUtil.Debug('Successfully parsed JSON data from C++ backend:', decodedJsonData)
 
-        // Handle direct t3Entry object from C++
+        // Format data properly for TrendLogChart component
         let processedData
         if (decodedJsonData.command && decodedJsonData.id) {
-          // Direct t3Entry object
+          // Direct t3Entry object from C++
           processedData = {
             title: `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-            active: true,
-            type: "Temperature",
-            translate: [256.6363359569053, 321.74069633799525],
-            width: 60,
-            height: 60,
-            rotate: 0,
-            scaleX: 1,
-            scaleY: 1,
-            settings: {
-              fillColor: "#659dc5",
-              titleColor: "inherit",
-              bgColor: "inherit",
-              textColor: "inherit",
-              fontSize: 16,
-              t3EntryDisplayField: "label"
-            },
-            zindex: 1,
-            t3Entry: decodedJsonData,
-            showDimensions: true,
-            cat: "Duct",
-            id: trendlog_id
+            t3Entry: decodedJsonData
+          }
+        } else if (decodedJsonData.t3Entry) {
+          // Wrapped structure with t3Entry
+          processedData = {
+            title: decodedJsonData.title || `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
+            t3Entry: decodedJsonData.t3Entry
           }
         } else {
-          // Wrapped structure
-          processedData = {
-            ...decodedJsonData,
-            title: decodedJsonData.title || `Trend Log ${trendlog_id} - Panel ${panel_id} (SN: ${sn})`,
-            id: trendlog_id
-          }
+          // Assume the whole object is the data structure
+          processedData = decodedJsonData
         }
 
-        // Update with current parameters
+        // Ensure t3Entry has required parameters for TrendLogChart
         if (processedData.t3Entry) {
           processedData.t3Entry.pid = panel_id
           processedData.t3Entry.label = processedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
           processedData.t3Entry.command = processedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
           processedData.t3Entry.id = processedData.t3Entry.id || `MON${trendlog_id}`
+
+          // Ensure input array exists and is properly formatted
+          if (!Array.isArray(processedData.t3Entry.input)) {
+            processedData.t3Entry.input = []
+          }
+
+          // Ensure range array exists and matches input array length
+          if (!Array.isArray(processedData.t3Entry.range)) {
+            processedData.t3Entry.range = new Array(processedData.t3Entry.input.length).fill(0)
+          }
         }
 
+        LogUtil.Debug('Formatted data for TrendLogChart:', processedData)
         return processedData
       } else {
         LogUtil.Debug('Failed to parse all_data as valid JSON, falling back to demo data')
@@ -499,7 +399,7 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
   }
 }
 
-// Enhanced demo data with real parameters
+// Enhanced demo data with real parameters - formats data for TrendLogChart compatibility
 const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: number, all_data?: string) => {
   // First, try to parse all_data as JSON if it's provided
   if (all_data) {
@@ -507,48 +407,60 @@ const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: num
     if (decodedJsonData && validateTrendLogJsonStructure(decodedJsonData)) {
       LogUtil.Debug('Using JSON data from all_data parameter as demo data')
 
-      // Update the JSON data with current parameters
-      const updatedData = {
-        ...decodedJsonData,
-        title: `Trend Log ${trendlog_id} (SN: ${sn}) - From C++`,
-        id: trendlog_id
+      // Format the JSON data properly for TrendLogChart
+      let formattedData
+      if (decodedJsonData.command && decodedJsonData.id) {
+        // Direct t3Entry object from C++
+        formattedData = {
+          title: `Trend Log ${trendlog_id} (SN: ${sn}) - From C++`,
+          t3Entry: decodedJsonData
+        }
+      } else if (decodedJsonData.t3Entry) {
+        // Wrapped structure
+        formattedData = {
+          title: decodedJsonData.title || `Trend Log ${trendlog_id} (SN: ${sn}) - From C++`,
+          t3Entry: decodedJsonData.t3Entry
+        }
+      } else {
+        formattedData = decodedJsonData
       }
 
-      if (sn && panel_id && trendlog_id && updatedData.t3Entry) {
-        updatedData.t3Entry.pid = panel_id
-        updatedData.t3Entry.label = updatedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
-        updatedData.t3Entry.command = updatedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
-        updatedData.t3Entry.id = updatedData.t3Entry.id || `MON${trendlog_id}`
+      // Update t3Entry with current parameters
+      if (sn && panel_id && trendlog_id && formattedData.t3Entry) {
+        formattedData.t3Entry.pid = panel_id
+        formattedData.t3Entry.label = formattedData.t3Entry.label || `TRL_${sn}_${panel_id}_${trendlog_id}`
+        formattedData.t3Entry.command = formattedData.t3Entry.command || `${panel_id}MON${trendlog_id}`
+        formattedData.t3Entry.id = formattedData.t3Entry.id || `MON${trendlog_id}`
 
         // Update input points to use the actual panel ID if needed
-        if (Array.isArray(updatedData.t3Entry.input)) {
-          updatedData.t3Entry.input = updatedData.t3Entry.input.map((input: any) => ({
+        if (Array.isArray(formattedData.t3Entry.input)) {
+          formattedData.t3Entry.input = formattedData.t3Entry.input.map((input: any) => ({
             ...input,
-            panel: panel_id // Update panel ID to match the URL parameter
+            panel: input.panel || panel_id // Use existing panel or fallback to URL panel_id
           }))
         }
       }
 
-      return updatedData
+      return formattedData
     }
   }
 
-  // Fallback to original demo data - this is the same approach TrendLogChart uses
+  // Fallback to structured demo data - optimized for TrendLogChart
   const demoData = getDemoData()
 
-  // Update demo data with actual parameters
+  // Update demo data with actual parameters if provided
   if (sn && panel_id && trendlog_id) {
     demoData.title = `Demo Trend Log ${trendlog_id} (SN: ${sn})`
-    demoData.id = trendlog_id
     demoData.t3Entry.label = `TRL_${sn}_${panel_id}_${trendlog_id}`
     demoData.t3Entry.pid = panel_id
     demoData.t3Entry.id = `MON${trendlog_id}`
     demoData.t3Entry.command = `${panel_id}MON${trendlog_id}`
 
-    // Update input points to use the actual panel ID
-    demoData.t3Entry.input = demoData.t3Entry.input.map(input => ({
+    // Create mixed panel data - some from requested panel, some from other panels
+    demoData.t3Entry.input = demoData.t3Entry.input.map((input, index) => ({
       ...input,
-      panel: panel_id
+      // For demo: mix panels 2 and the requested panel_id to show left/right panel data
+      panel: index < 7 ? 2 : panel_id // First 7 items from panel 2, rest from requested panel
     }))
   }
 
@@ -632,27 +544,45 @@ const testJsonParsing = () => {
   }
 }
 
-// Computed property for item data - uses same pattern as TrendLogChart
+// Computed property for item data - formatted specifically for TrendLogChart
 const currentItemData = computed(() => {
-  // If we have trend log data from URL parameters, use it
+  // If we have trend log data from URL parameters, use it (already formatted for TrendLogChart)
   if (trendLogData.value) {
+    LogUtil.Debug('Using trendLogData for TrendLogChart:', trendLogData.value)
+
+    // CRITICAL: Update scheduleItemData so TrendLogChart can fetch real data
+    // TrendLogChart uses scheduleItemData for real data fetching, not props.itemData
+    if (trendLogData.value.t3Entry) {
+      LogUtil.Debug('Setting scheduleItemData for TrendLogChart real data integration')
+      scheduleItemData.value = trendLogData.value
+    }
+
     return trendLogData.value
   }
 
   // Otherwise, use the scheduleItemData fallback like TrendLogChart does
-  // This ensures compatibility with the existing T3000 data flow
-  return scheduleItemData.value || {
+  // But ensure it has the proper structure TrendLogChart expects
+  const fallbackData = scheduleItemData.value || {
+    title: 'T3000 Trend Log Analysis',
     t3Entry: {
-      description: 'Trend Log Chart',
-      label: 'T3000 Data Analysis',
       id: 'trend-log-1',
-      pid: 1
-    },
-    title: 'Trend Log Analysis'
+      command: '1MON1',
+      label: 'T3000 Data Analysis',
+      pid: 1,
+      hour_interval_time: 0,
+      minute_interval_time: 0,
+      second_interval_time: 15,
+      num_inputs: 0,
+      input: [],
+      range: [],
+      status: 1,
+      type: "MON"
+    }
   }
-})
 
-// Watch for URL parameter changes
+  LogUtil.Debug('Using fallback data for TrendLogChart:', fallbackData)
+  return fallbackData
+})// Watch for URL parameter changes
 watch(
   () => route.query,
   () => {
@@ -664,6 +594,49 @@ watch(
 onMounted(() => {
   // Load trend log data when the page loads
   loadTrendLogData()
+
+  // Debug: Log the data structure that will be passed to TrendLogChart
+  LogUtil.Debug('=== IndexPage Data Structure Debug ===')
+  LogUtil.Debug('URL Parameters:', urlParams.value)
+  LogUtil.Debug('Has Valid Parameters:', hasValidParameters.value)
+  LogUtil.Debug('Initial scheduleItemData:', scheduleItemData.value)
+
+  // Watch for changes in currentItemData and log them
+  watch(() => currentItemData.value, (newData) => {
+    LogUtil.Debug('=== Data passed to TrendLogChart ===')
+    LogUtil.Debug('Title:', newData?.title)
+    LogUtil.Debug('t3Entry structure:', {
+      id: newData?.t3Entry?.id,
+      pid: newData?.t3Entry?.pid,
+      label: newData?.t3Entry?.label,
+      command: newData?.t3Entry?.command,
+      inputCount: newData?.t3Entry?.input?.length,
+      rangeCount: newData?.t3Entry?.range?.length,
+      hasInputArray: Array.isArray(newData?.t3Entry?.input),
+      hasRangeArray: Array.isArray(newData?.t3Entry?.range)
+    })
+
+    // Log panel distribution in input array
+    if (newData?.t3Entry?.input && Array.isArray(newData.t3Entry.input)) {
+      const panelCounts = newData.t3Entry.input.reduce((acc: any, input: any) => {
+        acc[input.panel] = (acc[input.panel] || 0) + 1
+        return acc
+      }, {})
+      LogUtil.Debug('Panel distribution in input array:', panelCounts)
+    }
+  }, { immediate: true })
+
+  // CRITICAL: Watch scheduleItemData changes to ensure TrendLogChart gets the data
+  watch(() => scheduleItemData.value, (newScheduleData) => {
+    LogUtil.Debug('=== scheduleItemData Updated (TrendLogChart will use this for real data) ===')
+    LogUtil.Debug('scheduleItemData t3Entry:', {
+      id: (newScheduleData as any)?.t3Entry?.id,
+      pid: (newScheduleData as any)?.t3Entry?.pid,
+      label: (newScheduleData as any)?.t3Entry?.label,
+      inputCount: (newScheduleData as any)?.t3Entry?.input?.length,
+      rangeCount: (newScheduleData as any)?.t3Entry?.range?.length
+    })
+  }, { immediate: true, deep: true })
 })
 </script>
 
