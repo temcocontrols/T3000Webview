@@ -404,7 +404,7 @@ const getDemoData = () => {
   }
 }
 
-// Fetch real data function with enhanced parameter validation
+// Fetch real data function - no API calls, uses TrendLogChart approach
 const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, all_data?: string) => {
   LogUtil.Debug('fetchRealData called with:', { sn, panel_id, trendlog_id, all_data: all_data ? 'present' : 'none' })
 
@@ -427,8 +427,8 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
 
       // Check if C++ returned an error or if parsing failed
       if (jsonValidationStatus.value === 'error') {
-        LogUtil.Debug('C++ JSON conversion failed, falling back to API/demo data')
-        // Don't return early, fall through to API endpoints
+        LogUtil.Debug('C++ JSON conversion failed, falling back to demo data')
+        // Don't return early, fall through to demo data
       } else if (decodedJsonData && jsonValidationStatus.value === 'valid') {
         LogUtil.Debug('Successfully parsed JSON data from C++ backend:', decodedJsonData)
 
@@ -479,115 +479,23 @@ const fetchRealData = async (sn: number, panel_id: number, trendlog_id: number, 
 
         return processedData
       } else {
-        LogUtil.Debug('Failed to parse all_data as valid JSON, falling back to API endpoints')
+        LogUtil.Debug('Failed to parse all_data as valid JSON, falling back to demo data')
       }
     }
 
-    // Fallback to API endpoints if JSON parsing fails or no all_data provided
-    // Primary API endpoint (adjust based on your backend implementation)
-    // Based on the backend structure, the endpoint might be:
-    // Option 1: Data management endpoint (if implemented)
-    let apiUrl = `/api/data/device/${panel_id}/trend_logs/${trendlog_id}`
-
-    // Option 2: Direct modbus register endpoint (fallback)
-    const fallbackUrl = `/api/modbus-registers/${trendlog_id}`
-
-    const params = new URLSearchParams()
-    if (sn) params.append('sn', sn.toString())
-    if (all_data) params.append('all_data', all_data)
-
-    const queryString = params.toString()
-    const fullUrl = queryString ? `${apiUrl}?${queryString}` : apiUrl
-
-    LogUtil.Debug(`Attempting to fetch trend log data from: ${fullUrl}`)
-
-    // Try primary endpoint first
-    let response = await fetch(fullUrl)
-
-    // If primary endpoint fails, try fallback
-    if (!response.ok && response.status === 404) {
-      LogUtil.Debug(`Primary endpoint failed, trying fallback: ${fallbackUrl}`)
-      const fallbackFullUrl = queryString ? `${fallbackUrl}?${queryString}` : fallbackUrl
-      response = await fetch(fallbackFullUrl)
-    }
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
-    }
-
-    const data = await response.json()
-
-    // Transform API response to expected format if needed
-    // The backend might return data in a different structure
-    if (data.data) {
-      // If wrapped in an API response structure
-      return transformApiResponseToTrendLogFormat(data.data, sn, panel_id, trendlog_id)
-    } else {
-      // Direct response
-      return transformApiResponseToTrendLogFormat(data, sn, panel_id, trendlog_id)
-    }
+    // No API calls - fall back directly to demo data like TrendLogChart does
+    LogUtil.Debug('Using demo data approach like TrendLogChart')
+    return getDemoDataWithParams(sn, panel_id, trendlog_id, all_data)
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
     error.value = errorMessage
-    console.error('Error fetching trend log data:', err)
-
-    // Log the attempted URLs for debugging
-    LogUtil.Debug('Failed to fetch from API endpoints, using demo data')
+    console.error('Error processing trend log data:', err)
 
     // Return demo data with actual parameters
     return getDemoDataWithParams(sn, panel_id, trendlog_id, all_data)
   } finally {
     isLoading.value = false
-  }
-}
-
-// Transform API response to the expected trend log format
-const transformApiResponseToTrendLogFormat = (apiData: any, sn: number, panel_id: number, trendlog_id: number) => {
-  // If the API returns data in the exact format we need, return as-is
-  if (apiData.t3Entry && apiData.settings) {
-    return apiData
-  }
-
-  // Otherwise, transform the API data to match the expected format
-  return {
-    title: apiData.name || apiData.label || `Trend Log ${trendlog_id}`,
-    active: apiData.status === 1 || apiData.active || true,
-    type: apiData.type || "Temperature",
-    translate: apiData.translate || [256.6363359569053, 321.74069633799525],
-    width: apiData.width || 60,
-    height: apiData.height || 60,
-    rotate: apiData.rotate || 0,
-    scaleX: apiData.scaleX || 1,
-    scaleY: apiData.scaleY || 1,
-    settings: {
-      fillColor: apiData.fillColor || "#659dc5",
-      titleColor: "inherit",
-      bgColor: "inherit",
-      textColor: "inherit",
-      fontSize: 16,
-      t3EntryDisplayField: "label"
-    },
-    zindex: apiData.zindex || 1,
-    t3Entry: {
-      an_inputs: apiData.an_inputs || 12,
-      command: apiData.command || `${panel_id}MON${trendlog_id}`,
-      hour_interval_time: apiData.hour_interval_time || 0,
-      id: apiData.id || `MON${trendlog_id}`,
-      index: apiData.index || 0,
-      input: apiData.input || [],
-      label: apiData.label || `TRL_${sn}_${panel_id}_${trendlog_id}`,
-      minute_interval_time: apiData.minute_interval_time || 0,
-      num_inputs: apiData.num_inputs || 14,
-      pid: panel_id,
-      range: apiData.range || [0, 0, 0, 4, 0, 0, 0, 7, 0, 0, 0, 0, 1, 1],
-      second_interval_time: apiData.second_interval_time || 15,
-      status: apiData.status || 1,
-      type: "MON"
-    },
-    showDimensions: true,
-    cat: apiData.cat || "Duct",
-    id: trendlog_id
   }
 }
 
@@ -625,7 +533,7 @@ const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: num
     }
   }
 
-  // Fallback to original demo data
+  // Fallback to original demo data - this is the same approach TrendLogChart uses
   const demoData = getDemoData()
 
   // Update demo data with actual parameters
@@ -647,7 +555,7 @@ const getDemoDataWithParams = (sn?: number, panel_id?: number, trendlog_id?: num
   return demoData
 }
 
-// Load data based on URL parameters or use demo data
+// Load data based on URL parameters or use demo data - no API calls like TrendLogChart
 const loadTrendLogData = async () => {
   LogUtil.Debug('Loading trend log data...')
 
@@ -670,10 +578,11 @@ const loadTrendLogData = async () => {
     }
 
     try {
+      // Process data using the same approach as TrendLogChart (no API calls)
       trendLogData.value = await fetchRealData(sn!, panel_id!, trendlog_id!, all_data || undefined)
     } catch (err) {
-      console.error('Error loading trend log data:', err)
-      error.value = err instanceof Error ? err.message : 'Failed to load trend log data'
+      console.error('Error processing trend log data:', err)
+      error.value = err instanceof Error ? err.message : 'Failed to process trend log data'
       // Fall back to demo data with parameters
       trendLogData.value = getDemoDataWithParams(sn!, panel_id!, trendlog_id!, all_data || undefined)
     }
@@ -695,7 +604,7 @@ const testDemoData = () => {
 const testRealData = async () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
   if (sn && panel_id && trendlog_id) {
-    LogUtil.Debug('Testing real data fetch...')
+    LogUtil.Debug('Testing data processing (no API calls)...')
     trendLogData.value = await fetchRealData(sn, panel_id, trendlog_id, all_data || undefined)
   }
 }
@@ -723,14 +632,15 @@ const testJsonParsing = () => {
   }
 }
 
-// Computed property for item data
+// Computed property for item data - uses same pattern as TrendLogChart
 const currentItemData = computed(() => {
   // If we have trend log data from URL parameters, use it
   if (trendLogData.value) {
     return trendLogData.value
   }
 
-  // Otherwise, use the existing logic as fallback
+  // Otherwise, use the scheduleItemData fallback like TrendLogChart does
+  // This ensures compatibility with the existing T3000 data flow
   return scheduleItemData.value || {
     t3Entry: {
       description: 'Trend Log Chart',
