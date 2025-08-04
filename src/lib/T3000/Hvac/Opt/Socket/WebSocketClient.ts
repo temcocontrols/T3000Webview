@@ -114,8 +114,21 @@ class WebSocketClient {
   sendMessage(message: string) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
-      const currentDateTime = new Date().toLocaleString();
-      LogUtil.Debug('= Ws send message to T3 at', currentDateTime, message);
+      try {
+        const parsedMsg = JSON.parse(message);
+        const action = parsedMsg.action ?? parsedMsg?.message?.action;
+        const panelId = parsedMsg.panelId ?? parsedMsg?.message?.panelId;
+        const viewitem = parsedMsg.viewitem ?? parsedMsg?.message?.viewitem;
+        const currentDateTime = new Date().toLocaleString();
+        LogUtil.Debug(
+          '= Ws send message to T3 at',
+          currentDateTime,
+          { action, panelId, viewitem },
+          parsedMsg // print the whole parsed message object
+        );
+      } catch (e) {
+        LogUtil.Debug('= Ws send message to T3 (unparsable message)', message);
+      }
     } else {
       LogUtil.Debug('= Ws send message | socket is not open | ready state:', this.socket.readyState);
 
@@ -459,9 +472,6 @@ class WebSocketClient {
   }
 
   private processMessage(data: any) {
-
-    LogUtil.Debug('= Ws received origin data', data);
-
     try {
       const parsedData = JSON.parse(data);
 
@@ -524,7 +534,7 @@ class WebSocketClient {
       this.HandleSaveLibraryDataRes(msgData);
     }
 
-    if(msgData.action===MessageType.SAVE_NEW_LIBRARY_DATA_RES){
+    if (msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
       this.HandleSaveNewLibraryDataRes(msgData);
     }
 

@@ -56,7 +56,12 @@ class WebViewClient {
     }
 
     this.webview.postMessage(message);
-    LogUtil.Debug('= Wv2 Sent message to T3:', message);
+    if (typeof message === 'object' && message !== null) {
+      const { action, panelId, viewitem } = message;
+      LogUtil.Debug('= Wv2 Sent message to T3:', { action, panelId, viewitem, message });
+    } else {
+      LogUtil.Debug('= Wv2 Sent message to T3:', message);
+    }
   }
 
   // Handle messages received from the native code T3 application
@@ -495,6 +500,7 @@ class WebViewClient {
 
     msgData.data = JSON.parse(msgData.data);
     appState.value = msgData.data;
+
     rulersGridVisible.value = appState.value.rulersGridVisible;
 
     grpNav.value = [msgData.entry];

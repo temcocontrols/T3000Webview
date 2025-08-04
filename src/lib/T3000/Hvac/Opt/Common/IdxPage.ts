@@ -541,12 +541,12 @@ class IdxPage {
   }
 
   // Wrap a new function for saving data to localstorage and T3000
-  save(notify: boolean = false, saveToT3: boolean = false) {
+  save(notify: boolean = false, saveToT3: boolean = false, isAutoSave: boolean = false) {
     savedNotify.value = notify;
     this.saveToLocal();
 
     if (saveToT3) {
-      this.saveToT3000();
+      this.saveToT3000(isAutoSave);
     }
   }
 
@@ -579,33 +579,45 @@ class IdxPage {
   }
 
   // Save data to T3000
-  saveToT3000() {
+  saveToT3000(isAutoSave = false) {
     const data = this.prepareSaveData();
+    const grpSwitch = DataOpt.LoadGrpSwitch(); // Get latest grpSwitch entry from array
 
-    const grpSwitch = DataOpt.LoadGrpSwitch();
+    LogUtil.Debug('= Idx saveToT3000 called:', { isAutoSave, hasGrpSwitch: !!grpSwitch });
+
+    // Check if we're currently loading data - if so, skip any save to avoid race condition
+    const loadingInitialData = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
+    const loadingGraphicEntry = globalMsg.value.find((msg) => msg.msgType === "load_graphic_entry");
+
+    if (loadingInitialData || loadingGraphicEntry) {
+      LogUtil.Debug('= Idx save to T3000 - currently loading data, skip save to prevent race condition');
+      return;
+    }
+
+    // If we have grpSwitch, it means navigation is pending or in progress
+    // For safety, skip both auto-save and manual save during this state
+    if (grpSwitch) {
+      if (isAutoSave) {
+        LogUtil.Debug('= Idx saveToT3000 - auto-save skipped during GRP navigation');
+      } else {
+        LogUtil.Debug('= Idx saveToT3000 - manual save skipped during GRP navigation to prevent race condition');
+        // Optionally show a message to user that save was skipped due to navigation
+      }
+      return;
+    }
 
     if (isBuiltInEdge.value) {
-      let panelId = grpSwitch?.panelId || null;
-      let graphicId = grpSwitch?.entryIndex + 1 || null;
-      Hvac.WebClient.SaveGraphicData(panelId, graphicId, data);
+      // No grpSwitch, safe to save to current device
+      LogUtil.Debug('= Idx saveToT3000 using current device (null params)');
+      Hvac.WebClient.SaveGraphicData(null, null, data);
     }
     else {
-      const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
-      if (msgType) {
-        LogUtil.Debug('= Idx save to T3000 with initial data status error, cancel auto save');
-        return;
-      }
-
-      // Post a save action to T3
+      // For WebSocket: save to current device
       const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
       let panelId = currentDevice?.deviceId;
       let graphicId = currentDevice?.graphic;
 
-      // If grpSwitch is enabled, use its panelId and entryIndex
-      if (grpSwitch) {
-        panelId = grpSwitch.panelId || panelId;
-        graphicId = grpSwitch.entryIndex + 1 || graphicId;
-      }
+      LogUtil.Debug('= Idx saveToT3000 using currentDevice:', { panelId, graphicId });
 
       if (panelId && graphicId) {
         Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
@@ -622,7 +634,7 @@ class IdxPage {
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
         LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
-        this.save(true, true);
+        this.save(true, true, true); // isAutoSave = true
       }, 15000);
     }, 10000);
   }
