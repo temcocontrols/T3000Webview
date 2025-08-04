@@ -634,6 +634,19 @@ const props = withDefaults(defineProps<Props>(), {
   title: 'Trend Log Chart'
 })
 
+// Computed property to get the current item data - prioritizes props over global state
+const currentItemData = computed(() => {
+  const data = props.itemData || scheduleItemData.value
+  LogUtil.Debug('TrendLogChart: Using item data source:', {
+    usingPropsItemData: !!props.itemData,
+    usingGlobalScheduleData: !props.itemData,
+    hasData: !!data,
+    t3EntryId: (data as any)?.t3Entry?.id,
+    t3EntryPid: (data as any)?.t3Entry?.pid
+  })
+  return data
+})
+
 // Remove modal-specific emits since this is now just a chart component
 
 // New reactive variables for top controls
@@ -1613,23 +1626,26 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
 const getMonitorConfigFromT3000Data = async () => {
   LogUtil.Info('🔍 TrendLogModal: === ENHANCED MONITOR CONFIG EXTRACTION ===')
 
-  // Get the monitor ID and PID from scheduleItemData
-  const monitorId = (scheduleItemData.value as any)?.t3Entry?.id
-  const panelId = (scheduleItemData.value as any)?.t3Entry?.pid
+  // Get the monitor ID and PID from current item data (props or global)
+  const monitorId = (currentItemData.value as any)?.t3Entry?.id
+  const panelId = (currentItemData.value as any)?.t3Entry?.pid
 
   LogUtil.Info('📊 TrendLogModal: Monitor extraction info:', {
+    usingPropsItemData: !!props.itemData,
+    usingGlobalScheduleData: !props.itemData,
+    currentItemData: currentItemData.value,
     monitorId,
     panelId,
-    fullT3Entry: (scheduleItemData.value as any)?.t3Entry
+    fullT3Entry: (currentItemData.value as any)?.t3Entry
   })
 
   if (!monitorId) {
-    LogUtil.Warn('❌ TrendLogModal: No monitor ID found in scheduleItemData.t3Entry.id')
+    LogUtil.Warn('❌ TrendLogModal: No monitor ID found in currentItemData.t3Entry.id')
     return null
   }
 
   if (!panelId && panelId !== 0) {
-    LogUtil.Warn('❌ TrendLogModal: No panel ID found in scheduleItemData.t3Entry.pid')
+    LogUtil.Warn('❌ TrendLogModal: No panel ID found in currentItemData.t3Entry.pid')
     return null
   }
 
@@ -2857,8 +2873,8 @@ const initializeData = async () => {
       configExists: !!monitorConfigData,
       hasInputItems: !!(monitorConfigData?.inputItems),
       inputItemsLength: monitorConfigData?.inputItems?.length || 0,
-      scheduleDataExists: !!scheduleItemData.value,
-      scheduleId: (scheduleItemData.value as any)?.t3Entry?.id,
+      scheduleDataExists: !!currentItemData.value,
+      scheduleId: (currentItemData.value as any)?.t3Entry?.id,
       panelsDataLength: T3000_Data.value.panelsData?.length || 0,
       dataType: 'MOCK_DATA_FALLBACK'
     })
@@ -3784,7 +3800,13 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
 // Lifecycle
 onMounted(async () => {
   LogUtil.Info('🚀 TrendLogModal: Component mounted - starting enhanced T3000 data integration test')
-  LogUtil.Info('📊 TrendLogModal: scheduleItemData:', scheduleItemData.value)
+
+  LogUtil.Info('📊 TrendLogModal: Current item data source:', {
+    usingPropsItemData: !!props.itemData,
+    usingGlobalScheduleData: !props.itemData,
+    itemData: currentItemData.value
+  })
+
   LogUtil.Info('📊 TrendLogModal: Initial T3000_Data readiness:', t3000DataManager.getReadinessState())
 
   // === ENHANCED T3000 REAL DATA INTEGRATION TEST ===
@@ -3814,7 +3836,7 @@ onMounted(async () => {
       LogUtil.Info('🔍 TrendLogModal: TEST 3 - Device Mapping for all input items:')
 
       // Get the PID for filtering device searches
-      const searchPanelId = (scheduleItemData.value as any)?.t3Entry?.pid
+      const searchPanelId = (currentItemData.value as any)?.t3Entry?.pid
       LogUtil.Info(`📊 TrendLogModal: Using PID ${searchPanelId} for device searches`)
 
       for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
@@ -3880,7 +3902,7 @@ onMounted(async () => {
     } else {
       LogUtil.Warn('❌ TEST 2 FAILED: No Monitor Configuration Found')
       LogUtil.Info('🔍 TrendLogModal: Debugging info:')
-      LogUtil.Info('📊 TrendLogModal: scheduleItemData.t3Entry:', (scheduleItemData.value as any)?.t3Entry)
+      LogUtil.Info('📊 TrendLogModal: currentItemData.t3Entry:', (currentItemData.value as any)?.t3Entry)
 
       // Try to get detailed validation information
       try {
