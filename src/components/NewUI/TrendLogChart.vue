@@ -99,7 +99,7 @@
               <template #icon>
                 <SyncOutlined :spin="true" />
               </template>
-              Live {{ lastUpdateTime }}
+              Live - {{ lastSyncTime }}
             </a-tag>
             <a-tag color="blue" v-else size="small">
               <template #icon>
@@ -665,7 +665,7 @@ const showGrid = ref(true)
 const showLegend = ref(false)  // Hide legend by default to give more space to chart
 const smoothLines = ref(false)
 const showPoints = ref(false)
-const lastUpdateTime = ref(new Date().toLocaleTimeString())
+const lastSyncTime = ref('No data synced yet')
 
 // Reactive monitor configuration
 const monitorConfig = ref(null as any)
@@ -1776,7 +1776,7 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
     }
 
     LogUtil.Info(`⏳ TrendLogModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 200)) // Reduced from 500ms to 200ms for faster detection
   }
 
   LogUtil.Warn(`❌ TrendLogModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
@@ -1809,9 +1809,18 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
       dataInterval: monitorConfigData.dataIntervalMs
     })
 
-    // Wait for panelsData to be available
-    LogUtil.Info('⏳ TrendLogModal: Waiting for panelsData to load...')
-    const panelsDataReady = await waitForPanelsData(10000)
+    // Check if panelsData is already available - if so, proceed immediately
+    const currentPanelsData = T3000_Data.value.panelsData || []
+    let panelsDataReady = false
+
+    if (currentPanelsData.length > 0) {
+      LogUtil.Info(`✅ TrendLogModal: PanelsData already available with ${currentPanelsData.length} devices - proceeding immediately`)
+      panelsDataReady = true
+    } else {
+      // Only wait if panelsData is not already available
+      LogUtil.Info('⏳ TrendLogModal: PanelsData not ready, waiting for it to load...')
+      panelsDataReady = await waitForPanelsData(5000) // Reduced timeout from 10s to 5s
+    }
 
     if (!panelsDataReady) {
       LogUtil.Error('❌ TrendLogModal: PanelsData not available, cannot proceed')
@@ -2153,6 +2162,9 @@ const initializeRealDataSeries = async () => {
 
     // Log the monitor info (chartTitle is computed from props, so we don't modify it)
     LogUtil.Debug(`Chart title will be: ${monitorConfigData.label} (${monitorConfigData.id}) - Real-time Data`)
+
+    // Update sync time since we successfully loaded real data
+    lastSyncTime.value = new Date().toLocaleTimeString()
 
   } catch (error) {
     LogUtil.Error('Error initializing real data series:', error)
@@ -2830,6 +2842,16 @@ const initializeData = async () => {
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
     LogUtil.Info('🌐 *** USING REAL T3000 DATA *** - TrendLogModal: Real monitor data available, initializing with real data series')
+
+    // Quick check: if we already have recent data, skip unnecessary re-fetching
+    const hasRecentData = dataSeries.value.length > 0 &&
+                         dataSeries.value.some(series => series.data.length > 0)
+
+    if (hasRecentData) {
+      LogUtil.Info('✅ TrendLogModal: Recent data already available, skipping refetch')
+      return
+    }
+
     LogUtil.Info('📡 Real T3000 Data Source Info:', {
       totalInputItems: monitorConfigData.inputItems.length,
       hasRanges: monitorConfigData.ranges && monitorConfigData.ranges.length > 0,
@@ -2846,10 +2868,14 @@ const initializeData = async () => {
     try {
       // Test the real data fetching system
       LogUtil.Info('🔄 TrendLogModal: Testing real data fetch...')
+
+      // Immediately indicate we're loading real data
+      isLoading.value = true
+
       const realTimeData = await fetchRealTimeMonitorData()
 
       if (realTimeData && realTimeData.length > 0) {
-        LogUtil.Info('�?TrendLogModal: Real data fetch successful, got', realTimeData.length, 'data series')
+        LogUtil.Info('✅ TrendLogModal: Real data fetch successful, got', realTimeData.length, 'data series')
 
         // Log sample data for first few series
         realTimeData.slice(0, 3).forEach((seriesData, index) => {
@@ -2861,13 +2887,26 @@ const initializeData = async () => {
         })
 
         await initializeRealDataSeries()
+
+        // Clear loading state immediately after successful initialization
+        isLoading.value = false
+
+        // Update chart immediately to show data without delay
         updateChart()
+
+        // Force a UI update to ensure immediate rendering
+        nextTick(() => {
+          updateChart()
+        })
+
         return
       } else {
         LogUtil.Info('⚠️ TrendLogModal: Real data fetch returned empty results')
+        isLoading.value = false
       }
     } catch (error) {
-      LogUtil.Error('�?TrendLogModal: Failed to initialize real data series, falling back to mock data:', error)
+      LogUtil.Error('❌ TrendLogModal: Failed to initialize real data series, falling back to mock data:', error)
+      isLoading.value = false // Clear loading state on error
     }
   } else {
     LogUtil.Info('🎭 *** USING MOCK DATA *** - TrendLogModal: No real monitor data available, using mock data')
@@ -2998,6 +3037,8 @@ const addRealtimeDataPoint = async () => {
       })
 
       LogUtil.Debug('Added real-time data points from T3000')
+      // Update sync time only when real data is successfully processed
+      lastSyncTime.value = new Date().toLocaleTimeString()
     } catch (error) {
       LogUtil.Warn('Failed to get real-time data, falling back to mock data:', error)
       // Fall back to mock data generation
@@ -3069,7 +3110,7 @@ const addMockRealtimeDataPoint = (timestamp: number) => {
     }
   })
 
-  lastUpdateTime.value = new Date().toLocaleTimeString()
+  // Note: We don't update lastSyncTime here since this is mock data, not real sync
 }
 
 const createChart = () => {
