@@ -3235,7 +3235,7 @@ const moveTimeLeft = async () => {
   // Regenerate data for the new time window
   await initializeData()
 
-  message.info(`Moved ${shiftMinutes} minutes back`)
+  // message.info(`Moved ${shiftMinutes} minutes back`)
 }
 
 const moveTimeRight = async () => {
@@ -3250,7 +3250,7 @@ const moveTimeRight = async () => {
   // Regenerate data for the new time window
   await initializeData()
 
-  message.info(`Moved ${shiftMinutes} minutes forward`)
+  // message.info(`Moved ${shiftMinutes} minutes forward`)
 }
 
 const zoomIn = () => {
@@ -3259,7 +3259,7 @@ const zoomIn = () => {
     const newTimebase = timebaseProgression[currentIndex - 1]
     timeBase.value = newTimebase
     onTimeBaseChange()
-    message.info(`Zoomed in to ${getTimeBaseLabel()}`)
+    // message.info(`Zoomed in to ${getTimeBaseLabel()}`)
   }
 }
 
@@ -3269,7 +3269,7 @@ const zoomOut = () => {
     const newTimebase = timebaseProgression[currentIndex + 1]
     timeBase.value = newTimebase
     onTimeBaseChange()
-    message.info(`Zoomed out to ${getTimeBaseLabel()}`)
+    // message.info(`Zoomed out to ${getTimeBaseLabel()}`)
   }
 }
 
@@ -3277,7 +3277,7 @@ const resetToDefaultTimebase = () => {
   timeBase.value = '5m'
   timeOffset.value = 0 // Reset time navigation as well
   onTimeBaseChange()
-  message.info('Reset to default 5 minutes timebase')
+  // message.info('Reset to default 5 minutes timebase')
 }
 
 const setView = (viewNumber: number) => {
@@ -3679,7 +3679,7 @@ const exportChart = () => {
   link.href = chartInstance.toBase64Image()
   link.click()
 
-  message.success('Chart exported successfully')
+  // message.success('Chart exported successfully')
 }
 
 const exportData = () => {
@@ -3709,7 +3709,7 @@ const exportData = () => {
   link.href = URL.createObjectURL(blob)
   link.click()
 
-  message.success('Data exported successfully')
+  // message.success('Data exported successfully')
 }
 
 // Additional Export Methods
@@ -3721,7 +3721,7 @@ const exportChartPNG = () => {
   link.href = chartInstance.toBase64Image('image/png', 1.0)
   link.click()
 
-  message.success('Chart exported as PNG successfully')
+  // message.success('Chart exported as PNG successfully')
 }
 
 const exportChartJPG = () => {
@@ -3732,7 +3732,7 @@ const exportChartJPG = () => {
   link.href = chartInstance.toBase64Image('image/jpeg', 0.9)
   link.click()
 
-  message.success('Chart exported as JPG successfully')
+  // message.success('Chart exported as JPG successfully')
 }
 
 const exportChartSVG = () => {
@@ -3740,7 +3740,7 @@ const exportChartSVG = () => {
 
   // Note: Chart.js doesn't natively support SVG export
   // This would require additional library like chart.js-to-svg
-  message.info('SVG export requires additional implementation')
+  // message.info('SVG export requires additional implementation')
 }
 
 const exportDataJSON = () => {
@@ -3771,7 +3771,7 @@ const exportDataJSON = () => {
   link.href = URL.createObjectURL(blob)
   link.click()
 
-  message.success('Data exported as JSON successfully')
+  // message.success('Data exported as JSON successfully')
 }
 
 // Chart Options Methods
@@ -3789,7 +3789,7 @@ const resetChartOptions = () => {
   smoothLines.value = false
   showPoints.value = false
 
-  message.success('Chart options reset to default')
+  // message.success('Chart options reset to default')
 }
 
 // Toggle methods for chart options
