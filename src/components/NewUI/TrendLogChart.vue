@@ -118,7 +118,7 @@
                 <template #icon>
                   <SyncOutlined :spin="true" />
                 </template>
-                Live Updated {{ lastUpdateTime }}
+                Live {{ lastUpdateTime }}
               </a-tag>
               <a-tag color="blue" v-else size="small">
                 <template #icon>
@@ -141,13 +141,13 @@
               </a-tag>-->
 
               <!-- Series Count -->
-              <a-tag size="small">{{ visibleSeriesCount }} series</a-tag>
+              <!-- <a-tag size="small">{{ visibleSeriesCount }} series</a-tag> -->
 
               <!-- Range Info -->
               <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
 
               <!-- View Info -->
-              <a-tag color="blue" size="small">View {{ currentView }}</a-tag>
+              <!-- <a-tag color="blue" size="small">View {{ currentView }}</a-tag> -->
             </div>
           </div>
 
@@ -3941,11 +3941,11 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: calc(85vh - 40px);
+  height: calc(95vh - 40px);
   /* Increased height for better chart visibility */
-  min-height: 600px;
+  /* min-height: 600px; */
   /* Increased minimum height */
-  max-height: 800px;
+  /* max-height: 800px; */
   /* Increased maximum height for larger screens */
   gap: 6px;
   /* Ultra-minimal gap for maximum space */
@@ -4442,7 +4442,7 @@ onUnmounted(() => {
   border: 1px solid #e8e8e8;
   border-radius: 0px;
   padding: 4px 6px;
-  padding-right: 15px;
+  /* padding-right: 15px; */
   margin-bottom: 5px;
   box-sizing: border-box;
 }
@@ -4462,9 +4462,9 @@ onUnmounted(() => {
 .controls-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   flex-wrap: nowrap;
-  padding: 0 12px;
+  padding: 0 5px;
   min-height: 32px;
 }
 
