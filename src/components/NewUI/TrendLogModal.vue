@@ -65,4 +65,9 @@ const handleCancel = () => {
   height: calc(85vh - 40px) !important;
   min-height: 600px !important;
 }
+
+/* Override left-panel width for modal context */
+.t3-timeseries-modal .ant-modal-body .left-panel {
+  width: clamp(180px, 20vw, 280px) !important;
+}
 </style>
