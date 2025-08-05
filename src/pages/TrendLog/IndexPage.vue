@@ -240,7 +240,7 @@ const formatDataFromQueryParams = () => {
 
   // Format for TrendLogChart
   const chartData = {
-    title: 'T3000 Trend Log Analysis',
+    title: t3EntryData.label || 'T3000 Trend Log Analysis',
     t3Entry: t3EntryData
   }
 
