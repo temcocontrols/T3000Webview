@@ -7,20 +7,9 @@
       colorBorder: '#d9d9d9',
     },
   }">
-    <a-modal
-      v-model:visible="trendLogModalVisible"
-      :title="null"
-      :width="1400"
-      :footer="null"
-      style="border-radius: 0px; top: 5px;"
-      wrapClassName="t3-timeseries-modal"
-      @cancel="handleCancel"
-      centered
-    >
-      <TrendLogChart
-        :itemData="itemData"
-        :title="modalTitle"
-      />
+    <a-modal v-model:visible="trendLogModalVisible" :title="null" :width="1400" :footer="null"
+      style="border-radius: 0px; top: 5px;" wrapClassName="t3-timeseries-modal" @cancel="handleCancel" centered>
+      <TrendLogChart :itemData="itemData" :title="modalTitle" />
     </a-modal>
   </a-config-provider>
 </template>
@@ -63,7 +52,7 @@ const handleCancel = () => {
 }
 </script>
 
-<style scoped>
+<style>
 /* Modal body styling to remove padding and set height */
 :deep(.t3-timeseries-modal .ant-modal-body) {
   padding: 0 !important;

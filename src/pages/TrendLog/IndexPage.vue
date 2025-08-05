@@ -543,6 +543,7 @@ onMounted(() => {
   padding: 12px;
   background: #f5f5f5;
   overflow: hidden;
+  padding-top: 5px;
 }
 
 /* Ensure the chart component fills the available space */

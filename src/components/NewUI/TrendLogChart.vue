@@ -8,224 +8,178 @@
     },
   }">
     <!-- Remove the modal wrapper - this is now just the chart content -->
-      <!-- Top Controls Bar -->
+      <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
       <div class="top-controls-bar">
-        <div class="controls-group">
-          <!-- Section 1: Time & Navigation Controls -->
-          <div class="controls-section section-time">
-            <!-- Time Base -->
-            <div class="control-item">
-              <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
-              <a-dropdown placement="bottomRight">
-                <a-button size="small" style="display: flex; align-items: center;">
-                  <span>{{ getTimeBaseLabel() }}</span>
-                  <DownOutlined style="margin-left: 4px;" />
-                </a-button>
-                <template #overlay>
-                  <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
-                    <a-menu-item key="5m">5 minutes</a-menu-item>
-                    <a-menu-item key="10m">10 minutes</a-menu-item>
-                    <a-menu-item key="30m">30 minutes</a-menu-item>
-                    <a-menu-item key="1h">1 hour</a-menu-item>
-                    <a-menu-item key="4h">4 hours</a-menu-item>
-                    <a-menu-item key="12h">12 hours</a-menu-item>
-                    <a-menu-item key="1d">1 day</a-menu-item>
-                    <a-menu-item key="4d">4 days</a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item key="custom">Custom Define</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
-
-            <!-- Navigation Arrows -->
-            <div class="control-item">
-              <a-button-group size="small">
-                <a-button @click="moveTimeLeft" :disabled="isRealTime">
-                  <template #icon>
-                    <LeftOutlined />
-                  </template>
-                </a-button>
-                <a-button @click="moveTimeRight" :disabled="isRealTime">
-                  <template #icon>
-                    <RightOutlined />
-                  </template>
-                </a-button>
-              </a-button-group>
-            </div>
-          </div>
-
-          <!-- Vertical Separator -->
-          <div class="section-divider"></div>
-
-          <!-- Section 2: Zoom & View Controls -->
-          <div class="controls-section section-zoom">
-            <!-- Zoom Controls -->
-            <div class="control-item">
-              <a-button-group size="small">
-                <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
-                          style="display: flex; align-items: center; gap: 2px;">
-                  <ZoomOutOutlined />
-                  <span>Zoom Out</span>
-                </a-button>
-                <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
-                          style="display: flex; align-items: center; gap: 2px;">
-                  <ZoomInOutlined />
-                  <span>Zoom In</span>
-                </a-button>
-              </a-button-group>
-            </div>
-
-            <!-- Reset Button -->
-            <div class="control-item">
-              <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 5 minutes timebase"
-                        style="display: flex; align-items: center; gap: 2px;">
-                <ReloadOutlined />
-                <span>Reset</span>
+        <a-flex wrap="wrap" gap="small" class="controls-main-flex">
+          <!-- Time Base Control -->
+          <a-flex align="center" gap="small" class="control-group">
+            <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
+            <a-dropdown placement="bottomRight">
+              <a-button size="small" style="display: flex; align-items: center;">
+                <span>{{ getTimeBaseLabel() }}</span>
+                <DownOutlined style="margin-left: 4px;" />
               </a-button>
-            </div>
+              <template #overlay>
+                <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
+                  <a-menu-item key="5m">5 minutes</a-menu-item>
+                  <a-menu-item key="10m">10 minutes</a-menu-item>
+                  <a-menu-item key="30m">30 minutes</a-menu-item>
+                  <a-menu-item key="1h">1 hour</a-menu-item>
+                  <a-menu-item key="4h">4 hours</a-menu-item>
+                  <a-menu-item key="12h">12 hours</a-menu-item>
+                  <a-menu-item key="1d">1 day</a-menu-item>
+                  <a-menu-item key="4d">4 days</a-menu-item>
+                  <a-menu-divider />
+                  <a-menu-item key="custom">Custom Define</a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+          </a-flex>
 
-            <!-- View Buttons -->
-            <div class="control-item">
-              <a-button-group size="small">
-                <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)">
-                  View 1
-                </a-button>
-                <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)">
-                  View 2
-                </a-button>
-                <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)">
-                  View 3
-                </a-button>
-              </a-button-group>
-            </div>
-          </div>
-
-          <!-- Vertical Separator -->
-          <div class="section-divider"></div>
-
-          <!-- Section 3: Chart Info & Status -->
-          <div class="controls-section section-info">
-            <!-- Chart Title -->
-            <!-- <div class="control-item chart-title-compact">
-              <h3 class="chart-title">{{ chartTitle }}</h3>
-            </div> -->
-
-            <!-- Status Tags -->
-            <div class="control-item status-tags">
-              <!-- Live/Historical Status with enhanced info -->
-              <a-tag color="green" v-if="isRealTime" size="small">
+          <!-- Navigation Arrows -->
+          <a-flex align="center" class="control-group">
+            <a-button-group size="small">
+              <a-button @click="moveTimeLeft" :disabled="isRealTime">
                 <template #icon>
-                  <SyncOutlined :spin="true" />
+                  <LeftOutlined />
                 </template>
-                Live {{ lastUpdateTime }}
-              </a-tag>
-              <a-tag color="blue" v-else size="small">
+              </a-button>
+              <a-button @click="moveTimeRight" :disabled="isRealTime">
                 <template #icon>
-                  <ClockCircleOutlined />
+                  <RightOutlined />
                 </template>
-                Historical
-              </a-tag>
+              </a-button>
+            </a-button-group>
+          </a-flex>
 
-              <!-- Connection Status
-              <a-tag
-                :color="connectionStatus === 'connected' ? 'green' : connectionStatus === 'connecting' ? 'orange' : 'red'"
-                size="small">
-                <template #icon>
-                  <WifiOutlined v-if="connectionStatus === 'connected'" />
-                  <LoadingOutlined v-else-if="connectionStatus === 'connecting'" />
-                  <DisconnectOutlined v-else />
-                </template>
-                {{ connectionStatus === 'connected' ? 'Online' : connectionStatus === 'connecting' ? 'Connecting' :
-                'Offline' }}
-              </a-tag>-->
+          <!-- Zoom Controls -->
+          <a-flex align="center" class="control-group">
+            <a-button-group size="small">
+              <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
+                        style="display: flex; align-items: center; gap: 2px;">
+                <ZoomOutOutlined />
+                <span>Zoom Out</span>
+              </a-button>
+              <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
+                        style="display: flex; align-items: center; gap: 2px;">
+                <ZoomInOutlined />
+                <span>Zoom In</span>
+              </a-button>
+            </a-button-group>
+          </a-flex>
 
-              <!-- Series Count -->
-              <!-- <a-tag size="small">{{ visibleSeriesCount }} series</a-tag> -->
+          <!-- Reset Button -->
+          <a-flex align="center" class="control-group">
+            <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 5 minutes timebase"
+                      style="display: flex; align-items: center; gap: 2px;">
+              <ReloadOutlined />
+              <span>Reset</span>
+            </a-button>
+          </a-flex>
 
-              <!-- Range Info -->
-              <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
+          <!-- View Buttons -->
+          <a-flex align="center" class="control-group">
+            <a-button-group size="small">
+              <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)">
+                View 1
+              </a-button>
+              <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)">
+                View 2
+              </a-button>
+              <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)">
+                View 3
+              </a-button>
+            </a-button-group>
+          </a-flex>
 
-              <!-- View Info -->
-              <!-- <a-tag color="blue" size="small">View {{ currentView }}</a-tag> -->
-            </div>
-          </div>
+          <!-- Status Tags -->
+          <a-flex align="center" wrap="wrap" gap="small" class="control-group status-tags">
+            <!-- Live/Historical Status with enhanced info -->
+            <a-tag color="green" v-if="isRealTime" size="small">
+              <template #icon>
+                <SyncOutlined :spin="true" />
+              </template>
+              Live {{ lastUpdateTime }}
+            </a-tag>
+            <a-tag color="blue" v-else size="small">
+              <template #icon>
+                <ClockCircleOutlined />
+              </template>
+              Historical
+            </a-tag>
 
-          <!-- Vertical Separator -->
-          <div class="section-divider"></div>
+            <!-- Range Info -->
+            <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
+          </a-flex>
 
-          <!-- Section 4: Chart Options & Export -->
-          <div class="controls-section section-options">
-            <!-- Chart Options -->
-            <div class="control-item chart-options">
-              <a-dropdown placement="bottomRight">
-                <a-button size="small" style="display: flex; align-items: center;">
-                  <SettingOutlined style="margin-right: 4px;" />
-                  <span>Chart</span>
-                  <DownOutlined style="margin-left: 4px;" />
-                </a-button>
-                <template #overlay>
-                  <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
-                    <a-menu-item key="grid">
-                      <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
-                      Show Grid
-                    </a-menu-item>
-                    <a-menu-item key="legend">
-                      <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
-                      Show Legend
-                    </a-menu-item>
-                    <a-menu-item key="smooth">
-                      <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
-                      Smooth Lines
-                    </a-menu-item>
-                    <a-menu-item key="points">
-                      <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
-                      Show Points
-                    </a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item key="reset">
-                      <ReloadOutlined />
-                      Reset to Default
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
+          <!-- Chart Options -->
+          <a-flex align="center" class="control-group chart-options">
+            <a-dropdown placement="bottomRight">
+              <a-button size="small" style="display: flex; align-items: center;">
+                <SettingOutlined style="margin-right: 4px;" />
+                <span>Chart</span>
+                <DownOutlined style="margin-left: 4px;" />
+              </a-button>
+              <template #overlay>
+                <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
+                  <a-menu-item key="grid">
+                    <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
+                    Show Grid
+                  </a-menu-item>
+                  <a-menu-item key="legend">
+                    <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
+                    Show Legend
+                  </a-menu-item>
+                  <a-menu-item key="smooth">
+                    <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
+                    Smooth Lines
+                  </a-menu-item>
+                  <a-menu-item key="points">
+                    <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
+                    Show Points
+                  </a-menu-item>
+                  <a-menu-divider />
+                  <a-menu-item key="reset">
+                    <ReloadOutlined />
+                    Reset to Default
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+          </a-flex>
 
-            <!-- Export Options -->
-            <div class="control-item export-options">
-              <a-dropdown placement="bottomRight">
-                <a-button size="small" style="display: flex; align-items: center;">
-                  <ExportOutlined style="margin-right: 4px;" />
-                  <span>Export</span>
-                  <DownOutlined style="margin-left: 4px;" />
-                </a-button>
-                <template #overlay>
-                  <a-menu class="export-options-menu" @click="handleExportMenu">
-                    <a-menu-item key="png">
-                      <FileImageOutlined />
-                      Export as PNG
-                    </a-menu-item>
-                    <a-menu-item key="jpg">
-                      <FileImageOutlined />
-                      Export as JPG
-                    </a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item key="csv">
-                      <FileExcelOutlined />
-                      Export Data (CSV)
-                    </a-menu-item>
-                    <a-menu-item key="json">
-                      <FileTextOutlined />
-                      Export Data (JSON)
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
-          </div>
-          <!-- End of left-panel content -->
-        </div>
+          <!-- Export Options -->
+          <a-flex align="center" class="control-group export-options">
+            <a-dropdown placement="bottomRight">
+              <a-button size="small" style="display: flex; align-items: center;">
+                <ExportOutlined style="margin-right: 4px;" />
+                <span>Export</span>
+                <DownOutlined style="margin-left: 4px;" />
+              </a-button>
+              <template #overlay>
+                <a-menu class="export-options-menu" @click="handleExportMenu">
+                  <a-menu-item key="png">
+                    <FileImageOutlined />
+                    Export as PNG
+                  </a-menu-item>
+                  <a-menu-item key="jpg">
+                    <FileImageOutlined />
+                    Export as JPG
+                  </a-menu-item>
+                  <a-menu-divider />
+                  <a-menu-item key="csv">
+                    <FileExcelOutlined />
+                    Export Data (CSV)
+                  </a-menu-item>
+                  <a-menu-item key="json">
+                    <FileTextOutlined />
+                    Export Data (JSON)
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+          </a-flex>
+        </a-flex>
       </div>
 
       <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
@@ -3941,30 +3895,30 @@ onUnmounted(() => {
 <style scoped>
 .timeseries-container {
   display: flex;
-  height: calc(95vh - 40px);
-  /* Increased height for better chart visibility */
-  /* min-height: 600px; */
-  /* Increased minimum height */
-  /* max-height: 800px; */
-  /* Increased maximum height for larger screens */
+  height: calc(97vh - 40px);
+  /* Full viewport height minus top controls */
+  /* min-height: 400px; */
+  /* Minimum for small screens */
   gap: 6px;
   /* Ultra-minimal gap for maximum space */
   background: #ffffff;
   border-radius: 0px;
   /* No border radius */
-  overflow: visible;
+  overflow: hidden;
+  /* Prevent main container scrollbars */
   padding: 0;
   /* Remove any default padding */
 }
 
 .left-panel {
-  width: 280px;
-  /* Reduced from 300px */
+  width: clamp(180px, 20vw, 280px);
+  /* Responsive width */
   background: #fafafa;
   border: 1px solid #e8e8e8;
   border-radius: 0px;
   /* No border radius */
   overflow-y: auto;
+  overflow-x: hidden;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -3978,8 +3932,8 @@ onUnmounted(() => {
   /* No border radius */
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  /* Allow flex shrinking */
+  min-width: 200px;
+  /* Ensure readability */
   overflow: hidden;
   /* Contain content properly */
 }
@@ -4436,86 +4390,130 @@ onUnmounted(() => {
   /* Increased min height since legend is removed */
 }
 
-/* Top Controls Bar Styling */
+/* Top Controls Bar - Individual Control Group Wrapping */
 .top-controls-bar {
   background: #fafafa;
-  border: 1px solid #e8e8e8;
-  border-radius: 0px;
-  padding: 4px 6px;
-  /* padding-right: 15px; */
+  border-bottom: 1px solid #d9d9d9;
+  padding: 6px 8px;
+  /* box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  min-height: 40px;
   margin-bottom: 5px;
-  box-sizing: border-box;
 }
 
-.controls-group {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0;
-  flex-wrap: nowrap;
+.controls-main-flex {
   width: 100%;
-  min-height: 32px;
-  box-sizing: border-box;
-}
-
-/* New sectioned controls structure */
-.controls-section {
-  display: flex;
   align-items: center;
-  gap: 5px;
-  flex-wrap: nowrap;
-  padding: 0 5px;
-  min-height: 32px;
-}
-
-.section-time {
-  flex-shrink: 1;
-  min-width: 200px;
-}
-
-.section-info {
-  flex: 1;
-  min-width: 300px;
   justify-content: flex-start;
 }
 
-.section-zoom {
+.control-group {
   flex-shrink: 0;
-  min-width: 200px;
+  white-space: nowrap;
+  align-items: center;
+  gap: 6px;
 }
 
-.section-options {
-  flex-shrink: 0;
-  min-width: 160px;
-}
-
-/* Vertical dividers between sections */
-.section-divider {
-  width: 1px;
-  height: 28px;
-  background: linear-gradient(to bottom, transparent, #d9d9d9 20%, #d9d9d9 80%, transparent);
-  margin: 0 6px;
-  flex-shrink: 0;
-}
-
-/* Chart title and status tags in info section */
-.chart-title-compact {
-  margin-right: 8px;
-}
-
-.chart-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0;
-  color: #262626;
+.control-label {
+  font-weight: 500;
+  color: #666;
   white-space: nowrap;
 }
 
 .status-tags {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+}
+
+.status-tags .ant-tag {
+  margin: 1px 2px;
+}
+
+/* Responsive behavior - each control group wraps individually */
+@media (max-width: 1200px) {
+  .controls-main-flex {
+    gap: 8px;
+  }
+
+  .control-group {
+    flex-shrink: 1;
+  }
+}
+
+@media (max-width: 1000px) {
+  .top-controls-bar {
+    padding: 4px 6px;
+  }
+
+  .controls-main-flex {
+    gap: 6px;
+  }
+
+  .control-group {
+    min-width: min-content;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-controls-bar {
+    padding: 3px 4px;
+  }
+
+  .controls-main-flex {
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .control-group {
+    flex: 0 0 auto;
+    justify-content: center;
+  }
+
+  .control-label {
+    font-size: 10px;
+  }
+
+  .control-group .ant-btn {
+    font-size: 10px;
+    padding: 2px 6px;
+    height: 24px;
+  }
+
+  .status-tags .ant-tag {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls-main-flex {
+    justify-content: space-around;
+    gap: 2px;
+  }
+
+  .control-group {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .control-group .ant-btn-group {
+    display: flex;
+    gap: 1px;
+  }
+
+  .control-group .ant-btn-group .ant-btn {
+    flex: 1;
+    min-width: 30px;
+    padding: 1px 3px;
+    font-size: 9px;
+  }
+
+  /* Hide text in very small screens, keep icons */
+  .control-group .ant-btn span:not(.anticon) {
+    display: none;
+  }
 }
 
 .controls-left {
@@ -4846,27 +4844,110 @@ onUnmounted(() => {
   color: inherit !important;
 }
 
-/* Mobile responsive layout for main container */
+/* Mobile responsive layout - Control Group Optimized */
 @media (max-width: 768px) {
+  /* Top controls - Individual control group wrapping */
+  .top-controls-bar {
+    padding: 3px !important;
+  }
+
+  .controls-main-flex {
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .control-group {
+    flex: 0 0 auto !important;
+    justify-content: center !important;
+    min-width: min-content !important;
+  }
+
+  .control-label {
+    font-size: 10px !important;
+  }
+
+  /* Control items and buttons get smaller */
+  .control-group .ant-btn {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    height: 24px !important;
+  }
+
+  .status-tags .ant-tag {
+    font-size: 9px !important;
+    padding: 1px 4px !important;
+    margin: 1px !important;
+  }
+
+  /* Main layout - stack vertically with proper height calculations */
   .timeseries-container {
-    flex-direction: column;
-    height: auto;
-    min-height: auto;
-    max-height: none;
-    gap: 8px;
+    flex-direction: column !important;
+    height: calc(100vh - 60px) !important;
+    /* Account for larger top controls on mobile */
+    gap: 3px !important;
+    overflow-y: auto !important;
   }
 
   .left-panel {
-    width: 100%;
-    min-height: 300px;
-    max-height: 400px;
+    width: 100% !important;
+    height: 35vh !important;
+    /* Fixed height - 35% of viewport */
+    min-height: 200px !important;
+    max-height: 35vh !important;
     order: 1;
+    overflow-y: auto !important;
+    flex-shrink: 0 !important;
   }
 
   .right-panel {
-    width: 100%;
-    min-height: 400px;
+    width: 100% !important;
+    height: calc(65vh - 60px - 3px) !important;
+    /* Remaining height minus top controls and gap */
+    min-height: 250px !important;
+    min-width: auto !important;
     order: 2;
+    flex: none !important;
+    /* Don't use flex on mobile to ensure height calculation */
+    overflow: hidden !important;
+  }
+
+  .chart-container {
+    height: 100% !important;
+    min-height: 200px !important;
+    padding: 3px !important;
+    overflow: hidden !important;
+    /* Ensure chart fits within container */
+  }
+
+  .chart-canvas {
+    min-height: 180px !important;
+    /* Ensure space for chart and labels */
+  }
+
+  /* Series list improvements */
+  .series-item {
+    margin-bottom: 4px !important;
+  }
+
+  .series-header {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .series-name-line {
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+  }
+
+  .series-stats {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .stat-item {
+    min-width: 60px !important;
+    font-size: 10px !important;
   }
 
   :global(.t3-timeseries-modal .ant-modal) {
@@ -4880,66 +4961,65 @@ onUnmounted(() => {
   }
 }
 
+/* Very small screens - even more compact */
 @media (max-width: 480px) {
   .top-controls-bar {
-    padding: 4px 6px;
+    padding: 2px !important;
   }
 
-  .controls-section {
-    padding: 4px 6px;
-    gap: 3px;
+  .controls-main-flex {
+    justify-content: space-around !important;
+    gap: 2px !important;
   }
 
-  .status-tags {
-    gap: 2px;
+  .control-group {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    justify-content: center !important;
   }
 
-  .status-tags .ant-tag {
-    font-size: 9px !important;
+  /* Stack button groups and make them more compact */
+  .control-group .ant-btn-group {
+    display: flex !important;
+    gap: 1px !important;
+  }
+
+  .control-group .ant-btn-group .ant-btn {
+    flex: 1 !important;
+    min-width: 30px !important;
     padding: 1px 3px !important;
-    line-height: 16px !important;
-    margin: 0 !important;
+    font-size: 9px !important;
   }
 
-  .chart-title {
-    font-size: 11px;
+  /* Hide text in very small screens, keep icons */
+  .control-group .ant-btn span:not(.anticon) {
+    display: none !important;
   }
 
-  .control-label {
-    font-size: 10px !important;
+  /* Adjust heights for very small screens */
+  .timeseries-container {
+    height: calc(100vh - 70px) !important;
+    /* Account for even larger top controls */
   }
 
-  /* Compact select and buttons for small screens */
-  .section-time .ant-select {
-    width: 100% !important;
-    max-width: 140px;
+  .left-panel {
+    height: 30vh !important;
+    min-height: 150px !important;
+    max-height: 30vh !important;
   }
 
-  .section-zoom .ant-btn-group .ant-btn {
-    min-width: 50px;
-    font-size: 10px;
-    padding: 0 6px;
+  .right-panel {
+    height: calc(70vh - 70px - 3px) !important;
+    min-height: 200px !important;
   }
 
-  .section-options .ant-btn {
-    font-size: 10px;
-    padding: 0 6px;
+  /* Series items more compact */
+  .series-name {
+    font-size: 11px !important;
   }
 
-  /* Stack elements vertically in sections for very small screens */
-  .section-time .control-item,
-  .section-zoom .control-item {
-    width: 100%;
-  }
-
-  .section-time .ant-btn-group {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .section-zoom .ant-btn-group {
-    width: 100%;
-    justify-content: center;
+  .unit-info {
+    font-size: 9px !important;
   }
 }
 
