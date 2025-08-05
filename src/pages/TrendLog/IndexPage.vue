@@ -64,6 +64,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
 import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
@@ -78,6 +79,7 @@ defineOptions({
 
 // Route and URL parameters
 const route = useRoute()
+const $q = useQuasar()
 
 // Page state
 const pageTitle = ref('T3000 Trend Log Analysis')
@@ -374,64 +376,92 @@ const initializeT3000Data = async () => {
       })
     }
 
-    // Try to get data from T3000 device using WebViewClient
-    if (Hvac.WebClient && (window as any).chrome?.webview) {
-      LogUtil.Info('🔄 Requesting data from T3000 device via WebViewClient')
+    // Initialize communication clients properly
+    let dataLoaded = false
 
-      // Set loading state
-      T3000_Data.value.loadingPanel = 0
+    // Try WebView2 client first (for desktop T3000 app integration)
+    if (Hvac.WebClient && (window as any).chrome?.webview) {
+      LogUtil.Info('🌐 Initializing WebView2 client for T3000 device communication')
 
       try {
+        // Initialize WebView2 message handler if not already initialized
+        Hvac.WebClient.initMessageHandler()
+        Hvac.WebClient.initQuasar($q)
+
+        // Set loading state
+        T3000_Data.value.loadingPanel = panel_id
+
+        LogUtil.Info('📡 Requesting panels list from T3000 device via WebView2')
         // First get the panels list
         Hvac.WebClient.GetPanelsList()
 
-        // Then get specific panel data
+        // Then get specific panel data after a delay
         setTimeout(() => {
+          LogUtil.Info(`📊 Requesting panel ${panel_id} data from T3000 device`)
           Hvac.WebClient.GetPanelData(panel_id)
-        }, 100)
+        }, 500)
 
         // Wait for data to be ready with timeout
         await t3000DataManager.waitForDataReady({
-          timeout: 10000, // 10 seconds timeout
+          timeout: 15000, // 15 seconds timeout for WebView2
           specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
         })
 
-        LogUtil.Info('✅ T3000_Data initialized successfully from device')
+        LogUtil.Info('✅ T3000_Data initialized successfully from WebView2 device')
+        dataLoaded = true
 
       } catch (error) {
-        LogUtil.Warn('⚠️ Failed to get data from T3000 device, using fallback:', error)
-
-        // Fallback: Create minimal data structure for the TrendLogChart
-        const mockEntry = {
-          id: `MON${trendlog_id}`,
-          label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-          description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
-          pid: panel_id,
-          type: "MON",
-          value: 0,
-          unit: "",
-          status: 1,
-          input: [],
-          range: [],
-          num_inputs: 14,
-          an_inputs: 12
-        }
-
-        // Add to panelsData if not already present
-        const existingEntry = T3000_Data.value.panelsData.find(entry =>
-          entry.id === mockEntry.id && entry.pid === panel_id
-        )
-
-        if (!existingEntry) {
-          LogUtil.Info('📝 Adding fallback entry to panelsData')
-          T3000_Data.value.panelsData.push(mockEntry)
-        }
-
-        // Clear loading state
+        LogUtil.Warn('⚠️ WebView2 initialization failed, trying WebSocket fallback:', error)
         T3000_Data.value.loadingPanel = null
       }
-    } else {
-      LogUtil.Warn('⚠️ WebViewClient not available, creating minimal T3000_Data structure')
+    }
+
+    // Try WebSocket client as fallback (for web browser integration)
+    if (!dataLoaded && Hvac.WsClient) {
+      LogUtil.Info('📡 Initializing WebSocket client for T3000 device communication')
+
+      try {
+        // Initialize WebSocket client properly
+        Hvac.WsClient.initQuasar($q)
+
+        // Set loading state
+        T3000_Data.value.loadingPanel = panel_id
+
+        LogUtil.Info('🔌 Connecting to WebSocket server...')
+        // Connect to WebSocket server
+        Hvac.WsClient.connect()
+
+        // Wait a bit for connection to establish, then request data
+        setTimeout(() => {
+          LogUtil.Info('📊 Requesting panels list from T3000 device via WebSocket')
+          // First get the panels list (this will automatically call GetPanelData for first panel)
+          Hvac.WsClient.GetPanelsList()
+
+          // Also request specific panel data
+          setTimeout(() => {
+            LogUtil.Info(`📊 Requesting panel ${panel_id} data from T3000 device`)
+            Hvac.WsClient.GetPanelData(panel_id)
+          }, 1000)
+        }, 1000)
+
+        // Wait for data to be ready with timeout
+        await t3000DataManager.waitForDataReady({
+          timeout: 20000, // 20 seconds timeout for WebSocket
+          specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
+        })
+
+        LogUtil.Info('✅ T3000_Data initialized successfully from WebSocket device')
+        dataLoaded = true
+
+      } catch (error) {
+        LogUtil.Warn('⚠️ WebSocket initialization failed:', error)
+        T3000_Data.value.loadingPanel = null
+      }
+    }
+
+    // If both communication methods failed, create fallback data
+    if (!dataLoaded) {
+      LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, creating minimal T3000_Data structure')
 
       // Create minimal data structure for the TrendLogChart
       const mockEntry = {
@@ -449,9 +479,17 @@ const initializeT3000Data = async () => {
         an_inputs: 12
       }
 
-      T3000_Data.value.panelsData.push(mockEntry)
-      T3000_Data.value.loadingPanel = null
+      // Add to panelsData if not already present
+      const existingEntry = T3000_Data.value.panelsData.find(entry =>
+        entry.id === mockEntry.id && entry.pid === panel_id
+      )
 
+      if (!existingEntry) {
+        LogUtil.Info('📝 Adding fallback entry to panelsData')
+        T3000_Data.value.panelsData.push(mockEntry)
+      }
+
+      T3000_Data.value.loadingPanel = null
       LogUtil.Info('📝 Created minimal T3000_Data structure for standalone usage')
     }
 
@@ -464,6 +502,8 @@ const initializeT3000Data = async () => {
 
   } catch (error) {
     LogUtil.Error('❌ Error initializing T3000_Data:', error)
+    // Ensure loading state is cleared on error
+    T3000_Data.value.loadingPanel = null
   }
 }
 
@@ -471,7 +511,16 @@ onMounted(() => {
   LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
   LogUtil.Debug('Initial scheduleItemData state:', scheduleItemData.value)
 
-  // Initialize T3000_Data first for the TrendLogChart component
+  // Initialize Quasar integration for Hvac system (lightweight)
+  LogUtil.Info('🚀 Initializing basic Quasar integration for standalone page')
+  try {
+    Hvac.IdxPage.initQuasar($q)
+    LogUtil.Info('✅ Quasar integration initialized')
+  } catch (error) {
+    LogUtil.Warn('⚠️ Error initializing Quasar integration:', error)
+  }
+
+  // Initialize T3000_Data with proper WebSocket and WebView2 communication
   initializeT3000Data()
 
   // Load and format data from query parameters
