@@ -54,8 +54,14 @@ const handleCancel = () => {
 
 <style>
 /* Modal body styling to remove padding and set height */
-:deep(.t3-timeseries-modal .ant-modal-body) {
+.t3-timeseries-modal .ant-modal-body {
   padding: 0 !important;
+  /* height: calc(85vh - 40px) !important; */
+  min-height: 600px !important;
+}
+
+/* Override TrendLogChart height for modal context - Higher specificity */
+.t3-timeseries-modal .ant-modal-body .timeseries-container {
   height: calc(85vh - 40px) !important;
   min-height: 600px !important;
 }
