@@ -3911,8 +3911,8 @@ onUnmounted(() => {
 }
 
 .left-panel {
-  width: clamp(180px, 20vw, 280px);
-  /* Responsive width */
+  width: clamp(210px, 23vw, 330px);
+  /* Responsive width - adjusted values */
   background: #fafafa;
   border: 1px solid #e8e8e8;
   border-radius: 0px;
@@ -3954,7 +3954,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 8px;
+  padding: 5px;
   /* Inner padding only for data series */
 }
 
