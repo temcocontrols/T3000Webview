@@ -717,6 +717,12 @@ const generateDataSeries = (): SeriesConfig[] => {
   const rangeData = props.itemData.t3Entry.range
   const actualItemCount = Math.min(inputData.length, rangeData.length)
 
+  // Additional check: if actualItemCount is 0, return empty array
+  if (actualItemCount === 0) {
+    LogUtil.Info('🔍 TrendLogChart: No valid input items found, showing empty list')
+    return []
+  }
+
   LogUtil.Info(`🔍 TrendLogChart: Generating series for ${actualItemCount} real input items`)
 
   const colors = [
@@ -1686,6 +1692,24 @@ const getMonitorConfigFromT3000Data = async () => {
 
     LogUtil.Info(`✅ TrendLogModal: Extracted ranges array:`, ranges)
 
+    // Check if we actually have valid input items with meaningful data
+    if (inputItems.length === 0) {
+      LogUtil.Info('❌ TrendLogModal: No valid input items found in monitor config, returning null')
+      return null
+    }
+
+    // Additional validation: check if input items have valid point numbers and panels
+    const validInputItems = inputItems.filter(item =>
+      item.panel !== undefined &&
+      item.point_number !== undefined &&
+      item.point_number >= 0
+    )
+
+    if (validInputItems.length === 0) {
+      LogUtil.Info('❌ TrendLogModal: No input items with valid point numbers found, returning null')
+      return null
+    }
+
     const result = {
       id: monitorConfig.id,
       label: monitorConfig.label || monitorConfig.description || `Monitor ${monitorId}`,
@@ -1963,11 +1987,16 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
  * Initialize data series from real T3000 monitor configuration
  */
 const initializeRealDataSeries = async () => {
-  LogUtil.Info('🚀 TrendLogModal: === INITIALIZING REAL DATA SERIES ===')
+  LogUtil.Info('🚀 TrendLogModal: === INITIALIZING REAL DATA SERIES ===', {
+    hasMonitorConfig: !!monitorConfig.value,
+    inputItemsLength: monitorConfig.value?.inputItems?.length || 0,
+    rangesLength: monitorConfig.value?.ranges?.length || 0
+  })
 
   const monitorConfigData = monitorConfig.value
   if (!monitorConfigData) {
-    LogUtil.Info('�?TrendLogModal: No monitor configuration found, using mock data')
+    LogUtil.Info('No monitor configuration found, clearing series')
+    dataSeries.value = []
     return
   }
 
@@ -1993,7 +2022,22 @@ const initializeRealDataSeries = async () => {
       }))
     })
 
-    // Update data series with real configuration
+    // Check if we have any real data at all
+    const hasAnyRealData = realTimeData.some(series => series.length > 0)
+
+    LogUtil.Info('🔍 TrendLogModal: Real data availability check:', {
+      realTimeDataLength: realTimeData.length,
+      hasAnyRealData: hasAnyRealData,
+      sampleSeriesLengths: realTimeData.slice(0, 5).map(series => series.length)
+    })
+
+    if (!hasAnyRealData) {
+      LogUtil.Info('🚫 TrendLogModal: No real data available for any series, showing empty state - CLEARING SERIES')
+      dataSeries.value = []
+      return
+    }
+
+    // Update data series with real configuration - only for series that have data
     const newDataSeries: SeriesConfig[] = []
 
     for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
@@ -2001,6 +2045,12 @@ const initializeRealDataSeries = async () => {
       const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
       const rangeValue = monitorConfigData.ranges[i] || 0
       const itemData = realTimeData[i] || []
+
+      // Skip series that have no data
+      if (itemData.length === 0) {
+        LogUtil.Info(`Skipping series ${i + 1} - no data available`)
+        continue
+      }
 
       LogUtil.Info(`📊 TrendLogModal: Processing series ${i + 1}/${monitorConfigData.inputItems.length}:`, {
         inputItem,
@@ -2036,27 +2086,16 @@ const initializeRealDataSeries = async () => {
         dataSource: itemData.length > 0 ? 'T3000_REAL_DATA' : 'NO_DATA_AVAILABLE'
       })
 
-      // Use device description for series name, always show as IN/OUT/VAR - Description
+      // Use device description for series name
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
 
-      // Create clean name without prefix as requested
-      let seriesName: string
-      let cleanDescription: string
-
-      if (itemData.length === 0) {
-        seriesName = `${inputItem.point_number + 1}` // Just show "22" etc without prefix
-        cleanDescription = seriesName
-      } else {
-        // Name without prefix for left panel display
-        seriesName = desc || `${inputItem.point_number + 1} (P${inputItem.panel})`
-        // Clean description for tooltips (remove prefix)
-        cleanDescription = desc || `${inputItem.point_number + 1}`
-      }
+      // Create clean name - since we only create series with data
+      const seriesName = desc || `${inputItem.point_number + 1} (P${inputItem.panel})`
+      const cleanDescription = desc || `${inputItem.point_number + 1}`
 
       // Determine unit type based on range value: 0 = analog, 1 = digital
       const isDigital = rangeValue === 1
-      const isAnalog = rangeValue === 0
 
       let unitType: 'digital' | 'analog'
       let unitSymbol: string
@@ -2074,17 +2113,17 @@ const initializeRealDataSeries = async () => {
 
       const seriesConfig: SeriesConfig = {
         name: seriesName,
-        color: `hsl(${(i * 360) / monitorConfigData.inputItems.length}, 70%, 50%)`,
+        color: `hsl(${(newDataSeries.length * 360) / monitorConfigData.inputItems.length}, 70%, 50%)`,
         data: itemData,
         visible: true,
-        isEmpty: itemData.length === 0,
+        isEmpty: false, // Only create series for data that exists
         unit: unitSymbol,
         unitType: unitType,
         unitCode: rangeValue,
         digitalStates: digitalStates,
         itemType: pointTypeInfo.name,
-        prefix: prefix, // Add prefix from category
-        description: cleanDescription // 🔧 FIX #3: Use clean description for tooltips
+        prefix: prefix,
+        description: cleanDescription
       }
 
       newDataSeries.push(seriesConfig)
@@ -2781,7 +2820,11 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = async () => {
-  LogUtil.Info('🚀 TrendLogModal: Starting data initialization...')
+  LogUtil.Info('🚀 TrendLogModal: Starting data initialization...', {
+    currentDataSeriesLength: dataSeries.value.length,
+    hasMonitorConfig: !!monitorConfig.value,
+    monitorInputItemsLength: monitorConfig.value?.inputItems?.length || 0
+  })
 
   // First, try to initialize with real T3000 data
   const monitorConfigData = monitorConfig.value
@@ -2839,6 +2882,17 @@ const initializeData = async () => {
     })
   }
 
+  // Check if we have any series to work with - if not, don't generate mock data
+  if (dataSeries.value.length === 0) {
+    LogUtil.Info('🚫 TrendLogModal: No data series available, maintaining empty state - EARLY RETURN')
+    return
+  }
+
+  LogUtil.Info('⚠️ TrendLogModal: dataSeries.value.length > 0, proceeding to mock data logic', {
+    dataSeriesLength: dataSeries.value.length,
+    firstSeriesName: dataSeries.value[0]?.name
+  })
+
   // Fallback to existing mock data logic
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
     // For custom date range, use actual custom dates
@@ -2882,6 +2936,12 @@ const initializeData = async () => {
 const addRealtimeDataPoint = async () => {
   // Only add data if we're in real-time mode
   if (!isRealTime.value) return
+
+  // Safety check: If no data series exist, don't generate mock data
+  if (dataSeries.value.length === 0) {
+    LogUtil.Info('No data series available for real-time updates, skipping')
+    return
+  }
 
   const now = new Date()
   const callTimeString = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0')
@@ -2952,6 +3012,12 @@ const addRealtimeDataPoint = async () => {
 }
 
 const addMockRealtimeDataPoint = (timestamp: number) => {
+  // Safety check: Don't add mock data if no series exist
+  if (dataSeries.value.length === 0) {
+    LogUtil.Info('No data series available for mock real-time updates, skipping')
+    return
+  }
+
   dataSeries.value.forEach((series, index) => {
     if (series.isEmpty) return
 
@@ -3382,6 +3448,11 @@ const formatDateTimeRange = () => {
 }
 
 const onRealTimeToggle = (checked: boolean) => {
+  LogUtil.Info(`🔄 TrendLogModal: Auto Scroll toggle - ${checked ? 'ON' : 'OFF'}`, {
+    currentDataSeriesLength: dataSeries.value.length,
+    hasRealData: !!monitorConfig.value?.inputItems?.length
+  })
+
   if (checked) {
     // Reset time offset when switching to real-time
     timeOffset.value = 0
@@ -3390,6 +3461,10 @@ const onRealTimeToggle = (checked: boolean) => {
     startRealTimeUpdates()
   } else {
     stopRealTimeUpdates()
+    // Clear any stale monitor config and data series to ensure clean state
+    LogUtil.Info('🧹 TrendLogModal: Clearing monitor config and data series on Auto Scroll OFF')
+    monitorConfig.value = null
+    dataSeries.value = []
   }
 }
 
