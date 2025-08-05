@@ -66,7 +66,10 @@ import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
+import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
+import Hvac from 'src/lib/T3000/Hvac/Hvac'
+import { t3000DataManager } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 
 // Define component name
 defineOptions({
@@ -334,9 +337,142 @@ watch(
   { immediate: true, deep: true }
 )
 
+// Initialize T3000_Data for the TrendLogChart component
+const initializeT3000Data = async () => {
+  const { sn, panel_id, trendlog_id } = urlParams.value
+
+  LogUtil.Info('🚀 TrendLog IndexPage: Initializing T3000_Data for standalone page')
+  LogUtil.Info(`📊 Parameters: SN=${sn}, Panel=${panel_id}, TrendLog=${trendlog_id}`)
+
+  // Check if we have the required parameters
+  if (!sn || panel_id === null || trendlog_id === null) {
+    LogUtil.Warn('⚠️ Missing required parameters for T3000_Data initialization')
+    return
+  }
+
+  try {
+    // Initialize T3000_Data structure if it's not already initialized
+    if (!T3000_Data.value.panelsData) {
+      T3000_Data.value.panelsData = []
+    }
+    if (!T3000_Data.value.panelsList) {
+      T3000_Data.value.panelsList = []
+    }
+    if (!T3000_Data.value.panelsRanges) {
+      T3000_Data.value.panelsRanges = []
+    }
+
+    // Add the panel to panelsList if it doesn't exist
+    const existingPanel = T3000_Data.value.panelsList.find(panel => panel.panel_number === panel_id)
+    if (!existingPanel) {
+      LogUtil.Info(`📝 Adding panel ${panel_id} to panelsList`)
+      T3000_Data.value.panelsList.push({
+        panel_number: panel_id,
+        serial_number: sn,
+        panel_name: `Panel ${panel_id}`,
+        online: true
+      })
+    }
+
+    // Try to get data from T3000 device using WebViewClient
+    if (Hvac.WebClient && (window as any).chrome?.webview) {
+      LogUtil.Info('🔄 Requesting data from T3000 device via WebViewClient')
+
+      // Set loading state
+      T3000_Data.value.loadingPanel = 0
+
+      try {
+        // First get the panels list
+        Hvac.WebClient.GetPanelsList()
+
+        // Then get specific panel data
+        setTimeout(() => {
+          Hvac.WebClient.GetPanelData(panel_id)
+        }, 100)
+
+        // Wait for data to be ready with timeout
+        await t3000DataManager.waitForDataReady({
+          timeout: 10000, // 10 seconds timeout
+          specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
+        })
+
+        LogUtil.Info('✅ T3000_Data initialized successfully from device')
+
+      } catch (error) {
+        LogUtil.Warn('⚠️ Failed to get data from T3000 device, using fallback:', error)
+
+        // Fallback: Create minimal data structure for the TrendLogChart
+        const mockEntry = {
+          id: `MON${trendlog_id}`,
+          label: `TRL${sn}_${panel_id}_${trendlog_id}`,
+          description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
+          pid: panel_id,
+          type: "MON",
+          value: 0,
+          unit: "",
+          status: 1,
+          input: [],
+          range: [],
+          num_inputs: 14,
+          an_inputs: 12
+        }
+
+        // Add to panelsData if not already present
+        const existingEntry = T3000_Data.value.panelsData.find(entry =>
+          entry.id === mockEntry.id && entry.pid === panel_id
+        )
+
+        if (!existingEntry) {
+          LogUtil.Info('📝 Adding fallback entry to panelsData')
+          T3000_Data.value.panelsData.push(mockEntry)
+        }
+
+        // Clear loading state
+        T3000_Data.value.loadingPanel = null
+      }
+    } else {
+      LogUtil.Warn('⚠️ WebViewClient not available, creating minimal T3000_Data structure')
+
+      // Create minimal data structure for the TrendLogChart
+      const mockEntry = {
+        id: `MON${trendlog_id}`,
+        label: `TRL${sn}_${panel_id}_${trendlog_id}`,
+        description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
+        pid: panel_id,
+        type: "MON",
+        value: 0,
+        unit: "",
+        status: 1,
+        input: [],
+        range: [],
+        num_inputs: 14,
+        an_inputs: 12
+      }
+
+      T3000_Data.value.panelsData.push(mockEntry)
+      T3000_Data.value.loadingPanel = null
+
+      LogUtil.Info('📝 Created minimal T3000_Data structure for standalone usage')
+    }
+
+    LogUtil.Info('✅ T3000_Data initialization completed')
+    LogUtil.Debug('📊 Final T3000_Data state:', {
+      panelsList: T3000_Data.value.panelsList?.length || 0,
+      panelsData: T3000_Data.value.panelsData?.length || 0,
+      loadingPanel: T3000_Data.value.loadingPanel
+    })
+
+  } catch (error) {
+    LogUtil.Error('❌ Error initializing T3000_Data:', error)
+  }
+}
+
 onMounted(() => {
   LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
   LogUtil.Debug('Initial scheduleItemData state:', scheduleItemData.value)
+
+  // Initialize T3000_Data first for the TrendLogChart component
+  initializeT3000Data()
 
   // Load and format data from query parameters
   loadTrendLogItemData()
