@@ -238,13 +238,21 @@
               </div>
             </div>
             <div class="series-list">
+              <!-- Empty state when no data series available -->
+              <div v-if="dataSeries.length === 0" class="series-empty-state">
+                <div class="empty-state-content">
+                  <div class="empty-state-icon">📊</div>
+                  <div class="empty-state-text">No trend log data available</div>
+                  <div class="empty-state-subtitle">Configure monitor points to see data series</div>
+                </div>
+              </div>
+
+              <!-- Regular series list when data is available -->
               <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
-                'series-disabled': !series.visible,
-                'series-empty': series.isEmpty
+                'series-disabled': !series.visible
               }">
-                <div class="series-header" @click="series.isEmpty ? null : toggleSeriesVisibility(index, $event)">
-                  <div v-if="!series.isEmpty"
-                       class="series-toggle-indicator"
+                <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
+                  <div class="series-toggle-indicator"
                        :class="{ 'active': series.visible, 'inactive': !series.visible }"
                        :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                     <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
@@ -264,16 +272,15 @@
                         />
                         <!-- Series name processed with dedicated function, chip placed after -->
                       </div>
-                      <span v-if="!series.isEmpty" class="series-inline-tags">
+                      <span class="series-inline-tags">
                         <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
                           {{ series.itemType }}
                         </a-tag> -->
                         <span class="unit-info">{{ series.unit }}</span>
                       </span>
-                      <span v-if="series.isEmpty" class="empty-indicator">(No Data)</span>
                     </div>
                   </div>
-                  <div class="series-controls" v-if="!series.isEmpty">
+                  <div class="series-controls">
                     <a-button size="small" type="text" class="expand-toggle"
                       @click="(e) => toggleSeriesExpansion(index, e)">
                       <template #icon>
@@ -282,11 +289,8 @@
                       </template>
                     </a-button>
                   </div>
-                  <div class="series-controls" v-else>
-                    <span class="empty-placeholder">No data</span>
-                  </div>
                 </div>
-                <div v-if="expandedSeries.has(index) && !series.isEmpty" class="series-stats">
+                <div v-if="expandedSeries.has(index)" class="series-stats">
                   <div class="stat-item">
                     <span class="stat-label">Last:</span>
                     <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
@@ -694,6 +698,27 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
 
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
+  // Check if we have real input data from t3Entry
+  const hasInputData = props.itemData?.t3Entry?.input &&
+                      Array.isArray(props.itemData.t3Entry.input) &&
+                      props.itemData.t3Entry.input.length > 0
+
+  const hasRangeData = props.itemData?.t3Entry?.range &&
+                      Array.isArray(props.itemData.t3Entry.range) &&
+                      props.itemData.t3Entry.range.length > 0
+
+  // If no real input data, return empty array to show empty list
+  if (!hasInputData || !hasRangeData) {
+    LogUtil.Info('🔍 TrendLogChart: No real input data found, showing empty list')
+    return []
+  }
+
+  const inputData = props.itemData.t3Entry.input
+  const rangeData = props.itemData.t3Entry.range
+  const actualItemCount = Math.min(inputData.length, rangeData.length)
+
+  LogUtil.Info(`🔍 TrendLogChart: Generating series for ${actualItemCount} real input items`)
+
   const colors = [
     '#FF0000', // Bright Red
     '#0000FF', // Pure Blue
@@ -711,82 +736,63 @@ const generateDataSeries = (): SeriesConfig[] => {
     '#0000AA', // Navy Blue
   ]
 
-  const baseSeries = [
-    'BMC01E1E-1P1B', 'BMC01E1E-2P1B', 'BMC01E1E-3P1B', 'BMC01E1E-4P1B',
-    'BMC01E1E-5P1B', 'BMC01E1E-6P1B', 'BMC01E1E-7P1B', 'BMC01E1E-8P1B',
-    'BMC01E1E-9P1B', 'BMC01E1E-10P1B', 'BMC01E1E-11P1B', 'BMC01E1E-12P1B',
-    'BMC01E1E-13P1B', 'BMC01E1E-14P1B'
-  ]
+  return Array.from({ length: actualItemCount }, (_, index) => {
+    const inputItem = inputData[index]
+    const rangeValue = rangeData[index]
 
-  // Range values for demo - 0 = analog, 1 = digital
-  const rangeValues = [
-    0, // analog (temperature)
-    0, // analog (temperature)
-    1, // digital (Off/On)
-    1, // digital (Close/Open)
-    0, // analog (Percent)
-    1, // digital (Stop/Start)
-    0, // analog (Volts)
-    1, // digital (Normal/Alarm)
-    0, // analog (Watts)
-    1, // digital (Auto/Manual)
-    0, // analog (Percent)
-    1, // digital (Inactive/Active)
-    0, // analog (CFM)
-    1  // digital (Standby/Running)
-  ]
-
-  const itemTypes = ['VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input', 'Output', 'HOL', 'VAR', 'Input']
-  const panelIds = [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3] // Panel IDs for each item
-  const pointTypes = [3, 2, 1, 7, 3, 2, 1, 7, 3, 2, 1, 7, 3, 2] // Point type numbers (3=VAR, 2=Input, 1=Output, 7=HOL)
-
-  return baseSeries.map((name, index) => {
-    const rangeValue = rangeValues[index]
-    const panelId = panelIds[index]
-    const pointType = pointTypes[index]
-    const itemNumber = (index % 7) + 1 // Generate numbers 1-7, then repeat
+    // Use actual data from input item
+    const panelId = inputItem.panel || 2
+    const pointType = inputItem.point_type || 3
+    const pointNumber = inputItem.point_number || index
 
     // Determine unit type based on range value: 0 = analog, 1 = digital
     const isDigital = rangeValue === 1
-    const isAnalog = rangeValue === 0
+    const unitType: 'digital' | 'analog' = isDigital ? 'digital' : 'analog'
 
     let unit: string
     let digitalStates: [string, string] | undefined
-    let unitType: 'digital' | 'analog'
 
     if (isDigital) {
-      unitType = 'digital'
       unit = ''
       digitalStates = ['Low', 'High'] // Default digital states
     } else {
-      unitType = 'analog'
       unit = '' // Will be determined based on context
       digitalStates = undefined
     }
 
-    // Generate new format: panelId + itemType + itemNumber (e.g., "2VAR20", "3Input5")
-    const formattedItemType = `${panelId}${itemTypes[index]}${itemNumber + 19}` // +19 to start from 20
-
     // Get point type info for prefix and description
     const pointTypeInfo = getPointTypeInfo(pointType)
-    const description = getDeviceDescription(panelId, pointType, itemNumber)
+    const description = getDeviceDescription(panelId, pointType, pointNumber)
 
-    // 🔧 FIX #3: Create clean description for tooltips (no panel info)
-    const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${itemNumber + 1}`
+    // Create clean description for tooltips
+    const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
+
+    // Generate item type format: panelId + itemType + pointNumber
+    const itemTypeMap: { [key: number]: string } = {
+      1: 'Output',
+      2: 'Input',
+      3: 'VAR',
+      7: 'HOL'
+    }
+    const itemTypeName = itemTypeMap[pointType] || 'VAR'
+    const formattedItemType = `${panelId}${itemTypeName}${pointNumber + 1}`
+
+    // Generate series name based on actual data
+    const seriesName = `BMC01E1E-${index + 1}P${panelId}B`
 
     return {
-      name: name,
+      name: seriesName,
       color: colors[index % colors.length],
       data: [],
-      visible: index < 7, // Only first 7 visible by default
+      visible: true, // All real data series are visible by default
       unit: unit,
-      isEmpty: index >= 7, // Mark items 8-14 as empty by default
+      isEmpty: false, // Real data is never empty
       unitType: unitType,
       unitCode: rangeValue, // Store the range value (0 or 1)
       digitalStates: digitalStates,
-      itemType: formattedItemType, // Use the new format
+      itemType: formattedItemType,
       prefix: pointTypeInfo.category, // Add prefix from category
-      description: cleanDescription // 🔧 FIX #3: Use clean description for tooltips
+      description: cleanDescription
     }
   })
 }
@@ -881,7 +887,7 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
 
 // Debug function to verify data generation intervals
 const debugDataIntervals = () => {
-  const visibleSeries = dataSeries.value.filter(series => series.visible && !series.isEmpty)
+  const visibleSeries = dataSeries.value.filter(series => series.visible)
   if (visibleSeries.length === 0) return
 
   console.log('=== DATA INTERVAL DEBUG ===')
@@ -939,12 +945,11 @@ const chartTitle = computed(() => {
 
 const totalDataPoints = computed(() => {
   return dataSeries.value
-    .filter(series => !series.isEmpty)
     .reduce((total, series) => total + series.data.length, 0)
 })
 
 const visibleSeriesCount = computed(() => {
-  return dataSeries.value.filter(series => series.visible && !series.isEmpty).length
+  return dataSeries.value.filter(series => series.visible).length
 })
 
 const timeBaseLabel = computed(() => {
@@ -1005,19 +1010,19 @@ const setTimeBase = (value: string) => {
 
 // Series control computed properties
 const hasEnabledSeries = computed(() => {
-  return dataSeries.value.some(series => series.visible && !series.isEmpty)
+  return dataSeries.value.some(series => series.visible)
 })
 
 const hasDisabledSeries = computed(() => {
-  return dataSeries.value.some(series => !series.visible && !series.isEmpty)
+  return dataSeries.value.some(series => !series.visible)
 })
 
 const analogSeries = computed(() => {
-  return dataSeries.value.filter(series => series.unitType === 'analog' && !series.isEmpty)
+  return dataSeries.value.filter(series => series.unitType === 'analog')
 })
 
 const digitalSeries = computed(() => {
-  return dataSeries.value.filter(series => series.unitType === 'digital' && !series.isEmpty)
+  return dataSeries.value.filter(series => series.unitType === 'digital')
 })
 
 const hasAnalogSeries = computed(() => {
@@ -1063,7 +1068,7 @@ const getDataPointInterval = (timeBase: string): number => {
 // Helper to get min/max timestamp from all visible data series
 const getDataSeriesTimeBounds = () => {
   const allPoints = dataSeries.value
-    .filter(series => series.visible && !series.isEmpty)
+    .filter(series => series.visible)
     .flatMap(series => series.data)
     .map(point => point.timestamp)
   if (allPoints.length === 0) return { min: undefined, max: undefined }
@@ -1078,7 +1083,7 @@ const getChartConfig = () => ({
   type: 'line' as const,
   data: {
     datasets: dataSeries.value
-      .filter(series => series.visible && !series.isEmpty)
+      .filter(series => series.visible)
       .map(series => {
         // Ensure data points are sorted by timestamp for proper line drawing
         const sortedData = series.data
@@ -2839,36 +2844,32 @@ const initializeData = async () => {
     // For custom date range, use actual custom dates
     const customDuration = customEndDate.value.diff(customStartDate.value, 'minute')
     dataSeries.value.forEach((series, index) => {
-      if (!series.isEmpty) {
-        series.data = generateCustomDateData(index, customStartDate.value.toDate(), customEndDate.value.toDate())
-      }
+      series.data = generateCustomDateData(index, customStartDate.value.toDate(), customEndDate.value.toDate())
     })
   } else {
     // For standard timebase, use existing logic
     const minutes = getTimeRangeMinutes(timeBase.value)
     dataSeries.value.forEach((series, index) => {
-      if (!series.isEmpty) {
-        series.data = generateMockData(index, minutes)
+      series.data = generateMockData(index, minutes)
 
-        // *** MOCK DATA LOGGING FOR COMPARISON ***
-        LogUtil.Info(`🎭 [SERIES ${index + 1}] MOCK Data Generated:`, {
-          seriesNumber: index + 1,
-          dataType: series.unitType,
-          rangeValue: series.unitCode,
-          mockDataPoints: series.data.length,
-          firstMockValue: series.data[0] ? {
-            timestamp: series.data[0].timestamp,
-            value: series.data[0].value,
-            timestampReadable: new Date(series.data[0].timestamp).toISOString()
-          } : 'NO DATA',
-          valueRange: series.data.length > 0 ? {
-            min: Math.min(...series.data.map(d => d.value)),
-            max: Math.max(...series.data.map(d => d.value)),
-            average: series.data.reduce((sum, d) => sum + d.value, 0) / series.data.length
-          } : 'NO DATA',
-          dataSource: 'MOCK_DATA_GENERATED'
-        })
-      }
+      // *** MOCK DATA LOGGING FOR COMPARISON ***
+      LogUtil.Info(`🎭 [SERIES ${index + 1}] MOCK Data Generated:`, {
+        seriesNumber: index + 1,
+        dataType: series.unitType,
+        rangeValue: series.unitCode,
+        mockDataPoints: series.data.length,
+        firstMockValue: series.data[0] ? {
+          timestamp: series.data[0].timestamp,
+          value: series.data[0].value,
+          timestampReadable: new Date(series.data[0].timestamp).toISOString()
+        } : 'NO DATA',
+        valueRange: series.data.length > 0 ? {
+          min: Math.min(...series.data.map(d => d.value)),
+          max: Math.max(...series.data.map(d => d.value)),
+          average: series.data.reduce((sum, d) => sum + d.value, 0) / series.data.length
+        } : 'NO DATA',
+        dataSource: 'MOCK_DATA_GENERATED'
+      })
     })
   }
 
@@ -3023,7 +3024,7 @@ const updateChart = () => {
   if (!chartInstance) return
 
   chartInstance.data.datasets = dataSeries.value
-    .filter(series => series.visible && !series.isEmpty && series.data.length > 0)
+    .filter(series => series.visible && series.data.length > 0)
     .map(series => {
       // Ensure data points are sorted by timestamp for proper line drawing
       const sortedData = series.data
@@ -3122,18 +3123,14 @@ const updateChart = () => {
 // Series control methods
 const enableAllSeries = () => {
   dataSeries.value.forEach(series => {
-    if (!series.isEmpty) {
-      series.visible = true
-    }
+    series.visible = true
   })
   updateChart()
 }
 
 const disableAllSeries = () => {
   dataSeries.value.forEach(series => {
-    if (!series.isEmpty) {
-      series.visible = false
-    }
+    series.visible = false
   })
   updateChart()
 }
@@ -3141,7 +3138,7 @@ const disableAllSeries = () => {
 const toggleAnalogSeries = () => {
   const enableAnalog = !allAnalogEnabled.value
   dataSeries.value.forEach(series => {
-    if (series.unitType === 'analog' && !series.isEmpty) {
+    if (series.unitType === 'analog') {
       series.visible = enableAnalog
     }
   })
@@ -3151,7 +3148,7 @@ const toggleAnalogSeries = () => {
 const toggleDigitalSeries = () => {
   const enableDigital = !allDigitalEnabled.value
   dataSeries.value.forEach(series => {
-    if (series.unitType === 'digital' && !series.isEmpty) {
+    if (series.unitType === 'digital') {
       series.visible = enableDigital
     }
   })
@@ -4034,6 +4031,38 @@ onUnmounted(() => {
   padding-right: 4px;
 }
 
+/* Empty state styling */
+.series-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 20px;
+}
+
+.empty-state-content {
+  text-align: center;
+  color: #8c8c8c;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #595959;
+}
+
+.empty-state-subtitle {
+  font-size: 14px;
+  color: #8c8c8c;
+}
+
 .series-item {
   margin-bottom: 4px;
   border: 1px solid #e8e8e8;
@@ -4046,45 +4075,13 @@ onUnmounted(() => {
 }
 
 /* Clean and simple design for series items */
-.series-item:not(.series-disabled):not(.series-empty) {
+.series-item:not(.series-disabled) {
   cursor: pointer;
 }
 
 .series-disabled {
   opacity: 0.5;
   filter: grayscale(0.5);
-}
-
-.series-empty {
-  opacity: 0.4;
-  pointer-events: none;
-  background: #e8e8e8 !important;
-}
-
-.series-empty .series-header {
-  cursor: default;
-}
-
-.series-empty .series-name,
-.series-empty .stat-label,
-.series-empty .stat-value,
-.series-empty .unit-info {
-  color: #8c8c8c !important;
-  text-shadow: none !important;
-}
-
-.empty-indicator {
-  color: #bfbfbf !important;
-  font-style: italic;
-  font-size: 10px;
-  margin-left: 4px;
-}
-
-.empty-placeholder {
-  color: #bfbfbf;
-  font-size: 14px;
-  width: 52px;
-  text-align: center;
 }
 
 .series-header {
