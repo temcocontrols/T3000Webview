@@ -1274,8 +1274,8 @@ const getChartConfig = () => ({
           }
         })(),
         grid: {
-          color: showGrid.value ? '#e0e0e0' : 'transparent',
-          display: showGrid.value,
+          color: '#e0e0e0', // Always show grid - remove conditional
+          display: true,     // Always display grid
           lineWidth: 1
         },
         ticks: {
@@ -1326,11 +1326,26 @@ const getChartConfig = () => ({
         })()
       },
       y: {
-        // NEW: Extended Y-axis range to support both digital (0/1) and analog values
-        min: -1, // Allow space below 0 for better digital visualization
+        // Enhanced Y-axis configuration - always show proper range and grid
+        min: (() => {
+          // If we have data, let Chart.js auto-scale with some padding
+          if (dataSeries.value.some(series => series.visible && series.data.length > 0)) {
+            return undefined // Let Chart.js auto-scale
+          }
+          // If no data, show a reasonable default range starting from 0
+          return 0
+        })(),
+        max: (() => {
+          // If we have data, let Chart.js auto-scale with some padding
+          if (dataSeries.value.some(series => series.visible && series.data.length > 0)) {
+            return undefined // Let Chart.js auto-scale
+          }
+          // If no data, show a reasonable default range up to 100
+          return 100
+        })(),
         grid: {
-          color: showGrid.value ? '#d0d0d0' : 'transparent',
-          display: showGrid.value
+          color: '#d0d0d0',  // Always show grid - remove conditional
+          display: true      // Always display grid
         },
         ticks: {
           color: '#595959',
@@ -2561,7 +2576,9 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
         if (!window.t3000RequestTimes) window.t3000RequestTimes = []
         window.t3000RequestTimes.push({
           timestamp: currentTime.getTime(),
-          timeString: timeString
+          timeString: timeString,
+          panelsCount: Array.isArray(dataClient.messageData) ? dataClient.messageData.length : 0,
+          modbusCount: 0 // Default for modbus count
         })
 
         // Log interval if we have previous requests
@@ -2989,7 +3006,8 @@ const addRealtimeDataPoint = async () => {
   if (!window.t3000PollingCalls) window.t3000PollingCalls = []
   window.t3000PollingCalls.push({
     timestamp: now.getTime(),
-    timeString: callTimeString
+    timeString: callTimeString,
+    panelsCount: 0 // Default count since this is just tracking polling calls
   })
 
   // Log interval between polling calls
