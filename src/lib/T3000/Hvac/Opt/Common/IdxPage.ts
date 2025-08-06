@@ -150,6 +150,9 @@ class IdxPage {
   // Initialize panzoom for viewport
   initPanzoom() {
     const beforeWheel = function (e) {
+      // Disable wheel zooming when locked
+      if (locked.value) return true;
+
       // Allow panzoom to handle the wheel event
       return false;
     }
@@ -163,6 +166,9 @@ class IdxPage {
         return true;
       },
       beforeMouseDown: function (e) {
+        // Disable panning when locked
+        if (locked.value) return true;
+
         // allow mouse-down panning only if altKey is down. Otherwise - ignore
         var shouldIgnore = !e.altKey;
         return shouldIgnore;
@@ -185,9 +191,15 @@ class IdxPage {
   }
 
   resetPanzoom() {
-    const transform = Hvac.QuasarUtil.getLocalSettings('transform');
+    // Priority 1: Use appState transform (from T3000 saved data)
+    let transform = appState.value.viewportTransform;
 
-    if (transform) {
+    // Priority 2: Fallback to localStorage if appState transform is default/empty
+    if (!transform || (transform.x === 0 && transform.y === 0 && transform.scale === 1)) {
+      transform = Hvac.QuasarUtil.getLocalSettings('transform');
+    }
+
+    if (transform && panzoomInstance) {
       panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
       panzoomInstance.moveTo(transform.x, transform.y);
     }
@@ -214,7 +226,10 @@ class IdxPage {
         const y = appState.value.viewportTransform.y;
 
         appState.value.viewportTransform.scale = scale;
-        panzoomInstance.zoomAbs(x, y, scale);
+
+        if (panzoomInstance) {
+          panzoomInstance.zoomAbs(x, y, scale);
+        }
       },
     });
   }
@@ -389,8 +404,10 @@ class IdxPage {
   clearIdx() {
     appState.value.selectedTargets = [];
 
-    if (panzoomInstance?.dispose) return;
-    panzoomInstance?.dispose();
+    if (panzoomInstance) {
+      panzoomInstance.dispose();
+      panzoomInstance = null;
+    }
   }
 
   // Checks if the user is logged in
