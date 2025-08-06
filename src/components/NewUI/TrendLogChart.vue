@@ -524,7 +524,7 @@ const getUnitInfo = (unitCode: number) => {
   }
   return {
     type: 'analog' as const,
-    info: { label: 'Unknown', symbol: '' }
+    info: { label: '', symbol: '' }
   }
 }
 
@@ -565,7 +565,7 @@ const getPointTypeInfo = (pointType: number) => {
     9: { name: 'Monitor', type: 'analog', category: 'MON' }
   }
 
-  return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: 'UNK' }
+  return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: '' }
 }
 
 // Function to generate chip label text for series prefix display
@@ -969,7 +969,7 @@ const timeBaseLabel = computed(() => {
     '1d': 'Last 1 day',
     '4d': 'Last 4 days'
   }
-  return labels[timeBase.value] || 'Unknown'
+  return labels[timeBase.value] || ''
 })
 
 // Helper function to get time base label for dropdown button
@@ -2428,7 +2428,7 @@ const mapPointTypeToString = (pointType: number): string => {
     case 15: return 'ALARMS' // BAC_ALARMS = 15
     case 16: return 'WR_TIME' // BAC_WR_TIME = 16
     case 17: return 'AR_Y'  // BAC_AR_Y = 17
-    default: return 'UNKNOWN'
+    default: return ''
   }
 }
 
@@ -2922,70 +2922,30 @@ const initializeData = async () => {
         isLoading.value = false
       }
     } catch (error) {
-      LogUtil.Error('❌ TrendLogModal: Failed to initialize real data series, falling back to mock data:', error)
+      LogUtil.Error('❌ TrendLogModal: Failed to initialize real data series:', error)
       isLoading.value = false // Clear loading state on error
     }
   } else {
-    LogUtil.Info('🎭 *** USING MOCK DATA *** - TrendLogModal: No real monitor data available, using mock data')
-    LogUtil.Info('📊 Mock Data Configuration:', {
+    LogUtil.Info('🔍 TrendLogModal: No real monitor data available, maintaining empty state')
+    LogUtil.Info('📊 Empty State Configuration:', {
       configExists: !!monitorConfigData,
       hasInputItems: !!(monitorConfigData?.inputItems),
       inputItemsLength: monitorConfigData?.inputItems?.length || 0,
       scheduleDataExists: !!currentItemData.value,
       scheduleId: (currentItemData.value as any)?.t3Entry?.id,
       panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-      dataType: 'MOCK_DATA_FALLBACK'
+      dataType: 'NO_DATA_AVAILABLE'
     })
+    isLoading.value = false
   }
 
-  // Check if we have any series to work with - if not, don't generate mock data
+  // If no data series available, maintain empty state (no mock/test data generation)
   if (dataSeries.value.length === 0) {
-    LogUtil.Info('🚫 TrendLogModal: No data series available, maintaining empty state - EARLY RETURN')
+    LogUtil.Info('🚫 TrendLogModal: No data series available, maintaining empty state')
     return
   }
 
-  LogUtil.Info('⚠️ TrendLogModal: dataSeries.value.length > 0, proceeding to mock data logic', {
-    dataSeriesLength: dataSeries.value.length,
-    firstSeriesName: dataSeries.value[0]?.name
-  })
-
-  // Fallback to existing mock data logic
-  if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
-    // For custom date range, use actual custom dates
-    const customDuration = customEndDate.value.diff(customStartDate.value, 'minute')
-    dataSeries.value.forEach((series, index) => {
-      series.data = generateCustomDateData(index, customStartDate.value.toDate(), customEndDate.value.toDate())
-    })
-  } else {
-    // For standard timebase, use existing logic
-    const minutes = getTimeRangeMinutes(timeBase.value)
-    dataSeries.value.forEach((series, index) => {
-      series.data = generateMockData(index, minutes)
-
-      // *** MOCK DATA LOGGING FOR COMPARISON ***
-      LogUtil.Info(`🎭 [SERIES ${index + 1}] MOCK Data Generated:`, {
-        seriesNumber: index + 1,
-        dataType: series.unitType,
-        rangeValue: series.unitCode,
-        mockDataPoints: series.data.length,
-        firstMockValue: series.data[0] ? {
-          timestamp: series.data[0].timestamp,
-          value: series.data[0].value,
-          timestampReadable: new Date(series.data[0].timestamp).toISOString()
-        } : 'NO DATA',
-        valueRange: series.data.length > 0 ? {
-          min: Math.min(...series.data.map(d => d.value)),
-          max: Math.max(...series.data.map(d => d.value)),
-          average: series.data.reduce((sum, d) => sum + d.value, 0) / series.data.length
-        } : 'NO DATA',
-        dataSource: 'MOCK_DATA_GENERATED'
-      })
-    })
-  }
-
-  // Debug data intervals to verify correct generation (disabled for production)
-  // debugDataIntervals()
-
+  // For real data series, update the chart
   updateChart()
 }
 
