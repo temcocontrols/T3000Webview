@@ -165,6 +165,7 @@
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
+                @mouseleave="resetCursor"
                 @click.left="viewportLeftClick" @dragover="($event) => {
                   $event.preventDefault();
                 }
@@ -336,8 +337,8 @@
 
                   <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
                     :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-                    :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
-                    :class="`moveable-item-index-${index}`">
+                    :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick"
+                    :class="`moveable-item-wrapper moveable-item-index-${index} ${locked ? 'locked' : ''} ${isItemSelected(item.id) ? 'item-selected' : ''}`">
 
                     <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
                       <q-list>
@@ -758,6 +759,13 @@ const loadingPanelsProgress = computed(() => {
   );
 });
 
+// Helper function to check if an item is selected
+const isItemSelected = (itemId) => {
+  return appState.value.selectedTargets.some(
+    target => target && target.id === `moveable-item-${itemId}`
+  );
+};
+
 const clipboardFull = ref(false); // State of the clipboard
 
 const zoom = Hvac.IdxPage.zoom;
@@ -854,6 +862,15 @@ function viewportMouseMoved(e) {
   }
 }
 
+// Reset cursor when mouse leaves viewport (safety cleanup)
+function resetCursor() {
+  document.body.style.cursor = 'auto';
+  const moveableItems = document.querySelectorAll('.moveable-item');
+  moveableItems.forEach(item => {
+    item.style.cursor = '';
+  });
+}
+
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
   if (!objectsRef.value) return;
@@ -895,6 +912,12 @@ function onClickGroup(e) {
 // Starts dragging an element
 function onDragStart(e) {
   addActionToHistory("Move Object");
+
+  // Set cursor to indicate dragging is active
+  if (!locked.value) {
+    document.body.style.cursor = 'grabbing';
+    e.target.style.cursor = 'grabbing';
+  }
 }
 
 // Handles dragging of an element
@@ -907,6 +930,12 @@ function onDrag(e) {
 
 // Ends the dragging of an element
 function onDragEnd(e) {
+  // Reset cursor after dragging
+  document.body.style.cursor = 'auto';
+  if (e.target) {
+    e.target.style.cursor = '';
+  }
+
   if (!e.lastEvent) {
     undoHistory.value.shift(); // Remove the last action if dragging was not completed
   } else {
@@ -924,11 +953,22 @@ function onDragEnd(e) {
 // Starts dragging a group of elements
 function onDragGroupStart(e) {
   addActionToHistory("Move Group");
+
+  // Set cursor to indicate group dragging is active
+  if (!locked.value) {
+    document.body.style.cursor = 'grabbing';
+  }
+
   e.events.forEach((ev, i) => {
     const itemIndex = appState.value.items.findIndex(
       (item) => `moveable-item-${item.id}` === ev.target.id
     );
     ev.set(appState.value.items[itemIndex].translate);
+
+    // Set cursor on each target
+    if (!locked.value && ev.target) {
+      ev.target.style.cursor = 'grabbing';
+    }
   });
 }
 
@@ -944,6 +984,16 @@ function onDragGroup(e) {
 
 // Ends the dragging of a group of elements
 function onDragGroupEnd(e) {
+  // Reset cursor after group dragging
+  document.body.style.cursor = 'auto';
+
+  // Reset cursor on all group targets
+  e.events?.forEach((ev) => {
+    if (ev.target) {
+      ev.target.style.cursor = '';
+    }
+  });
+
   if (!e.lastEvent) {
     undoHistory.value.shift(); // Remove the last action if dragging was not completed
   } else {
@@ -1042,6 +1092,8 @@ function onResizeStart(e) {
   );
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+  // Change cursor to indicate resize operation
+  document.body.style.cursor = "nw-resize";
 }
 
 // Handles resizing of an element
@@ -1059,6 +1111,8 @@ function onResizeEnd(e) {
 
   // Fix bug for when double clicking on the selected object, also clicked the resize button accidentally
   if (e.lastEvent === null || e.lastEvent === undefined) {
+    // Reset cursor even if early return
+    document.body.style.cursor = "auto";
     return;
   }
 
@@ -1073,11 +1127,16 @@ function onResizeEnd(e) {
 
   // Refresh objects after resizing
   refreshObjects();
+
+  // Reset cursor after resize operation
+  document.body.style.cursor = "auto";
 }
 
 // Starts rotating an element
 function onRotateStart(e) {
   addActionToHistory("Rotate object");
+  // Change cursor to indicate rotation operation
+  document.body.style.cursor = "grab";
 }
 
 // Handles rotating of an element
@@ -1092,16 +1151,22 @@ function onRotate(e) {
 // Refreshes objects on rotate end
 function onRotateEnd(e) {
   refreshObjects();
+  // Reset cursor after rotation operation
+  document.body.style.cursor = "auto";
 }
 
 // refreshes objects on rotate group end
 function onRotateGroupEnd(e) {
   refreshObjects();
+  // Reset cursor after group rotation operation
+  document.body.style.cursor = "auto";
 }
 
 // Maintaining aspect ratio on resize group start
 function onResizeGroupStart(e) {
   keepRatio.value = true;
+  // Change cursor to indicate group resize operation
+  document.body.style.cursor = "nw-resize";
 }
 
 // Handles resizing of a group of elements
@@ -1126,6 +1191,8 @@ function onResizeGroupEnd(e) {
   });
   refreshObjects();
   keepRatio.value = false;
+  // Reset cursor after group resize operation
+  document.body.style.cursor = "auto";
 }
 
 // Starts rotating a group of elements and adds the action to the history
@@ -1138,6 +1205,8 @@ function onRotateGroupStart(e) {
     ev.set(appState.value.items[itemIndex].rotate);
     ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
   });
+  // Change cursor to indicate group rotation operation
+  document.body.style.cursor = "grab";
 }
 
 // Handles rotating of a group of elements and updates their state
@@ -2389,6 +2458,14 @@ function lockToggle() {
   appState.value.selectedTargets = [];
   locked.value = !locked.value;
   appState.value.locked = locked.value;
+
+  // Reset any active drag cursors when locking/unlocking
+  document.body.style.cursor = 'auto';
+  const moveableItems = document.querySelectorAll('.moveable-item');
+  moveableItems.forEach(item => {
+    item.style.cursor = '';
+  });
+
   if (locked.value) {
     selectTool("Pointer");
   }
@@ -3167,5 +3244,24 @@ function addOnlineLibImage(oItem) {
 
 .viewport:hover .cursor-icon {
   display: block;
+}
+
+/* Cursor styles for moveable items - only show grab cursor when selected */
+.moveable-item-wrapper:not(.locked) .moveable-item {
+  cursor: default; /* Default cursor for unselected items */
+}
+
+/* Show grab cursor only for selected items */
+.moveable-item-wrapper:not(.locked).item-selected .moveable-item {
+  cursor: grab;
+}
+
+.moveable-item-wrapper:not(.locked).item-selected .moveable-item:active {
+  cursor: grabbing;
+}
+
+/* When locked, always show default cursor */
+.locked .moveable-item {
+  cursor: default;
 }
 </style>
