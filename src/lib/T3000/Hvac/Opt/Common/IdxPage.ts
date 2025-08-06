@@ -187,12 +187,10 @@ class IdxPage {
   resetPanzoom() {
     const transform = Hvac.QuasarUtil.getLocalSettings('transform');
 
-    /*
     if (transform) {
       panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
       panzoomInstance.moveTo(transform.x, transform.y);
     }
-    */
   }
 
   clearGrpSwitch(){
