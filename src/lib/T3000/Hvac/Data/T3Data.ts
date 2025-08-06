@@ -551,6 +551,7 @@ export const emptyProject = {
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
   rulersGridVisible: false,
+  locked: false,
 };
 
 export const emptyLib = {

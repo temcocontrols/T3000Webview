@@ -559,6 +559,7 @@ class IdxPage {
     data.selectedTargets = [];
     data.elementGuidelines = [];
     data.rulersGridVisible = rulersGridVisible.value;
+    data.locked = locked.value;
 
     return data;
   }

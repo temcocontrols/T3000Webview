@@ -9,7 +9,7 @@ import MessageModel from "../Socket/MessageModel"
 import IdxUtils from "../Common/IdxUtils"
 import { useQuasar } from "quasar"
 import {
-  T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify
+  T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify, locked
 
 } from "../../Data/T3Data"
 import Utils1 from "../../Util/Utils1"
@@ -486,6 +486,9 @@ class WebViewClient {
 
       appState.value = arg.data.data;
       rulersGridVisible.value = appState.value.rulersGridVisible;
+      if (typeof appState.value.locked !== 'undefined') {
+        locked.value = appState.value.locked;
+      }
 
       grpNav.value = [arg.data.entry];
       if (arg.data.library) {
@@ -502,6 +505,9 @@ class WebViewClient {
     appState.value = msgData.data;
 
     rulersGridVisible.value = appState.value.rulersGridVisible;
+    if (typeof appState.value.locked !== 'undefined') {
+      locked.value = appState.value.locked;
+    }
 
     grpNav.value = [msgData.entry];
     if (msgData.library) {
