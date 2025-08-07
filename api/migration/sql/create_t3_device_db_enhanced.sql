@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS devices (
     bootloader_version TEXT,
     mcu_type TEXT,
     sd_card_status TEXT,
-    -- Panel Information Fields  
+    -- Panel Information Fields
     bacnet_instance INTEGER,
     mac_address TEXT,
     mstp_network INTEGER,
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS output_points (
     updated_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
--- Enhanced Variable Points (matches C++ Str_variable_point)  
+-- Enhanced Variable Points (matches C++ Str_variable_point)
 CREATE TABLE IF NOT EXISTS variable_points (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id INTEGER NOT NULL,
@@ -268,7 +268,7 @@ CREATE TABLE IF NOT EXISTS schedule_details (
     created_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
--- Enhanced Holidays (matches C++ Str_annual_routine_point) 
+-- Enhanced Holidays (matches C++ Str_annual_routine_point)
 CREATE TABLE IF NOT EXISTS holidays (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id INTEGER NOT NULL,
