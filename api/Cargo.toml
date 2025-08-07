@@ -17,6 +17,14 @@ path = "src/create_t3_db.rs"
 name = "verify_t3_db"
 path = "src/verify_t3_db.rs"
 
+[[bin]]
+name = "verify_db_isolation"
+path = "src/verify_db_isolation.rs"
+
+[[bin]]
+name = "test_migration_safety"
+path = "src/test_migration_safety.rs"
+
 [dependencies]
 axum = { version = "0.7.7", features = ["multipart"] }
 serde = { version = "1.0", features = ["derive"] }
