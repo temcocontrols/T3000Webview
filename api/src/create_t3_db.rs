@@ -7,7 +7,7 @@ async fn main() -> Result<(), DbErr> {
     let db = Database::connect("sqlite://Database/t3_device.db").await?;
 
     // Read the SQL file
-    let sql_content = fs::read_to_string("create_t3_device_db.sql")
+    let sql_content = fs::read_to_string("migration/sql/create_t3_device_db.sql")
         .expect("Failed to read SQL file");
 
     // Split by semicolons and execute each statement
