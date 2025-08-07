@@ -1,0 +1,367 @@
+# T3000 WebView Server Architecture & Process Flow Analysis
+
+## Executive Summary
+
+This document provides a detailed analysis of the T3000 WebView server architecture, communication flows, and implementation of the trendlog database system. The analysis covers the complete data flow from T3000 C++ application through the Rust API to the Vue.js frontend.
+
+## 1. Current T3000 Server Architecture
+
+### 1.1 Core Components
+
+#### T3000 C++ Application Layer
+- **Main Entry Point**: `webview_run_server()` function in `BacnetWebView.cpp`
+- **Server Thread Management**: `CreateWebServerThreadfun` in `BacnetScreen.cpp`
+- **Integration Points**: MainFrm.cpp, BacnetMonitor.cpp call webview_run_server()
+- **DLL Interface**: Links to `t3_webview_api.dll` (Rust API)
+
+#### Rust API Server (t3_webview_api.dll)
+- **Entry Function**: `run_server()` extern "C" function in `lib.rs`
+- **Server Implementation**: `server_start()` in `server.rs`
+- **Port Configuration**:
+  - Port 9103: HTTP/WebView2 communication
+  - Port 9104: WebSocket communication
+- **Database**: SQLite with Sea-ORM migrations
+- **Error Handling**: RustError enum for C++ FFI
+
+#### Vue.js Frontend
+- **Communication**: Dual channel (WebView2 messages + WebSocket)
+- **Real-time Updates**: WebSocket for live data streaming
+- **Component**: TrendLogChart.vue for data visualization
+
+### 1.2 Communication Architecture
+
+```
+T3000 C++ Application
+    ↓ (webview_run_server)
+t3_webview_api.dll (Rust)
+    ↓ (HTTP: 9103, WS: 9104)
+Vue.js Frontend (WebView2)
+    ↓ (Real-time data)
+User Interface
+```
+
+## 2. Current Data Flow Analysis
+
+### 2.1 Server Startup Process
+
+1. **T3000 Application Start**
+   - MainFrm.cpp or BacnetScreen.cpp calls `webview_run_server()`
+   - Sets executable directory as working directory
+   - Calls Rust `run_server()` function
+
+2. **Rust API Initialization**
+   - Creates Tokio runtime for async operations
+   - Loads environment variables (.env file)
+   - Copies database if not exists
+   - Runs database migrations
+   - Creates application state with database connection
+
+3. **Dual Server Setup**
+   - HTTP Server (Port 9103): Axum web server for REST API
+   - WebSocket Server (Port 9104): Real-time communication
+   - Static file serving for Vue.js SPA
+   - CORS configuration for cross-origin requests
+
+4. **WebView2 Integration**
+   - C++ creates WebView2 instance
+   - Navigates to localhost:9103
+   - Establishes message handling between C++ and JavaScript
+
+### 2.2 Current Message Flow
+
+#### WebView2 Message Types (BacnetWebView.cpp)
+- `GET_PANEL_DATA`: Retrieve all device data points
+- `GET_INITIAL_DATA`: Load graphic interface data
+- `SAVE_GRAPHIC_DATA`: Store graphic configurations
+- `UPDATE_ENTRY`: Modify device point values
+- `GET_PANELS_LIST`: List available devices
+- `GET_ENTRIES`: Real-time data queries
+
+#### Data Point Types
+- **INPUT**: 64 points per device (sensors)
+- **OUTPUT**: 64 points per device (actuators)
+- **VARIABLE**: 128 points per device (calculated values)
+- **PROGRAM**: Program control points
+- **SCHEDULE**: Time-based schedules
+- **HOLIDAY**: Calendar configurations
+- **PID**: PID controller loops
+- **MONITOR**: Trending/logging points
+
+## 3. Hardware Communication Layer
+
+### 3.1 Protocol Support
+- **BACnet**: Primary building automation protocol
+- **Modbus**: Secondary protocol for legacy devices
+- **Network**: IP-based communication to devices
+
+### 3.2 Device Architecture
+- **Multi-device Support**: Up to 40 devices per system
+- **Device Types**: T3000 controllers, sub-panels
+- **Point Capacity**: 256 total points per device (64+64+128)
+
+## 4. Trendlog Database Design Implementation
+
+### 4.1 Database Separation Strategy
+
+#### Current Database (webview_database.db)
+- **Purpose**: WebView interface management, user data
+- **Tables**: Users, files, modbus registers
+- **Location**: `api/Database/webview_database.db`
+
+#### New Trendlog Database (trendlog_database.db)
+- **Purpose**: Historical data storage and trending
+- **Location**: Same directory as webview_database.db
+- **Management**: Separate Sea-ORM connection
+
+### 4.2 Migration Requirements - ROLLBACK CONFIRMATION
+
+The following files require rollback to July 28th state:
+
+#### Migration File to Remove:
+- `api/migration/src/m20250122_000000_data_management_schema.rs` (350 lines)
+
+#### Entity Files to Remove:
+- `api/src/entity/data_management/devices.rs`
+- `api/src/entity/data_management/monitoring_points.rs`
+- `api/src/entity/data_management/realtime_data_cache.rs`
+- `api/src/entity/data_management/timeseries_data.rs`
+- `api/src/entity/data_management/trend_logs.rs`
+- `api/src/entity/data_management/trend_log_points.rs`
+- `api/src/entity/data_management/mod.rs`
+
+#### Additional Files to Check:
+- Any references to data_management module in:
+  - `api/src/lib.rs`
+  - `api/migration/src/lib.rs`
+  - Route files that may import data_management entities
+
+### 4.3 New Trendlog Database Schema
+
+#### Core Tables Design
+
+```sql
+-- Devices table
+CREATE TABLE devices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id INTEGER UNIQUE NOT NULL,
+    device_name TEXT NOT NULL,
+    ip_address TEXT,
+    device_type TEXT NOT NULL, -- 'T3000', 'SUB_PANEL'
+    serial_number INTEGER,
+    is_active INTEGER DEFAULT 1,
+    last_seen INTEGER, -- Unix timestamp
+    created_at INTEGER,
+    updated_at INTEGER
+);
+
+-- Point definitions
+CREATE TABLE trend_points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id INTEGER NOT NULL,
+    point_type TEXT NOT NULL, -- 'INPUT', 'OUTPUT', 'VARIABLE'
+    point_number INTEGER NOT NULL,
+    point_name TEXT,
+    description TEXT,
+    unit TEXT,
+    data_type TEXT, -- 'ANALOG', 'DIGITAL'
+    is_enabled INTEGER DEFAULT 1,
+    collection_interval INTEGER DEFAULT 60, -- seconds
+    created_at INTEGER,
+    FOREIGN KEY (device_id) REFERENCES devices(device_id),
+    UNIQUE(device_id, point_type, point_number)
+);
+
+-- Time-series data storage
+CREATE TABLE trend_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    point_id INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL, -- Unix timestamp
+    value REAL NOT NULL,
+    quality INTEGER DEFAULT 0, -- Data quality indicator
+    FOREIGN KEY (point_id) REFERENCES trend_points(id)
+);
+
+-- Timebase definitions (T3000 standard intervals)
+CREATE TABLE timebase_config (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    interval_seconds INTEGER NOT NULL,
+    retention_days INTEGER NOT NULL
+);
+```
+
+## 5. Background Collection Process Flow
+
+### 5.1 Collection Service Architecture
+
+#### Service Initialization
+1. **T3000 Startup**: Automatic background service start
+2. **Device Discovery**: Scan network for available devices
+3. **Point Registration**: Enumerate all device points
+4. **Collection Scheduling**: Setup interval-based collection
+
+#### Collection Loop Process
+```
+Every Collection Interval (1 min - 4 days):
+1. Query Device Status
+   └── BACnet/Modbus Communication
+2. Read Point Values
+   └── Batch read optimization
+3. Data Validation
+   └── Quality checks, range validation
+4. Database Storage
+   └── Batch insert to trend_data table
+5. Cache Update
+   └── Update real-time cache for WebView
+```
+
+### 5.2 Detailed Implementation Steps
+
+#### Step 1: Background Service Setup
+```rust
+// In server.rs - add to server_start()
+async fn start_background_collection(state: AppState) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            collect_trend_data(&state).await;
+        }
+    });
+}
+```
+
+#### Step 2: Device Communication Integration
+```rust
+// Bridge to T3000 C++ functions
+extern "C" {
+    fn read_device_point(device_id: u32, point_type: u32, point_number: u32) -> f64;
+    fn get_device_status(device_id: u32) -> u32;
+}
+
+async fn collect_device_data(device_id: u32) -> Result<Vec<PointData>, Error> {
+    // Implementation details for BACnet/Modbus data collection
+}
+```
+
+#### Step 3: Data Storage Process
+```rust
+async fn store_trend_data(
+    conn: &DatabaseConnection,
+    data: Vec<PointData>
+) -> Result<(), DbErr> {
+    // Batch insert implementation
+    // Data validation and quality checks
+    // Storage optimization
+}
+```
+
+### 5.3 Performance Optimization
+
+#### Collection Strategies
+- **Batch Reading**: Group points by device for efficient communication
+- **Adaptive Intervals**: Adjust based on data volatility
+- **Error Recovery**: Retry mechanisms for communication failures
+- **Data Compression**: Optimize storage for high-frequency data
+
+#### Database Optimization
+- **Indexing**: Timestamp and point_id indexes for query performance
+- **Partitioning**: Time-based partitioning for large datasets
+- **Archival**: Automatic old data archiving/deletion
+- **Backup**: Regular database backup procedures
+
+## 6. Integration with WebView Frontend
+
+### 6.1 Real-time Data Flow
+
+#### WebSocket Communication (Port 9104)
+```javascript
+// Vue.js component integration
+const websocket = new WebSocket('ws://localhost:9104');
+websocket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'trend_update') {
+        updateTrendChart(data.points);
+    }
+};
+```
+
+#### REST API Endpoints (Port 9103)
+- `GET /api/trend/devices` - List devices with trending
+- `GET /api/trend/points/{device_id}` - Get device trend points
+- `GET /api/trend/data/{point_id}` - Historical data query
+- `POST /api/trend/config` - Configure trending parameters
+
+### 6.2 Frontend Component Updates
+
+#### TrendLogChart.vue Enhancements
+- Real-time data subscription via WebSocket
+- Historical data queries via REST API
+- Interactive time range selection
+- Multiple device/point comparison
+- Export functionality (CSV, Excel)
+
+## 7. Implementation Phases
+
+### Phase 1: Database Setup (Week 1)
+1. Rollback existing data_management entities
+2. Create new trendlog database schema
+3. Implement database connection management
+4. Setup migrations for trendlog_database.db
+
+### Phase 2: Background Collection (Week 2)
+1. Implement background collection service
+2. Device communication integration
+3. Data validation and storage
+4. Error handling and recovery
+
+### Phase 3: API Development (Week 3)
+1. REST API endpoints for trend data
+2. WebSocket real-time updates
+3. Data query optimization
+4. Security and authentication
+
+### Phase 4: Frontend Integration (Week 4)
+1. Update TrendLogChart.vue component
+2. Real-time data visualization
+3. Historical data queries
+4. User interface enhancements
+
+### Phase 5: Testing & Optimization (Week 5)
+1. Performance testing with multiple devices
+2. Data integrity validation
+3. Load testing for concurrent users
+4. Documentation and deployment
+
+## 8. Technical Considerations
+
+### 8.1 Data Quality & Reliability
+- **Communication Timeouts**: Handle device offline scenarios
+- **Data Validation**: Range checks, reasonableness tests
+- **Quality Indicators**: Mark suspicious or interpolated data
+- **Backup Strategies**: Prevent data loss during system failures
+
+### 8.2 Scalability Planning
+- **Device Limits**: Support for 40+ devices simultaneously
+- **Data Volume**: Plan for years of historical data
+- **Query Performance**: Optimize for large time ranges
+- **Concurrent Access**: Multiple users accessing trends
+
+### 8.3 Security Requirements
+- **Database Protection**: Secure SQLite file access
+- **API Authentication**: User-based access control
+- **Data Privacy**: Compliance with building automation standards
+- **Audit Logging**: Track data access and modifications
+
+## 9. Conclusion
+
+The T3000 WebView trendlog implementation requires careful integration between the existing C++ application, Rust API server, and Vue.js frontend. The dual-database approach ensures separation of concerns while maintaining performance. Background collection services provide automatic data gathering, while the WebSocket/REST API combination enables both real-time monitoring and historical analysis.
+
+The rollback of the m20250122_000000_data_management_schema.rs migration and related entities is confirmed as necessary to start with a clean slate for the new trendlog-specific implementation.
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: January 25, 2025
+**Author**: GitHub Copilot
+**Review Status**: Ready for Implementation
