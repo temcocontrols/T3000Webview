@@ -9,6 +9,14 @@ edition = "2021"
 name = "t3_webview_api"
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "create_t3_db"
+path = "src/create_t3_db.rs"
+
+[[bin]]
+name = "verify_t3_db"
+path = "src/verify_t3_db.rs"
+
 [dependencies]
 axum = { version = "0.7.7", features = ["multipart"] }
 serde = { version = "1.0", features = ["derive"] }
