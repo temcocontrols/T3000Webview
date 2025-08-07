@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "create_t3_db"
-path = "src/create_t3_db.rs"
+path = "src/t3_device/create_t3_db.rs"
 
 [[bin]]
 name = "verify_t3_db"
