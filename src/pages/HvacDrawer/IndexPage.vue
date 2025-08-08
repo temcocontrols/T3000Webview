@@ -105,13 +105,13 @@
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge" />
+          :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge && !locked" />
 
         <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!locked">
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
         </NewTopToolBar>
       </div>
 
@@ -165,8 +165,7 @@
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @mouseleave="resetCursor"
-                @click.left="viewportLeftClick" @dragover="($event) => {
+                @mouseleave="resetCursor" @click.left="viewportLeftClick" @dragover="($event) => {
                   $event.preventDefault();
                 }
                 ">
@@ -3248,7 +3247,8 @@ function addOnlineLibImage(oItem) {
 
 /* Cursor styles for moveable items - only show grab cursor when selected */
 .moveable-item-wrapper:not(.locked) .moveable-item {
-  cursor: default; /* Default cursor for unselected items */
+  cursor: default;
+  /* Default cursor for unselected items */
 }
 
 /* Show grab cursor only for selected items */

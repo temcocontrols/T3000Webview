@@ -175,7 +175,7 @@ export const ranges = {
       },
       {
         id: 1,
-        unit: "Deg.C",
+        unit: "℃",
         label: "Y3K -40 to 150",
       },
       {
@@ -185,7 +185,7 @@ export const ranges = {
       },
       {
         id: 3,
-        unit: "Deg.C",
+        unit: "℃",
         label: "10K Type2",
       },
       {
@@ -195,7 +195,7 @@ export const ranges = {
       },
       {
         id: 5,
-        unit: "Deg.C",
+        unit: "℃",
         label: "G3K -40 to 120",
       },
       {
@@ -205,7 +205,7 @@ export const ranges = {
       },
       {
         id: 7,
-        unit: "Deg.C",
+        unit: "℃",
         label: "10K Type3",
       },
       {
@@ -215,7 +215,7 @@ export const ranges = {
       },
       {
         id: 9,
-        unit: "Deg.C",
+        unit: "℃",
         label: "PT 1K -200 to 300",
       },
       {
@@ -374,8 +374,8 @@ export const ranges = {
       },
       {
         id: 1,
-        unit: "Deg.C",
-        label: "Deg.C",
+        unit: "°C",
+        label: "°C",
       },
       {
         id: 2,
@@ -648,9 +648,9 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:25.0803.01");
+export const devVersion = ref("V:25.0808.01");
 
-export const localSettings = ref({ version: "V:25.0803.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.0808.01", transform: 0 });
 
 export const T3Data = {
   deviceList: ref([]),
