@@ -9,6 +9,7 @@ pub mod error;
 pub mod file;
 pub mod modbus_register;
 pub mod server;
+pub mod t3_device;
 pub mod user;
 pub mod utils;
 

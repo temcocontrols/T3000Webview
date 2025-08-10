@@ -180,6 +180,10 @@ const routes = [
       {
         path: 'timeseries-dashboard',
         component: createOptimizedComponent(() => import('src/pages/V2/TrendLogDashboard.vue'), "TrendLogDashboard", { category: 'normal' })
+      },
+      {
+        path: 't3devicedb',
+        component: createOptimizedComponent(() => import('src/pages/Dashboard/T3Devicedb.vue'), "T3DeviceDBPage", { category: 'normal' })
       }
     ]
   },

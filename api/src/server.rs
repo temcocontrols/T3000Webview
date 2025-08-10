@@ -21,6 +21,7 @@ use crate::{
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
+use super::t3_device::routes::t3_device_routes;
 
 use chrono::Local;
 use futures_util::{SinkExt, StreamExt};
@@ -62,6 +63,7 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
             modbus_register_routes()
                 .merge(user_routes())
                 .merge(file_routes())
+                .nest("/t3device", t3_device_routes())
                 .route("/health", get(health_check_handler)),
         )
         .with_state(app_state)
