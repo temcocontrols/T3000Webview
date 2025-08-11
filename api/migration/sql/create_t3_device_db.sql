@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS networks (
 
 CREATE TABLE IF NOT EXISTS devices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    network_id INTEGER NOT NULL,
+    building_id INTEGER NOT NULL,
     room_id INTEGER,
     instance_number INTEGER NOT NULL,
     product_type INTEGER NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS devices (
     bootloader_version TEXT,
     mcu_type TEXT,
     sd_card_status TEXT,
-    -- Panel Information Fields  
+    -- Panel Information Fields
     bacnet_instance INTEGER,
     mac_address TEXT,
     mstp_network INTEGER,
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS output_points (
     updated_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
--- Enhanced Variable Points (matches C++ Str_variable_point)  
+-- Enhanced Variable Points (matches C++ Str_variable_point)
 CREATE TABLE IF NOT EXISTS variable_points (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id INTEGER NOT NULL,
@@ -268,7 +268,7 @@ CREATE TABLE IF NOT EXISTS schedule_details (
     created_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
--- Enhanced Holidays (matches C++ Str_annual_routine_point) 
+-- Enhanced Holidays (matches C++ Str_annual_routine_point)
 CREATE TABLE IF NOT EXISTS holidays (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id INTEGER NOT NULL,
@@ -404,7 +404,7 @@ CREATE TABLE IF NOT EXISTS point_categories (
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_devices_network_id ON devices(network_id);
+CREATE INDEX IF NOT EXISTS idx_devices_building_id ON devices(building_id);
 CREATE INDEX IF NOT EXISTS idx_devices_instance ON devices(instance_number);
 CREATE INDEX IF NOT EXISTS idx_input_points_device_id ON input_points(device_id);
 CREATE INDEX IF NOT EXISTS idx_input_points_number ON input_points(point_number);
