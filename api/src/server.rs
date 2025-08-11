@@ -25,8 +25,6 @@ use super::t3_device::routes::t3_device_routes;
 
 use chrono::Local;
 use futures_util::{SinkExt, StreamExt};
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
@@ -471,40 +469,6 @@ async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn log_message_to_file(message: &str) -> Result<(), Box<dyn Error>> {
-    let now = Local::now();
-    let file_name = format!(
-        "log/log_{}_{}.txt",
-        now.format("%Y-%m-%d"),
-        now.format("%H")
-    );
-
-    // Check if the log directory exists, if not, create it
-    let log_dir = std::path::Path::new("log");
-    if !log_dir.exists() {
-        std::fs::create_dir_all(log_dir)?;
-    }
-
-    let mut file = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&file_name)
-    {
-        Ok(f) => f,
-        Err(e) => {
-            println!("Failed to open log file: {:?}", e);
-            return Err(Box::new(e));
-        }
-    };
-
-    if let Err(e) = writeln!(file, "{}", message) {
-        println!("Failed to write to log file: {:?}", e);
-        return Err(Box::new(e));
-    }
-
-    Ok(())
-}
-
 fn log_message(message: &str, log_to_file: bool) {
     let now = Local::now();
     let formatted_message = format!("{}:={}", now.format("%Y-%m-%d %H:%M:%S"), message);
@@ -512,9 +476,7 @@ fn log_message(message: &str, log_to_file: bool) {
 
     if log_to_file {
         /* Temporary remove log to file
-        if let Err(e) = log_message_to_file(formatted_message.as_str()) {
-            println!("Failed to log message: {:?}", e);
-        }
+        // Function removed - unused
         */
     }
 

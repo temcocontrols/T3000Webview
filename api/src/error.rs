@@ -53,3 +53,31 @@ impl IntoResponse for Error {
         response.into_response()
     }
 }
+
+// Additional AppError type for T3 Device services
+#[derive(Clone, Debug)]
+pub enum AppError {
+    DatabaseError(String),
+    NotFound(String),
+    ValidationError(String),
+    InternalError(String),
+}
+
+impl From<sea_orm::DbErr> for AppError {
+    fn from(err: sea_orm::DbErr) -> Self {
+        AppError::DatabaseError(err.to_string())
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            AppError::DatabaseError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+        };
+
+        (status, message).into_response()
+    }
+}

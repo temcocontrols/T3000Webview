@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "create_t3_db"
-path = "src/t3_device/create_t3_db.rs"
+path = "src/bin/create_t3_db.rs"
 
 [[bin]]
 name = "server"
@@ -19,15 +19,11 @@ path = "src/bin/server.rs"
 
 [[bin]]
 name = "verify_t3_db"
-path = "src/t3_device/verify_t3_db.rs"
+path = "src/bin/verify_t3_db.rs"
 
 [[bin]]
-name = "verify_db_isolation"
-path = "src/t3_device/verify_db_isolation.rs"
-
-[[bin]]
-name = "test_migration_safety"
-path = "src/t3_device/test_migration_safety.rs"
+name = "t3000_complete_setup"
+path = "src/bin/t3000_complete_setup.rs"
 
 [dependencies]
 axum = { version = "0.7.7", features = ["multipart"] }
