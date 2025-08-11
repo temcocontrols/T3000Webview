@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::app_state::AppState;
+use crate::t3_device::services::{T3DeviceService, CreateBuildingRequest, UpdateBuildingRequest};
 
 #[derive(Deserialize)]
 pub struct QueryParams {
@@ -308,8 +309,83 @@ async fn import_table(
     })))
 }
 
+// New Building Management Endpoints
+async fn get_buildings_with_stats(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    match T3DeviceService::get_buildings_with_stats(&*db).await {
+        Ok(buildings) => Ok(Json(json!({
+            "buildings": buildings,
+            "count": buildings.len()
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_building_devices(
+    State(state): State<AppState>,
+    Path(building_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    match T3DeviceService::get_building_devices(&*db, building_id).await {
+        Ok(devices) => Ok(Json(json!({
+            "devices": devices,
+            "building_id": building_id,
+            "count": devices.len()
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_building(
+    State(state): State<AppState>,
+    Json(payload): Json<CreateBuildingRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    match T3DeviceService::create_building(&*db, payload).await {
+        Ok(building) => Ok(Json(json!({
+            "building": building,
+            "message": "Building created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn update_building(
+    State(state): State<AppState>,
+    Path(building_id): Path<i32>,
+    Json(payload): Json<UpdateBuildingRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    match T3DeviceService::update_building(&*db, building_id, payload).await {
+        Ok(building) => Ok(Json(json!({
+            "building": building,
+            "message": "Building updated successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn delete_building(
+    State(state): State<AppState>,
+    Path(building_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    match T3DeviceService::delete_building(&*db, building_id).await {
+        Ok(_) => Ok(Json(json!({
+            "message": "Building deleted successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
 pub fn t3_device_routes() -> Router<AppState> {
     Router::new()
+        // Legacy endpoints (keep for compatibility)
         .route("/status", get(get_database_status))
         .route("/tables", get(get_table_data))
         .route("/tables/:table", post(create_record))
@@ -317,4 +393,11 @@ pub fn t3_device_routes() -> Router<AppState> {
         .route("/tables/:table/:id", delete(delete_record))
         .route("/export/:table", get(export_table))
         .route("/import/:table", post(import_table))
+
+        // New structured endpoints
+        .route("/buildings", get(get_buildings_with_stats))
+        .route("/buildings", post(create_building))
+        .route("/buildings/:id", put(update_building))
+        .route("/buildings/:id", delete(delete_building))
+        .route("/buildings/:id/devices", get(get_building_devices))
 }
