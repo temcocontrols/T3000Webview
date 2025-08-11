@@ -10,20 +10,20 @@ name = "t3_webview_api"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "create_t3_db"
-path = "src/bin/create_t3_db.rs"
+name = "t3000_server"
+path = "src/main.rs"
 
 [[bin]]
-name = "server"
-path = "src/bin/server.rs"
+name = "create_t3_db"
+path = "src/t3_device/create_t3_db.rs"
 
 [[bin]]
 name = "verify_t3_db"
-path = "src/bin/verify_t3_db.rs"
+path = "src/t3_device/verify_t3_db.rs"
 
 [[bin]]
 name = "t3000_complete_setup"
-path = "src/bin/t3000_complete_setup.rs"
+path = "src/t3_device/t3000_complete_setup.rs"
 
 [dependencies]
 axum = { version = "0.7.7", features = ["multipart"] }

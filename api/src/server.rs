@@ -17,11 +17,10 @@ use crate::{
     app_state::{self, AppState},
     file::routes::file_routes,
     utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
+    modbus_register::routes::modbus_register_routes,
+    user::routes::user_routes,
+    t3_device::routes::t3_device_routes,
 };
-
-use super::modbus_register::routes::modbus_register_routes;
-use super::user::routes::user_routes;
-use super::t3_device::routes::t3_device_routes;
 
 use chrono::Local;
 use futures_util::{SinkExt, StreamExt};
