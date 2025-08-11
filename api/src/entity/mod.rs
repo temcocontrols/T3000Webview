@@ -8,3 +8,6 @@ pub mod modbus_register_devices;
 pub mod modbus_register_product_device_mapping;
 pub mod modbus_register_settings;
 pub mod user;
+
+// T3000 Device Database Entities
+pub mod t3_device;
