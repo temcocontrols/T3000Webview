@@ -106,25 +106,27 @@
           icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
           @click="changeValue('increase')" />
         <div>
-          <div @click="$emit('objectClicked')" class="text-display">
-            <span v-if="displayDescription" class="description-text">{{ displayDescription }}</span>
-            <span v-if="displayValueText" class="value-text">{{ displayValueText }}</span>
-            <span v-if="!displayDescription && !displayValueText">{{ item.t3Entry.id }}</span>
-          </div>
+          <div class="content-with-icon">
+            <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon-left"
+              @click="$emit('autoManualToggle')">
+              <q-icon v-if="!item.t3Entry.auto_manual">
+                <q-tooltip anchor="top middle" self="center middle">
+                  In auto mode
+                </q-tooltip>
+              </q-icon>
+              <q-icon v-else name="lock" style="font-size: large;color:#659dc5">
+                <q-tooltip anchor="top middle" self="center middle">
+                  In manual mode
+                </q-tooltip>
+              </q-icon>
+            </span>
 
-          <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
-            @click="$emit('autoManualToggle')">
-            <q-icon v-if="!item.t3Entry.auto_manual">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon>
-          </span>
+            <div @click="$emit('objectClicked')" class="text-display">
+              <span v-if="displayDescription" class="description-text">{{ displayDescription }}</span>
+              <span v-if="displayValueText" class="value-text">{{ displayValueText }}</span>
+              <span v-if="!displayDescription && !displayValueText">{{ item.t3Entry.id }}</span>
+            </div>
+          </div>
         </div>
         <q-btn v-if="
           showArrows &&
@@ -437,9 +439,9 @@ export default defineComponent({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+  /* background: rgba(255, 255, 255, 0.9);  */
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  */
   font-size: 14px; /* Fixed font size for titles */
 }
 
@@ -470,10 +472,31 @@ export default defineComponent({
   align-items: center;
   gap: 8px; /* Space between description and value */
   flex-wrap: wrap; /* Allow wrapping if content is too long */
+  width: 100%; /* Take full width for consistent layout */
+  order: 0; /* Position first (top row) */
+}
+
+/* Container for content with mode icon */
+.title-overlay .content-with-icon {
+  display: flex;
+  flex-direction: column; /* Stack vertically */
+  align-items: flex-start; /* Align to left */
+  gap: 4px; /* Space between rows */
+}
+
+/* Mode icon positioned on the second row, left-aligned */
+.title-overlay .mode-icon-left {
+  order: 1; /* Position after text content */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Align to left */
+  cursor: pointer;
+  font-size: 16px; /* Reduced from 18px to make it smaller */
+  width: 100%; /* Take full width for left alignment */
 }
 
 .title-overlay .description-text {
-  font-weight: 600;
+  /* font-weight: 600; */
   color: #2c3e50;
   font-size: 13px;
   line-height: 1.2;

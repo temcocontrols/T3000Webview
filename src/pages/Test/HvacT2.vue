@@ -1268,7 +1268,7 @@ function onDragEnd(e) {
     );
     item.translate = e.lastEvent.beforeTranslate;
 
-    LogUtil.Debug('= IdxPage onDragEnd:', e, item.translate);
+    // LogUtil.Debug('= IdxPage onDragEnd:', e, item.translate);
     save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }

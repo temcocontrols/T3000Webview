@@ -943,7 +943,6 @@ function onDragEnd(e) {
     );
     item.translate = e.lastEvent.beforeTranslate;
 
-    console.log('= IdxPage onDragEnd:', e, item.translate);
     save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
