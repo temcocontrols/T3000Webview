@@ -3,7 +3,7 @@
     <!-- Top Bar -->
     <div class="top-bar">
       <div class="top-bar-left">
-        <q-icon name="storage" size="24px" class="q-mr-sm" />
+        <q-icon name="storage" size="20px" class="q-mr-sm" />
         <span class="page-title">T3000 Device Database</span>
         <q-separator vertical class="q-mx-md" />
         <q-breadcrumbs>
@@ -19,6 +19,7 @@
           label="Refresh"
           @click="refreshData"
           class="q-mr-sm"
+          size="sm"
         />
         <q-btn
           color="primary"
@@ -26,6 +27,7 @@
           label="Create New"
           @click="showCreateDialog"
           :disable="!selectedTable"
+          size="sm"
         />
       </div>
     </div>
@@ -43,6 +45,7 @@
             icon="expand_more"
             :class="{ 'rotate-180': !showTableGroups }"
             @click="showTableGroups = !showTableGroups"
+            size="sm"
           />
         </div>
 
@@ -150,6 +153,7 @@
                 :color="viewMode === 'table' ? 'primary' : 'grey-6'"
                 @click="viewMode = 'table'"
                 dense
+                size="sm"
               >
                 <q-tooltip>Table View</q-tooltip>
               </q-btn>
@@ -159,6 +163,7 @@
                 :color="viewMode === 'cards' ? 'primary' : 'grey-6'"
                 @click="viewMode = 'cards'"
                 dense
+                size="sm"
               >
                 <q-tooltip>Card View</q-tooltip>
               </q-btn>
@@ -168,6 +173,7 @@
                 :color="viewMode === 'json' ? 'primary' : 'grey-6'"
                 @click="viewMode = 'json'"
                 dense
+                size="sm"
               >
                 <q-tooltip>JSON View</q-tooltip>
               </q-btn>
@@ -183,10 +189,10 @@
               placeholder="Search records..."
               outlined
               dense
-              style="width: 300px"
+              style="width: 280px"
             >
               <template v-slot:prepend>
-                <q-icon name="search" />
+                <q-icon name="search" size="18px" />
               </template>
             </q-input>
             <q-select
@@ -195,7 +201,7 @@
               placeholder="Filter by..."
               outlined
               dense
-              style="width: 150px"
+              style="width: 140px"
               class="q-ml-sm"
             />
           </div>
@@ -206,6 +212,7 @@
               label="Export"
               @click="exportData"
               class="q-mr-sm"
+              size="sm"
             />
             <q-btn
               flat
@@ -213,6 +220,7 @@
               label="Import"
               @click="importData"
               class="q-mr-sm"
+              size="sm"
             />
             <q-btn
               color="negative"
@@ -220,6 +228,7 @@
               label="Delete Selected"
               @click="deleteSelected"
               :disable="selectedRows.length === 0"
+              size="sm"
             />
           </div>
         </div>
@@ -920,23 +929,54 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  font-size: 13px;
+
+  // Global text size overrides
+  :deep(.q-btn) {
+    font-size: 13px;
+  }
+
+  :deep(.q-badge) {
+    font-size: 11px;
+  }
+
+  :deep(.q-item-label) {
+    font-size: 13px;
+  }
+
+  :deep(.q-item-label--caption) {
+    font-size: 11px;
+  }
+
+  :deep(.q-breadcrumbs) {
+    font-size: 12px;
+  }
+
+  :deep(.q-tooltip) {
+    font-size: 11px;
+  }
+
+  :deep(.q-pagination) {
+    font-size: 12px;
+  }
 }
 
 .top-bar {
-  height: 60px;
+  height: 56px;
+  padding: 0 20px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  margin-top: 30px;
 
   .top-bar-left {
     display: flex;
     align-items: center;
 
     .page-title {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 500;
       color: #1a1a1a;
     }
@@ -962,8 +1002,8 @@ onMounted(() => {
   flex-direction: column;
 
   .panel-header {
-    height: 56px;
-    padding: 0 16px;
+    height: 48px;
+    padding: 0 14px;
     display: flex;
     align-items: center;
     background: white;
@@ -972,6 +1012,7 @@ onMounted(() => {
     h6 {
       color: #1a1a1a;
       font-weight: 500;
+      font-size: 13px;
     }
   }
 
@@ -986,9 +1027,10 @@ onMounted(() => {
     }
 
     .table-item {
-      padding: 8px 16px;
-      margin: 0 8px;
+      padding: 6px 14px;
+      margin: 0 6px;
       border-radius: 4px;
+      font-size: 13px;
 
       &:hover {
         background: rgba(25, 118, 210, 0.04);
@@ -1011,8 +1053,8 @@ onMounted(() => {
 }
 
 .data-header {
-  height: 80px;
-  padding: 16px 24px;
+  height: 70px;
+  padding: 14px 20px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
@@ -1022,19 +1064,25 @@ onMounted(() => {
     h5 {
       color: #1a1a1a;
       font-weight: 500;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      font-size: 14px;
+    }
+
+    p {
+      font-size: 12px;
     }
   }
 }
 
 .data-controls {
-  height: 64px;
-  padding: 0 24px;
+  height: 56px;
+  padding: 0 20px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #f8f9fa;
+  font-size: 13px;
 
   .data-controls-left {
     display: flex;
@@ -1049,20 +1097,31 @@ onMounted(() => {
 
 .data-content {
   flex: 1;
-  padding: 24px;
+  padding: 20px;
   overflow: auto;
+  font-size: 13px;
 
   .data-table {
     :deep(.q-table__container) {
       border: 1px solid #e0e0e0;
       border-radius: 4px;
+      font-size: 13px;
+    }
+
+    :deep(.q-table th) {
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    :deep(.q-table td) {
+      font-size: 13px;
     }
   }
 
   .cards-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 14px;
 
     .record-card {
       border: 1px solid #e0e0e0;
@@ -1082,28 +1141,31 @@ onMounted(() => {
       .card-header {
         display: flex;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
 
         h6 {
           color: #1a1a1a;
           font-weight: 500;
+          font-size: 14px;
         }
       }
 
       .card-field {
         display: flex;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
 
         .field-label {
           font-weight: 500;
           color: #666;
-          min-width: 120px;
-          margin-right: 8px;
+          min-width: 110px;
+          margin-right: 6px;
+          font-size: 12px;
         }
 
         .field-value {
           color: #1a1a1a;
           flex: 1;
+          font-size: 12px;
         }
       }
     }
@@ -1115,10 +1177,10 @@ onMounted(() => {
     border-radius: 4px;
 
     .json-content {
-      padding: 16px;
+      padding: 14px;
       font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 12px;
-      line-height: 1.4;
+      font-size: 11px;
+      line-height: 1.3;
       color: #1a1a1a;
     }
   }
@@ -1133,7 +1195,12 @@ onMounted(() => {
   text-align: center;
 
   h5 {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  p {
+    font-size: 13px;
   }
 }
 
@@ -1144,6 +1211,7 @@ onMounted(() => {
   .dialog-title h6 {
     color: #1a1a1a;
     font-weight: 500;
+    font-size: 15px;
   }
 }
 
@@ -1153,7 +1221,40 @@ onMounted(() => {
 
   .record-form {
     .form-field {
-      margin-bottom: 16px;
+      margin-bottom: 14px;
+
+      :deep(.q-field__label) {
+        font-size: 12px;
+      }
+
+      :deep(.q-field__control) {
+        font-size: 12px;
+      }
+
+      :deep(.q-field__control input) {
+        font-size: 12px;
+      }
+
+      :deep(.q-field__control textarea) {
+        font-size: 12px;
+      }
+    }
+  }
+
+  :deep(.q-dialog) {
+    .q-card {
+      .q-card__section {
+        font-size: 13px;
+      }
+    }
+
+    .q-dialog__inner h6 {
+      font-size: 14px;
+      margin: 0 0 12px 0;
+    }
+
+    .q-dialog__inner p {
+      font-size: 12px;
     }
   }
 }
@@ -1164,19 +1265,19 @@ onMounted(() => {
 
 @media (max-width: 1024px) {
   .left-panel {
-    width: 280px;
+    width: 260px;
   }
 
   .data-controls {
     flex-direction: column;
     height: auto;
-    padding: 16px 24px;
+    padding: 14px 20px;
 
     .data-controls-left,
     .data-controls-right {
       width: 100%;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
   }
 
@@ -1192,19 +1293,23 @@ onMounted(() => {
 
   .left-panel {
     width: 100%;
-    height: 200px;
+    height: 180px;
   }
 
   .top-bar {
     flex-direction: column;
     height: auto;
-    padding: 16px;
+    padding: 14px;
 
     .top-bar-left,
     .top-bar-right {
       width: 100%;
       justify-content: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+    }
+
+    .page-title {
+      font-size: 14px;
     }
   }
 }

@@ -180,10 +180,6 @@ const routes = [
       {
         path: 'timeseries-dashboard',
         component: createOptimizedComponent(() => import('src/pages/V2/TrendLogDashboard.vue'), "TrendLogDashboard", { category: 'normal' })
-      },
-      {
-        path: 't3devicedb',
-        component: createOptimizedComponent(() => import('src/pages/Dashboard/T3Devicedb.vue'), "T3DeviceDBPage", { category: 'normal' })
       }
     ]
   },
@@ -237,6 +233,16 @@ const routes = [
       {
         path: "",
         component: createOptimizedComponent(() => import("pages/ModbusRegister/IndexPage.vue"), "ModbusRegIndexPage", { category: 'normal' }),
+      },
+    ],
+  },
+  {
+    path: "/dashboard",
+    component: createOptimizedComponent(() => import("layouts/MainLayout2.vue"), "ModbusRegLayout", { category: 'normal' }),
+    children: [
+      {
+        path: "",
+        component: createOptimizedComponent(() => import("src/pages/Dashboard/T3Devicedb.vue"), "T3DeviceDBPage", { category: 'normal' }),
       },
     ],
   },
