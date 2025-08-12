@@ -106,9 +106,11 @@
           icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
           @click="changeValue('increase')" />
         <div>
-          <span @click="$emit('objectClicked')">{{
-            dispalyText || item.t3Entry.id
-            }}</span>
+          <div @click="$emit('objectClicked')" class="text-display">
+            <span v-if="displayDescription" class="description-text">{{ displayDescription }}</span>
+            <span v-if="displayValueText" class="value-text">{{ displayValueText }}</span>
+            <span v-if="!displayDescription && !displayValueText">{{ item.t3Entry.id }}</span>
+          </div>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -232,80 +234,86 @@ export default defineComponent({
       return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
 
-    const dispalyText = computed(() => {
+    const displayDescription = computed(() => {
+      if (!props.item.t3Entry) {
+        return "";
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "description") {
+        return props.item.t3Entry.description || "";
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "label") {
+        return props.item.t3Entry.label || "";
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
+        // For value/control mode, no separate description
+        return "";
+      }
+
+      // For other fields, return the field value as description
+      return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
+    });
+
+    const displayValueText = computed(() => {
       if (!props.item.t3Entry) {
         return "";
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
 
-      if (props.item.settings.t3EntryDisplayField === "description") {
-        const description = props.item.t3Entry.description || "";
-        const value = props.item.t3Entry.value || "";
-        let valueText = "";
-
+      // Helper function to get value text
+      const getValueText = () => {
         if (props.item.t3Entry.range > 100) {
-          const rangeValue = range.options?.find(
-            (item) => item.value === props.item.t3Entry.value
-          )
-          valueText = rangeValue?.name || "";
-        }
-        else if (props.item.t3Entry.digital_analog === 1) {
-          valueText = (value || "") + " " + (range?.unit || "");
-        } else if (props.item.t3Entry.digital_analog === 0) {
-          if (props.item.t3Entry.control) {
-            valueText = range?.on || "";
-          } else {
-            valueText = range?.off || "";
-          }
-        }
-
-        return description + " " + valueText;
-      }
-
-      if (props.item.settings.t3EntryDisplayField === "label") {
-        const description = props.item.t3Entry.label || "";
-        const value = props.item.t3Entry.value || "";
-        let valueText = "";
-
-        if (props.item.t3Entry.range > 100) {
-          const rangeValue = range.options?.find(
-            (item) => item.value === props.item.t3Entry.value
-          )
-          valueText = rangeValue?.name || "";
-        }
-        else if (props.item.t3Entry.digital_analog === 1) {
-          valueText = (value || "") + " " + (range?.unit || "");
-        } else if (props.item.t3Entry.digital_analog === 0) {
-          if (props.item.t3Entry.control) {
-            valueText = range?.on || "";
-          } else {
-            valueText = range?.off || "";
-          }
-        }
-
-        return description + " " + valueText;
-      }
-
-      if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
-        if (props.item.t3Entry.value !== undefined && props.item.t3Entry.range > 100) {
           const rangeValue = range.options?.find(
             (item) => item.value === props.item.t3Entry.value
           );
-          return rangeValue?.name;
-        } else if (props.item.t3Entry.value !== undefined && props.item.t3Entry.digital_analog === 1) {
-          return props.item.t3Entry.value + " " + range.unit;
-        } else if (props.item.t3Entry.control !== undefined && props.item.t3Entry.digital_analog === 0) {
+          return rangeValue?.name || "";
+        }
+        else if (props.item.t3Entry.digital_analog === 1) {
+          const value = props.item.t3Entry.value || "";
+          return value + " " + (range?.unit || "");
+        } else if (props.item.t3Entry.digital_analog === 0) {
           if (props.item.t3Entry.control) {
-            return range.on;
+            return range?.on || "";
           } else {
-            return range.off;
+            return range?.off || "";
           }
         }
+        return "";
+      };
+
+      if (props.item.settings.t3EntryDisplayField === "description") {
+        return getValueText();
       }
 
-      return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
-    })
+      if (props.item.settings.t3EntryDisplayField === "label") {
+        return getValueText();
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
+        return getValueText();
+      }
+
+      return "";
+    });
+
+    // Legacy computed for backward compatibility (combines both)
+    const dispalyText = computed(() => {
+      const desc = displayDescription.value;
+      const value = displayValueText.value;
+
+      if (desc && value) {
+        return desc + " " + value;
+      } else if (desc) {
+        return desc;
+      } else if (value) {
+        return value;
+      }
+
+      return "";
+    });
 
     const processedColors = computed(() => {
       const item = props.item;
@@ -384,6 +392,8 @@ export default defineComponent({
 
     return {
       range,
+      displayDescription,
+      displayValueText,
       dispalyText,
       processedColors,
       changeValue,
@@ -451,6 +461,32 @@ export default defineComponent({
 /* Override the grow class for title-overlay context */
 .title-overlay .object-title.grow {
   flex-grow: unset !important;
+}
+
+/* Text display styling for separated description and value */
+.title-overlay .text-display {
+  display: flex;
+  flex-direction: row; /* Keep description and value on same line */
+  align-items: center;
+  gap: 8px; /* Space between description and value */
+  flex-wrap: wrap; /* Allow wrapping if content is too long */
+}
+
+.title-overlay .description-text {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.title-overlay .value-text {
+  font-weight: 500;
+  color: #27ae60;
+  font-size: 14px;
+  background: rgba(39, 174, 96, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1.2;
 }
 
 .with-bg .object-title {
