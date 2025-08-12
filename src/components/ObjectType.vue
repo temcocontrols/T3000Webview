@@ -112,16 +112,6 @@
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
-            <!-- <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="swipe_up">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon> -->
             <q-icon v-if="!item.t3Entry.auto_manual">
               <q-tooltip anchor="top middle" self="center middle">
                 In auto mode
@@ -145,7 +135,6 @@
   </div>
 </template><script>
 import { defineComponent, computed, ref } from "vue";
-// import { getEntryRange } from "src/lib/common";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
 import DuctEl from "./ObjectTypes/Duct.vue";
@@ -182,7 +171,6 @@ import Weld from "./ObjectTypes/Weld.vue";
 
 import CircleEl from "./Basic/Circle.vue";
 import RectangleEl from "./Basic/Rectangle.vue";
-// import HexagonEl from "./Basic/Hexagon.vue";
 import StepEl from "./Basic/Step.vue";
 
 export default defineComponent({
@@ -221,7 +209,6 @@ export default defineComponent({
     Weld,
     CircleEl,
     RectangleEl,
-    // HexagonEl,
     StepEl
   },
   props: {
@@ -241,24 +228,16 @@ export default defineComponent({
     "updateWeldModel",
   ],
   setup(props, { emit }) {
-
-    // console.log('= v.ObjectType setup', props.item);
-
     const range = computed(() => {
       return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
 
     const dispalyText = computed(() => {
-
-      // console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
-      //   props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
-
       if (!props.item.t3Entry) {
         return "";
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
-      // console.log('= Ot range,t3e', range, props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";
@@ -311,12 +290,10 @@ export default defineComponent({
       if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
         if (props.item.t3Entry.value !== undefined && props.item.t3Entry.range > 100) {
           const rangeValue = range.options?.find(
-            // (item) => item.value * 1000 === props.item.t3Entry.value
             (item) => item.value === props.item.t3Entry.value
           );
           return rangeValue?.name;
         } else if (props.item.t3Entry.value !== undefined && props.item.t3Entry.digital_analog === 1) {
-          // return props.item.t3Entry.value / 1000 + " " + range.unit;
           return props.item.t3Entry.value + " " + range.unit;
         } else if (props.item.t3Entry.control !== undefined && props.item.t3Entry.digital_analog === 0) {
           if (props.item.t3Entry.control) {
@@ -357,15 +334,12 @@ export default defineComponent({
       ) {
         const rangeOptions = range.options?.filter((item) => item.status === 1);
         const rangeIndex = rangeOptions.findIndex(
-          // (item) => item.value * 1000 === props.item.t3Entry.value
           (item) => item.value === props.item.t3Entry.value
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          //newVal = rangeOptions[rangeIndex + 1].value * 1000;
           newVal = rangeOptions[rangeIndex + 1].value;
         } else if (type === "increase" && rangeIndex > 0) {
-          //newVal = rangeOptions[rangeIndex - 1].value * 1000;
           newVal = rangeOptions[rangeIndex - 1].value;
         } else {
           return;
@@ -375,10 +349,8 @@ export default defineComponent({
         props.item.t3Entry.digital_analog === 1
       ) {
         if (type === "increase") {
-          // newVal = props.item.t3Entry.value + 1000;
           newVal = props.item.t3Entry.value + 1;
         } else {
-          // newVal = props.item.t3Entry.value - 1000;
           newVal = props.item.t3Entry.value - 1;
         }
       } else if (
