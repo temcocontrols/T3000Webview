@@ -45,7 +45,7 @@ async fn main() -> Result<(), DbErr> {
 
 async fn create_all_tables(db: &sea_orm::DatabaseConnection) -> Result<(), DbErr> {
     // Read and execute the complete SQL schema
-    let sql_content = fs::read_to_string("migration/sql/create_t3_device_db.sql")
+    let _sql_content = fs::read_to_string("migration/sql/create_t3_device_db.sql")
         .expect("Failed to read SQL file");
 
     // Execute core tables first
@@ -415,7 +415,7 @@ Optional: 🎛️  Devices → 🏠 Rooms (room_id)
 ");
 }
 
-async fn final_status_report(db: &sea_orm::DatabaseConnection) -> Result<(), DbErr> {
+async fn final_status_report(_db: &sea_orm::DatabaseConnection) -> Result<(), DbErr> {
     println!("📊 T3000 Database Status Report:");
     println!("================================");
     println!("✅ Database Schema: Complete");

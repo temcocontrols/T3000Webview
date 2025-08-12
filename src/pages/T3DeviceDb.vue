@@ -394,25 +394,25 @@
   </q-page>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 
 // Reactive data
-const selectedTable = ref('')
+const selectedTable = ref<string>('')
 const showTableGroups = ref(true)
-const viewMode = ref('table')
+const viewMode = ref<'table' | 'cards' | 'json'>('table')
 const searchQuery = ref('')
 const filterField = ref('')
-const tableData = ref([])
-const selectedRows = ref([])
+const tableData = ref<any[]>([])
+const selectedRows = ref<any[]>([])
 const loading = ref(false)
 const showDialog = ref(false)
-const dialogMode = ref('create')
+const dialogMode = ref<'create' | 'edit'>('create')
 const dialogMaximized = ref(false)
-const formData = ref({})
+const formData = ref<Record<string, any>>({})
 const saving = ref(false)
 
 // Pagination
@@ -562,7 +562,7 @@ const tableColumns = computed(() => {
 })
 
 // Methods
-const selectTable = (tableName) => {
+const selectTable = (tableName: string) => {
   selectedTable.value = tableName
   selectedRows.value = []
   loadTableData()
@@ -573,8 +573,8 @@ const getSelectedTableInfo = () => {
   return allTables.find(table => table.name === selectedTable.value)
 }
 
-const getTableSpecificColumns = (tableName) => {
-  const columnMappings = {
+const getTableSpecificColumns = (tableName: string) => {
+  const columnMappings: Record<string, any[]> = {
     buildings: [
       { name: 'name', label: 'Name', field: 'name', sortable: true },
       { name: 'address', label: 'Address', field: 'address', sortable: true },
@@ -627,30 +627,9 @@ const loadTableData = async () => {
       type: 'negative',
       message: 'Failed to load table data'
     })
-    // Fallback to sample data for demo
-    tableData.value = getSampleData(selectedTable.value)
   } finally {
     loading.value = false
   }
-}
-
-const getSampleData = (tableName) => {
-  const sampleData = {
-    buildings: [
-      { id: 1, name: 'Main Building', address: '123 Main St', protocol: 'TCP/IP', selected: 1 },
-      { id: 2, name: 'Building B', address: '456 Oak Ave', protocol: 'Modbus', selected: 0 }
-    ],
-    devices: [
-      { id: 1, device_name: 'T3-BB-01', instance_number: 1, product_type: 100, ip_address: '192.168.1.100', status: 1 },
-      { id: 2, device_name: 'T3-BB-02', instance_number: 2, product_type: 100, ip_address: '192.168.1.101', status: 0 }
-    ],
-    input_points: [
-      { id: 1, point_number: 1, label: 'Zone Temperature', value: 72.5, units_type: 1, status: 1 },
-      { id: 2, point_number: 2, label: 'Humidity', value: 45.2, units_type: 8, status: 1 }
-    ]
-  }
-
-  return sampleData[tableName] || []
 }
 
 const refreshData = () => {
@@ -669,14 +648,12 @@ const loadTableCounts = async () => {
       table.count = data.count || 0
     } catch (error) {
       console.error(`Error loading count for ${table.name}:`, error)
-      // Fallback to sample counts
-      const sampleCounts = { buildings: 2, devices: 5, input_points: 24, output_points: 16 }
-      table.count = sampleCounts[table.name] || 0
+      table.count = 0
     }
   }
 }
 
-const onRequest = (props) => {
+const onRequest = (props: any) => {
   const { page, rowsPerPage } = props.pagination
   pagination.value.page = page
   pagination.value.rowsPerPage = rowsPerPage
@@ -689,13 +666,13 @@ const showCreateDialog = () => {
   showDialog.value = true
 }
 
-const editRecord = (record) => {
+const editRecord = (record: any) => {
   dialogMode.value = 'edit'
   formData.value = { ...record }
   showDialog.value = true
 }
 
-const viewRecord = (record) => {
+const viewRecord = (record: any) => {
   $q.dialog({
     title: `View ${getSelectedTableInfo()?.label}`,
     message: `<pre>${JSON.stringify(record, null, 2)}</pre>`,
@@ -704,7 +681,7 @@ const viewRecord = (record) => {
   })
 }
 
-const deleteRecord = (record) => {
+const deleteRecord = (record: any) => {
   $q.dialog({
     title: 'Confirm Delete',
     message: `Are you sure you want to delete this ${getSelectedTableInfo()?.label.toLowerCase()}?`,
@@ -801,7 +778,7 @@ const saveRecord = async () => {
 const getFormFields = () => {
   if (!selectedTable.value) return []
 
-  const fieldMappings = {
+  const fieldMappings: Record<string, any[]> = {
     buildings: [
       { name: 'name', label: 'Name', type: 'text', required: true },
       { name: 'address', label: 'Address', type: 'text', required: false },
@@ -848,12 +825,12 @@ const importData = () => {
   input.type = 'file'
   input.accept = '.json,.csv'
   input.onchange = (event) => {
-    const file = event.target.files?.[0]
+    const file = (event.target as HTMLInputElement).files?.[0]
     if (file) {
       const reader = new FileReader()
       reader.onload = (e) => {
         try {
-          const data = JSON.parse(e.target?.result)
+          const data = JSON.parse(e.target?.result as string)
           // Process imported data
           console.log('Imported data:', data)
           $q.notify({
@@ -873,13 +850,13 @@ const importData = () => {
   input.click()
 }
 
-const getRecordTitle = (record) => {
+const getRecordTitle = (record: any) => {
   return record.name || record.label || record.device_name || `Record ${record.id}`
 }
 
-const getCardFields = (record) => {
+const getCardFields = (record: any) => {
   const excludeFields = ['id', 'created_at', 'updated_at']
-  const fields = {}
+  const fields: Record<string, any> = {}
 
   Object.keys(record).forEach(key => {
     if (!excludeFields.includes(key) && record[key] !== null && record[key] !== '') {
@@ -890,17 +867,17 @@ const getCardFields = (record) => {
   return fields
 }
 
-const formatFieldName = (fieldName) => {
+const formatFieldName = (fieldName: string) => {
   return fieldName
     .replace(/_/g, ' ')
     .replace(/\b\w/g, l => l.toUpperCase())
 }
 
-const isRowSelected = (record) => {
+const isRowSelected = (record: any) => {
   return selectedRows.value.some(row => row.id === record.id)
 }
 
-const toggleRowSelection = (record) => {
+const toggleRowSelection = (record: any) => {
   const index = selectedRows.value.findIndex(row => row.id === record.id)
   if (index > -1) {
     selectedRows.value.splice(index, 1)
@@ -980,7 +957,7 @@ onMounted(() => {
     overflow-y: auto;
 
     .table-group {
-      :deep(.q-expansion-item__content) {
+      .q-expansion-item__content {
         padding: 0;
       }
     }
@@ -1053,7 +1030,7 @@ onMounted(() => {
   overflow: auto;
 
   .data-table {
-    :deep(.q-table__container) {
+    .q-table__container {
       border: 1px solid #e0e0e0;
       border-radius: 4px;
     }

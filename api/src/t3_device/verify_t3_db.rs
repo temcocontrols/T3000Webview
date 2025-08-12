@@ -6,14 +6,14 @@ async fn main() -> Result<(), DbErr> {
     let db = Database::connect("sqlite://Database/t3_device.db").await?;
 
     // Get all table names
-    let result = db.execute_unprepared("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").await?;
+    let _result = db.execute_unprepared("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").await?;
 
     println!("T3000 Device Database Tables:");
     println!("=============================");
 
     // Query to get table info
     let tables_query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
-    let tables_result = db.execute_unprepared(tables_query).await?;
+    let _tables_result = db.execute_unprepared(tables_query).await?;
 
     println!("Tables created successfully:");
 
