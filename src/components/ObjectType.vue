@@ -29,7 +29,8 @@
     <!-- Shape/Content Container (scales with parent) -->
     <div class="shape-container flex justify-center object-container relative"
       :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }"
-      @click="$emit('objectClicked')">
+      @click="$emit('objectClicked')"
+      @click.right="handleTitleRightClick">
 
       <fan v-if="(item?.type ?? '') === 'Fan'" class="fan" v-bind="item.settings" />
       <duct v-else-if="(item?.type ?? '') === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
@@ -91,7 +92,8 @@
 
   <!-- Fixed-position Title Section (positioned outside scalable area) -->
   <div class="title-overlay"
-       v-if="item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none')">
+       v-if="item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none')"
+       @click.right="handleTitleRightClick">
     <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
       v-if="item.settings.title" @click="$emit('objectClicked')">
       {{ item.settings.title }}
@@ -230,6 +232,7 @@ export default defineComponent({
     "objectClicked",
     "changeValue",
     "updateWeldModel",
+    "click-right",
   ],
   setup(props, { emit }) {
     const range = computed(() => {
@@ -392,6 +395,10 @@ export default defineComponent({
       emit("updateWeldModel", weldModel, itemList);
     }
 
+    const handleTitleRightClick = (event) => {
+      emit("click-right", event);
+    }
+
     return {
       range,
       displayDescription,
@@ -402,6 +409,7 @@ export default defineComponent({
       refresh,
       objectRef,
       updateWeldModel,
+      handleTitleRightClick,
     };
   },
 });

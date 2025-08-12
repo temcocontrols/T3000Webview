@@ -500,7 +500,8 @@
                       :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
+                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)"
+                      @click-right="ObjectRightClicked(item, $event)" />
 
                     <CanvasShape v-if="
                       (item?.type ?? '') === 'Weld_General' ||
@@ -2566,6 +2567,12 @@ const toggleNumberValue = ref(0);
 
 
 function ObjectRightClicked(item, ev) {
+  console.log("a //----------------------")
+  console.log("a //Right-clicked item:", item);
+  console.log("a //Item selected:", isItemSelected(item.id));
+  console.log("a //Item t3Entry:", item.t3Entry);
+
+  // Only show context menu if object is selected AND linked to an entity
   if (item.t3Entry !== null) {
 
     showSettingMenu.value = true;
