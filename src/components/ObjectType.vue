@@ -18,65 +18,19 @@
   - The component manages the editing lifecycle by integrating with ag-Grid's API to stop editing when necessary.
 -->
 <template>
+  <!-- Main scalable container (this gets moved/scaled by IndexPage) -->
   <div class="moveable-item" :class="{
-    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes((item?.type ?? '')),
     'overflow-hidden': (item?.type ?? '') === 'Text',
     [item.type]: (item?.type ?? ''),
     'with-bg': item.settings.bgColor,
     'with-title': item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
-      v-if="item.settings.title" @click="$emit('objectClicked')">
-      {{ item.settings.title }}
-    </div>
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
-      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
-      <div class="relative">
-        <q-btn v-if="
-          showArrows &&
-          (item?.type ?? '') !== 'Switch' &&
-          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
-          icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
-          @click="changeValue('increase')" />
-        <div>
-          <span @click="$emit('objectClicked')">{{
-            dispalyText || item.t3Entry.id
-            }}</span>
 
-          <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
-            @click="$emit('autoManualToggle')">
-            <!-- <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="swipe_up">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon> -->
-            <q-icon v-if="!item.t3Entry.auto_manual">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon>
-          </span>
-        </div>
-        <q-btn v-if="
-          showArrows &&
-          (item?.type ?? '') !== 'Switch' &&
-          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="down-btn absolute" size="sm"
-          icon="keyboard_arrow_down" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
-          @click="changeValue('decrease')" />
-      </div>
-    </div>
-    <div class="flex justify-center object-container relative"
-      :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }" @click="$emit('objectClicked')">
+    <!-- Shape/Content Container (scales with parent) -->
+    <div class="shape-container flex justify-center object-container relative"
+      :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      @click="$emit('objectClicked')">
+
       <fan v-if="(item?.type ?? '') === 'Fan'" class="fan" v-bind="item.settings" />
       <duct v-else-if="(item?.type ?? '') === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
       <cooling-coil v-else-if="(item?.type ?? '') === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
@@ -134,9 +88,62 @@
       <StepEl v-else-if="(item?.type ?? '') === 'G_Step'" class="step" v-bind="item.settings" />
     </div>
   </div>
-</template>
 
-<script>
+  <!-- Fixed-position Title Section (positioned outside scalable area) -->
+  <div class="title-overlay"
+       v-if="item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none')">
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      v-if="item.settings.title" @click="$emit('objectClicked')">
+      {{ item.settings.title }}
+    </div>
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
+      <div class="relative">
+        <q-btn v-if="
+          showArrows &&
+          (item?.type ?? '') !== 'Switch' &&
+          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
+          icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('increase')" />
+        <div>
+          <span @click="$emit('objectClicked')">{{
+            dispalyText || item.t3Entry.id
+            }}</span>
+
+          <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
+            @click="$emit('autoManualToggle')">
+            <!-- <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
+              <q-tooltip anchor="top middle" self="center middle">
+                In auto mode
+              </q-tooltip>
+            </q-icon>
+            <q-icon v-else name="swipe_up">
+              <q-tooltip anchor="top middle" self="center middle">
+                In manual mode
+              </q-tooltip>
+            </q-icon> -->
+            <q-icon v-if="!item.t3Entry.auto_manual">
+              <q-tooltip anchor="top middle" self="center middle">
+                In auto mode
+              </q-tooltip>
+            </q-icon>
+            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
+              <q-tooltip anchor="top middle" self="center middle">
+                In manual mode
+              </q-tooltip>
+            </q-icon>
+          </span>
+        </div>
+        <q-btn v-if="
+          showArrows &&
+          (item?.type ?? '') !== 'Switch' &&
+          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="down-btn absolute" size="sm"
+          icon="keyboard_arrow_down" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('decrease')" />
+      </div>
+    </div>
+  </div>
+</template><script>
 import { defineComponent, computed, ref } from "vue";
 // import { getEntryRange } from "src/lib/common";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
@@ -417,34 +424,77 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.object-title {
-  text-align: center;
-  min-width: 100%;
-  white-space: nowrap;
-  line-height: 2.5em;
-  color: v-bind("item.settings.titleColor");
-}
-
-.with-bg .object-title {
-  background-color: rgb(255 255 255 / 40%);
-}
-
+/* Base styles for moveable-item (scalable container) */
 .moveable-item {
   height: 100%;
   border-radius: 5px;
   background-color: v-bind("item.settings.bgColor");
   color: v-bind("item.settings.textColor");
   font-size: v-bind("item.settings.fontSize + 'px'");
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.moveable-item .shape-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Fixed-position title overlay (positioned outside scalable area) */
+.title-overlay {
+  position: absolute;
+  left: 100%; /* Position to the right of the shape */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000; /* High z-index to appear above everything */
+  pointer-events: auto; /* Allow interactions */
+  min-width: max-content; /* Size to content, but allow wrapping when needed */
+  max-width: 250px; /* Prevent extremely wide titles */
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  font-size: 14px; /* Fixed font size for titles */
+}
+
+/* Title styles within overlay */
+.title-overlay .object-title {
+  text-align: center;
+  line-height: 1.5em;
+  color: v-bind("item.settings.titleColor");
+  word-wrap: break-word;
+  white-space: normal;
+  font-size: inherit; /* Inherit from title-overlay, not from moveable-item */
+  padding: 0 !important; /* Override any inherited padding */
+  min-width: auto !important; /* Override any inherited min-width */
+  font-weight: normal !important; /* Override any inherited font-weight */
+  display: block !important; /* Override any inherited display flex */
+  flex-grow: unset !important; /* Override any inherited flex-grow */
+}
+
+/* Override the grow class for title-overlay context */
+.title-overlay .object-title.grow {
+  flex-grow: unset !important;
+}
+
+.with-bg .object-title {
+  background-color: rgb(255 255 255 / 40%);
+}
+
+/* Container styles */
+.object-container {
+  width: 100%;
 }
 
 .moveable-item.Duct {
   background-color: transparent;
 }
 
-.object-container {
-  width: 100%;
-}
-
+/* Special handling for Gauge and Dial with titles */
 .moveable-item.Gauge .object-container,
 .moveable-item.Dial .object-container {
   height: 100%;
@@ -452,9 +502,10 @@ export default defineComponent({
 
 .moveable-item.Gauge.with-title .object-container,
 .moveable-item.Dial.with-title .object-container {
-  height: calc(100% - 41px);
+  height: 100%; /* Changed from calc(100% - 41px) since title is now outside */
 }
 
+/* Value, Icon, Switch specific styles for compatibility */
 .moveable-item.Value.with-title,
 .moveable-item.Icon.with-title,
 .moveable-item.Switch.with-title {
@@ -463,8 +514,7 @@ export default defineComponent({
 
 .moveable-item.Icon.with-title,
 .moveable-item.Switch.with-title {
-  display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
 }
 
 .moveable-item.Value .object-container,
