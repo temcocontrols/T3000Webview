@@ -63,9 +63,28 @@ pub enum AppError {
     InternalError(String),
 }
 
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppError::DatabaseError(msg) => write!(f, "Database Error: {}", msg),
+            AppError::NotFound(msg) => write!(f, "Not Found: {}", msg),
+            AppError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
+            AppError::InternalError(msg) => write!(f, "Internal Error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
+
 impl From<sea_orm::DbErr> for AppError {
     fn from(err: sea_orm::DbErr) -> Self {
         AppError::DatabaseError(err.to_string())
+    }
+}
+
+impl From<std::time::SystemTimeError> for AppError {
+    fn from(err: std::time::SystemTimeError) -> Self {
+        AppError::InternalError(format!("System time error: {}", err))
     }
 }
 

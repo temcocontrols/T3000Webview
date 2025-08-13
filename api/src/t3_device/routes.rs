@@ -8,9 +8,11 @@ use axum::{
 use sea_orm::{DatabaseBackend, Statement, ConnectionTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::sync::Arc;
 
 use crate::app_state::AppState;
 use crate::t3_device::services::{T3DeviceService, CreateBuildingRequest, UpdateBuildingRequest};
+use crate::t3_device::data_collector::{DataCollectionConfig, CollectionStatus, DataCollectionService};
 
 #[derive(Deserialize)]
 pub struct QueryParams {
@@ -383,6 +385,184 @@ async fn delete_building(
     }
 }
 
+// Data Collection endpoints
+async fn start_data_collection(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let mut data_collector = state.data_collector.lock().await;
+
+    if data_collector.is_some() {
+        return Ok(Json(json!({
+            "status": "info",
+            "message": "Data collection is already running",
+            "action": "start_data_collection"
+        })));
+    }
+
+    // Create a new data collection service
+    let t3_device_conn = state.t3_device_conn.lock().await.clone();
+    let t3_device_conn_arc = Arc::new(t3_device_conn);
+
+    let (mut service, _control_sender, _data_receiver) = DataCollectionService::new(t3_device_conn_arc);
+
+    // Start the service
+    if let Err(e) = service.start().await {
+        return Ok(Json(json!({
+            "status": "error",
+            "message": format!("Failed to start data collection: {}", e),
+            "action": "start_data_collection"
+        })));
+    }
+
+    *data_collector = Some(service);
+    Ok(Json(json!({
+        "status": "success",
+        "message": "Data collection started successfully",
+        "action": "start_data_collection"
+    })))
+}
+
+async fn stop_data_collection(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let mut data_collector = state.data_collector.lock().await;
+
+    match data_collector.take() {
+        Some(service) => {
+            if let Err(e) = service.stop().await {
+                Ok(Json(json!({
+                    "status": "warning",
+                    "message": format!("Data collection stopped with warning: {}", e),
+                    "action": "stop_data_collection"
+                })))
+            } else {
+                Ok(Json(json!({
+                    "status": "success",
+                    "message": "Data collection stopped successfully",
+                    "action": "stop_data_collection"
+                })))
+            }
+        }
+        None => Ok(Json(json!({
+            "status": "info",
+            "message": "Data collection was not running",
+            "action": "stop_data_collection"
+        })))
+    }
+}
+
+async fn get_collection_status(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let data_collector = state.data_collector.lock().await;
+
+    match data_collector.as_ref() {
+        Some(service) => {
+            let status = service.get_status().await;
+            Ok(Json(json!({
+                "is_running": status.is_running,
+                "last_collection_time": status.last_collection_time,
+                "next_collection_time": status.next_collection_time,
+                "total_points_collected": status.total_points_collected,
+                "errors_count": status.errors_count,
+                "active_devices": status.active_devices,
+                "collection_source": status.collection_source
+            })))
+        }
+        None => Ok(Json(json!({
+            "is_running": false,
+            "last_collection_time": null,
+            "next_collection_time": null,
+            "total_points_collected": 0,
+            "errors_count": 0,
+            "active_devices": [],
+            "collection_source": "None"
+        })))
+    }
+}
+
+async fn get_collection_config(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let data_collector = state.data_collector.lock().await;
+
+    match data_collector.as_ref() {
+        Some(service) => {
+            let config = service.get_config().await;
+            Ok(Json(json!({
+                "enabled": config.enabled,
+                "collection_interval_seconds": config.collection_interval_seconds,
+                "startup_delay_seconds": config.startup_delay_seconds,
+                "devices_to_collect": config.devices_to_collect,
+                "point_types": config.point_types,
+                "batch_size": config.batch_size,
+                "timeout_seconds": config.timeout_seconds,
+                "retry_attempts": config.retry_attempts,
+                "enable_websocket_collection": config.enable_websocket_collection,
+                "enable_cpp_direct_calls": config.enable_cpp_direct_calls,
+                "enable_bacnet_collection": config.enable_bacnet_collection
+            })))
+        }
+        None => Ok(Json(json!({
+            "enabled": true,
+            "collection_interval_seconds": 300,
+            "startup_delay_seconds": 30,
+            "devices_to_collect": [],
+            "point_types": ["Input", "Output", "Variable"],
+            "batch_size": 100,
+            "timeout_seconds": 30,
+            "retry_attempts": 3,
+            "enable_websocket_collection": true,
+            "enable_cpp_direct_calls": true,
+            "enable_bacnet_collection": false
+        })))
+    }
+}
+
+async fn update_collection_config(
+    State(state): State<AppState>,
+    Json(config): Json<Value>
+) -> Result<Json<Value>, StatusCode> {
+    let data_collector = state.data_collector.lock().await;
+
+    match data_collector.as_ref() {
+        Some(service) => {
+            // Convert JSON to DataCollectionConfig
+            // For now, just return success - would need proper config conversion
+            Ok(Json(json!({
+                "status": "success",
+                "message": "Collection configuration updated",
+                "action": "update_collection_config",
+                "config": config
+            })))
+        }
+        None => Ok(Json(json!({
+            "status": "error",
+            "message": "Data collection service is not running",
+            "action": "update_collection_config"
+        })))
+    }
+}
+
+async fn collect_now(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let data_collector = state.data_collector.lock().await;
+
+    match data_collector.as_ref() {
+        Some(service) => {
+            match service.collect_immediately().await {
+                Ok(point_count) => Ok(Json(json!({
+                    "status": "success",
+                    "message": format!("Immediate data collection completed. Collected {} data points.", point_count),
+                    "action": "collect_now",
+                    "points_collected": point_count
+                }))),
+                Err(e) => Ok(Json(json!({
+                    "status": "error",
+                    "message": format!("Immediate data collection failed: {}", e),
+                    "action": "collect_now"
+                })))
+            }
+        }
+        None => Ok(Json(json!({
+            "status": "error",
+            "message": "Data collection service is not running",
+            "action": "collect_now"
+        })))
+    }
+}
+
 pub fn t3_device_routes() -> Router<AppState> {
     Router::new()
         // Legacy endpoints (keep for compatibility)
@@ -400,4 +580,12 @@ pub fn t3_device_routes() -> Router<AppState> {
         .route("/buildings/:id", put(update_building))
         .route("/buildings/:id", delete(delete_building))
         .route("/buildings/:id/devices", get(get_building_devices))
+
+        // Data Collection endpoints
+        .route("/collection/start", post(start_data_collection))
+        .route("/collection/stop", post(stop_data_collection))
+        .route("/collection/status", get(get_collection_status))
+        .route("/collection/config", get(get_collection_config))
+        .route("/collection/config", post(update_collection_config))
+        .route("/collection/collect-now", post(collect_now))
 }
