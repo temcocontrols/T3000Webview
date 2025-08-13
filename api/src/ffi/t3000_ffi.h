@@ -30,12 +30,40 @@ int GetAllVariablePoints(int device_id, float* values, int max_count);
 float GetVariablePointValue(int device_id, int point_number);
 int GetVariablePointStatus(int device_id, int point_number);
 const char* GetVariablePointUnits(int device_id, int point_number);
+const char* GetVariablePointLabel(int device_id, int point_number);
+
+// Program point functions
+int GetProgramCount(int device_id);
+int GetProgramStatus(int device_id, int program_number);
+const char* GetProgramLabel(int device_id, int program_number);
+
+// Schedule point functions
+int GetScheduleCount(int device_id);
+int GetScheduleStatus(int device_id, int schedule_number);
+const char* GetScheduleLabel(int device_id, int schedule_number);
+
+// Alarm/Monitor functions
+int GetAlarmCount(int device_id);
+int GetAlarmStatus(int device_id, int alarm_number);
+const char* GetAlarmMessage(int device_id, int alarm_number);
 
 // Batch operations for efficiency
 int GetBatchPointValues(int device_id, int* point_numbers, int* point_types,
                        float* values, int count);
 int SetBatchPointValues(int device_id, int* point_numbers, int* point_types,
                        float* values, int count);
+
+// Communication and network functions
+int ScanForDevices();
+int GetDeviceInfo(int device_id, char* device_name, char* firmware_version,
+                 char* ip_address, int* modbus_id);
+int SetDeviceNetworkConfig(int device_id, const char* ip_address,
+                          int modbus_id, int subnet_mask);
+
+// Trend log and historical data functions
+int GetTrendLogCount(int device_id);
+int GetTrendLogData(int device_id, int log_number, float* values,
+                   long* timestamps, int max_records);
 
 // Device control
 int ConnectToDevice(int device_id);

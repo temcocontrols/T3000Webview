@@ -29,6 +29,28 @@ extern "C" {
     float T3000_GetVariablePointValue(int device_id, int point_number);
     int T3000_GetVariablePointStatus(int device_id, int point_number);
     const char* T3000_GetVariablePointUnits(int device_id, int point_number);
+    const char* T3000_GetVariablePointLabel(int device_id, int point_number);
+    int T3000_GetProgramCount(int device_id);
+    int T3000_GetProgramStatus(int device_id, int program_number);
+    const char* T3000_GetProgramLabel(int device_id, int program_number);
+    int T3000_GetScheduleCount(int device_id);
+    int T3000_GetScheduleStatus(int device_id, int schedule_number);
+    const char* T3000_GetScheduleLabel(int device_id, int schedule_number);
+    int T3000_GetAlarmCount(int device_id);
+    int T3000_GetAlarmStatus(int device_id, int alarm_number);
+    const char* T3000_GetAlarmMessage(int device_id, int alarm_number);
+    int T3000_GetBatchPointValues(int device_id, int* point_numbers, int* point_types,
+                                 float* values, int count);
+    int T3000_SetBatchPointValues(int device_id, int* point_numbers, int* point_types,
+                                 float* values, int count);
+    int T3000_ScanForDevices();
+    int T3000_GetDeviceInfo(int device_id, char* device_name, char* firmware_version,
+                           char* ip_address, int* modbus_id);
+    int T3000_SetDeviceNetworkConfig(int device_id, const char* ip_address,
+                                    int modbus_id, int subnet_mask);
+    int T3000_GetTrendLogCount(int device_id);
+    int T3000_GetTrendLogData(int device_id, int log_number, float* values,
+                             long* timestamps, int max_records);
     int T3000_ConnectToDevice(int device_id);
     int T3000_DisconnectFromDevice(int device_id);
     int T3000_RefreshDeviceData(int device_id);
@@ -113,246 +135,276 @@ const char* GetInputPointUnits(int device_id, int point_number) {
     }
 
     return T3000_GetInputPointUnits(device_id, point_number);
-}// Output point functions (similar pattern)
+}// Output point functions
 int GetOutputPointCount(int device_id) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
+    if (!EnsureT3000Initialized()) {
         return 0;
     }
 
-    return static_cast<int>(it->second.output_values.size());
+    return T3000_GetOutputPointCount(device_id);
 }
 
 int GetAllOutputPoints(int device_id, float* values, int max_count) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end() || !values) {
+    if (!EnsureT3000Initialized()) {
         return 0;
     }
 
-    const auto& device_values = it->second.output_values;
-    int count = std::min(max_count, static_cast<int>(device_values.size()));
-
-    for (int i = 0; i < count; i++) {
-        values[i] = device_values[i];
-    }
-
-    return count;
+    return T3000_GetAllOutputPoints(device_id, values, max_count);
 }
 
 float GetOutputPointValue(int device_id, int point_number) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
+    if (!EnsureT3000Initialized()) {
         return 0.0f;
     }
 
-    int index = point_number - 1;
-    if (index < 0 || index >= static_cast<int>(it->second.output_values.size())) {
-        return 0.0f;
-    }
-
-    return it->second.output_values[index];
+    return T3000_GetOutputPointValue(device_id, point_number);
 }
 
 int GetOutputPointStatus(int device_id, int point_number) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
-        return 2;
+    if (!EnsureT3000Initialized()) {
+        return 2; // Offline
     }
 
-    int index = point_number - 1;
-    if (index < 0 || index >= static_cast<int>(it->second.output_status.size())) {
-        return 1;
-    }
-
-    return it->second.output_status[index];
+    return T3000_GetOutputPointStatus(device_id, point_number);
 }
 
 const char* GetOutputPointUnits(int device_id, int point_number) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
+    if (!EnsureT3000Initialized()) {
         return nullptr;
     }
 
-    int index = point_number - 1;
-    if (index < 0 || index >= static_cast<int>(it->second.output_units.size())) {
-        return nullptr;
-    }
-
-    g_unit_buffer = it->second.output_units[index];
-    return g_unit_buffer.c_str();
+    return T3000_GetOutputPointUnits(device_id, point_number);
 }
 
-// Variable point functions (similar pattern)
+// Variable point functions
 int GetVariablePointCount(int device_id) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
+    if (!EnsureT3000Initialized()) {
         return 0;
     }
 
-    return static_cast<int>(it->second.variable_values.size());
+    return T3000_GetVariablePointCount(device_id);
 }
 
 int GetAllVariablePoints(int device_id, float* values, int max_count) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end() || !values) {
+    if (!EnsureT3000Initialized()) {
         return 0;
     }
 
-    const auto& device_values = it->second.variable_values;
-    int count = std::min(max_count, static_cast<int>(device_values.size()));
-
-    for (int i = 0; i < count; i++) {
-        values[i] = device_values[i];
-    }
-
-    return count;
+    return T3000_GetAllVariablePoints(device_id, values, max_count);
 }
 
 float GetVariablePointValue(int device_id, int point_number) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
+    if (!EnsureT3000Initialized()) {
         return 0.0f;
     }
 
-    int index = point_number - 1;
-    if (index < 0 || index >= static_cast<int>(it->second.variable_values.size())) {
-        return 0.0f;
-    }
-
-    return it->second.variable_values[index];
+    return T3000_GetVariablePointValue(device_id, point_number);
 }
 
 int GetVariablePointStatus(int device_id, int point_number) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
-        return 2;
+    if (!EnsureT3000Initialized()) {
+        return 2; // Offline
     }
 
-    int index = point_number - 1;
-    if (index < 0 || index >= static_cast<int>(it->second.variable_status.size())) {
-        return 1;
-    }
-
-    return it->second.variable_status[index];
+    return T3000_GetVariablePointStatus(device_id, point_number);
 }
 
 const char* GetVariablePointUnits(int device_id, int point_number) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it == g_devices.end()) {
+    if (!EnsureT3000Initialized()) {
         return nullptr;
     }
 
-    int index = point_number - 1;
-    if (index < 0 || index >= static_cast<int>(it->second.variable_units.size())) {
-        return nullptr;
-    }
-
-    g_unit_buffer = it->second.variable_units[index];
-    return g_unit_buffer.c_str();
+    return T3000_GetVariablePointUnits(device_id, point_number);
 }
 
 // Batch operations for efficiency
 int GetBatchPointValues(int device_id, int* point_numbers, int* point_types,
                        float* values, int count) {
-    InitializeMockData();
-
-    if (!point_numbers || !point_types || !values || count <= 0) {
+    if (!EnsureT3000Initialized()) {
         return 0;
     }
 
-    int success_count = 0;
-    for (int i = 0; i < count; i++) {
-        float value = 0.0f;
-        int point_type = point_types[i];
-        int point_number = point_numbers[i];
-
-        switch (point_type) {
-            case 0: // Input
-                value = GetInputPointValue(device_id, point_number);
-                break;
-            case 1: // Output
-                value = GetOutputPointValue(device_id, point_number);
-                break;
-            case 2: // Variable
-                value = GetVariablePointValue(device_id, point_number);
-                break;
-            default:
-                continue; // Skip unknown point types
-        }
-
-        values[i] = value;
-        success_count++;
-    }
-
-    return success_count;
+    return T3000_GetBatchPointValues(device_id, point_numbers, point_types, values, count);
 }
 
 int SetBatchPointValues(int device_id, int* point_numbers, int* point_types,
                        float* values, int count) {
-    // TODO: Implement batch write functionality
-    // For now, return success count (mock implementation)
-    return count;
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_SetBatchPointValues(device_id, point_numbers, point_types, values, count);
 }
 
 // Device control functions
 int ConnectToDevice(int device_id) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it != g_devices.end()) {
-        it->second.is_online = true;
-        return 1; // Success
+    if (!EnsureT3000Initialized()) {
+        return 0;
     }
 
-    return 0; // Device not found
+    return T3000_ConnectToDevice(device_id);
 }
 
 int DisconnectFromDevice(int device_id) {
-    InitializeMockData();
-    std::lock_guard<std::mutex> lock(g_devices_mutex);
-
-    auto it = g_devices.find(device_id);
-    if (it != g_devices.end()) {
-        it->second.is_online = false;
-        return 1; // Success
+    if (!EnsureT3000Initialized()) {
+        return 0;
     }
 
-    return 0; // Device not found
+    return T3000_DisconnectFromDevice(device_id);
 }
 
 int RefreshDeviceData(int device_id) {
-    // TODO: Implement device data refresh
-    // For now, return success (mock implementation)
-    return 1;
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_RefreshDeviceData(device_id);
+}
+
+// ==============================
+// Additional Variable Point Functions
+// ==============================
+
+const char* GetVariablePointLabel(int device_id, int point_number) {
+    if (!EnsureT3000Initialized()) {
+        return nullptr;
+    }
+
+    return T3000_GetVariablePointLabel(device_id, point_number);
+}
+
+// ==============================
+// Program Point Functions
+// ==============================
+
+int GetProgramCount(int device_id) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetProgramCount(device_id);
+}
+
+int GetProgramStatus(int device_id, int program_number) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetProgramStatus(device_id, program_number);
+}
+
+const char* GetProgramLabel(int device_id, int program_number) {
+    if (!EnsureT3000Initialized()) {
+        return nullptr;
+    }
+
+    return T3000_GetProgramLabel(device_id, program_number);
+}
+
+// ==============================
+// Schedule Point Functions
+// ==============================
+
+int GetScheduleCount(int device_id) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetScheduleCount(device_id);
+}
+
+int GetScheduleStatus(int device_id, int schedule_number) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetScheduleStatus(device_id, schedule_number);
+}
+
+const char* GetScheduleLabel(int device_id, int schedule_number) {
+    if (!EnsureT3000Initialized()) {
+        return nullptr;
+    }
+
+    return T3000_GetScheduleLabel(device_id, schedule_number);
+}
+
+// ==============================
+// Alarm/Monitor Functions
+// ==============================
+
+int GetAlarmCount(int device_id) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetAlarmCount(device_id);
+}
+
+int GetAlarmStatus(int device_id, int alarm_number) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetAlarmStatus(device_id, alarm_number);
+}
+
+const char* GetAlarmMessage(int device_id, int alarm_number) {
+    if (!EnsureT3000Initialized()) {
+        return nullptr;
+    }
+
+    return T3000_GetAlarmMessage(device_id, alarm_number);
+}
+
+// ==============================
+// Communication and Network Functions
+// ==============================
+
+int ScanForDevices() {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_ScanForDevices();
+}
+
+int GetDeviceInfo(int device_id, char* device_name, char* firmware_version,
+                 char* ip_address, int* modbus_id) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetDeviceInfo(device_id, device_name, firmware_version,
+                              ip_address, modbus_id);
+}
+
+int SetDeviceNetworkConfig(int device_id, const char* ip_address,
+                          int modbus_id, int subnet_mask) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_SetDeviceNetworkConfig(device_id, ip_address, modbus_id, subnet_mask);
+}
+
+// ==============================
+// Trend Log and Historical Data Functions
+// ==============================
+
+int GetTrendLogCount(int device_id) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetTrendLogCount(device_id);
+}
+
+int GetTrendLogData(int device_id, int log_number, float* values,
+                   long* timestamps, int max_records) {
+    if (!EnsureT3000Initialized()) {
+        return 0;
+    }
+
+    return T3000_GetTrendLogData(device_id, log_number, values, timestamps, max_records);
 }
