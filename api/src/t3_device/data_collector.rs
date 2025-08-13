@@ -303,7 +303,7 @@ impl DataCollectionService {
         let mut all_points = Vec::new();
 
         // Connect to T3000 WebSocket (adjust URL as needed)
-        let ws_url = format!("ws://localhost:9103/ws");
+        let ws_url = format!("ws://localhost:9104/ws");
         let (ws_stream, _) = connect_async(&ws_url).await
             .map_err(|e| AppError::InternalError(format!("WebSocket connection failed: {}", e)))?;
 

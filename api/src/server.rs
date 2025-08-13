@@ -16,13 +16,12 @@ use tower_http::{
 use crate::{
     app_state::{self, AppState},
     file::routes::file_routes,
-    utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
+    utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR, log_message},
     modbus_register::routes::modbus_register_routes,
     user::routes::user_routes,
     t3_device::routes::t3_device_routes,
 };
 
-use chrono::Local;
 use futures_util::{SinkExt, StreamExt};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
@@ -94,9 +93,9 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     // Print the server address
     // println!("->> LISTENING on {:?}\n", listener.local_addr());
-    let clients: Clients = Arc::new(Mutex::new(Vec::new()));
+    let clients = crate::t3_socket::create_clients();
 
-    start_websocket_server(clients.clone()).await;
+    crate::t3_socket::start_websocket_server(clients.clone()).await;
     tokio::spawn(monitor_clients_status(clients));
 
     // Start the server with graceful shutdown
@@ -466,20 +465,4 @@ async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
     );
 
     Ok(())
-}
-
-fn log_message(message: &str, log_to_file: bool) {
-    let now = Local::now();
-    let formatted_message = format!("{}:={}", now.format("%Y-%m-%d %H:%M:%S"), message);
-    let print_to_console = true;
-
-    if log_to_file {
-        /* Temporary remove log to file
-        // Function removed - unused
-        */
-    }
-
-    if print_to_console {
-        println!("{}", formatted_message);
-    }
 }

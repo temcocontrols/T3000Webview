@@ -91,3 +91,22 @@ pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::E
     drop(conn);
     Ok(())
 }
+
+/// Log a message with timestamp formatting
+pub fn log_message(message: &str, log_to_file: bool) {
+    use chrono::Local;
+
+    let now = Local::now();
+    let formatted_message = format!("{}:={}", now.format("%Y-%m-%d %H:%M:%S"), message);
+    let print_to_console = true;
+
+    if log_to_file {
+        /* Temporary remove log to file
+        // Function removed - unused
+        */
+    }
+
+    if print_to_console {
+        println!("{}", formatted_message);
+    }
+}

@@ -10,6 +10,7 @@ pub mod file;
 pub mod modbus_register;
 pub mod server;
 pub mod t3_device;
+pub mod t3_socket;
 pub mod user;
 pub mod utils;
 
