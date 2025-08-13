@@ -2980,6 +2980,7 @@ version = "0.8.1"
 dependencies = [
  "anyhow",
  "axum",
+ "cc",
  "chrono",
  "config",
  "dotenvy",

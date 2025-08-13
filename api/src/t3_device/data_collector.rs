@@ -10,6 +10,7 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 use std::sync::Arc;
 use crate::entity::t3_device::*;
 use crate::error::AppError;
+use crate::t3_device::t3000_ffi::T3000FFI;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataCollectionConfig {
@@ -267,24 +268,106 @@ impl DataCollectionService {
 
     // Direct C++ function calls (preferred method)
     async fn collect_via_cpp_calls(device_id: i32, point_types: &[PointType]) -> Result<Vec<DataPoint>, AppError> {
-        // TODO: Implement FFI calls to C++ functions
-        // This would call functions like:
-        // - GetAllInputPoints(device_id)
-        // - GetAllOutputPoints(device_id)
-        // - GetAllVariablePoints(device_id)
+        let mut all_points = Vec::new();
 
-        // For now, return empty vector as placeholder
-        // You'll need to implement the actual C++ FFI here
-        Ok(vec![])
+        // Check if device is online first
+        if !T3000FFI::is_device_online(device_id) {
+            return Ok(vec![]); // Device offline, return empty
+        }
+
+        // Collect each requested point type
+        for point_type in point_types {
+            let points = match point_type {
+                PointType::Input => T3000FFI::get_input_points(device_id)?,
+                PointType::Output => T3000FFI::get_output_points(device_id)?,
+                PointType::Variable => T3000FFI::get_variable_points(device_id)?,
+                _ => {
+                    // For other point types (Program, Schedule, Alarm), we'll skip for now
+                    // These would need additional FFI functions to be implemented
+                    continue;
+                }
+            };
+
+            all_points.extend(points);
+        }
+
+        Ok(all_points)
     }
 
-    // WebSocket-based collection (fallback method)
+        // WebSocket communication fallback
     async fn collect_via_websocket(device_id: i32, point_types: &[PointType]) -> Result<Vec<DataPoint>, AppError> {
-        // TODO: Implement WebSocket message sending to 9104
-        // This would send messages like GET_ENTRIES for each point type
+        use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+        use serde_json::json;
+        use futures_util::{SinkExt, StreamExt};
 
-        // For now, return empty vector as placeholder
-        Ok(vec![])
+        let mut all_points = Vec::new();
+
+        // Connect to T3000 WebSocket (adjust URL as needed)
+        let ws_url = format!("ws://localhost:9103/ws");
+        let (ws_stream, _) = connect_async(&ws_url).await
+            .map_err(|e| AppError::InternalError(format!("WebSocket connection failed: {}", e)))?;
+
+        let (mut ws_sender, mut ws_receiver) = ws_stream.split();
+
+        // For each point type, send GET_ENTRIES request
+        for point_type in point_types {
+            let point_type_str = match point_type {
+                PointType::Input => "input",
+                PointType::Output => "output",
+                PointType::Variable => "variable",
+                PointType::Program => "program",
+                PointType::Schedule => "schedule",
+                PointType::Alarm => "alarm",
+            };
+
+            // Send GET_ENTRIES command
+            let command = json!({
+                "command": "GET_ENTRIES",
+                "device_id": device_id,
+                "point_type": point_type_str,
+                "count": 250  // Request up to 250 points
+            });
+
+            let message = Message::Text(command.to_string());
+            ws_sender.send(message).await
+                .map_err(|e| AppError::InternalError(format!("Failed to send WebSocket message: {}", e)))?;
+
+            // Wait for response
+            if let Some(msg) = ws_receiver.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        if let Ok(response) = serde_json::from_str::<serde_json::Value>(&text) {
+                                if let Some(entries) = response.get("entries").and_then(|e| e.as_array()) {
+                                    for entry in entries {
+                                        if let Some(data_point) = Self::parse_websocket_entry(entry, point_type.clone(), device_id) {
+                                            all_points.push(data_point);
+                                        }
+                                    }
+                                }
+                        }
+                    },
+                    Ok(Message::Close(_)) => break,
+                    Err(e) => return Err(AppError::InternalError(format!("WebSocket error: {}", e))),
+                    _ => continue,
+                }
+            }
+        }
+
+        Ok(all_points)
+    }
+
+    // Helper to parse WebSocket entry into DataPoint
+    fn parse_websocket_entry(entry: &serde_json::Value, point_type: PointType, device_id: i32) -> Option<DataPoint> {
+        Some(DataPoint {
+            device_id,
+            point_type,
+            point_number: entry.get("index")?.as_i64()? as i32,
+            value: entry.get("value")?.as_f64()? as f32,
+            status: entry.get("status")?.as_str().unwrap_or("OK").to_string(),
+            units: entry.get("units")?.as_str().map(|s| s.to_string()),
+            timestamp: chrono::Utc::now().timestamp(),
+            source: DataSource::RealTime,
+        })
     }
 
     // BACnet collection (future implementation)
