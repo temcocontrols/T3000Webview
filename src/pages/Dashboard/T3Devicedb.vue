@@ -406,6 +406,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { t3DeviceApi } from '/src/lib/T3000/Hvac/Util/T3DeviceApi'
 
 const $q = useQuasar()
 
@@ -625,11 +626,13 @@ const loadTableData = async () => {
 
   loading.value = true
   try {
-    // API call to fetch table data
-    const response = await fetch(`/api/t3_device/${selectedTable.value}`)
-    const data = await response.json()
-    tableData.value = data.data || []
-    pagination.value.rowsNumber = data.total || tableData.value.length
+    // Use T3DeviceApi instead of direct fetch
+    const response = await t3DeviceApi.getTableRecords(selectedTable.value, {
+      page: pagination.value.page,
+      per_page: pagination.value.rowsPerPage
+    })
+    tableData.value = response.data || []
+    pagination.value.rowsNumber = response.total || tableData.value.length
   } catch (error) {
     console.error('Error loading table data:', error)
     $q.notify({
@@ -673,9 +676,8 @@ const loadTableCounts = async () => {
 
   for (const table of allTables) {
     try {
-      const response = await fetch(`/api/t3_device/${table.name}/count`)
-      const data = await response.json()
-      table.count = data.count || 0
+      const response = await t3DeviceApi.getTableCount(table.name)
+      table.count = response.count || 0
     } catch (error) {
       console.error(`Error loading count for ${table.name}:`, error)
       // Fallback to sample counts
@@ -721,9 +723,7 @@ const deleteRecord = (record) => {
     persistent: true
   }).onOk(async () => {
     try {
-      await fetch(`/api/t3_device/${selectedTable.value}/${record.id}`, {
-        method: 'DELETE'
-      })
+      await t3DeviceApi.deleteTableRecord(selectedTable.value, record.id)
       $q.notify({
         type: 'positive',
         message: 'Record deleted successfully'
@@ -750,9 +750,7 @@ const deleteSelected = () => {
   }).onOk(async () => {
     try {
       const promises = selectedRows.value.map(record =>
-        fetch(`/api/t3_device/${selectedTable.value}/${record.id}`, {
-          method: 'DELETE'
-        })
+        t3DeviceApi.deleteTableRecord(selectedTable.value, record.id)
       )
       await Promise.all(promises)
       $q.notify({
@@ -776,18 +774,13 @@ const saveRecord = async () => {
 
   saving.value = true
   try {
-    const method = dialogMode.value === 'create' ? 'POST' : 'PUT'
-    const url = dialogMode.value === 'create'
-      ? `/api/t3_device/${selectedTable.value}`
-      : `/api/t3_device/${selectedTable.value}/${formData.value.id}`
-
-    await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData.value)
-    })
+    if (dialogMode.value === 'create') {
+      // Create new record
+      await t3DeviceApi.createTableRecord(selectedTable.value, formData.value)
+    } else {
+      // Update existing record
+      await t3DeviceApi.updateTableRecord(selectedTable.value, formData.value.id, formData.value)
+    }
 
     $q.notify({
       type: 'positive',
