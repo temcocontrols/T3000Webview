@@ -1,5 +1,5 @@
 use std::panic;
-use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
+use utils::SHUTDOWN_CHANNEL;
 
 pub mod app_state;
 pub mod auth;
@@ -13,6 +13,40 @@ pub mod t3_device;
 pub mod t3_socket;
 pub mod user;
 pub mod utils;
+
+/// Start all T3000 services (used by both main.rs and DLL entry point)
+pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
+    println!("🚀 Starting T3000 WebView API - All Services");
+
+    // 1. Start Database Service
+    utils::start_database_service().await?;
+
+    // 2. Start FFI Service
+    t3_device::t3000_ffi::start_ffi_service().await?;
+
+    // 3. Start HTTP and WebSocket services concurrently
+    println!("🌐 Starting HTTP and WebSocket services...");
+
+    let http_service = server::start_http_service();
+    let websocket_service = t3_socket::start_websocket_service();
+
+    // Run both services concurrently
+    use tokio::join;
+    match join!(http_service, websocket_service) {
+        (Ok(_), Ok(_)) => {
+            println!("✅ All T3000 services started successfully!");
+            Ok(())
+        }
+        (Err(e), _) => {
+            eprintln!("❌ HTTP service failed: {}", e);
+            Err(e)
+        }
+        (_, Err(e)) => {
+            eprintln!("❌ WebSocket service failed: {}", e);
+            Err(e)
+        }
+    }
+}
 
 #[repr(C)]
 pub enum RustError {
@@ -47,13 +81,16 @@ pub extern "C" fn run_server() -> RustError {
 
         // Run the server logic in a blocking thread within the Tokio runtime.
         runtime.block_on(async {
-            dotenvy::dotenv().ok(); // Load environment variables from a .env file, if it exists.
-            copy_database_if_not_exists().ok(); // Copy the database if it doesn't already exist.
-            match server::server_start().await {
-                Ok(_) => RustError::Ok, // Server started successfully.
+            // Call the modular service startup
+            println!("🔗 T3000 DLL Entry Point: Starting all services...");
+
+            match start_all_services().await {
+                Ok(_) => {
+                    println!("✅ T3000 WebView API services started from DLL");
+                    RustError::Ok
+                }
                 Err(err) => {
-                    // Handle server errors (log the error and return RustError::Error).
-                    eprintln!("Server error: {:?}", err);
+                    eprintln!("❌ DLL service startup failed: {:?}", err);
                     RustError::Error
                 }
             }

@@ -16,7 +16,7 @@ use tower_http::{
 use crate::{
     app_state::{self, AppState},
     file::routes::file_routes,
-    utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
+    utils::{run_migrations, initialize_t3_device_database, SHUTDOWN_CHANNEL, SPA_DIR},
     modbus_register::routes::modbus_register_routes,
     user::routes::user_routes,
     t3_device::routes::t3_device_routes,
@@ -57,6 +57,33 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
         .layer(cors))
 }
 
+/// Start the HTTP API service on port 9103
+pub async fn start_http_service() -> Result<(), Box<dyn Error>> {
+    println!("📡 Starting HTTP API Service on port 9103...");
+
+    // Create application state
+    let app_state = app_state::app_state().await?;
+
+    // Create the application router
+    let app = create_app(app_state.clone()).await?;
+
+    // Create TCP listener for HTTP server
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
+    let listener = TcpListener::bind(format!("{}:{}", host, port)).await?;
+
+    println!("✅ HTTP API Server listening on http://{}:{}", host, port);
+
+    // Start the HTTP server
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal(app_state))
+        .await?;
+
+    println!("✅ HTTP API Service stopped gracefully");
+    Ok(())
+}
+
+/// Start the complete integrated server (legacy function for backward compatibility)
 pub async fn server_start() -> Result<(), Box<dyn Error>> {
     // Initialize tracing
     if let Err(_) = tracing_subscriber::fmt().try_init() {
@@ -68,6 +95,9 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     // Run database migrations
     run_migrations().await?;
+
+    // Initialize T3000 device database
+    initialize_t3_device_database().await?;
 
     // Create the application state
     let state = app_state::app_state().await?;

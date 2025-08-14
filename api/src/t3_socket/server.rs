@@ -13,6 +13,17 @@ use uuid::Uuid;
 use super::types::*;
 use crate::utils::log_message;
 
+/// Start the WebSocket service on port 9104
+pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
+    println!("🔌 Starting WebSocket Service on port 9104...");
+
+    let clients = crate::t3_socket::create_clients();
+    start_websocket_server(clients.clone()).await;
+
+    println!("✅ WebSocket Service started successfully!");
+    Ok(())
+}
+
 /// Start the WebSocket server on port 9104
 pub async fn start_websocket_server(clients: Clients) {
     tokio::spawn(async move {
