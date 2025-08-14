@@ -6,54 +6,7 @@ use axum::{
     Router,
 };
 
-use tokio::{net::TcpListener, signal, suse crate::t3_device::routes::t3_device_routes;
-
-/// Abstracted application router with only T3000 device routes (separate from original API)
-pub async fn create_t3_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
-    let cors = CorsLayer::new()
-        .allow_methods(Any)
-        .allow_headers(Any)
-        .allow_origin(Any);
-
-    Ok(Router::new()
-        .nest(
-            "/api",
-            Router::new()
-                .nest("/t3device", t3_device_routes())
-                .route("/health", get(health_check_handler)),
-        )
-        .with_state(app_state)
-        .fallback_service(routes_static())
-        .layer(cors))
-}
-
-/// Abstracted WebSocket service for port 9104
-pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
-    t3_server_logging("🔌 Starting WebSocket Service on port 9104...");
-
-    let clients = crate::t3_socket::create_clients();
-    crate::t3_socket::start_websocket_server(clients.clone()).await;
-    tokio::spawn(crate::t3_socket::monitor_clients_status(clients));
-
-    t3_server_logging("✅ WebSocket Service started successfully on port 9104");
-    Ok(())
-}
-
-/// Abstracted logging for server operations
-pub fn t3_server_logging(message: &str) {
-    println!("{}", message);
-}
-
-/// Abstracted WebSocket service startup (can be used alongside original server_start)
-pub async fn start_t3_server() -> Result<(), Box<dyn Error>> {
-    t3_server_logging("🚀 Starting T3000 WebSocket service...");
-
-    // Start only the WebSocket server on port 9104
-    start_websocket_service().await?;
-
-    t3_server_logging("✅ T3000 WebSocket service started successfully");
-    Ok(())
-}
+use tokio::{net::TcpListener, signal, sync::mpsc};
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
@@ -177,8 +130,8 @@ async fn shutdown_signal(state: AppState) {
 
 use crate::t3_device::routes::t3_device_routes;
 
-/// Abstracted enhanced application router with T3000 device routes
-pub async fn create_enhanced_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
+/// Abstracted application router with only T3000 device routes (separate from original API)
+pub async fn create_t3_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods(Any)
         .allow_headers(Any)
@@ -187,9 +140,7 @@ pub async fn create_enhanced_app(app_state: AppState) -> Result<Router, Box<dyn 
     Ok(Router::new()
         .nest(
             "/api",
-            modbus_register_routes()
-                .merge(user_routes())
-                .merge(file_routes())
+            Router::new()
                 .nest("/t3device", t3_device_routes())
                 .route("/health", get(health_check_handler)),
         )
@@ -200,28 +151,28 @@ pub async fn create_enhanced_app(app_state: AppState) -> Result<Router, Box<dyn 
 
 /// Abstracted WebSocket service for port 9104
 pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
-    t3_enhanced_server_logging("� Starting WebSocket Service on port 9104...");
+    t3_server_logging("🔌 Starting WebSocket Service on port 9104...");
 
     let clients = crate::t3_socket::create_clients();
     crate::t3_socket::start_websocket_server(clients.clone()).await;
     tokio::spawn(crate::t3_socket::monitor_clients_status(clients));
 
-    t3_enhanced_server_logging("✅ WebSocket Service started successfully on port 9104");
+    t3_server_logging("✅ WebSocket Service started successfully on port 9104");
     Ok(())
 }
 
-/// Abstracted enhanced logging for server operations
-pub fn t3_enhanced_server_logging(message: &str) {
+/// Abstracted logging for server operations
+pub fn t3_server_logging(message: &str) {
     println!("{}", message);
 }
 
 /// Abstracted WebSocket service startup (can be used alongside original server_start)
-pub async fn enhanced_server_start() -> Result<(), Box<dyn Error>> {
-    t3_enhanced_server_logging("🚀 Starting enhanced WebSocket service...");
+pub async fn start_t3_server() -> Result<(), Box<dyn Error>> {
+    t3_server_logging("🚀 Starting T3000 WebSocket service...");
 
     // Start only the WebSocket server on port 9104
     start_websocket_service().await?;
 
-    t3_enhanced_server_logging("✅ Enhanced WebSocket service started successfully");
+    t3_server_logging("✅ T3000 WebSocket service started successfully");
     Ok(())
 }
