@@ -180,7 +180,7 @@ export const ranges = {
       },
       {
         id: 2,
-        unit: "Deg.F",
+        unit: "°F",
         label: "Y3K -40 to 300",
       },
       {
@@ -190,7 +190,7 @@ export const ranges = {
       },
       {
         id: 4,
-        unit: "Deg.F",
+        unit: "°F",
         label: "10K Type2",
       },
       {
@@ -200,7 +200,7 @@ export const ranges = {
       },
       {
         id: 6,
-        unit: "Deg.F",
+        unit: "°F",
         label: "G3K -40 to 250",
       },
       {
@@ -210,7 +210,7 @@ export const ranges = {
       },
       {
         id: 8,
-        unit: "Deg.F",
+        unit: "°F",
         label: "10K Type3",
       },
       {
@@ -220,17 +220,17 @@ export const ranges = {
       },
       {
         id: 10,
-        unit: "Deg.F",
+        unit: "°F",
         label: "PT 1K -200 to 570",
       },
       {
         id: 11,
-        unit: "Volts",
+        unit: "V",
         label: "0.0 to 5.0",
       },
       {
         id: 12,
-        unit: "Amps",
+        unit: "A",
         label: "0.0 to 100",
       },
       {
@@ -240,7 +240,7 @@ export const ranges = {
       },
       {
         id: 14,
-        unit: "psi",
+        unit: "PSI",
         label: "4 to 20",
       },
       {
@@ -265,7 +265,7 @@ export const ranges = {
       },
       {
         id: 19,
-        unit: "Volts",
+        unit: "V",
         label: "0.0 to 10.0",
       },
       {
@@ -327,7 +327,7 @@ export const ranges = {
       },
       {
         id: 1,
-        unit: "Volts",
+        unit: "V",
         label: "0.0 to 10.0",
       },
       {
@@ -337,7 +337,7 @@ export const ranges = {
       },
       {
         id: 3,
-        unit: "psi",
+        unit: "PSI",
         label: "4 to 20",
       },
       {
@@ -379,43 +379,43 @@ export const ranges = {
       },
       {
         id: 2,
-        unit: "Deg.F",
-        label: "Deg.F",
+        unit: "°F",
+        label: "°F",
       },
       {
         id: 3,
-        unit: "Feet per Min",
-        label: "Feet per Min",
+        unit: "FPM",
+        label: "FPM",
       },
       {
         id: 4,
-        unit: "Pascals",
-        label: "Pascals",
+        unit: "Pa",
+        label: "Pa",
       },
       {
         id: 5,
-        unit: "KPascals",
-        label: "KPascals",
+        unit: "KPa",
+        label: "KPa",
       },
       {
         id: 6,
-        unit: "lbs/sqr.inch",
-        label: "lbs/sqr.inch",
+        unit: "PSI",
+        label: "PSI",
       },
       {
         id: 7,
-        unit: "inches of WC",
-        label: "inches of WC",
+        unit: "inWC",
+        label: "inWC",
       },
       {
         id: 8,
-        unit: "Watts",
-        label: "Watts",
+        unit: "W",
+        label: "W",
       },
       {
         id: 9,
-        unit: "KWatts",
-        label: "KWatts",
+        unit: "kW",
+        label: "kW",
       },
       {
         id: 10,
@@ -424,8 +424,8 @@ export const ranges = {
       },
       {
         id: 11,
-        unit: "Volts",
-        label: "Volts",
+        unit: "V",
+        label: "V",
       },
       {
         id: 12,
@@ -434,8 +434,8 @@ export const ranges = {
       },
       {
         id: 13,
-        unit: "Amps",
-        label: "Amps",
+        unit: "A",
+        label: "A",
       },
       {
         id: 14,
@@ -449,23 +449,23 @@ export const ranges = {
       },
       {
         id: 16,
-        unit: "Seconds",
-        label: "Seconds",
+        unit: "s",
+        label: "s",
       },
       {
         id: 17,
-        unit: "Minutes",
-        label: "Minutes",
+        unit: "min",
+        label: "min",
       },
       {
         id: 18,
-        unit: "Hours",
-        label: "Hours",
+        unit: "h",
+        label: "h",
       },
       {
         id: 19,
-        unit: "Days",
-        label: "Days",
+        unit: "d",
+        label: "d",
       },
       {
         id: 20,
@@ -474,8 +474,8 @@ export const ranges = {
       },
       {
         id: 21,
-        unit: "Ohms",
-        label: "Ohms",
+        unit: "Ω",
+        label: "Ω",
       },
       {
         id: 22,
@@ -509,8 +509,8 @@ export const ranges = {
       },
       {
         id: 28,
-        unit: "L/Hour",
-        label: "L/Hour",
+        unit: "L/h",
+        label: "L/h",
       },
       {
         id: 29,
@@ -648,9 +648,9 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:25.0808.01");
+export const devVersion = ref("V:25.0812.01");
 
-export const localSettings = ref({ version: "V:25.0808.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.0812.01", transform: 0 });
 
 export const T3Data = {
   deviceList: ref([]),

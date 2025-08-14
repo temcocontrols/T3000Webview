@@ -2567,11 +2567,6 @@ const toggleNumberValue = ref(0);
 
 
 function ObjectRightClicked(item, ev) {
-  console.log("a //----------------------")
-  console.log("a //Right-clicked item:", item);
-  console.log("a //Item selected:", isItemSelected(item.id));
-  console.log("a //Item t3Entry:", item.t3Entry);
-
   // Only show context menu if object is selected AND linked to an entity
   if (item.t3Entry !== null) {
 
