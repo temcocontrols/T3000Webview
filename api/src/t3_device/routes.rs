@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use crate::app_state::AppState;
+use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateBuildingRequest, UpdateBuildingRequest};
-use crate::t3_device::data_collector::{DataCollectionConfig, CollectionStatus, DataCollectionService};
+use crate::t3_device::data_collector::{DataCollectionService};
 
 #[derive(Deserialize)]
 pub struct QueryParams {
@@ -42,7 +42,7 @@ pub struct QueryResult {
 }
 
 // Get database status and table information
-async fn get_database_status(State(state): State<AppState>) -> Result<Json<DatabaseInfo>, StatusCode> {
+async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<DatabaseInfo>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
 
     // Get list of tables from SQLite database
@@ -94,7 +94,7 @@ async fn get_database_status(State(state): State<AppState>) -> Result<Json<Datab
 
 // Execute a query on the specified table
 async fn get_table_data(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
@@ -157,7 +157,7 @@ async fn get_table_data(
 
 // Create new record (simplified version)
 async fn create_record(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
@@ -184,7 +184,7 @@ async fn create_record(
 
 // Update existing record (simplified version)
 async fn update_record(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
@@ -210,7 +210,7 @@ async fn update_record(
 
 // Delete record (simplified version)
 async fn delete_record(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
 ) -> Result<Json<Value>, StatusCode> {
     let _db = state.t3_device_conn.lock().await;
@@ -234,7 +234,7 @@ async fn delete_record(
 
 // Export table data (simplified version)
 async fn export_table(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path(table): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
@@ -283,7 +283,7 @@ async fn export_table(
 
 // Import table data (simplified version)
 async fn import_table(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
@@ -312,7 +312,7 @@ async fn import_table(
 }
 
 // New Building Management Endpoints
-async fn get_buildings_with_stats(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+async fn get_buildings_with_stats(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
 
     match T3DeviceService::get_buildings_with_stats(&*db).await {
@@ -325,7 +325,7 @@ async fn get_buildings_with_stats(State(state): State<AppState>) -> Result<Json<
 }
 
 async fn get_building_devices(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path(building_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
@@ -341,7 +341,7 @@ async fn get_building_devices(
 }
 
 async fn create_building(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Json(payload): Json<CreateBuildingRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
@@ -356,7 +356,7 @@ async fn create_building(
 }
 
 async fn update_building(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path(building_id): Path<i32>,
     Json(payload): Json<UpdateBuildingRequest>,
 ) -> Result<Json<Value>, StatusCode> {
@@ -372,7 +372,7 @@ async fn update_building(
 }
 
 async fn delete_building(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Path(building_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = state.t3_device_conn.lock().await;
@@ -386,7 +386,7 @@ async fn delete_building(
 }
 
 // Data Collection endpoints
-async fn start_data_collection(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+async fn start_data_collection(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let mut data_collector = state.data_collector.lock().await;
 
     if data_collector.is_some() {
@@ -420,7 +420,7 @@ async fn start_data_collection(State(state): State<AppState>) -> Result<Json<Val
     })))
 }
 
-async fn stop_data_collection(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+async fn stop_data_collection(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let mut data_collector = state.data_collector.lock().await;
 
     match data_collector.take() {
@@ -447,7 +447,7 @@ async fn stop_data_collection(State(state): State<AppState>) -> Result<Json<Valu
     }
 }
 
-async fn get_collection_status(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+async fn get_collection_status(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let data_collector = state.data_collector.lock().await;
 
     match data_collector.as_ref() {
@@ -475,7 +475,7 @@ async fn get_collection_status(State(state): State<AppState>) -> Result<Json<Val
     }
 }
 
-async fn get_collection_config(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+async fn get_collection_config(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let data_collector = state.data_collector.lock().await;
 
     match data_collector.as_ref() {
@@ -512,7 +512,7 @@ async fn get_collection_config(State(state): State<AppState>) -> Result<Json<Val
 }
 
 async fn update_collection_config(
-    State(state): State<AppState>,
+    State(state): State<T3AppState>,
     Json(config): Json<Value>
 ) -> Result<Json<Value>, StatusCode> {
     let data_collector = state.data_collector.lock().await;
@@ -536,7 +536,7 @@ async fn update_collection_config(
     }
 }
 
-async fn collect_now(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+async fn collect_now(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let data_collector = state.data_collector.lock().await;
 
     match data_collector.as_ref() {
@@ -563,7 +563,7 @@ async fn collect_now(State(state): State<AppState>) -> Result<Json<Value>, Statu
     }
 }
 
-pub fn t3_device_routes() -> Router<AppState> {
+pub fn t3_device_routes() -> Router<T3AppState> {
     Router::new()
         // Legacy endpoints (keep for compatibility)
         .route("/status", get(get_database_status))

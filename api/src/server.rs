@@ -13,7 +13,7 @@ use tower_http::{
 };
 
 use crate::{
-    app_state::{self, AppState},
+    app_state::{self, AppState, T3AppState},
     file::routes::file_routes,
     utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
 };
@@ -131,7 +131,7 @@ async fn shutdown_signal(state: AppState) {
 use crate::t3_device::routes::t3_device_routes;
 
 /// Abstracted application router with only T3000 device routes (separate from original API)
-pub async fn create_t3_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
+pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods(Any)
         .allow_headers(Any)
@@ -154,10 +154,16 @@ pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
     t3_server_logging("🔌 Starting WebSocket Service on port 9104...");
 
     let clients = crate::t3_socket::create_clients();
-    crate::t3_socket::start_websocket_server(clients.clone()).await;
-    tokio::spawn(crate::t3_socket::monitor_clients_status(clients));
+
+    // Start client monitoring in background
+    let clients_clone = clients.clone();
+    tokio::spawn(crate::t3_socket::monitor_clients_status(clients_clone));
 
     t3_server_logging("✅ WebSocket Service started successfully on port 9104");
+
+    // Start the WebSocket server directly (blocking) - this will run the server loop
+    crate::t3_socket::start_websocket_server_blocking(clients).await;
+
     Ok(())
 }
 

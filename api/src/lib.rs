@@ -83,17 +83,24 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // 2. Start FFI Service
     t3_device::t3000_ffi::start_ffi_service().await?;
 
-    // 3. Start WebSocket service (HTTP is handled by original server_start)
-    println!("🌐 Starting WebSocket service...");
+    // 3. Start HTTP and WebSocket services concurrently
+    println!("🌐 Starting HTTP (9103) and WebSocket (9104) services...");
 
-    let websocket_service = server::start_websocket_service();
+    let http_service = server::server_start(); // Original HTTP server on 9103
+    let websocket_service = server::start_websocket_service(); // WebSocket on 9104
 
-    match websocket_service.await {
-        Ok(_) => {
-            println!("✅ T3000 WebSocket service started successfully!");
+    // Run both services concurrently - this will block and keep both running
+    use tokio::join;
+    match join!(http_service, websocket_service) {
+        (Ok(_), Ok(_)) => {
+            println!("✅ All T3000 services started successfully!");
             Ok(())
         }
-        Err(e) => {
+        (Err(e), _) => {
+            eprintln!("❌ HTTP service failed: {}", e);
+            Err(e)
+        }
+        (_, Err(e)) => {
             eprintln!("❌ WebSocket service failed: {}", e);
             Err(e)
         }

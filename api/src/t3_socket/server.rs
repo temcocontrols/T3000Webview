@@ -27,45 +27,50 @@ pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
 /// Start the WebSocket server on port 9104
 pub async fn start_websocket_server(clients: Clients) {
     tokio::spawn(async move {
-        let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", WS_PORT))
-            .await
-            .unwrap();
+        start_websocket_server_blocking(clients).await;
+    });
+}
 
-        log_message(
-            &format!(
-                "WebSocket server listening on {:?}",
-                ws_listener.local_addr()
-            ),
-            true,
-        );
+/// Start the WebSocket server on port 9104 (blocking version)
+pub async fn start_websocket_server_blocking(clients: Clients) {
+    let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", WS_PORT))
+        .await
+        .unwrap();
 
-        loop {
-            match ws_listener.accept().await {
-                Ok((socket, addr)) => {
-                    log_message(&format!(""), true);
-                    log_message(&format!(""), true);
-                    log_message(&format!("New client connected: {:?}", addr), true);
-                    log_message(&format!("Socket details: {:?}", socket), true);
+    log_message(
+        &format!(
+            "WebSocket server listening on {:?}",
+            ws_listener.local_addr()
+        ),
+        true,
+    );
 
-                    let config = WebSocketConfig {
-                        max_message_size: Some(MAX_MESSAGE_SIZE),
-                        max_frame_size: Some(MAX_FRAME_SIZE),
-                        ..Default::default()
-                    };
+    loop {
+        match ws_listener.accept().await {
+            Ok((socket, addr)) => {
+                log_message(&format!(""), true);
+                log_message(&format!(""), true);
+                log_message(&format!("New client connected: {:?}", addr), true);
+                log_message(&format!("Socket details: {:?}", socket), true);
 
-                    let clients = clients.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = handle_websocket(socket, clients, config.clone()).await {
-                            log_message(&format!("WebSocket error: {:?}", e), true);
-                        }
-                    });
-                }
-                Err(e) => {
-                    log_message(&format!("Failed to accept connection: {:?}", e), true);
-                }
+                let config = WebSocketConfig {
+                    max_message_size: Some(MAX_MESSAGE_SIZE),
+                    max_frame_size: Some(MAX_FRAME_SIZE),
+                    ..Default::default()
+                };
+
+                let clients = clients.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = handle_websocket(socket, clients, config.clone()).await {
+                        log_message(&format!("WebSocket error: {:?}", e), true);
+                    }
+                });
+            }
+            Err(e) => {
+                log_message(&format!("Failed to accept connection: {:?}", e), true);
             }
         }
-    });
+    }
 }
 
 /// Handle individual WebSocket connections
