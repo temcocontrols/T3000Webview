@@ -6,7 +6,6 @@ use axum::{
     Router,
 };
 
-// use migration::cli;
 use tokio::{net::TcpListener, signal, sync::mpsc};
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -17,10 +16,10 @@ use crate::{
     app_state::{self, AppState},
     file::routes::file_routes,
     utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
-    modbus_register::routes::modbus_register_routes,
-    user::routes::user_routes,
-    t3_device::routes::t3_device_routes,
 };
+
+use super::modbus_register::routes::modbus_register_routes;
+use super::user::routes::user_routes;
 
 fn routes_static() -> Router {
     Router::new().nest_service(
@@ -49,7 +48,6 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
             modbus_register_routes()
                 .merge(user_routes())
                 .merge(file_routes())
-                .nest("/t3device", t3_device_routes())
                 .route("/health", get(health_check_handler)),
         )
         .with_state(app_state)
@@ -57,33 +55,6 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
         .layer(cors))
 }
 
-/// Start the HTTP API service on port 9103
-pub async fn start_http_service() -> Result<(), Box<dyn Error>> {
-    println!("📡 Starting HTTP API Service on port 9103...");
-
-    // Create application state
-    let app_state = app_state::app_state().await?;
-
-    // Create the application router
-    let app = create_app(app_state.clone()).await?;
-
-    // Create TCP listener for HTTP server
-    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-    let port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
-    let listener = TcpListener::bind(format!("{}:{}", host, port)).await?;
-
-    println!("✅ HTTP API Server listening on http://{}:{}", host, port);
-
-    // Start the HTTP server
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal(app_state))
-        .await?;
-
-    println!("✅ HTTP API Service stopped gracefully");
-    Ok(())
-}
-
-/// Start the complete integrated server (legacy function for backward compatibility)
 pub async fn server_start() -> Result<(), Box<dyn Error>> {
     // Initialize tracing
     if let Err(_) = tracing_subscriber::fmt().try_init() {
@@ -109,11 +80,7 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await?;
 
     // Print the server address
-    // println!("->> LISTENING on {:?}\n", listener.local_addr());
-    let clients = crate::t3_socket::create_clients();
-
-    crate::t3_socket::start_websocket_server(clients.clone()).await;
-    tokio::spawn(crate::t3_socket::monitor_clients_status(clients));
+    println!("->> LISTENING on {:?}\n", listener.local_addr());
 
     // Start the server with graceful shutdown
     axum::serve(listener, app)
@@ -152,7 +119,62 @@ async fn shutdown_signal(state: AppState) {
         _ = shutdown_rx.recv() => {}, // Listen for the shutdown signal
     }
 
-        // Drop the database connection gracefully
+    // Drop the database connection gracefully
     println!("->> SHUTTING DOWN: Closing database connection...");
     let _ = state.conn.lock().await; // Lock and drop the connection
+}
+
+// ============================================================================
+// ABSTRACTED FUNCTIONS - All new functionality separated from original code
+// ============================================================================
+
+use crate::t3_device::routes::t3_device_routes;
+
+/// Abstracted enhanced application router with T3000 device routes
+pub async fn create_enhanced_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
+    let cors = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_origin(Any);
+
+    Ok(Router::new()
+        .nest(
+            "/api",
+            modbus_register_routes()
+                .merge(user_routes())
+                .merge(file_routes())
+                .nest("/t3device", t3_device_routes())
+                .route("/health", get(health_check_handler)),
+        )
+        .with_state(app_state)
+        .fallback_service(routes_static())
+        .layer(cors))
+}
+
+/// Abstracted WebSocket service for port 9104
+pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
+    t3_enhanced_server_logging("� Starting WebSocket Service on port 9104...");
+
+    let clients = crate::t3_socket::create_clients();
+    crate::t3_socket::start_websocket_server(clients.clone()).await;
+    tokio::spawn(crate::t3_socket::monitor_clients_status(clients));
+
+    t3_enhanced_server_logging("✅ WebSocket Service started successfully on port 9104");
+    Ok(())
+}
+
+/// Abstracted enhanced logging for server operations
+pub fn t3_enhanced_server_logging(message: &str) {
+    println!("{}", message);
+}
+
+/// Abstracted WebSocket service startup (can be used alongside original server_start)
+pub async fn enhanced_server_start() -> Result<(), Box<dyn Error>> {
+    t3_enhanced_server_logging("🚀 Starting enhanced WebSocket service...");
+
+    // Start only the WebSocket server on port 9104
+    start_websocket_service().await?;
+
+    t3_enhanced_server_logging("✅ Enhanced WebSocket service started successfully");
+    Ok(())
 }
