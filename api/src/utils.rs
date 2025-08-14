@@ -64,13 +64,6 @@ pub async fn start_database_service() -> Result<(), Box<dyn std::error::Error>> 
         println!("✅ Database migrations completed");
     }
 
-    // Initialize t3_device database
-    if let Err(e) = initialize_t3_device_database().await {
-        println!("⚠️  Warning: T3000 device database initialization failed: {}", e);
-    } else {
-        println!("✅ T3000 device database initialized");
-    }
-
     println!("✅ Database Service started successfully!");
     Ok(())
 }
@@ -187,55 +180,6 @@ pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
     let conn = establish_connection().await?; // Establish a database connection.
     Migrator::up(&conn, None).await?; // Run the migrations.
     drop(conn);
-    Ok(())
-}
-
-// Asynchronously initializes the T3000 device database with the required schema.
-pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::Error>> {
-    use crate::db_connection::establish_t3_device_connection;
-    use std::path::Path;
-
-    println!("Starting T3000 device database initialization...");
-    println!("T3_DEVICE_DATABASE_URL: {}", *T3_DEVICE_DATABASE_URL);
-
-    // Extract the file path from the database URL
-    let db_file_path = T3_DEVICE_DATABASE_URL
-        .strip_prefix("sqlite://")
-        .ok_or("Invalid T3_DEVICE_DATABASE_URL format")?;
-
-    let db_path = Path::new(db_file_path);
-    println!("Database file path: {:?}", db_path);
-
-    // Create the directory if it doesn't exist
-    if let Some(parent_dir) = db_path.parent() {
-        if !parent_dir.exists() {
-            std::fs::create_dir_all(parent_dir)?;
-            println!("Created directory: {:?}", parent_dir);
-        }
-    }
-
-    // Check if database file exists
-    if db_path.exists() {
-        println!("T3000 device database file already exists: {:?}", db_path);
-    } else {
-        println!("T3000 device database file does not exist, will be created: {:?}", db_path);
-    }
-
-    let conn = establish_t3_device_connection().await?;
-
-    // Note: The comprehensive T3000 device database schema is created via SQL file
-    // This function can be used for any additional initialization if needed
-    println!("T3000 device database connection established successfully");
-
-    drop(conn);
-
-    // Verify the file was created
-    if db_path.exists() {
-        println!("T3000 device database file confirmed to exist: {:?}", db_path);
-    } else {
-        println!("WARNING: T3000 device database file was not created: {:?}", db_path);
-    }
-
     Ok(())
 }
 

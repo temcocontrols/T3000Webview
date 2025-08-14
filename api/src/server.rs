@@ -16,7 +16,7 @@ use tower_http::{
 use crate::{
     app_state::{self, AppState},
     file::routes::file_routes,
-    utils::{run_migrations, initialize_t3_device_database, SHUTDOWN_CHANNEL, SPA_DIR},
+    utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
     modbus_register::routes::modbus_register_routes,
     user::routes::user_routes,
     t3_device::routes::t3_device_routes,
@@ -95,9 +95,6 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     // Run database migrations
     run_migrations().await?;
-
-    // Initialize T3000 device database
-    initialize_t3_device_database().await?;
 
     // Create the application state
     let state = app_state::app_state().await?;
