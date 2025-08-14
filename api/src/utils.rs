@@ -159,25 +159,11 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
 pub async fn start_database_service() -> Result<(), Box<dyn std::error::Error>> {
     t3_enhanced_logging("📂 Starting Database Service...");
 
-    // Copy webview database if it doesn't exist
-    if let Err(e) = copy_database_if_not_exists() {
-        t3_enhanced_logging(&format!("⚠️  Warning: Failed to copy webview database: {}", e));
-    } else {
-        t3_enhanced_logging("✅ Webview database ready");
-    }
-
     // Copy t3_device database if it doesn't exist
     if let Err(e) = copy_t3_device_database_if_not_exists() {
         t3_enhanced_logging(&format!("⚠️  Warning: Failed to copy t3_device database: {}", e));
     } else {
         t3_enhanced_logging("✅ T3000 device database ready");
-    }
-
-    // Run database migrations
-    if let Err(e) = run_migrations().await {
-        t3_enhanced_logging(&format!("⚠️  Warning: Database migrations failed: {}", e));
-    } else {
-        t3_enhanced_logging("✅ Database migrations completed");
     }
 
     t3_enhanced_logging("✅ Database Service started successfully!");
