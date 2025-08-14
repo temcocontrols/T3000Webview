@@ -32,8 +32,7 @@ fn routes_static() -> Router {
 }
 
 async fn health_check_handler() -> &'static str {
-    println!("->> Health check");
-    "OK"
+    "T3000 WebView Service OK"
 }
 
 // This function creates the application state and returns a router with all of the routes for the API.
@@ -56,42 +55,122 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
         .layer(cors))
 }
 
+// Enhanced T3000 application router with both original and T3000 device routes
+pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Error>> {
+    let cors = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_origin(Any);
+
+    // Create original AppState from T3AppState for compatibility with original routes
+    let original_state = AppState {
+        conn: app_state.conn.clone(),
+    };
+
+    Ok(Router::new()
+        .nest(
+            "/api",
+            // Original routes with original AppState
+            modbus_register_routes()
+                .merge(user_routes())
+                .merge(file_routes())
+                .route("/health", get(health_check_handler))
+                .with_state(original_state)
+        )
+        // T3000 device routes with T3AppState
+        .nest("/api/t3_device", t3_device_routes())
+        .with_state(app_state)
+        .fallback_service(routes_static())
+        .layer(cors))
+}
+
 pub async fn server_start() -> Result<(), Box<dyn Error>> {
-    // Initialize tracing
-    if let Err(_) = tracing_subscriber::fmt().try_init() {
-        // Handle the error or ignore it if reinitialization is not needed
+    use crate::logger::ServiceLogger;
+
+    // Initialize service logger
+    let mut logger = ServiceLogger::new("t3000_webview_service.log")
+        .unwrap_or_else(|_| ServiceLogger::new("fallback.log").unwrap());
+
+    logger.info("T3000 WebView Service Starting...");
+
+    // Initialize basic tracing
+    if let Err(_) = tracing_subscriber::fmt()
+        .with_ansi(false)
+        .try_init() {
+        logger.warn("Tracing already initialized");
+    } else {
+        logger.info("Tracing initialized");
     }
 
     // Load environment variables from .env file
     dotenvy::dotenv().ok();
+    logger.info("Environment variables loaded");
 
     // Run database migrations
-    run_migrations().await?;
+    match run_migrations().await {
+        Ok(_) => logger.info("Database migrations completed"),
+        Err(e) => {
+            logger.error(&format!("Database migration failed: {:?}", e));
+            return Err(e);
+        }
+    }
 
-    // Create the enhanced T3 application state
-    let state = create_t3_app_state().await?;
+    // Create the enhanced T3000 application state
+    let state = match create_t3_app_state().await {
+        Ok(state) => {
+            logger.info("T3000 application state created");
+            state
+        },
+        Err(e) => {
+            logger.error(&format!("Failed to create T3000 application state: {:?}", e));
+            return Err(e);
+        }
+    };
 
-    // Create the application with T3 device routes
-    let app = create_t3_app(state.clone()).await?;
+    // Create the application with T3000 device routes
+    let app = match create_t3_app(state.clone()).await {
+        Ok(app) => {
+            logger.info("Application router created");
+            app
+        },
+        Err(e) => {
+            logger.error(&format!("Failed to create application router: {:?}", e));
+            return Err(e);
+        }
+    };
 
     // Get the server port from environment variable or default to 9103
     let server_port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
+    logger.info(&format!("Server will bind to port: {}", server_port));
 
     // Bind the server to the specified port
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await?;
+    let listener = match TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await {
+        Ok(listener) => {
+            logger.info(&format!("Server bound to 0.0.0.0:{}", server_port));
+            listener
+        },
+        Err(e) => {
+            logger.error(&format!("Failed to bind server to port {}: {:?}", server_port, e));
+            return Err(e.into());
+        }
+    };
 
-    // Print the server address
-    println!("->> LISTENING on {:?}\n", listener.local_addr());
+    logger.info(&format!("T3000 WebView Service listening on {:?}", listener.local_addr()));
 
     // Start the server with graceful shutdown
-    axum::serve(listener, app)
+    match axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal_t3(state))
-        .await?;
-
-    Ok(())
-}
-
-async fn shutdown_signal(state: AppState) {
+        .await {
+        Ok(_) => {
+            logger.info("Server stopped gracefully");
+            Ok(())
+        },
+        Err(e) => {
+            logger.error(&format!("Server error: {:?}", e));
+            Err(e.into())
+        }
+    }
+}async fn shutdown_signal(state: AppState) {
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
 
     // Store the sender in the SHUTDOWN_CHANNEL
@@ -158,74 +237,4 @@ async fn shutdown_signal_t3(state: T3AppState) {
     println!("->> SHUTTING DOWN: Closing database connections...");
     let _ = state.conn.lock().await; // Lock and drop the original connection
     let _ = state.t3_device_conn.lock().await; // Lock and drop the T3 device connection
-}
-
-// ============================================================================
-// ABSTRACTED FUNCTIONS - All new functionality separated from original code
-// ============================================================================
-
-/// Abstracted application router with both original and T3000 device routes
-pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Error>> {
-    let cors = CorsLayer::new()
-        .allow_methods(Any)
-        .allow_headers(Any)
-        .allow_origin(Any);
-
-    // Create original AppState from T3AppState for compatibility with original routes
-    let original_state = AppState {
-        conn: app_state.conn.clone(),
-    };
-
-    Ok(Router::new()
-        .nest(
-            "/api",
-            // Original routes with original AppState
-            modbus_register_routes()
-                .merge(user_routes())
-                .merge(file_routes())
-                .route("/health", get(health_check_handler))
-                .with_state(original_state)
-                // T3 device routes with T3AppState
-                .merge(
-                    Router::new()
-                        .nest("/t3_device", t3_device_routes())
-                        .with_state(app_state.clone())
-                )
-        )
-        .fallback_service(routes_static())
-        .layer(cors))
-}
-
-/// Abstracted WebSocket service for port 9104
-pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
-    t3_server_logging("🔌 Starting WebSocket Service on port 9104...");
-
-    let clients = crate::t3_socket::create_clients();
-
-    // Start client monitoring in background
-    let clients_clone = clients.clone();
-    tokio::spawn(crate::t3_socket::monitor_clients_status(clients_clone));
-
-    t3_server_logging("✅ WebSocket Service started successfully on port 9104");
-
-    // Start the WebSocket server directly (blocking) - this will run the server loop
-    crate::t3_socket::start_websocket_server_blocking(clients).await;
-
-    Ok(())
-}
-
-/// Abstracted logging for server operations
-pub fn t3_server_logging(message: &str) {
-    println!("{}", message);
-}
-
-/// Abstracted WebSocket service startup (can be used alongside original server_start)
-pub async fn start_t3_server() -> Result<(), Box<dyn Error>> {
-    t3_server_logging("🚀 Starting T3000 WebSocket service...");
-
-    // Start only the WebSocket server on port 9104
-    start_websocket_service().await?;
-
-    t3_server_logging("✅ T3000 WebSocket service started successfully");
-    Ok(())
 }

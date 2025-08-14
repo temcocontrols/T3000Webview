@@ -7,6 +7,7 @@ pub mod db_connection;
 pub mod entity;
 pub mod error;
 pub mod file;
+pub mod logger;
 pub mod modbus_register;
 pub mod server;
 pub mod user;
@@ -48,7 +49,7 @@ pub extern "C" fn run_server() -> RustError {
             dotenvy::dotenv().ok(); // Load environment variables from a .env file, if it exists.
             copy_database_if_not_exists().ok(); // Copy the database if it doesn't already exist.
 
-            // Start both HTTP (9103) and WebSocket (9104) services
+            // Start both HTTP (8000) and WebSocket (8001) services
             match start_all_services().await {
                 Ok(_) => RustError::Ok, // Both servers started successfully.
                 Err(err) => {
@@ -75,41 +76,47 @@ pub extern "C" fn run_server() -> RustError {
 pub mod t3_device;
 pub mod t3_socket;
 
-/// Start all T3000 services (abstracted function for modular architecture)
+/// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Starting T3000 WebView API - All Services");
+    // Log to file for headless service
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let startup_msg = format!("[{}] T3000 WebView Service initializing HTTP (9103) + WebSocket (9104)", timestamp);
 
-    // 1. Start Database Service
-    utils::start_database_service().await?;
-
-    // 2. Start FFI Service
-    t3_device::t3000_ffi::start_ffi_service().await?;
-
-    // 3. Start HTTP and WebSocket services concurrently
-    println!("🌐 Starting HTTP (9103) and WebSocket (9104) services...");
-
-    let http_service = server::server_start(); // Original HTTP server on 9103
-    let websocket_service = server::start_websocket_service(); // WebSocket on 9104
-
-    // Run both services concurrently - this will block and keep both running
-    use tokio::join;
-    match join!(http_service, websocket_service) {
-        (Ok(_), Ok(_)) => {
-            println!("✅ All T3000 services started successfully!");
-            Ok(())
-        }
-        (Err(e), _) => {
-            eprintln!("❌ HTTP service failed: {}", e);
-            Err(e)
-        }
-        (_, Err(e)) => {
-            eprintln!("❌ WebSocket service failed: {}", e);
-            Err(e)
-        }
+    // Write to log file
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("t3000_startup.log") {
+        use std::io::Write;
+        let _ = writeln!(file, "{}", startup_msg);
     }
-}
 
-/// Abstracted T3000 server startup for DLL entry point
+    // Start WebSocket service in background
+    let websocket_handle = tokio::spawn(async move {
+        if let Err(e) = crate::t3_socket::start_websocket_service().await {
+            // Log WebSocket errors to file
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("t3000_error.log") {
+                use std::io::Write;
+                let _ = writeln!(file, "[{}] WebSocket service failed: {}", timestamp, e);
+            }
+        }
+    });
+
+    // Give WebSocket a moment to start
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    // Start HTTP server (this will block and run the main server)
+    let http_result = server::server_start().await;
+
+    // If HTTP server stops, we should stop WebSocket too
+    websocket_handle.abort();
+
+    http_result
+}/// Abstracted T3000 server startup for DLL entry point
 #[no_mangle]
 pub extern "C" fn run_t3_server() -> RustError {
     let result = panic::catch_unwind(|| {

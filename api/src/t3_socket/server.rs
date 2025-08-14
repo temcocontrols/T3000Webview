@@ -15,12 +15,31 @@ use crate::utils::log_message;
 
 /// Start the WebSocket service on port 9104
 pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
-    println!("🔌 Starting WebSocket Service on port 9104...");
+    // Log to file for headless service
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("t3000_websocket.log") {
+        use std::io::Write;
+        let _ = writeln!(file, "[{}] Initializing WebSocket Service on port 9104", timestamp);
+    }
 
     let clients = crate::t3_socket::create_clients();
-    start_websocket_server(clients.clone()).await;
 
-    println!("✅ WebSocket Service started successfully!");
+    // Start the WebSocket server (blocking)
+    start_websocket_server_blocking(clients).await;
+
+    // Log success to file
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("t3000_websocket.log") {
+        use std::io::Write;
+        let _ = writeln!(file, "[{}] WebSocket Service started successfully on port 9104", timestamp);
+    }
+
     Ok(())
 }
 

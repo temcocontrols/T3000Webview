@@ -9,20 +9,21 @@ use crate::t3_device::data_collector::{DataPoint, PointType, DataSource};
 
 /// Start the FFI service - prepares FFI functions for T3000 C++ integration
 pub async fn start_ffi_service() -> Result<(), Box<dyn std::error::Error>> {
-    println!("⚡ Starting FFI Service for T3000 C++ integration...");
+    // Initialize FFI for T3000 C++ integration
+    // Test basic FFI connectivity if needed
 
-    // Initialize any FFI-related resources or configurations here
-    // For now, this mainly serves as a confirmation that FFI functions are ready
-
-    println!("✅ FFI Service ready - 43 functions available for T3000 C++ calls");
-    println!("   🔗 Input/Output/Variable point functions loaded");
-    println!("   🔗 Device management functions loaded");
-    println!("   🔗 Real-time data collection ready");
+    // Log success to file for headless service
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("t3000_ffi.log") {
+        use std::io::Write;
+        let _ = writeln!(file, "[{}] FFI Service ready - 43 functions available for T3000 C++ calls", timestamp);
+    }
 
     Ok(())
-}
-
-// External C++ function declarations
+}// External C++ function declarations
 // These functions should be exported from the T3000 C++ code
 extern "C" {
     // Input/Output/Variable point functions

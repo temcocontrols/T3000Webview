@@ -43,12 +43,41 @@ pub struct T3AppState {
     pub data_sender: broadcast::Sender<DataPoint>,
 }
 
-/// Abstracted dual database app state creation
-pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn Error>> {
-    // Establish main database connection
-    let conn = establish_connection().await?;
+/// Creates a comprehensive T3000 application state with dual database connections
+pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Error>> {
+    // Establish primary database connection
+    let conn = match establish_connection().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            // Log to file for headless service
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("t3000_error.log") {
+                use std::io::Write;
+                let _ = writeln!(file, "[{}] Failed to connect to primary database: {:?}", timestamp, e);
+            }
+            return Err(e);
+        }
+    };
+
     // Establish comprehensive T3000 device database connection
-    let t3_device_conn = establish_t3_device_connection().await?;
+    let t3_device_conn = match establish_t3_device_connection().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            // Log to file for headless service
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("t3000_error.log") {
+                use std::io::Write;
+                let _ = writeln!(file, "[{}] Failed to connect to T3000 device database: {:?}", timestamp, e);
+            }
+            return Err(e);
+        }
+    };
 
     // Wrap the connections in Arc and Mutex for shared access
     let shared_conn = Arc::new(Mutex::new(conn));
