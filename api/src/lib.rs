@@ -1,5 +1,5 @@
 use std::panic;
-use utils::SHUTDOWN_CHANNEL;
+use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 
 pub mod app_state;
 pub mod auth;
@@ -9,44 +9,8 @@ pub mod error;
 pub mod file;
 pub mod modbus_register;
 pub mod server;
-pub mod t3_device;
-pub mod t3_socket;
 pub mod user;
 pub mod utils;
-
-/// Start all T3000 services (used by both main.rs and DLL entry point)
-pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Starting T3000 WebView API - All Services");
-
-    // 1. Start Database Service
-    utils::start_database_service().await?;
-
-    // 2. Start FFI Service
-    t3_device::t3000_ffi::start_ffi_service().await?;
-
-    // 3. Start HTTP and WebSocket services concurrently
-    println!("🌐 Starting HTTP and WebSocket services...");
-
-    let http_service = server::start_http_service();
-    let websocket_service = t3_socket::start_websocket_service();
-
-    // Run both services concurrently
-    use tokio::join;
-    match join!(http_service, websocket_service) {
-        (Ok(_), Ok(_)) => {
-            println!("✅ All T3000 services started successfully!");
-            Ok(())
-        }
-        (Err(e), _) => {
-            eprintln!("❌ HTTP service failed: {}", e);
-            Err(e)
-        }
-        (_, Err(e)) => {
-            eprintln!("❌ WebSocket service failed: {}", e);
-            Err(e)
-        }
-    }
-}
 
 #[repr(C)]
 pub enum RustError {
@@ -81,7 +45,71 @@ pub extern "C" fn run_server() -> RustError {
 
         // Run the server logic in a blocking thread within the Tokio runtime.
         runtime.block_on(async {
-            // Call the modular service startup
+            dotenvy::dotenv().ok(); // Load environment variables from a .env file, if it exists.
+            copy_database_if_not_exists().ok(); // Copy the database if it doesn't already exist.
+            match server::server_start().await {
+                Ok(_) => RustError::Ok, // Server started successfully.
+                Err(err) => {
+                    // Handle server errors (log the error and return RustError::Error).
+                    eprintln!("Server error: {:?}", err);
+                    RustError::Error
+                }
+            }
+        })
+    });
+
+    // If the closure inside catch_unwind ran without panicking, return the result.
+    // If a panic occurred, return an error.
+    match result {
+        Ok(res) => res,             // Normal execution, return the server result.
+        Err(_) => RustError::Error, // A panic occurred, return RustError::Error.
+    }
+}
+
+// ============================================================================
+// ABSTRACTED FUNCTIONS - All new functionality separated from original code
+// ============================================================================
+
+pub mod t3_device;
+pub mod t3_socket;
+
+/// Start all T3000 services (abstracted function for modular architecture)
+pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
+    println!("🚀 Starting T3000 WebView API - All Services");
+
+    // 1. Start Database Service
+    utils::start_database_service().await?;
+
+    // 2. Start FFI Service
+    t3_device::t3000_ffi::start_ffi_service().await?;
+
+    // 3. Start WebSocket service (HTTP is handled by original server_start)
+    println!("🌐 Starting WebSocket service...");
+
+    let websocket_service = server::start_websocket_service();
+
+    match websocket_service.await {
+        Ok(_) => {
+            println!("✅ T3000 WebSocket service started successfully!");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("❌ WebSocket service failed: {}", e);
+            Err(e)
+        }
+    }
+}
+
+/// Abstracted T3000 server startup for DLL entry point
+#[no_mangle]
+pub extern "C" fn run_t3_server() -> RustError {
+    let result = panic::catch_unwind(|| {
+        let runtime = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(_) => return RustError::Error,
+        };
+
+        runtime.block_on(async {
             println!("🔗 T3000 DLL Entry Point: Starting all services...");
 
             match start_all_services().await {
@@ -97,10 +125,8 @@ pub extern "C" fn run_server() -> RustError {
         })
     });
 
-    // If the closure inside catch_unwind ran without panicking, return the result.
-    // If a panic occurred, return an error.
     match result {
-        Ok(res) => res,             // Normal execution, return the server result.
-        Err(_) => RustError::Error, // A panic occurred, return RustError::Error.
+        Ok(res) => res,
+        Err(_) => RustError::Error,
     }
 }
