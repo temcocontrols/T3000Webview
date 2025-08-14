@@ -565,6 +565,13 @@ async fn collect_now(State(state): State<T3AppState>) -> Result<Json<Value>, Sta
 
 pub fn t3_device_routes() -> Router<T3AppState> {
     Router::new()
+        // Generic table endpoints for T3Devicedb.vue interface
+        .route("/:table", get(get_table_records))           // GET /api/t3_device/{table}
+        .route("/:table/count", get(get_table_count))       // GET /api/t3_device/{table}/count
+        .route("/:table", post(create_table_record))        // POST /api/t3_device/{table}
+        .route("/:table/:id", put(update_table_record))     // PUT /api/t3_device/{table}/{id}
+        .route("/:table/:id", delete(delete_table_record))  // DELETE /api/t3_device/{table}/{id}
+
         // Legacy endpoints (keep for compatibility)
         .route("/status", get(get_database_status))
         .route("/tables", get(get_table_data))
@@ -588,4 +595,198 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/collection/config", get(get_collection_config))
         .route("/collection/config", post(update_collection_config))
         .route("/collection/collect-now", post(collect_now))
+}
+
+// ============================================================================
+// GENERIC TABLE HANDLERS - For T3Devicedb.vue interface
+// ============================================================================
+
+/// Get all records from a specific table
+async fn get_table_records(
+    State(state): State<T3AppState>,
+    Path(table): Path<String>,
+    Query(params): Query<QueryParams>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(10);
+    let offset = (page - 1) * per_page;
+
+    let search_filter = if let Some(search) = &params.search {
+        format!("WHERE name LIKE '%{}%' OR label LIKE '%{}%'", search, search)
+    } else {
+        String::new()
+    };
+
+    let query = format!(
+        "SELECT * FROM {} {} LIMIT {} OFFSET {}",
+        table, search_filter, per_page, offset
+    );
+
+    match db.query_all(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        Ok(rows) => {
+            let data: Vec<Value> = rows.into_iter().map(|row| {
+                let mut obj = serde_json::Map::new();
+                for (i, column) in row.column_names().iter().enumerate() {
+                    if let Ok(value) = row.try_get::<serde_json::Value>("", column) {
+                        obj.insert(column.to_string(), value);
+                    }
+                }
+                Value::Object(obj)
+            }).collect();
+
+            Ok(Json(json!({
+                "data": data,
+                "message": format!("Retrieved {} records from {}", data.len(), table),
+                "total": data.len()
+            })))
+        }
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Get count of records in a specific table
+async fn get_table_count(
+    State(state): State<T3AppState>,
+    Path(table): Path<String>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    let query = format!("SELECT COUNT(*) as count FROM {}", table);
+
+    match db.query_one(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        Ok(Some(row)) => {
+            let count: i64 = row.try_get("", "count").unwrap_or(0);
+            Ok(Json(json!({
+                "count": count,
+                "table": table,
+                "message": format!("Table {} has {} records", table, count)
+            })))
+        }
+        Ok(None) => Ok(Json(json!({
+            "count": 0,
+            "table": table,
+            "message": format!("Table {} is empty", table)
+        }))),
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Create a new record in a specific table
+async fn create_table_record(
+    State(state): State<T3AppState>,
+    Path(table): Path<String>,
+    Json(payload): Json<Value>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    if let Some(obj) = payload.as_object() {
+        let columns: Vec<String> = obj.keys().cloned().collect();
+        let values: Vec<String> = obj.values().map(|v| {
+            match v {
+                Value::String(s) => format!("'{}'", s.replace("'", "''")),
+                Value::Number(n) => n.to_string(),
+                Value::Bool(b) => if *b { "1".to_string() } else { "0".to_string() },
+                _ => "NULL".to_string(),
+            }
+        }).collect();
+
+        let query = format!(
+            "INSERT INTO {} ({}) VALUES ({})",
+            table,
+            columns.join(", "),
+            values.join(", ")
+        );
+
+        match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+            Ok(result) => {
+                Ok(Json(json!({
+                    "message": format!("Record created successfully in {}", table),
+                    "id": result.last_insert_id(),
+                    "table": table
+                })))
+            }
+            Err(e) => {
+                eprintln!("Database error: {}", e);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    } else {
+        Err(StatusCode::BAD_REQUEST)
+    }
+}
+
+/// Update a record in a specific table
+async fn update_table_record(
+    State(state): State<T3AppState>,
+    Path((table, id)): Path<(String, i32)>,
+    Json(payload): Json<Value>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    if let Some(obj) = payload.as_object() {
+        let updates: Vec<String> = obj.iter().map(|(key, value)| {
+            let val_str = match value {
+                Value::String(s) => format!("'{}'", s.replace("'", "''")),
+                Value::Number(n) => n.to_string(),
+                Value::Bool(b) => if *b { "1".to_string() } else { "0".to_string() },
+                _ => "NULL".to_string(),
+            };
+            format!("{} = {}", key, val_str)
+        }).collect();
+
+        let query = format!(
+            "UPDATE {} SET {} WHERE id = {}",
+            table,
+            updates.join(", "),
+            id
+        );
+
+        match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+            Ok(_) => {
+                Ok(Json(json!({
+                    "message": format!("Record {} updated successfully in {}", id, table),
+                    "id": id,
+                    "table": table
+                })))
+            }
+            Err(e) => {
+                eprintln!("Database error: {}", e);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    } else {
+        Err(StatusCode::BAD_REQUEST)
+    }
+}
+
+/// Delete a record from a specific table
+async fn delete_table_record(
+    State(state): State<T3AppState>,
+    Path((table, id)): Path<(String, i32)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = state.t3_device_conn.lock().await;
+
+    let query = format!("DELETE FROM {} WHERE id = {}", table, id);
+
+    match db.execute(Statement::from_string(DatabaseBackend::Sqlite, query)).await {
+        Ok(_) => {
+            Ok(Json(json!({
+                "message": format!("Record {} deleted successfully from {}", id, table),
+                "id": id,
+                "table": table
+            })))
+        }
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }

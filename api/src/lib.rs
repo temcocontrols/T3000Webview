@@ -47,8 +47,10 @@ pub extern "C" fn run_server() -> RustError {
         runtime.block_on(async {
             dotenvy::dotenv().ok(); // Load environment variables from a .env file, if it exists.
             copy_database_if_not_exists().ok(); // Copy the database if it doesn't already exist.
-            match server::server_start().await {
-                Ok(_) => RustError::Ok, // Server started successfully.
+
+            // Start both HTTP (9103) and WebSocket (9104) services
+            match start_all_services().await {
+                Ok(_) => RustError::Ok, // Both servers started successfully.
                 Err(err) => {
                     // Handle server errors (log the error and return RustError::Error).
                     eprintln!("Server error: {:?}", err);

@@ -13,7 +13,7 @@ use tower_http::{
 };
 
 use crate::{
-    app_state::{self, AppState, T3AppState},
+    app_state::{self, AppState, T3AppState, create_t3_app_state},
     file::routes::file_routes,
     utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
 };
@@ -67,11 +67,11 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     // Run database migrations
     run_migrations().await?;
 
-    // Create the application state
-    let state = app_state::app_state().await?;
+    // Create the enhanced T3 application state
+    let state = create_t3_app_state().await?;
 
-    // Create the application state
-    let app = create_app(state.clone()).await?;
+    // Create the application with T3 device routes
+    let app = create_t3_app(state.clone()).await?;
 
     // Get the server port from environment variable or default to 9103
     let server_port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
@@ -84,7 +84,7 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     // Start the server with graceful shutdown
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal(state))
+        .with_graceful_shutdown(shutdown_signal_t3(state))
         .await?;
 
     Ok(())
@@ -124,27 +124,75 @@ async fn shutdown_signal(state: AppState) {
     let _ = state.conn.lock().await; // Lock and drop the connection
 }
 
+async fn shutdown_signal_t3(state: T3AppState) {
+    let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
+
+    // Store the sender in the SHUTDOWN_CHANNEL
+    *SHUTDOWN_CHANNEL.lock().await = shutdown_tx;
+
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+        _ = shutdown_rx.recv() => {}, // Listen for the shutdown signal
+    }
+
+    // Drop the database connections gracefully
+    println!("->> SHUTTING DOWN: Closing database connections...");
+    let _ = state.conn.lock().await; // Lock and drop the original connection
+    let _ = state.t3_device_conn.lock().await; // Lock and drop the T3 device connection
+}
+
 // ============================================================================
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 
 use crate::t3_device::routes::t3_device_routes;
 
-/// Abstracted application router with only T3000 device routes (separate from original API)
+/// Abstracted application router with both original and T3000 device routes
 pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods(Any)
         .allow_headers(Any)
         .allow_origin(Any);
 
+    // Create original AppState from T3AppState for compatibility with original routes
+    let original_state = AppState {
+        conn: app_state.conn.clone(),
+    };
+
     Ok(Router::new()
         .nest(
             "/api",
-            Router::new()
-                .nest("/t3device", t3_device_routes())
-                .route("/health", get(health_check_handler)),
+            // Original routes with original AppState
+            modbus_register_routes()
+                .merge(user_routes())
+                .merge(file_routes())
+                .route("/health", get(health_check_handler))
+                .with_state(original_state)
+                // T3 device routes with T3AppState
+                .merge(
+                    Router::new()
+                        .nest("/t3_device", t3_device_routes())
+                        .with_state(app_state.clone())
+                )
         )
-        .with_state(app_state)
         .fallback_service(routes_static())
         .layer(cors))
 }
