@@ -15,6 +15,7 @@ use tower_http::{
 use crate::{
     app_state::{self, AppState, T3AppState, create_t3_app_state},
     file::routes::file_routes,
+    t3_device::routes::t3_device_routes,
     utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
@@ -162,8 +163,6 @@ async fn shutdown_signal_t3(state: T3AppState) {
 // ============================================================================
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
-
-use crate::t3_device::routes::t3_device_routes;
 
 /// Abstracted application router with both original and T3000 device routes
 pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Error>> {
