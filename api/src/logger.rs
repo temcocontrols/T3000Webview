@@ -1,6 +1,33 @@
-use std::fs::OpenOptions;
+use std::fs::{OpenOptions, create_dir_all};
 use std::io::Write;
+use std::path::Path;
 use chrono::Utc;
+
+/// Creates structured log file path: T3WebLog/YYYY-MM/filename_YYYY-MM-DD.log
+pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io::Error> {
+    let now = Utc::now();
+    let year_month = now.format("%Y-%m").to_string();
+    let date = now.format("%Y-%m-%d").to_string();
+
+    // Create the directory structure: T3WebLog/YYYY-MM/
+    let log_dir = format!("T3WebLog/{}", year_month);
+    create_dir_all(&log_dir)?;
+
+    // Create the full log file path
+    let log_filename = format!("{}/{}_{}.log", log_dir, base_filename, date);
+    Ok(log_filename)
+}
+
+/// Helper function to write structured logs
+pub fn write_structured_log(base_filename: &str, message: &str) -> Result<(), std::io::Error> {
+    let log_path = create_structured_log_path(base_filename)?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)?;
+    writeln!(file, "{}", message)?;
+    Ok(())
+}
 
 /// Centralized logging for T3000 WebView Service
 pub struct ServiceLogger {
@@ -8,11 +35,12 @@ pub struct ServiceLogger {
 }
 
 impl ServiceLogger {
-    pub fn new(log_filename: &str) -> Result<Self, std::io::Error> {
+    pub fn new(base_filename: &str) -> Result<Self, std::io::Error> {
+        let log_path = create_structured_log_path(base_filename)?;
         let log_file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(log_filename)?;
+            .open(log_path)?;
 
         Ok(ServiceLogger { log_file })
     }

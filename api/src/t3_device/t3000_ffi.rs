@@ -12,15 +12,11 @@ pub async fn start_ffi_service() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize FFI for T3000 C++ integration
     // Test basic FFI connectivity if needed
 
-    // Log success to file for headless service
+    // Log success to structured log for headless service
+    use crate::logger::write_structured_log;
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("t3000_ffi.log") {
-        use std::io::Write;
-        let _ = writeln!(file, "[{}] FFI Service ready - 43 functions available for T3000 C++ calls", timestamp);
-    }
+    let ffi_msg = format!("[{}] FFI Service ready - 43 functions available for T3000 C++ calls", timestamp);
+    let _ = write_structured_log("ffi", &ffi_msg);
 
     Ok(())
 }// External C++ function declarations

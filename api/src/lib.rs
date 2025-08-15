@@ -82,27 +82,17 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
     let startup_msg = format!("[{}] T3000 WebView Service initializing HTTP (9103) + WebSocket (9104)", timestamp);
 
-    // Write to log file
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("t3000_startup.log") {
-        use std::io::Write;
-        let _ = writeln!(file, "{}", startup_msg);
-    }
+    // Write to structured log file
+    use crate::logger::write_structured_log;
+    let _ = write_structured_log("startup", &startup_msg);
 
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {
         if let Err(e) = crate::t3_socket::start_websocket_service().await {
-            // Log WebSocket errors to file
+            // Log WebSocket errors to structured log
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            if let Ok(mut file) = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("t3000_error.log") {
-                use std::io::Write;
-                let _ = writeln!(file, "[{}] WebSocket service failed: {}", timestamp, e);
-            }
+            let error_msg = format!("[{}] WebSocket service failed: {}", timestamp, e);
+            let _ = write_structured_log("service_errors", &error_msg);
         }
     });
 

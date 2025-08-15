@@ -45,19 +45,47 @@ pub struct T3AppState {
 
 /// Creates a comprehensive T3000 application state with dual database connections
 pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Error>> {
+    // Log database paths before attempting connections
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+
+    // Use structured logging for database connection attempts
+    use crate::logger::write_structured_log;
+    use crate::utils::{DATABASE_URL, T3_DEVICE_DATABASE_URL};
+
+    let log_message = format!(
+        "[{}] === DATABASE CONNECTION ATTEMPT ===\n\
+        [{}] Primary database URL: {}\n\
+        [{}] T3000 device database URL: {}",
+        timestamp, timestamp, DATABASE_URL.as_str(), timestamp, T3_DEVICE_DATABASE_URL.as_str()
+    );
+    let _ = write_structured_log("database_connection", &log_message);
+
+    // Check if database files exist
+    let primary_path = DATABASE_URL.strip_prefix("sqlite://").unwrap_or(&DATABASE_URL);
+    let t3_device_path = T3_DEVICE_DATABASE_URL.strip_prefix("sqlite://").unwrap_or(&T3_DEVICE_DATABASE_URL);
+    let file_check_message = format!(
+        "[{}] Primary DB file exists: {}\n\
+        [{}] T3000 DB file exists: {}\n\
+        [{}] Current working directory: {:?}",
+        timestamp, std::path::Path::new(primary_path).exists(),
+        timestamp, std::path::Path::new(t3_device_path).exists(),
+        timestamp, std::env::current_dir().unwrap_or_default()
+    );
+    let _ = write_structured_log("database_connection", &file_check_message);
+
     // Establish primary database connection
     let conn = match establish_connection().await {
         Ok(conn) => conn,
         Err(e) => {
-            // Log to file for headless service
+            // Log to structured log for headless service with specific database info
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            if let Ok(mut file) = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("t3000_error.log") {
-                use std::io::Write;
-                let _ = writeln!(file, "[{}] Failed to connect to primary database: {:?}", timestamp, e);
-            }
+            let error_message = format!(
+                "[{}] ❌ Failed to connect to PRIMARY database\n\
+                [{}] Database URL: {}\n\
+                [{}] Error details: {:?}",
+                timestamp, timestamp, DATABASE_URL.as_str(), timestamp, e
+            );
+            let _ = write_structured_log("database_errors", &error_message);
             return Err(e);
         }
     };
@@ -66,15 +94,16 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let t3_device_conn = match establish_t3_device_connection().await {
         Ok(conn) => conn,
         Err(e) => {
-            // Log to file for headless service
+            // Log to structured log for headless service with specific database info
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            if let Ok(mut file) = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("t3000_error.log") {
-                use std::io::Write;
-                let _ = writeln!(file, "[{}] Failed to connect to T3000 device database: {:?}", timestamp, e);
-            }
+            use crate::utils::T3_DEVICE_DATABASE_URL;
+            let error_message = format!(
+                "[{}] ❌ Failed to connect to T3000 DEVICE database\n\
+                [{}] Database URL: {}\n\
+                [{}] Error details: {:?}",
+                timestamp, timestamp, T3_DEVICE_DATABASE_URL.as_str(), timestamp, e
+            );
+            let _ = write_structured_log("database_errors", &error_message);
             return Err(e);
         }
     };

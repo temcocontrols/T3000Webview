@@ -88,8 +88,8 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     use crate::logger::ServiceLogger;
 
     // Initialize service logger
-    let mut logger = ServiceLogger::new("t3000_webview_service.log")
-        .unwrap_or_else(|_| ServiceLogger::new("fallback.log").unwrap());
+    let mut logger = ServiceLogger::new("t3000_webview_service")
+        .unwrap_or_else(|_| ServiceLogger::new("fallback_service").unwrap());
 
     logger.info("T3000 WebView Service Starting...");
 
