@@ -76,8 +76,8 @@ lazy_static! {
     pub static ref T3_DEVICE_DATABASE_URL: String = env::var("T3_DEVICE_DATABASE_URL")
         .unwrap_or_else(|_| {
             let current_dir = env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-            let db_path = current_dir.join("t3_device.db");
-            let url = format!("sqlite://{}", db_path.to_string_lossy());
+            let db_path="sqlite://Database/t3_device.db".to_string();
+            let url = format!("{}", db_path);
             t3_enhanced_logging(&format!("Database URL (t3_device): {}", url));
             t3_enhanced_logging(&format!("Current directory: {:?}", current_dir));
             t3_enhanced_logging(&format!("Database path (t3_device): {:?}", db_path));
