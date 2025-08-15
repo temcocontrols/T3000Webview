@@ -236,5 +236,7 @@ async fn shutdown_signal_t3(state: T3AppState) {
     // Drop the database connections gracefully
     println!("->> SHUTTING DOWN: Closing database connections...");
     let _ = state.conn.lock().await; // Lock and drop the original connection
-    let _ = state.t3_device_conn.lock().await; // Lock and drop the T3 device connection
+    if let Some(ref t3_device_conn) = state.t3_device_conn {
+        let _ = t3_device_conn.lock().await; // Lock and drop the T3 device connection if available
+    }
 }

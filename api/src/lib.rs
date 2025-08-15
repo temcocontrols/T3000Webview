@@ -80,11 +80,22 @@ pub mod t3_socket;
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Log to file for headless service
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    let startup_msg = format!("[{}] T3000 WebView Service initializing HTTP (9103) + WebSocket (9104)", timestamp);
+    let startup_msg = format!("[{}] T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + T3000 Device DB", timestamp);
 
     // Write to structured log file
     use crate::logger::write_structured_log;
     let _ = write_structured_log("startup", &startup_msg);
+
+    // Try to initialize T3000 device database (NON-BLOCKING - log errors but continue)
+    if let Err(e) = crate::utils::start_database_service().await {
+        let error_msg = format!("[{}] ⚠️  T3000 device database initialization failed: {} - Core services will continue",
+                               chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"), e);
+        let _ = write_structured_log("service_errors", &error_msg);
+        println!("⚠️  Warning: T3000 device database unavailable - Core services starting anyway");
+    } else {
+        let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 device database ready",
+                                   chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
+    }
 
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {

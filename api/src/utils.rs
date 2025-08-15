@@ -157,17 +157,25 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
 
 /// Abstracted database service startup orchestration
 pub async fn start_database_service() -> Result<(), Box<dyn std::error::Error>> {
-    t3_enhanced_logging("📂 Starting Database Service...");
+    t3_enhanced_logging("📂 Starting T3000 Device Database Service...");
 
-    // Copy t3_device database if it doesn't exist
-    if let Err(e) = copy_t3_device_database_if_not_exists() {
-        t3_enhanced_logging(&format!("⚠️  Warning: Failed to copy t3_device database: {}", e));
-    } else {
-        t3_enhanced_logging("✅ T3000 device database ready");
+    // Try to copy t3_device database if it doesn't exist
+    match copy_t3_device_database_if_not_exists() {
+        Ok(_) => {
+            t3_enhanced_logging("✅ T3000 device database ready");
+            Ok(())
+        }
+        Err(e) => {
+            let error_msg = format!("❌ T3000 device database initialization failed: {}", e);
+            t3_enhanced_logging(&error_msg);
+
+            // Return the error to allow caller to handle gracefully
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("T3000 device database unavailable: {}", e)
+            )))
+        }
     }
-
-    t3_enhanced_logging("✅ Database Service started successfully!");
-    Ok(())
 }
 
 /// Abstracted timestamped logging functionality

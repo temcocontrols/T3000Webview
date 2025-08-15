@@ -14,6 +14,28 @@ use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateBuildingRequest, UpdateBuildingRequest};
 use crate::t3_device::data_collector::{DataCollectionService};
 
+// Helper function to check if T3000 device database is available
+async fn ensure_t3_device_db_available(state: &T3AppState) -> Result<(), StatusCode> {
+    if state.t3_device_conn.is_none() {
+        eprintln!("⚠️  T3000 device database unavailable - feature disabled");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
+    Ok(())
+}
+
+// Helper macro to get T3000 device database connection or return service unavailable
+macro_rules! get_t3_device_conn {
+    ($state:expr) => {
+        match $state.t3_device_conn.as_ref() {
+            Some(conn) => conn.lock().await,
+            None => {
+                eprintln!("⚠️  T3000 device database unavailable");
+                return Err(StatusCode::SERVICE_UNAVAILABLE);
+            }
+        }
+    };
+}
+
 #[derive(Deserialize)]
 pub struct QueryParams {
     pub page: Option<u64>,
@@ -43,7 +65,7 @@ pub struct QueryResult {
 
 // Get database status and table information
 async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<DatabaseInfo>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     // Get list of tables from SQLite database
     let tables_query = Statement::from_string(
@@ -97,7 +119,7 @@ async fn get_table_data(
     State(state): State<T3AppState>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
     let table_name = params.table.unwrap_or_else(|| "Buildings".to_string());
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
@@ -161,7 +183,7 @@ async fn create_record(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    let _db = state.t3_device_conn.lock().await;
+    let _db = get_t3_device_conn!(state);
 
     // Validate table name
     let valid_tables = [
@@ -188,7 +210,7 @@ async fn update_record(
     Path((table, id)): Path<(String, i32)>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    let _db = state.t3_device_conn.lock().await;
+    let _db = get_t3_device_conn!(state);
 
     // Validate table name
     let valid_tables = [
@@ -213,7 +235,7 @@ async fn delete_record(
     State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
 ) -> Result<Json<Value>, StatusCode> {
-    let _db = state.t3_device_conn.lock().await;
+    let _db = get_t3_device_conn!(state);
 
     // Validate table name
     let valid_tables = [
@@ -237,7 +259,7 @@ async fn export_table(
     State(state): State<T3AppState>,
     Path(table): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     // Validate table name
     let valid_tables = [
@@ -287,7 +309,7 @@ async fn import_table(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    let _db = state.t3_device_conn.lock().await;
+    let _db = get_t3_device_conn!(state);
 
     // Validate table name
     let valid_tables = [
@@ -313,7 +335,7 @@ async fn import_table(
 
 // New Building Management Endpoints
 async fn get_buildings_with_stats(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_buildings_with_stats(&*db).await {
         Ok(buildings) => Ok(Json(json!({
@@ -328,7 +350,7 @@ async fn get_building_devices(
     State(state): State<T3AppState>,
     Path(building_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     match T3DeviceService::get_building_devices(&*db, building_id).await {
         Ok(devices) => Ok(Json(json!({
@@ -344,7 +366,7 @@ async fn create_building(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateBuildingRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     match T3DeviceService::create_building(&*db, payload).await {
         Ok(building) => Ok(Json(json!({
@@ -360,7 +382,7 @@ async fn update_building(
     Path(building_id): Path<i32>,
     Json(payload): Json<UpdateBuildingRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     match T3DeviceService::update_building(&*db, building_id, payload).await {
         Ok(building) => Ok(Json(json!({
@@ -375,7 +397,7 @@ async fn delete_building(
     State(state): State<T3AppState>,
     Path(building_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     match T3DeviceService::delete_building(&*db, building_id).await {
         Ok(_) => Ok(Json(json!({
@@ -398,7 +420,7 @@ async fn start_data_collection(State(state): State<T3AppState>) -> Result<Json<V
     }
 
     // Create a new data collection service
-    let t3_device_conn = state.t3_device_conn.lock().await.clone();
+    let t3_device_conn = get_t3_device_conn!(state).clone();
     let t3_device_conn_arc = Arc::new(t3_device_conn);
 
     let (mut service, _control_sender, _data_receiver) = DataCollectionService::new(t3_device_conn_arc);
@@ -607,7 +629,7 @@ async fn get_table_records(
     Path(table): Path<String>,
     Query(params): Query<QueryParams>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
@@ -654,7 +676,7 @@ async fn get_table_count(
     State(state): State<T3AppState>,
     Path(table): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     let query = format!("SELECT COUNT(*) as count FROM {}", table);
 
@@ -685,7 +707,7 @@ async fn create_table_record(
     Path(table): Path<String>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     if let Some(obj) = payload.as_object() {
         let columns: Vec<String> = obj.keys().cloned().collect();
@@ -729,7 +751,7 @@ async fn update_table_record(
     Path((table, id)): Path<(String, i32)>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     if let Some(obj) = payload.as_object() {
         let updates: Vec<String> = obj.iter().map(|(key, value)| {
@@ -772,7 +794,7 @@ async fn delete_table_record(
     State(state): State<T3AppState>,
     Path((table, id)): Path<(String, i32)>,
 ) -> Result<Json<Value>, StatusCode> {
-    let db = state.t3_device_conn.lock().await;
+    let db = get_t3_device_conn!(state);
 
     let query = format!("DELETE FROM {} WHERE id = {}", table, id);
 

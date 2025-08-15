@@ -38,7 +38,7 @@ use crate::t3_device::data_collector::{DataCollectionService, DataPoint};
 #[derive(Clone)]
 pub struct T3AppState {
     pub conn: Arc<Mutex<DatabaseConnection>>,
-    pub t3_device_conn: Arc<Mutex<DatabaseConnection>>,
+    pub t3_device_conn: Option<Arc<Mutex<DatabaseConnection>>>,
     pub data_collector: Arc<Mutex<Option<DataCollectionService>>>,
     pub data_sender: broadcast::Sender<DataPoint>,
 }
@@ -90,27 +90,33 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         }
     };
 
-    // Establish comprehensive T3000 device database connection
+    // Establish comprehensive T3000 device database connection (OPTIONAL - don't fail if unavailable)
     let t3_device_conn = match establish_t3_device_connection().await {
-        Ok(conn) => conn,
+        Ok(conn) => {
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+            let success_message = format!("[{}] ✅ T3000 device database connected successfully", timestamp);
+            let _ = write_structured_log("database_connection", &success_message);
+            Some(conn)
+        },
         Err(e) => {
-            // Log to structured log for headless service with specific database info
+            // Log to structured log for headless service but DON'T fail the entire service
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
             use crate::utils::T3_DEVICE_DATABASE_URL;
             let error_message = format!(
-                "[{}] ❌ Failed to connect to T3000 DEVICE database\n\
+                "[{}] ⚠️  T3000 device database unavailable (core services will continue)\n\
                 [{}] Database URL: {}\n\
                 [{}] Error details: {:?}",
                 timestamp, timestamp, T3_DEVICE_DATABASE_URL.as_str(), timestamp, e
             );
             let _ = write_structured_log("database_errors", &error_message);
-            return Err(e);
+            println!("⚠️  Warning: T3000 device database unavailable - Core HTTP/WebSocket services starting anyway");
+            None
         }
     };
 
     // Wrap the connections in Arc and Mutex for shared access
     let shared_conn = Arc::new(Mutex::new(conn));
-    let shared_t3_device_conn = Arc::new(Mutex::new(t3_device_conn));
+    let shared_t3_device_conn = t3_device_conn.map(|conn| Arc::new(Mutex::new(conn)));
 
     // Create data collection broadcast channel
     let (data_sender, _data_receiver) = broadcast::channel(1000);
