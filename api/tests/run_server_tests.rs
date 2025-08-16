@@ -2,14 +2,15 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use t3_webview_api::{app_state, server::create_app, utils::run_migrations}; // Assuming you've modified server_start to create_app
+use t3_webview_api::{app_state, server::create_app, utils::run_migrations_if_pending}; // Updated to use smart migration
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
 #[tokio::test]
 async fn test_server_start() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    run_migrations().await.unwrap();
+    // Use smart migration system that only runs when needed
+    run_migrations_if_pending().await.unwrap();
 
     let state = app_state::app_state().await.unwrap();
 

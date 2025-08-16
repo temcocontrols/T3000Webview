@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use super::types::*;
 use crate::utils::log_message;
+use crate::t3_device::trend_collector::TrendDataCollector;
 
 /// Start the WebSocket service on port 9104
 pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
@@ -153,6 +154,9 @@ async fn handle_websocket(
 
             // Handle message structure: {"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"..."}}
             if let Some(message) = json_msg.get("message") {
+                // NON-INVASIVE: Intercept data for trend collection (preserves existing functionality)
+                intercept_trend_data(&json_msg).await;
+
                 if let Some(action) = message.get("action").and_then(|a| a.as_i64()) {
                     if action == ACTION_BIND_CLIENT {
                         bind_clients(message, &clients, &tx).await?;
@@ -166,6 +170,9 @@ async fn handle_websocket(
                     }
                 }
             } else {
+                // NON-INVASIVE: Intercept data for trend collection (preserves existing functionality)
+                intercept_trend_data(&json_msg).await;
+
                 // Handle direct messages and transfer processed data back to web clients
                 if let Some(action) = json_msg.get("action") {
                     log_message(&format!("Send processed data back to web client"), true);
@@ -283,5 +290,34 @@ async fn notify_web_clients(
             }
         }
     }
+
     Ok(())
+}
+
+/// NON-INVASIVE: Intercept WebSocket messages for trend data collection
+/// This function runs in parallel with existing message handling
+async fn intercept_trend_data(json_msg: &serde_json::Value) {
+    // This is a placeholder for the actual trend data interception
+    // We'll implement the actual logic based on your T3000 message format
+
+    // For now, just log that we're intercepting
+    if let Some(action) = json_msg.get("action") {
+        if let Some(action_str) = action.as_str() {
+            if action_str.contains("data") || action_str.contains("trend") || action_str.contains("value") {
+                log_message(&format!("🔍 Intercepted potential trend data message: {}", action_str), false);
+            }
+        } else if let Some(action_int) = action.as_i64() {
+            // Log numeric actions that might be trend data
+            log_message(&format!("🔍 Intercepted numeric action: {}", action_int), false);
+        }
+    }
+
+    // Check for specific trend data patterns in the message
+    if json_msg.get("input").is_some() ||
+       json_msg.get("output").is_some() ||
+       json_msg.get("variable").is_some() ||
+       json_msg.get("points").is_some() ||
+       json_msg.get("trend").is_some() {
+        log_message("🔍 Found potential point data in message", false);
+    }
 }

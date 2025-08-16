@@ -13,10 +13,10 @@ use tower_http::{
 };
 
 use crate::{
-    app_state::{self, AppState, T3AppState, create_t3_app_state},
+    app_state::{AppState, T3AppState, create_t3_app_state},
     file::routes::file_routes,
     t3_device::routes::t3_device_routes,
-    utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
+    utils::{SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
 use super::modbus_register::routes::modbus_register_routes;
@@ -79,6 +79,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         )
         // T3000 device routes with T3AppState
         .nest("/api/t3_device", t3_device_routes())
+        // Real-time trend data routes
+        .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
         .fallback_service(routes_static())
         .layer(cors))
@@ -106,11 +108,13 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     dotenvy::dotenv().ok();
     logger.info("Environment variables loaded");
 
-    // Run database migrations
-    match run_migrations().await {
-        Ok(_) => logger.info("Database migrations completed"),
+    // Smart migration system: only run if there are pending migrations
+    match crate::utils::run_migrations_if_pending().await {
+        Ok(_) => {
+            // Success message already printed by the function
+        },
         Err(e) => {
-            logger.error(&format!("Database migration failed: {:?}", e));
+            logger.error(&format!("Migration check/execution failed: {:?}", e));
             return Err(e);
         }
     }

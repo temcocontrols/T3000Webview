@@ -41,6 +41,8 @@ pub struct T3AppState {
     pub t3_device_conn: Option<Arc<Mutex<DatabaseConnection>>>,
     pub data_collector: Arc<Mutex<Option<DataCollectionService>>>,
     pub data_sender: broadcast::Sender<DataPoint>,
+    pub trend_collector: Option<Arc<crate::t3_device::trend_collector::TrendDataCollector>>,
+    pub trend_data_sender: Option<broadcast::Sender<crate::t3_device::trend_collector::TrendDataPoint>>,
 }
 
 /// Creates a comprehensive T3000 application state with dual database connections
@@ -124,11 +126,24 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     // Initialize data collection service (will be set up later when started)
     let data_collector = Arc::new(Mutex::new(None));
 
+    // Initialize trend data collector if T3000 device database is available
+    let (trend_collector, trend_data_sender) = if let Some(ref t3_device_conn) = shared_t3_device_conn {
+        let (collector, _receiver) = crate::t3_device::trend_collector::TrendDataCollector::new(
+            t3_device_conn.clone()
+        );
+        let sender = collector.get_data_sender();
+        (Some(Arc::new(collector)), Some(sender))
+    } else {
+        (None, None)
+    };
+
     // Return a T3AppState struct with the shared connections
     Ok(T3AppState {
         conn: shared_conn,
         t3_device_conn: shared_t3_device_conn,
         data_collector,
         data_sender,
+        trend_collector,
+        trend_data_sender,
     })
 }

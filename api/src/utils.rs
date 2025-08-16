@@ -196,3 +196,124 @@ pub fn log_message(message: &str, log_to_file: bool) {
         println!("{}", formatted_message);
     }
 }
+
+/// Check if there are pending migrations without running them
+pub async fn has_pending_migrations() -> Result<bool, Box<dyn std::error::Error>> {
+    let conn = establish_connection().await?;
+
+    // Get applied migrations from database
+    match Migrator::get_applied_migrations(&conn).await {
+        Ok(applied) => {
+            // Get all available migrations
+            let available = Migrator::get_migration_files();
+
+            // Check if there are unapplied migrations
+            let has_pending = available.len() > applied.len();
+
+            drop(conn);
+            Ok(has_pending)
+        },
+        Err(e) => {
+            drop(conn);
+            Err(e.into())
+        }
+    }
+}
+
+/// Clean up orphaned migration records (migrations applied but files missing)
+pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Error>> {
+    use sea_orm::*;
+
+    let conn = establish_connection().await?;
+
+    println!("🧹 Cleaning up orphaned migration records...");
+
+    // Get applied migrations from database - using direct SQL to avoid missing file issues
+    let applied_migrations: Vec<String> = {
+        let rows = conn.query_all(
+            Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT version FROM seaql_migrations ORDER BY applied_at".to_owned()
+            )
+        ).await?;
+
+        rows.iter().map(|row| {
+            row.try_get::<String>("", "version").unwrap_or_default()
+        }).collect()
+    };
+
+    // Get available migration files
+    let available_migrations = Migrator::get_migration_files();
+    let available_versions: std::collections::HashSet<String> = available_migrations
+        .iter()
+        .map(|m| m.name().to_string())
+        .collect();
+
+    println!("   Applied migrations: {}", applied_migrations.len());
+    println!("   Available migration files: {}", available_migrations.len());
+
+    // Find orphaned migrations (applied but file missing)
+    let orphaned: Vec<String> = applied_migrations
+        .iter()
+        .filter(|version| !available_versions.contains(*version))
+        .map(|s| s.clone())
+        .collect();
+
+    if orphaned.is_empty() {
+        println!("   ✅ No orphaned migration records found");
+    } else {
+        println!("   🗑️  Found {} orphaned migration(s):", orphaned.len());
+        for version in &orphaned {
+            println!("      - {}", version);
+        }
+
+        // Remove orphaned migrations
+        for version in &orphaned {
+            let result = conn.execute(
+                Statement::from_string(
+                    DatabaseBackend::Sqlite,
+                    format!("DELETE FROM seaql_migrations WHERE version = '{}'", version)
+                )
+            ).await?;
+
+            println!("      ✅ Removed migration record: {} ({} row(s) affected)",
+                     version, result.rows_affected());
+        }
+    }
+
+    drop(conn);
+    println!("✅ Migration cleanup completed");
+    Ok(())
+}
+
+/// Run migrations only if there are pending migrations, with error handling
+pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error>> {
+    // First, cleanup any orphaned migration records
+    if let Err(e) = cleanup_orphaned_migrations().await {
+        println!("⚠️  Could not cleanup orphaned migrations: {}", e);
+        println!("   Continuing with migration check...");
+    }
+
+    match has_pending_migrations().await {
+        Ok(true) => {
+            println!("🔄 New migrations detected, running...");
+            match run_migrations().await {
+                Ok(_) => println!("✅ Database migrations completed"),
+                Err(e) => {
+                    println!("⚠️  Migration error encountered: {}", e);
+                    println!("   This might be due to missing migration files or schema inconsistencies.");
+                    println!("   The system will continue without applying migrations.");
+                }
+            }
+        },
+        Ok(false) => {
+            println!("✅ Database schema up to date, no migrations needed");
+        },
+        Err(e) => {
+            println!("⚠️  Could not check migration status: {}", e);
+            println!("   This might be due to missing migration files or database issues.");
+            println!("   The system will continue without applying migrations.");
+        }
+    }
+    Ok(())
+}

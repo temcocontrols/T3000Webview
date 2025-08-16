@@ -117,6 +117,24 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     websocket_handle.abort();
 
     http_result
+}
+
+/// Start all T3000 services with optional migration support
+pub async fn start_all_services_with_options(run_migrations: bool) -> Result<(), Box<dyn std::error::Error>> {
+    // Run migrations first if requested (force migration regardless of pending status)
+    if run_migrations {
+        println!("🔄 Force running database migrations...");
+        match utils::run_migrations().await {
+            Ok(_) => println!("✅ Database migrations completed"),
+            Err(e) => {
+                eprintln!("❌ Database migration failed: {:?}", e);
+                return Err(e);
+            }
+        }
+    }
+
+    // Start all services normally (which will auto-detect pending migrations)
+    start_all_services().await
 }/// Abstracted T3000 server startup for DLL entry point
 #[no_mangle]
 pub extern "C" fn run_t3_server() -> RustError {
