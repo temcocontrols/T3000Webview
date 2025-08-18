@@ -28,8 +28,8 @@ export interface T3DeviceQueryParams {
 }
 
 /**
- * T3 Device Database API Client
- * Provides CRUD operations for T3000 device database tables
+ * WebView T3000 Database API Client
+ * Provides CRUD operations for webview T3000 database tables
  */
 export class T3DeviceApi {
   private api: typeof ky;

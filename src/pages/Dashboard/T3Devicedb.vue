@@ -4,7 +4,7 @@
     <div class="top-bar">
       <div class="top-bar-left">
         <q-icon name="storage" size="20px" class="q-mr-sm" />
-        <span class="page-title">T3000 Device Database</span>
+        <span class="page-title">WebView T3000 Database</span>
         <q-separator vertical class="q-mx-md" />
         <q-breadcrumbs>
           <q-breadcrumbs-el label="Home" icon="home" />

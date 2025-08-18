@@ -45,7 +45,7 @@ pub struct T3AppState {
     pub trend_data_sender: Option<broadcast::Sender<crate::t3_device::trend_collector::TrendDataPoint>>,
 }
 
-/// Creates a comprehensive T3000 application state with dual database connections
+/// Creates a webview T3000 application state with dual database connections
 pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Error>> {
     // Log database paths before attempting connections
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
@@ -57,7 +57,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let log_message = format!(
         "[{}] === DATABASE CONNECTION ATTEMPT ===\n\
         [{}] Primary database URL: {}\n\
-        [{}] T3000 device database URL: {}",
+        [{}] WebView T3000 database URL: {}",
         timestamp, timestamp, DATABASE_URL.as_str(), timestamp, T3_DEVICE_DATABASE_URL.as_str()
     );
     let _ = write_structured_log("database_connection", &log_message);
@@ -92,11 +92,11 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         }
     };
 
-    // Establish comprehensive T3000 device database connection (OPTIONAL - don't fail if unavailable)
+    // Establish webview T3000 database connection (OPTIONAL - don't fail if unavailable)
     let t3_device_conn = match establish_t3_device_connection().await {
         Ok(conn) => {
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let success_message = format!("[{}] ✅ T3000 device database connected successfully", timestamp);
+            let success_message = format!("[{}] ✅ WebView T3000 database connected successfully", timestamp);
             let _ = write_structured_log("database_connection", &success_message);
             Some(conn)
         },
@@ -105,13 +105,13 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
             use crate::utils::T3_DEVICE_DATABASE_URL;
             let error_message = format!(
-                "[{}] ⚠️  T3000 device database unavailable (core services will continue)\n\
+                "[{}] ⚠️  WebView T3000 database unavailable (core services will continue)\n\
                 [{}] Database URL: {}\n\
                 [{}] Error details: {:?}",
                 timestamp, timestamp, T3_DEVICE_DATABASE_URL.as_str(), timestamp, e
             );
             let _ = write_structured_log("database_errors", &error_message);
-            println!("⚠️  Warning: T3000 device database unavailable - Core HTTP/WebSocket services starting anyway");
+            println!("⚠️  Warning: WebView T3000 database unavailable - Core HTTP/WebSocket services starting anyway");
             None
         }
     };
@@ -126,7 +126,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     // Initialize data collection service (will be set up later when started)
     let data_collector = Arc::new(Mutex::new(None));
 
-    // Initialize trend data collector if T3000 device database is available
+    // Initialize trend data collector if webview T3000 database is available
     let (trend_collector, trend_data_sender) = if let Some(ref t3_device_conn) = shared_t3_device_conn {
         let (collector, _receiver) = crate::t3_device::trend_collector::TrendDataCollector::new(
             t3_device_conn.clone()

@@ -17,7 +17,7 @@ pub async fn establish_connection() -> Result<DatabaseConnection, Box<dyn std::e
     Database::connect(opt).await.map_err(|error| error.into())
 }
 
-/// Establish connection to the comprehensive T3000 device database
+/// Establish connection to the webview T3000 database
 pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
     let mut opt = ConnectOptions::new(T3_DEVICE_DATABASE_URL.as_str());
     opt.max_connections(100)
