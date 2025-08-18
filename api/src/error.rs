@@ -57,6 +57,7 @@ impl IntoResponse for Error {
 // Additional AppError type for T3 Device services
 #[derive(Clone, Debug)]
 pub enum AppError {
+    Database(String),
     DatabaseError(String),
     NotFound(String),
     ValidationError(String),
@@ -66,6 +67,7 @@ pub enum AppError {
 impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            AppError::Database(msg) => write!(f, "Database Error: {}", msg),
             AppError::DatabaseError(msg) => write!(f, "Database Error: {}", msg),
             AppError::NotFound(msg) => write!(f, "Not Found: {}", msg),
             AppError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
@@ -91,6 +93,7 @@ impl From<std::time::SystemTimeError> for AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
+            AppError::Database(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             AppError::DatabaseError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
