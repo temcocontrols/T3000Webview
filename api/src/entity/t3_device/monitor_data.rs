@@ -1,28 +1,25 @@
-// T3000 OUTPUTS Entity - Exact match to T3000.db OUTPUTS table
+// T3000 MONITORDATA Entity - Exact match to T3000.db MONITORDATA table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "OUTPUTS")]
+#[sea_orm(table_name = "MONITORDATA")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
 
-    pub Output_index: Option<String>,           // C++ Output_index
-    pub Panel: Option<String>,                  // C++ Panel
-    pub Full_Label: Option<String>,             // C++ Full_Label (description[19])
+    pub Monitor_ID: Option<String>,             // C++ Monitor_ID
+    pub Switch_Node: Option<String>,            // C++ Switch_Node
+    pub Monitor_Label: Option<String>,          // C++ Monitor_Label
+    pub Monitor_Value: Option<String>,          // C++ Monitor_Value
     pub Auto_Manual: Option<String>,            // C++ Auto_Manual
-    pub fValue: Option<String>,                 // C++ fValue (stored as string)
+    pub Status: Option<String>,                 // C++ Status
     pub Units: Option<String>,                  // C++ Units
+    pub Monitor_Type: Option<String>,           // C++ Monitor_Type
+    pub TimeStamp: Option<String>,              // C++ TimeStamp
     pub Range_Field: Option<String>,            // C++ Range
     pub Calibration: Option<String>,            // C++ Calibration
-    pub Sign: Option<String>,                   // C++ Sign
-    pub Filter_Field: Option<String>,           // C++ Filter
-    pub Status: Option<String>,                 // C++ Status
-    pub Signal_Type: Option<String>,            // C++ Signal_Type (digital_analog)
-    pub Label: Option<String>,                  // C++ Label (label[9])
-    pub Type_Field: Option<String>,             // C++ Type
     pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
 }
 

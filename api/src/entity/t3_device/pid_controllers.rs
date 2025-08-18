@@ -1,53 +1,38 @@
-// T3000 PID Controllers Entity
+// T3000 PID_TABLE Entity - Exact match to T3000.db PID_TABLE table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "pid_controllers")]
+#[sea_orm(table_name = "PID_TABLE")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub device_id: i32,
-    pub pid_number: i32,
-    pub label: Option<String>,
-    pub description: Option<String>,
-    pub input_point: Option<i32>,
-    pub input_value: Option<f32>,
-    pub output_value: Option<f32>,
-    pub units_type: Option<i32>,
-    pub auto_manual: Option<i32>,
-    pub output_point: Option<i32>,
-    pub setpoint_point: Option<i32>,
-    pub setpoint_value: Option<f32>,
-    pub setpoint_units: Option<i32>,
-    pub action: Option<i32>,
-    pub proportional_gain: Option<f32>,
-    pub integral_time: Option<i32>,
-    pub derivative_time: Option<i32>,
-    pub sample_time: Option<i32>,
-    pub bias: Option<f32>,
-    pub repeats_per_min: Option<i32>,
-    pub status: Option<i32>,
-    pub type_category: Option<String>,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+
+    pub Loop_Field: Option<String>,             // C++ Loop
+    pub Switch_Node: Option<String>,            // C++ Switch_Node
+    pub Input_Field: Option<String>,            // C++ Input
+    pub Input_Value: Option<String>,            // C++ Input_Value
+    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
+    pub Output_Field: Option<String>,           // C++ Output
+    pub Output_Value: Option<String>,           // C++ Output_Value
+    pub Set_Value: Option<String>,              // C++ Set_Value
+    pub Units: Option<String>,                  // C++ Units
+    pub Action_Field: Option<String>,           // C++ Action
+    pub Proportional: Option<String>,           // C++ Proportional
+    pub Reset_Field: Option<String>,            // C++ Reset
+    pub Rate: Option<String>,                   // C++ Rate
+    pub Bias: Option<String>,                   // C++ Bias
+    pub Status: Option<String>,                 // C++ Status
+    pub Type_Field: Option<String>,             // C++ Type
+    pub Setpoint_High: Option<String>,          // C++ Setpoint_High
+    pub Setpoint_Low: Option<String>,           // C++ Setpoint_Low
+    pub Units_State: Option<String>,            // C++ Units_State
+    pub Variable_State: Option<String>,         // C++ Variable_State
+    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::devices::Entity",
-        from = "Column::DeviceId",
-        to = "super::devices::Column::Id"
-    )]
-    Devices,
-}
-
-impl Related<super::devices::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Devices.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

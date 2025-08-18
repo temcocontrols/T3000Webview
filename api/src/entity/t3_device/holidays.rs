@@ -1,41 +1,25 @@
-// T3000 Holidays Entity
+// T3000 HOLIDAYS Entity - Exact match to T3000.db HOLIDAYS table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "holidays")]
+#[sea_orm(table_name = "HOLIDAYS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub device_id: i32,
-    pub holiday_number: i32,
-    pub full_label: Option<String>,
-    pub label: Option<String>,
-    pub auto_manual: Option<i32>,
-    pub value: Option<i32>,
-    pub month: Option<i32>,
-    pub day: Option<i32>,
-    pub status: Option<i32>,
-    pub type_category: Option<String>,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+
+    pub Holiday_ID: Option<String>,             // C++ Holiday_ID
+    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
+    pub Holiday_Value: Option<String>,          // C++ Holiday_Value
+    pub Status: Option<String>,                 // C++ Status
+    pub Month_Field: Option<String>,            // C++ Month
+    pub Day_Field: Option<String>,              // C++ Day
+    pub Year_Field: Option<String>,             // C++ Year
+    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::devices::Entity",
-        from = "Column::DeviceId",
-        to = "super::devices::Column::Id"
-    )]
-    Devices,
-}
-
-impl Related<super::devices::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Devices.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

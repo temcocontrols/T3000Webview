@@ -1,39 +1,23 @@
-// T3000 Graphics Entity
+// T3000 GRAPHICS Entity - Exact match to T3000.db GRAPHICS table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "graphics")]
+#[sea_orm(table_name = "GRAPHICS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub device_id: i32,
-    pub graphic_number: i32,
-    pub full_label: Option<String>,
-    pub label: Option<String>,
-    pub picture_file: Option<String>,
-    pub element_count: Option<i32>,
-    pub status: Option<i32>,
-    pub type_category: Option<String>,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+
+    pub Graphic_ID: Option<String>,             // C++ Graphic_ID
+    pub Switch_Node: Option<String>,            // C++ Switch_Node
+    pub Graphic_Label: Option<String>,          // C++ Graphic_Label
+    pub Graphic_Picture_File: Option<String>,   // C++ Graphic_Picture_File
+    pub Graphic_Total_Point: Option<String>,    // C++ Graphic_Total_Point
+    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::devices::Entity",
-        from = "Column::DeviceId",
-        to = "super::devices::Column::Id"
-    )]
-    Devices,
-}
-
-impl Related<super::devices::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Devices.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

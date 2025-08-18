@@ -1,34 +1,22 @@
-// T3000 Trend Log Data Entity
+// T3000 TRENDLOG_DATA Entity - Exact match to T3000.db TRENDLOG_DATA table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "trendlog_data")]
+#[sea_orm(table_name = "TRENDLOG_DATA")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub trendlog_id: i32,
-    pub timestamp: i64,
-    pub value: f32,
-    pub quality: Option<i32>,
-    pub created_at: Option<i64>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub Trendlog_Input_ID: i32,                 // C++ reference to TRENDLOG_INPUTS
+
+    pub TimeStamp: String,                      // C++ TimeStamp (T3000 uses TEXT for timestamps)
+    pub fValue: Option<String>,                 // C++ fValue (following T3000 pattern - stored as TEXT)
+    pub Status: Option<String>,                 // C++ Status
+    pub Quality: Option<String>,                // C++ Quality (data quality indicator)
+    pub BinaryArray: Option<String>,            // C++ BinaryArray
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::trendlogs::Entity",
-        from = "Column::TrendlogId",
-        to = "super::trendlogs::Column::Id"
-    )]
-    Trendlogs,
-}
-
-impl Related<super::trendlogs::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Trendlogs.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -1,47 +1,35 @@
-// T3000 Alarms Entity
+// T3000 ALARMS Entity - Exact match to T3000.db ALARMS table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "alarms")]
+#[sea_orm(table_name = "ALARMS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub device_id: i32,
-    pub alarm_number: i32,
-    pub panel_number: Option<i32>,
-    pub message: Option<String>,
-    pub alarm_time: Option<i64>,
-    pub acknowledge_status: Option<i32>,
-    pub resolution_status: Option<i32>,
-    pub delete_status: Option<i32>,
-    pub label: Option<String>,
-    pub description: Option<String>,
-    pub input_point: Option<i32>,
-    pub alarm_type: Option<i32>,
-    pub threshold_high: Option<f64>,
-    pub threshold_low: Option<f64>,
-    pub status: Option<i32>,
-    pub type_category: Option<String>,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+
+    pub Alarm_ID: Option<String>,               // C++ Alarm_ID
+    pub Panel: Option<String>,                  // C++ Panel
+    pub Message: Option<String>,                // C++ Message
+    pub Status: Option<String>,                 // C++ Status
+    pub Priority: Option<String>,               // C++ Priority
+    pub NotificationID: Option<String>,         // C++ NotificationID
+    pub AlarmState: Option<String>,             // C++ AlarmState
+    pub AlarmType: Option<String>,              // C++ AlarmType
+    pub Source: Option<String>,                 // C++ Source
+    pub Description: Option<String>,            // C++ Description
+    pub Acknowledged: Option<String>,           // C++ Acknowledged
+    pub Action_Field: Option<String>,           // C++ Action
+    pub TimeStamp: Option<String>,              // C++ TimeStamp
+    pub LowLimit: Option<String>,               // C++ LowLimit
+    pub HighLimit: Option<String>,              // C++ HighLimit
+    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::devices::Entity",
-        from = "Column::DeviceId",
-        to = "super::devices::Column::Id"
-    )]
-    Devices,
-}
+pub enum Relation {}
 
-impl Related<super::devices::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Devices.def()
-    }
-}
+impl ActiveModelBehavior for ActiveModel {}
 
 impl ActiveModelBehavior for ActiveModel {}

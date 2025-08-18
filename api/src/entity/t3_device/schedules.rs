@@ -1,48 +1,33 @@
-// T3000 Schedules Entity
+// T3000 SCHEDULES Entity - Exact match to T3000.db SCHEDULES table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "schedules")]
+#[sea_orm(table_name = "SCHEDULES")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub device_id: i32,
-    pub schedule_number: i32,
-    pub full_label: Option<String>,
-    pub label: Option<String>,
-    pub auto_manual: Option<i32>,
-    pub output_point: Option<i32>,
-    pub holiday1_reference: Option<i32>,
-    pub state1_value: Option<i32>,
-    pub holiday2_reference: Option<i32>,
-    pub state2_value: Option<i32>,
-    pub value: Option<i32>,
-    pub override_1_value: Option<i32>,
-    pub override_2_value: Option<i32>,
-    pub override_1_point: Option<i32>,
-    pub override_2_point: Option<i32>,
-    pub status: Option<i32>,
-    pub type_category: Option<String>,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+
+    pub Schedule_ID: Option<String>,            // C++ Schedule_ID
+    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
+    pub Output_Field: Option<String>,           // C++ Output
+    pub Variable_Field: Option<String>,         // C++ Variable
+    pub Holiday1: Option<String>,               // C++ Holiday1
+    pub Status1: Option<String>,                // C++ Status1
+    pub Holiday2: Option<String>,               // C++ Holiday2
+    pub Status2: Option<String>,                // C++ Status2
+    pub Interval_Field: Option<String>,         // C++ Interval
+    pub Schedule_Time: Option<String>,          // C++ Schedule_Time
+    pub Monday_Time: Option<String>,            // C++ Monday_Time
+    pub Tuesday_Time: Option<String>,           // C++ Tuesday_Time
+    pub Wednesday_Time: Option<String>,         // C++ Wednesday_Time
+    pub Thursday_Time: Option<String>,          // C++ Thursday_Time
+    pub Friday_Time: Option<String>,            // C++ Friday_Time
+    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::devices::Entity",
-        from = "Column::DeviceId",
-        to = "super::devices::Column::Id"
-    )]
-    Devices,
-}
-
-impl Related<super::devices::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Devices.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
