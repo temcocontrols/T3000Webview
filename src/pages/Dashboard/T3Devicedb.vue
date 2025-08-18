@@ -435,37 +435,9 @@ const pagination = ref({
 // Table definitions
 const infrastructureTables = ref([
   {
-    name: 'buildings',
-    label: 'Buildings',
-    description: 'Building infrastructure',
-    icon: 'business',
-    count: 0
-  },
-  {
-    name: 'floors',
-    label: 'Floors',
-    description: 'Floor definitions',
-    icon: 'layers',
-    count: 0
-  },
-  {
-    name: 'rooms',
-    label: 'Rooms',
-    description: 'Room assignments',
-    icon: 'meeting_room',
-    count: 0
-  },
-  {
-    name: 'networks',
-    label: 'Networks',
-    description: 'Network infrastructure',
-    icon: 'hub',
-    count: 0
-  },
-  {
-    name: 'devices',
-    label: 'Devices',
-    description: 'T3000 devices',
+    name: 'ALL_NODE',
+    label: 'All Nodes/Devices',
+    description: 'T3000 devices and nodes',
     icon: 'developer_board',
     count: 0
   }
@@ -473,76 +445,90 @@ const infrastructureTables = ref([
 
 const devicePointTables = ref([
   {
-    name: 'input_points',
+    name: 'INPUTS',
     label: 'Input Points',
     description: 'Device input data points',
     icon: 'input',
     count: 0
   },
   {
-    name: 'output_points',
+    name: 'OUTPUTS',
     label: 'Output Points',
     description: 'Device output control points',
     icon: 'output',
     count: 0
   },
   {
-    name: 'variable_points',
+    name: 'VARIABLES',
     label: 'Variable Points',
     description: 'Variable data points',
     icon: 'code',
     count: 0
   },
   {
-    name: 'programs',
+    name: 'PROGRAMS',
     label: 'Programs',
     description: 'Control programs',
     icon: 'smart_toy',
     count: 0
   },
   {
-    name: 'pid_controllers',
+    name: 'PID_TABLE',
     label: 'PID Controllers',
     description: 'PID control loops',
     icon: 'tune',
     count: 0
   },
   {
-    name: 'schedules',
+    name: 'SCHEDULES',
     label: 'Schedules',
     description: 'Time schedules',
     icon: 'schedule',
-    count: 0
-  },
-  {
-    name: 'trendlogs',
-    label: 'Trend Logs',
-    description: 'Data trending',
-    icon: 'trending_up',
-    count: 0
-  },
-  {
-    name: 'alarms',
-    label: 'Alarms',
-    description: 'Alarm definitions',
-    icon: 'warning',
     count: 0
   }
 ])
 
 const systemTables = ref([
   {
-    name: 'units',
-    label: 'Units',
-    description: 'Measurement units',
-    icon: 'straighten',
+    name: 'TRENDLOGS',
+    label: 'Trend Logs',
+    description: 'Data trending configurations',
+    icon: 'trending_up',
     count: 0
   },
   {
-    name: 'point_categories',
-    label: 'Point Categories',
-    description: 'Point type definitions',
-    icon: 'category',
+    name: 'TRENDLOG_DATA',
+    label: 'Trend Data',
+    description: 'Historical trend data',
+    icon: 'analytics',
+    count: 0
+  },
+  {
+    name: 'ALARMS',
+    label: 'Alarms',
+    description: 'Alarm definitions',
+    icon: 'warning',
+    count: 0
+  },
+  {
+    name: 'HOLIDAYS',
+    label: 'Holidays',
+    description: 'Holiday schedules',
+    icon: 'event',
+    count: 0
+  },
+  {
+    name: 'GRAPHICS',
+    label: 'Graphics',
+    description: 'Graphical displays',
+    icon: 'image',
+    count: 0
+  },
+  {
+    name: 'MONITORDATA',
+    label: 'Monitor Data',
+    description: 'Real-time monitoring data',
+    icon: 'monitor',
     count: 0
   }
 ])
@@ -552,9 +538,7 @@ const tableColumns = computed(() => {
   if (!selectedTable.value) return []
 
   // Dynamic column generation based on selected table
-  const commonColumns = [
-    { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-  ]
+  // No common columns - let each table define its own primary key column
 
   // Add table-specific columns
   const specificColumns = getTableSpecificColumns(selectedTable.value)
@@ -568,7 +552,7 @@ const tableColumns = computed(() => {
     align: 'center'
   }
 
-  return [...commonColumns, ...specificColumns, actionsColumn]
+  return [...specificColumns, actionsColumn]
 })
 
 // Methods
@@ -585,39 +569,75 @@ const getSelectedTableInfo = () => {
 
 const getTableSpecificColumns = (tableName) => {
   const columnMappings = {
-    buildings: [
-      { name: 'name', label: 'Name', field: 'name', sortable: true },
-      { name: 'address', label: 'Address', field: 'address', sortable: true },
-      { name: 'protocol', label: 'Protocol', field: 'protocol', sortable: true },
-      { name: 'selected', label: 'Selected', field: 'selected', sortable: true }
+    ALL_NODE: [
+      { name: 'Serial_ID', label: 'Serial ID', field: 'Serial_ID', sortable: true },
+      { name: 'Product_Name', label: 'Product Name', field: 'Product_Name', sortable: true },
+      { name: 'Building_Name', label: 'Building', field: 'Building_Name', sortable: true },
+      { name: 'Address', label: 'Address', field: 'Address', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true },
+      { name: 'Description', label: 'Description', field: 'Description', sortable: true }
     ],
-    devices: [
-      { name: 'device_name', label: 'Device Name', field: 'device_name', sortable: true },
-      { name: 'instance_number', label: 'Instance', field: 'instance_number', sortable: true },
-      { name: 'product_type', label: 'Product Type', field: 'product_type', sortable: true },
-      { name: 'ip_address', label: 'IP Address', field: 'ip_address', sortable: true },
-      { name: 'status', label: 'Status', field: 'status', sortable: true }
+    INPUTS: [
+      { name: 'nSerialNumber', label: 'Device Serial', field: 'nSerialNumber', sortable: true },
+      { name: 'Input_index', label: 'Input #', field: 'Input_index', sortable: true },
+      { name: 'Full_Label', label: 'Label', field: 'Full_Label', sortable: true },
+      { name: 'fValue', label: 'Value', field: 'fValue', sortable: true },
+      { name: 'Units', label: 'Units', field: 'Units', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
     ],
-    input_points: [
-      { name: 'point_number', label: 'Point #', field: 'point_number', sortable: true },
-      { name: 'label', label: 'Label', field: 'label', sortable: true },
-      { name: 'value', label: 'Value', field: 'value', sortable: true },
-      { name: 'units_type', label: 'Units', field: 'units_type', sortable: true },
-      { name: 'status', label: 'Status', field: 'status', sortable: true }
+    OUTPUTS: [
+      { name: 'nSerialNumber', label: 'Device Serial', field: 'nSerialNumber', sortable: true },
+      { name: 'Output_index', label: 'Output #', field: 'Output_index', sortable: true },
+      { name: 'Full_Label', label: 'Label', field: 'Full_Label', sortable: true },
+      { name: 'fValue', label: 'Value', field: 'fValue', sortable: true },
+      { name: 'Units', label: 'Units', field: 'Units', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
     ],
-    // Add more table-specific columns as needed
+    VARIABLES: [
+      { name: 'nSerialNumber', label: 'Device Serial', field: 'nSerialNumber', sortable: true },
+      { name: 'Variable_index', label: 'Variable #', field: 'Variable_index', sortable: true },
+      { name: 'Full_Label', label: 'Label', field: 'Full_Label', sortable: true },
+      { name: 'fValue', label: 'Value', field: 'fValue', sortable: true },
+      { name: 'Units', label: 'Units', field: 'Units', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
+    ],
+    PROGRAMS: [
+      { name: 'nSerialNumber', label: 'Device Serial', field: 'nSerialNumber', sortable: true },
+      { name: 'Program_index', label: 'Program #', field: 'Program_index', sortable: true },
+      { name: 'Full_Label', label: 'Label', field: 'Full_Label', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
+    ],
+    SCHEDULES: [
+      { name: 'nSerialNumber', label: 'Device Serial', field: 'nSerialNumber', sortable: true },
+      { name: 'Schedule_index', label: 'Schedule #', field: 'Schedule_index', sortable: true },
+      { name: 'Full_Label', label: 'Label', field: 'Full_Label', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
+    ],
+    TRENDLOGS: [
+      { name: 'TrendLog_ID', label: 'Trend ID', field: 'TrendLog_ID', sortable: true },
+      { name: 'TrendLog_Name', label: 'Name', field: 'TrendLog_Name', sortable: true },
+      { name: 'Object_Name', label: 'Object', field: 'Object_Name', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
+    ],
+    ALARMS: [
+      { name: 'nSerialNumber', label: 'Device Serial', field: 'nSerialNumber', sortable: true },
+      { name: 'Alarm_index', label: 'Alarm #', field: 'Alarm_index', sortable: true },
+      { name: 'Full_Label', label: 'Label', field: 'Full_Label', sortable: true },
+      { name: 'Status', label: 'Status', field: 'Status', sortable: true }
+    ]
   }
 
   return columnMappings[tableName] || [
-    { name: 'name', label: 'Name', field: 'name', sortable: true },
+    { name: 'id', label: 'ID', field: 'id', sortable: true },
     { name: 'created_at', label: 'Created', field: 'created_at', sortable: true }
   ]
 }
 
 const getFilterOptions = () => {
   if (!selectedTable.value) return []
+  const primaryKeyFields = ['Serial_ID', 'nSerialNumber', 'TrendLog_ID']
   return tableColumns.value
-    .filter(col => col.name !== 'actions' && col.name !== 'id')
+    .filter(col => col.name !== 'actions' && !primaryKeyFields.includes(col.name))
     .map(col => ({ label: col.label, value: col.name }))
 }
 
@@ -648,17 +668,61 @@ const loadTableData = async () => {
 
 const getSampleData = (tableName) => {
   const sampleData = {
-    buildings: [
-      { id: 1, name: 'Main Building', address: '123 Main St', protocol: 'TCP/IP', selected: 1 },
-      { id: 2, name: 'Building B', address: '456 Oak Ave', protocol: 'Modbus', selected: 0 }
+    ALL_NODE: [
+      {
+        Serial_ID: 1,
+        Product_Name: 'T3-BB',
+        Building_Name: 'Main Building',
+        Address: '192.168.1.100',
+        Status: 'Online',
+        Description: 'Building Controller'
+      },
+      {
+        Serial_ID: 2,
+        Product_Name: 'T3-8I',
+        Building_Name: 'Building B',
+        Address: '192.168.1.101',
+        Status: 'Offline',
+        Description: 'Input Module'
+      }
     ],
-    devices: [
-      { id: 1, device_name: 'T3-BB-01', instance_number: 1, product_type: 100, ip_address: '192.168.1.100', status: 1 },
-      { id: 2, device_name: 'T3-BB-02', instance_number: 2, product_type: 100, ip_address: '192.168.1.101', status: 0 }
+    INPUTS: [
+      {
+        nSerialNumber: 1,
+        Input_index: '1',
+        Full_Label: 'Zone Temperature',
+        fValue: '72.5',
+        Units: 'Deg F',
+        Status: 'Normal'
+      },
+      {
+        nSerialNumber: 1,
+        Input_index: '2',
+        Full_Label: 'Humidity',
+        fValue: '45.2',
+        Units: '%RH',
+        Status: 'Normal'
+      }
     ],
-    input_points: [
-      { id: 1, point_number: 1, label: 'Zone Temperature', value: 72.5, units_type: 1, status: 1 },
-      { id: 2, point_number: 2, label: 'Humidity', value: 45.2, units_type: 8, status: 1 }
+    OUTPUTS: [
+      {
+        nSerialNumber: 1,
+        Output_index: '1',
+        Full_Label: 'Cooling Valve',
+        fValue: '25.0',
+        Units: '%',
+        Status: 'Normal'
+      }
+    ],
+    VARIABLES: [
+      {
+        nSerialNumber: 1,
+        Variable_index: '1',
+        Full_Label: 'Setpoint',
+        fValue: '72.0',
+        Units: 'Deg F',
+        Status: 'Normal'
+      }
     ]
   }
 
@@ -681,7 +745,16 @@ const loadTableCounts = async () => {
     } catch (error) {
       console.error(`Error loading count for ${table.name}:`, error)
       // Fallback to sample counts
-      const sampleCounts = { buildings: 2, devices: 5, input_points: 24, output_points: 16 }
+      const sampleCounts = {
+        ALL_NODE: 2,
+        INPUTS: 24,
+        OUTPUTS: 16,
+        VARIABLES: 8,
+        PROGRAMS: 4,
+        SCHEDULES: 6,
+        TRENDLOGS: 3,
+        ALARMS: 5
+      }
       table.count = sampleCounts[table.name] || 0
     }
   }
