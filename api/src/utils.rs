@@ -76,11 +76,11 @@ lazy_static! {
     pub static ref T3_DEVICE_DATABASE_URL: String = env::var("T3_DEVICE_DATABASE_URL")
         .unwrap_or_else(|_| {
             let current_dir = env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-            let db_path="sqlite://Database/t3_device.db".to_string();
+            let db_path="sqlite://Database/webview_t3_device.db".to_string();
             let url = format!("{}", db_path);
-            t3_enhanced_logging(&format!("Database URL (t3_device): {}", url));
+            t3_enhanced_logging(&format!("Database URL (webview_t3_device): {}", url));
             t3_enhanced_logging(&format!("Current directory: {:?}", current_dir));
-            t3_enhanced_logging(&format!("Database path (t3_device): {:?}", db_path));
+            t3_enhanced_logging(&format!("Database path (webview_t3_device): {:?}", db_path));
             url
         });
 }
@@ -92,20 +92,20 @@ pub fn t3_enhanced_logging(message: &str) {
 
 /// Abstracted T3000 device database copy functionality
 pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
-    let source_db_path = Path::new("ResourceFile/t3_device.db");
+    let source_db_path = Path::new("ResourceFile/webview_t3_device.db");
     let destination_db_path = Path::new(
         T3_DEVICE_DATABASE_URL
             .strip_prefix("sqlite://")
-            .ok_or("Invalid t3_device database url")?,
+            .ok_or("Invalid webview_t3_device database url")?,
     );
 
-    t3_enhanced_logging(&format!("Attempting to copy t3_device database:"));
+    t3_enhanced_logging(&format!("Attempting to copy webview_t3_device database:"));
     t3_enhanced_logging(&format!("  Source: {:?}", source_db_path));
     t3_enhanced_logging(&format!("  Destination: {:?}", destination_db_path));
 
     let destination_dir = destination_db_path
         .parent()
-        .ok_or("Invalid destination t3_device database path")?;
+        .ok_or("Invalid destination webview_t3_device database path")?;
 
     if !destination_dir.exists() {
         fs::create_dir_all(destination_dir)?;
@@ -114,42 +114,42 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
 
     if !destination_db_path.exists() {
         if !source_db_path.exists() {
-            t3_enhanced_logging(&format!("Source t3_device database file does not exist: {:?}", source_db_path));
+            t3_enhanced_logging(&format!("Source webview_t3_device database file does not exist: {:?}", source_db_path));
             t3_enhanced_logging("Checking alternative source locations...");
 
             let alt_source_paths = [
-                Path::new("Database/t3_device.db"),
-                Path::new("../Database/t3_device.db"),
-                Path::new("../../api/Database/t3_device.db"),
+                Path::new("Database/webview_t3_device.db"),
+                Path::new("../Database/webview_t3_device.db"),
+                Path::new("../../api/Database/webview_t3_device.db"),
             ];
 
             let mut source_found = false;
             for alt_path in &alt_source_paths {
                 if alt_path.exists() {
-                    t3_enhanced_logging(&format!("Found t3_device database at alternative location: {:?}", alt_path));
+                    t3_enhanced_logging(&format!("Found webview_t3_device database at alternative location: {:?}", alt_path));
                     fs::copy(alt_path, &destination_db_path)?;
-                    t3_enhanced_logging(&format!("Copied t3_device database from {:?} to {:?}", alt_path, destination_db_path));
+                    t3_enhanced_logging(&format!("Copied webview_t3_device database from {:?} to {:?}", alt_path, destination_db_path));
                     source_found = true;
                     break;
                 }
             }
 
             if !source_found {
-                t3_enhanced_logging("No source t3_device database found in any expected location");
+                t3_enhanced_logging("No source webview_t3_device database found in any expected location");
                 return Err(From::from(format!(
-                    "Source t3_device database file does not exist: {:?}",
+                    "Source webview_t3_device database file does not exist: {:?}",
                     source_db_path
                 )));
             }
         } else {
             fs::copy(&source_db_path, &destination_db_path)?;
             t3_enhanced_logging(&format!(
-                "Copied t3_device database file from {:?} to {:?}",
+                "Copied webview_t3_device database file from {:?} to {:?}",
                 source_db_path, destination_db_path
             ));
         }
     } else {
-        t3_enhanced_logging(&format!("t3_device database already exists at destination: {:?}", destination_db_path));
+        t3_enhanced_logging(&format!("webview_t3_device database already exists at destination: {:?}", destination_db_path));
     }
 
     Ok(())

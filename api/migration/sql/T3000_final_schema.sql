@@ -1,14 +1,14 @@
--- T3000.db Original Database Schema - Exact Replica
--- Using original T3000.db table names and field names exactly as they are
+-- WebView T3000 Database Schema (webview_t3_device.db)
+-- Based on original T3000.db structure with exact table names and field names
 -- Date: January 25, 2025
--- Purpose: Use T3000.db as the main database with original structure
+-- Purpose: WebView implementation using T3000.db schema as foundation
 
 -- =================================================================
--- CORE T3000 TABLES (Original T3000.db structure - EXACT REPLICA)
+-- CORE T3000 TABLES (Based on T3000.db structure - EXACT REPLICA)
 -- =================================================================
 
--- ALL_NODE table (Original T3000 devices/nodes table)
--- This is the main device table in T3000.db with exact C++ field names
+-- ALL_NODE table (T3000 devices/nodes table for webview)
+-- This is the main device table based on T3000.db with exact C++ field names
 CREATE TABLE IF NOT EXISTS ALL_NODE (
     Serial_ID INTEGER PRIMARY KEY,             -- C++ Serial_ID (primary key in T3000)
     MainBuilding_Name TEXT,                    -- C++ MainBuilding_Name
