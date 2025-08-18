@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::app_state::T3AppState;
-use crate::t3_device::services::{T3DeviceService, CreateBuildingRequest, UpdateBuildingRequest};
+use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::data_collector::{DataCollectionService};
 
 // Helper function to check if T3000 device database is available
@@ -333,76 +333,97 @@ async fn import_table(
     })))
 }
 
-// New Building Management Endpoints
-async fn get_buildings_with_stats(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
-    let db = get_t3_device_conn!(state);
-
-    match T3DeviceService::get_buildings_with_stats(&*db).await {
-        Ok(buildings) => Ok(Json(json!({
-            "buildings": buildings,
-            "count": buildings.len()
-        }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
-
-async fn get_building_devices(
+// T3000 Device Management Endpoints
+async fn get_devices_with_stats(
     State(state): State<T3AppState>,
-    Path(building_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::get_building_devices(&*db, building_id).await {
+    match T3DeviceService::get_all_devices_with_stats(&*db).await {
         Ok(devices) => Ok(Json(json!({
             "devices": devices,
-            "building_id": building_id,
-            "count": devices.len()
+            "total": devices.len(),
+            "message": "Devices retrieved successfully"
         }))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
 
-async fn create_building(
+async fn create_device(
     State(state): State<T3AppState>,
-    Json(payload): Json<CreateBuildingRequest>,
+    Json(payload): Json<CreateDeviceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::create_building(&*db, payload).await {
-        Ok(building) => Ok(Json(json!({
-            "building": building,
-            "message": "Building created successfully"
+    match T3DeviceService::create_device(&*db, payload).await {
+        Ok(device) => Ok(Json(json!({
+            "device": device,
+            "message": "Device created successfully"
         }))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
 
-async fn update_building(
+async fn get_device_by_id(
     State(state): State<T3AppState>,
-    Path(building_id): Path<i32>,
-    Json(payload): Json<UpdateBuildingRequest>,
+    Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::update_building(&*db, building_id, payload).await {
-        Ok(building) => Ok(Json(json!({
-            "building": building,
-            "message": "Building updated successfully"
+    match T3DeviceService::get_device_by_id(&*db, device_id).await {
+        Ok(Some(device)) => Ok(Json(json!({
+            "device": device,
+            "message": "Device found"
         }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
 
-async fn delete_building(
+async fn update_device(
     State(state): State<T3AppState>,
-    Path(building_id): Path<i32>,
+    Path(device_id): Path<i32>,
+    Json(payload): Json<UpdateDeviceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::delete_building(&*db, building_id).await {
-        Ok(_) => Ok(Json(json!({
-            "message": "Building deleted successfully"
+    match T3DeviceService::update_device(&*db, device_id, payload).await {
+        Ok(Some(device)) => Ok(Json(json!({
+            "device": device,
+            "message": "Device updated successfully"
         }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn delete_device(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3DeviceService::delete_device(&*db, device_id).await {
+        Ok(true) => Ok(Json(json!({
+            "message": "Device deleted successfully"
+        }))),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_device_with_points(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3DeviceService::get_device_with_points(&*db, device_id).await {
+        Ok(Some(device_with_points)) => Ok(Json(json!({
+            "device": device_with_points,
+            "message": "Device with points retrieved successfully"
+        }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
@@ -603,12 +624,13 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/export/:table", get(export_table))
         .route("/import/:table", post(import_table))
 
-        // New structured endpoints
-        .route("/buildings", get(get_buildings_with_stats))
-        .route("/buildings", post(create_building))
-        .route("/buildings/:id", put(update_building))
-        .route("/buildings/:id", delete(delete_building))
-        .route("/buildings/:id/devices", get(get_building_devices))
+        // T3000 Device endpoints
+        .route("/devices", get(get_devices_with_stats))
+        .route("/devices", post(create_device))
+        .route("/devices/:id", get(get_device_by_id))
+        .route("/devices/:id", put(update_device))
+        .route("/devices/:id", delete(delete_device))
+        .route("/devices/:id/points", get(get_device_with_points))
 
         // Data Collection endpoints
         .route("/collection/start", post(start_data_collection))

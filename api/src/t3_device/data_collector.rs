@@ -17,7 +17,7 @@ pub struct DataCollectionConfig {
     pub enabled: bool,
     pub collection_interval_seconds: u64,
     pub startup_delay_seconds: u64,
-    pub devices_to_collect: Vec<i32>, // Empty = collect all
+    pub devices_to_collect: Vec<u32>, // Empty = collect all
     pub point_types: Vec<PointType>,
     pub batch_size: usize,
     pub timeout_seconds: u64,
@@ -64,7 +64,7 @@ pub struct CollectionStatus {
     pub next_collection_time: Option<i64>,
     pub total_points_collected: u64,
     pub errors_count: u32,
-    pub active_devices: Vec<i32>,
+    pub active_devices: Vec<u32>,
     pub collection_source: DataSource,
 }
 
@@ -255,11 +255,11 @@ impl DataCollectionService {
         Ok(())
     }
 
-    async fn get_all_devices(db: &DatabaseConnection) -> Result<Vec<i32>, AppError> {
-        let devices = devices::Entity::find()
+    async fn get_all_devices(db: &DatabaseConnection) -> Result<Vec<u32>, AppError> {
+        let devices = all_node::Entity::find()
             .select_only()
-            .column(devices::Column::Id)
-            .into_tuple::<i32>()
+            .column(all_node::Column::SerialId)
+            .into_tuple::<u32>()
             .all(db)
             .await?;
 
@@ -267,20 +267,21 @@ impl DataCollectionService {
     }
 
     // Direct C++ function calls (preferred method)
-    async fn collect_via_cpp_calls(device_id: i32, point_types: &[PointType]) -> Result<Vec<DataPoint>, AppError> {
+    async fn collect_via_cpp_calls(device_id: u32, point_types: &[PointType]) -> Result<Vec<DataPoint>, AppError> {
         let mut all_points = Vec::new();
+        let device_id_i32 = device_id as i32; // Convert for FFI calls
 
         // Check if device is online first
-        if !T3000FFI::is_device_online(device_id) {
+        if !T3000FFI::is_device_online(device_id_i32) {
             return Ok(vec![]); // Device offline, return empty
         }
 
         // Collect each requested point type
         for point_type in point_types {
             let points = match point_type {
-                PointType::Input => T3000FFI::get_input_points(device_id)?,
-                PointType::Output => T3000FFI::get_output_points(device_id)?,
-                PointType::Variable => T3000FFI::get_variable_points(device_id)?,
+                PointType::Input => T3000FFI::get_input_points(device_id_i32)?,
+                PointType::Output => T3000FFI::get_output_points(device_id_i32)?,
+                PointType::Variable => T3000FFI::get_variable_points(device_id_i32)?,
                 _ => {
                     // For other point types (Program, Schedule, Alarm), we'll skip for now
                     // These would need additional FFI functions to be implemented
@@ -294,8 +295,8 @@ impl DataCollectionService {
         Ok(all_points)
     }
 
-        // WebSocket communication fallback
-    async fn collect_via_websocket(device_id: i32, point_types: &[PointType]) -> Result<Vec<DataPoint>, AppError> {
+    // WebSocket communication fallback
+    async fn collect_via_websocket(device_id: u32, point_types: &[PointType]) -> Result<Vec<DataPoint>, AppError> {
         use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
         use serde_json::json;
         use futures_util::{SinkExt, StreamExt};
@@ -357,9 +358,9 @@ impl DataCollectionService {
     }
 
     // Helper to parse WebSocket entry into DataPoint
-    fn parse_websocket_entry(entry: &serde_json::Value, point_type: PointType, device_id: i32) -> Option<DataPoint> {
+    fn parse_websocket_entry(entry: &serde_json::Value, point_type: PointType, device_id: u32) -> Option<DataPoint> {
         Some(DataPoint {
-            device_id,
+            device_id: device_id as i32, // Convert for DataPoint struct
             point_type,
             point_number: entry.get("index")?.as_i64()? as i32,
             value: entry.get("value")?.as_f64()? as f32,

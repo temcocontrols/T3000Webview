@@ -235,8 +235,8 @@ impl TrendDataCollector {
             cache_map.insert(key, CachedPointInfo {
                 point_id: point.id,
                 device_id: point.device_id,
-                label: point.label,
-                units_type: point.units_type,
+                label: Some(point.label.unwrap_or_else(|| "Unknown".to_string())),
+                units_type: Some(point.units_type.unwrap_or(0)),
                 last_updated: Utc::now(),
             });
         }
@@ -247,8 +247,8 @@ impl TrendDataCollector {
             cache_map.insert(key, CachedPointInfo {
                 point_id: point.id,
                 device_id: point.device_id,
-                label: point.label,
-                units_type: point.units_type,
+                label: Some(point.label.unwrap_or_else(|| "Unknown".to_string())),
+                units_type: Some(point.units_type.unwrap_or(0)),
                 last_updated: Utc::now(),
             });
         }
@@ -259,8 +259,8 @@ impl TrendDataCollector {
             cache_map.insert(key, CachedPointInfo {
                 point_id: point.id,
                 device_id: point.device_id,
-                label: point.label,
-                units_type: point.units_type,
+                label: Some(point.label.unwrap_or_else(|| "Unknown".to_string())),
+                units_type: Some(point.units_type.unwrap_or(0)),
                 last_updated: Utc::now(),
             });
         }

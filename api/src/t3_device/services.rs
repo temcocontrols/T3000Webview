@@ -1,233 +1,181 @@
-// T3000 Buildings Service
+// T3000 Device Service - Aligned with pure T3000 structure
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use crate::entity::t3_device::{buildings, devices, input_points, output_points};
+use crate::entity::t3_device::{all_node, input_points, output_points};
 use crate::error::AppError;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BuildingWithStats {
+pub struct DeviceWithStats {
     #[serde(flatten)]
-    pub building: buildings::Model,
-    pub device_count: u64,
+    pub device: all_node::Model,
+    pub input_count: u64,
+    pub output_count: u64,
+    pub variable_count: u64,
     pub total_points: u64,
-    pub online_devices: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceWithPoints {
     #[serde(flatten)]
-    pub device: devices::Model,
+    pub device: all_node::Model,
     pub input_points: Vec<input_points::Model>,
     pub output_points: Vec<output_points::Model>,
     pub point_count: u64,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CreateBuildingRequest {
-    pub name: String,
-    pub address: Option<String>,
-    pub protocol: Option<String>,
-    pub ip_domain_tel: Option<String>,
-    pub modbus_tcp_port: Option<i32>,
+pub struct CreateDeviceRequest {
+    pub n_serial_number: Option<i32>,
+    pub n_product_number: Option<i32>,
+    pub build_label: Option<String>,
+    pub hardware_ver: Option<String>,
+    pub software_ver: Option<String>,
+    pub tcpip_address: Option<String>,
+    pub tcpip_port: Option<i32>,
+    pub modbus_station_id: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdateBuildingRequest {
-    pub name: Option<String>,
-    pub address: Option<String>,
-    pub protocol: Option<String>,
-    pub ip_domain_tel: Option<String>,
-    pub modbus_tcp_port: Option<i32>,
+pub struct UpdateDeviceRequest {
+    pub build_label: Option<String>,
+    pub hardware_ver: Option<String>,
+    pub software_ver: Option<String>,
+    pub tcpip_address: Option<String>,
+    pub tcpip_port: Option<i32>,
+    pub modbus_station_id: Option<i32>,
 }
 
 pub struct T3DeviceService;
 
 impl T3DeviceService {
-    /// Get all buildings with device statistics
-    pub async fn get_buildings_with_stats(db: &DatabaseConnection) -> Result<Vec<BuildingWithStats>, AppError> {
-        let buildings_list = buildings::Entity::find().all(db).await?;
+    /// Get all devices with basic statistics
+    pub async fn get_all_devices_with_stats(db: &DatabaseConnection) -> Result<Vec<DeviceWithStats>, AppError> {
+        let devices_list = all_node::Entity::find().all(db).await?;
+        let mut devices_with_stats = Vec::new();
 
-        let mut result = Vec::new();
+        for device in devices_list {
+            let _serial_num = device.nSerialNumber.unwrap_or(0);
 
-        for building in buildings_list {
-            // For now, get a simple count - in production you'd implement proper relations
-            let device_count = devices::Entity::find().count(db).await?;
-            let total_points = input_points::Entity::find().count(db).await?
-                + output_points::Entity::find().count(db).await?;
-            let online_devices = devices::Entity::find().count(db).await?; // Simplified
+            // Note: Column names need to match actual entity field names
+            // For now using simplified approach until point entities are updated
+            let input_count = 0; // input_points::Entity::find().count(db).await?;
+            let output_count = 0; // output_points::Entity::find().count(db).await?;
 
-            result.push(BuildingWithStats {
-                building,
-                device_count,
-                total_points,
-                online_devices,
+            devices_with_stats.push(DeviceWithStats {
+                device,
+                input_count,
+                output_count,
+                variable_count: 0,
+                total_points: input_count + output_count,
             });
         }
 
-        Ok(result)
+        Ok(devices_with_stats)
     }
 
-    /// Get building by ID with full details
-    pub async fn get_building_by_id(db: &DatabaseConnection, building_id: i32) -> Result<Option<buildings::Model>, AppError> {
-        let building = buildings::Entity::find_by_id(building_id)
+    /// Get a specific device by Serial_ID
+    pub async fn get_device_by_id(db: &DatabaseConnection, device_id: i32) -> Result<Option<all_node::Model>, AppError> {
+        let device = all_node::Entity::find_by_id(device_id)
             .one(db)
             .await?;
-        Ok(building)
+
+        Ok(device)
     }
 
-    /// Get devices for a building with point counts
-    pub async fn get_building_devices(db: &DatabaseConnection, building_id: i32) -> Result<Vec<DeviceWithPoints>, AppError> {
-    // Get devices directly from building
-    let building_devices = devices::Entity::find()
-        .filter(devices::Column::BuildingId.eq(building_id))
-        .all(db)
-        .await?;
-
-    let mut result = Vec::new();
-
-    for device in building_devices {
-        let input_points = input_points::Entity::find()
-            .filter(input_points::Column::DeviceId.eq(device.id))
-            .limit(10) // Limit for performance
-            .all(db)
+    /// Get device with its points
+    pub async fn get_device_with_points(db: &DatabaseConnection, device_id: i32) -> Result<Option<DeviceWithPoints>, AppError> {
+        let device = all_node::Entity::find_by_id(device_id)
+            .one(db)
             .await?;
 
-            let output_points = output_points::Entity::find()
-                .filter(output_points::Column::DeviceId.eq(device.id))
-                .limit(10) // Limit for performance
-                .all(db)
-                .await?;
-
-            let point_count = (input_points.len() + output_points.len()) as u64;
-
-            result.push(DeviceWithPoints {
-                device,
-                input_points,
-                output_points,
-                point_count,
-            });
-        }
-
-        Ok(result)
-    }
-
-    /// Create a new building
-    pub async fn create_building(
-        db: &DatabaseConnection,
-        req: CreateBuildingRequest,
-    ) -> Result<buildings::Model, AppError> {
-        let now = chrono::Utc::now().timestamp();
-
-        let new_building = buildings::ActiveModel {
-            name: Set(req.name),
-            address: Set(req.address),
-            protocol: Set(req.protocol),
-            ip_domain_tel: Set(req.ip_domain_tel),
-            modbus_tcp_port: Set(req.modbus_tcp_port),
-            created_at: Set(Some(now)),
-            updated_at: Set(Some(now)),
-            ..Default::default()
+        let device = match device {
+            Some(d) => d,
+            None => return Ok(None),
         };
 
-        let building = new_building.insert(db).await?;
-        Ok(building)
+        // For now return empty points until point entities are properly updated
+        let input_points = vec![];
+        let output_points = vec![];
+
+        let point_count = input_points.len() + output_points.len();
+
+        Ok(Some(DeviceWithPoints {
+            device,
+            input_points,
+            output_points,
+            point_count: point_count as u64,
+        }))
     }
 
-    /// Update building
-    pub async fn update_building(
-        db: &DatabaseConnection,
-        building_id: i32,
-        req: UpdateBuildingRequest,
-    ) -> Result<buildings::Model, AppError> {
-        let building = buildings::Entity::find_by_id(building_id)
-            .one(db)
-            .await?
-            .ok_or(AppError::NotFound("Building not found".to_string()))?;
-
-        let mut active_building: buildings::ActiveModel = building.into();
-
-        if let Some(name) = req.name {
-            active_building.name = Set(name);
-        }
-        if let Some(address) = req.address {
-            active_building.address = Set(Some(address));
-        }
-        if let Some(protocol) = req.protocol {
-            active_building.protocol = Set(Some(protocol));
-        }
-        if let Some(ip_domain_tel) = req.ip_domain_tel {
-            active_building.ip_domain_tel = Set(Some(ip_domain_tel));
-        }
-        if let Some(modbus_tcp_port) = req.modbus_tcp_port {
-            active_building.modbus_tcp_port = Set(Some(modbus_tcp_port));
-        }
-
-        active_building.updated_at = Set(Some(chrono::Utc::now().timestamp()));
-
-        let updated_building = active_building.update(db).await?;
-        Ok(updated_building)
-    }
-
-    /// Delete building
-    pub async fn delete_building(db: &DatabaseConnection, building_id: i32) -> Result<(), AppError> {
-        buildings::Entity::delete_by_id(building_id)
-            .exec(db)
-            .await?;
-        Ok(())
-    }
-
-    /// Create device for a building
-    pub async fn create_device(
-        db: &DatabaseConnection,
-        building_id: i32,
-        device_name: String,
-        product_type: i32,
-        instance_number: i32,
-    ) -> Result<devices::Model, AppError> {
-        let now = chrono::Utc::now().timestamp();
-
-        let new_device = devices::ActiveModel {
-            building_id: Set(building_id),
-            device_name: Set(Some(device_name)),
-            product_type: Set(product_type),
-            instance_number: Set(instance_number),
-            status: Set(Some(0)), // 0 for offline initially
-            created_at: Set(Some(now)),
-            updated_at: Set(Some(now)),
-            ..Default::default()
+    /// Create a new device
+    pub async fn create_device(db: &DatabaseConnection, device_data: CreateDeviceRequest) -> Result<all_node::Model, AppError> {
+        let new_device = all_node::ActiveModel {
+            Serial_ID: NotSet,
+            nSerialNumber: Set(device_data.n_serial_number),
+            nProductNumber: Set(device_data.n_product_number),
+            Build_Label: Set(device_data.build_label),
+            Hardware_Ver: Set(device_data.hardware_ver),
+            Software_Ver: Set(device_data.software_ver),
+            TCPIP_Address: Set(device_data.tcpip_address),
+            TCPIP_Port: Set(device_data.tcpip_port),
+            TCPIP_gateway: Set(None),
+            TCPIP_subnet: Set(None),
+            Modbus_Station_ID: Set(device_data.modbus_station_id),
+            Listen_Port: Set(None),
+            Custom_Info_ID: Set(None),
+            WebUI_Type: Set(None),
+            nCustomTable_Instance: Set(None),
+            nCustom_Units_Instance: Set(None),
+            Hardware_ID: Set(None),
+            nBACnetInstanceNumber: Set(None),
         };
 
         let device = new_device.insert(db).await?;
         Ok(device)
     }
 
-    /// Get device with its points
-    pub async fn get_device_with_points(
-        db: &DatabaseConnection,
-        device_id: i32,
-    ) -> Result<DeviceWithPoints, AppError> {
-        let device = devices::Entity::find_by_id(device_id)
+    /// Update a device
+    pub async fn update_device(db: &DatabaseConnection, device_id: i32, device_data: UpdateDeviceRequest) -> Result<Option<all_node::Model>, AppError> {
+        let device = all_node::Entity::find_by_id(device_id)
             .one(db)
-            .await?
-            .ok_or(AppError::NotFound("Device not found".to_string()))?;
-
-        let input_points = input_points::Entity::find()
-            .filter(input_points::Column::DeviceId.eq(device_id))
-            .all(db)
             .await?;
 
-        let output_points = output_points::Entity::find()
-            .filter(output_points::Column::DeviceId.eq(device_id))
-            .all(db)
+        let device = match device {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+
+        let mut device: all_node::ActiveModel = device.into();
+
+        if let Some(build_label) = device_data.build_label {
+            device.Build_Label = Set(Some(build_label));
+        }
+        if let Some(hardware_ver) = device_data.hardware_ver {
+            device.Hardware_Ver = Set(Some(hardware_ver));
+        }
+        if let Some(software_ver) = device_data.software_ver {
+            device.Software_Ver = Set(Some(software_ver));
+        }
+        if let Some(tcpip_address) = device_data.tcpip_address {
+            device.TCPIP_Address = Set(Some(tcpip_address));
+        }
+        if let Some(tcpip_port) = device_data.tcpip_port {
+            device.TCPIP_Port = Set(Some(tcpip_port));
+        }
+        if let Some(modbus_station_id) = device_data.modbus_station_id {
+            device.Modbus_Station_ID = Set(Some(modbus_station_id));
+        }
+
+        let updated_device = device.update(db).await?;
+        Ok(Some(updated_device))
+    }
+
+    /// Delete a device
+    pub async fn delete_device(db: &DatabaseConnection, device_id: i32) -> Result<bool, AppError> {
+        let result = all_node::Entity::delete_by_id(device_id)
+            .exec(db)
             .await?;
 
-        let point_count = input_points.len() + output_points.len();
-
-        Ok(DeviceWithPoints {
-            device,
-            input_points,
-            output_points,
-            point_count: point_count as u64,
-        })
+        Ok(result.rows_affected > 0)
     }
 }
