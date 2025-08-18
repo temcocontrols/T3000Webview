@@ -25,24 +25,31 @@ pub struct DeviceWithPoints {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateDeviceRequest {
-    pub n_serial_number: Option<i32>,
-    pub n_product_number: Option<i32>,
-    pub build_label: Option<String>,
-    pub hardware_ver: Option<String>,
-    pub software_ver: Option<String>,
-    pub tcpip_address: Option<String>,
-    pub tcpip_port: Option<i32>,
-    pub modbus_station_id: Option<i32>,
+    pub Serial_ID: Option<i32>,                    // T3000: Serial_ID (primary key)
+    pub MainBuilding_Name: Option<String>,         // T3000: MainBuilding_Name
+    pub Building_Name: Option<String>,             // T3000: Building_Name
+    pub Floor_Name: Option<String>,                // T3000: Floor_Name
+    pub Room_Name: Option<String>,                 // T3000: Room_Name
+    pub Product_Name: Option<String>,              // T3000: Product_Name
+    pub Product_Class_ID: Option<i32>,             // T3000: Product_Class_ID
+    pub Product_ID: Option<i32>,                   // T3000: Product_ID
+    pub Address: Option<String>,                   // T3000: Address (IP/Modbus address)
+    pub Bautrate: Option<String>,                  // T3000: Bautrate (IP address or baud rate)
+    pub Description: Option<String>,               // T3000: Description
+    pub Status: Option<String>,                    // T3000: Status
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateDeviceRequest {
-    pub build_label: Option<String>,
-    pub hardware_ver: Option<String>,
-    pub software_ver: Option<String>,
-    pub tcpip_address: Option<String>,
-    pub tcpip_port: Option<i32>,
-    pub modbus_station_id: Option<i32>,
+    pub MainBuilding_Name: Option<String>,         // T3000: MainBuilding_Name
+    pub Building_Name: Option<String>,             // T3000: Building_Name
+    pub Floor_Name: Option<String>,                // T3000: Floor_Name
+    pub Room_Name: Option<String>,                 // T3000: Room_Name
+    pub Product_Name: Option<String>,              // T3000: Product_Name
+    pub Address: Option<String>,                   // T3000: Address
+    pub Bautrate: Option<String>,                  // T3000: Bautrate
+    pub Description: Option<String>,               // T3000: Description
+    pub Status: Option<String>,                    // T3000: Status
 }
 
 pub struct T3DeviceService;
@@ -54,18 +61,26 @@ impl T3DeviceService {
         let mut devices_with_stats = Vec::new();
 
         for device in devices_list {
-            let _serial_num = device.nSerialNumber.unwrap_or(0);
+            let serial_id = device.Serial_ID;
 
-            // Note: Column names need to match actual entity field names
-            // For now using simplified approach until point entities are updated
-            let input_count = 0; // input_points::Entity::find().count(db).await?;
-            let output_count = 0; // output_points::Entity::find().count(db).await?;
+            // Count related points using the correct foreign key
+            let input_count = input_points::Entity::find()
+                .filter(input_points::Column::NSerialNumber.eq(serial_id))
+                .count(db)
+                .await
+                .unwrap_or(0);
+
+            let output_count = output_points::Entity::find()
+                .filter(output_points::Column::NSerialNumber.eq(serial_id))
+                .count(db)
+                .await
+                .unwrap_or(0);
 
             devices_with_stats.push(DeviceWithStats {
                 device,
                 input_count,
                 output_count,
-                variable_count: 0,
+                variable_count: 0, // Will be updated when variable_points entity is used
                 total_points: input_count + output_count,
             });
         }
@@ -110,24 +125,28 @@ impl T3DeviceService {
     /// Create a new device
     pub async fn create_device(db: &DatabaseConnection, device_data: CreateDeviceRequest) -> Result<all_node::Model, AppError> {
         let new_device = all_node::ActiveModel {
-            Serial_ID: NotSet,
-            nSerialNumber: Set(device_data.n_serial_number),
-            nProductNumber: Set(device_data.n_product_number),
-            Build_Label: Set(device_data.build_label),
-            Hardware_Ver: Set(device_data.hardware_ver),
-            Software_Ver: Set(device_data.software_ver),
-            TCPIP_Address: Set(device_data.tcpip_address),
-            TCPIP_Port: Set(device_data.tcpip_port),
-            TCPIP_gateway: Set(None),
-            TCPIP_subnet: Set(None),
-            Modbus_Station_ID: Set(device_data.modbus_station_id),
-            Listen_Port: Set(None),
-            Custom_Info_ID: Set(None),
-            WebUI_Type: Set(None),
-            nCustomTable_Instance: Set(None),
-            nCustom_Units_Instance: Set(None),
-            Hardware_ID: Set(None),
-            nBACnetInstanceNumber: Set(None),
+            Serial_ID: NotSet, // Auto-generated primary key
+            MainBuilding_Name: Set(device_data.MainBuilding_Name),
+            Building_Name: Set(device_data.Building_Name),
+            Floor_Name: Set(device_data.Floor_Name),
+            Room_Name: Set(device_data.Room_Name),
+            Panel_Number: Set(None),
+            Network_Number: Set(None),
+            Product_Name: Set(device_data.Product_Name),
+            Product_Class_ID: Set(device_data.Product_Class_ID),
+            Product_ID: Set(device_data.Product_ID),
+            Screen_Name: Set(None),
+            Bautrate: Set(device_data.Bautrate),
+            Address: Set(device_data.Address),
+            Register: Set(None),
+            Function: Set(None),
+            Description: Set(device_data.Description),
+            High_Units: Set(None),
+            Low_Units: Set(None),
+            Update_Field: Set(None),
+            Status: Set(device_data.Status),
+            Range_Field: Set(None),
+            Calibration: Set(None),
         };
 
         let device = new_device.insert(db).await?;
@@ -147,23 +166,29 @@ impl T3DeviceService {
 
         let mut device: all_node::ActiveModel = device.into();
 
-        if let Some(build_label) = device_data.build_label {
-            device.Build_Label = Set(Some(build_label));
+        if let Some(main_building_name) = device_data.MainBuilding_Name {
+            device.MainBuilding_Name = Set(Some(main_building_name));
         }
-        if let Some(hardware_ver) = device_data.hardware_ver {
-            device.Hardware_Ver = Set(Some(hardware_ver));
+        if let Some(building_name) = device_data.Building_Name {
+            device.Building_Name = Set(Some(building_name));
         }
-        if let Some(software_ver) = device_data.software_ver {
-            device.Software_Ver = Set(Some(software_ver));
+        if let Some(floor_name) = device_data.Floor_Name {
+            device.Floor_Name = Set(Some(floor_name));
         }
-        if let Some(tcpip_address) = device_data.tcpip_address {
-            device.TCPIP_Address = Set(Some(tcpip_address));
+        if let Some(room_name) = device_data.Room_Name {
+            device.Room_Name = Set(Some(room_name));
         }
-        if let Some(tcpip_port) = device_data.tcpip_port {
-            device.TCPIP_Port = Set(Some(tcpip_port));
+        if let Some(product_name) = device_data.Product_Name {
+            device.Product_Name = Set(Some(product_name));
         }
-        if let Some(modbus_station_id) = device_data.modbus_station_id {
-            device.Modbus_Station_ID = Set(Some(modbus_station_id));
+        if let Some(address) = device_data.Address {
+            device.Address = Set(Some(address));
+        }
+        if let Some(bautrate) = device_data.Bautrate {
+            device.Bautrate = Set(Some(bautrate));
+        }
+        if let Some(description) = device_data.Description {
+            device.Description = Set(Some(description));
         }
 
         let updated_device = device.update(db).await?;

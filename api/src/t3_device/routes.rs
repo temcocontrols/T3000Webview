@@ -36,6 +36,15 @@ macro_rules! get_t3_device_conn {
     };
 }
 
+// Helper function to get valid T3000 database table names
+fn get_valid_table_names() -> &'static [&'static str] {
+    &[
+        "ALL_NODE", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
+        "SCHEDULES", "PID_TABLE", "HOLIDAYS", "GRAPHICS", "ALARMS",
+        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA", "TRENDLOG_BUFFER"
+    ]
+}
+
 #[derive(Deserialize)]
 pub struct QueryParams {
     pub page: Option<u64>,
@@ -82,22 +91,21 @@ async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<Dat
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         let description = match table_name.as_str() {
-            "Buildings" => "Building structures and properties",
-            "Controllers" => "T3000 controller devices",
-            "Inputs" => "Input points and sensors",
-            "Outputs" => "Output points and actuators",
-            "Variables" => "Variable points and calculated values",
-            "Programs" => "Control programs and logic",
-            "PID_Controllers" => "PID controllers and loops",
-            "Schedules" => "Time schedules and operations",
-            "Holidays" => "Holiday schedules and exceptions",
-            "Trendlogs" => "Data trending and logging",
-            "Alarms" => "Alarm conditions and notifications",
-            "Graphics" => "Graphical displays and layouts",
-            "Arrays" => "Data arrays and collections",
-            "Network_Points" => "Network points and connections",
-            "Units" => "Engineering units and conversions",
-            "User_Units" => "Custom user-defined units",
+            "ALL_NODE" => "T3000 devices and nodes (main device table)",
+            "INPUTS" => "Input points and sensors",
+            "OUTPUTS" => "Output points and actuators",
+            "VARIABLES" => "Variable points and calculated values",
+            "PROGRAMS" => "Control programs and logic",
+            "SCHEDULES" => "Time schedules and operations",
+            "PID_TABLE" => "PID controllers and loops",
+            "HOLIDAYS" => "Holiday schedules and exceptions",
+            "GRAPHICS" => "Graphical displays and layouts",
+            "ALARMS" => "Alarm conditions and notifications",
+            "MONITORDATA" => "Real-time monitoring data",
+            "TRENDLOGS" => "Trend log configurations",
+            "TRENDLOG_INPUTS" => "Trend log input point configurations",
+            "TRENDLOG_DATA" => "Historical trend data",
+            "TRENDLOG_BUFFER" => "Trend data buffer",
             _ => "Database table",
         };
 
@@ -110,7 +118,7 @@ async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<Dat
     Ok(Json(DatabaseInfo {
         status: "connected".to_string(),
         tables,
-        connection_type: "T3000 Device Database".to_string(),
+        connection_type: "WebView T3000 Database".to_string(),
     }))
 }
 
@@ -120,27 +128,34 @@ async fn get_table_data(
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
     let db = get_t3_device_conn!(state);
-    let table_name = params.table.unwrap_or_else(|| "Buildings".to_string());
+    let table_name = params.table.unwrap_or_else(|| "ALL_NODE".to_string());
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
     let offset = (page - 1) * per_page;
 
     // Validate table name to prevent SQL injection
-    let valid_tables = [
-        "Buildings", "Controllers", "Inputs", "Outputs", "Variables",
-        "Programs", "PID_Controllers", "Schedules", "Holidays", "Trendlogs",
-        "Alarms", "Graphics", "Arrays", "Network_Points", "Units", "User_Units"
-    ];
+    let valid_tables = get_valid_table_names();
 
     if !valid_tables.contains(&table_name.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
     }
 
     let query = if let Some(search) = params.search {
-        format!(
-            "SELECT * FROM {} WHERE CAST(ID AS TEXT) LIKE '%{}%' OR CAST(Label AS TEXT) LIKE '%{}%' LIMIT {} OFFSET {}",
-            table_name, search, search, per_page, offset
-        )
+        // Use table-specific search logic based on table structure
+        match table_name.as_str() {
+            "ALL_NODE" => format!(
+                "SELECT * FROM {} WHERE CAST(Serial_ID AS TEXT) LIKE '%{}%' OR CAST(Product_Name AS TEXT) LIKE '%{}%' OR CAST(Description AS TEXT) LIKE '%{}%' LIMIT {} OFFSET {}",
+                table_name, search, search, search, per_page, offset
+            ),
+            "INPUTS" | "OUTPUTS" | "VARIABLES" => format!(
+                "SELECT * FROM {} WHERE CAST(nSerialNumber AS TEXT) LIKE '%{}%' OR CAST(Full_Label AS TEXT) LIKE '%{}%' LIMIT {} OFFSET {}",
+                table_name, search, search, per_page, offset
+            ),
+            _ => format!(
+                "SELECT * FROM {} WHERE CAST(rowid AS TEXT) LIKE '%{}%' LIMIT {} OFFSET {}",
+                table_name, search, per_page, offset
+            )
+        }
     } else {
         format!(
             "SELECT * FROM {} LIMIT {} OFFSET {}",
@@ -152,19 +167,30 @@ async fn get_table_data(
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    // Get column names for the table
+    let columns_query = format!("PRAGMA table_info({})", table_name);
+    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    let column_results = db.query_all(column_statement).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut column_names = Vec::new();
+    for column_row in column_results {
+        if let Ok(column_name) = column_row.try_get::<String>("", "name") {
+            column_names.push(column_name);
+        }
+    }
+
     let mut data = Vec::new();
     for row in results {
         let mut row_data = serde_json::Map::new();
 
-        // Try to get common columns that most T3000 tables have
-        if let Ok(id) = row.try_get::<i32>("", "ID") {
-            row_data.insert("ID".to_string(), json!(id));
-        }
-        if let Ok(label) = row.try_get::<String>("", "Label") {
-            row_data.insert("Label".to_string(), json!(label));
-        }
-        if let Ok(description) = row.try_get::<Option<String>>("", "Description") {
-            row_data.insert("Description".to_string(), json!(description));
+        // Extract all columns dynamically
+        for column_name in &column_names {
+            if let Ok(value) = row.try_get::<Option<String>>("", column_name) {
+                row_data.insert(column_name.clone(), json!(value));
+            } else if let Ok(int_value) = row.try_get::<Option<i32>>("", column_name) {
+                row_data.insert(column_name.clone(), json!(int_value));
+            }
         }
 
         data.push(Value::Object(row_data));
@@ -186,11 +212,7 @@ async fn create_record(
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
-    let valid_tables = [
-        "Buildings", "Controllers", "Inputs", "Outputs", "Variables",
-        "Programs", "PID_Controllers", "Schedules", "Holidays", "Trendlogs",
-        "Alarms", "Graphics", "Arrays", "Network_Points", "Units", "User_Units"
-    ];
+    let valid_tables = get_valid_table_names();
 
     if !valid_tables.contains(&table.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
@@ -213,11 +235,7 @@ async fn update_record(
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
-    let valid_tables = [
-        "Buildings", "Controllers", "Inputs", "Outputs", "Variables",
-        "Programs", "PID_Controllers", "Schedules", "Holidays", "Trendlogs",
-        "Alarms", "Graphics", "Arrays", "Network_Points", "Units", "User_Units"
-    ];
+    let valid_tables = get_valid_table_names();
 
     if !valid_tables.contains(&table.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
@@ -238,11 +256,7 @@ async fn delete_record(
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
-    let valid_tables = [
-        "Buildings", "Controllers", "Inputs", "Outputs", "Variables",
-        "Programs", "PID_Controllers", "Schedules", "Holidays", "Trendlogs",
-        "Alarms", "Graphics", "Arrays", "Network_Points", "Units", "User_Units"
-    ];
+    let valid_tables = get_valid_table_names();
 
     if !valid_tables.contains(&table.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
@@ -262,11 +276,7 @@ async fn export_table(
     let db = get_t3_device_conn!(state);
 
     // Validate table name
-    let valid_tables = [
-        "Buildings", "Controllers", "Inputs", "Outputs", "Variables",
-        "Programs", "PID_Controllers", "Schedules", "Holidays", "Trendlogs",
-        "Alarms", "Graphics", "Arrays", "Network_Points", "Units", "User_Units"
-    ];
+    let valid_tables = get_valid_table_names();
 
     if !valid_tables.contains(&table.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
@@ -277,19 +287,30 @@ async fn export_table(
     let results = db.query_all(statement).await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    // Get column names for the table
+    let columns_query = format!("PRAGMA table_info({})", table);
+    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    let column_results = db.query_all(column_statement).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut column_names = Vec::new();
+    for column_row in column_results {
+        if let Ok(column_name) = column_row.try_get::<String>("", "name") {
+            column_names.push(column_name);
+        }
+    }
+
     let mut data = Vec::new();
     for row in results {
         let mut row_data = serde_json::Map::new();
 
-        // Try to get common columns
-        if let Ok(id) = row.try_get::<i32>("", "ID") {
-            row_data.insert("ID".to_string(), json!(id));
-        }
-        if let Ok(label) = row.try_get::<String>("", "Label") {
-            row_data.insert("Label".to_string(), json!(label));
-        }
-        if let Ok(description) = row.try_get::<Option<String>>("", "Description") {
-            row_data.insert("Description".to_string(), json!(description));
+        // Extract all columns dynamically
+        for column_name in &column_names {
+            if let Ok(value) = row.try_get::<Option<String>>("", column_name) {
+                row_data.insert(column_name.clone(), json!(value));
+            } else if let Ok(int_value) = row.try_get::<Option<i32>>("", column_name) {
+                row_data.insert(column_name.clone(), json!(int_value));
+            }
         }
 
         data.push(Value::Object(row_data));
@@ -312,11 +333,7 @@ async fn import_table(
     let _db = get_t3_device_conn!(state);
 
     // Validate table name
-    let valid_tables = [
-        "Buildings", "Controllers", "Inputs", "Outputs", "Variables",
-        "Programs", "PID_Controllers", "Schedules", "Holidays", "Trendlogs",
-        "Alarms", "Graphics", "Arrays", "Network_Points", "Units", "User_Units"
-    ];
+    let valid_tables = get_valid_table_names();
 
     if !valid_tables.contains(&table.as_str()) {
         return Err(StatusCode::BAD_REQUEST);

@@ -31,5 +31,3 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl ActiveModelBehavior for ActiveModel {}
