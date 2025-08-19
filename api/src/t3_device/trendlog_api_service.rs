@@ -1,5 +1,10 @@
-// Real-time trend data collection and storage
-// This module handles data interception from WebSocket messages and stores trend data
+// TrendLog API Service - HTTP/WebSocket API layer for accessing trend data
+// This service provides API access to trendlog data that's already collected by T3000MainService
+//
+// DATA FLOW:
+// - T3000MainService: Collects trend data via T3000_GetLoggingData() FFI → trendlog_data table
+// - TrendLogAPIService: Provides HTTP/WebSocket endpoints to query that collected data
+// - Purpose: API layer, not data collection (main service handles collection)
 
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
@@ -73,8 +78,8 @@ impl Default for TrendDataConfig {
     }
 }
 
-/// Real-time trend data collector service
-pub struct TrendDataCollector {
+/// TrendLog API Service - Provides HTTP/WebSocket endpoints for trend data access
+pub struct TrendLogAPIService {
     db_connection: Arc<Mutex<DatabaseConnection>>,
     config: Arc<RwLock<TrendDataConfig>>,
     data_sender: broadcast::Sender<TrendDataPoint>,
@@ -91,20 +96,20 @@ struct CachedPointInfo {
     pub last_updated: DateTime<Utc>,
 }
 
-impl TrendDataCollector {
+impl TrendLogAPIService {
     pub fn new(
         db_connection: Arc<Mutex<DatabaseConnection>>,
     ) -> (Self, broadcast::Receiver<TrendDataPoint>) {
         let (data_sender, data_receiver) = broadcast::channel(1000);
 
-        let collector = Self {
+        let service = Self {
             db_connection,
             config: Arc::new(RwLock::new(TrendDataConfig::default())),
             data_sender,
             point_cache: Arc::new(RwLock::new(HashMap::new())),
         };
 
-        (collector, data_receiver)
+        (service, data_receiver)
     }
 
     /// Start the trend data collection service

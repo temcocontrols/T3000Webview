@@ -1,4 +1,5 @@
-// Trend Data API Routes - HTTP and WebSocket endpoints for real-time data
+// TrendLog HTTP Routes - HTTP and WebSocket endpoints for trend data access
+// Provides API endpoints to query trendlog data that's collected by T3000MainService
 use axum::{
     extract::{Query, State, WebSocketUpgrade},
     http::StatusCode,
@@ -13,7 +14,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
 use crate::app_state::T3AppState;
-use crate::t3_device::trend_collector::{TrendDataPoint, TrendDataConfig};
+use crate::t3_device::trendlog_api_service::{TrendDataPoint, TrendDataConfig};
 
 #[derive(Deserialize)]
 pub struct TrendDataQuery {
@@ -94,14 +95,14 @@ async fn get_trend_data(
         .filter_map(|(data_item, trendlog_opt)| {
             trendlog_opt.map(|trendlog| TrendDataPoint {
                 device_id: trendlog.device_id,
-                point_type: crate::t3_device::trend_collector::PointType::Input, // Default - can be enhanced
+                point_type: crate::t3_device::trendlog_api_service::PointType::Input, // Default - can be enhanced
                 point_number: trendlog.trendlog_number,
                 point_id: Some(data_item.trendlog_id),
                 value: data_item.value as f64,
                 units_type: None, // Can be enhanced by joining with point tables
                 timestamp: data_item.timestamp,
                 status: data_item.quality,
-                source: crate::t3_device::trend_collector::DataSource::WebSocketIntercepted,
+                source: crate::t3_device::trendlog_api_service::DataSource::WebSocketIntercepted,
             })
         })
         .collect();
