@@ -52,6 +52,18 @@ impl Default for T3000MainConfig {
     }
 }
 
+/// Device information structure from T3000 LOGGING_DATA JSON
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceInfo {
+    pub panel_id: i32,
+    pub panel_name: String,
+    pub panel_serial_number: i32,
+    pub panel_ipaddress: String,
+    pub input_logging_time: String,
+    pub output_logging_time: String,
+    pub variable_logging_time: String,
+}
+
 /// Point data structure from T3000 LOGGING_DATA JSON
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PointData {
@@ -82,6 +94,22 @@ pub struct PointData {
 
     // VARIABLE specific fields
     pub unused: Option<i32>,
+}
+
+/// Complete logging data structure with device info and points
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggingDataResponse {
+    pub action: String,
+    pub devices: Vec<DeviceWithPoints>,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceWithPoints {
+    pub device_info: DeviceInfo,
+    pub input_points: Vec<PointData>,
+    pub output_points: Vec<PointData>,
+    pub variable_points: Vec<PointData>,
 }
 
 pub struct T3000MainService {
@@ -153,107 +181,258 @@ impl T3000MainService {
 
     /// Static method to sync logging data (for use in spawned tasks)
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
-        debug!("Starting LOGGING_DATA sync");
+        info!("🚀 Starting T3000 LOGGING_DATA sync cycle");
+        info!("⚙️  Sync Config - Interval: {}s, Timeout: {}s", config.sync_interval_secs, config.timeout_seconds);
 
-        let db = establish_t3_device_connection().await?;
+        let db = establish_t3_device_connection().await
+            .map_err(|e| {
+                error!("❌ Database connection failed: {}", e);
+                e
+            })?;
 
-        // Get all devices to sync (no online filter since field doesn't exist)
-        let devices_result = devices::Entity::find()
-            .all(&db).await?;
+        info!("✅ Database connection established");
 
-        for device in devices_result {
-            if let Err(e) = Self::sync_device_data_static(&db, device.SerialNumber, &config).await {
-                error!("Failed to sync device {}: {}", device.SerialNumber, e);
+        // Get JSON data from T3000 C++ via FFI - this contains ALL devices and their data
+        let json_data = Self::get_logging_data_via_ffi_static(&config).await?;
+
+        // Parse the complete LOGGING_DATA response
+        let logging_response = Self::parse_logging_response(&json_data)?;
+
+        // Start database transaction
+        info!("🔄 Starting database transaction for atomic sync operations");
+        let txn = db.begin().await
+            .map_err(|e| {
+                error!("❌ Failed to start transaction: {}", e);
+                AppError::DatabaseError(format!("Transaction start failed: {}", e))
+            })?;
+        info!("✅ Database transaction started successfully");
+
+        info!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len());
+
+        // Process each device from the response
+        for (device_index, device_with_points) in logging_response.devices.iter().enumerate() {
+            let serial_number = device_with_points.device_info.panel_serial_number;
+
+            info!("🏭 Processing Device {} of {}: Serial={}, Name='{}'",
+                  device_index + 1, logging_response.devices.len(),
+                  serial_number, device_with_points.device_info.panel_name);
+
+            // UPSERT device basic info (INSERT or UPDATE)
+            info!("📝 Syncing device basic info...");
+            if let Err(e) = Self::sync_device_basic_info(&txn, &device_with_points.device_info).await {
+                error!("❌ Failed to sync device info for {}: {}", serial_number, e);
+                continue;
             }
+            info!("✅ Device basic info synced");
+
+            // UPSERT input points (INSERT or UPDATE)
+            if !device_with_points.input_points.is_empty() {
+                info!("🔧 Syncing {} INPUT points...", device_with_points.input_points.len());
+                for point in &device_with_points.input_points {
+                    if let Err(e) = Self::sync_input_point_static(&txn, serial_number, point).await {
+                        error!("❌ Failed to sync input point {}:{}: {}", serial_number, point.index, e);
+                    }
+                }
+                info!("✅ INPUT points synced");
+            }
+
+            // UPSERT output points (INSERT or UPDATE)
+            if !device_with_points.output_points.is_empty() {
+                info!("🔧 Syncing {} OUTPUT points...", device_with_points.output_points.len());
+                for point in &device_with_points.output_points {
+                    if let Err(e) = Self::sync_output_point_static(&txn, serial_number, point).await {
+                        error!("❌ Failed to sync output point {}:{}: {}", serial_number, point.index, e);
+                    }
+                }
+                info!("✅ OUTPUT points synced");
+            }
+
+            // UPSERT variable points (INSERT or UPDATE)
+            if !device_with_points.variable_points.is_empty() {
+                info!("🔧 Syncing {} VARIABLE points...", device_with_points.variable_points.len());
+                for point in &device_with_points.variable_points {
+                    if let Err(e) = Self::sync_variable_point_static(&txn, serial_number, point).await {
+                        error!("❌ Failed to sync variable point {}:{}: {}", serial_number, point.index, e);
+                    }
+                }
+                info!("✅ VARIABLE points synced");
+            }
+
+            // INSERT trend log data (ALWAYS INSERT for historical data)
+            let total_trend_points = device_with_points.input_points.len() +
+                                   device_with_points.output_points.len() +
+                                   device_with_points.variable_points.len();
+            if total_trend_points > 0 {
+                info!("📊 Inserting {} trend log entries...", total_trend_points);
+                if let Err(e) = Self::insert_trend_logs(&txn, serial_number, device_with_points).await {
+                    error!("❌ Failed to insert trend logs for {}: {}", serial_number, e);
+                } else {
+                    info!("✅ Trend log entries inserted");
+                }
+            }
+
+            info!("🎯 Device {} sync completed: {} inputs, {} outputs, {} variables",
+                  serial_number,
+                  device_with_points.input_points.len(),
+                  device_with_points.output_points.len(),
+                  device_with_points.variable_points.len());
         }
 
-        info!("LOGGING_DATA sync completed");
+        // Commit transaction after all devices processed
+        info!("💾 Committing database transaction...");
+        txn.commit().await
+            .map_err(|e| {
+                error!("❌ Failed to commit transaction: {}", e);
+                AppError::DatabaseError(format!("Transaction commit failed: {}", e))
+            })?;
+
+        info!("🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
+              logging_response.devices.len());
         Ok(())
     }
 
-    /// Sync data for a specific device
-    async fn sync_device_data_static(db: &DatabaseConnection, serial_number: i32, config: &T3000MainConfig) -> Result<(), AppError> {
-        debug!("Syncing LOGGING_DATA for device {}", serial_number);
+    /// UPSERT device basic info (INSERT or UPDATE based on existence)
+    async fn sync_device_basic_info(txn: &DatabaseTransaction, device_info: &DeviceInfo) -> Result<(), AppError> {
+        let serial_number = device_info.panel_serial_number;
 
-        // Get JSON data from T3000 C++ via FFI
-        let json_data = Self::get_logging_data_via_ffi_static(config).await?;
+        info!("🔍 Checking if device {} exists in database...", serial_number);
 
-        // Parse JSON response
-        let logging_data = Self::parse_logging_data(&json_data)?;
+        // Check if device exists
+        let existing = devices::Entity::find()
+            .filter(devices::Column::SerialNumber.eq(serial_number))
+            .one(txn).await?;
 
-        // Start database transaction
-        let txn = db.begin().await?;
+        let device_model = devices::ActiveModel {
+            SerialNumber: Set(serial_number),
+            PanelId: Set(Some(device_info.panel_id)),
+            Building_Name: Set(Some(device_info.panel_name.clone())),
+            Product_Name: Set(Some("T3000 Panel".to_string())),
+            Address: Set(Some(device_info.panel_ipaddress.clone())),
+            Status: Set(Some("Online".to_string())),
+            Description: Set(Some(format!("Panel {} - {}", device_info.panel_id, device_info.panel_name))),
+            ..Default::default()
+        };
 
-        // Update device points (INPUT/OUTPUT/VARIABLES)
-        let mut sync_stats = (0usize, 0usize, 0usize); // (inputs, outputs, variables)
-
-        if let Some(inputs) = logging_data.get("inputs").and_then(|v| v.as_array()) {
-            for input_json in inputs {
-                if let Ok(point) = serde_json::from_value::<PointData>(input_json.clone()) {
-                    if let Ok(updated) = Self::sync_input_point_static(&txn, serial_number, &point).await {
-                        sync_stats.0 += updated;
-                    }
-                }
-            }
+        if existing.is_some() {
+            info!("🔄 Device {} exists - performing UPDATE with latest info", serial_number);
+            // UPDATE existing device
+            devices::Entity::update(device_model)
+                .filter(devices::Column::SerialNumber.eq(serial_number))
+                .exec(txn).await?;
+            info!("✅ Device {} info UPDATED successfully", serial_number);
+        } else {
+            info!("➕ Device {} not found - performing INSERT as new device", serial_number);
+            // INSERT new device
+            devices::Entity::insert(device_model)
+                .exec(txn).await?;
+            info!("✅ Device {} info INSERTED successfully", serial_number);
         }
 
-        if let Some(outputs) = logging_data.get("outputs").and_then(|v| v.as_array()) {
-            for output_json in outputs {
-                if let Ok(point) = serde_json::from_value::<PointData>(output_json.clone()) {
-                    if let Ok(updated) = Self::sync_output_point_static(&txn, serial_number, &point).await {
-                        sync_stats.1 += updated;
-                    }
-                }
-            }
+        Ok(())
+    }
+
+    /// INSERT trend log entries (ALWAYS INSERT for historical data)
+    async fn insert_trend_logs(txn: &DatabaseTransaction, serial_number: i32, device_data: &DeviceWithPoints) -> Result<(), AppError> {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        info!("📊 Starting trend log insertion at timestamp: {}", timestamp);
+
+        // Insert trend logs for all input points
+        if !device_data.input_points.is_empty() {
+            info!("📈 Inserting {} INPUT point trend logs...", device_data.input_points.len());
+        }
+        for point in &device_data.input_points {
+            let trend_model = trendlog_data::ActiveModel {
+                Trendlog_Input_ID: Set(point.index as i32),
+                TimeStamp: Set(timestamp.clone()),
+                fValue: Set(Some(point.value.to_string())),
+                Status: Set(Some(point.status.to_string())),
+                Quality: Set(Some("Good".to_string())),
+                BinaryArray: Set(None),
+            };
+
+            trendlog_data::Entity::insert(trend_model).exec(txn).await?;
         }
 
-        if let Some(variables) = logging_data.get("variables").and_then(|v| v.as_array()) {
-            for variable_json in variables {
-                if let Ok(point) = serde_json::from_value::<PointData>(variable_json.clone()) {
-                    if let Ok(updated) = Self::sync_variable_point_static(&txn, serial_number, &point).await {
-                        sync_stats.2 += updated;
-                    }
-                }
-            }
+        // Insert trend logs for all output points
+        if !device_data.output_points.is_empty() {
+            info!("📈 Inserting {} OUTPUT point trend logs...", device_data.output_points.len());
+        }
+        for point in &device_data.output_points {
+            let trend_model = trendlog_data::ActiveModel {
+                Trendlog_Input_ID: Set(point.index as i32),
+                TimeStamp: Set(timestamp.clone()),
+                fValue: Set(Some(point.value.to_string())),
+                Status: Set(Some(point.status.to_string())),
+                Quality: Set(Some("Good".to_string())),
+                BinaryArray: Set(None),
+            };
+
+            trendlog_data::Entity::insert(trend_model).exec(txn).await?;
         }
 
-        // Insert trend log data (always INSERT, never update for historical data)
-        if let Some(trend_logs) = logging_data.get("trend_logs").and_then(|v| v.as_array()) {
-            for trend_json in trend_logs {
-                if let Ok(point) = serde_json::from_value::<PointData>(trend_json.clone()) {
-                    let _ = Self::insert_trend_log_static(&txn, serial_number, &point).await;
-                }
-            }
+        // Insert trend logs for all variable points
+        if !device_data.variable_points.is_empty() {
+            info!("📈 Inserting {} VARIABLE point trend logs...", device_data.variable_points.len());
+        }
+        for point in &device_data.variable_points {
+            let trend_model = trendlog_data::ActiveModel {
+                Trendlog_Input_ID: Set(point.index as i32),
+                TimeStamp: Set(timestamp.clone()),
+                fValue: Set(Some(point.value.to_string())),
+                Status: Set(Some(point.status.to_string())),
+                Quality: Set(Some("Good".to_string())),
+                BinaryArray: Set(None),
+            };
+
+            trendlog_data::Entity::insert(trend_model).exec(txn).await?;
         }
 
-        // Commit transaction
-        txn.commit().await?;
-
-        info!("Device {} sync completed: {} inputs, {} outputs, {} variables",
-              serial_number, sync_stats.0, sync_stats.1, sync_stats.2);
-
+        let total_inserted = device_data.input_points.len() + device_data.output_points.len() + device_data.variable_points.len();
+        info!("✅ Inserted {} total trend log entries for device {} at {}",
+              total_inserted, serial_number, timestamp);
         Ok(())
     }
 
     /// Call T3000 C++ LOGGING_DATA function via FFI
     async fn get_logging_data_via_ffi_static(config: &T3000MainConfig) -> Result<String, AppError> {
+        info!("🔄 Starting FFI call to T3000_GetLoggingData");
+        info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
+
         // Run FFI call in a blocking task with timeout
         let spawn_result = tokio::time::timeout(
             Duration::from_secs(config.timeout_seconds),
             tokio::task::spawn_blocking(move || {
+                info!("🔌 Calling T3000_GetLoggingData() via FFI...");
+
                 unsafe {
                     let data_ptr = T3000_GetLoggingData();
 
                     if data_ptr.is_null() {
+                        error!("❌ T3000_GetLoggingData returned null pointer");
                         return Err(AppError::FfiError("T3000_GetLoggingData returned null pointer".to_string()));
                     }
+
+                    info!("✅ T3000_GetLoggingData returned valid pointer");
 
                     // Convert C string to Rust string
                     let c_str = CStr::from_ptr(data_ptr);
                     let result = c_str.to_string_lossy().to_string();
 
+                    info!("📊 Raw C++ Response Size: {} bytes", result.len());
+                    info!("📝 Raw C++ Response Preview: {}",
+                         if result.len() > 200 {
+                             format!("{}...", &result[..200])
+                         } else {
+                             result.clone()
+                         });
+
+                    // Log the complete response for debugging
+                    debug!("🔍 COMPLETE C++ RESPONSE:");
+                    debug!("{}", result);
+
                     // Free the C++ allocated string
                     T3000_FreeLoggingDataString(data_ptr);
+                    info!("🧹 C++ memory freed successfully");
 
                     Ok(result)
                 }
@@ -266,42 +445,182 @@ impl T3000MainService {
                     Ok(ffi_result) => {
                         match ffi_result {
                             Ok(data) => {
-                                debug!("Successfully received {} bytes from T3000_GetLoggingData", data.len());
+                                info!("✅ FFI call completed successfully - {} bytes received", data.len());
                                 Ok(data)
                             }
                             Err(e) => {
-                                error!("FFI call failed: {}", e);
+                                error!("❌ FFI call failed: {}", e);
                                 Err(e)
                             }
                         }
                     }
                     Err(join_err) => {
-                        let error_msg = format!("FFI task join failed: {}", join_err);
+                        let error_msg = format!("❌ FFI task join failed: {}", join_err);
                         error!("{}", error_msg);
                         Err(AppError::ServiceError(error_msg))
                     }
                 }
             }
             Err(timeout_err) => {
-                let error_msg = format!("FFI call timed out: {}", timeout_err);
+                let error_msg = format!("⏰ FFI call timed out: {}", timeout_err);
                 error!("{}", error_msg);
                 Err(AppError::ServiceError(error_msg))
             }
         }
     }
 
-    /// Parse JSON response from T3000 LOGGING_DATA
-    fn parse_logging_data(json_data: &str) -> Result<JsonValue, AppError> {
-        serde_json::from_str(json_data)
-            .map_err(|e| AppError::ParseError(format!("Failed to parse LOGGING_DATA JSON: {}", e)))
+    /// Parse the complete LOGGING_DATA response from T3000 C++
+    fn parse_logging_response(json_data: &str) -> Result<LoggingDataResponse, AppError> {
+        info!("🔍 Starting JSON parsing - {} bytes", json_data.len());
+
+        let json_value: JsonValue = serde_json::from_str(json_data)
+            .map_err(|e| {
+                error!("❌ JSON parse error: {}", e);
+                AppError::ParseError(format!("Failed to parse LOGGING_DATA JSON: {}", e))
+            })?;
+
+        info!("✅ JSON parsed successfully");
+
+        // The C++ response structure based on BacnetWebView.cpp analysis:
+        // {
+        //   "action": "LOGGING_DATA_RES",
+        //   "panel_id": npanel_id,
+        //   "panel_name": "Device Name",
+        //   "panel_serial_number": serial,
+        //   "panel_ipaddress": "IP",
+        //   "input_logging_time": "timestamp",
+        //   "output_logging_time": "timestamp",
+        //   "variable_logging_time": "timestamp",
+        //   "data": [ array of all points ]
+        // }
+
+        let action = json_value.get("action")
+            .and_then(|v| v.as_str())
+            .unwrap_or("UNKNOWN")
+            .to_string();
+
+        info!("📋 Action: {}", action);
+
+        // Extract device information
+        let device_info = DeviceInfo {
+            panel_id: json_value.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            panel_name: json_value.get("panel_name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
+            panel_serial_number: json_value.get("panel_serial_number").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            panel_ipaddress: json_value.get("panel_ipaddress").and_then(|v| v.as_str()).unwrap_or("0.0.0.0").to_string(),
+            input_logging_time: json_value.get("input_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            output_logging_time: json_value.get("output_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            variable_logging_time: json_value.get("variable_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        };
+
+        info!("🏠 Device Info - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
+              device_info.panel_id, device_info.panel_serial_number,
+              device_info.panel_name, device_info.panel_ipaddress);
+        info!("⏰ Logging Times - Input: '{}', Output: '{}', Variable: '{}'",
+              device_info.input_logging_time, device_info.output_logging_time, device_info.variable_logging_time);
+
+        // Parse point data from the "data" array
+        let mut input_points = Vec::new();
+        let mut output_points = Vec::new();
+        let mut variable_points = Vec::new();
+
+        if let Some(data_array) = json_value.get("data").and_then(|v| v.as_array()) {
+            info!("📊 Found data array with {} points", data_array.len());
+
+            for (point_index, point_json) in data_array.iter().enumerate() {
+                if let Some(point_type) = point_json.get("type").and_then(|v| v.as_str()) {
+                    let point_index_value = point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+                    debug!("🔸 Processing point {}: type={}, index={}", point_index, point_type, point_index_value);
+
+                    match Self::parse_point_data(point_json) {
+                        Ok(point_data) => {
+                            match point_type {
+                                "INPUT" => {
+                                    input_points.push(point_data);
+                                    debug!("✅ Added INPUT point {}", point_index_value);
+                                }
+                                "OUTPUT" => {
+                                    output_points.push(point_data);
+                                    debug!("✅ Added OUTPUT point {}", point_index_value);
+                                }
+                                "VARIABLE" => {
+                                    variable_points.push(point_data);
+                                    debug!("✅ Added VARIABLE point {}", point_index_value);
+                                }
+                                _ => warn!("⚠️  Unknown point type: {}", point_type),
+                            }
+                        }
+                        Err(e) => {
+                            warn!("⚠️  Failed to parse point {}: {}", point_index, e);
+                        }
+                    }
+                } else {
+                    warn!("⚠️  Point {} missing 'type' field", point_index);
+                }
+            }
+        } else {
+            warn!("⚠️  No 'data' array found in response");
+        }
+
+        info!("📈 Parsed Points Summary - INPUT: {}, OUTPUT: {}, VARIABLE: {}",
+              input_points.len(), output_points.len(), variable_points.len());
+
+        let device_with_points = DeviceWithPoints {
+            device_info,
+            input_points,
+            output_points,
+            variable_points,
+        };
+
+        info!("✅ Logging response parsing completed successfully");
+
+        Ok(LoggingDataResponse {
+            action,
+            devices: vec![device_with_points], // Single device per response
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        })
     }
 
-    /// Sync input point data (INSERT or UPDATE)
+    /// Parse individual point data from C++ JSON structure
+    fn parse_point_data(point_json: &JsonValue) -> Result<PointData, AppError> {
+        let point_data = PointData {
+            index: point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+            panel: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            full_label: point_json.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            auto_manual: point_json.get("auto_manual").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            value: point_json.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            pid: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            units: point_json.get("unit").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            range: point_json.get("range").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            calibration: point_json.get("calibration_h").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            sign: point_json.get("calibration_sign").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            status: point_json.get("decom").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+
+            // INPUT specific fields
+            decom: point_json.get("decom").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            sub_product: None,
+            sub_id: None,
+            sub_panel: None,
+            network_number: None,
+
+            // OUTPUT specific fields
+            low_voltage: point_json.get("low_voltage").and_then(|v| v.as_f64()),
+            high_voltage: point_json.get("high_voltage").and_then(|v| v.as_f64()),
+            hw_switch_status: point_json.get("hw_switch_status").and_then(|v| v.as_i64()).map(|v| v as i32),
+
+            // VARIABLE specific fields
+            unused: point_json.get("unused").and_then(|v| v.as_i64()).map(|v| v as i32),
+        };
+
+        Ok(point_data)
+    }
+
+    /// Sync input point data (UPSERT: INSERT or UPDATE)
     async fn sync_input_point_static(
         txn: &DatabaseTransaction,
         serial_number: i32,
         point: &PointData,
-    ) -> Result<usize, AppError> {
+    ) -> Result<(), AppError> {
         // Check if input point exists
         let existing = input_points::Entity::find()
             .filter(input_points::Column::SerialNumber.eq(serial_number))
@@ -331,29 +650,33 @@ impl T3000MainService {
         match existing {
             Some(_) => {
                 // UPDATE existing input point
+                debug!("🔄 Updating existing INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
                 input_points::Entity::update(input_model)
                     .filter(input_points::Column::SerialNumber.eq(serial_number))
                     .filter(input_points::Column::InputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
                     .map_err(|e| AppError::DatabaseError(format!("Failed to update input point: {}", e)))?;
-                Ok(1)
+                debug!("✅ INPUT point {}:{} UPDATED", serial_number, point.index);
+                Ok(())
             }
             None => {
                 // INSERT new input point
+                debug!("➕ Inserting new INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
                 input_points::Entity::insert(input_model)
                     .exec(txn).await
                     .map_err(|e| AppError::DatabaseError(format!("Failed to insert input point: {}", e)))?;
-                Ok(1)
+                debug!("✅ INPUT point {}:{} INSERTED", serial_number, point.index);
+                Ok(())
             }
         }
     }
 
-    /// Sync output point data (INSERT or UPDATE)
+    /// Sync output point data (UPSERT: INSERT or UPDATE)
     async fn sync_output_point_static(
         txn: &DatabaseTransaction,
         serial_number: i32,
         point: &PointData,
-    ) -> Result<usize, AppError> {
+    ) -> Result<(), AppError> {
         // Check if output point exists
         let existing = output_points::Entity::find()
             .filter(output_points::Column::SerialNumber.eq(serial_number))
@@ -383,29 +706,33 @@ impl T3000MainService {
         match existing {
             Some(_) => {
                 // UPDATE existing output point
+                debug!("🔄 Updating existing OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
                 output_points::Entity::update(output_model)
                     .filter(output_points::Column::SerialNumber.eq(serial_number))
                     .filter(output_points::Column::OutputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
                     .map_err(|e| AppError::DatabaseError(format!("Failed to update output point: {}", e)))?;
-                Ok(1)
+                debug!("✅ OUTPUT point {}:{} UPDATED", serial_number, point.index);
+                Ok(())
             }
             None => {
                 // INSERT new output point
+                debug!("➕ Inserting new OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
                 output_points::Entity::insert(output_model)
                     .exec(txn).await
                     .map_err(|e| AppError::DatabaseError(format!("Failed to insert output point: {}", e)))?;
-                Ok(1)
+                debug!("✅ OUTPUT point {}:{} INSERTED", serial_number, point.index);
+                Ok(())
             }
         }
     }
 
-    /// Sync variable point data (INSERT or UPDATE)
+    /// Sync variable point data (UPSERT: INSERT or UPDATE)
     async fn sync_variable_point_static(
         txn: &DatabaseTransaction,
         serial_number: i32,
         point: &PointData,
-    ) -> Result<usize, AppError> {
+    ) -> Result<(), AppError> {
         // Check if variable point exists
         let existing = variable_points::Entity::find()
             .filter(variable_points::Column::SerialNumber.eq(serial_number))
@@ -427,19 +754,23 @@ impl T3000MainService {
         match existing {
             Some(_) => {
                 // UPDATE existing variable point
+                debug!("🔄 Updating existing VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
                 variable_points::Entity::update(variable_model)
                     .filter(variable_points::Column::SerialNumber.eq(serial_number))
                     .filter(variable_points::Column::VariableIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
                     .map_err(|e| AppError::DatabaseError(format!("Failed to update variable point: {}", e)))?;
-                Ok(1)
+                debug!("✅ VARIABLE point {}:{} UPDATED", serial_number, point.index);
+                Ok(())
             }
             None => {
                 // INSERT new variable point
+                debug!("➕ Inserting new VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
                 variable_points::Entity::insert(variable_model)
                     .exec(txn).await
                     .map_err(|e| AppError::DatabaseError(format!("Failed to insert variable point: {}", e)))?;
-                Ok(1)
+                debug!("✅ VARIABLE point {}:{} INSERTED", serial_number, point.index);
+                Ok(())
             }
         }
     }
