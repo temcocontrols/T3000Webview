@@ -9,12 +9,19 @@
 #include <cstdio>
 #include <cmath>
 
+// Include the header file with FFI data structures
+#include "T3000_exports.h"
+
 // Thread-safe global state management
 static bool g_t3000_initialized = false;
 static std::mutex g_t3000_mutex;
 static std::string g_string_buffer;
 static int g_last_error_code = 0;
 static std::string g_last_error_message;
+
+// Mock T3000 global database paths (normally defined in T3000.exe)
+const char* g_strCurBuildingDatabasefilePath = "C:\\T3000\\Database\\webview_t3_device.db";
+const char* g_strDatabasefilepath = "C:\\T3000\\Database\\T3000.db";
 
 // Helper function for thread-safe error setting
 static void SetLastError(int code, const std::string& message) {
@@ -23,15 +30,13 @@ static void SetLastError(int code, const std::string& message) {
     g_last_error_message = message;
 }
 
-extern "C" {
-
 // ==============================
 // System Initialization Functions
 // ==============================
 
-__declspec(dllexport) int T3000_Initialize() {
+int T3000_Initialize() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
-    
+
     if (g_t3000_initialized) {
         return 1; // Already initialized
     }
@@ -44,13 +49,13 @@ __declspec(dllexport) int T3000_Initialize() {
     g_t3000_initialized = true;
     g_last_error_code = 0;
     g_last_error_message.clear();
-    
+
     return 1; // Success
 }
 
-__declspec(dllexport) void T3000_Shutdown() {
+void T3000_Shutdown() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
-    
+
     if (!g_t3000_initialized) {
         return;
     }
@@ -65,7 +70,7 @@ __declspec(dllexport) void T3000_Shutdown() {
     g_last_error_message.clear();
 }
 
-__declspec(dllexport) const char* T3000_GetVersion() {
+const char* T3000_GetVersion() {
     g_string_buffer = "1.0.0-mock";
     return g_string_buffer.c_str();
 }
@@ -74,9 +79,9 @@ __declspec(dllexport) const char* T3000_GetVersion() {
 // Device Management Functions
 // ==============================
 
-__declspec(dllexport) int T3000_IsDeviceOnline(int device_id) {
+int T3000_IsDeviceOnline(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
-    
+
     if (!g_t3000_initialized) {
         g_last_error_code = -2;
         g_last_error_message = "T3000 not initialized";
@@ -85,14 +90,14 @@ __declspec(dllexport) int T3000_IsDeviceOnline(int device_id) {
 
     // TODO: Replace with actual T3000 device status check
     // Example: return Check_Device_Online_Status(device_id);
-    
+
     // Mock implementation - assume devices 1-3 are online
     return (device_id >= 1 && device_id <= 3) ? 1 : 0;
 }
 
-__declspec(dllexport) int T3000_GetDeviceCount() {
+int T3000_GetDeviceCount() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
-    
+
     if (!g_t3000_initialized) {
         g_last_error_code = -2;
         g_last_error_message = "T3000 not initialized";
@@ -101,13 +106,13 @@ __declspec(dllexport) int T3000_GetDeviceCount() {
 
     // TODO: Replace with actual T3000 device count
     // Example: return Get_Total_Device_Count();
-    
+
     return 3; // Mock - 3 devices available
 }
 
-__declspec(dllexport) int T3000_GetDeviceIdByIndex(int index) {
+int T3000_GetDeviceIdByIndex(int index) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
-    
+
     if (!g_t3000_initialized) {
         g_last_error_code = -2;
         g_last_error_message = "T3000 not initialized";
@@ -116,7 +121,7 @@ __declspec(dllexport) int T3000_GetDeviceIdByIndex(int index) {
 
     // TODO: Replace with actual T3000 device enumeration
     // Example: return Device_List[index].device_id;
-    
+
     if (index < 0 || index >= 3) {
         g_last_error_code = -1;
         g_last_error_message = "Invalid device index";
@@ -126,9 +131,9 @@ __declspec(dllexport) int T3000_GetDeviceIdByIndex(int index) {
     return index + 1; // Mock - device IDs are 1-based
 }
 
-__declspec(dllexport) int T3000_ConnectToDevice(int device_id) {
+int T3000_ConnectToDevice(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
-    
+
     if (!g_t3000_initialized) {
         g_last_error_code = -3;
         g_last_error_message = "T3000 system not initialized";
@@ -137,11 +142,11 @@ __declspec(dllexport) int T3000_ConnectToDevice(int device_id) {
 
     // TODO: Replace with actual T3000 connection code
     // Example: return Establish_Device_Connection(device_id);
-    
+
     return 1; // Success
 }
 
-__declspec(dllexport) int T3000_DisconnectFromDevice(int device_id) {
+int T3000_DisconnectFromDevice(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (!g_t3000_initialized) {
@@ -154,7 +159,7 @@ __declspec(dllexport) int T3000_DisconnectFromDevice(int device_id) {
     return 1; // Success
 }
 
-__declspec(dllexport) int T3000_RefreshDeviceData(int device_id) {
+int T3000_RefreshDeviceData(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (!g_t3000_initialized) {
@@ -171,7 +176,7 @@ __declspec(dllexport) int T3000_RefreshDeviceData(int device_id) {
 // Input Point Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetInputPointCount(int device_id) {
+int T3000_GetInputPointCount(int device_id) {
     if (!g_t3000_initialized) {
         SetLastError(-2, "T3000 not initialized");
         return 0;
@@ -184,11 +189,11 @@ __declspec(dllexport) int T3000_GetInputPointCount(int device_id) {
 
     // TODO: Replace with actual T3000 input count query
     // Example: return Get_Input_Count(device_id);
-    
+
     return 64; // Mock - typical T3000 device has 64 inputs
 }
 
-__declspec(dllexport) int T3000_GetAllInputPoints(int device_id, float* values, int max_count) {
+int T3000_GetAllInputPoints(int device_id, float* values, int max_count) {
     if (!g_t3000_initialized || !values) {
         SetLastError(-2, "Invalid parameters");
         return 0;
@@ -212,7 +217,7 @@ __declspec(dllexport) int T3000_GetAllInputPoints(int device_id, float* values, 
     return actual_count;
 }
 
-__declspec(dllexport) float T3000_GetInputPointValue(int device_id, int point_number) {
+float T3000_GetInputPointValue(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         SetLastError(-2, "T3000 not initialized");
         return 0.0f;
@@ -234,7 +239,7 @@ __declspec(dllexport) float T3000_GetInputPointValue(int device_id, int point_nu
     return 20.0f + (point_number * 2.5f) + (device_id * 0.1f);
 }
 
-__declspec(dllexport) int T3000_GetInputPointStatus(int device_id, int point_number) {
+int T3000_GetInputPointStatus(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return 2; // Offline
     }
@@ -253,7 +258,7 @@ __declspec(dllexport) int T3000_GetInputPointStatus(int device_id, int point_num
     return 0; // Mock: all points normal
 }
 
-__declspec(dllexport) const char* T3000_GetInputPointUnits(int device_id, int point_number) {
+const char* T3000_GetInputPointUnits(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return nullptr;
     }
@@ -275,7 +280,7 @@ __declspec(dllexport) const char* T3000_GetInputPointUnits(int device_id, int po
     return g_string_buffer.c_str();
 }
 
-__declspec(dllexport) const char* T3000_GetInputPointLabel(int device_id, int point_number) {
+const char* T3000_GetInputPointLabel(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return nullptr;
     }
@@ -295,7 +300,7 @@ __declspec(dllexport) const char* T3000_GetInputPointLabel(int device_id, int po
 // Output Point Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetOutputPointCount(int device_id) {
+int T3000_GetOutputPointCount(int device_id) {
     if (!g_t3000_initialized) {
         SetLastError(-2, "T3000 not initialized");
         return 0;
@@ -310,7 +315,7 @@ __declspec(dllexport) int T3000_GetOutputPointCount(int device_id) {
     return 16; // Mock - typical T3000 device has 16 outputs
 }
 
-__declspec(dllexport) int T3000_GetAllOutputPoints(int device_id, float* values, int max_count) {
+int T3000_GetAllOutputPoints(int device_id, float* values, int max_count) {
     if (!g_t3000_initialized || !values) {
         SetLastError(-2, "Invalid parameters");
         return 0;
@@ -332,7 +337,7 @@ __declspec(dllexport) int T3000_GetAllOutputPoints(int device_id, float* values,
     return actual_count;
 }
 
-__declspec(dllexport) float T3000_GetOutputPointValue(int device_id, int point_number) {
+float T3000_GetOutputPointValue(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return 0.0f;
     }
@@ -341,7 +346,7 @@ __declspec(dllexport) float T3000_GetOutputPointValue(int device_id, int point_n
     return 50.0f + (point_number * 5.0f) + (device_id * 0.2f);
 }
 
-__declspec(dllexport) int T3000_GetOutputPointStatus(int device_id, int point_number) {
+int T3000_GetOutputPointStatus(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return 2; // Offline
     }
@@ -355,7 +360,7 @@ __declspec(dllexport) int T3000_GetOutputPointStatus(int device_id, int point_nu
     return 1; // 1 = active, 0 = inactive, 2 = offline
 }
 
-__declspec(dllexport) const char* T3000_GetOutputPointUnits(int device_id, int point_number) {
+const char* T3000_GetOutputPointUnits(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return "";
     }
@@ -371,7 +376,7 @@ __declspec(dllexport) const char* T3000_GetOutputPointUnits(int device_id, int p
     return units;
 }
 
-__declspec(dllexport) const char* T3000_GetOutputPointLabel(int device_id, int point_number) {
+const char* T3000_GetOutputPointLabel(int device_id, int point_number) {
     if (!g_t3000_initialized) {
         return nullptr;
     }
@@ -388,7 +393,7 @@ __declspec(dllexport) const char* T3000_GetOutputPointLabel(int device_id, int p
 // Variable Point Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetVariablePointCount(int device_id) {
+int T3000_GetVariablePointCount(int device_id) {
     if (!g_t3000_initialized) {
         return 0;
     }
@@ -397,7 +402,7 @@ __declspec(dllexport) int T3000_GetVariablePointCount(int device_id) {
     return 64; // Mock - typical T3000 device has 64 variables
 }
 
-__declspec(dllexport) int T3000_GetAllVariablePoints(int device_id, float* values, int max_count) {
+int T3000_GetAllVariablePoints(int device_id, float* values, int max_count) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (!values) {
@@ -415,7 +420,7 @@ __declspec(dllexport) int T3000_GetAllVariablePoints(int device_id, float* value
     return count;
 }
 
-__declspec(dllexport) float T3000_GetVariablePointValue(int device_id, int point_number) {
+float T3000_GetVariablePointValue(int device_id, int point_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (point_number < 0 || point_number >= 100) {
@@ -428,7 +433,7 @@ __declspec(dllexport) float T3000_GetVariablePointValue(int device_id, int point
     return 50.0f + (point_number * 10.0f);
 }
 
-__declspec(dllexport) int T3000_GetVariablePointStatus(int device_id, int point_number) {
+int T3000_GetVariablePointStatus(int device_id, int point_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (point_number < 0 || point_number >= 100) {
@@ -441,7 +446,7 @@ __declspec(dllexport) int T3000_GetVariablePointStatus(int device_id, int point_
     return 1; // 1 = active, 0 = inactive
 }
 
-__declspec(dllexport) const char* T3000_GetVariablePointUnits(int device_id, int point_number) {
+const char* T3000_GetVariablePointUnits(int device_id, int point_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (point_number < 0 || point_number >= 100) {
@@ -456,7 +461,7 @@ __declspec(dllexport) const char* T3000_GetVariablePointUnits(int device_id, int
     return units;
 }
 
-__declspec(dllexport) const char* T3000_GetVariablePointLabel(int device_id, int point_number) {
+const char* T3000_GetVariablePointLabel(int device_id, int point_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (point_number < 0 || point_number >= 100) {
@@ -475,14 +480,14 @@ __declspec(dllexport) const char* T3000_GetVariablePointLabel(int device_id, int
 // Program Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetProgramCount(int device_id) {
+int T3000_GetProgramCount(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     // TODO: Replace with actual T3000 program count
     return 32; // Assume max 32 programs
 }
 
-__declspec(dllexport) int T3000_GetProgramStatus(int device_id, int program_number) {
+int T3000_GetProgramStatus(int device_id, int program_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (program_number < 0 || program_number >= 32) {
@@ -495,7 +500,7 @@ __declspec(dllexport) int T3000_GetProgramStatus(int device_id, int program_numb
     return (program_number % 2) ? 1 : 0; // Mock: odd programs running
 }
 
-__declspec(dllexport) const char* T3000_GetProgramLabel(int device_id, int program_number) {
+const char* T3000_GetProgramLabel(int device_id, int program_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (program_number < 0 || program_number >= 32) {
@@ -514,14 +519,14 @@ __declspec(dllexport) const char* T3000_GetProgramLabel(int device_id, int progr
 // Schedule Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetScheduleCount(int device_id) {
+int T3000_GetScheduleCount(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     // TODO: Replace with actual T3000 schedule count
     return 64; // Assume max 64 schedules
 }
 
-__declspec(dllexport) int T3000_GetScheduleStatus(int device_id, int schedule_number) {
+int T3000_GetScheduleStatus(int device_id, int schedule_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (schedule_number < 0 || schedule_number >= 64) {
@@ -534,7 +539,7 @@ __declspec(dllexport) int T3000_GetScheduleStatus(int device_id, int schedule_nu
     return (schedule_number % 3) ? 1 : 0; // Mock: 2/3 schedules active
 }
 
-__declspec(dllexport) const char* T3000_GetScheduleLabel(int device_id, int schedule_number) {
+const char* T3000_GetScheduleLabel(int device_id, int schedule_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (schedule_number < 0 || schedule_number >= 64) {
@@ -553,14 +558,14 @@ __declspec(dllexport) const char* T3000_GetScheduleLabel(int device_id, int sche
 // Alarm/Monitor Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetAlarmCount(int device_id) {
+int T3000_GetAlarmCount(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     // TODO: Replace with actual T3000 alarm count
     return 128; // Assume max 128 alarms
 }
 
-__declspec(dllexport) int T3000_GetAlarmStatus(int device_id, int alarm_number) {
+int T3000_GetAlarmStatus(int device_id, int alarm_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (alarm_number < 0 || alarm_number >= 128) {
@@ -573,7 +578,7 @@ __declspec(dllexport) int T3000_GetAlarmStatus(int device_id, int alarm_number) 
     return (alarm_number < 5) ? 2 : 0; // Mock: first 5 alarms active
 }
 
-__declspec(dllexport) const char* T3000_GetAlarmMessage(int device_id, int alarm_number) {
+const char* T3000_GetAlarmMessage(int device_id, int alarm_number) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     if (alarm_number < 0 || alarm_number >= 128) {
@@ -596,7 +601,7 @@ __declspec(dllexport) const char* T3000_GetAlarmMessage(int device_id, int alarm
 // Batch Operations
 // ==============================
 
-__declspec(dllexport) int T3000_GetBatchPointValues(int device_id, int* point_numbers, int* point_types,
+int T3000_GetBatchPointValues(int device_id, int* point_numbers, int* point_types,
                              float* values, int count) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
@@ -641,7 +646,7 @@ __declspec(dllexport) int T3000_GetBatchPointValues(int device_id, int* point_nu
     return successful_reads;
 }
 
-__declspec(dllexport) int T3000_SetBatchPointValues(int device_id, int* point_numbers, int* point_types,
+int T3000_SetBatchPointValues(int device_id, int* point_numbers, int* point_types,
                              float* values, int count) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
@@ -686,14 +691,14 @@ __declspec(dllexport) int T3000_SetBatchPointValues(int device_id, int* point_nu
 // Network Configuration Functions
 // ==============================
 
-__declspec(dllexport) int T3000_ScanForDevices() {
+int T3000_ScanForDevices() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     // TODO: Replace with actual T3000 device scanning
     return 3; // Mock: found 3 devices
 }
 
-__declspec(dllexport) int T3000_GetDeviceInfo(int device_id, char* device_name, char* firmware_version,
+int T3000_GetDeviceInfo(int device_id, char* device_name, char* firmware_version,
                        char* ip_address, int* modbus_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
@@ -712,7 +717,7 @@ __declspec(dllexport) int T3000_GetDeviceInfo(int device_id, char* device_name, 
     return 1; // Success
 }
 
-__declspec(dllexport) int T3000_SetDeviceNetworkConfig(int device_id, const char* ip_address,
+int T3000_SetDeviceNetworkConfig(int device_id, const char* ip_address,
                                 int modbus_id, int subnet_mask) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
@@ -730,14 +735,14 @@ __declspec(dllexport) int T3000_SetDeviceNetworkConfig(int device_id, const char
 // Trend Log Functions
 // ==============================
 
-__declspec(dllexport) int T3000_GetTrendLogCount(int device_id) {
+int T3000_GetTrendLogCount(int device_id) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
     // TODO: Replace with actual T3000 trend log count
     return 16; // Assume max 16 trend logs
 }
 
-__declspec(dllexport) int T3000_GetTrendLogData(int device_id, int log_number, float* values,
+int T3000_GetTrendLogData(int device_id, int log_number, float* values,
                          long* timestamps, int max_records) {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
 
@@ -769,18 +774,18 @@ __declspec(dllexport) int T3000_GetTrendLogData(int device_id, int log_number, f
 // Error Handling Functions
 // ==============================
 
-__declspec(dllexport) const char* T3000_GetLastErrorMessage() {
+const char* T3000_GetLastErrorMessage() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
     g_string_buffer = g_last_error_message;
     return g_string_buffer.c_str();
 }
 
-__declspec(dllexport) int T3000_GetLastErrorCode() {
+int T3000_GetLastErrorCode() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
     return g_last_error_code;
 }
 
-__declspec(dllexport) void T3000_ClearLastError() {
+void T3000_ClearLastError() {
     std::lock_guard<std::mutex> lock(g_t3000_mutex);
     g_last_error_code = 0;
     g_last_error_message.clear();
@@ -790,95 +795,95 @@ __declspec(dllexport) void T3000_ClearLastError() {
 // Legacy Functions for Backward Compatibility
 // ==============================
 
-__declspec(dllexport) int T3000_Connect(const char* ip_address, int port) {
+int T3000_Connect(const char* ip_address, int port) {
     // TODO: Legacy connection function - redirect to new API
     return T3000_ConnectToDevice(1); // Connect to first device
 }
 
-__declspec(dllexport) int T3000_Disconnect() {
+int T3000_Disconnect() {
     // TODO: Legacy disconnection function - redirect to new API
     return T3000_DisconnectFromDevice(1); // Disconnect from first device
 }
 
-__declspec(dllexport) int T3000_IsConnected() {
+int T3000_IsConnected() {
     // TODO: Legacy connection check - redirect to new API
     return T3000_IsDeviceOnline(1); // Check first device
 }
 
-__declspec(dllexport) int T3000_GetInputCount() {
+int T3000_GetInputCount() {
     // TODO: Legacy input count - redirect to new API
     return T3000_GetInputPointCount(1); // Get count for first device
 }
 
-__declspec(dllexport) int T3000_GetInputValue(int point_number) {
+int T3000_GetInputValue(int point_number) {
     // TODO: Legacy input value - redirect to new API
     return (int)T3000_GetInputPointValue(1, point_number); // First device
 }
 
-__declspec(dllexport) int T3000_GetInputStatus(int point_number) {
+int T3000_GetInputStatus(int point_number) {
     // TODO: Legacy input status - redirect to new API
     return T3000_GetInputPointStatus(1, point_number); // First device
 }
 
-__declspec(dllexport) const char* T3000_GetInputLabel(int point_number) {
+const char* T3000_GetInputLabel(int point_number) {
     // TODO: Legacy input label - redirect to new API
     return T3000_GetInputPointLabel(1, point_number); // First device
 }
 
-__declspec(dllexport) const char* T3000_GetInputUnits(int point_number) {
+const char* T3000_GetInputUnits(int point_number) {
     // TODO: Legacy input units - redirect to new API
     return T3000_GetInputPointUnits(1, point_number); // First device
 }
 
-__declspec(dllexport) int T3000_GetAllInputs(int* values, int max_count) {
+int T3000_GetAllInputs(int* values, int max_count) {
     // TODO: Legacy bulk input read - redirect to new API
     float* float_values = new float[max_count];
     int count = T3000_GetAllInputPoints(1, float_values, max_count);
-    
+
     for (int i = 0; i < count; i++) {
         values[i] = (int)float_values[i];
     }
-    
+
     delete[] float_values;
     return count;
 }
 
-__declspec(dllexport) int T3000_GetOutputCount() {
+int T3000_GetOutputCount() {
     // TODO: Legacy output count - redirect to new API
     return T3000_GetOutputPointCount(1); // First device
 }
 
-__declspec(dllexport) int T3000_GetOutputValue(int point_number) {
+int T3000_GetOutputValue(int point_number) {
     // TODO: Legacy output value - redirect to new API
     return (int)T3000_GetOutputPointValue(1, point_number); // First device
 }
 
-__declspec(dllexport) int T3000_SetOutputValue(int point_number, int value) {
+int T3000_SetOutputValue(int point_number, int value) {
     // TODO: Legacy output write - implement actual write functionality
     return 1; // Success - mock implementation
 }
 
-__declspec(dllexport) int T3000_GetOutputStatus(int point_number) {
+int T3000_GetOutputStatus(int point_number) {
     // TODO: Legacy output status - redirect to new API
     return T3000_GetOutputPointStatus(1, point_number); // First device
 }
 
-__declspec(dllexport) const char* T3000_GetOutputLabel(int point_number) {
+const char* T3000_GetOutputLabel(int point_number) {
     // TODO: Legacy output label - redirect to new API
     return T3000_GetOutputPointLabel(1, point_number); // First device
 }
 
-__declspec(dllexport) const char* T3000_GetOutputUnits(int point_number) {
+const char* T3000_GetOutputUnits(int point_number) {
     // TODO: Legacy output units - redirect to new API
     return T3000_GetOutputPointUnits(1, point_number); // First device
 }
 
 // Additional legacy functions continue with same pattern...
-__declspec(dllexport) int T3000_GetLastError() {
+int T3000_GetLastError() {
     return T3000_GetLastErrorCode();
 }
 
-__declspec(dllexport) const char* T3000_GetErrorMessage(int error_code) {
+const char* T3000_GetErrorMessage(int error_code) {
     // TODO: Map error codes to messages
     switch (error_code) {
         case 0: return "No error";
@@ -890,8 +895,160 @@ __declspec(dllexport) const char* T3000_GetErrorMessage(int error_code) {
     }
 }
 
-__declspec(dllexport) void T3000_ClearError() {
+void T3000_ClearError() {
     T3000_ClearLastError();
 }
 
-} // extern "C"
+// ==============================
+// Auto-sync Database Functions Implementation
+// ==============================
+
+int T3000_GetAllDevicesFromDB(DeviceFFIData* devices, int max_devices) {
+    if (!devices || max_devices <= 0) {
+        return 0;
+    }
+
+    // TODO: Replace with actual T3000 database query
+    // This is mock data for testing
+    int device_count = (max_devices > 3) ? 3 : max_devices;
+
+    for (int i = 0; i < device_count; i++) {
+        DeviceFFIData* dev = &devices[i];
+        memset(dev, 0, sizeof(DeviceFFIData));
+
+        // Mock device data - replace with actual T3000.db queries
+        sprintf(dev->nSerialNumber, "%d", 100000 + i);
+        sprintf(dev->nProductModel, "%d", 301 + i);
+        sprintf(dev->strName, "Device_%d", i + 1);
+        sprintf(dev->strIPAddress, "192.168.1.%d", 100 + i);
+        sprintf(dev->nPort, "%d", 502);
+        sprintf(dev->nBaudRate, "%d", 19200);
+        sprintf(dev->nSubnetID, "%d", 1);
+        sprintf(dev->nDeviceID, "%d", i + 1);
+        sprintf(dev->nProtocol, "%d", 1); // Modbus TCP
+        sprintf(dev->nStationNumber, "%d", i + 1);
+        sprintf(dev->nObjectInstance, "%d", i + 1);
+        sprintf(dev->nHardwareVersion, "1.0");
+        sprintf(dev->nSoftwareVersion, "2.0");
+        sprintf(dev->strNote, "Auto-synced device %d", i + 1);
+        sprintf(dev->nStatus, "%d", 1); // Online
+        sprintf(dev->nLastOnline, "%lld", (long long)time(nullptr));
+        sprintf(dev->nLastOffline, "%lld", (long long)time(nullptr) - 3600);
+        sprintf(dev->strTimezone, "UTC");
+        sprintf(dev->nTotalPoints, "%d", 100);
+        sprintf(dev->nInputs, "%d", 50);
+        sprintf(dev->nOutputs, "%d", 25);
+        sprintf(dev->nVariables, "%d", 25);
+    }
+
+    return device_count;
+}
+
+int T3000_GetDevicePointsFromDB(const char* device_serial,
+                                                      InputPointFFIData* inputs, int max_inputs,
+                                                      OutputPointFFIData* outputs, int max_outputs,
+                                                      VariablePointFFIData* variables, int max_variables,
+                                                      int* input_count, int* output_count, int* variable_count) {
+    if (!device_serial || (!inputs && !outputs && !variables)) {
+        return -1; // Invalid parameters
+    }
+
+    // Initialize counts
+    if (input_count) *input_count = 0;
+    if (output_count) *output_count = 0;
+    if (variable_count) *variable_count = 0;
+
+    // TODO: Replace with actual T3000 database queries based on device_serial
+    // This is mock data for testing
+
+    // Mock input points
+    if (inputs && max_inputs > 0 && input_count) {
+        int count = (max_inputs > 10) ? 10 : max_inputs;
+        for (int i = 0; i < count; i++) {
+            InputPointFFIData* input = &inputs[i];
+            memset(input, 0, sizeof(InputPointFFIData));
+
+            sprintf(input->nDeviceSerial, "%s", device_serial);
+            sprintf(input->Input_index, "%d", i + 1);
+            sprintf(input->strDescription, "Input Point %d", i + 1);
+            sprintf(input->strLabel, "IN%d", i + 1);
+            sprintf(input->strUnits, "°F");
+            sprintf(input->fValue, "%.2f", 72.5f + i);
+            sprintf(input->nHighAlarm, "%.2f", 85.0f);
+            sprintf(input->nLowAlarm, "%.2f", 60.0f);
+            sprintf(input->nRange, "%d", 1); // Temperature range
+            sprintf(input->nFilter, "%d", 5);
+            sprintf(input->nStatus, "%d", 1); // Normal
+            sprintf(input->nSignalType, "%d", 1); // Analog
+            sprintf(input->nJumper, "%d", 0);
+            sprintf(input->nBypassError, "%d", 0);
+            sprintf(input->strNote, "Auto-synced input %d", i + 1);
+        }
+        *input_count = count;
+    }
+
+    // Mock output points
+    if (outputs && max_outputs > 0 && output_count) {
+        int count = (max_outputs > 8) ? 8 : max_outputs;
+        for (int i = 0; i < count; i++) {
+            OutputPointFFIData* output = &outputs[i];
+            memset(output, 0, sizeof(OutputPointFFIData));
+
+            sprintf(output->nDeviceSerial, "%s", device_serial);
+            sprintf(output->Output_index, "%d", i + 1);
+            sprintf(output->strDescription, "Output Point %d", i + 1);
+            sprintf(output->strLabel, "OUT%d", i + 1);
+            sprintf(output->strUnits, "%");
+            sprintf(output->fValue, "%.2f", 50.0f + i * 5);
+            sprintf(output->nHighAlarm, "%.2f", 100.0f);
+            sprintf(output->nLowAlarm, "%.2f", 0.0f);
+            sprintf(output->nRange, "%d", 2); // Percentage range
+            sprintf(output->nLowVoltage, "%.2f", 0.0f);
+            sprintf(output->nStatus, "%d", 1); // Normal
+            sprintf(output->nSignalType, "%d", 2); // PWM
+            sprintf(output->nPWMPeriod, "%d", 1000);
+            sprintf(output->strNote, "Auto-synced output %d", i + 1);
+        }
+        *output_count = count;
+    }
+
+    // Mock variable points
+    if (variables && max_variables > 0 && variable_count) {
+        int count = (max_variables > 15) ? 15 : max_variables;
+        for (int i = 0; i < count; i++) {
+            VariablePointFFIData* variable = &variables[i];
+            memset(variable, 0, sizeof(VariablePointFFIData));
+
+            sprintf(variable->nDeviceSerial, "%s", device_serial);
+            sprintf(variable->Variable_index, "%d", i + 1);
+            sprintf(variable->strDescription, "Variable Point %d", i + 1);
+            sprintf(variable->strLabel, "VAR%d", i + 1);
+            sprintf(variable->strUnits, "Units");
+            sprintf(variable->fValue, "%.2f", 100.0f + i * 10);
+            sprintf(variable->nRange, "%d", 3); // Custom range
+            sprintf(variable->nStatus, "%d", 1); // Normal
+            sprintf(variable->strNote, "Auto-synced variable %d", i + 1);
+        }
+        *variable_count = count;
+    }
+
+    return 0; // Success
+}
+
+const char* T3000_GetDatabasePath() {
+    // TODO: Return actual T3000 database path
+    // This should point to the real T3000.db file
+    static const char* db_path = "C:\\T3000\\database\\T3000.db";
+    return db_path;
+}
+
+int T3000_InitializeAutoSync() {
+    // TODO: Initialize any required resources for auto-sync
+    // This could include database connections, cache initialization, etc.
+    return 1; // Success
+}
+
+void T3000_CleanupAutoSync() {
+    // TODO: Cleanup resources used by auto-sync
+    // Close database connections, free memory, etc.
+}

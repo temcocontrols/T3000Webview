@@ -5,6 +5,79 @@
 extern "C" {
 #endif
 
+// FFI Data structures for auto-sync database access
+typedef struct DeviceFFIData {
+    char nSerialNumber[32];           // Device serial number
+    char nProductModel[32];           // Product model number
+    char strName[256];                // Device name/description
+    char strIPAddress[64];            // IP address
+    char nPort[16];                   // Port number
+    char nBaudRate[16];               // Baud rate
+    char nSubnetID[16];               // Subnet ID
+    char nDeviceID[16];               // Device ID
+    char nProtocol[16];               // Protocol type
+    char nStationNumber[16];          // Station number
+    char nObjectInstance[16];         // Object instance
+    char nHardwareVersion[32];        // Hardware version
+    char nSoftwareVersion[32];        // Software version
+    char strNote[512];                // Notes
+    char nStatus[16];                 // Device status
+    char nLastOnline[32];             // Last online timestamp
+    char nLastOffline[32];            // Last offline timestamp
+    char strTimezone[64];             // Timezone
+    char nTotalPoints[16];            // Total points count
+    char nInputs[16];                 // Input points count
+    char nOutputs[16];                // Output points count
+    char nVariables[16];              // Variable points count
+} DeviceFFIData;
+
+typedef struct InputPointFFIData {
+    char nDeviceSerial[32];           // Device serial number (FK)
+    char Input_index[32];             // Input index
+    char strDescription[256];         // Description
+    char strLabel[64];                // Label
+    char strUnits[32];                // Units
+    char fValue[32];                  // Current value
+    char nHighAlarm[32];              // High alarm threshold
+    char nLowAlarm[32];               // Low alarm threshold
+    char nRange[16];                  // Range setting
+    char nFilter[16];                 // Filter setting
+    char nStatus[16];                 // Status
+    char nSignalType[16];             // Signal type
+    char nJumper[16];                 // Jumper setting
+    char nBypassError[16];            // Bypass error
+    char strNote[512];                // Notes
+} InputPointFFIData;
+
+typedef struct OutputPointFFIData {
+    char nDeviceSerial[32];           // Device serial number (FK)
+    char Output_index[32];            // Output index
+    char strDescription[256];         // Description
+    char strLabel[64];                // Label
+    char strUnits[32];                // Units
+    char fValue[32];                  // Current value
+    char nHighAlarm[32];              // High alarm threshold
+    char nLowAlarm[32];               // Low alarm threshold
+    char nRange[16];                  // Range setting
+    char nLowVoltage[32];             // Low voltage setting
+    char nStatus[16];                 // Status
+    char nSignalType[16];             // Signal type
+    char nPWMPeriod[16];              // PWM period
+    char strNote[512];                // Notes
+} OutputPointFFIData;
+
+typedef struct VariablePointFFIData {
+    char nDeviceSerial[32];           // Device serial number (FK)
+    char Variable_index[32];          // Variable index
+    char strDescription[256];         // Description
+    char strLabel[64];                // Label
+    char strUnits[32];                // Units
+    char fValue[32];                  // Current value
+    char nRange[16];                  // Range setting
+    char nStatus[16];                 // Status
+    char strNote[512];                // Notes
+} VariablePointFFIData;
+
 // Export functions for external access to T3000 functionality
 // These functions bridge between the FFI interface and actual T3000 code
 
@@ -83,47 +156,18 @@ const char* T3000_GetLastErrorMessage();
 int T3000_GetLastErrorCode();
 void T3000_ClearLastError();
 
-// Legacy functions for backward compatibility
-int T3000_Connect(const char* ip_address, int port);
-int T3000_Disconnect();
-int T3000_IsConnected();
-int T3000_GetInputCount();
-int T3000_GetInputValue(int point_number);
-int T3000_GetInputStatus(int point_number);
-const char* T3000_GetInputLabel(int point_number);
-const char* T3000_GetInputUnits(int point_number);
-int T3000_GetAllInputs(int* values, int max_count);
-int T3000_GetOutputCount();
-int T3000_GetOutputValue(int point_number);
-int T3000_SetOutputValue(int point_number, int value);
-int T3000_GetOutputStatus(int point_number);
-const char* T3000_GetOutputLabel(int point_number);
-const char* T3000_GetOutputUnits(int point_number);
-int T3000_GetVariablePointCount();
-int T3000_GetAllVariablePoints(int* values, int max_count);
-int T3000_GetVariablePointValue(int point_number);
-int T3000_GetVariablePointStatus(int point_number);
-const char* T3000_GetVariablePointUnits(int point_number);
-const char* T3000_GetVariablePointLabel(int point_number);
-int T3000_GetProgramCount();
-int T3000_GetProgramStatus(int program_number);
-const char* T3000_GetProgramLabel(int program_number);
-int T3000_GetScheduleCount();
-int T3000_GetScheduleStatus(int schedule_number);
-const char* T3000_GetScheduleLabel(int schedule_number);
-int T3000_GetAlarmCount();
-int T3000_GetAlarmStatus(int alarm_number);
-const char* T3000_GetAlarmMessage(int alarm_number);
-int T3000_GetBatchPointValues(int* point_numbers, int* values, int count);
-int T3000_SetBatchPointValues(int* point_numbers, int* values, int count);
-int T3000_ScanForDevices();
-int T3000_GetDeviceInfo(int device_id, char* name, char* firmware, char* ip, int* modbus_id);
-int T3000_SetDeviceNetworkConfig(int device_id, const char* ip, int modbus_id);
-int T3000_GetTrendLogCount();
-int T3000_GetTrendLogData(int log_number, int* timestamps, int* values, int max_count);
-int T3000_GetLastError();
-const char* T3000_GetErrorMessage(int error_code);
-void T3000_ClearError();
+// AUTO-SYNC DATABASE ACCESS FUNCTIONS - Added for WebView integration
+int T3000_GetAllDevicesFromDB(DeviceFFIData* device_data, int max_devices);
+int T3000_GetDevicePointsFromDB(const char* device_serial,
+                               InputPointFFIData* inputs, int max_inputs,
+                               OutputPointFFIData* outputs, int max_outputs,
+                               VariablePointFFIData* variables, int max_variables,
+                               int* input_count, int* output_count, int* variable_count);
+
+// Database path access - critical for auto-sync
+const char* T3000_GetDatabasePath();
+int T3000_InitializeAutoSync();
+void T3000_CleanupAutoSync();
 
 #ifdef __cplusplus
 }

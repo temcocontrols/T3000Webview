@@ -76,26 +76,42 @@ pub extern "C" fn run_server() -> RustError {
 pub mod t3_device;
 pub mod t3_socket;
 
+use t3_device::auto_sync_simple::T3000AutoSyncService;
+
 /// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Log to file for headless service
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    let startup_msg = format!("[{}] T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + T3000 Device DB", timestamp);
+    let startup_msg = format!("[{}] T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + Auto-Sync (T3000.db → webview_t3_device.db)", timestamp);
 
     // Write to structured log file
     use crate::logger::write_structured_log;
     let _ = write_structured_log("startup", &startup_msg);
 
-    // Try to initialize T3000 device database (NON-BLOCKING - log errors but continue)
+    // Try to initialize T3000 device database (webview_t3_device.db)
     if let Err(e) = crate::utils::start_database_service().await {
-        let error_msg = format!("[{}] ⚠️  T3000 device database initialization failed: {} - Core services will continue",
+        let error_msg = format!("[{}] ⚠️  T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue",
                                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"), e);
         let _ = write_structured_log("service_errors", &error_msg);
-        println!("⚠️  Warning: T3000 device database unavailable - Core services starting anyway");
+        println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");
     } else {
-        let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 device database ready",
+        let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 webview database (webview_t3_device.db) ready",
                                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
     }
+
+    // Initialize and start T3000 auto-sync service in background
+    // Syncs data from T3000.db (C++) → webview_t3_device.db (Rust)
+    let auto_sync_service = T3000AutoSyncService::new();
+    let auto_sync_handle = tokio::spawn(async move {
+        if let Err(e) = auto_sync_service.start_auto_sync().await {
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+            let error_msg = format!("[{}] T3000 auto-sync service (T3000.db → webview_t3_device.db) failed: {}", timestamp, e);
+            let _ = write_structured_log("service_errors", &error_msg);
+        }
+    });
+
+    let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 auto-sync service initialized (T3000.db → webview_t3_device.db)",
+                               chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {
@@ -113,8 +129,9 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Start HTTP server (this will block and run the main server)
     let http_result = server::server_start().await;
 
-    // If HTTP server stops, we should stop WebSocket too
+    // If HTTP server stops, we should stop background services too
     websocket_handle.abort();
+    auto_sync_handle.abort();
 
     http_result
 }

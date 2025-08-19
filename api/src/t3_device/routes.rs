@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
-use crate::t3_device::data_collector::{DataCollectionService};
+// use crate::t3_device::data_collector::{DataCollectionService}; // Temporarily disabled
 
 // Helper function to check if T3000 device database is available
 async fn ensure_t3_device_db_available(state: &T3AppState) -> Result<(), StatusCode> {
@@ -445,6 +445,7 @@ async fn get_device_with_points(
     }
 }
 
+/* TEMPORARILY DISABLED - DATA COLLECTION ENDPOINTS (Need field name updates)
 // Data Collection endpoints
 async fn start_data_collection(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
     let mut data_collector = state.data_collector.lock().await;
@@ -622,6 +623,7 @@ async fn collect_now(State(state): State<T3AppState>) -> Result<Json<Value>, Sta
         })))
     }
 }
+END DISABLED DATA COLLECTION SECTION */
 
 pub fn t3_device_routes() -> Router<T3AppState> {
     Router::new()
@@ -649,13 +651,13 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id", delete(delete_device))
         .route("/devices/:id/points", get(get_device_with_points))
 
-        // Data Collection endpoints
-        .route("/collection/start", post(start_data_collection))
-        .route("/collection/stop", post(stop_data_collection))
-        .route("/collection/status", get(get_collection_status))
-        .route("/collection/config", get(get_collection_config))
-        .route("/collection/config", post(update_collection_config))
-        .route("/collection/collect-now", post(collect_now))
+        // Data Collection endpoints - TEMPORARILY DISABLED
+        // .route("/collection/start", post(start_data_collection))
+        // .route("/collection/stop", post(stop_data_collection))
+        // .route("/collection/status", get(get_collection_status))
+        // .route("/collection/config", get(get_collection_config))
+        // .route("/collection/config", post(update_collection_config))
+        // .route("/collection/collect-now", post(collect_now))
 }
 
 // ============================================================================

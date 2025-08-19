@@ -13,22 +13,16 @@ fn main() {
     println!("cargo:rerun-if-changed=src/ffi/third_party/T3000_exports.cpp");
     println!("cargo:rerun-if-changed=src/ffi/third_party/T3000_exports.h");
 
-    // Configure the C++ compiler for FFI bridge
-    cc::Build::new()
-        .cpp(true)
-        .std("c++14")
-        .file(ffi_dir.join("t3000_ffi.cpp"))
-        .include(&ffi_dir)
-        .include(&third_party_dir) // Include T3000 third-party source for exports
-        .compile("t3000_ffi");
-
-    // Configure the C++ compiler for T3000 exports (vendored version)
+    // Configure the C++ compiler for T3000 exports (includes all FFI functions)
     cc::Build::new()
         .cpp(true)
         .std("c++14")
         .file(third_party_dir.join("T3000_exports.cpp"))
+        .include(&ffi_dir)
         .include(&third_party_dir)
         .compile("t3000_exports");
+
+    // Note: Using T3000_exports.cpp instead of t3000_ffi.cpp to avoid duplicate symbols
 
     // Link required Windows libraries for 32-bit
     println!("cargo:rustc-link-lib=kernel32");

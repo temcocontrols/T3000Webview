@@ -5,7 +5,38 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_float};
 use crate::error::AppError;
-use crate::t3_device::data_collector::{DataPoint, PointType, DataSource};
+use serde::{Deserialize, Serialize};
+
+// Type definitions for FFI use (copied from disabled data_collector module)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PointType {
+    Input,
+    Output,
+    Variable,
+    Program,
+    Schedule,
+    Alarm,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataPoint {
+    pub device_id: i32,
+    pub point_type: PointType,
+    pub point_number: i32,
+    pub value: f32,
+    pub status: String,
+    pub units: Option<String>,
+    pub timestamp: i64,
+    pub source: DataSource,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DataSource {
+    RealTime,      // From WebSocket/WebView2 messages
+    Background,    // From scheduled collection
+    CppDirect,     // From direct C++ function calls
+    BacnetScan,    // Future: From BACnet discovery
+}
 
 /// Start the FFI service - prepares FFI functions for T3000 C++ integration
 pub async fn start_ffi_service() -> Result<(), Box<dyn std::error::Error>> {

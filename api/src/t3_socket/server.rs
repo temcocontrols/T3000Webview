@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use super::types::*;
 use crate::utils::log_message;
-use crate::t3_device::trend_collector::TrendDataCollector;
+// use crate::t3_device::trend_collector::TrendDataCollector; // Temporarily disabled
 
 /// Start the WebSocket service on port 9104
 pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {

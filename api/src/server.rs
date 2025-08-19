@@ -79,8 +79,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         )
         // T3000 device routes with T3AppState
         .nest("/api/t3_device", t3_device_routes())
-        // Real-time trend data routes
-        .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
+        // Real-time trend data routes - TEMPORARILY DISABLED
+        // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
         .fallback_service(routes_static())
         .layer(cors))

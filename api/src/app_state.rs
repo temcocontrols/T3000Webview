@@ -32,17 +32,17 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 
 use tokio::sync::broadcast;
 use crate::db_connection::establish_t3_device_connection;
-use crate::t3_device::data_collector::{DataCollectionService, DataPoint};
+// use crate::t3_device::data_collector::{DataCollectionService, DataPoint}; // Temporarily disabled
 
 /// Abstracted enhanced application state with T3000 device support
 #[derive(Clone)]
 pub struct T3AppState {
     pub conn: Arc<Mutex<DatabaseConnection>>,
     pub t3_device_conn: Option<Arc<Mutex<DatabaseConnection>>>,
-    pub data_collector: Arc<Mutex<Option<DataCollectionService>>>,
-    pub data_sender: broadcast::Sender<DataPoint>,
-    pub trend_collector: Option<Arc<crate::t3_device::trend_collector::TrendDataCollector>>,
-    pub trend_data_sender: Option<broadcast::Sender<crate::t3_device::trend_collector::TrendDataPoint>>,
+    // pub data_collector: Arc<Mutex<Option<DataCollectionService>>>, // Temporarily disabled
+    // pub data_sender: broadcast::Sender<DataPoint>, // Temporarily disabled
+    // pub trend_collector: Option<Arc<crate::t3_device::trend_collector::TrendDataCollector>>, // Temporarily disabled
+    // pub trend_data_sender: Option<broadcast::Sender<crate::t3_device::trend_collector::TrendDataPoint>>, // Temporarily disabled
 }
 
 /// Creates a webview T3000 application state with dual database connections
@@ -120,30 +120,30 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let shared_conn = Arc::new(Mutex::new(conn));
     let shared_t3_device_conn = t3_device_conn.map(|conn| Arc::new(Mutex::new(conn)));
 
-    // Create data collection broadcast channel
-    let (data_sender, _data_receiver) = broadcast::channel(1000);
+    // Create data collection broadcast channel - TEMPORARILY DISABLED
+    // let (data_sender, _data_receiver) = broadcast::channel(1000);
 
-    // Initialize data collection service (will be set up later when started)
-    let data_collector = Arc::new(Mutex::new(None));
+    // Initialize data collection service (will be set up later when started) - TEMPORARILY DISABLED
+    // let data_collector = Arc::new(Mutex::new(None));
 
-    // Initialize trend data collector if webview T3000 database is available
-    let (trend_collector, trend_data_sender) = if let Some(ref t3_device_conn) = shared_t3_device_conn {
-        let (collector, _receiver) = crate::t3_device::trend_collector::TrendDataCollector::new(
-            t3_device_conn.clone()
-        );
-        let sender = collector.get_data_sender();
-        (Some(Arc::new(collector)), Some(sender))
-    } else {
-        (None, None)
-    };
+    // Initialize trend data collector if webview T3000 database is available - TEMPORARILY DISABLED
+    // let (trend_collector, trend_data_sender) = if let Some(ref t3_device_conn) = shared_t3_device_conn {
+    //     let (collector, _receiver) = crate::t3_device::trend_collector::TrendDataCollector::new(
+    //         t3_device_conn.clone()
+    //     );
+    //     let sender = collector.get_data_sender();
+    //     (Some(Arc::new(collector)), Some(sender))
+    // } else {
+    //     (None, None)
+    // };
 
     // Return a T3AppState struct with the shared connections
     Ok(T3AppState {
         conn: shared_conn,
         t3_device_conn: shared_t3_device_conn,
-        data_collector,
-        data_sender,
-        trend_collector,
-        trend_data_sender,
+        // data_collector, // Temporarily disabled
+        // data_sender, // Temporarily disabled
+        // trend_collector, // Temporarily disabled
+        // trend_data_sender, // Temporarily disabled
     })
 }
