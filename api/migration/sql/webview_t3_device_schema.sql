@@ -7,10 +7,11 @@
 -- CORE T3000 TABLES (Based on T3000.db structure - EXACT REPLICA)
 -- =================================================================
 
--- ALL_NODE table (T3000 devices/nodes table for webview)
+-- DEVICES table (T3000 devices/nodes table for webview)
 -- This is the main device table based on T3000.db with exact C++ field names
-CREATE TABLE IF NOT EXISTS ALL_NODE (
-    Serial_ID INTEGER PRIMARY KEY,             -- C++ Serial_ID (primary key in T3000)
+CREATE TABLE IF NOT EXISTS DEVICES (
+    SerialNumber INTEGER PRIMARY KEY,          -- C++ SerialNumber (primary key, renamed from Serial_ID)
+    PanelId INTEGER,                           -- C++ PanelId (new column for panel identification)
     MainBuilding_Name TEXT,                    -- C++ MainBuilding_Name
     Building_Name TEXT,                        -- C++ Building_Name (network/subnet)
     Floor_Name TEXT,                           -- C++ Floor_name
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS ALL_NODE (
 -- INPUTS table (Original T3000 input points table)
 -- Exact replica of T3000.db INPUTS table structure
 CREATE TABLE IF NOT EXISTS INPUTS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Input_index TEXT,                          -- C++ Input_index
     Panel TEXT,                                -- C++ Panel
     Full_Label TEXT,                           -- C++ Full_Label (description[21])
@@ -53,13 +54,13 @@ CREATE TABLE IF NOT EXISTS INPUTS (
     Label TEXT,                                -- C++ Label (label[9])
     Type_Field TEXT,                           -- C++ Type
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded binary data)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- OUTPUTS table (Original T3000 output points table)
 -- Exact replica of T3000.db OUTPUTS table structure
 CREATE TABLE IF NOT EXISTS OUTPUTS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Output_index TEXT,                         -- C++ Output_index
     Panel TEXT,                                -- C++ Panel
     Full_Label TEXT,                           -- C++ Full_Label (description[19])
@@ -75,13 +76,13 @@ CREATE TABLE IF NOT EXISTS OUTPUTS (
     Label TEXT,                                -- C++ Label (label[9])
     Type_Field TEXT,                           -- C++ Type
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- VARIABLES table (Original T3000 variable points table)
 -- Exact replica of T3000.db VARIABLES table structure
 CREATE TABLE IF NOT EXISTS VARIABLES (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Variable_index TEXT,                       -- C++ Variable_index
     Panel TEXT,                                -- C++ Panel
     Full_Label TEXT,                           -- C++ Full_Label (description[21])
@@ -89,13 +90,13 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     fValue TEXT,                               -- C++ fValue (stored as string)
     Units TEXT,                                -- C++ Units
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- PROGRAMS table (Original T3000 programs table)
 -- Exact replica of T3000.db PROGRAMS table structure
 CREATE TABLE IF NOT EXISTS PROGRAMS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Program_ID TEXT,                           -- C++ Program_ID
     Switch_Node TEXT,                          -- C++ Switch_Node
     Program_Label TEXT,                        -- C++ Program_Label
@@ -105,13 +106,13 @@ CREATE TABLE IF NOT EXISTS PROGRAMS (
     Program_Status TEXT,                       -- C++ Program_Status
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- SCHEDULES table (Original T3000 schedules table)
 -- Exact replica of T3000.db SCHEDULES table structure
 CREATE TABLE IF NOT EXISTS SCHEDULES (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Schedule_ID TEXT,                          -- C++ Schedule_ID
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     Output_Field TEXT,                         -- C++ Output
@@ -128,13 +129,13 @@ CREATE TABLE IF NOT EXISTS SCHEDULES (
     Thursday_Time TEXT,                        -- C++ Thursday_Time
     Friday_Time TEXT,                          -- C++ Friday_Time
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- PID_TABLE table (Original T3000 PID controllers table)
 -- Exact replica of T3000.db PID_TABLE table structure
 CREATE TABLE IF NOT EXISTS PID_TABLE (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Loop_Field TEXT,                           -- C++ Loop
     Switch_Node TEXT,                          -- C++ Switch_Node
     Input_Field TEXT,                          -- C++ Input
@@ -156,13 +157,13 @@ CREATE TABLE IF NOT EXISTS PID_TABLE (
     Units_State TEXT,                          -- C++ Units_State
     Variable_State TEXT,                       -- C++ Variable_State
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- HOLIDAYS table (Original T3000 holidays table)
 -- Exact replica of T3000.db HOLIDAYS table structure
 CREATE TABLE IF NOT EXISTS HOLIDAYS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Holiday_ID TEXT,                           -- C++ Holiday_ID
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     Holiday_Value TEXT,                        -- C++ Holiday_Value
@@ -171,26 +172,26 @@ CREATE TABLE IF NOT EXISTS HOLIDAYS (
     Day_Field TEXT,                            -- C++ Day
     Year_Field TEXT,                           -- C++ Year
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- GRAPHICS table (Original T3000 graphics table)
 -- Exact replica of T3000.db GRAPHICS table structure
 CREATE TABLE IF NOT EXISTS GRAPHICS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Graphic_ID TEXT,                           -- C++ Graphic_ID
     Switch_Node TEXT,                          -- C++ Switch_Node
     Graphic_Label TEXT,                        -- C++ Graphic_Label
     Graphic_Picture_File TEXT,                 -- C++ Graphic_Picture_File
     Graphic_Total_Point TEXT,                  -- C++ Graphic_Total_Point
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- ALARMS table (Original T3000 alarms table)
 -- Exact replica of T3000.db ALARMS table structure
 CREATE TABLE IF NOT EXISTS ALARMS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Alarm_ID TEXT,                             -- C++ Alarm_ID
     Panel TEXT,                                -- C++ Panel
     Message TEXT,                              -- C++ Message
@@ -207,13 +208,13 @@ CREATE TABLE IF NOT EXISTS ALARMS (
     LowLimit TEXT,                             -- C++ LowLimit
     HighLimit TEXT,                            -- C++ HighLimit
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- MONITORDATA table (Original T3000 monitor data table)
 -- Exact replica of T3000.db MONITORDATA table structure
 CREATE TABLE IF NOT EXISTS MONITORDATA (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Monitor_ID TEXT,                           -- C++ Monitor_ID
     Switch_Node TEXT,                          -- C++ Switch_Node
     Monitor_Label TEXT,                        -- C++ Monitor_Label
@@ -226,7 +227,7 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
     Range_Field TEXT,                          -- C++ Range
     Calibration TEXT,                          -- C++ Calibration
     BinaryArray TEXT,                          -- C++ BinaryArray (hex encoded)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- =================================================================
@@ -237,7 +238,7 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
 -- TRENDLOGS table (Main trendlog configuration - T3000 style naming)
 -- Following T3000 naming pattern: uppercase table name, descriptive fields
 CREATE TABLE IF NOT EXISTS TRENDLOGS (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Trendlog_ID TEXT,                          -- C++ Trendlog_ID (following T3000 ID pattern)
     Switch_Node TEXT,                          -- C++ Switch_Node (following T3000 pattern)
     Trendlog_Label TEXT,                       -- C++ Trendlog_Label (following T3000 label pattern)
@@ -247,7 +248,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
     Auto_Manual TEXT,                          -- C++ Auto_Manual (following T3000 pattern)
     Status TEXT,                               -- C++ Status (following T3000 pattern)
     BinaryArray TEXT,                          -- C++ BinaryArray (following T3000 pattern)
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- TRENDLOG_INPUTS table (Trendlog input configuration - T3000 style naming)
@@ -276,7 +277,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
 -- TRENDLOG_BUFFER table (Circular buffer management - T3000 style naming)
 -- Manages circular buffer for efficient data storage
 CREATE TABLE IF NOT EXISTS TRENDLOG_BUFFER (
-    nSerialNumber INTEGER NOT NULL,            -- C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (FK to DEVICES.SerialNumber)
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID
     Buffer_Index INTEGER,                      -- C++ Buffer_Index (circular buffer position)
     Buffer_Size INTEGER,                       -- C++ Buffer_Size
@@ -284,48 +285,48 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_BUFFER (
     Buffer_Full INTEGER,                       -- C++ Buffer_Full (0/1 flag)
     Status TEXT,                               -- C++ Status
     BinaryArray TEXT,                          -- C++ BinaryArray
-    FOREIGN KEY (nSerialNumber) REFERENCES ALL_NODE(Serial_ID)
+    FOREIGN KEY (SerialNumber) REFERENCES DEVICES(SerialNumber)
 );
 
 -- =================================================================
 -- INDEXES for performance (T3000 style naming)
 -- =================================================================
 
-CREATE INDEX IF NOT EXISTS IDX_ALL_NODE_SERIAL ON ALL_NODE(Serial_ID);
-CREATE INDEX IF NOT EXISTS IDX_INPUTS_SERIAL ON INPUTS(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_OUTPUTS_SERIAL ON OUTPUTS(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_VARIABLES_SERIAL ON VARIABLES(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_PROGRAMS_SERIAL ON PROGRAMS(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_SCHEDULES_SERIAL ON SCHEDULES(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_PID_TABLE_SERIAL ON PID_TABLE(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_HOLIDAYS_SERIAL ON HOLIDAYS(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_GRAPHICS_SERIAL ON GRAPHICS(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_ALARMS_SERIAL ON ALARMS(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_MONITORDATA_SERIAL ON MONITORDATA(nSerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOGS_SERIAL ON TRENDLOGS(nSerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_DEVICES_SERIAL ON DEVICES(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_INPUTS_SERIAL ON INPUTS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_OUTPUTS_SERIAL ON OUTPUTS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_VARIABLES_SERIAL ON VARIABLES(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_PROGRAMS_SERIAL ON PROGRAMS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_SCHEDULES_SERIAL ON SCHEDULES(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_PID_TABLE_SERIAL ON PID_TABLE(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_HOLIDAYS_SERIAL ON HOLIDAYS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_GRAPHICS_SERIAL ON GRAPHICS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_ALARMS_SERIAL ON ALARMS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_MONITORDATA_SERIAL ON MONITORDATA(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOGS_SERIAL ON TRENDLOGS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_INPUTS_ID ON TRENDLOG_INPUTS(Trendlog_ID);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_INPUT ON TRENDLOG_DATA(Trendlog_Input_ID);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME ON TRENDLOG_DATA(TimeStamp);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_BUFFER_SERIAL ON TRENDLOG_BUFFER(nSerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_BUFFER_SERIAL ON TRENDLOG_BUFFER(SerialNumber);
 
 -- =================================================================
 -- SAMPLE DATA (for testing - T3000 style data)
 -- =================================================================
 
--- Insert sample ALL_NODE device record (T3000 style)
-INSERT OR IGNORE INTO ALL_NODE (
-    Serial_ID, MainBuilding_Name, Building_Name, Product_Name,
+-- Insert sample DEVICES device record (T3000 style)
+INSERT OR IGNORE INTO DEVICES (
+    SerialNumber, PanelId, MainBuilding_Name, Building_Name, Product_Name,
     Bautrate, Product_Class_ID, Product_ID, Panel_Number, Network_Number,
     Description, Status
 ) VALUES (
-    12345, 'MAIN_BUILDING', 'Network_1', 'T3-BB Controller',
+    12345, 1, 'MAIN_BUILDING', 'Network_1', 'T3-BB Controller',
     '192.168.1.100', 1, 1, 1, 1,
     'Main building controller', 'Online'
 );
 
 -- Insert sample INPUTS records (T3000 style)
 INSERT OR IGNORE INTO INPUTS (
-    nSerialNumber, Input_index, Full_Label, fValue, Units, Status, BinaryArray
+    SerialNumber, Input_index, Full_Label, fValue, Units, Status, BinaryArray
 ) VALUES
 (12345, '1', 'Room Temperature', '22.5', 'DEG C', 'Online', '0000000000000000'),
 (12345, '2', 'Humidity Level', '45.2', 'PERCENT', 'Online', '0000000000000000'),
@@ -333,7 +334,7 @@ INSERT OR IGNORE INTO INPUTS (
 
 -- Insert sample OUTPUTS records (T3000 style)
 INSERT OR IGNORE INTO OUTPUTS (
-    nSerialNumber, Output_index, Full_Label, fValue, Units, Status, BinaryArray
+    SerialNumber, Output_index, Full_Label, fValue, Units, Status, BinaryArray
 ) VALUES
 (12345, '1', 'Cooling Valve', '25.0', 'PERCENT', 'Online', '0000000000000000'),
 (12345, '2', 'Heating Valve', '0.0', 'PERCENT', 'Online', '0000000000000000'),
@@ -341,14 +342,14 @@ INSERT OR IGNORE INTO OUTPUTS (
 
 -- Insert sample VARIABLES records (T3000 style)
 INSERT OR IGNORE INTO VARIABLES (
-    nSerialNumber, Variable_index, Full_Label, fValue, Units, BinaryArray
+    SerialNumber, Variable_index, Full_Label, fValue, Units, BinaryArray
 ) VALUES
 (12345, '1', 'Setpoint Temperature', '21.0', 'DEG C', '0000000000000000'),
 (12345, '2', 'Occupied Schedule', '1', 'ON/OFF', '0000000000000000');
 
 -- Insert sample TRENDLOGS record (T3000 style)
 INSERT OR IGNORE INTO TRENDLOGS (
-    nSerialNumber, Trendlog_ID, Trendlog_Label, Interval_Minutes, Buffer_Size, Status, BinaryArray
+    SerialNumber, Trendlog_ID, Trendlog_Label, Interval_Minutes, Buffer_Size, Status, BinaryArray
 ) VALUES
 (12345, '1', 'Room Temperature Trend', 15, 1000, 'Online', '0000000000000000');
 
