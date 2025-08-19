@@ -1,6 +1,6 @@
 pub mod routes;
 pub mod services;
-pub mod logging_data_service;    // ✅ MAIN UNIFIED SERVICE - All T3000 functionality combined
+pub mod t3000_main_service;      // ✅ MAIN T3000 SERVICE - Primary T3000 integration service
 pub mod websocket_handler;
 // pub mod database_bridge_service; // ✅ AVAILABLE - T3000 C++ DB → Rust DB bridge (not called by default)
 // pub mod data_collector;        // Temporarily disabled - needs field name updates

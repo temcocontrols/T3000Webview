@@ -1,6 +1,10 @@
-// T3000 LOGGING_DATA service for real-time data sync
-// This service handles FFI calls to T3000 C++ LOGGING_DATA function
-// and syncs the returned data to webview_t3_device.db
+// T3000 Main Service - Primary T3000 Building Automation Integration
+// This is the main service that handles all T3000 functionality:
+// - FFI calls to T3000 C++ functions (T3000_GetLoggingData)
+// - Real-time data synchronization
+// - Device discovery and management
+// - WebSocket broadcasting for live updates
+// - Database synchronization to webview_t3_device.db
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -19,25 +23,25 @@ use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
 use once_cell::sync::OnceCell;
 
-// FFI function declarations to T3000 C++ LOGGING_DATA
+// FFI function declarations to T3000 C++ Building Automation System
 extern "C" {
     fn T3000_GetLoggingData() -> *mut c_char;
     fn T3000_FreeLoggingDataString(ptr: *mut c_char);
 }
 
-/// Global service instance
-static LOGGING_SERVICE: OnceCell<Arc<LoggingDataService>> = OnceCell::new();
+/// Global main service instance
+static MAIN_SERVICE: OnceCell<Arc<T3000MainService>> = OnceCell::new();
 
-/// Configuration for the logging data service
+/// Configuration for the main T3000 service
 #[derive(Debug, Clone)]
-pub struct LoggingConfig {
+pub struct T3000MainConfig {
     pub sync_interval_secs: u64,      // Default: 300 (5 minutes)
     pub timeout_seconds: u64,         // FFI call timeout: 30 seconds
     pub retry_attempts: u32,          // Retry failed FFI calls: 3 times
     pub auto_start: bool,             // Start sync service on creation: true
 }
 
-impl Default for LoggingConfig {
+impl Default for T3000MainConfig {
     fn default() -> Self {
         Self {
             sync_interval_secs: 300,  // 5 minutes
@@ -80,15 +84,15 @@ pub struct PointData {
     pub unused: Option<i32>,
 }
 
-pub struct LoggingDataService {
+pub struct T3000MainService {
     db: DatabaseConnection,
-    config: LoggingConfig,
+    config: T3000MainConfig,
     is_running: Arc<AtomicBool>,
     websocket_sender: Option<tokio::sync::broadcast::Sender<String>>,
 }
 
-impl LoggingDataService {
-    pub async fn new(config: LoggingConfig) -> Result<Self, AppError> {
+impl T3000MainService {
+    pub async fn new(config: T3000MainConfig) -> Result<Self, AppError> {
         let db = establish_t3_device_connection().await?;
 
         Ok(Self {
@@ -148,7 +152,7 @@ impl LoggingDataService {
     }
 
     /// Static method to sync logging data (for use in spawned tasks)
-    async fn sync_logging_data_static(config: LoggingConfig) -> Result<(), AppError> {
+    async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         debug!("Starting LOGGING_DATA sync");
 
         let db = establish_t3_device_connection().await?;
@@ -168,7 +172,7 @@ impl LoggingDataService {
     }
 
     /// Sync data for a specific device
-    async fn sync_device_data_static(db: &DatabaseConnection, serial_number: i32, config: &LoggingConfig) -> Result<(), AppError> {
+    async fn sync_device_data_static(db: &DatabaseConnection, serial_number: i32, config: &T3000MainConfig) -> Result<(), AppError> {
         debug!("Syncing LOGGING_DATA for device {}", serial_number);
 
         // Get JSON data from T3000 C++ via FFI
@@ -232,7 +236,7 @@ impl LoggingDataService {
     }
 
     /// Call T3000 C++ LOGGING_DATA function via FFI
-    async fn get_logging_data_via_ffi_static(config: &LoggingConfig) -> Result<String, AppError> {
+    async fn get_logging_data_via_ffi_static(config: &T3000MainConfig) -> Result<String, AppError> {
         // Run FFI call in a blocking task with timeout
         let spawn_result = tokio::time::timeout(
             Duration::from_secs(config.timeout_seconds),
@@ -464,43 +468,43 @@ impl LoggingDataService {
 }
 
 /// Global service management
-impl LoggingDataService {
-    /// Initialize the global logging service
-    pub async fn initialize(config: LoggingConfig) -> Result<(), AppError> {
+impl T3000MainService {
+    /// Initialize the global T3000 main service
+    pub async fn initialize(config: T3000MainConfig) -> Result<(), AppError> {
         let service = Arc::new(Self::new(config).await?);
 
-        LOGGING_SERVICE.set(service.clone())
-            .map_err(|_| AppError::InitializationError("Logging service already initialized".to_string()))?;
+        MAIN_SERVICE.set(service.clone())
+            .map_err(|_| AppError::InitializationError("T3000 main service already initialized".to_string()))?;
 
         // Auto-start if configured
         if service.config.auto_start {
             service.start_sync_service().await?;
         }
 
-        info!("T3000 LOGGING_DATA service initialized successfully");
+        info!("T3000 Main Service initialized successfully");
         Ok(())
     }
 
-    /// Get the global logging service instance
-    pub fn get_service() -> Option<Arc<LoggingDataService>> {
-        LOGGING_SERVICE.get().cloned()
+    /// Get the global T3000 main service instance
+    pub fn get_service() -> Option<Arc<T3000MainService>> {
+        MAIN_SERVICE.get().cloned()
     }
 }
 
 /// Public functions for global service access
-pub async fn initialize_logging_service(config: LoggingConfig) -> Result<(), AppError> {
-    LoggingDataService::initialize(config).await
+pub async fn initialize_logging_service(config: T3000MainConfig) -> Result<(), AppError> {
+    T3000MainService::initialize(config).await
 }
 
-pub fn get_logging_service() -> Option<Arc<LoggingDataService>> {
-    LoggingDataService::get_service()
+pub fn get_logging_service() -> Option<Arc<T3000MainService>> {
+    T3000MainService::get_service()
 }
 
 pub async fn sync_logging_data_once() -> Result<(), AppError> {
     if let Some(service) = get_logging_service() {
         service.sync_once().await
     } else {
-        Err(AppError::ServiceError("Logging service not initialized".to_string()))
+        Err(AppError::ServiceError("T3000 main service not initialized".to_string()))
     }
 }
 
@@ -508,7 +512,7 @@ pub async fn start_logging_sync() -> Result<(), AppError> {
     if let Some(service) = get_logging_service() {
         service.start_sync_service().await
     } else {
-        Err(AppError::ServiceError("Logging service not initialized".to_string()))
+        Err(AppError::ServiceError("T3000 main service not initialized".to_string()))
     }
 }
 
@@ -517,7 +521,7 @@ pub fn stop_logging_sync() -> Result<(), AppError> {
         service.stop_sync_service();
         Ok(())
     } else {
-        Err(AppError::ServiceError("Logging service not initialized".to_string()))
+        Err(AppError::ServiceError("T3000 main service not initialized".to_string()))
     }
 }
 
