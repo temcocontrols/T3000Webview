@@ -1,10 +1,13 @@
-// T3000 Auto-Sync Service - Database Bridge
-// Automatically syncs device data when the backend starts
+// T3000 Database Bridge Service - C++ Database to Rust Database Sync
+// Purpose: Bridge between T3000 C++ ecosystem and WebView Rust API with REAL device data
+// This service provides direct SQLite database file access as an alternative to FFI calls
 //
 // Data Flow: Default_Building.db (C++ real device data) → webview_t3_device.db (Rust database)
 // Source: E:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\Database\Buildings\Default_Building\Default_Building.db
 // Target: E:\1025\github\temcocontrols\T3000Webview\Database\webview_t3_device.db
-// Purpose: Bridge between T3000 C++ ecosystem and WebView Rust API with REAL device data
+//
+// Note: This service is AVAILABLE but NOT CALLED by default.
+// The main T3000 service uses FFI calls instead (logging_data_service.rs)
 
 use crate::error::AppError;
 use std::sync::{Arc, Mutex};
@@ -12,7 +15,7 @@ use tokio::time::{sleep, Duration};
 use crate::logger::write_structured_log;
 
 #[derive(Debug, Clone)]
-pub struct AutoSyncStatus {
+pub struct DatabaseBridgeStatus {
     pub is_running: bool,
     pub last_sync: Option<chrono::DateTime<chrono::Utc>>,
     pub sync_count: u32,
@@ -21,7 +24,7 @@ pub struct AutoSyncStatus {
     pub last_error: Option<String>,
 }
 
-impl Default for AutoSyncStatus {
+impl Default for DatabaseBridgeStatus {
     fn default() -> Self {
         Self {
             is_running: false,
@@ -34,15 +37,15 @@ impl Default for AutoSyncStatus {
     }
 }
 
-pub struct T3000AutoSyncService {
-    status: Arc<Mutex<AutoSyncStatus>>,
+pub struct T3000DatabaseBridgeService {
+    status: Arc<Mutex<DatabaseBridgeStatus>>,
     sync_interval: Duration,
 }
 
-impl T3000AutoSyncService {
+impl T3000DatabaseBridgeService {
     pub fn new() -> Self {
         Self {
-            status: Arc::new(Mutex::new(AutoSyncStatus::default())),
+            status: Arc::new(Mutex::new(DatabaseBridgeStatus::default())),
             sync_interval: Duration::from_secs(300), // 5 minutes default
         }
     }
@@ -52,8 +55,9 @@ impl T3000AutoSyncService {
         self
     }
 
-    /// Start the auto-sync service (background task)
-    pub async fn start_auto_sync(&self) -> Result<(), AppError> {
+    /// Start the database bridge service (background task)
+    /// NOTE: This function is AVAILABLE but NOT CALLED by default
+    pub async fn start_database_bridge(&self) -> Result<(), AppError> {
         let status_arc = Arc::clone(&self.status);
         let interval = self.sync_interval;
 
@@ -64,21 +68,21 @@ impl T3000AutoSyncService {
             status.last_sync = Some(chrono::Utc::now());
         }
 
-        let _ = write_structured_log("auto_sync",
-            &format!("[{}] T3000 Auto-Sync Service started - interval: {}s",
+        let _ = write_structured_log("database_bridge",
+            &format!("[{}] T3000 Database Bridge Service started - interval: {}s",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
                 interval.as_secs()));
 
         // Background sync loop
         loop {
-            match self.perform_sync().await {
+            match self.perform_database_sync().await {
                 Ok(_) => {
                     let mut status = status_arc.lock().unwrap();
                     status.sync_count += 1;
                     status.last_sync = Some(chrono::Utc::now());
 
-                    let _ = write_structured_log("auto_sync",
-                        &format!("[{}] Auto-sync completed - devices: {}, total syncs: {}",
+                    let _ = write_structured_log("database_bridge",
+                        &format!("[{}] Database bridge sync completed - devices: {}, total syncs: {}",
                             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
                             status.devices_synced, status.sync_count));
                 }
@@ -87,8 +91,8 @@ impl T3000AutoSyncService {
                     status.error_count += 1;
                     status.last_error = Some(e.to_string());
 
-                    let _ = write_structured_log("auto_sync_errors",
-                        &format!("[{}] Auto-sync error: {} (total errors: {})",
+                    let _ = write_structured_log("database_bridge_errors",
+                        &format!("[{}] Database bridge error: {} (total errors: {})",
                             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
                             e, status.error_count));
                 }
@@ -100,27 +104,27 @@ impl T3000AutoSyncService {
     }
 
     /// Get current sync status
-    pub fn get_status(&self) -> AutoSyncStatus {
+    pub fn get_status(&self) -> DatabaseBridgeStatus {
         self.status.lock().unwrap().clone()
     }
 
-    /// Perform a single sync operation
+    /// Perform a single database sync operation
     /// Reads from Default_Building.db (C++ database) and syncs to webview_t3_device.db (Rust database)
-    async fn perform_sync(&self) -> Result<(), AppError> {
-        let _ = write_structured_log("auto_sync",
-            &format!("[{}] Performing T3000 Default_Building.db → WebView database sync...",
+    async fn perform_database_sync(&self) -> Result<(), AppError> {
+        let _ = write_structured_log("database_bridge",
+            &format!("[{}] Performing T3000 Default_Building.db → WebView database bridge sync...",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
-        let _ = write_structured_log("auto_sync",
+        let _ = write_structured_log("database_bridge",
             &format!("[{}] Source: Default_Building.db (real device data) → Target: webview_t3_device.db (Rust database)",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
         // Log the actual database paths being used
-        let _ = write_structured_log("auto_sync",
+        let _ = write_structured_log("database_bridge",
             &format!("[{}] T3000 Default_Building.db path: E:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\Database\\Buildings\\Default_Building\\Default_Building.db",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
-        let _ = write_structured_log("auto_sync",
+        let _ = write_structured_log("database_bridge",
             &format!("[{}] WebView database path: E:\\1025\\github\\temcocontrols\\T3000Webview\\Database\\webview_t3_device.db",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
@@ -143,8 +147,8 @@ impl T3000AutoSyncService {
             status.devices_synced = 1; // Will be actual device count from Default_Building.db
         }
 
-        let _ = write_structured_log("auto_sync",
-            &format!("[{}] ✅ Default_Building.db → WebView sync completed successfully",
+        let _ = write_structured_log("database_bridge",
+            &format!("[{}] ✅ Default_Building.db → WebView bridge sync completed successfully",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
         Ok(())

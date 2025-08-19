@@ -76,7 +76,6 @@ pub extern "C" fn run_server() -> RustError {
 pub mod t3_device;
 pub mod t3_socket;
 
-use t3_device::auto_sync_simple::T3000AutoSyncService;
 use t3_device::logging_data_service::{initialize_logging_service, start_logging_sync, LoggingConfig};
 
 /// Start all T3000 services (HTTP + WebSocket)
@@ -124,21 +123,8 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Initialize and start T3000 auto-sync service in background
-    // Syncs data from T3000.db (C++) → webview_t3_device.db (Rust)
-    let auto_sync_service = T3000AutoSyncService::new();
-    let auto_sync_handle = tokio::spawn(async move {
-        if let Err(e) = auto_sync_service.start_auto_sync().await {
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let error_msg = format!("[{}] T3000 auto-sync service (T3000.db → webview_t3_device.db) failed: {}", timestamp, e);
-            let _ = write_structured_log("service_errors", &error_msg);
-        }
-    });
-
-    let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 LOGGING_DATA service initialized (FFI → webview_t3_device.db)",
+    let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 LOGGING_DATA unified service started (All T3000 functionality combined)",
                                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
-    let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 auto-sync service initialized (T3000.db → webview_t3_device.db)",
-                               chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {
@@ -158,7 +144,6 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     // If HTTP server stops, we should stop background services too
     websocket_handle.abort();
-    auto_sync_handle.abort();
     logging_handle.abort();
 
     http_result
