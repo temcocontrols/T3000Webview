@@ -615,3 +615,38 @@ int GetTrendLogData(int device_id, int log_number, float* values,
 
     return T3000_GetTrendLogData(device_id, log_number, values, timestamps, max_records);
 }
+
+// LOGGING_DATA function - Real-time data loading from T3000
+extern void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source);
+
+const char* T3000_GetLoggingData() {
+    if (!EnsureT3000Initialized()) {
+        return nullptr;
+    }
+
+    try {
+        // Create JSON message for LOGGING_DATA action (15)
+        CString msg = "{\"action\": 15}";
+        CString outmsg;
+
+        // Call T3000's HandleWebViewMsg function
+        HandleWebViewMsg(msg, outmsg, 0);
+
+        // Convert CString to std::string and then to char*
+        std::string result = CT2A(outmsg);
+
+        // Allocate memory for the result - caller must free with T3000_FreeLoggingDataString
+        char* result_ptr = new char[result.length() + 1];
+        strcpy(result_ptr, result.c_str());
+
+        return result_ptr;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+void T3000_FreeLoggingDataString(const char* data) {
+    if (data != nullptr) {
+        delete[] data;
+    }
+}

@@ -192,6 +192,10 @@ const char* T3000_GetDatabasePath();
 int T3000_InitializeAutoSync();
 void T3000_CleanupAutoSync();
 
+// Real-time data loading via LOGGING_DATA
+char* T3000_GetLoggingData();
+void T3000_FreeLoggingDataString(char* json_string);
+
 #ifdef __cplusplus
 }
 #endif

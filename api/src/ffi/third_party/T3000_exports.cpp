@@ -1113,3 +1113,98 @@ void T3000_CleanupAutoSync() {
     // TODO: Cleanup resources used by auto-sync
     // Close database connections, free memory, etc.
 }
+
+// ==============================
+// Real-time Data Loading Functions
+// ==============================
+
+// Stub implementation of HandleWebViewMsg for testing
+// TODO: Replace with actual T3000 HandleWebViewMsg when integrating
+extern "C" int HandleWebViewMsg(int action, char* msg, int iLen) {
+    // Mock JSON response for LOGGING_DATA action (15)
+    if (action == 15 && msg != nullptr && iLen > 0) {
+        const char* mock_response = R"({
+            "action": 15,
+            "status": "success",
+            "timestamp": "2025-08-19T12:00:00Z",
+            "devices": [
+                {
+                    "serial": 12345,
+                    "name": "Test Device",
+                    "status": "online",
+                    "inputs": [
+                        {"index": 1, "label": "Temperature", "value": 22.5, "units": "°C"},
+                        {"index": 2, "label": "Humidity", "value": 65.0, "units": "%"}
+                    ],
+                    "outputs": [
+                        {"index": 1, "label": "Fan Speed", "value": 75.0, "units": "%"}
+                    ],
+                    "variables": [
+                        {"index": 1, "label": "Setpoint", "value": 20.0, "units": "°C"}
+                    ]
+                }
+            ]
+        })";
+
+        size_t response_len = strlen(mock_response);
+        if (response_len < static_cast<size_t>(iLen)) {
+            strcpy(msg, mock_response);
+            return 0; // Success
+        }
+    }
+
+    return -1; // Error
+}
+
+char* T3000_GetLoggingData() {
+    // Call the main T3000 HandleWebViewMsg function with LOGGING_DATA action
+    // action = 15 corresponds to LOGGING_DATA case in the T3000 message handler
+    char* json_result = nullptr;
+
+    try {
+        // Allocate a buffer for the result
+        // The T3000 HandleWebViewMsg function will populate this with JSON data
+        char buffer[65536]; // 64KB buffer for JSON response
+        memset(buffer, 0, sizeof(buffer));
+
+        // Call the main T3000 function to get logging data
+        int result = HandleWebViewMsg(15, buffer, sizeof(buffer));
+
+        if (result == 0 && strlen(buffer) > 0) {
+            // Success - allocate and return the JSON string
+            size_t len = strlen(buffer);
+            json_result = (char*)malloc(len + 1);
+            if (json_result) {
+                strcpy(json_result, buffer);
+                json_result[len] = '\0';
+            }
+        } else {
+            // Error or no data - return error JSON
+            const char* error_json = "{\"error\":\"Failed to get logging data from T3000\",\"devices\":[],\"timestamp\":\"error\"}";
+            size_t len = strlen(error_json);
+            json_result = (char*)malloc(len + 1);
+            if (json_result) {
+                strcpy(json_result, error_json);
+                json_result[len] = '\0';
+            }
+        }
+    }
+    catch (...) {
+        // Exception handling - return error JSON
+        const char* error_json = "{\"error\":\"Exception occurred in T3000_GetLoggingData\",\"devices\":[],\"timestamp\":\"error\"}";
+        size_t len = strlen(error_json);
+        json_result = (char*)malloc(len + 1);
+        if (json_result) {
+            strcpy(json_result, error_json);
+            json_result[len] = '\0';
+        }
+    }
+
+    return json_result;
+}
+
+void T3000_FreeLoggingDataString(char* json_string) {
+    if (json_string != nullptr) {
+        free(json_string);
+    }
+}

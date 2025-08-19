@@ -176,6 +176,10 @@ int GetTrendLogCount(int device_id);
 int GetTrendLogData(int device_id, int log_number, float* values,
                    long* timestamps, int max_records);
 
+// LOGGING_DATA function - New real-time data loading
+const char* T3000_GetLoggingData();
+void T3000_FreeLoggingDataString(const char* data);
+
 // Device control
 int ConnectToDevice(int device_id);
 int DisconnectFromDevice(int device_id);
