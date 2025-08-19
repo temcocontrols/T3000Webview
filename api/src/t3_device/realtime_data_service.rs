@@ -1,6 +1,6 @@
-// T3000 Data Collection Service
-// Handles both real-time data interception and background data collection
-// Supports both direct C++ FFI calls and WebSocket message interception
+// T3000 Real-time Data Service
+// Handles real-time data interception and background data collection
+// Supports broadcast channels, WebSocket integration, and multi-source data collection
 
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
@@ -90,7 +90,7 @@ impl Default for DataCollectionConfig {
     }
 }
 
-pub struct DataCollectionService {
+pub struct RealtimeDataService {
     config: Arc<RwLock<DataCollectionConfig>>,
     status: Arc<RwLock<CollectionStatus>>,
     db_connection: Arc<DatabaseConnection>,
@@ -108,7 +108,7 @@ pub enum CollectionCommand {
     GetStatus,
 }
 
-impl DataCollectionService {
+impl RealtimeDataService {
     pub fn new(db_connection: Arc<DatabaseConnection>) -> (Self, mpsc::Sender<CollectionCommand>, broadcast::Receiver<DataPoint>) {
         let (data_sender, data_receiver) = broadcast::channel(1000);
         let (control_sender, control_receiver) = mpsc::channel(100);
@@ -560,7 +560,7 @@ impl RealTimeDataInterceptor {
 
             // Store real-time data
             if !data_points.is_empty() {
-                DataCollectionService::store_data_points(&self.db_connection, data_points.clone(), DataSource::RealTime).await?;
+                RealtimeDataService::store_data_points(&self.db_connection, data_points.clone(), DataSource::RealTime).await?;
 
                 // Broadcast to subscribers
                 for point in data_points {

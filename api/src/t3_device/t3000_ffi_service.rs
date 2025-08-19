@@ -1,10 +1,12 @@
-// Auto-sync service for T3000 WebView API
-// This service automatically syncs device data from T3000 when the API starts
+// T3000 FFI Service for T3000 WebView API
+// This service provides comprehensive FFI bindings for T3000 C++ integration
+// Includes device discovery, connection management, and data access functions
 //
-// DATABASE ARCHITECTURE:
-// - SOURCE: T3000.db (C++ SQLite database) - Original T3000 data
-// - TARGET: webview_t3_device.db (Rust SQLite database) - WebView API data
-// - SYNC: FFI bridge copies data from T3000.db → webview_t3_device.db
+// FFI CAPABILITIES:
+// - Device discovery and management (T3000_ScanForDevices, T3000_ConnectToDevice)
+// - Point data access (Input/Output/Variable points)
+// - Real-time data collection from T3000 controllers
+// - Complete C++ function binding layer
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_float};
@@ -151,14 +153,14 @@ pub struct AutoSyncStatus {
     pub errors: Vec<String>,
 }
 
-pub struct T3000AutoSyncService {
+pub struct T3000FFIService {
     db_connection: Arc<Mutex<DatabaseConnection>>,
     is_running: Arc<AtomicBool>,
     sync_interval: Duration,
     status: Arc<Mutex<AutoSyncStatus>>,
 }
 
-impl T3000AutoSyncService {
+impl T3000FFIService {
     pub fn new(db_connection: Arc<Mutex<DatabaseConnection>>, sync_interval_seconds: u64) -> Self {
         Self {
             db_connection,
@@ -462,8 +464,8 @@ impl T3000AutoSyncService {
 pub async fn initialize_t3000_auto_sync(
     db_connection: Arc<Mutex<DatabaseConnection>>,
     sync_interval_seconds: u64,
-) -> Result<Arc<T3000AutoSyncService>, AppError> {
-    let auto_sync_service = Arc::new(T3000AutoSyncService::new(
+) -> Result<Arc<T3000FFIService>, AppError> {
+    let ffi_service = Arc::new(T3000FFIService::new(
         db_connection,
         sync_interval_seconds,
     ));
@@ -476,7 +478,7 @@ pub async fn initialize_t3000_auto_sync(
 }
 
 // Graceful shutdown function
-pub async fn shutdown_t3000_auto_sync(service: Arc<T3000AutoSyncService>) {
+pub async fn shutdown_t3000_ffi(service: Arc<T3000FFIService>) {
     service.stop_auto_sync();
     println!("🔽 T3000 Auto-sync service shutdown complete");
 }

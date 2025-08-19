@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
-// use crate::t3_device::data_collector::{DataCollectionService}; // Temporarily disabled
+// use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
 async fn ensure_t3_device_db_available(state: &T3AppState) -> Result<(), StatusCode> {
@@ -462,7 +462,7 @@ async fn start_data_collection(State(state): State<T3AppState>) -> Result<Json<V
     let t3_device_conn = get_t3_device_conn!(state).clone();
     let t3_device_conn_arc = Arc::new(t3_device_conn);
 
-    let (mut service, _control_sender, _data_receiver) = DataCollectionService::new(t3_device_conn_arc);
+    let (mut service, _control_sender, _data_receiver) = RealtimeDataService::new(t3_device_conn_arc);
 
     // Start the service
     if let Err(e) = service.start().await {

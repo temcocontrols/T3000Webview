@@ -32,14 +32,14 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 
 use tokio::sync::broadcast;
 use crate::db_connection::establish_t3_device_connection;
-// use crate::t3_device::data_collector::{DataCollectionService, DataPoint}; // Temporarily disabled
+// use crate::t3_device::realtime_data_service::{RealtimeDataService, DataPoint}; // Available but not called
 
 /// Abstracted enhanced application state with T3000 device support
 #[derive(Clone)]
 pub struct T3AppState {
     pub conn: Arc<Mutex<DatabaseConnection>>,
     pub t3_device_conn: Option<Arc<Mutex<DatabaseConnection>>>,
-    // pub data_collector: Arc<Mutex<Option<DataCollectionService>>>, // Temporarily disabled
+    // pub realtime_data: Arc<Mutex<Option<RealtimeDataService>>>, // Available but not called
     // pub data_sender: broadcast::Sender<DataPoint>, // Temporarily disabled
     // pub trend_collector: Option<Arc<crate::t3_device::trend_collector::TrendDataCollector>>, // Temporarily disabled
     // pub trend_data_sender: Option<broadcast::Sender<crate::t3_device::trend_collector::TrendDataPoint>>, // Temporarily disabled
