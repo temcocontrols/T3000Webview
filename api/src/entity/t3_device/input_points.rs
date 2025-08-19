@@ -1,4 +1,4 @@
-// T3000 INPUTS Entity - Exact match to T3000.db INPUTS table
+// T3000 INPUTS Entity - Updated for DEVICES table
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
     pub Input_index: Option<String>,            // C++ Input_index
     pub Panel: Option<String>,                  // C++ Panel

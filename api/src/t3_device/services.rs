@@ -1,13 +1,13 @@
 // T3000 Device Service - Aligned with pure T3000 structure
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use crate::entity::t3_device::{all_node, input_points, output_points};
+use crate::entity::t3_device::{devices, input_points, output_points};
 use crate::error::AppError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceWithStats {
     #[serde(flatten)]
-    pub device: all_node::Model,
+    pub device: devices::Model,
     pub input_count: u64,
     pub output_count: u64,
     pub variable_count: u64,
@@ -17,7 +17,7 @@ pub struct DeviceWithStats {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceWithPoints {
     #[serde(flatten)]
-    pub device: all_node::Model,
+    pub device: devices::Model,
     pub input_points: Vec<input_points::Model>,
     pub output_points: Vec<output_points::Model>,
     pub point_count: u64,
@@ -25,7 +25,8 @@ pub struct DeviceWithPoints {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateDeviceRequest {
-    pub Serial_ID: Option<i32>,                    // T3000: Serial_ID (primary key)
+    pub SerialNumber: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)
+    pub PanelId: Option<i32>,                     // T3000: PanelId (new column for panel identification)
     pub MainBuilding_Name: Option<String>,         // T3000: MainBuilding_Name
     pub Building_Name: Option<String>,             // T3000: Building_Name
     pub Floor_Name: Option<String>,                // T3000: Floor_Name
@@ -41,6 +42,7 @@ pub struct CreateDeviceRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateDeviceRequest {
+    pub PanelId: Option<i32>,                      // T3000: PanelId (new column for panel identification)
     pub MainBuilding_Name: Option<String>,         // T3000: MainBuilding_Name
     pub Building_Name: Option<String>,             // T3000: Building_Name
     pub Floor_Name: Option<String>,                // T3000: Floor_Name
@@ -57,21 +59,21 @@ pub struct T3DeviceService;
 impl T3DeviceService {
     /// Get all devices with basic statistics
     pub async fn get_all_devices_with_stats(db: &DatabaseConnection) -> Result<Vec<DeviceWithStats>, AppError> {
-        let devices_list = all_node::Entity::find().all(db).await?;
+        let devices_list = devices::Entity::find().all(db).await?;
         let mut devices_with_stats = Vec::new();
 
         for device in devices_list {
-            let serial_id = device.Serial_ID;
+            let serial_id = device.SerialNumber;
 
             // Count related points using the correct foreign key
             let input_count = input_points::Entity::find()
-                .filter(input_points::Column::NSerialNumber.eq(serial_id))
+                .filter(input_points::Column::SerialNumber.eq(serial_id))
                 .count(db)
                 .await
                 .unwrap_or(0);
 
             let output_count = output_points::Entity::find()
-                .filter(output_points::Column::NSerialNumber.eq(serial_id))
+                .filter(output_points::Column::SerialNumber.eq(serial_id))
                 .count(db)
                 .await
                 .unwrap_or(0);
@@ -88,9 +90,9 @@ impl T3DeviceService {
         Ok(devices_with_stats)
     }
 
-    /// Get a specific device by Serial_ID
-    pub async fn get_device_by_id(db: &DatabaseConnection, device_id: i32) -> Result<Option<all_node::Model>, AppError> {
-        let device = all_node::Entity::find_by_id(device_id)
+    /// Get a specific device by SerialNumber
+    pub async fn get_device_by_id(db: &DatabaseConnection, device_id: i32) -> Result<Option<devices::Model>, AppError> {
+        let device = devices::Entity::find_by_id(device_id)
             .one(db)
             .await?;
 
@@ -99,7 +101,7 @@ impl T3DeviceService {
 
     /// Get device with its points
     pub async fn get_device_with_points(db: &DatabaseConnection, device_id: i32) -> Result<Option<DeviceWithPoints>, AppError> {
-        let device = all_node::Entity::find_by_id(device_id)
+        let device = devices::Entity::find_by_id(device_id)
             .one(db)
             .await?;
 
@@ -123,9 +125,10 @@ impl T3DeviceService {
     }
 
     /// Create a new device
-    pub async fn create_device(db: &DatabaseConnection, device_data: CreateDeviceRequest) -> Result<all_node::Model, AppError> {
-        let new_device = all_node::ActiveModel {
-            Serial_ID: NotSet, // Auto-generated primary key
+    pub async fn create_device(db: &DatabaseConnection, device_data: CreateDeviceRequest) -> Result<devices::Model, AppError> {
+        let new_device = devices::ActiveModel {
+            SerialNumber: NotSet, // Auto-generated primary key
+            PanelId: Set(device_data.PanelId),
             MainBuilding_Name: Set(device_data.MainBuilding_Name),
             Building_Name: Set(device_data.Building_Name),
             Floor_Name: Set(device_data.Floor_Name),
@@ -154,8 +157,8 @@ impl T3DeviceService {
     }
 
     /// Update a device
-    pub async fn update_device(db: &DatabaseConnection, device_id: i32, device_data: UpdateDeviceRequest) -> Result<Option<all_node::Model>, AppError> {
-        let device = all_node::Entity::find_by_id(device_id)
+    pub async fn update_device(db: &DatabaseConnection, device_id: i32, device_data: UpdateDeviceRequest) -> Result<Option<devices::Model>, AppError> {
+        let device = devices::Entity::find_by_id(device_id)
             .one(db)
             .await?;
 
@@ -164,8 +167,11 @@ impl T3DeviceService {
             None => return Ok(None),
         };
 
-        let mut device: all_node::ActiveModel = device.into();
+        let mut device: devices::ActiveModel = device.into();
 
+        if let Some(panel_id) = device_data.PanelId {
+            device.PanelId = Set(Some(panel_id));
+        }
         if let Some(main_building_name) = device_data.MainBuilding_Name {
             device.MainBuilding_Name = Set(Some(main_building_name));
         }
@@ -197,7 +203,7 @@ impl T3DeviceService {
 
     /// Delete a device
     pub async fn delete_device(db: &DatabaseConnection, device_id: i32) -> Result<bool, AppError> {
-        let result = all_node::Entity::delete_by_id(device_id)
+        let result = devices::Entity::delete_by_id(device_id)
             .exec(db)
             .await?;
 

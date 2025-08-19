@@ -14,7 +14,7 @@ use tokio::time::sleep;
 use sea_orm::*;
 use serde::{Serialize, Deserialize};
 
-use crate::entity::t3_device::{all_node, input_points, output_points, variable_points};
+use crate::entity::t3_device::{devices, input_points, output_points, variable_points};
 use crate::error::AppError;
 use crate::db_connection::establish_t3_device_connection;
 
@@ -66,26 +66,27 @@ extern "C" {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct DeviceFFIData {
-    pub Serial_ID: c_int,                      // ALL_NODE.Serial_ID (primary key)
-    pub Product_ID: c_int,                     // ALL_NODE.Product_ID
-    pub Product_Class_ID: c_int,               // ALL_NODE.Product_Class_ID
-    pub Panel_Number: c_int,                   // ALL_NODE.Panel_Number
-    pub Network_Number: c_int,                 // ALL_NODE.Network_Number
-    pub MainBuilding_Name: [c_char; 256],      // ALL_NODE.MainBuilding_Name
-    pub Building_Name: [c_char; 256],          // ALL_NODE.Building_Name
-    pub Floor_Name: [c_char; 256],             // ALL_NODE.Floor_Name
-    pub Room_Name: [c_char; 256],              // ALL_NODE.Room_Name
-    pub Product_Name: [c_char; 256],           // ALL_NODE.Product_Name
-    pub Description: [c_char; 256],            // ALL_NODE.Description
-    pub Bautrate: [c_char; 64],                // ALL_NODE.Bautrate (IP address or baud rate)
-    pub Address: [c_char; 64],                 // ALL_NODE.Address (Modbus address)
-    pub Status: [c_char; 32],                  // ALL_NODE.Status
+    pub SerialNumber: c_int,                   // DEVICES.SerialNumber (primary key, renamed from Serial_ID)
+    pub PanelId: c_int,                        // DEVICES.PanelId (new column for panel identification)
+    pub Product_ID: c_int,                     // DEVICES.Product_ID
+    pub Product_Class_ID: c_int,               // DEVICES.Product_Class_ID
+    pub Panel_Number: c_int,                   // DEVICES.Panel_Number
+    pub Network_Number: c_int,                 // DEVICES.Network_Number
+    pub MainBuilding_Name: [c_char; 256],      // DEVICES.MainBuilding_Name
+    pub Building_Name: [c_char; 256],          // DEVICES.Building_Name
+    pub Floor_Name: [c_char; 256],             // DEVICES.Floor_Name
+    pub Room_Name: [c_char; 256],              // DEVICES.Room_Name
+    pub Product_Name: [c_char; 256],           // DEVICES.Product_Name
+    pub Description: [c_char; 256],            // DEVICES.Description
+    pub Bautrate: [c_char; 64],                // DEVICES.Bautrate (IP address or baud rate)
+    pub Address: [c_char; 64],                 // DEVICES.Address (Modbus address)
+    pub Status: [c_char; 32],                  // DEVICES.Status
 }
 
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct InputPointFFIData {
-    pub nSerialNumber: c_int,                  // INPUTS.nSerialNumber (FK to ALL_NODE.Serial_ID)
+    pub SerialNumber: c_int,                   // INPUTS.SerialNumber (FK to DEVICES.SerialNumber)
     pub Input_index: [c_char; 32],             // INPUTS.Input_index
     pub Panel: [c_char; 32],                   // INPUTS.Panel
     pub Full_Label: [c_char; 256],             // INPUTS.Full_Label
@@ -106,7 +107,7 @@ pub struct InputPointFFIData {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OutputPointFFIData {
-    pub nSerialNumber: c_int,                  // OUTPUTS.nSerialNumber (FK to ALL_NODE.Serial_ID)
+    pub SerialNumber: c_int,                   // OUTPUTS.SerialNumber (FK to DEVICES.SerialNumber)
     pub Output_index: [c_char; 32],            // OUTPUTS.Output_index
     pub Panel: [c_char; 32],                   // OUTPUTS.Panel
     pub Full_Label: [c_char; 256],             // OUTPUTS.Full_Label
@@ -127,7 +128,7 @@ pub struct OutputPointFFIData {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct VariablePointFFIData {
-    pub nSerialNumber: c_int,                  // VARIABLES.nSerialNumber (FK to ALL_NODE.Serial_ID)
+    pub SerialNumber: c_int,                   // VARIABLES.SerialNumber (FK to DEVICES.SerialNumber)
     pub Variable_index: [c_char; 32],          // VARIABLES.Variable_index
     pub Panel: [c_char; 32],                   // VARIABLES.Panel
     pub Full_Label: [c_char; 256],             // VARIABLES.Full_Label
@@ -269,7 +270,7 @@ impl T3000AutoSyncService {
 
         // Clear existing webview data (webview_t3_device.db)
         // This ensures fresh sync from T3000.db → webview_t3_device.db
-        all_node::Entity::delete_many().exec(&*db).await?;
+        devices::Entity::delete_many().exec(&*db).await?;
         input_points::Entity::delete_many().exec(&*db).await?;
         output_points::Entity::delete_many().exec(&*db).await?;
         variable_points::Entity::delete_many().exec(&*db).await?;
@@ -290,8 +291,9 @@ impl T3000AutoSyncService {
             let device = &device_data[i];
 
             // Convert FFI data to SeaORM model - now field names match exactly
-            let device_model = all_node::ActiveModel {
-                Serial_ID: Set(device.Serial_ID),
+            let device_model = devices::ActiveModel {
+                SerialNumber: Set(device.SerialNumber),
+                PanelId: Set(Some(device.PanelId)),
                 Product_ID: Set(Some(device.Product_ID)),
                 Product_Class_ID: Set(Some(device.Product_Class_ID)),
                 Panel_Number: Set(Some(device.Panel_Number)),
@@ -313,7 +315,7 @@ impl T3000AutoSyncService {
                 sync_stats.total_devices += 1;
 
                 // Step 4: Get and insert point data for this device
-                Self::sync_device_points(&*db, device.Serial_ID, &mut sync_stats).await?;
+                Self::sync_device_points(&*db, device.SerialNumber, &mut sync_stats).await?;
             }
         }
 
@@ -365,7 +367,7 @@ impl T3000AutoSyncService {
         for i in 0..(input_count as usize).min(MAX_POINTS) {
             let input = &inputs[i];
             let input_model = input_points::ActiveModel {
-                nSerialNumber: Set(Serial_ID),
+                SerialNumber: Set(Serial_ID),
                 Input_index: Set(Some(Self::c_str_to_string(&input.Input_index))),
                 Panel: Set(Some(Self::c_str_to_string(&input.Panel))),
                 Full_Label: Set(Some(Self::c_str_to_string(&input.Full_Label))),
@@ -394,7 +396,7 @@ impl T3000AutoSyncService {
         for i in 0..(output_count as usize).min(MAX_POINTS) {
             let output = &outputs[i];
             let output_model = output_points::ActiveModel {
-                nSerialNumber: Set(Serial_ID),
+                SerialNumber: Set(Serial_ID),
                 Output_index: Set(Some(Self::c_str_to_string(&output.Output_index))),
                 Panel: Set(Some(Self::c_str_to_string(&output.Panel))),
                 Full_Label: Set(Some(Self::c_str_to_string(&output.Full_Label))),
@@ -423,7 +425,7 @@ impl T3000AutoSyncService {
         for i in 0..(variable_count as usize).min(MAX_POINTS) {
             let variable = &variables[i];
             let variable_model = variable_points::ActiveModel {
-                nSerialNumber: Set(Serial_ID),
+                SerialNumber: Set(Serial_ID),
                 Variable_index: Set(Some(Self::c_str_to_string(&variable.Variable_index))),
                 Panel: Set(Some(Self::c_str_to_string(&variable.Panel))),
                 Full_Label: Set(Some(Self::c_str_to_string(&variable.Full_Label))),

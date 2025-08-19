@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub nSerialNumber: i32,                     // C++ nSerialNumber (FK to ALL_NODE.Serial_ID)
+    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
     pub Monitor_ID: Option<String>,             // C++ Monitor_ID
     pub Switch_Node: Option<String>,            // C++ Switch_Node

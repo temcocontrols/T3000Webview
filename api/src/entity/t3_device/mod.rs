@@ -1,5 +1,5 @@
 // T3000 Device Database Entities Module - Pure T3000 Structure
-pub mod all_node;
+pub mod devices;
 pub mod alarms;
 pub mod graphics;
 pub mod holidays;
