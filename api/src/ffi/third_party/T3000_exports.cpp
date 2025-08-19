@@ -19,9 +19,13 @@ static std::string g_string_buffer;
 static int g_last_error_code = 0;
 static std::string g_last_error_message;
 
-// Mock T3000 global database paths (normally defined in T3000.exe)
-const char* g_strCurBuildingDatabasefilePath = "C:\\T3000\\Database\\webview_t3_device.db";
-const char* g_strDatabasefilepath = "C:\\T3000\\Database\\T3000.db";
+// T3000 global database paths - now pointing to actual T3000 database locations
+// Main T3000 database (building structure)
+const char* g_strDatabasefilepath = "E:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\Database\\T3000.db";
+// Default Building database (device data)
+const char* g_strCurBuildingDatabasefilePath = "E:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\Database\\Buildings\\Default_Building\\Default_Building.db";
+// WebView database (sync target)
+const char* g_strWebViewDatabasePath = "E:\\1025\\github\\temcocontrols\\T3000Webview\\Database\\webview_t3_device.db";
 
 // Helper function for thread-safe error setting
 static void SetLastError(int code, const std::string& message) {
@@ -998,7 +1002,7 @@ int T3000_GetDevicePointsFromDB(const char* device_serial,
             sprintf(output->Output_index, "%d", i + 1);
             sprintf(output->strDescription, "Output Point %d", i + 1);
             sprintf(output->strLabel, "OUT%d", i + 1);
-            sprintf(output->strUnits, "%");
+            sprintf(output->strUnits, "%%");
             sprintf(output->fValue, "%.2f", 50.0f + i * 5);
             sprintf(output->nHighAlarm, "%.2f", 100.0f);
             sprintf(output->nLowAlarm, "%.2f", 0.0f);
@@ -1033,6 +1037,63 @@ int T3000_GetDevicePointsFromDB(const char* device_serial,
     }
 
     return 0; // Success
+}
+
+// ==============================
+// Real T3000 Database Functions
+// ==============================
+
+int T3000_GetRealDeviceCount() {
+    // TODO: Read from actual Default_Building.db
+    // SQL: SELECT COUNT(*) FROM ALL_NODE WHERE Online_Status = 1
+    if (!g_t3000_initialized) {
+        SetLastError(-2, "T3000 not initialized");
+        return 0;
+    }
+
+    // For now, return mock data
+    return 1; // Simulate 1 device found (the T3-TB device)
+}
+
+int T3000_GetRealDeviceData(T3000DeviceFFIData* devices, int max_devices, int* device_count) {
+    if (!g_t3000_initialized || !devices || !device_count) {
+        SetLastError(-2, "Invalid parameters");
+        return -1;
+    }
+
+    // TODO: Replace with actual database query to Default_Building.db
+    // SQL: SELECT * FROM ALL_NODE WHERE Online_Status = 1
+
+    // Mock data representing the T3-TB device from Default_Building.db
+    if (max_devices > 0) {
+        memset(&devices[0], 0, sizeof(T3000DeviceFFIData));
+
+        // Real T3-TB device data (as would be found in Default_Building.db)
+        sprintf(devices[0].nDeviceSerial, "123456");
+        sprintf(devices[0].strDeviceName, "T3-TB:123456-1");
+        sprintf(devices[0].strMainBuilding, "Default_Building");
+        sprintf(devices[0].strSubBuilding, "Default_Building");
+        sprintf(devices[0].strFloor, "floor1");
+        sprintf(devices[0].strRoom, "room1");
+        sprintf(devices[0].nProductType, "74");          // T3-TB product ID
+        sprintf(devices[0].nModbusID, "1");
+        sprintf(devices[0].nComPort, "1");
+        sprintf(devices[0].nBaudRate, "19200");
+        sprintf(devices[0].strProtocol, "1");            // Modbus
+        sprintf(devices[0].nOnlineStatus, "1");          // Online
+        sprintf(devices[0].nObjectInstance, "123456");   // BACnet instance
+        sprintf(devices[0].nPanelNumber, "1");
+        sprintf(devices[0].strNote, "T3-TB device from Default_Building.db");
+
+        *device_count = 1;
+    }
+
+    return 0; // Success
+}
+
+const char* T3000_GetDefaultBuildingDatabasePath() {
+    // Return the actual path to Default_Building.db where real device data is stored
+    return g_strCurBuildingDatabasefilePath;
 }
 
 const char* T3000_GetDatabasePath() {

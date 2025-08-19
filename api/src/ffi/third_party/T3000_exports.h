@@ -7,6 +7,7 @@ extern "C" {
 
 // FFI Data structures for auto-sync database access
 typedef struct DeviceFFIData {
+    // Original field names (from mock device data)
     char nSerialNumber[32];           // Device serial number
     char nProductModel[32];           // Product model number
     char strName[256];                // Device name/description
@@ -29,6 +30,20 @@ typedef struct DeviceFFIData {
     char nInputs[16];                 // Input points count
     char nOutputs[16];                // Output points count
     char nVariables[16];              // Variable points count
+
+    // Real device field names (from T3000_GetRealDeviceData)
+    char nDeviceSerial[32];           // Device serial number
+    char strDeviceName[256];          // Device name/description
+    char strMainBuilding[256];        // Main building name
+    char strSubBuilding[256];         // Sub building name
+    char strFloor[256];               // Floor location
+    char strRoom[256];                // Room location
+    char nProductType[16];            // Product type/model
+    char nModbusID[16];               // Modbus ID
+    char nComPort[16];                // COM port
+    char strProtocol[16];             // Protocol type
+    char nOnlineStatus[16];           // Online status
+    char nPanelNumber[16];            // Panel number
 } DeviceFFIData;
 
 typedef struct InputPointFFIData {
@@ -77,6 +92,9 @@ typedef struct VariablePointFFIData {
     char nStatus[16];                 // Status
     char strNote[512];                // Notes
 } VariablePointFFIData;
+
+// Alias for consistency with function signatures
+typedef DeviceFFIData T3000DeviceFFIData;
 
 // Export functions for external access to T3000 functionality
 // These functions bridge between the FFI interface and actual T3000 code
@@ -163,6 +181,11 @@ int T3000_GetDevicePointsFromDB(const char* device_serial,
                                OutputPointFFIData* outputs, int max_outputs,
                                VariablePointFFIData* variables, int max_variables,
                                int* input_count, int* output_count, int* variable_count);
+
+// REAL T3000 DATABASE ACCESS - Default_Building.db integration
+int T3000_GetRealDeviceCount();
+int T3000_GetRealDeviceData(T3000DeviceFFIData* devices, int max_devices, int* device_count);
+const char* T3000_GetDefaultBuildingDatabasePath();
 
 // Database path access - critical for auto-sync
 const char* T3000_GetDatabasePath();

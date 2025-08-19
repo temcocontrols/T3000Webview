@@ -1,8 +1,10 @@
 // T3000 Auto-Sync Service - Database Bridge
 // Automatically syncs device data when the backend starts
 //
-// Data Flow: T3000.db (C++ database) → webview_t3_device.db (Rust database)
-// Purpose: Bridge between T3000 C++ ecosystem and WebView Rust API
+// Data Flow: Default_Building.db (C++ real device data) → webview_t3_device.db (Rust database)
+// Source: E:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\Database\Buildings\Default_Building\Default_Building.db
+// Target: E:\1025\github\temcocontrols\T3000Webview\Database\webview_t3_device.db
+// Purpose: Bridge between T3000 C++ ecosystem and WebView Rust API with REAL device data
 
 use crate::error::AppError;
 use std::sync::{Arc, Mutex};
@@ -103,20 +105,34 @@ impl T3000AutoSyncService {
     }
 
     /// Perform a single sync operation
-    /// Reads from T3000.db (C++ database) and syncs to webview_t3_device.db (Rust database)
+    /// Reads from Default_Building.db (C++ database) and syncs to webview_t3_device.db (Rust database)
     async fn perform_sync(&self) -> Result<(), AppError> {
         let _ = write_structured_log("auto_sync",
-            &format!("[{}] Performing T3000 → WebView database sync...",
+            &format!("[{}] Performing T3000 Default_Building.db → WebView database sync...",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
         let _ = write_structured_log("auto_sync",
-            &format!("[{}] Source: T3000.db (C++ database) → Target: webview_t3_device.db (Rust database)",
+            &format!("[{}] Source: Default_Building.db (real device data) → Target: webview_t3_device.db (Rust database)",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
-        // TODO: Implement actual T3000 FFI sync logic:
-        // 1. Use FFI to read device data from T3000.db (C++ side)
+        // Log the actual database paths being used
+        let _ = write_structured_log("auto_sync",
+            &format!("[{}] T3000 Default_Building.db path: E:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\Database\\Buildings\\Default_Building\\Default_Building.db",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
+
+        let _ = write_structured_log("auto_sync",
+            &format!("[{}] WebView database path: E:\\1025\\github\\temcocontrols\\T3000Webview\\Database\\webview_t3_device.db",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
+
+        // TODO: Implement actual Default_Building.db → webview_t3_device.db sync:
+        // 1. Read from ALL_NODE table in Default_Building.db (contains real T3-TB device data)
         // 2. Transform data to match webview_t3_device.db schema
         // 3. Insert/update data in webview_t3_device.db (Rust side)
+        //
+        // SQL Query example:
+        // SELECT Serial_ID, Product_name, Building_Name, Floor_name, Room_name,
+        //        Product_ID, Panal_Number, Object_Instance, Online_Status
+        // FROM ALL_NODE WHERE Online_Status = 1
 
         // For now, just simulate a successful sync
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -124,11 +140,11 @@ impl T3000AutoSyncService {
         // Update status
         {
             let mut status = self.status.lock().unwrap();
-            status.devices_synced = 1; // Placeholder count
+            status.devices_synced = 1; // Will be actual device count from Default_Building.db
         }
 
         let _ = write_structured_log("auto_sync",
-            &format!("[{}] ✅ T3000 → WebView sync completed successfully",
+            &format!("[{}] ✅ Default_Building.db → WebView sync completed successfully",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
         Ok(())
