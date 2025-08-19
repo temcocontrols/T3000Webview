@@ -81,6 +81,10 @@ extern "C" {
     fn GetAllInputPoints(device_id: c_int, values: *mut c_float, count: c_int) -> c_int;
     fn GetAllOutputPoints(device_id: c_int, values: *mut c_float, count: c_int) -> c_int;
     fn GetAllVariablePoints(device_id: c_int, values: *mut c_float, count: c_int) -> c_int;
+
+    // Real-time data loading via LOGGING_DATA - NEW FFI FUNCTIONS
+    fn T3000_GetLoggingData() -> *mut c_char;
+    fn T3000_FreeLoggingDataString(json_string: *mut c_char);
 }
 
 /// Safe wrapper for T3000 C++ function calls

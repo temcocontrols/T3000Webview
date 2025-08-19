@@ -62,6 +62,10 @@ pub enum AppError {
     NotFound(String),
     ValidationError(String),
     InternalError(String),
+    FfiError(String),
+    ParseError(String),
+    InitializationError(String),
+    ServiceError(String),
 }
 
 impl std::fmt::Display for AppError {
@@ -72,6 +76,10 @@ impl std::fmt::Display for AppError {
             AppError::NotFound(msg) => write!(f, "Not Found: {}", msg),
             AppError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
             AppError::InternalError(msg) => write!(f, "Internal Error: {}", msg),
+            AppError::FfiError(msg) => write!(f, "FFI Error: {}", msg),
+            AppError::ParseError(msg) => write!(f, "Parse Error: {}", msg),
+            AppError::InitializationError(msg) => write!(f, "Initialization Error: {}", msg),
+            AppError::ServiceError(msg) => write!(f, "Service Error: {}", msg),
         }
     }
 }
@@ -90,6 +98,18 @@ impl From<std::time::SystemTimeError> for AppError {
     }
 }
 
+impl From<Box<dyn std::error::Error>> for AppError {
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        AppError::DatabaseError(err.to_string())
+    }
+}
+
+impl From<tokio::time::error::Elapsed> for AppError {
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        AppError::ServiceError(format!("Operation timed out: {}", err))
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
@@ -98,6 +118,10 @@ impl IntoResponse for AppError {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::FfiError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::ParseError(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::InitializationError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::ServiceError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 
         (status, message).into_response()
