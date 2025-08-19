@@ -76,7 +76,7 @@ pub extern "C" fn run_server() -> RustError {
 pub mod t3_device;
 pub mod t3_socket;
 
-use t3_device::t3000_main_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
+use t3_device::t3000_ffi_sync_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
 
 /// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
@@ -86,44 +86,44 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     // Write to structured log file
     use crate::logger::write_structured_log;
-    let _ = write_structured_log("startup", &startup_msg);
+    let _ = write_structured_log("t3000_webview_startup", &startup_msg);
 
     // Try to initialize T3000 device database (webview_t3_device.db)
     if let Err(e) = crate::utils::start_database_service().await {
         let error_msg = format!("[{}] ⚠️  T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue",
                                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"), e);
-        let _ = write_structured_log("service_errors", &error_msg);
+        let _ = write_structured_log("t3000_webview_errors", &error_msg);
         println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");
     } else {
-        let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 webview database (webview_t3_device.db) ready",
+        let _ = write_structured_log("t3000_webview_startup", &format!("[{}] ✅ T3000 webview database (webview_t3_device.db) ready",
                                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
     }
 
     // Initialize T3000 Main Service
     let main_service_config = T3000MainConfig {
-        auto_start: false,  // We'll start it manually below
+        auto_start: false,  // We'll start it manually in background task below
         ..T3000MainConfig::default()
     };
     if let Err(e) = initialize_logging_service(main_service_config).await {
-        let error_msg = format!("[{}] ⚠️  T3000 Main Service initialization failed: {} - Core services will continue",
+        let error_msg = format!("[{}] ⚠️  T3000 FFI Sync Service initialization failed: {} - Core services will continue",
                                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"), e);
-        let _ = write_structured_log("service_errors", &error_msg);
-        println!("⚠️  Warning: T3000 Main Service unavailable - Core services starting anyway");
+        let _ = write_structured_log("t3000_ffi_sync_service_errors", &error_msg);
+        println!("⚠️  Warning: T3000 FFI Sync Service unavailable - Core services starting anyway");
     } else {
-        let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 Main Service initialized (Primary T3000 integration service)",
+        let _ = write_structured_log("t3000_ffi_sync_service_startup", &format!("[{}] ✅ T3000 FFI Sync Service initialized (Primary T3000 FFI integration service)",
                                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
     }
 
-    // Start T3000 Main Service in background
+    // Start T3000 FFI Sync Service in background with immediate trigger
     let main_service_handle = tokio::spawn(async move {
         if let Err(e) = start_logging_sync().await {
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let error_msg = format!("[{}] T3000 Main Service (FFI + DeviceSync + WebSocket) failed: {}", timestamp, e);
-            let _ = write_structured_log("service_errors", &error_msg);
+            let error_msg = format!("[{}] T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", timestamp, e);
+            let _ = write_structured_log("t3000_ffi_sync_service_errors", &error_msg);
         }
     });
 
-    let _ = write_structured_log("startup", &format!("[{}] ✅ T3000 Main Service started (Primary T3000 building automation integration)",
+    let _ = write_structured_log("t3000_ffi_sync_service_startup", &format!("[{}] ✅ T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)",
                                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
 
     // Start WebSocket service in background
@@ -132,7 +132,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
             // Log WebSocket errors to structured log
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
             let error_msg = format!("[{}] WebSocket service failed: {}", timestamp, e);
-            let _ = write_structured_log("service_errors", &error_msg);
+            let _ = write_structured_log("t3000_websocket_errors", &error_msg);
         }
     });
 

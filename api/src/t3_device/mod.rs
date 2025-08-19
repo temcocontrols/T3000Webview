@@ -1,6 +1,6 @@
 pub mod routes;
 pub mod services;
-pub mod t3000_main_service;      // ✅ MAIN T3000 SERVICE - Primary T3000 integration service (collects ALL data)
+pub mod t3000_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sync integration service (collects ALL data)
 pub mod websocket_handler;
 // pub mod database_bridge_service; // ✅ AVAILABLE - T3000 C++ DB → Rust DB bridge (not called by default)
 // pub mod t3000_ffi_service;     // ✅ AVAILABLE - T3000 FFI bindings and device discovery (not called by default)

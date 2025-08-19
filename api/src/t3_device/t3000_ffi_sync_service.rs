@@ -21,6 +21,7 @@ use crate::entity::t3_device::{
 };
 use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
+use crate::logger::write_structured_log;
 use once_cell::sync::OnceCell;
 
 // FFI function declarations to T3000 C++ Building Automation System
@@ -44,7 +45,7 @@ pub struct T3000MainConfig {
 impl Default for T3000MainConfig {
     fn default() -> Self {
         Self {
-            sync_interval_secs: 300,  // 5 minutes
+            sync_interval_secs: 60,   // 1 minute for faster debugging
             timeout_seconds: 30,      // 30 seconds FFI timeout
             retry_attempts: 3,
             auto_start: true,
@@ -141,23 +142,44 @@ impl T3000MainService {
             return Err(AppError::ServiceError("Logging data service is already running".to_string()));
         }
 
-        info!("Starting T3000 LOGGING_DATA sync service with {}-second intervals", self.config.sync_interval_secs);
+        info!("🚀 Starting T3000 LOGGING_DATA sync service with {}-second intervals", self.config.sync_interval_secs);
+        info!("⚡ Running immediate sync on startup, then continuing with periodic sync...");
 
         let config = self.config.clone();
         let is_running = self.is_running.clone();
 
         tokio::spawn(async move {
-            while is_running.load(Ordering::Relaxed) {
-                // Perform logging data sync
-                if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
-                    error!("Logging data sync failed: {}", e);
-                }
-
-                // Sleep until next sync interval
-                sleep(Duration::from_secs(config.sync_interval_secs)).await;
+            // Run immediate sync on startup
+            info!("🏃 Performing immediate startup sync...");
+            if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
+                error!("❌ Immediate startup sync failed: {}", e);
+                // Log error to structured log file
+                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+                let _ = write_structured_log("t3000_ffi_sync_service_errors",
+                    &format!("[{}] ❌ Immediate startup sync failed: {}", timestamp, e));
+            } else {
+                info!("✅ Immediate startup sync completed successfully");
             }
 
-            info!("T3000 LOGGING_DATA sync service stopped");
+            // Continue with periodic sync loop
+            while is_running.load(Ordering::Relaxed) {
+                // Sleep until next sync interval
+                info!("⏰ Waiting {} seconds until next sync cycle", config.sync_interval_secs);
+                sleep(Duration::from_secs(config.sync_interval_secs)).await;
+
+                // Perform periodic logging data sync
+                if is_running.load(Ordering::Relaxed) {
+                    if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
+                        error!("❌ Periodic sync failed: {}", e);
+                        // Log periodic sync error to structured log file
+                        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+                        let _ = write_structured_log("t3000_ffi_sync_service_errors",
+                            &format!("[{}] ❌ Periodic sync failed: {}", timestamp, e));
+                    }
+                }
+            }
+
+            info!("🛑 T3000 LOGGING_DATA sync service stopped");
         });
 
         Ok(())
@@ -183,6 +205,11 @@ impl T3000MainService {
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         info!("🚀 Starting T3000 LOGGING_DATA sync cycle");
         info!("⚙️  Sync Config - Interval: {}s, Timeout: {}s", config.sync_interval_secs, config.timeout_seconds);
+
+        // Log sync start to structured log file
+        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+        let _ = write_structured_log("t3000_ffi_sync_service_sync",
+            &format!("[{}] 🚀 T3000 LOGGING_DATA sync cycle started", timestamp));
 
         let db = establish_t3_device_connection().await
             .map_err(|e| {
