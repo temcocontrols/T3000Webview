@@ -312,9 +312,24 @@ impl T3000MainService {
                     serial_number, device_with_points.input_points.len()
                 )).ok();
 
-                for point in &device_with_points.input_points {
+                for (point_index, point) in device_with_points.input_points.iter().enumerate() {
+                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                        "🔧 Processing INPUT point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
+                        point_index + 1, device_with_points.input_points.len(),
+                        serial_number, point.index, point.full_label, point.value
+                    )).ok();
+
                     if let Err(e) = Self::sync_input_point_static(&txn, serial_number, point).await {
-                        error!("❌ Failed to sync input point: {}", e);
+                        error!("❌ Failed to sync input point {}: {}", point.index, e);
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ INPUT point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
+                            serial_number, point.index, point.full_label, e
+                        )).ok();
+                    } else {
+                        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                            "✅ INPUT point synced successfully - Serial: {}, Index: {}, Label: '{}'",
+                            serial_number, point.index, point.full_label
+                        )).ok();
                     }
                 }
                 info!("✅ INPUT points synced");
@@ -332,9 +347,24 @@ impl T3000MainService {
                     serial_number, device_with_points.output_points.len()
                 )).ok();
 
-                for point in &device_with_points.output_points {
+                for (point_index, point) in device_with_points.output_points.iter().enumerate() {
+                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                        "🔧 Processing OUTPUT point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
+                        point_index + 1, device_with_points.output_points.len(),
+                        serial_number, point.index, point.full_label, point.value
+                    )).ok();
+
                     if let Err(e) = Self::sync_output_point_static(&txn, serial_number, point).await {
-                        error!("❌ Failed to sync output point: {}", e);
+                        error!("❌ Failed to sync output point {}: {}", point.index, e);
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ OUTPUT point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
+                            serial_number, point.index, point.full_label, e
+                        )).ok();
+                    } else {
+                        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                            "✅ OUTPUT point synced successfully - Serial: {}, Index: {}, Label: '{}'",
+                            serial_number, point.index, point.full_label
+                        )).ok();
                     }
                 }
                 info!("✅ OUTPUT points synced");
@@ -352,9 +382,24 @@ impl T3000MainService {
                     serial_number, device_with_points.variable_points.len()
                 )).ok();
 
-                for point in &device_with_points.variable_points {
+                for (point_index, point) in device_with_points.variable_points.iter().enumerate() {
+                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                        "🔧 Processing VARIABLE point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
+                        point_index + 1, device_with_points.variable_points.len(),
+                        serial_number, point.index, point.full_label, point.value
+                    )).ok();
+
                     if let Err(e) = Self::sync_variable_point_static(&txn, serial_number, point).await {
-                        error!("❌ Failed to sync variable point: {}", e);
+                        error!("❌ Failed to sync variable point {}: {}", point.index, e);
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ VARIABLE point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
+                            serial_number, point.index, point.full_label, e
+                        )).ok();
+                    } else {
+                        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                            "✅ VARIABLE point synced successfully - Serial: {}, Index: {}, Label: '{}'",
+                            serial_number, point.index, point.full_label
+                        )).ok();
                     }
                 }
                 info!("✅ VARIABLE points synced");
@@ -409,17 +454,91 @@ impl T3000MainService {
 
         // Commit transaction after all devices processed
         info!("💾 Committing database transaction...");
+        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            "💾 Transaction COMMIT starting - Processed {} devices, Total sync operations completed",
+            logging_response.devices.len()
+        )).ok();
 
         // Log transaction commit to structured log
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
         let _ = write_structured_log("t3000_ffi_sync_service_sync",
             &format!("[{}] 💾 Committing database transaction...", timestamp));
 
-        txn.commit().await
+        let _commit_result = txn.commit().await
             .map_err(|e| {
                 error!("❌ Failed to commit transaction: {}", e);
+                write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                    "❌ Transaction COMMIT failed - Error: {}, All {} device changes rolled back",
+                    e, logging_response.devices.len()
+                )).ok();
                 AppError::DatabaseError(format!("Transaction commit failed: {}", e))
             })?;
+
+        info!("✅ Database transaction committed successfully");
+        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            "✅ Transaction COMMIT successful - All {} device changes persisted to database",
+            logging_response.devices.len()
+        )).ok();
+
+        // Validate data was actually inserted by doing a quick count check
+        let validation_db = establish_t3_device_connection().await?;
+
+        info!("🔍 Validating data insertion...");
+        write_structured_log("t3000_ffi_sync_service_sync",
+            "🔍 Post-commit validation: Checking if data was actually inserted into database tables").ok();
+
+        // Count devices that were processed in this sync
+        let mut validation_summary = String::new();
+        for device_with_points in &logging_response.devices {
+            let serial_number = device_with_points.device_info.panel_serial_number;
+
+            // Check if device exists in database
+            if let Ok(device_count) = devices::Entity::find()
+                .filter(devices::Column::SerialNumber.eq(serial_number))
+                .count(&validation_db).await {
+
+                validation_summary.push_str(&format!(
+                    "Device {}: {} record(s) in DEVICES table; ",
+                    serial_number, device_count
+                ));
+            }
+
+            // Check input points count
+            if let Ok(input_count) = input_points::Entity::find()
+                .filter(input_points::Column::SerialNumber.eq(serial_number))
+                .count(&validation_db).await {
+
+                validation_summary.push_str(&format!(
+                    "{} INPUT points; ", input_count
+                ));
+            }
+
+            // Check output points count
+            if let Ok(output_count) = output_points::Entity::find()
+                .filter(output_points::Column::SerialNumber.eq(serial_number))
+                .count(&validation_db).await {
+
+                validation_summary.push_str(&format!(
+                    "{} OUTPUT points; ", output_count
+                ));
+            }
+
+            // Check variable points count
+            if let Ok(variable_count) = variable_points::Entity::find()
+                .filter(variable_points::Column::SerialNumber.eq(serial_number))
+                .count(&validation_db).await {
+
+                validation_summary.push_str(&format!(
+                    "{} VARIABLE points; ", variable_count
+                ));
+            }
+        }
+
+        info!("📊 Validation Results: {}", validation_summary);
+        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            "📊 Post-commit validation results: {}",
+            validation_summary
+        )).ok();
 
         info!("🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
               logging_response.devices.len());
@@ -438,11 +557,23 @@ impl T3000MainService {
         let serial_number = device_info.panel_serial_number;
 
         info!("🔍 Checking if device {} exists in database...", serial_number);
+        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            "🔍 Database lookup for device - Serial: {}, Name: '{}', IP: '{}'",
+            serial_number, device_info.panel_name, device_info.panel_ipaddress
+        )).ok();
 
         // Check if device exists
         let existing = devices::Entity::find()
             .filter(devices::Column::SerialNumber.eq(serial_number))
-            .one(txn).await?;
+            .one(txn).await
+            .map_err(|e| {
+                let error_msg = format!("Database query failed for device {}: {}", serial_number, e);
+                write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                    "❌ Device existence check failed - Serial: {}, Error: {}",
+                    serial_number, e
+                )).ok();
+                AppError::DatabaseError(error_msg)
+            })?;
 
         let device_model = devices::ActiveModel {
             SerialNumber: Set(serial_number),
@@ -457,17 +588,53 @@ impl T3000MainService {
 
         if existing.is_some() {
             info!("🔄 Device {} exists - performing UPDATE with latest info", serial_number);
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "🔄 Device UPDATE operation - Serial: {}, Name: '{}', Status: Online",
+                serial_number, device_info.panel_name
+            )).ok();
+
             // UPDATE existing device
-            devices::Entity::update(device_model)
+            let update_result = devices::Entity::update(device_model)
                 .filter(devices::Column::SerialNumber.eq(serial_number))
-                .exec(txn).await?;
+                .exec(txn).await
+                .map_err(|e| {
+                    let error_msg = format!("Device UPDATE failed for {}: {}", serial_number, e);
+                    write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        "❌ Device UPDATE failed - Serial: {}, Error: {}",
+                        serial_number, e
+                    )).ok();
+                    AppError::DatabaseError(error_msg)
+                })?;
+
             info!("✅ Device {} info UPDATED successfully", serial_number);
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "✅ Device UPDATE successful - Serial: {}, Update operation completed",
+                serial_number
+            )).ok();
         } else {
             info!("➕ Device {} not found - performing INSERT as new device", serial_number);
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "➕ Device INSERT operation - Serial: {}, Name: '{}', New device registration",
+                serial_number, device_info.panel_name
+            )).ok();
+
             // INSERT new device
-            devices::Entity::insert(device_model)
-                .exec(txn).await?;
+            let insert_result = devices::Entity::insert(device_model)
+                .exec(txn).await
+                .map_err(|e| {
+                    let error_msg = format!("Device INSERT failed for {}: {}", serial_number, e);
+                    write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        "❌ Device INSERT failed - Serial: {}, Error: {}",
+                        serial_number, e
+                    )).ok();
+                    AppError::DatabaseError(error_msg)
+                })?;
+
             info!("✅ Device {} info INSERTED successfully", serial_number);
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "✅ Device INSERT successful - Serial: {}, Last insert ID: {}",
+                serial_number, insert_result.last_insert_id
+            )).ok();
         }
 
         Ok(())
@@ -486,7 +653,8 @@ impl T3000MainService {
                 serial_number, device_data.input_points.len(), timestamp
             )).ok();
         }
-        for point in &device_data.input_points {
+
+        for (input_index, point) in device_data.input_points.iter().enumerate() {
             let trend_model = trendlog_data::ActiveModel {
                 Trendlog_Input_ID: Set(point.index as i32),
                 TimeStamp: Set(timestamp.clone()),
@@ -496,7 +664,19 @@ impl T3000MainService {
                 BinaryArray: Set(None),
             };
 
-            trendlog_data::Entity::insert(trend_model).exec(txn).await?;
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
+                input_index + 1, device_data.input_points.len(),
+                serial_number, point.index, point.value, point.status
+            )).ok();
+
+            if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
+                write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                    "❌ INPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
+                    serial_number, point.index, e
+                )).ok();
+                return Err(AppError::DatabaseError(format!("Failed to insert INPUT trend log: {}", e)));
+            }
         }
 
         // Insert trend logs for all output points
@@ -507,7 +687,8 @@ impl T3000MainService {
                 serial_number, device_data.output_points.len(), timestamp
             )).ok();
         }
-        for point in &device_data.output_points {
+
+        for (output_index, point) in device_data.output_points.iter().enumerate() {
             let trend_model = trendlog_data::ActiveModel {
                 Trendlog_Input_ID: Set(point.index as i32),
                 TimeStamp: Set(timestamp.clone()),
@@ -517,7 +698,19 @@ impl T3000MainService {
                 BinaryArray: Set(None),
             };
 
-            trendlog_data::Entity::insert(trend_model).exec(txn).await?;
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
+                output_index + 1, device_data.output_points.len(),
+                serial_number, point.index, point.value, point.status
+            )).ok();
+
+            if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
+                write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                    "❌ OUTPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
+                    serial_number, point.index, e
+                )).ok();
+                return Err(AppError::DatabaseError(format!("Failed to insert OUTPUT trend log: {}", e)));
+            }
         }
 
         // Insert trend logs for all variable points
@@ -528,7 +721,8 @@ impl T3000MainService {
                 serial_number, device_data.variable_points.len(), timestamp
             )).ok();
         }
-        for point in &device_data.variable_points {
+
+        for (variable_index, point) in device_data.variable_points.iter().enumerate() {
             let trend_model = trendlog_data::ActiveModel {
                 Trendlog_Input_ID: Set(point.index as i32),
                 TimeStamp: Set(timestamp.clone()),
@@ -538,7 +732,19 @@ impl T3000MainService {
                 BinaryArray: Set(None),
             };
 
-            trendlog_data::Entity::insert(trend_model).exec(txn).await?;
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
+                variable_index + 1, device_data.variable_points.len(),
+                serial_number, point.index, point.value, point.status
+            )).ok();
+
+            if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
+                write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                    "❌ VARIABLE trend log insert failed - Serial: {}, Index: {}, Error: {}",
+                    serial_number, point.index, e
+                )).ok();
+                return Err(AppError::DatabaseError(format!("Failed to insert VARIABLE trend log: {}", e)));
+            }
         }
 
         let total_inserted = device_data.input_points.len() + device_data.output_points.len() + device_data.variable_points.len();
@@ -587,14 +793,13 @@ impl T3000MainService {
                              result.clone()
                          });
 
-                    // Log raw C++ response to structured log for debugging
+                    // Log complete raw C++ response to structured log for debugging
                     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
                     let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                        &format!("[{}] 📊 Raw C++ Response: {} bytes. Preview: {}",
-                                 timestamp, result.len(),
-                                 if result.len() > 200 { format!("{}...", &result[..200]) } else { result.clone() }));
+                        &format!("[{}] 📊 Raw C++ Response FULL DATA ({} bytes):\n{}",
+                                 timestamp, result.len(), result));
 
-                    // Log the complete response for debugging
+                    // Also log the complete response for debugging
                     debug!("🔍 COMPLETE C++ RESPONSE:");
                     debug!("{}", result);
 
@@ -857,22 +1062,54 @@ impl T3000MainService {
         match existing {
             Some(_) => {
                 // UPDATE existing input point
-                debug!("🔄 Updating existing INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                input_points::Entity::update(input_model)
+                info!("🔄 Updating existing INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "🔄 INPUT UPDATE - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
+                    serial_number, point.index, point.full_label, point.value, point.units
+                )).ok();
+
+                let update_result = input_points::Entity::update(input_model)
                     .filter(input_points::Column::SerialNumber.eq(serial_number))
                     .filter(input_points::Column::InputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
-                    .map_err(|e| AppError::DatabaseError(format!("Failed to update input point: {}", e)))?;
-                debug!("✅ INPUT point {}:{} UPDATED", serial_number, point.index);
+                    .map_err(|e| {
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ INPUT UPDATE failed - Serial: {}, Index: {}, Error: {}",
+                            serial_number, point.index, e
+                        )).ok();
+                        AppError::DatabaseError(format!("Failed to update input point: {}", e))
+                    })?;
+
+                info!("✅ INPUT point {}:{} UPDATED", serial_number, point.index);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "✅ INPUT UPDATE successful - Serial: {}, Index: {}, Update operation completed",
+                    serial_number, point.index
+                )).ok();
                 Ok(())
             }
             None => {
                 // INSERT new input point
-                debug!("➕ Inserting new INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                input_points::Entity::insert(input_model)
+                info!("➕ Inserting new INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "➕ INPUT INSERT - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
+                    serial_number, point.index, point.full_label, point.value, point.units
+                )).ok();
+
+                let insert_result = input_points::Entity::insert(input_model)
                     .exec(txn).await
-                    .map_err(|e| AppError::DatabaseError(format!("Failed to insert input point: {}", e)))?;
-                debug!("✅ INPUT point {}:{} INSERTED", serial_number, point.index);
+                    .map_err(|e| {
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ INPUT INSERT failed - Serial: {}, Index: {}, Error: {}",
+                            serial_number, point.index, e
+                        )).ok();
+                        AppError::DatabaseError(format!("Failed to insert input point: {}", e))
+                    })?;
+
+                info!("✅ INPUT point {}:{} INSERTED", serial_number, point.index);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "✅ INPUT INSERT successful - Serial: {}, Index: {}, Last insert ID: {}",
+                    serial_number, point.index, insert_result.last_insert_id
+                )).ok();
                 Ok(())
             }
         }
@@ -913,22 +1150,54 @@ impl T3000MainService {
         match existing {
             Some(_) => {
                 // UPDATE existing output point
-                debug!("🔄 Updating existing OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                output_points::Entity::update(output_model)
+                info!("🔄 Updating existing OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "🔄 OUTPUT UPDATE - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
+                    serial_number, point.index, point.full_label, point.value, point.units
+                )).ok();
+
+                let update_result = output_points::Entity::update(output_model)
                     .filter(output_points::Column::SerialNumber.eq(serial_number))
                     .filter(output_points::Column::OutputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
-                    .map_err(|e| AppError::DatabaseError(format!("Failed to update output point: {}", e)))?;
-                debug!("✅ OUTPUT point {}:{} UPDATED", serial_number, point.index);
+                    .map_err(|e| {
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ OUTPUT UPDATE failed - Serial: {}, Index: {}, Error: {}",
+                            serial_number, point.index, e
+                        )).ok();
+                        AppError::DatabaseError(format!("Failed to update output point: {}", e))
+                    })?;
+
+                info!("✅ OUTPUT point {}:{} UPDATED", serial_number, point.index);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "✅ OUTPUT UPDATE successful - Serial: {}, Index: {}, Update operation completed",
+                    serial_number, point.index
+                )).ok();
                 Ok(())
             }
             None => {
                 // INSERT new output point
-                debug!("➕ Inserting new OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                output_points::Entity::insert(output_model)
+                info!("➕ Inserting new OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "➕ OUTPUT INSERT - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
+                    serial_number, point.index, point.full_label, point.value, point.units
+                )).ok();
+
+                let insert_result = output_points::Entity::insert(output_model)
                     .exec(txn).await
-                    .map_err(|e| AppError::DatabaseError(format!("Failed to insert output point: {}", e)))?;
-                debug!("✅ OUTPUT point {}:{} INSERTED", serial_number, point.index);
+                    .map_err(|e| {
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ OUTPUT INSERT failed - Serial: {}, Index: {}, Error: {}",
+                            serial_number, point.index, e
+                        )).ok();
+                        AppError::DatabaseError(format!("Failed to insert output point: {}", e))
+                    })?;
+
+                info!("✅ OUTPUT point {}:{} INSERTED", serial_number, point.index);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "✅ OUTPUT INSERT successful - Serial: {}, Index: {}, Last insert ID: {}",
+                    serial_number, point.index, insert_result.last_insert_id
+                )).ok();
                 Ok(())
             }
         }
@@ -961,22 +1230,54 @@ impl T3000MainService {
         match existing {
             Some(_) => {
                 // UPDATE existing variable point
-                debug!("🔄 Updating existing VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                variable_points::Entity::update(variable_model)
+                info!("🔄 Updating existing VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "🔄 VARIABLE UPDATE - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
+                    serial_number, point.index, point.full_label, point.value, point.units
+                )).ok();
+
+                let update_result = variable_points::Entity::update(variable_model)
                     .filter(variable_points::Column::SerialNumber.eq(serial_number))
                     .filter(variable_points::Column::VariableIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
-                    .map_err(|e| AppError::DatabaseError(format!("Failed to update variable point: {}", e)))?;
-                debug!("✅ VARIABLE point {}:{} UPDATED", serial_number, point.index);
+                    .map_err(|e| {
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ VARIABLE UPDATE failed - Serial: {}, Index: {}, Error: {}",
+                            serial_number, point.index, e
+                        )).ok();
+                        AppError::DatabaseError(format!("Failed to update variable point: {}", e))
+                    })?;
+
+                info!("✅ VARIABLE point {}:{} UPDATED", serial_number, point.index);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "✅ VARIABLE UPDATE successful - Serial: {}, Index: {}, Update operation completed",
+                    serial_number, point.index
+                )).ok();
                 Ok(())
             }
             None => {
                 // INSERT new variable point
-                debug!("➕ Inserting new VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                variable_points::Entity::insert(variable_model)
+                info!("➕ Inserting new VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "➕ VARIABLE INSERT - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
+                    serial_number, point.index, point.full_label, point.value, point.units
+                )).ok();
+
+                let insert_result = variable_points::Entity::insert(variable_model)
                     .exec(txn).await
-                    .map_err(|e| AppError::DatabaseError(format!("Failed to insert variable point: {}", e)))?;
-                debug!("✅ VARIABLE point {}:{} INSERTED", serial_number, point.index);
+                    .map_err(|e| {
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "❌ VARIABLE INSERT failed - Serial: {}, Index: {}, Error: {}",
+                            serial_number, point.index, e
+                        )).ok();
+                        AppError::DatabaseError(format!("Failed to insert variable point: {}", e))
+                    })?;
+
+                info!("✅ VARIABLE point {}:{} INSERTED", serial_number, point.index);
+                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    "✅ VARIABLE INSERT successful - Serial: {}, Index: {}, Last insert ID: {}",
+                    serial_number, point.index, insert_result.last_insert_id
+                )).ok();
                 Ok(())
             }
         }
