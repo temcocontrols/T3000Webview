@@ -6,7 +6,7 @@
 // - WebSocket broadcasting for live updates
 // - Database synchronization to webview_t3_device.db
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::time::Duration;
@@ -23,21 +23,52 @@ use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
 use crate::logger::write_structured_log;
 use once_cell::sync::OnceCell;
+use winapi::um::libloaderapi::GetProcAddress;
+use winapi::shared::minwindef::HINSTANCE;
 
-// FFI function declarations to T3000 C++ Building Automation System
-extern "C" {
-    // LOGGING_DATA function - Returns real-time data - CONFIRMED WORKING
-    fn T3000_GetLoggingData() -> *mut c_char;
-    fn T3000_FreeLoggingDataString(ptr: *mut c_char);
+// Runtime function pointer type for HandleWebViewMsg
+type HandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
 
-    // Direct T3000 HandleWebViewMsg integration - NEW REAL IMPLEMENTATION
-    fn HandleWebViewMsg(action: i32, msg: *mut c_char, len: i32) -> i32;
-    fn T3000_RealHandleWebViewMsg_CPP(action: i32, msg: *mut c_char, len: i32) -> i32;
+// Global function pointer - will be loaded from T3000.exe at runtime
+static mut HANDLE_WEBVIEW_MSG_FN: Option<HandleWebViewMsgFn> = None;
+static mut T3000_LOADED: bool = false;
 
-    // Device Information Functions - BASIC ONLY (CONFIRMED WORKING)
-    fn IsDeviceOnline(device_id: i32) -> i32;
-    fn GetDeviceCount() -> i32;
-    fn GetDeviceIdByIndex(index: i32) -> i32;
+// Load the HandleWebViewMsg function from the current executable (T3000.exe)
+unsafe fn load_t3000_function() -> bool {
+    if T3000_LOADED {
+        return HANDLE_WEBVIEW_MSG_FN.is_some();
+    }
+
+    // Try to get the function from the current executable
+    let current_module = std::ptr::null_mut(); // NULL means current executable
+    let func_name = CString::new("HandleWebViewMsg").unwrap();
+
+    let func_ptr = GetProcAddress(current_module as HINSTANCE, func_name.as_ptr());
+
+    if !func_ptr.is_null() {
+        HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
+        T3000_LOADED = true;
+        true
+    } else {
+        T3000_LOADED = true;
+        false
+    }
+}
+
+// Safe wrapper to call HandleWebViewMsg
+fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String> {
+    unsafe {
+        if !load_t3000_function() {
+            return Err("HandleWebViewMsg function not found in T3000.exe".to_string());
+        }
+
+        if let Some(func) = HANDLE_WEBVIEW_MSG_FN {
+            let result = func(action, buffer.as_mut_ptr() as *mut c_char, buffer.len() as i32);
+            Ok(result)
+        } else {
+            Err("HandleWebViewMsg function not loaded".to_string())
+        }
+    }
 }
 
 /// Global main service instance
@@ -809,21 +840,28 @@ impl T3000MainService {
                 write_structured_log("t3000_ffi_sync_service_sync",
                     "🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function").ok();
 
-                unsafe {
-                    // Prepare buffer for response
-                    const BUFFER_SIZE: usize = 65536; // 64KB buffer
-                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+                // Prepare buffer for response
+                const BUFFER_SIZE: usize = 65536; // 64KB buffer
+                let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
-                    // Call the direct T3000 HandleWebViewMsg function
-                    // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
-                    let result = HandleWebViewMsg(15, buffer.as_mut_ptr() as *mut i8, BUFFER_SIZE as i32);
-
-                    if result != 0 {
-                        error!("❌ HandleWebViewMsg returned error code: {}", result);
+                // Call the T3000 HandleWebViewMsg function via runtime loading
+                // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
+                let result = match call_handle_webview_msg(15, &mut buffer) {
+                    Ok(code) => code,
+                    Err(err) => {
+                        error!("❌ Failed to call HandleWebViewMsg: {}", err);
                         write_structured_log("t3000_ffi_sync_service_errors",
-                            &format!("❌ HandleWebViewMsg returned error code {} - Failed to get real device data", result)).ok();
-                        panic!("HandleWebViewMsg returned error code: {}", result);
+                            &format!("❌ Failed to call HandleWebViewMsg: {} - Function not found in T3000.exe", err)).ok();
+                        panic!("Failed to call HandleWebViewMsg: {}", err);
                     }
+                };
+
+                if result != 0 {
+                    error!("❌ HandleWebViewMsg returned error code: {}", result);
+                    write_structured_log("t3000_ffi_sync_service_errors",
+                        &format!("❌ HandleWebViewMsg returned error code {} - Failed to get real device data", result)).ok();
+                    panic!("HandleWebViewMsg returned error code: {}", result);
+                }
 
                     // Find the null terminator to get the actual string length
                     let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
@@ -857,21 +895,29 @@ impl T3000MainService {
                     info!("📝 Direct Response Preview: {}",
                           if result_str.len() > 200 { &result_str[..200] } else { &result_str });
 
-                    // Return the result directly without wrapping in Result
-                    result_str
-                }
+                    // Return the result
+                    let result: Result<String, AppError> = Ok(result_str);
+                    result
             }),
         ).await;
 
         // Handle the spawn result
         match spawn_result {
-            Ok(result) => {
-                match result {
-                    Ok(data) => {
-                        info!("✅ Direct FFI call completed successfully");
-                        write_structured_log("t3000_ffi_sync_service_sync",
-                            &format!("[{}] ✅ Direct HandleWebViewMsg FFI call completed successfully", timestamp));
-                        Ok(data)
+            Ok(join_result) => {
+                match join_result {
+                    Ok(ffi_result) => {
+                        match ffi_result {
+                            Ok(data) => {
+                                info!("✅ Direct FFI call completed successfully");
+                                write_structured_log("t3000_ffi_sync_service_sync",
+                                    &format!("[{}] ✅ Direct HandleWebViewMsg FFI call completed successfully", timestamp));
+                                Ok(data)
+                            }
+                            Err(ffi_error) => {
+                                error!("❌ Direct FFI call failed: {}", ffi_error);
+                                Err(AppError::FfiError(format!("Direct FFI call failed: {}", ffi_error)))
+                            }
+                        }
                     }
                     Err(join_error) => {
                         error!("❌ Direct FFI task failed: {}", join_error);
@@ -916,6 +962,12 @@ impl T3000MainService {
                 write_structured_log("t3000_ffi_sync_service_sync",
                     "🔌 About to call T3000_GetLoggingData() - Checking for real T3000 devices vs test data").ok();
 
+                // OLD APPROACH - DISABLED - Now using direct HandleWebViewMsg
+                warn!("⚠️ Old T3000_GetLoggingData approach disabled - using HandleWebViewMsg instead");
+                let err: Result<String, AppError> = Err(AppError::FfiError("Old FFI approach disabled - use HandleWebViewMsg".to_string()));
+                return err;
+
+                /*
                 unsafe {
                     let data_ptr = T3000_GetLoggingData();
 
@@ -977,6 +1029,7 @@ impl T3000MainService {
 
                     Ok(result)
                 }
+                */
             })
         ).await;
 

@@ -43,6 +43,9 @@ thiserror = "1.0"
 uuid = { version = "1.6.1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 once_cell = "1.19.0"
 
+# Windows API for runtime function loading
+winapi = { version = "0.3", features = ["libloaderapi", "winnt"] }
+
 # SQLite support for T3000 C++ database access (use compatible version with sea-orm)
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 
