@@ -196,6 +196,12 @@ void T3000_CleanupAutoSync();
 char* T3000_GetLoggingData();
 void T3000_FreeLoggingDataString(char* json_string);
 
+// Direct T3000 HandleWebViewMsg integration
+int HandleWebViewMsg(int action, char* msg, int iLen);
+int T3000_RealHandleWebViewMsg_CPP(int action, char* msg, int iLen);
+// Preferred bridge exported by native module for the webview shim.
+int T3_Bridge_HandleWebViewMsg_C(const char* in_utf8, char* out_utf8, int out_len, int msg_source);
+
 #ifdef __cplusplus
 }
 #endif
