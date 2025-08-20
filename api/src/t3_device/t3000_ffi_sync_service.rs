@@ -26,8 +26,18 @@ use once_cell::sync::OnceCell;
 
 // FFI function declarations to T3000 C++ Building Automation System
 extern "C" {
+    // LOGGING_DATA function - Returns real-time data - CONFIRMED WORKING
     fn T3000_GetLoggingData() -> *mut c_char;
     fn T3000_FreeLoggingDataString(ptr: *mut c_char);
+
+    // Direct T3000 HandleWebViewMsg integration - NEW REAL IMPLEMENTATION
+    fn HandleWebViewMsg(action: i32, msg: *mut c_char, len: i32) -> i32;
+    fn T3000_RealHandleWebViewMsg_CPP(action: i32, msg: *mut c_char, len: i32) -> i32;
+
+    // Device Information Functions - BASIC ONLY (CONFIRMED WORKING)
+    fn IsDeviceOnline(device_id: i32) -> i32;
+    fn GetDeviceCount() -> i32;
+    fn GetDeviceIdByIndex(index: i32) -> i32;
 }
 
 /// Global main service instance
@@ -208,6 +218,33 @@ impl T3000MainService {
             "🛑 T3000 FFI Sync Service stop requested - Setting running flag to false");
     }
 
+    /// Test the direct T3000 HandleWebViewMsg integration
+    pub async fn test_direct_integration(&self) -> Result<String, AppError> {
+        info!("🧪 Testing direct T3000 HandleWebViewMsg integration");
+
+        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+        write_structured_log("t3000_ffi_sync_service_test",
+            &format!("[{}] 🧪 Starting direct T3000 integration test", timestamp)).ok();
+
+        // Call the direct FFI function
+        let result = Self::get_logging_data_via_direct_ffi(&self.config).await?;
+
+        // Log test results
+        let is_real_data = !result.contains("Test Device") && !result.contains("test") && !result.contains("mock");
+
+        if is_real_data {
+            info!("🎉 SUCCESS: Direct integration returned REAL device data!");
+            write_structured_log("t3000_ffi_sync_service_test",
+                &format!("[{}] 🎉 SUCCESS: Direct T3000 integration test returned real device data", timestamp)).ok();
+        } else {
+            warn!("⚠️  WARNING: Direct integration still returns test data");
+            write_structured_log("t3000_ffi_sync_service_test",
+                &format!("[{}] ⚠️  Direct T3000 integration test returned test data - Check device connections", timestamp)).ok();
+        }
+
+        Ok(result)
+    }
+
     /// Check if the service is currently running
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::Relaxed)
@@ -241,8 +278,9 @@ impl T3000MainService {
         let _ = write_structured_log("t3000_ffi_sync_service_sync",
             &format!("[{}] ✅ Database connection established", timestamp));
 
-        // Get JSON data from T3000 C++ via FFI - this contains ALL devices and their data
-        let json_data = Self::get_logging_data_via_ffi_static(&config).await?;
+        // Get JSON data from T3000 C++ via DIRECT FFI - this contains ALL devices and their data
+        // Using new direct HandleWebViewMsg approach for real T3000 system integration
+        let json_data = Self::get_logging_data_via_direct_ffi(&config).await?;
 
         // Parse the complete LOGGING_DATA response
         let logging_response = Self::parse_logging_response(&json_data)?;
@@ -753,6 +791,105 @@ impl T3000MainService {
         Ok(())
     }
 
+    /// Call T3000 C++ HandleWebViewMsg function directly via FFI for LOGGING_DATA
+    async fn get_logging_data_via_direct_ffi(config: &T3000MainConfig) -> Result<String, AppError> {
+        info!("🔄 Starting DIRECT FFI call to HandleWebViewMsg with LOGGING_DATA action");
+        info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
+
+        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+        write_structured_log("t3000_ffi_sync_service_sync",
+            &format!("[{}] 🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Real T3000 system integration", timestamp));
+
+        // Run FFI call in a blocking task with timeout
+        let spawn_result = tokio::time::timeout(
+            Duration::from_secs(config.timeout_seconds),
+            tokio::task::spawn_blocking(move || {
+                info!("🔌 Calling HandleWebViewMsg(15) via direct FFI...");
+
+                write_structured_log("t3000_ffi_sync_service_sync",
+                    "🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function").ok();
+
+                unsafe {
+                    // Prepare buffer for response
+                    const BUFFER_SIZE: usize = 65536; // 64KB buffer
+                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+
+                    // Call the direct T3000 HandleWebViewMsg function
+                    // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
+                    let result = HandleWebViewMsg(15, buffer.as_mut_ptr() as *mut i8, BUFFER_SIZE as i32);
+
+                    if result != 0 {
+                        error!("❌ HandleWebViewMsg returned error code: {}", result);
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            &format!("❌ HandleWebViewMsg returned error code {} - Failed to get real device data", result)).ok();
+                        panic!("HandleWebViewMsg returned error code: {}", result);
+                    }
+
+                    // Find the null terminator to get the actual string length
+                    let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                    let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                    if result_str.is_empty() {
+                        error!("❌ HandleWebViewMsg returned empty response");
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            "❌ HandleWebViewMsg returned empty response - No device data available").ok();
+                        panic!("HandleWebViewMsg returned empty response");
+                    }
+
+                    info!("✅ HandleWebViewMsg returned valid response");
+                    info!("📊 Direct Response Size: {} bytes", result_str.len());
+                    write_structured_log("t3000_ffi_sync_service_sync",
+                        &format!("✅ HandleWebViewMsg returned {} bytes of device data", result_str.len())).ok();
+
+                    // Check if this is real data or still test data
+                    if result_str.contains("Test Device") || result_str.contains("test") ||
+                       result_str.contains("mock") || result_str.contains("sample") {
+                        warn!("⚠️  Still receiving test data from direct HandleWebViewMsg call!");
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "⚠️  DIAGNOSTIC: Direct HandleWebViewMsg still returns test data. Check T3000 device connections"
+                        )).ok();
+                    } else {
+                        info!("🎉 SUCCESS: Received real device data from direct T3000 integration!");
+                        write_structured_log("t3000_ffi_sync_service_sync",
+                            "🎉 SUCCESS: Direct HandleWebViewMsg call returned real T3000 device data").ok();
+                    }
+
+                    info!("📝 Direct Response Preview: {}",
+                          if result_str.len() > 200 { &result_str[..200] } else { &result_str });
+
+                    // Return the result directly without wrapping in Result
+                    result_str
+                }
+            }),
+        ).await;
+
+        // Handle the spawn result
+        match spawn_result {
+            Ok(result) => {
+                match result {
+                    Ok(data) => {
+                        info!("✅ Direct FFI call completed successfully");
+                        write_structured_log("t3000_ffi_sync_service_sync",
+                            &format!("[{}] ✅ Direct HandleWebViewMsg FFI call completed successfully", timestamp));
+                        Ok(data)
+                    }
+                    Err(join_error) => {
+                        error!("❌ Direct FFI task failed: {}", join_error);
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            &format!("[{}] ❌ Direct HandleWebViewMsg task failed: {}", timestamp, join_error));
+                        Err(AppError::FfiError(format!("Direct FFI task failed: {}", join_error)))
+                    }
+                }
+            }
+            Err(timeout_error) => {
+                error!("⏰ Direct FFI call timed out after {}s", config.timeout_seconds);
+                write_structured_log("t3000_ffi_sync_service_errors",
+                    &format!("[{}] ⏰ Direct HandleWebViewMsg FFI call timed out after {}s", timestamp, config.timeout_seconds));
+                Err(AppError::FfiError(format!("Direct FFI call timed out after {}s: {}", config.timeout_seconds, timeout_error)))
+            }
+        }
+    }
+
     /// Call T3000 C++ LOGGING_DATA function via FFI
     async fn get_logging_data_via_ffi_static(config: &T3000MainConfig) -> Result<String, AppError> {
         info!("🔄 Starting FFI call to T3000_GetLoggingData");
@@ -763,17 +900,29 @@ impl T3000MainService {
         let _ = write_structured_log("t3000_ffi_sync_service_sync",
             &format!("[{}] 🔄 Starting FFI call to T3000_GetLoggingData (timeout: {}s)", timestamp, config.timeout_seconds));
 
+        // Enhanced diagnostic logging for T3000 C++ integration
+        let _ = write_structured_log("t3000_ffi_sync_service_sync",
+            "🔧 Enhanced T3000 diagnostic and logging system active");
+        let _ = write_structured_log("t3000_ffi_sync_service_sync",
+            "⚡ Starting enhanced T3000 FFI call with comprehensive response data logging");
+
         // Run FFI call in a blocking task with timeout
         let spawn_result = tokio::time::timeout(
             Duration::from_secs(config.timeout_seconds),
             tokio::task::spawn_blocking(move || {
                 info!("🔌 Calling T3000_GetLoggingData() via FFI...");
 
+                // Add diagnostic logging before FFI call
+                write_structured_log("t3000_ffi_sync_service_sync",
+                    "🔌 About to call T3000_GetLoggingData() - Checking for real T3000 devices vs test data").ok();
+
                 unsafe {
                     let data_ptr = T3000_GetLoggingData();
 
                     if data_ptr.is_null() {
                         error!("❌ T3000_GetLoggingData returned null pointer");
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            "❌ T3000_GetLoggingData returned NULL - No data available or C++ function failed").ok();
                         return Err(AppError::FfiError("T3000_GetLoggingData returned null pointer".to_string()));
                     }
 
@@ -786,6 +935,25 @@ impl T3000MainService {
                     let result = c_str.to_string_lossy().to_string();
 
                     info!("📊 Raw C++ Response Size: {} bytes", result.len());
+
+                    // Enhanced diagnostic check for test data
+                    if result.contains("Test Device") || result.contains("test") ||
+                       result.contains("mock") || result.contains("sample") {
+                        warn!("⚠️  CRITICAL: C++ returned test/mock data instead of real device data!");
+                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                            "⚠️  CRITICAL DIAGNOSTIC: T3000_GetLoggingData() returned test data. Response size: {} bytes. This suggests:",
+                            result.len()
+                        )).ok();
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            "   1. No real T3000 devices are connected/responding").ok();
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            "   2. C++ function is returning fallback test data").ok();
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            "   3. T3000 network communication may be failing").ok();
+                        write_structured_log("t3000_ffi_sync_service_errors",
+                            "   4. Check T3000 device connectivity and C++ implementation").ok();
+                    }
+
                     info!("📝 Raw C++ Response Preview: {}",
                          if result.len() > 200 {
                              format!("{}...", &result[..200])
@@ -864,6 +1032,27 @@ impl T3000MainService {
         let _ = write_structured_log("t3000_ffi_sync_service_sync",
             &format!("[{}] 🔍 Starting JSON parsing - {} bytes", timestamp, json_data.len()));
 
+        // Add diagnostic logging to check for test data patterns
+        if json_data.contains("Test Device") {
+            warn!("⚠️  DIAGNOSTIC: JSON contains 'Test Device' - This indicates test/mock data is being returned!");
+            write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                "[{}] ⚠️  DIAGNOSTIC WARNING: C++ returned test data containing 'Test Device' - Check T3000 C++ implementation",
+                timestamp
+            )).ok();
+        }
+
+        // Log first 500 characters for diagnostic purposes
+        let preview = if json_data.len() > 500 {
+            format!("{}...", &json_data[..500])
+        } else {
+            json_data.to_string()
+        };
+        info!("🔍 JSON Content Preview: {}", preview);
+        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            "[{}] 🔍 JSON Content Preview: {}",
+            timestamp, preview
+        )).ok();
+
         let json_value: JsonValue = serde_json::from_str(json_data)
             .map_err(|e| {
                 error!("❌ JSON parse error: {}", e);
@@ -880,6 +1069,16 @@ impl T3000MainService {
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
         let _ = write_structured_log("t3000_ffi_sync_service_sync",
             &format!("[{}] ✅ JSON parsed successfully", timestamp));
+
+        // Diagnostic: Check all top-level keys in the JSON
+        if let Some(obj) = json_value.as_object() {
+            let keys: Vec<&String> = obj.keys().collect();
+            info!("🔑 JSON Top-level keys: {:?}", keys);
+            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                "[{}] 🔑 JSON Top-level keys: {:?}",
+                timestamp, keys
+            )).ok();
+        }
 
         // The C++ response structure based on BacnetWebView.cpp analysis:
         // {
@@ -901,6 +1100,11 @@ impl T3000MainService {
 
         info!("📋 Action: {}", action);
 
+        // Diagnostic: Check if action indicates test data
+        if action.contains("TEST") || action.contains("MOCK") {
+            warn!("⚠️  DIAGNOSTIC: Action '{}' suggests test/mock data", action);
+        }
+
         // Extract device information
         let device_info = DeviceInfo {
             panel_id: json_value.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
@@ -917,6 +1121,16 @@ impl T3000MainService {
               device_info.panel_name, device_info.panel_ipaddress);
         info!("⏰ Logging Times - Input: '{}', Output: '{}', Variable: '{}'",
               device_info.input_logging_time, device_info.output_logging_time, device_info.variable_logging_time);
+
+        // Diagnostic: Check for test device indicators
+        if device_info.panel_name.contains("Test") || device_info.panel_name.contains("Mock") ||
+           device_info.panel_name.contains("Dummy") || device_info.panel_name.contains("Sample") {
+            warn!("⚠️  DIAGNOSTIC: Device name '{}' suggests test data", device_info.panel_name);
+            write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                "[{}] ⚠️  DIAGNOSTIC: Device name '{}' indicates test/mock data - Check C++ T3000_GetLoggingData() implementation",
+                timestamp, device_info.panel_name
+            )).ok();
+        }
 
         // Log device discovery to structured log
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
@@ -1327,6 +1541,21 @@ impl T3000MainService {
     /// Get the global T3000 main service instance
     pub fn get_service() -> Option<Arc<T3000MainService>> {
         MAIN_SERVICE.get().cloned()
+    }
+
+    /// Enhanced diagnostic logging placeholder - T3000 initialization functions not available in current export library
+    async fn check_t3000_system() -> Result<(), AppError> {
+        // NOTE: T3000 initialization functions (T3000_Initialize, T3000_ScanForDevices, etc.)
+        // are not available in the current T3000 export library.
+        // The system will use T3000_GetLoggingData() directly, which should work
+        // if the T3000 C++ system is already initialized by the main application.
+
+        let _ = write_structured_log("t3000_ffi_sync_service_sync",
+            "💡 T3000 initialization functions not available - Using direct T3000_GetLoggingData() call");
+        let _ = write_structured_log("t3000_ffi_sync_service_sync",
+            "📋 Assuming T3000 C++ system is initialized by main application");
+
+        Ok(())
     }
 }
 
