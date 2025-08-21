@@ -6,16 +6,23 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "VARIABLES")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
-    pub Variable_index: Option<String>,         // C++ Variable_index
-    pub Panel: Option<String>,                  // C++ Panel
-    pub Full_Label: Option<String>,             // C++ Full_Label (description[21])
-    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
-    pub fValue: Option<String>,                 // C++ fValue (stored as string)
-    pub Units: Option<String>,                  // C++ Units
-    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
+    #[sea_orm(column_name = "Variable_index")]
+    pub variable_index: Option<String>,         // C++ Variable_index
+    #[sea_orm(column_name = "Panel")]
+    pub panel: Option<String>,                  // C++ Panel
+    #[sea_orm(column_name = "Full_Label")]
+    pub full_label: Option<String>,             // C++ Full_Label (description[21])
+    #[sea_orm(column_name = "Auto_Manual")]
+    pub auto_manual: Option<String>,            // C++ Auto_Manual
+    #[sea_orm(column_name = "fValue")]
+    pub f_value: Option<String>,                // C++ fValue (stored as string)
+    #[sea_orm(column_name = "Units")]
+    pub units: Option<String>,                  // C++ Units
+    #[sea_orm(column_name = "BinaryArray")]
+    pub binary_array: Option<String>,           // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

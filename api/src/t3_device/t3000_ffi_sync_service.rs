@@ -1155,16 +1155,11 @@ impl T3000MainService {
             )).ok();
         }
 
-        // Log first 500 characters for diagnostic purposes
-        let preview = if json_data.len() > 500 {
-            format!("{}...", &json_data[..500])
-        } else {
-            json_data.to_string()
-        };
-        info!("🔍 JSON Content Preview: {}", preview);
+        // Log full JSON response for diagnostic purposes
+        info!("🔍 JSON Content Preview (FULL): {}", json_data);
         write_structured_log("t3000_ffi_sync_service_sync", &format!(
-            "[{}] 🔍 JSON Content Preview: {}",
-            timestamp, preview
+            "[{}] 🔍 JSON Content Preview (FULL): {}",
+            timestamp, json_data
         )).ok();
 
         let json_value: JsonValue = serde_json::from_str(json_data)
@@ -1369,22 +1364,22 @@ impl T3000MainService {
             .map_err(|e| AppError::DatabaseError(format!("Failed to query input point: {}", e)))?;
 
         let input_model = input_points::ActiveModel {
-            SerialNumber: Set(serial_number),
-            Input_index: Set(Some(point.index.to_string())),
-            Panel: Set(Some(point.panel.to_string())),
-            Full_Label: Set(Some(point.full_label.clone())),
-            Auto_Manual: Set(Some(point.auto_manual.to_string())),
-            fValue: Set(Some(point.value.to_string())),
-            Units: Set(Some(point.units.clone())),
-            Range_Field: Set(Some(point.range.to_string())),
-            Calibration: Set(Some(point.calibration.to_string())),
-            Sign: Set(Some(point.sign.to_string())),
-            Status: Set(Some(point.status.to_string())),
-            Filter_Field: Set(None),
-            Signal_Type: Set(None),
-            Label: Set(Some(point.full_label.clone())),
-            Type_Field: Set(None),
-            BinaryArray: Set(None),
+            serial_number: Set(serial_number),
+            input_index: Set(Some(point.index.to_string())),
+            panel: Set(Some(point.panel.to_string())),
+            full_label: Set(Some(point.full_label.clone())),
+            auto_manual: Set(Some(point.auto_manual.to_string())),
+            f_value: Set(Some(point.value.to_string())),
+            units: Set(Some(point.units.clone())),
+            range_field: Set(Some(point.range.to_string())),
+            calibration: Set(Some(point.calibration.to_string())),
+            sign: Set(Some(point.sign.to_string())),
+            status: Set(Some(point.status.to_string())),
+            filter_field: Set(None),
+            signal_type: Set(None),
+            label: Set(Some(point.full_label.clone())),
+            type_field: Set(None),
+            binary_array: Set(None),
         };
 
         match existing {
@@ -1457,22 +1452,22 @@ impl T3000MainService {
             .map_err(|e| AppError::DatabaseError(format!("Failed to query output point: {}", e)))?;
 
         let output_model = output_points::ActiveModel {
-            SerialNumber: Set(serial_number),
-            Output_index: Set(Some(point.index.to_string())),
-            Panel: Set(Some(point.panel.to_string())),
-            Full_Label: Set(Some(point.full_label.clone())),
-            Auto_Manual: Set(Some(point.auto_manual.to_string())),
-            fValue: Set(Some(point.value.to_string())),
-            Units: Set(Some(point.units.clone())),
-            Range_Field: Set(Some(point.range.to_string())),
-            Calibration: Set(Some(point.calibration.to_string())),
-            Sign: Set(Some(point.sign.to_string())),
-            Status: Set(Some(point.status.to_string())),
-            Filter_Field: Set(None),
-            Signal_Type: Set(None),
-            Label: Set(Some(point.full_label.clone())),
-            Type_Field: Set(None),
-            BinaryArray: Set(None),
+            serial_number: Set(serial_number),
+            output_index: Set(Some(point.index.to_string())),
+            panel: Set(Some(point.panel.to_string())),
+            full_label: Set(Some(point.full_label.clone())),
+            auto_manual: Set(Some(point.auto_manual.to_string())),
+            f_value: Set(Some(point.value.to_string())),
+            units: Set(Some(point.units.clone())),
+            range_field: Set(Some(point.range.to_string())),
+            calibration: Set(Some(point.calibration.to_string())),
+            sign: Set(Some(point.sign.to_string())),
+            status: Set(Some(point.status.to_string())),
+            filter_field: Set(None),
+            signal_type: Set(None),
+            label: Set(Some(point.full_label.clone())),
+            type_field: Set(None),
+            binary_array: Set(None),
         };
 
         match existing {
@@ -1545,14 +1540,14 @@ impl T3000MainService {
             .map_err(|e| AppError::DatabaseError(format!("Failed to query variable point: {}", e)))?;
 
         let variable_model = variable_points::ActiveModel {
-            SerialNumber: Set(serial_number),
-            Variable_index: Set(Some(point.index.to_string())),
-            Panel: Set(Some(point.pid.to_string())),
-            Full_Label: Set(Some(point.full_label.clone())),
-            Auto_Manual: Set(Some(point.auto_manual.to_string())),
-            fValue: Set(Some(point.value.to_string())),
-            Units: Set(Some(point.units.clone())),
-            BinaryArray: Set(None), // TODO: Handle binary array if provided in JSON
+            serial_number: Set(serial_number),
+            variable_index: Set(Some(point.index.to_string())),
+            panel: Set(Some(point.pid.to_string())),
+            full_label: Set(Some(point.full_label.clone())),
+            auto_manual: Set(Some(point.auto_manual.to_string())),
+            f_value: Set(Some(point.value.to_string())),
+            units: Set(Some(point.units.clone())),
+            binary_array: Set(None), // TODO: Handle binary array if provided in JSON
         };
 
         match existing {

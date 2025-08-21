@@ -6,24 +6,39 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "INPUTS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
-    pub Input_index: Option<String>,            // C++ Input_index
-    pub Panel: Option<String>,                  // C++ Panel
-    pub Full_Label: Option<String>,             // C++ Full_Label (description[21])
-    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
-    pub fValue: Option<String>,                 // C++ fValue (stored as string in T3000.db)
-    pub Units: Option<String>,                  // C++ Units
-    pub Range_Field: Option<String>,            // C++ Range
-    pub Calibration: Option<String>,            // C++ Calibration
-    pub Sign: Option<String>,                   // C++ Sign (calibration_sign)
-    pub Filter_Field: Option<String>,           // C++ Filter
-    pub Status: Option<String>,                 // C++ Status
-    pub Signal_Type: Option<String>,            // C++ Signal_Type (digital_analog)
-    pub Label: Option<String>,                  // C++ Label (label[9])
-    pub Type_Field: Option<String>,             // C++ Type
-    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded binary data)
+    #[sea_orm(column_name = "Input_index")]
+    pub input_index: Option<String>,            // C++ Input_index
+    #[sea_orm(column_name = "Panel")]
+    pub panel: Option<String>,                  // C++ Panel
+    #[sea_orm(column_name = "Full_Label")]
+    pub full_label: Option<String>,             // C++ Full_Label (description[21])
+    #[sea_orm(column_name = "Auto_Manual")]
+    pub auto_manual: Option<String>,            // C++ Auto_Manual
+    #[sea_orm(column_name = "fValue")]
+    pub f_value: Option<String>,                // C++ fValue (stored as string in T3000.db)
+    #[sea_orm(column_name = "Units")]
+    pub units: Option<String>,                  // C++ Units
+    #[sea_orm(column_name = "Range_Field")]
+    pub range_field: Option<String>,            // C++ Range
+    #[sea_orm(column_name = "Calibration")]
+    pub calibration: Option<String>,            // C++ Calibration
+    #[sea_orm(column_name = "Sign")]
+    pub sign: Option<String>,                   // C++ Sign (calibration_sign)
+    #[sea_orm(column_name = "Filter_Field")]
+    pub filter_field: Option<String>,           // C++ Filter
+    #[sea_orm(column_name = "Status")]
+    pub status: Option<String>,                 // C++ Status
+    #[sea_orm(column_name = "Signal_Type")]
+    pub signal_type: Option<String>,            // C++ Signal_Type (digital_analog)
+    #[sea_orm(column_name = "Label")]
+    pub label: Option<String>,                  // C++ Label (label[9])
+    #[sea_orm(column_name = "Type_Field")]
+    pub type_field: Option<String>,             // C++ Type
+    #[sea_orm(column_name = "BinaryArray")]
+    pub binary_array: Option<String>,           // C++ BinaryArray (hex encoded binary data)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
