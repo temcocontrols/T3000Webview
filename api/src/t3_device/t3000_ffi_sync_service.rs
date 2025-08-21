@@ -6,7 +6,7 @@
 // - WebSocket broadcasting for live updates
 // - Database synchronization to webview_t3_device.db
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::time::Duration;
@@ -23,50 +23,91 @@ use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
 use crate::logger::write_structured_log;
 use once_cell::sync::OnceCell;
-use winapi::um::libloaderapi::GetProcAddress;
+use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 use winapi::shared::minwindef::HINSTANCE;
+use std::env;
 
-// Runtime function pointer type for HandleWebViewMsg
-type HandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
+// Runtime function pointer type for BacnetWebView_HandleWebViewMsg
+type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
 
 // Global function pointer - will be loaded from T3000.exe at runtime
-static mut HANDLE_WEBVIEW_MSG_FN: Option<HandleWebViewMsgFn> = None;
+static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
 static mut T3000_LOADED: bool = false;
 
-// Load the HandleWebViewMsg function from the current executable (T3000.exe)
+// Load the BacnetWebView_HandleWebViewMsg function from the current executable (T3000.exe)
 unsafe fn load_t3000_function() -> bool {
     if T3000_LOADED {
-        return HANDLE_WEBVIEW_MSG_FN.is_some();
+        return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
     }
 
-    // Try to get the function from the current executable
-    let current_module = std::ptr::null_mut(); // NULL means current executable
-    let func_name = CString::new("HandleWebViewMsg").unwrap();
+    // Get the current executable's directory and look for T3000.exe there
+    let current_exe_path = match env::current_exe() {
+        Ok(path) => {
+            if let Some(parent_dir) = path.parent() {
+                parent_dir.join("T3000.exe")
+            } else {
+                info!("⚠️ Could not get parent directory of current executable");
+                std::path::PathBuf::from("T3000.exe") // fallback to current directory
+            }
+        },
+        Err(e) => {
+            info!("⚠️ Could not get current executable path: {}, using current directory", e);
+            std::path::PathBuf::from("T3000.exe") // fallback to current directory
+        }
+    };
 
-    let func_ptr = GetProcAddress(current_module as HINSTANCE, func_name.as_ptr());
+    info!("🔍 Looking for T3000.exe at: {}", current_exe_path.display());
 
-    if !func_ptr.is_null() {
-        HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
-        T3000_LOADED = true;
-        true
-    } else {
-        T3000_LOADED = true;
-        false
+    // Try to load T3000.exe from the same directory as the current executable
+    if let Some(path_str) = current_exe_path.to_str() {
+        let t3000_path = CString::new(path_str).unwrap();
+        let t3000_module = LoadLibraryA(t3000_path.as_ptr());
+
+        if t3000_module.is_null() {
+            info!("⚠️ Could not load T3000.exe from {}, trying current process", path_str);
+            // Fallback to current process if T3000.exe can't be loaded as library
+            let current_module = std::ptr::null_mut(); // NULL means current executable
+            let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();
+            let func_ptr = GetProcAddress(current_module as HINSTANCE, func_name.as_ptr());
+
+            if !func_ptr.is_null() {
+                info!("✅ Found BacnetWebView_HandleWebViewMsg function in current process");
+                BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
+                T3000_LOADED = true;
+                return true;
+            }
+        } else {
+            info!("✅ Successfully loaded T3000.exe from same directory");
+            let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();
+            let func_ptr = GetProcAddress(t3000_module, func_name.as_ptr());
+
+            if !func_ptr.is_null() {
+                info!("✅ Found BacnetWebView_HandleWebViewMsg function in T3000.exe");
+                BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
+                T3000_LOADED = true;
+                return true;
+            } else {
+                info!("❌ BacnetWebView_HandleWebViewMsg function not found in T3000.exe");
+            }
+        }
     }
+
+    T3000_LOADED = true;
+    false
 }
 
-// Safe wrapper to call HandleWebViewMsg
+// Safe wrapper to call BacnetWebView_HandleWebViewMsg
 fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String> {
     unsafe {
         if !load_t3000_function() {
-            return Err("HandleWebViewMsg function not found in T3000.exe".to_string());
+            return Err("BacnetWebView_HandleWebViewMsg function not found in T3000.exe".to_string());
         }
 
-        if let Some(func) = HANDLE_WEBVIEW_MSG_FN {
+        if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
             let result = func(action, buffer.as_mut_ptr() as *mut c_char, buffer.len() as i32);
             Ok(result)
         } else {
-            Err("HandleWebViewMsg function not loaded".to_string())
+            Err("BacnetWebView_HandleWebViewMsg function not loaded".to_string())
         }
     }
 }
@@ -823,6 +864,7 @@ impl T3000MainService {
     }
 
     /// Call T3000 C++ HandleWebViewMsg function directly via FFI for LOGGING_DATA
+    /// Includes retry logic to wait for MFC application initialization
     async fn get_logging_data_via_direct_ffi(config: &T3000MainConfig) -> Result<String, AppError> {
         info!("🔄 Starting DIRECT FFI call to HandleWebViewMsg with LOGGING_DATA action");
         info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
@@ -831,61 +873,59 @@ impl T3000MainService {
         write_structured_log("t3000_ffi_sync_service_sync",
             &format!("[{}] 🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Real T3000 system integration", timestamp));
 
-        // Run FFI call in a blocking task with timeout
-        let spawn_result = tokio::time::timeout(
-            Duration::from_secs(config.timeout_seconds),
-            tokio::task::spawn_blocking(move || {
-                info!("🔌 Calling HandleWebViewMsg(15) via direct FFI...");
+        // Try multiple times with increasing delays to wait for MFC initialization
+        for attempt in 1..=(config.retry_attempts + 1) {
+            info!("🔄 FFI attempt {}/{}", attempt, config.retry_attempts + 1);
 
-                write_structured_log("t3000_ffi_sync_service_sync",
-                    "🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function").ok();
+            // Run FFI call in a blocking task with timeout
+            let spawn_result = tokio::time::timeout(
+                Duration::from_secs(config.timeout_seconds),
+                tokio::task::spawn_blocking(move || {
+                    info!("🔌 Calling HandleWebViewMsg(15) via direct FFI...");
 
-                // Prepare buffer for response
-                const BUFFER_SIZE: usize = 65536; // 64KB buffer
-                let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+                    write_structured_log("t3000_ffi_sync_service_sync",
+                        "🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function").ok();
 
-                // Call the T3000 HandleWebViewMsg function via runtime loading
-                // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
-                let result = match call_handle_webview_msg(15, &mut buffer) {
-                    Ok(code) => code,
-                    Err(err) => {
-                        error!("❌ Failed to call HandleWebViewMsg: {}", err);
+                    // Prepare buffer for response
+                    const BUFFER_SIZE: usize = 65536; // 64KB buffer
+                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+
+                    // Call the T3000 HandleWebViewMsg function via runtime loading
+                    // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
+                    let result = match call_handle_webview_msg(15, &mut buffer) {
+                        Ok(code) => code,
+                        Err(err) => {
+                            error!("❌ Failed to call BacnetWebView_HandleWebViewMsg: {}", err);
+                            write_structured_log("t3000_ffi_sync_service_errors",
+                                &format!("❌ Failed to call BacnetWebView_HandleWebViewMsg: {} - Function not found in T3000.exe", err)).ok();
+                            return Err(format!("Failed to call BacnetWebView_HandleWebViewMsg: {}", err));
+                        }
+                    };
+
+                    if result == -2 {
+                        // MFC not ready - this is expected during startup
+                        return Err("MFC application not initialized".to_string());
+                    } else if result != 0 {
+                        error!("❌ BacnetWebView_HandleWebViewMsg returned error code: {}", result);
                         write_structured_log("t3000_ffi_sync_service_errors",
-                            &format!("❌ Failed to call HandleWebViewMsg: {} - Function not found in T3000.exe", err)).ok();
-                        panic!("Failed to call HandleWebViewMsg: {}", err);
+                            &format!("❌ BacnetWebView HandleWebViewMsg returned error code {} - Failed to get real device data", result)).ok();
+                        return Err(format!("BacnetWebView HandleWebViewMsg returned error code: {}", result));
                     }
-                };
-
-                if result != 0 {
-                    error!("❌ HandleWebViewMsg returned error code: {}", result);
-                    write_structured_log("t3000_ffi_sync_service_errors",
-                        &format!("❌ HandleWebViewMsg returned error code {} - Failed to get real device data", result)).ok();
-                    panic!("HandleWebViewMsg returned error code: {}", result);
-                }
 
                     // Find the null terminator to get the actual string length
                     let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
                     let result_str = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
-                    if result_str.is_empty() {
-                        error!("❌ HandleWebViewMsg returned empty response");
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            "❌ HandleWebViewMsg returned empty response - No device data available").ok();
-                        panic!("HandleWebViewMsg returned empty response");
+                    if result_str.is_empty() || result_str == "{}" {
+                        warn!("⚠️ HandleWebViewMsg returned empty or minimal response - T3000 data might not be ready");
+                        write_structured_log("t3000_ffi_sync_service_warnings",
+                            "⚠️ HandleWebViewMsg returned empty response - No device data available yet").ok();
+                        return Err("HandleWebViewMsg returned empty response - T3000 data not ready".to_string());
                     }
 
-                    info!("✅ HandleWebViewMsg returned valid response");
-                    info!("📊 Direct Response Size: {} bytes", result_str.len());
-                    write_structured_log("t3000_ffi_sync_service_sync",
-                        &format!("✅ HandleWebViewMsg returned {} bytes of device data", result_str.len())).ok();
-
-                    // Check if this is real data or still test data
-                    if result_str.contains("Test Device") || result_str.contains("test") ||
-                       result_str.contains("mock") || result_str.contains("sample") {
-                        warn!("⚠️  Still receiving test data from direct HandleWebViewMsg call!");
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                            "⚠️  DIAGNOSTIC: Direct HandleWebViewMsg still returns test data. Check T3000 device connections"
-                        )).ok();
+                    if result_str.contains("\"error\"") {
+                        error!("❌ HandleWebViewMsg returned error response: {}", result_str);
+                        return Err(format!("HandleWebViewMsg returned error: {}", result_str));
                     } else {
                         info!("🎉 SUCCESS: Received real device data from direct T3000 integration!");
                         write_structured_log("t3000_ffi_sync_service_sync",
@@ -895,45 +935,66 @@ impl T3000MainService {
                     info!("📝 Direct Response Preview: {}",
                           if result_str.len() > 200 { &result_str[..200] } else { &result_str });
 
-                    // Return the result
-                    let result: Result<String, AppError> = Ok(result_str);
-                    result
-            }),
-        ).await;
+                    // Return the result string directly
+                    Ok(result_str)
+                }),
+            ).await;
 
-        // Handle the spawn result
-        match spawn_result {
-            Ok(join_result) => {
-                match join_result {
-                    Ok(ffi_result) => {
-                        match ffi_result {
-                            Ok(data) => {
-                                info!("✅ Direct FFI call completed successfully");
-                                write_structured_log("t3000_ffi_sync_service_sync",
-                                    &format!("[{}] ✅ Direct HandleWebViewMsg FFI call completed successfully", timestamp));
-                                Ok(data)
-                            }
-                            Err(ffi_error) => {
-                                error!("❌ Direct FFI call failed: {}", ffi_error);
-                                Err(AppError::FfiError(format!("Direct FFI call failed: {}", ffi_error)))
+            // Handle the spawn result
+            match spawn_result {
+                Ok(join_result) => {
+                    match join_result {
+                        Ok(ffi_result) => {
+                            match ffi_result {
+                                Ok(data) => {
+                                    info!("✅ Direct FFI call completed successfully on attempt {}", attempt);
+                                    write_structured_log("t3000_ffi_sync_service_sync",
+                                        &format!("[{}] ✅ Direct HandleWebViewMsg FFI call completed successfully", timestamp));
+                                    return Ok(data);
+                                }
+                                Err(ffi_error) => {
+                                    if ffi_error.contains("MFC application not initialized") && attempt < config.retry_attempts + 1 {
+                                        warn!("⚠️ MFC not ready on attempt {}, waiting before retry...", attempt);
+                                        write_structured_log("t3000_ffi_sync_service_warnings",
+                                            &format!("⚠️ MFC not ready on attempt {}, will retry after delay", attempt));
+
+                                        // Progressive delay: 2s, 4s, 6s, etc.
+                                        let delay_seconds = attempt as u64 * 2;
+                                        tokio::time::sleep(Duration::from_secs(delay_seconds)).await;
+                                        break; // Break to continue outer loop
+                                    }
+
+                                    error!("❌ Direct FFI call failed: {}", ffi_error);
+                                    return Err(AppError::FfiError(format!("Direct FFI call failed: {}", ffi_error)));
+                                }
                             }
                         }
-                    }
-                    Err(join_error) => {
-                        error!("❌ Direct FFI task failed: {}", join_error);
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            &format!("[{}] ❌ Direct HandleWebViewMsg task failed: {}", timestamp, join_error));
-                        Err(AppError::FfiError(format!("Direct FFI task failed: {}", join_error)))
+                        Err(join_error) => {
+                            error!("❌ Direct FFI task failed: {}", join_error);
+                            write_structured_log("t3000_ffi_sync_service_errors",
+                                &format!("[{}] ❌ Direct HandleWebViewMsg task failed: {}", timestamp, join_error));
+                            return Err(AppError::FfiError(format!("Direct FFI task failed: {}", join_error)));
+                        }
                     }
                 }
-            }
-            Err(timeout_error) => {
-                error!("⏰ Direct FFI call timed out after {}s", config.timeout_seconds);
-                write_structured_log("t3000_ffi_sync_service_errors",
-                    &format!("[{}] ⏰ Direct HandleWebViewMsg FFI call timed out after {}s", timestamp, config.timeout_seconds));
-                Err(AppError::FfiError(format!("Direct FFI call timed out after {}s: {}", config.timeout_seconds, timeout_error)))
+                Err(timeout_error) => {
+                    error!("❌ Direct FFI call timed out: {}", timeout_error);
+                    write_structured_log("t3000_ffi_sync_service_errors",
+                        &format!("[{}] ❌ Direct HandleWebViewMsg call timed out: {}", timestamp, timeout_error));
+
+                    if attempt < config.retry_attempts + 1 {
+                        warn!("⚠️ Timeout on attempt {}, retrying...", attempt);
+                        break; // Break to continue outer loop
+                    }
+
+                    return Err(AppError::FfiError(format!("Direct FFI call timed out: {}", timeout_error)));
+                }
             }
         }
+
+        // If we get here, all attempts failed
+        error!("❌ All FFI attempts failed - MFC application never became ready");
+        Err(AppError::FfiError("All FFI attempts failed - MFC application never became ready".to_string()))
     }
 
     /// Call T3000 C++ LOGGING_DATA function via FFI
