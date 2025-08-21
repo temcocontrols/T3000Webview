@@ -766,12 +766,12 @@ impl T3000MainService {
 
         for (input_index, point) in device_data.input_points.iter().enumerate() {
             let trend_model = trendlog_data::ActiveModel {
-                Trendlog_Input_ID: Set(point.index as i32),
-                TimeStamp: Set(timestamp.clone()),
-                fValue: Set(Some(point.value.to_string())),
-                Status: Set(Some(point.status.to_string())),
-                Quality: Set(Some("Good".to_string())),
-                BinaryArray: Set(None),
+                trendlog_input_id: Set(point.index as i32),
+                time_stamp: Set(timestamp.clone()),
+                f_value: Set(Some(point.value.to_string())),
+                status: Set(Some(point.status.to_string())),
+                quality: Set(Some("Good".to_string())),
+                binary_array: Set(None),
             };
 
             write_structured_log("t3000_ffi_sync_service_sync", &format!(
@@ -800,12 +800,12 @@ impl T3000MainService {
 
         for (output_index, point) in device_data.output_points.iter().enumerate() {
             let trend_model = trendlog_data::ActiveModel {
-                Trendlog_Input_ID: Set(point.index as i32),
-                TimeStamp: Set(timestamp.clone()),
-                fValue: Set(Some(point.value.to_string())),
-                Status: Set(Some(point.status.to_string())),
-                Quality: Set(Some("Good".to_string())),
-                BinaryArray: Set(None),
+                trendlog_input_id: Set(point.index as i32),
+                time_stamp: Set(timestamp.clone()),
+                f_value: Set(Some(point.value.to_string())),
+                status: Set(Some(point.status.to_string())),
+                quality: Set(Some("Good".to_string())),
+                binary_array: Set(None),
             };
 
             write_structured_log("t3000_ffi_sync_service_sync", &format!(
@@ -834,12 +834,12 @@ impl T3000MainService {
 
         for (variable_index, point) in device_data.variable_points.iter().enumerate() {
             let trend_model = trendlog_data::ActiveModel {
-                Trendlog_Input_ID: Set(point.index as i32),
-                TimeStamp: Set(timestamp.clone()),
-                fValue: Set(Some(point.value.to_string())),
-                Status: Set(Some(point.status.to_string())),
-                Quality: Set(Some("Good".to_string())),
-                BinaryArray: Set(None),
+                trendlog_input_id: Set(point.index as i32),
+                time_stamp: Set(timestamp.clone()),
+                f_value: Set(Some(point.value.to_string())),
+                status: Set(Some(point.status.to_string())),
+                quality: Set(Some("Good".to_string())),
+                binary_array: Set(None),
             };
 
             write_structured_log("t3000_ffi_sync_service_sync", &format!(
@@ -1613,12 +1613,12 @@ impl T3000MainService {
         point: &PointData,
     ) -> Result<usize, AppError> {
         let trendlog_model = trendlog_data::ActiveModel {
-            Trendlog_Input_ID: Set(point.index as i32), // Use point index as reference
-            TimeStamp: Set(point.timestamp.clone()),
-            fValue: Set(Some(point.value.to_string())),
-            Status: Set(Some(point.status.to_string())),
-            Quality: Set(Some("Good".to_string())), // Default quality
-            BinaryArray: Set(None),
+            trendlog_input_id: Set(point.index as i32), // Use point index as reference
+            time_stamp: Set(point.timestamp.clone()),
+            f_value: Set(Some(point.value.to_string())),
+            status: Set(Some(point.status.to_string())),
+            quality: Set(Some("Good".to_string())), // Default quality
+            binary_array: Set(None),
         };
 
         trendlog_data::Entity::insert(trendlog_model)

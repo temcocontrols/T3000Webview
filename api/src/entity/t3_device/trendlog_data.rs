@@ -6,14 +6,19 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "TRENDLOG_DATA")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub Trendlog_Input_ID: i32,                 // C++ reference to TRENDLOG_INPUTS
+    #[sea_orm(primary_key, auto_increment = false, column_name = "Trendlog_Input_ID")]
+    pub trendlog_input_id: i32,                 // C++ reference to TRENDLOG_INPUTS
 
-    pub TimeStamp: String,                      // C++ TimeStamp (T3000 uses TEXT for timestamps)
-    pub fValue: Option<String>,                 // C++ fValue (following T3000 pattern - stored as TEXT)
-    pub Status: Option<String>,                 // C++ Status
-    pub Quality: Option<String>,                // C++ Quality (data quality indicator)
-    pub BinaryArray: Option<String>,            // C++ BinaryArray
+    #[sea_orm(column_name = "TimeStamp")]
+    pub time_stamp: String,                     // C++ TimeStamp (T3000 uses TEXT for timestamps)
+    #[sea_orm(column_name = "fValue")]
+    pub f_value: Option<String>,                // C++ fValue (following T3000 pattern - stored as TEXT)
+    #[sea_orm(column_name = "Status")]
+    pub status: Option<String>,                 // C++ Status
+    #[sea_orm(column_name = "Quality")]
+    pub quality: Option<String>,                // C++ Quality (data quality indicator)
+    #[sea_orm(column_name = "BinaryArray")]
+    pub binary_array: Option<String>,           // C++ BinaryArray
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
