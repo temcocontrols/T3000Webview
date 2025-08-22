@@ -30,8 +30,14 @@ use std::env;
 // Runtime function pointer type for BacnetWebView_HandleWebViewMsg
 type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;
 
-// Global function pointer - will be loaded from T3000.exe at runtime
+// New FFI function types for accessing Device_Basic_Setting data
+type GetDeviceBasicSettingsFn = unsafe extern "C" fn(panel_id: i32, buffer: *mut c_char, buffer_size: i32) -> i32;
+type GetDeviceNetworkConfigFn = unsafe extern "C" fn(panel_id: i32, buffer: *mut c_char, buffer_size: i32) -> i32;
+
+// Global function pointers - will be loaded from T3000.exe at runtime
 static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
+static mut GET_DEVICE_BASIC_SETTINGS_FN: Option<GetDeviceBasicSettingsFn> = None;
+static mut GET_DEVICE_NETWORK_CONFIG_FN: Option<GetDeviceNetworkConfigFn> = None;
 static mut T3000_LOADED: bool = false;
 
 // Load the BacnetWebView_HandleWebViewMsg function from the current executable (T3000.exe)
@@ -73,6 +79,26 @@ unsafe fn load_t3000_function() -> bool {
             if !func_ptr.is_null() {
                 info!("✅ Found BacnetWebView_HandleWebViewMsg function in current process");
                 BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
+
+                // Load additional device configuration functions (optional - may not exist in older T3000 versions)
+                let basic_settings_func_name = CString::new("GetDeviceBasicSettings").unwrap();
+                let basic_settings_ptr = GetProcAddress(current_module as HINSTANCE, basic_settings_func_name.as_ptr());
+                if !basic_settings_ptr.is_null() {
+                    info!("✅ Found GetDeviceBasicSettings function in current process");
+                    GET_DEVICE_BASIC_SETTINGS_FN = Some(std::mem::transmute(basic_settings_ptr));
+                } else {
+                    info!("⚠️ GetDeviceBasicSettings function not found - using fallback method");
+                }
+
+                let network_config_func_name = CString::new("GetDeviceNetworkConfig").unwrap();
+                let network_config_ptr = GetProcAddress(current_module as HINSTANCE, network_config_func_name.as_ptr());
+                if !network_config_ptr.is_null() {
+                    info!("✅ Found GetDeviceNetworkConfig function in current process");
+                    GET_DEVICE_NETWORK_CONFIG_FN = Some(std::mem::transmute(network_config_ptr));
+                } else {
+                    info!("⚠️ GetDeviceNetworkConfig function not found - using fallback method");
+                }
+
                 T3000_LOADED = true;
                 return true;
             }
@@ -84,6 +110,26 @@ unsafe fn load_t3000_function() -> bool {
             if !func_ptr.is_null() {
                 info!("✅ Found BacnetWebView_HandleWebViewMsg function in T3000.exe");
                 BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
+
+                // Load additional device configuration functions (optional - may not exist in older T3000 versions)
+                let basic_settings_func_name = CString::new("GetDeviceBasicSettings").unwrap();
+                let basic_settings_ptr = GetProcAddress(t3000_module, basic_settings_func_name.as_ptr());
+                if !basic_settings_ptr.is_null() {
+                    info!("✅ Found GetDeviceBasicSettings function in T3000.exe");
+                    GET_DEVICE_BASIC_SETTINGS_FN = Some(std::mem::transmute(basic_settings_ptr));
+                } else {
+                    info!("⚠️ GetDeviceBasicSettings function not found - using fallback method");
+                }
+
+                let network_config_func_name = CString::new("GetDeviceNetworkConfig").unwrap();
+                let network_config_ptr = GetProcAddress(t3000_module, network_config_func_name.as_ptr());
+                if !network_config_ptr.is_null() {
+                    info!("✅ Found GetDeviceNetworkConfig function in T3000.exe");
+                    GET_DEVICE_NETWORK_CONFIG_FN = Some(std::mem::transmute(network_config_ptr));
+                } else {
+                    info!("⚠️ GetDeviceNetworkConfig function not found - using fallback method");
+                }
+
                 T3000_LOADED = true;
                 return true;
             } else {
@@ -112,6 +158,40 @@ fn call_handle_webview_msg(action: i32, buffer: &mut [u8]) -> Result<i32, String
     }
 }
 
+// Safe wrapper to call GetDeviceBasicSettings (new function)
+fn call_get_device_basic_settings(panel_id: i32, buffer: &mut [u8]) -> Result<i32, String> {
+    unsafe {
+        if !load_t3000_function() {
+            return Err("T3000 functions not loaded".to_string());
+        }
+
+        if let Some(func) = GET_DEVICE_BASIC_SETTINGS_FN {
+            let result = func(panel_id, buffer.as_mut_ptr() as *mut c_char, buffer.len() as i32);
+            Ok(result)
+        } else {
+            // Fallback: not an error, just means function not available in this T3000 version
+            Ok(-1) // Signal that function is not available
+        }
+    }
+}
+
+// Safe wrapper to call GetDeviceNetworkConfig (new function)
+fn call_get_device_network_config(panel_id: i32, buffer: &mut [u8]) -> Result<i32, String> {
+    unsafe {
+        if !load_t3000_function() {
+            return Err("T3000 functions not loaded".to_string());
+        }
+
+        if let Some(func) = GET_DEVICE_NETWORK_CONFIG_FN {
+            let result = func(panel_id, buffer.as_mut_ptr() as *mut c_char, buffer.len() as i32);
+            Ok(result)
+        } else {
+            // Fallback: not an error, just means function not available in this T3000 version
+            Ok(-1) // Signal that function is not available
+        }
+    }
+}
+
 /// Global main service instance
 static MAIN_SERVICE: OnceCell<Arc<T3000MainService>> = OnceCell::new();
 
@@ -136,8 +216,10 @@ impl Default for T3000MainConfig {
 }
 
 /// Device information structure from T3000 LOGGING_DATA JSON
+/// Extended with complete network configuration fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
+    // Original LOGGING_DATA fields
     pub panel_id: i32,
     pub panel_name: String,
     pub panel_serial_number: i32,
@@ -145,6 +227,17 @@ pub struct DeviceInfo {
     pub input_logging_time: String,
     pub output_logging_time: String,
     pub variable_logging_time: String,
+
+    // Extended network configuration fields from Device_Basic_Setting
+    pub ip_address: Option<String>,           // from reg.ip_addr[4]
+    pub port: Option<i32>,                    // from reg.panel_number or modbus_port
+    pub bacnet_mstp_mac_id: Option<i32>,      // from reg.mstp_id or object_instance
+    pub modbus_address: Option<i32>,          // from reg.modbus_id
+    pub pc_ip_address: Option<String>,        // from network configuration
+    pub modbus_port: Option<i32>,             // from reg.modbus_port
+    pub bacnet_ip_port: Option<i32>,          // from BACnet IP configuration
+    pub show_label_name: Option<String>,      // from panel settings
+    pub connection_type: Option<String>,      // from communication type
 }
 
 /// Point data structure from T3000 LOGGING_DATA JSON
@@ -325,6 +418,93 @@ impl T3000MainService {
     /// Perform one-time logging data sync (can be called independently)
     pub async fn sync_once(&self) -> Result<(), AppError> {
         Self::sync_logging_data_static(self.config.clone()).await
+    }
+
+    /// Populate extended device information using additional FFI calls
+    /// This function tries to get complete device configuration from g_Device_Basic_Setting
+    fn populate_extended_device_info(device_info: &mut DeviceInfo) {
+        let panel_id = device_info.panel_id;
+
+        // Try to get basic device settings using the new FFI function
+        let mut buffer = vec![0u8; 4096];
+        match call_get_device_basic_settings(panel_id, &mut buffer) {
+            Ok(result) if result > 0 => {
+                // Function succeeded - parse the JSON response
+                if let Ok(settings_json) = String::from_utf8(buffer[..result as usize].to_vec()) {
+                    if let Ok(settings_value) = serde_json::from_str::<JsonValue>(&settings_json) {
+                        info!("✅ Got extended device settings for panel {}", panel_id);
+
+                        // Parse the Device_Basic_Setting fields and populate our extended info
+                        device_info.ip_address = settings_value.get("ip_address").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        device_info.modbus_address = settings_value.get("modbus_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+                        device_info.modbus_port = settings_value.get("modbus_port").and_then(|v| v.as_i64()).map(|v| v as i32);
+                        device_info.bacnet_mstp_mac_id = settings_value.get("mstp_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+                        device_info.port = settings_value.get("panel_number").and_then(|v| v.as_i64()).map(|v| v as i32);
+                        device_info.show_label_name = settings_value.get("panel_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                        // Try to get BACnet object instance for BACnet devices
+                        if let Some(obj_instance) = settings_value.get("object_instance").and_then(|v| v.as_i64()) {
+                            if device_info.bacnet_mstp_mac_id.is_none() {
+                                device_info.bacnet_mstp_mac_id = Some(obj_instance as i32);
+                            }
+                        }
+                    } else {
+                        warn!("⚠️ Failed to parse device settings JSON for panel {}", panel_id);
+                    }
+                } else {
+                    warn!("⚠️ Invalid UTF-8 in device settings response for panel {}", panel_id);
+                }
+            }
+            Ok(_) => {
+                // Function not available or returned no data - this is OK for older T3000 versions
+                debug!("📡 Extended device settings function not available for panel {} - using fallback", panel_id);
+
+                // Fallback: populate what we can from existing LOGGING_DATA
+                device_info.ip_address = Some(device_info.panel_ipaddress.clone());
+                device_info.port = Some(device_info.panel_id);
+                device_info.show_label_name = Some(device_info.panel_name.clone());
+                device_info.connection_type = Some("LOGGING_DATA".to_string()); // Indicate data source
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to get device settings for panel {}: {}", panel_id, e);
+
+                // Fallback: populate what we can from existing LOGGING_DATA
+                device_info.ip_address = Some(device_info.panel_ipaddress.clone());
+                device_info.port = Some(device_info.panel_id);
+                device_info.show_label_name = Some(device_info.panel_name.clone());
+                device_info.connection_type = Some("FALLBACK".to_string()); // Indicate fallback data source
+            }
+        }
+
+        // Try to get network configuration using the second new FFI function
+        buffer.fill(0);
+        match call_get_device_network_config(panel_id, &mut buffer) {
+            Ok(result) if result > 0 => {
+                if let Ok(network_json) = String::from_utf8(buffer[..result as usize].to_vec()) {
+                    if let Ok(network_value) = serde_json::from_str::<JsonValue>(&network_json) {
+                        info!("✅ Got network configuration for panel {}", panel_id);
+
+                        // Parse network configuration fields
+                        device_info.pc_ip_address = network_value.get("pc_ip_address").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        device_info.bacnet_ip_port = network_value.get("bacnet_ip_port").and_then(|v| v.as_i64()).map(|v| v as i32);
+
+                        // Update connection type if available
+                        if let Some(conn_type) = network_value.get("connection_type").and_then(|v| v.as_str()) {
+                            device_info.connection_type = Some(conn_type.to_string());
+                        }
+                    }
+                }
+            }
+            Ok(_) => {
+                debug!("📡 Network configuration function not available for panel {} - OK for older T3000", panel_id);
+            }
+            Err(e) => {
+                debug!("📡 Network configuration error for panel {}: {} - OK for older T3000", panel_id, e);
+            }
+        }
+
+        info!("🔧 Extended device info populated for panel {} - IP: {:?}, Port: {:?}, Modbus: {:?}, BACnet: {:?}",
+              panel_id, device_info.ip_address, device_info.port, device_info.modbus_address, device_info.bacnet_mstp_mac_id);
     }
 
     /// Static method to sync logging data (for use in spawned tasks)
@@ -693,6 +873,18 @@ impl T3000MainService {
             Address: Set(Some(device_info.panel_ipaddress.clone())),
             Status: Set(Some("Online".to_string())),
             Description: Set(Some(format!("Panel {} - {}", device_info.panel_id, device_info.panel_name))),
+
+            // Extended network configuration fields from Device_Basic_Setting
+            ip_address: Set(device_info.ip_address.clone()),
+            port: Set(device_info.port),
+            bacnet_mstp_mac_id: Set(device_info.bacnet_mstp_mac_id),
+            modbus_address: Set(device_info.modbus_address.map(|v| v as u8)), // Convert i32 to u8
+            pc_ip_address: Set(device_info.pc_ip_address.clone()),
+            modbus_port: Set(device_info.modbus_port.map(|v| v as u16)),      // Convert i32 to u16
+            bacnet_ip_port: Set(device_info.bacnet_ip_port.map(|v| v as u16)), // Convert i32 to u16
+            show_label_name: Set(device_info.show_label_name.clone()),
+            connection_type: Set(device_info.connection_type.clone()),
+
             ..Default::default()
         };
 
@@ -1214,8 +1406,8 @@ impl T3000MainService {
             warn!("⚠️  DIAGNOSTIC: Action '{}' suggests test/mock data", action);
         }
 
-        // Extract device information
-        let device_info = DeviceInfo {
+        // Extract device information from LOGGING_DATA
+        let mut device_info = DeviceInfo {
             panel_id: json_value.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             panel_name: json_value.get("panel_name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
             panel_serial_number: json_value.get("panel_serial_number").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
@@ -1223,13 +1415,30 @@ impl T3000MainService {
             input_logging_time: json_value.get("input_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             output_logging_time: json_value.get("output_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             variable_logging_time: json_value.get("variable_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+
+            // Initialize extended fields to None - will be populated by additional FFI calls
+            ip_address: None,
+            port: None,
+            bacnet_mstp_mac_id: None,
+            modbus_address: None,
+            pc_ip_address: None,
+            modbus_port: None,
+            bacnet_ip_port: None,
+            show_label_name: None,
+            connection_type: None,
         };
+
+        // Try to get extended device configuration using new FFI functions
+        Self::populate_extended_device_info(&mut device_info);
 
         info!("🏠 Device Info - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
               device_info.panel_id, device_info.panel_serial_number,
               device_info.panel_name, device_info.panel_ipaddress);
         info!("⏰ Logging Times - Input: '{}', Output: '{}', Variable: '{}'",
               device_info.input_logging_time, device_info.output_logging_time, device_info.variable_logging_time);
+        info!("🔧 Extended Config - IP: {:?}, Port: {:?}, Modbus: {:?}, BACnet: {:?}, Connection: {:?}",
+              device_info.ip_address, device_info.port, device_info.modbus_address,
+              device_info.bacnet_mstp_mac_id, device_info.connection_type);
 
         // Diagnostic: Check for test device indicators
         if device_info.panel_name.contains("Test") || device_info.panel_name.contains("Mock") ||

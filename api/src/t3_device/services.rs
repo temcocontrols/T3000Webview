@@ -150,6 +150,17 @@ impl T3DeviceService {
             Status: Set(device_data.Status),
             Range_Field: Set(None),
             Calibration: Set(None),
+
+            // Initialize new network configuration fields as None/defaults
+            ip_address: Set(None),
+            port: Set(None),
+            bacnet_mstp_mac_id: Set(None),
+            modbus_address: Set(None),
+            pc_ip_address: Set(None),
+            modbus_port: Set(None),
+            bacnet_ip_port: Set(None),
+            show_label_name: Set(None),
+            connection_type: Set(None),
         };
 
         let device = new_device.insert(db).await?;

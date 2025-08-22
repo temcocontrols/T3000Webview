@@ -53,6 +53,26 @@ pub struct Model {
     pub Range_Field: Option<String>,           // C++ Range
     #[sea_orm(column_name = "Calibration")]
     pub Calibration: Option<String>,           // C++ Calibration
+
+    // Additional network communication fields from C++ codebase analysis
+    #[sea_orm(column_name = "IP_Address")]
+    pub ip_address: Option<String>,            // C++ ip_address (device IP address)
+    #[sea_orm(column_name = "Port")]
+    pub port: Option<i32>,                     // C++ nport (network port number)
+    #[sea_orm(column_name = "BACnet_MSTP_Mac_ID")]
+    pub bacnet_mstp_mac_id: Option<i32>,       // C++ macaddress (BACnet MSTP MAC ID)
+    #[sea_orm(column_name = "Modbus_Address")]
+    pub modbus_address: Option<u8>,            // C++ modbus_addr (Modbus device ID)
+    #[sea_orm(column_name = "PC_IP_Address")]
+    pub pc_ip_address: Option<String>,         // C++ host IP address (connection info)
+    #[sea_orm(column_name = "Modbus_Port")]
+    pub modbus_port: Option<u16>,              // C++ modbus_port (Modbus TCP port)
+    #[sea_orm(column_name = "BACnet_IP_Port")]
+    pub bacnet_ip_port: Option<u16>,           // C++ bacnetip_port (BACnet/IP port, default 47808)
+    #[sea_orm(column_name = "Show_Label_Name")]
+    pub show_label_name: Option<String>,       // C++ show_label_name (display name)
+    #[sea_orm(column_name = "Connection_Type")]
+    pub connection_type: Option<String>,       // C++ connection type (Serial/Ethernet/etc)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
