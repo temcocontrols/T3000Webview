@@ -87,16 +87,16 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     // Write to structured log file - new Initialize category
     use crate::logger::{write_structured_log_with_level, LogLevel};
-    let _ = write_structured_log_with_level("T3000_Webview_Initialize", &startup_msg, LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_Webview_Initialize", &startup_msg, LogLevel::Info);
 
     // Try to initialize T3000 device database (webview_t3_device.db)
     if let Err(e) = crate::utils::start_database_service().await {
         let error_msg = format!("T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue", e);
-        let _ = write_structured_log_with_level("T3000_Webview_Initialize", &error_msg, LogLevel::Error);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
         println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");
     } else {
         let success_msg = "T3000 webview database (webview_t3_device.db) ready";
-        let _ = write_structured_log_with_level("T3000_Webview_Initialize", &success_msg, LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", &success_msg, LogLevel::Info);
     }
 
     // Initialize T3000 Main Service

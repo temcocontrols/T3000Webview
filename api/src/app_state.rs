@@ -70,7 +70,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         std::path::Path::new(t3_device_path).exists(),
         std::env::current_dir().unwrap_or_default()
     );
-    let _ = write_structured_log_with_level("T3000_Webview_Initialize", &file_check_message, LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_Webview_Initialize", &file_check_message, LogLevel::Info);
 
     // Establish primary database connection
     let conn = match establish_connection().await {
@@ -93,7 +93,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let t3_device_conn = match establish_t3_device_connection().await {
         Ok(conn) => {
             let success_message = "WebView T3000 database connected successfully";
-            let _ = write_structured_log_with_level("T3000_Webview_Initialize", &success_message, LogLevel::Info);
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", &success_message, LogLevel::Info);
             Some(conn)
         },
         Err(e) => {
@@ -103,7 +103,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                 "WebView T3000 database unavailable (core services will continue)\nDatabase URL: {}\nError details: {:?}",
                 T3_DEVICE_DATABASE_URL.as_str(), e
             );
-            let _ = write_structured_log_with_level("T3000_Webview_Initialize", &error_message, LogLevel::Warn);
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_message, LogLevel::Warn);
             println!("⚠️  Warning: WebView T3000 database unavailable - Core HTTP/WebSocket services starting anyway");
             None
         }
