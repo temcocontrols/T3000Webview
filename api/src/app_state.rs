@@ -32,6 +32,7 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 
 use tokio::sync::broadcast;
 use crate::db_connection::establish_t3_device_connection;
+use crate::logger::{write_structured_log_with_level, LogLevel, write_structured_log};
 // use crate::t3_device::realtime_data_service::{RealtimeDataService, DataPoint}; // Available but not called
 
 /// Abstracted enhanced application state with T3000 device support
@@ -51,29 +52,25 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
 
     // Use structured logging for database connection attempts
-    use crate::logger::write_structured_log;
+    use crate::logger::{write_structured_log_with_level, LogLevel};
     use crate::utils::{DATABASE_URL, T3_DEVICE_DATABASE_URL};
 
     let log_message = format!(
-        "[{}] === DATABASE CONNECTION ATTEMPT ===\n\
-        [{}] Primary database URL: {}\n\
-        [{}] WebView T3000 database URL: {}",
-        timestamp, timestamp, DATABASE_URL.as_str(), timestamp, T3_DEVICE_DATABASE_URL.as_str()
+        "=== DATABASE CONNECTION ATTEMPT ===\nPrimary database URL: {}\nWebView T3000 database URL: {}",
+        DATABASE_URL.as_str(), T3_DEVICE_DATABASE_URL.as_str()
     );
-    let _ = write_structured_log("database_connection", &log_message);
+    let _ = write_structured_log_with_level("T3000_Webview_Initialize", &log_message, LogLevel::Info);
 
     // Check if database files exist
     let primary_path = DATABASE_URL.strip_prefix("sqlite://").unwrap_or(&DATABASE_URL);
     let t3_device_path = T3_DEVICE_DATABASE_URL.strip_prefix("sqlite://").unwrap_or(&T3_DEVICE_DATABASE_URL);
     let file_check_message = format!(
-        "[{}] Primary DB file exists: {}\n\
-        [{}] T3000 DB file exists: {}\n\
-        [{}] Current working directory: {:?}",
-        timestamp, std::path::Path::new(primary_path).exists(),
-        timestamp, std::path::Path::new(t3_device_path).exists(),
-        timestamp, std::env::current_dir().unwrap_or_default()
+        "Primary DB file exists: {}\nT3000 DB file exists: {}\nCurrent working directory: {:?}",
+        std::path::Path::new(primary_path).exists(),
+        std::path::Path::new(t3_device_path).exists(),
+        std::env::current_dir().unwrap_or_default()
     );
-    let _ = write_structured_log("database_connection", &file_check_message);
+    let _ = write_structured_log_with_level("T3000_Webview_Initialize", &file_check_message, LogLevel::Info);
 
     // Establish primary database connection
     let conn = match establish_connection().await {
@@ -95,22 +92,18 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     // Establish webview T3000 database connection (OPTIONAL - don't fail if unavailable)
     let t3_device_conn = match establish_t3_device_connection().await {
         Ok(conn) => {
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let success_message = format!("[{}] ✅ WebView T3000 database connected successfully", timestamp);
-            let _ = write_structured_log("database_connection", &success_message);
+            let success_message = "WebView T3000 database connected successfully";
+            let _ = write_structured_log_with_level("T3000_Webview_Initialize", &success_message, LogLevel::Info);
             Some(conn)
         },
         Err(e) => {
             // Log to structured log for headless service but DON'T fail the entire service
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
             use crate::utils::T3_DEVICE_DATABASE_URL;
             let error_message = format!(
-                "[{}] ⚠️  WebView T3000 database unavailable (core services will continue)\n\
-                [{}] Database URL: {}\n\
-                [{}] Error details: {:?}",
-                timestamp, timestamp, T3_DEVICE_DATABASE_URL.as_str(), timestamp, e
+                "WebView T3000 database unavailable (core services will continue)\nDatabase URL: {}\nError details: {:?}",
+                T3_DEVICE_DATABASE_URL.as_str(), e
             );
-            let _ = write_structured_log("database_errors", &error_message);
+            let _ = write_structured_log_with_level("T3000_Webview_Initialize", &error_message, LogLevel::Warn);
             println!("⚠️  Warning: WebView T3000 database unavailable - Core HTTP/WebSocket services starting anyway");
             None
         }

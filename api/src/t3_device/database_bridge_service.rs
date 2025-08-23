@@ -68,10 +68,10 @@ impl T3000DatabaseBridgeService {
             status.last_sync = Some(chrono::Utc::now());
         }
 
-        let _ = write_structured_log("database_bridge",
-            &format!("[{}] T3000 Database Bridge Service started - interval: {}s",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
-                interval.as_secs()));
+        // Database bridge startup goes to Initialize log
+        use crate::logger::{write_structured_log_with_level, LogLevel};
+        let startup_msg = format!("T3000 Database Bridge Service started - interval: {}s", interval.as_secs());
+        let _ = write_structured_log_with_level("T3000_Webview_Initialize", &startup_msg, LogLevel::Info);
 
         // Background sync loop
         loop {

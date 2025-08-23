@@ -89,11 +89,11 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
 pub async fn server_start() -> Result<(), Box<dyn Error>> {
     use crate::logger::ServiceLogger;
 
-    // Initialize service logger
-    let mut logger = ServiceLogger::new("t3000_webview_service")
+    // Initialize service logger - route to API log category
+    let mut logger = ServiceLogger::new("T3000_Webview_API")
         .unwrap_or_else(|_| ServiceLogger::new("fallback_service").unwrap());
 
-    logger.info("T3000 WebView Service Starting...");
+    logger.info("T3000 WebView HTTP API Service Starting on port 9103...");
 
     // Initialize basic tracing
     if let Err(_) = tracing_subscriber::fmt()

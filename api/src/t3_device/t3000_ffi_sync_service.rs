@@ -21,7 +21,7 @@ use crate::entity::t3_device::{
 };
 use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
-use crate::logger::write_structured_log;
+use crate::logger::{write_structured_log, ServiceLogger, write_structured_log_with_level, LogLevel};
 use once_cell::sync::OnceCell;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 use winapi::shared::minwindef::HINSTANCE;
@@ -46,23 +46,27 @@ unsafe fn load_t3000_function() -> bool {
         return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
     }
 
+    // Create logger for initialization operations
+    use crate::logger::ServiceLogger;
+    let mut init_logger = ServiceLogger::initialize().unwrap_or_else(|_| ServiceLogger::new("fallback_init").unwrap());
+
     // Get the current executable's directory and look for T3000.exe there
     let current_exe_path = match env::current_exe() {
         Ok(path) => {
             if let Some(parent_dir) = path.parent() {
                 parent_dir.join("T3000.exe")
             } else {
-                info!("⚠️ Could not get parent directory of current executable");
+                init_logger.warn("⚠️ Could not get parent directory of current executable");
                 std::path::PathBuf::from("T3000.exe") // fallback to current directory
             }
         },
         Err(e) => {
-            info!("⚠️ Could not get current executable path: {}, using current directory", e);
+            init_logger.warn(&format!("⚠️ Could not get current executable path: {}, using current directory", e));
             std::path::PathBuf::from("T3000.exe") // fallback to current directory
         }
     };
 
-    info!("🔍 Looking for T3000.exe at: {}", current_exe_path.display());
+    init_logger.info(&format!("🔍 Looking for T3000.exe at: {}", current_exe_path.display()));
 
     // Try to load T3000.exe from the same directory as the current executable
     if let Some(path_str) = current_exe_path.to_str() {
@@ -70,70 +74,70 @@ unsafe fn load_t3000_function() -> bool {
         let t3000_module = LoadLibraryA(t3000_path.as_ptr());
 
         if t3000_module.is_null() {
-            info!("⚠️ Could not load T3000.exe from {}, trying current process", path_str);
+            init_logger.warn(&format!("⚠️ Could not load T3000.exe from {}, trying current process", path_str));
             // Fallback to current process if T3000.exe can't be loaded as library
             let current_module = std::ptr::null_mut(); // NULL means current executable
             let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();
             let func_ptr = GetProcAddress(current_module as HINSTANCE, func_name.as_ptr());
 
             if !func_ptr.is_null() {
-                info!("✅ Found BacnetWebView_HandleWebViewMsg function in current process");
+                init_logger.info("✅ Found BacnetWebView_HandleWebViewMsg function in current process");
                 BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
 
                 // Load additional device configuration functions (optional - may not exist in older T3000 versions)
                 let basic_settings_func_name = CString::new("GetDeviceBasicSettings").unwrap();
                 let basic_settings_ptr = GetProcAddress(current_module as HINSTANCE, basic_settings_func_name.as_ptr());
                 if !basic_settings_ptr.is_null() {
-                    info!("✅ Found GetDeviceBasicSettings function in current process");
+                    init_logger.info("✅ Found GetDeviceBasicSettings function in current process");
                     GET_DEVICE_BASIC_SETTINGS_FN = Some(std::mem::transmute(basic_settings_ptr));
                 } else {
-                    info!("⚠️ GetDeviceBasicSettings function not found - using fallback method");
+                    init_logger.warn("⚠️ GetDeviceBasicSettings function not found - using fallback method");
                 }
 
                 let network_config_func_name = CString::new("GetDeviceNetworkConfig").unwrap();
                 let network_config_ptr = GetProcAddress(current_module as HINSTANCE, network_config_func_name.as_ptr());
                 if !network_config_ptr.is_null() {
-                    info!("✅ Found GetDeviceNetworkConfig function in current process");
+                    init_logger.info("✅ Found GetDeviceNetworkConfig function in current process");
                     GET_DEVICE_NETWORK_CONFIG_FN = Some(std::mem::transmute(network_config_ptr));
                 } else {
-                    info!("⚠️ GetDeviceNetworkConfig function not found - using fallback method");
+                    init_logger.warn("⚠️ GetDeviceNetworkConfig function not found - using fallback method");
                 }
 
                 T3000_LOADED = true;
                 return true;
             }
         } else {
-            info!("✅ Successfully loaded T3000.exe from same directory");
+            init_logger.info("✅ Successfully loaded T3000.exe from same directory");
             let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();
             let func_ptr = GetProcAddress(t3000_module, func_name.as_ptr());
 
             if !func_ptr.is_null() {
-                info!("✅ Found BacnetWebView_HandleWebViewMsg function in T3000.exe");
+                init_logger.info("✅ Found BacnetWebView_HandleWebViewMsg function in T3000.exe");
                 BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN = Some(std::mem::transmute(func_ptr));
 
                 // Load additional device configuration functions (optional - may not exist in older T3000 versions)
                 let basic_settings_func_name = CString::new("GetDeviceBasicSettings").unwrap();
                 let basic_settings_ptr = GetProcAddress(t3000_module, basic_settings_func_name.as_ptr());
                 if !basic_settings_ptr.is_null() {
-                    info!("✅ Found GetDeviceBasicSettings function in T3000.exe");
+                    init_logger.info("✅ Found GetDeviceBasicSettings function in T3000.exe");
                     GET_DEVICE_BASIC_SETTINGS_FN = Some(std::mem::transmute(basic_settings_ptr));
                 } else {
-                    info!("⚠️ GetDeviceBasicSettings function not found - using fallback method");
+                    init_logger.warn("⚠️ GetDeviceBasicSettings function not found - using fallback method");
                 }
 
                 let network_config_func_name = CString::new("GetDeviceNetworkConfig").unwrap();
                 let network_config_ptr = GetProcAddress(t3000_module, network_config_func_name.as_ptr());
                 if !network_config_ptr.is_null() {
-                    info!("✅ Found GetDeviceNetworkConfig function in T3000.exe");
+                    init_logger.info("✅ Found GetDeviceNetworkConfig function in T3000.exe");
                     GET_DEVICE_NETWORK_CONFIG_FN = Some(std::mem::transmute(network_config_ptr));
                 } else {
-                    info!("⚠️ GetDeviceNetworkConfig function not found - using fallback method");
+                    init_logger.warn("⚠️ GetDeviceNetworkConfig function not found - using fallback method");
                 }
 
                 T3000_LOADED = true;
                 return true;
             } else {
-                info!("❌ BacnetWebView_HandleWebViewMsg function not found in T3000.exe");
+                init_logger.error("❌ BacnetWebView_HandleWebViewMsg function not found in T3000.exe");
             }
         }
     }
@@ -317,57 +321,45 @@ impl T3000MainService {
             return Err(AppError::ServiceError("Logging data service is already running".to_string()));
         }
 
-        info!("🚀 Starting T3000 LOGGING_DATA sync service with {}-second intervals", self.config.sync_interval_secs);
-        info!("⚡ Running immediate sync on startup, then continuing with periodic sync...");
+        // Use unified logging - remove duplicate console logs
+        use crate::logger::ServiceLogger;
+        let mut logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-        // Log service startup to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🚀 Starting T3000 LOGGING_DATA sync service with {}-second intervals",
-                     timestamp, self.config.sync_interval_secs));
+        logger.info(&format!("🚀 Starting T3000 LOGGING_DATA sync service with {}-second intervals", self.config.sync_interval_secs));
+        logger.info("⚡ Running immediate sync on startup, then continuing with periodic sync...");
 
         let config = self.config.clone();
         let is_running = self.is_running.clone();
 
         tokio::spawn(async move {
-            // Run immediate sync on startup
-            info!("🏃 Performing immediate startup sync...");
-            if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
-                error!("❌ Immediate startup sync failed: {}", e);
-                // Log error to structured log file
-                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                let _ = write_structured_log("t3000_ffi_sync_service_errors",
-                    &format!("[{}] ❌ Immediate startup sync failed: {}", timestamp, e));
-            } else {
-                info!("✅ Immediate startup sync completed successfully");
+            // Create logger for the spawned task
+            let mut task_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-                // Log immediate startup success to structured log
-                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                    &format!("[{}] ✅ Immediate startup sync completed successfully", timestamp));
+            // Run immediate sync on startup
+            task_logger.info("🏃 Performing immediate startup sync...");
+            if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
+                task_logger.error(&format!("❌ Immediate startup sync failed: {}", e));
+                // Also log critical errors to Initialize category
+                let _ = write_structured_log_with_level("T3000_Webview_Initialize", &format!("Immediate startup sync failed: {}", e), LogLevel::Error);
+            } else {
+                task_logger.info("✅ Immediate startup sync completed successfully");
             }
 
             // Continue with periodic sync loop
             while is_running.load(Ordering::Relaxed) {
                 // Sleep until next sync interval
-                info!("⏰ Waiting {} seconds until next sync cycle", config.sync_interval_secs);
+                task_logger.info(&format!("⏰ Waiting {} seconds until next sync cycle", config.sync_interval_secs));
                 sleep(Duration::from_secs(config.sync_interval_secs)).await;
 
                 // Perform periodic logging data sync
                 if is_running.load(Ordering::Relaxed) {
                     if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
-                        error!("❌ Periodic sync failed: {}", e);
-                        // Log periodic sync error to structured log file
-                        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                        let _ = write_structured_log("t3000_ffi_sync_service_errors",
-                            &format!("[{}] ❌ Periodic sync failed: {}", timestamp, e));
+                        task_logger.error(&format!("❌ Periodic sync failed: {}", e));
                     }
                 }
             }
 
-            info!("🛑 T3000 LOGGING_DATA sync service stopped");
-            write_structured_log("t3000_ffi_sync_service_sync",
-                "🛑 T3000 LOGGING_DATA sync service stopped - Background task terminated").ok();
+            task_logger.info("🛑 T3000 LOGGING_DATA sync service stopped");
         });
 
         Ok(())
@@ -376,20 +368,16 @@ impl T3000MainService {
     /// Stop the periodic sync service
     pub fn stop_sync_service(&self) {
         self.is_running.store(false, Ordering::Relaxed);
-        info!("Stopping T3000 LOGGING_DATA sync service");
 
-        // Log service stop to structured log
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            "🛑 T3000 FFI Sync Service stop requested - Setting running flag to false");
+        // Use unified logging
+        let mut logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+        logger.info("Stopping T3000 LOGGING_DATA sync service");
     }
 
     /// Test the direct T3000 HandleWebViewMsg integration
     pub async fn test_direct_integration(&self) -> Result<String, AppError> {
-        info!("🧪 Testing direct T3000 HandleWebViewMsg integration");
-
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        write_structured_log("t3000_ffi_sync_service_test",
-            &format!("[{}] 🧪 Starting direct T3000 integration test", timestamp)).ok();
+        let mut logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+        logger.info("🧪 Testing direct T3000 HandleWebViewMsg integration");
 
         // Call the direct FFI function
         let result = Self::get_logging_data_via_direct_ffi(&self.config).await?;
@@ -398,13 +386,9 @@ impl T3000MainService {
         let is_real_data = !result.contains("Test Device") && !result.contains("test") && !result.contains("mock");
 
         if is_real_data {
-            info!("🎉 SUCCESS: Direct integration returned REAL device data!");
-            write_structured_log("t3000_ffi_sync_service_test",
-                &format!("[{}] 🎉 SUCCESS: Direct T3000 integration test returned real device data", timestamp)).ok();
+            logger.info("🎉 SUCCESS: Direct integration returned REAL device data!");
         } else {
-            warn!("⚠️  WARNING: Direct integration still returns test data");
-            write_structured_log("t3000_ffi_sync_service_test",
-                &format!("[{}] ⚠️  Direct T3000 integration test returned test data - Check device connections", timestamp)).ok();
+            logger.warn("⚠️  WARNING: Direct integration still returns test data");
         }
 
         Ok(result)
@@ -432,7 +416,9 @@ impl T3000MainService {
                 // Function succeeded - parse the JSON response
                 if let Ok(settings_json) = String::from_utf8(buffer[..result as usize].to_vec()) {
                     if let Ok(settings_value) = serde_json::from_str::<JsonValue>(&settings_json) {
-                        info!("✅ Got extended device settings for panel {}", panel_id);
+                        // Use FFI logger for this operation
+                        let mut ffi_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+                        ffi_logger.info(&format!("✅ Got extended device settings for panel {}", panel_id));
 
                         // Parse the Device_Basic_Setting fields and populate our extended info
                         device_info.ip_address = settings_value.get("ip_address").and_then(|v| v.as_str()).map(|s| s.to_string());
@@ -449,10 +435,12 @@ impl T3000MainService {
                             }
                         }
                     } else {
-                        warn!("⚠️ Failed to parse device settings JSON for panel {}", panel_id);
+                        let mut ffi_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+                        ffi_logger.warn(&format!("⚠️ Failed to parse device settings JSON for panel {}", panel_id));
                     }
                 } else {
-                    warn!("⚠️ Invalid UTF-8 in device settings response for panel {}", panel_id);
+                    let mut ffi_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+                    ffi_logger.warn(&format!("⚠️ Invalid UTF-8 in device settings response for panel {}", panel_id));
                 }
             }
             Ok(_) => {
@@ -466,7 +454,8 @@ impl T3000MainService {
                 device_info.connection_type = Some("LOGGING_DATA".to_string()); // Indicate data source
             }
             Err(e) => {
-                warn!("⚠️ Failed to get device settings for panel {}: {}", panel_id, e);
+                let mut ffi_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+                ffi_logger.warn(&format!("⚠️ Failed to get device settings for panel {}: {}", panel_id, e));
 
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
@@ -482,7 +471,8 @@ impl T3000MainService {
             Ok(result) if result > 0 => {
                 if let Ok(network_json) = String::from_utf8(buffer[..result as usize].to_vec()) {
                     if let Ok(network_value) = serde_json::from_str::<JsonValue>(&network_json) {
-                        info!("✅ Got network configuration for panel {}", panel_id);
+                        let mut ffi_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+                        ffi_logger.info(&format!("✅ Got network configuration for panel {}", panel_id));
 
                         // Parse network configuration fields
                         device_info.pc_ip_address = network_value.get("pc_ip_address").and_then(|v| v.as_str()).map(|s| s.to_string());
@@ -503,32 +493,25 @@ impl T3000MainService {
             }
         }
 
-        info!("🔧 Extended device info populated for panel {} - IP: {:?}, Port: {:?}, Modbus: {:?}, BACnet: {:?}",
-              panel_id, device_info.ip_address, device_info.port, device_info.modbus_address, device_info.bacnet_mstp_mac_id);
+        let mut ffi_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+        ffi_logger.info(&format!("🔧 Extended device info populated for panel {} - IP: {:?}, Port: {:?}, Modbus: {:?}, BACnet: {:?}",
+              panel_id, device_info.ip_address, device_info.port, device_info.modbus_address, device_info.bacnet_mstp_mac_id));
     }
 
     /// Static method to sync logging data (for use in spawned tasks)
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
-        info!("🚀 Starting T3000 LOGGING_DATA sync cycle");
-        info!("⚙️  Sync Config - Interval: {}s, Timeout: {}s", config.sync_interval_secs, config.timeout_seconds);
-
-        // Log sync start to structured log file
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🚀 T3000 LOGGING_DATA sync cycle started", timestamp));
+        // Create logger for this sync operation
+        let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+        sync_logger.info("🚀 Starting T3000 LOGGING_DATA sync cycle");
+        sync_logger.info(&format!("⚙️  Sync Config - Interval: {}s, Timeout: {}s", config.sync_interval_secs, config.timeout_seconds));
 
         let db = establish_t3_device_connection().await
             .map_err(|e| {
-                error!("❌ Database connection failed: {}", e);
+                sync_logger.error(&format!("❌ Database connection failed: {}", e));
                 e
             })?;
 
-        info!("✅ Database connection established");
-
-        // Log database connection to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] ✅ Database connection established", timestamp));
+        sync_logger.info("✅ Database connection established");
 
         // Get JSON data from T3000 C++ via DIRECT FFI - this contains ALL devices and their data
         // Using new direct HandleWebViewMsg approach for real T3000 system integration
@@ -538,20 +521,15 @@ impl T3000MainService {
         let logging_response = Self::parse_logging_response(&json_data)?;
 
         // Start database transaction
-        info!("🔄 Starting database transaction for atomic sync operations");
+        sync_logger.info("🔄 Starting database transaction for atomic sync operations");
         let txn = db.begin().await
             .map_err(|e| {
-                error!("❌ Failed to start transaction: {}", e);
+                sync_logger.error(&format!("❌ Failed to start transaction: {}", e));
                 AppError::DatabaseError(format!("Transaction start failed: {}", e))
             })?;
-        info!("✅ Database transaction started successfully");
+        sync_logger.info("✅ Database transaction started successfully");
 
-        // Log database transaction start to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] ✅ Database transaction started successfully", timestamp));
-
-        info!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len());
+        sync_logger.info(&format!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len()));
 
         // Log device processing start to structured log
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");

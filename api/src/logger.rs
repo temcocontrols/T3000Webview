@@ -1,37 +1,51 @@
 use std::fs::{OpenOptions, create_dir_all};
 use std::io::Write;
-use std::path::Path;
-use chrono::Utc;
+use chrono::{Utc, Timelike};
 
-/// Creates structured log file path: T3WebLog/YYYY-MM/filename_YYYY-MM-DD.log
+/// Creates structured log file path with 4-hour bucket system: T3WebLog/YYYY-MM/filename_MMDD_HHHH.txt
 pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io::Error> {
     let now = Utc::now();
     let year_month = now.format("%Y-%m").to_string();
-    let date = now.format("%Y-%m-%d").to_string();
+    let month_day = now.format("%m%d").to_string();
+
+    // Calculate 4-hour bucket (00-03, 04-07, 08-11, 12-15, 16-19, 20-23)
+    let current_hour = now.hour();
+    let start_hour = (current_hour / 4) * 4;
+    let end_hour = start_hour + 3;
+    let hour_bucket = format!("{:02}{:02}", start_hour, end_hour);
 
     // Create the directory structure: T3WebLog/YYYY-MM/
     let log_dir = format!("T3WebLog/{}", year_month);
     create_dir_all(&log_dir)?;
 
-    // Create the full log file path
-    let log_filename = format!("{}/{}_{}.log", log_dir, base_filename, date);
+    // Create the full log file path with new naming convention
+    let log_filename = format!("{}/{}_{}_{}.txt", log_dir, base_filename, month_day, hour_bucket);
     Ok(log_filename)
 }
 
-/// Helper function to write structured logs
+/// Helper function to write structured logs with log level prefix
 pub fn write_structured_log(base_filename: &str, message: &str) -> Result<(), std::io::Error> {
+    write_structured_log_with_level(base_filename, message, LogLevel::Info)
+}
+
+/// Helper function to write structured logs with specific log level
+pub fn write_structured_log_with_level(base_filename: &str, message: &str, level: LogLevel) -> Result<(), std::io::Error> {
     let log_path = create_structured_log_path(base_filename)?;
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(log_path)?;
-    writeln!(file, "{}", message)?;
+
+    let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let log_entry = format!("[{}] [{}] {}", timestamp, level.as_str(), message);
+    writeln!(file, "{}", log_entry)?;
     Ok(())
 }
 
 /// Centralized logging for T3000 WebView Service
 pub struct ServiceLogger {
     log_file: std::fs::File,
+    category: String,
 }
 
 impl ServiceLogger {
@@ -42,7 +56,35 @@ impl ServiceLogger {
             .append(true)
             .open(log_path)?;
 
-        Ok(ServiceLogger { log_file })
+        Ok(ServiceLogger {
+            log_file,
+            category: base_filename.to_string(),
+        })
+    }
+
+    /// Create a logger for FFI operations
+    pub fn ffi() -> Result<Self, std::io::Error> {
+        Self::new("T3000_Webview_FFI")
+    }
+
+    /// Create a logger for Socket operations
+    pub fn socket() -> Result<Self, std::io::Error> {
+        Self::new("T3000_Webview_Socket")
+    }
+
+    /// Create a logger for API operations
+    pub fn api() -> Result<Self, std::io::Error> {
+        Self::new("T3000_Webview_API")
+    }
+
+    /// Create a logger for Database operations
+    pub fn database() -> Result<Self, std::io::Error> {
+        Self::new("T3000_Webview_Database")
+    }
+
+    /// Create a logger for Initialize operations
+    pub fn initialize() -> Result<Self, std::io::Error> {
+        Self::new("T3000_Webview_Initialize")
     }
 
     pub fn log(&mut self, level: LogLevel, message: &str) {

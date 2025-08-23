@@ -17,10 +17,9 @@ use crate::utils::log_message;
 /// Start the WebSocket service on port 9104
 pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
     // Log to structured log for headless service
-    use crate::logger::write_structured_log;
-    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    let start_msg = format!("[{}] Initializing WebSocket Service on port 9104", timestamp);
-    let _ = write_structured_log("websocket", &start_msg);
+    use crate::logger::{write_structured_log_with_level, LogLevel};
+    let start_msg = "Initializing WebSocket Service on port 9104";
+    let _ = write_structured_log_with_level("T3000_Webview_Socket", &start_msg, LogLevel::Info);
 
     let clients = crate::t3_socket::create_clients();
 
@@ -28,9 +27,8 @@ pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
     start_websocket_server_blocking(clients).await;
 
     // Log success to structured log
-    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    let success_msg = format!("[{}] WebSocket Service started successfully on port 9104", timestamp);
-    let _ = write_structured_log("websocket", &success_msg);
+    let success_msg = "WebSocket Service started successfully on port 9104";
+    let _ = write_structured_log_with_level("T3000_Webview_Socket", &success_msg, LogLevel::Info);
 
     Ok(())
 }

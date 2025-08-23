@@ -12,7 +12,7 @@ use futures::{sink::SinkExt, stream::StreamExt};
 use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tracing::{info, warn, error, debug};
+use tracing::debug;
 
 use crate::app_state::AppState;
 use crate::t3_device::t3000_ffi_sync_service;
@@ -22,15 +22,21 @@ pub async fn websocket_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
 ) -> Response {
-    info!("WebSocket connection requested");
+    // Use socket logger for WebSocket operations
+    use crate::logger::ServiceLogger;
+    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
+    ws_logger.info("WebSocket connection requested");
     ws.on_upgrade(|socket| handle_websocket(socket, state))
 }
 
 /// Handle individual WebSocket connection
 async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
+    use crate::logger::ServiceLogger;
+    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
+
     let (mut sender, mut receiver) = socket.split();
 
-    info!("WebSocket connection established");
+    ws_logger.info("WebSocket connection established");
 
     // Send welcome message
     let welcome_msg = json!({
@@ -40,7 +46,7 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
     });
 
     if sender.send(Message::Text(welcome_msg.to_string())).await.is_err() {
-        warn!("Failed to send welcome message to WebSocket client");
+        ws_logger.warn("Failed to send welcome message to WebSocket client");
         return;
     }
 
@@ -58,19 +64,19 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
 
     // Main loop - broadcast logging data updates to client
     let mut send_task = tokio::spawn(async move {
+        use crate::logger::ServiceLogger;
+        let mut task_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
+
         loop {
             // Receive logging data updates
             match logging_data_receiver.recv().await {
                 Ok(update_msg) => {
-                    debug!("Broadcasting logging data update to WebSocket client");
-
                     if sender.send(Message::Text(update_msg)).await.is_err() {
-                        warn!("Failed to send logging data update to WebSocket client");
+                        task_logger.warn("Failed to send logging data update to WebSocket client");
                         break;
                     }
                 }
                 Err(_) => {
-                    debug!("Logging data receiver closed");
                     break;
                 }
             }
@@ -80,22 +86,20 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
     // Wait for either task to complete
     tokio::select! {
         result = &mut send_task => {
-            debug!("WebSocket send task completed");
             recv_task.abort();
             if let Err(e) = result {
-                warn!("Send task failed: {:?}", e);
+                ws_logger.warn(&format!("Send task failed: {:?}", e));
             }
         },
         result = &mut recv_task => {
-            debug!("WebSocket receive task completed");
             send_task.abort();
             if let Err(e) = result {
-                warn!("Receive task failed: {:?}", e);
+                ws_logger.warn(&format!("Receive task failed: {:?}", e));
             }
         }
     }
 
-    info!("WebSocket connection closed");
+    ws_logger.info("WebSocket connection closed");
 }
 
 /// Create receiver for logging data updates
@@ -133,10 +137,11 @@ async fn create_logging_data_receiver() -> broadcast::Receiver<String> {
 
 /// Process incoming WebSocket messages from client
 async fn process_incoming_message(msg: Message) -> Result<(), ()> {
+    use crate::logger::ServiceLogger;
+    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
+
     match msg {
         Message::Text(text) => {
-            debug!("Received WebSocket text message: {}", text);
-
             // Try to parse as JSON command
             match serde_json::from_str::<serde_json::Value>(&text) {
                 Ok(json) => {
@@ -145,21 +150,21 @@ async fn process_incoming_message(msg: Message) -> Result<(), ()> {
                     }
                 }
                 Err(e) => {
-                    warn!("Failed to parse WebSocket message as JSON: {}", e);
+                    ws_logger.warn(&format!("Failed to parse WebSocket message as JSON: {}", e));
                 }
             }
         }
         Message::Binary(_) => {
-            debug!("Received WebSocket binary message (ignored)");
+            // Binary messages ignored
         }
         Message::Ping(_) => {
-            debug!("Received WebSocket ping");
+            // Pings handled automatically
         }
         Message::Pong(_) => {
-            debug!("Received WebSocket pong");
+            // Pongs handled automatically
         }
         Message::Close(_) => {
-            info!("WebSocket close message received");
+            ws_logger.info("WebSocket close message received");
             return Err(());
         }
     }
@@ -169,31 +174,33 @@ async fn process_incoming_message(msg: Message) -> Result<(), ()> {
 
 /// Handle specific WebSocket commands from client
 async fn handle_websocket_command(command: &str, _json: &serde_json::Value) -> Result<(), ()> {
+    use crate::logger::ServiceLogger;
+    let mut ws_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
+
     match command {
         "request_sync" => {
-            debug!("Client requested immediate logging data sync");
-
             // Trigger immediate sync if service is available
             if let Some(service) = t3000_ffi_sync_service::get_logging_service() {
                 tokio::spawn(async move {
+                    use crate::logger::ServiceLogger;
+                    let mut sync_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());
+
                     if let Err(e) = service.sync_once().await {
-                        error!("Failed to sync logging data on client request: {}", e);
+                        sync_logger.error(&format!("Failed to sync logging data on client request: {}", e));
                     } else {
-                        info!("Successfully completed client-requested logging data sync");
+                        sync_logger.info("Successfully completed client-requested logging data sync");
                     }
                 });
             }
         }
         "subscribe_updates" => {
-            debug!("Client subscribed to real-time updates");
             // This is handled automatically by the connection
         }
         "unsubscribe_updates" => {
-            debug!("Client unsubscribed from real-time updates");
             // For now, just log - could implement selective broadcasting in the future
         }
         _ => {
-            warn!("Unknown WebSocket command: {}", command);
+            ws_logger.warn(&format!("Unknown WebSocket command: {}", command));
         }
     }
 
