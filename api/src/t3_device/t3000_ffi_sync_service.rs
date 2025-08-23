@@ -1078,8 +1078,9 @@ impl T3000MainService {
                     write_structured_log("t3000_ffi_sync_service_sync",
                         "🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function").ok();
 
-                    // Prepare buffer for response
-                    const BUFFER_SIZE: usize = 65536; // 64KB buffer
+                    // Prepare buffer for response - very large buffer for up to 100 devices
+                    // Each device can be ~1MB, so 100 devices = ~100MB
+                    const BUFFER_SIZE: usize = 104857600; // 100MB buffer for maximum device capacity
                     let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
                     // Call the T3000 HandleWebViewMsg function via runtime loading
