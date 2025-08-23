@@ -1098,10 +1098,14 @@ impl T3000MainService {
                         // MFC not ready - this is expected during startup
                         return Err("MFC application not initialized".to_string());
                     } else if result != 0 {
-                        error!("❌ BacnetWebView_HandleWebViewMsg returned error code: {}", result);
+                        // Check if we got any error message in the buffer despite the error code
+                        let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+                        let error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                        error!("❌ BacnetWebView_HandleWebViewMsg returned error code: {} with response: '{}'", result, error_response);
                         write_structured_log("t3000_ffi_sync_service_errors",
-                            &format!("❌ BacnetWebView HandleWebViewMsg returned error code {} - Failed to get real device data", result)).ok();
-                        return Err(format!("BacnetWebView HandleWebViewMsg returned error code: {}", result));
+                            &format!("❌ BacnetWebView HandleWebViewMsg returned error code {} - Response: '{}' - This may indicate C++ compilation issues or T3000.exe needs rebuild", result, error_response)).ok();
+                        return Err(format!("BacnetWebView HandleWebViewMsg returned error code: {} - Response: {}", result, error_response));
                     }
 
                     // Find the null terminator to get the actual string length

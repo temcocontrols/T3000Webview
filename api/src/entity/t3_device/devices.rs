@@ -55,23 +55,23 @@ pub struct Model {
     pub Calibration: Option<String>,           // C++ Calibration
 
     // Additional network communication fields from C++ codebase analysis
-    #[sea_orm(column_name = "IP_Address")]
+    #[sea_orm(column_name = "ip_address")]
     pub ip_address: Option<String>,            // C++ ip_address (device IP address)
-    #[sea_orm(column_name = "Port")]
+    #[sea_orm(column_name = "port")]
     pub port: Option<i32>,                     // C++ nport (network port number)
-    #[sea_orm(column_name = "BACnet_MSTP_Mac_ID")]
+    #[sea_orm(column_name = "bacnet_mstp_mac_id")]
     pub bacnet_mstp_mac_id: Option<i32>,       // C++ macaddress (BACnet MSTP MAC ID)
-    #[sea_orm(column_name = "Modbus_Address")]
+    #[sea_orm(column_name = "modbus_address")]
     pub modbus_address: Option<u8>,            // C++ modbus_addr (Modbus device ID)
-    #[sea_orm(column_name = "PC_IP_Address")]
+    #[sea_orm(column_name = "pc_ip_address")]
     pub pc_ip_address: Option<String>,         // C++ host IP address (connection info)
-    #[sea_orm(column_name = "Modbus_Port")]
+    #[sea_orm(column_name = "modbus_port")]
     pub modbus_port: Option<u16>,              // C++ modbus_port (Modbus TCP port)
-    #[sea_orm(column_name = "BACnet_IP_Port")]
+    #[sea_orm(column_name = "bacnet_ip_port")]
     pub bacnet_ip_port: Option<u16>,           // C++ bacnetip_port (BACnet/IP port, default 47808)
-    #[sea_orm(column_name = "Show_Label_Name")]
+    #[sea_orm(column_name = "show_label_name")]
     pub show_label_name: Option<String>,       // C++ show_label_name (display name)
-    #[sea_orm(column_name = "Connection_Type")]
+    #[sea_orm(column_name = "connection_type")]
     pub connection_type: Option<String>,       // C++ connection type (Serial/Ethernet/etc)
 }
 
