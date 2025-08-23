@@ -21,7 +21,7 @@ use crate::entity::t3_device::{
 };
 use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
-use crate::logger::{write_structured_log, ServiceLogger, write_structured_log_with_level, LogLevel};
+use crate::logger::ServiceLogger;
 use once_cell::sync::OnceCell;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 use winapi::shared::minwindef::HINSTANCE;
@@ -340,7 +340,9 @@ impl T3000MainService {
             if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
                 task_logger.error(&format!("❌ Immediate startup sync failed: {}", e));
                 // Also log critical errors to Initialize category
-                let _ = write_structured_log_with_level("T3000_Webview_Initialize", &format!("Immediate startup sync failed: {}", e), LogLevel::Error);
+                if let Ok(mut init_logger) = ServiceLogger::initialize() {
+                    init_logger.error(&format!("Immediate startup sync failed: {}", e));
+                }
             } else {
                 task_logger.info("✅ Immediate startup sync completed successfully");
             }
@@ -532,9 +534,8 @@ impl T3000MainService {
         sync_logger.info(&format!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len()));
 
         // Log device processing start to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 📦 Processing {} devices from T3000 LOGGING_DATA response", timestamp, logging_response.devices.len()));
+        sync_logger.add_breakdown("DEVICE PROCESSING START");
+        sync_logger.info(&format!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len()));
 
         // Process each device from the response
         for (device_index, device_with_points) in logging_response.devices.iter().enumerate() {
@@ -545,136 +546,144 @@ impl T3000MainService {
                   serial_number, device_with_points.device_info.panel_name);
 
             // Log individual device processing to structured log
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                &format!("[{}] 🏭 Processing Device {} of {}: Serial={}, Name='{}'",
-                         timestamp, device_index + 1, logging_response.devices.len(), serial_number, device_with_points.device_info.panel_name));
+            sync_logger.add_breakdown("INDIVIDUAL DEVICE PROCESSING");
+            sync_logger.info(&format!("🏭 Processing Device {} of {}: Serial={}, Name='{}'",
+                device_index + 1, logging_response.devices.len(), serial_number, device_with_points.device_info.panel_name));
 
             // UPSERT device basic info (INSERT or UPDATE)
             info!("📝 Syncing device basic info...");
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            sync_logger.add_breakdown("DEVICE BASIC INFO SYNC");
+            sync_logger.info(&format!(
                 "📝 Syncing device basic info - Serial: {}, Name: {}, Starting UPSERT operation",
                 serial_number,
                 &device_with_points.device_info.panel_name
-            )).ok();
+            ));
 
             if let Err(e) = Self::sync_device_basic_info(&txn, &device_with_points.device_info).await {
                 error!("❌ Failed to sync device info for {}: {}", serial_number, e);
-                write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                sync_logger.add_breakdown("DEVICE BASIC INFO ERROR");
+                sync_logger.error(&format!(
                     "❌ Device basic info sync failed - Serial: {}, Error: {}",
                     serial_number, e
-                )).ok();
+                ));
                 continue;
             }
             info!("✅ Device basic info synced");
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
+            sync_logger.add_breakdown("DEVICE BASIC INFO SUCCESS");
+            sync_logger.info(&format!(
                 "✅ Device basic info synced - Serial: {}, UPSERT operation completed successfully",
                 serial_number
-            )).ok();
+            ));
 
                         // UPSERT input points (INSERT or UPDATE)
             if !device_with_points.input_points.is_empty() {
                 info!("🔧 Syncing {} INPUT points...", device_with_points.input_points.len());
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("INPUT POINTS SYNC");
+                sync_logger.info(&format!(
                     "🔧 Starting INPUT points sync - Serial: {}, Count: {}, Processing individual points",
                     serial_number, device_with_points.input_points.len()
-                )).ok();
+                ));
 
                 for (point_index, point) in device_with_points.input_points.iter().enumerate() {
-                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    sync_logger.info(&format!(
                         "🔧 Processing INPUT point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
                         point_index + 1, device_with_points.input_points.len(),
                         serial_number, point.index, point.full_label, point.value
-                    )).ok();
+                    ));
 
                     if let Err(e) = Self::sync_input_point_static(&txn, serial_number, point).await {
                         error!("❌ Failed to sync input point {}: {}", point.index, e);
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.error(&format!(
                             "❌ INPUT point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
                             serial_number, point.index, point.full_label, e
-                        )).ok();
+                        ));
                     } else {
-                        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                        sync_logger.info(&format!(
                             "✅ INPUT point synced successfully - Serial: {}, Index: {}, Label: '{}'",
                             serial_number, point.index, point.full_label
-                        )).ok();
+                        ));
                     }
                 }
                 info!("✅ INPUT points synced");
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("INPUT POINTS COMPLETION");
+                sync_logger.info(&format!(
                     "✅ INPUT points sync completed - Serial: {}, Successfully synced {} INPUT points",
                     serial_number, device_with_points.input_points.len()
-                )).ok();
+                ));
             }
 
                         // UPSERT output points (INSERT or UPDATE)
             if !device_with_points.output_points.is_empty() {
                 info!("🔧 Syncing {} OUTPUT points...", device_with_points.output_points.len());
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("OUTPUT POINTS SYNC");
+                sync_logger.info(&format!(
                     "🔧 Starting OUTPUT points sync - Serial: {}, Count: {}, Processing individual points",
                     serial_number, device_with_points.output_points.len()
-                )).ok();
+                ));
 
                 for (point_index, point) in device_with_points.output_points.iter().enumerate() {
-                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    sync_logger.info(&format!(
                         "🔧 Processing OUTPUT point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
                         point_index + 1, device_with_points.output_points.len(),
                         serial_number, point.index, point.full_label, point.value
-                    )).ok();
+                    ));
 
                     if let Err(e) = Self::sync_output_point_static(&txn, serial_number, point).await {
                         error!("❌ Failed to sync output point {}: {}", point.index, e);
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.error(&format!(
                             "❌ OUTPUT point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
                             serial_number, point.index, point.full_label, e
-                        )).ok();
+                        ));
                     } else {
-                        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                        sync_logger.info(&format!(
                             "✅ OUTPUT point synced successfully - Serial: {}, Index: {}, Label: '{}'",
                             serial_number, point.index, point.full_label
-                        )).ok();
+                        ));
                     }
                 }
                 info!("✅ OUTPUT points synced");
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("OUTPUT POINTS COMPLETION");
+                sync_logger.info(&format!(
                     "✅ OUTPUT points sync completed - Serial: {}, Successfully synced {} OUTPUT points",
                     serial_number, device_with_points.output_points.len()
-                )).ok();
+                ));
             }
 
                         // UPSERT variable points (INSERT or UPDATE)
             if !device_with_points.variable_points.is_empty() {
                 info!("🔧 Syncing {} VARIABLE points...", device_with_points.variable_points.len());
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("VARIABLE POINTS SYNC");
+                sync_logger.info(&format!(
                     "🔧 Starting VARIABLE points sync - Serial: {}, Count: {}, Processing individual points",
                     serial_number, device_with_points.variable_points.len()
-                )).ok();
+                ));
 
                 for (point_index, point) in device_with_points.variable_points.iter().enumerate() {
-                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    sync_logger.info(&format!(
                         "🔧 Processing VARIABLE point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
                         point_index + 1, device_with_points.variable_points.len(),
                         serial_number, point.index, point.full_label, point.value
-                    )).ok();
+                    ));
 
                     if let Err(e) = Self::sync_variable_point_static(&txn, serial_number, point).await {
                         error!("❌ Failed to sync variable point {}: {}", point.index, e);
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.error(&format!(
                             "❌ VARIABLE point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
                             serial_number, point.index, point.full_label, e
-                        )).ok();
+                        ));
                     } else {
-                        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                        sync_logger.info(&format!(
                             "✅ VARIABLE point synced successfully - Serial: {}, Index: {}, Label: '{}'",
                             serial_number, point.index, point.full_label
-                        )).ok();
+                        ));
                     }
                 }
                 info!("✅ VARIABLE points synced");
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("VARIABLE POINTS COMPLETION");
+                sync_logger.info(&format!(
                     "✅ VARIABLE points sync completed - Serial: {}, Successfully synced {} VARIABLE points",
                     serial_number, device_with_points.variable_points.len()
-                )).ok();
+                ));
             }
 
             // INSERT trend log data (ALWAYS INSERT for historical data)
@@ -683,26 +692,29 @@ impl T3000MainService {
                                    device_with_points.variable_points.len();
             if total_trend_points > 0 {
                 info!("📊 Inserting {} trend log entries...", total_trend_points);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("TREND LOG INSERTION START");
+                sync_logger.info(&format!(
                     "📊 Starting trend log insertion - Serial: {}, Total entries: {} (Inputs: {}, Outputs: {}, Variables: {})",
                     serial_number, total_trend_points,
                     device_with_points.input_points.len(),
                     device_with_points.output_points.len(),
                     device_with_points.variable_points.len()
-                )).ok();
+                ));
 
                 if let Err(e) = Self::insert_trend_logs(&txn, serial_number, device_with_points).await {
                     error!("❌ Failed to insert trend logs for {}: {}", serial_number, e);
-                    write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                    sync_logger.add_breakdown("TREND LOG INSERTION ERROR");
+                    sync_logger.error(&format!(
                         "❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
                         serial_number, e, total_trend_points
-                    )).ok();
+                    ));
                 } else {
                     info!("✅ Trend log entries inserted");
-                    write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                    sync_logger.add_breakdown("TREND LOG INSERTION SUCCESS");
+                    sync_logger.info(&format!(
                         "✅ Trend log insertion completed - Serial: {}, Successfully inserted {} trend log entries",
                         serial_number, total_trend_points
-                    )).ok();
+                    ));
                 }
             }
 
@@ -713,47 +725,43 @@ impl T3000MainService {
                   device_with_points.variable_points.len());
 
             // Log device completion to structured log
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                &format!("[{}] 🎯 Device {} sync completed: {} inputs, {} outputs, {} variables",
-                         timestamp, serial_number, device_with_points.input_points.len(),
-                         device_with_points.output_points.len(), device_with_points.variable_points.len()));
+            sync_logger.add_breakdown("DEVICE SYNC COMPLETION");
+            sync_logger.info(&format!("🎯 Device {} sync completed: {} inputs, {} outputs, {} variables",
+                serial_number, device_with_points.input_points.len(),
+                device_with_points.output_points.len(), device_with_points.variable_points.len()));
         }
 
         // Commit transaction after all devices processed
         info!("💾 Committing database transaction...");
-        write_structured_log("t3000_ffi_sync_service_sync", &format!(
+        sync_logger.add_breakdown("DATABASE TRANSACTION COMMIT");
+        sync_logger.info(&format!(
             "💾 Transaction COMMIT starting - Processed {} devices, Total sync operations completed",
             logging_response.devices.len()
-        )).ok();
+        ));
 
         // Log transaction commit to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 💾 Committing database transaction...", timestamp));
+        sync_logger.info("💾 Database transaction commit process starting");
 
         let _commit_result = txn.commit().await
             .map_err(|e| {
                 error!("❌ Failed to commit transaction: {}", e);
-                write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                    "❌ Transaction COMMIT failed - Error: {}, All {} device changes rolled back",
-                    e, logging_response.devices.len()
-                )).ok();
+                sync_logger.add_breakdown("DATABASE TRANSACTION COMMIT ERROR");
+                sync_logger.error(&format!("❌ Transaction COMMIT failed - Error: {}, All {} device changes rolled back",
+                    e, logging_response.devices.len()));
                 AppError::DatabaseError(format!("Transaction commit failed: {}", e))
             })?;
 
         info!("✅ Database transaction committed successfully");
-        write_structured_log("t3000_ffi_sync_service_sync", &format!(
-            "✅ Transaction COMMIT successful - All {} device changes persisted to database",
-            logging_response.devices.len()
-        )).ok();
+        sync_logger.add_breakdown("DATABASE TRANSACTION COMMIT SUCCESS");
+        sync_logger.info(&format!("✅ Transaction COMMIT successful - All {} device changes persisted to database",
+            logging_response.devices.len()));
 
         // Validate data was actually inserted by doing a quick count check
         let validation_db = establish_t3_device_connection().await?;
 
         info!("🔍 Validating data insertion...");
-        write_structured_log("t3000_ffi_sync_service_sync",
-            "🔍 Post-commit validation: Checking if data was actually inserted into database tables").ok();
+        sync_logger.add_breakdown("POST-COMMIT DATA VALIDATION");
+        sync_logger.info("🔍 Post-commit validation: Checking if data was actually inserted into database tables");
 
         // Count devices that were processed in this sync
         let mut validation_summary = String::new();
@@ -803,19 +811,16 @@ impl T3000MainService {
         }
 
         info!("📊 Validation Results: {}", validation_summary);
-        write_structured_log("t3000_ffi_sync_service_sync", &format!(
-            "📊 Post-commit validation results: {}",
-            validation_summary
-        )).ok();
+        sync_logger.add_breakdown("DATA VALIDATION RESULTS");
+        sync_logger.info(&format!("📊 Post-commit validation results: {}", validation_summary));
 
         info!("🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
               logging_response.devices.len());
 
         // Log sync completion to structured log file with device count
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
-                     timestamp, logging_response.devices.len()));
+        sync_logger.add_breakdown("SYNC PROCESS COMPLETION");
+        sync_logger.info(&format!("🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
+                     logging_response.devices.len()));
 
         Ok(())
     }
@@ -824,11 +829,16 @@ impl T3000MainService {
     async fn sync_device_basic_info(txn: &DatabaseTransaction, device_info: &DeviceInfo) -> Result<(), AppError> {
         let serial_number = device_info.panel_serial_number;
 
+        // Create sync logger for device info operations
+        let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
+            error!("Failed to create sync logger: {}", e);
+            AppError::LoggerError(format!("Failed to create sync logger: {}", e))
+        })?;
+
         info!("🔍 Checking if device {} exists in database...", serial_number);
-        write_structured_log("t3000_ffi_sync_service_sync", &format!(
-            "🔍 Database lookup for device - Serial: {}, Name: '{}', IP: '{}'",
-            serial_number, device_info.panel_name, device_info.panel_ipaddress
-        )).ok();
+        sync_logger.add_breakdown("DEVICE DATABASE LOOKUP");
+        sync_logger.info(&format!("🔍 Database lookup for device - Serial: {}, Name: '{}', IP: '{}'",
+            serial_number, device_info.panel_name, device_info.panel_ipaddress));
 
         // Check if device exists
         let existing = devices::Entity::find()
@@ -836,10 +846,9 @@ impl T3000MainService {
             .one(txn).await
             .map_err(|e| {
                 let error_msg = format!("Database query failed for device {}: {}", serial_number, e);
-                write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                    "❌ Device existence check failed - Serial: {}, Error: {}",
-                    serial_number, e
-                )).ok();
+                sync_logger.add_breakdown("DEVICE EXISTENCE CHECK ERROR");
+                sync_logger.error(&format!("❌ Device existence check failed - Serial: {}, Error: {}",
+                    serial_number, e));
                 AppError::DatabaseError(error_msg)
             })?;
 
@@ -868,10 +877,9 @@ impl T3000MainService {
 
         if existing.is_some() {
             info!("🔄 Device {} exists - performing UPDATE with latest info", serial_number);
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "🔄 Device UPDATE operation - Serial: {}, Name: '{}', Status: Online",
-                serial_number, device_info.panel_name
-            )).ok();
+            sync_logger.add_breakdown("DEVICE UPDATE OPERATION");
+            sync_logger.info(&format!("🔄 Device UPDATE operation - Serial: {}, Name: '{}', Status: Online",
+                serial_number, device_info.panel_name));
 
             // UPDATE existing device
             let update_result = devices::Entity::update(device_model)
@@ -879,42 +887,39 @@ impl T3000MainService {
                 .exec(txn).await
                 .map_err(|e| {
                     let error_msg = format!("Device UPDATE failed for {}: {}", serial_number, e);
-                    write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                        "❌ Device UPDATE failed - Serial: {}, Error: {}",
+                    sync_logger.add_breakdown("DEVICE UPDATE ERROR");
+                    sync_logger.error(&format!("❌ Device UPDATE failed - Serial: {}, Error: {}",
                         serial_number, e
-                    )).ok();
+                    ));
                     AppError::DatabaseError(error_msg)
                 })?;
 
             info!("✅ Device {} info UPDATED successfully", serial_number);
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "✅ Device UPDATE successful - Serial: {}, Update operation completed",
-                serial_number
-            )).ok();
+            sync_logger.add_breakdown("DEVICE UPDATE SUCCESS");
+            sync_logger.info(&format!("✅ Device UPDATE successful - Serial: {}, Update operation completed",
+                serial_number));
         } else {
             info!("➕ Device {} not found - performing INSERT as new device", serial_number);
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "➕ Device INSERT operation - Serial: {}, Name: '{}', New device registration",
-                serial_number, device_info.panel_name
-            )).ok();
+            sync_logger.add_breakdown("DEVICE INSERT OPERATION");
+            sync_logger.info(&format!("➕ Device INSERT operation - Serial: {}, Name: '{}', New device registration",
+                serial_number, device_info.panel_name));
 
             // INSERT new device
             let insert_result = devices::Entity::insert(device_model)
                 .exec(txn).await
                 .map_err(|e| {
                     let error_msg = format!("Device INSERT failed for {}: {}", serial_number, e);
-                    write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                        "❌ Device INSERT failed - Serial: {}, Error: {}",
-                        serial_number, e
-                    )).ok();
+                    sync_logger.add_breakdown("DEVICE INSERT ERROR");
+                    sync_logger.error(&format!("❌ Device INSERT failed - Serial: {}, Error: {}",
+                        serial_number, e));
                     AppError::DatabaseError(error_msg)
                 })?;
 
             info!("✅ Device {} info INSERTED successfully", serial_number);
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "✅ Device INSERT successful - Serial: {}, Last insert ID: {}",
+            sync_logger.add_breakdown("DEVICE INSERT SUCCESS");
+            sync_logger.info(&format!("✅ Device INSERT successful - Serial: {}, Last insert ID: {}",
                 serial_number, insert_result.last_insert_id
-            )).ok();
+            ));
         }
 
         Ok(())
@@ -923,15 +928,21 @@ impl T3000MainService {
     /// INSERT trend log entries (ALWAYS INSERT for historical data)
     async fn insert_trend_logs(txn: &DatabaseTransaction, serial_number: i32, device_data: &DeviceWithPoints) -> Result<(), AppError> {
         let timestamp = chrono::Utc::now().to_rfc3339();
+
+        // Create sync logger for trend log operations
+        let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
+            error!("Failed to create sync logger: {}", e);
+            AppError::LoggerError(format!("Failed to create sync logger: {}", e))
+        })?;
+
         info!("📊 Starting trend log insertion at timestamp: {}", timestamp);
 
         // Insert trend logs for all input points
         if !device_data.input_points.is_empty() {
             info!("📈 Inserting {} INPUT point trend logs...", device_data.input_points.len());
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "📈 Starting INPUT trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
-                serial_number, device_data.input_points.len(), timestamp
-            )).ok();
+            sync_logger.add_breakdown("INPUT TREND LOG INSERTION");
+            sync_logger.info(&format!("📈 Starting INPUT trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
+                serial_number, device_data.input_points.len(), timestamp));
         }
 
         for (input_index, point) in device_data.input_points.iter().enumerate() {
@@ -944,17 +955,13 @@ impl T3000MainService {
                 binary_array: Set(None),
             };
 
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
+            sync_logger.info(&format!("📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
                 input_index + 1, device_data.input_points.len(),
-                serial_number, point.index, point.value, point.status
-            )).ok();
+                serial_number, point.index, point.value, point.status));
 
             if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
-                write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                    "❌ INPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
-                    serial_number, point.index, e
-                )).ok();
+                sync_logger.error(&format!("❌ INPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
+                    serial_number, point.index, e));
                 return Err(AppError::DatabaseError(format!("Failed to insert INPUT trend log: {}", e)));
             }
         }
@@ -962,10 +969,9 @@ impl T3000MainService {
         // Insert trend logs for all output points
         if !device_data.output_points.is_empty() {
             info!("📈 Inserting {} OUTPUT point trend logs...", device_data.output_points.len());
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "📈 Starting OUTPUT trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
-                serial_number, device_data.output_points.len(), timestamp
-            )).ok();
+            sync_logger.add_breakdown("OUTPUT TREND LOG INSERTION");
+            sync_logger.info(&format!("📈 Starting OUTPUT trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
+                serial_number, device_data.output_points.len(), timestamp));
         }
 
         for (output_index, point) in device_data.output_points.iter().enumerate() {
@@ -978,17 +984,13 @@ impl T3000MainService {
                 binary_array: Set(None),
             };
 
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
+            sync_logger.info(&format!("📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
                 output_index + 1, device_data.output_points.len(),
-                serial_number, point.index, point.value, point.status
-            )).ok();
+                serial_number, point.index, point.value, point.status));
 
             if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
-                write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                    "❌ OUTPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
-                    serial_number, point.index, e
-                )).ok();
+                sync_logger.error(&format!("❌ OUTPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
+                    serial_number, point.index, e));
                 return Err(AppError::DatabaseError(format!("Failed to insert OUTPUT trend log: {}", e)));
             }
         }
@@ -996,10 +998,9 @@ impl T3000MainService {
         // Insert trend logs for all variable points
         if !device_data.variable_points.is_empty() {
             info!("📈 Inserting {} VARIABLE point trend logs...", device_data.variable_points.len());
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "📈 Starting VARIABLE trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
-                serial_number, device_data.variable_points.len(), timestamp
-            )).ok();
+            sync_logger.add_breakdown("VARIABLE TREND LOG INSERTION");
+            sync_logger.info(&format!("📈 Starting VARIABLE trend log insertion - Serial: {}, Count: {}, Timestamp: {}",
+                serial_number, device_data.variable_points.len(), timestamp));
         }
 
         for (variable_index, point) in device_data.variable_points.iter().enumerate() {
@@ -1012,17 +1013,13 @@ impl T3000MainService {
                 binary_array: Set(None),
             };
 
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
+            sync_logger.info(&format!("📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
                 variable_index + 1, device_data.variable_points.len(),
-                serial_number, point.index, point.value, point.status
-            )).ok();
+                serial_number, point.index, point.value, point.status));
 
             if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
-                write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                    "❌ VARIABLE trend log insert failed - Serial: {}, Index: {}, Error: {}",
-                    serial_number, point.index, e
-                )).ok();
+                sync_logger.error(&format!("❌ VARIABLE trend log insert failed - Serial: {}, Index: {}, Error: {}",
+                    serial_number, point.index, e));
                 return Err(AppError::DatabaseError(format!("Failed to insert VARIABLE trend log: {}", e)));
             }
         }
@@ -1039,9 +1036,10 @@ impl T3000MainService {
         info!("🔄 Starting DIRECT FFI call to HandleWebViewMsg with LOGGING_DATA action");
         info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
 
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
-        write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Real T3000 system integration", timestamp));
+        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+            sync_logger.add_breakdown("DIRECT FFI CALL STARTUP");
+            sync_logger.info("🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Real T3000 system integration");
+        }
 
         // Try multiple times with increasing delays to wait for MFC initialization
         for attempt in 1..=(config.retry_attempts + 1) {
@@ -1053,8 +1051,8 @@ impl T3000MainService {
                 tokio::task::spawn_blocking(move || {
                     info!("🔌 Calling HandleWebViewMsg(15) via direct FFI...");
 
-                    write_structured_log("t3000_ffi_sync_service_sync",
-                        "🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function").ok();
+                    // Log FFI call start - using simple info! inside closure
+                    info!("🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function");
 
                     // Prepare buffer for response - very large buffer for up to 100 devices
                     // Each device can be ~1MB, so 100 devices = ~100MB
@@ -1067,8 +1065,10 @@ impl T3000MainService {
                         Ok(code) => code,
                         Err(err) => {
                             error!("❌ Failed to call BacnetWebView_HandleWebViewMsg: {}", err);
-                            write_structured_log("t3000_ffi_sync_service_errors",
-                                &format!("❌ Failed to call BacnetWebView_HandleWebViewMsg: {} - Function not found in T3000.exe", err)).ok();
+                            if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                                sync_logger.add_breakdown("FFI CALL ERROR");
+                                sync_logger.error(&format!("❌ Failed to call BacnetWebView_HandleWebViewMsg: {} - Function not found in T3000.exe", err));
+                            }
                             return Err(format!("Failed to call BacnetWebView_HandleWebViewMsg: {}", err));
                         }
                     };
@@ -1082,8 +1082,10 @@ impl T3000MainService {
                         let error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
                         error!("❌ BacnetWebView_HandleWebViewMsg returned error code: {} with response: '{}'", result, error_response);
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            &format!("❌ BacnetWebView HandleWebViewMsg returned error code {} - Response: '{}' - This may indicate C++ compilation issues or T3000.exe needs rebuild", result, error_response)).ok();
+                        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                            sync_logger.add_breakdown("FFI RESPONSE ERROR");
+                            sync_logger.error(&format!("❌ BacnetWebView HandleWebViewMsg returned error code {} - Response: '{}' - This may indicate C++ compilation issues or T3000.exe needs rebuild", result, error_response));
+                        }
                         return Err(format!("BacnetWebView HandleWebViewMsg returned error code: {} - Response: {}", result, error_response));
                     }
 
@@ -1093,8 +1095,10 @@ impl T3000MainService {
 
                     if result_str.is_empty() || result_str == "{}" {
                         warn!("⚠️ HandleWebViewMsg returned empty or minimal response - T3000 data might not be ready");
-                        write_structured_log("t3000_ffi_sync_service_warnings",
-                            "⚠️ HandleWebViewMsg returned empty response - No device data available yet").ok();
+                        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                            sync_logger.add_breakdown("FFI EMPTY RESPONSE WARNING");
+                            sync_logger.warn("⚠️ HandleWebViewMsg returned empty response - No device data available yet");
+                        }
                         return Err("HandleWebViewMsg returned empty response - T3000 data not ready".to_string());
                     }
 
@@ -1103,8 +1107,10 @@ impl T3000MainService {
                         return Err(format!("HandleWebViewMsg returned error: {}", result_str));
                     } else {
                         info!("🎉 SUCCESS: Received real device data from direct T3000 integration!");
-                        write_structured_log("t3000_ffi_sync_service_sync",
-                            "🎉 SUCCESS: Direct HandleWebViewMsg call returned real T3000 device data").ok();
+                        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                            sync_logger.add_breakdown("FFI SUCCESS RESPONSE");
+                            sync_logger.info("🎉 SUCCESS: Direct HandleWebViewMsg call returned real T3000 device data");
+                        }
                     }
 
                     info!("📝 Direct Response Preview: {}",
@@ -1123,15 +1129,19 @@ impl T3000MainService {
                             match ffi_result {
                                 Ok(data) => {
                                     info!("✅ Direct FFI call completed successfully on attempt {}", attempt);
-                                    write_structured_log("t3000_ffi_sync_service_sync",
-                                        &format!("[{}] ✅ Direct HandleWebViewMsg FFI call completed successfully", timestamp));
+                                    if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                                        sync_logger.add_breakdown("DIRECT FFI CALL SUCCESS");
+                                        sync_logger.info("✅ Direct HandleWebViewMsg FFI call completed successfully");
+                                    }
                                     return Ok(data);
                                 }
                                 Err(ffi_error) => {
                                     if ffi_error.contains("MFC application not initialized") && attempt < config.retry_attempts + 1 {
                                         warn!("⚠️ MFC not ready on attempt {}, waiting before retry...", attempt);
-                                        write_structured_log("t3000_ffi_sync_service_warnings",
-                                            &format!("⚠️ MFC not ready on attempt {}, will retry after delay", attempt));
+                                        if let Ok(mut warn_logger) = ServiceLogger::ffi() {
+                                            warn_logger.add_breakdown("MFC RETRY ATTEMPT");
+                                            warn_logger.warn(&format!("⚠️ MFC not ready on attempt {}, will retry after delay", attempt));
+                                        }
 
                                         // Progressive delay: 2s, 4s, 6s, etc.
                                         let delay_seconds = attempt as u64 * 2;
@@ -1146,16 +1156,20 @@ impl T3000MainService {
                         }
                         Err(join_error) => {
                             error!("❌ Direct FFI task failed: {}", join_error);
-                            write_structured_log("t3000_ffi_sync_service_errors",
-                                &format!("[{}] ❌ Direct HandleWebViewMsg task failed: {}", timestamp, join_error));
+                            if let Ok(mut error_logger) = ServiceLogger::ffi() {
+                                error_logger.add_breakdown("DIRECT FFI TASK FAILURE");
+                                error_logger.error(&format!("❌ Direct HandleWebViewMsg task failed: {}", join_error));
+                            }
                             return Err(AppError::FfiError(format!("Direct FFI task failed: {}", join_error)));
                         }
                     }
                 }
                 Err(timeout_error) => {
                     error!("❌ Direct FFI call timed out: {}", timeout_error);
-                    write_structured_log("t3000_ffi_sync_service_errors",
-                        &format!("[{}] ❌ Direct HandleWebViewMsg call timed out: {}", timestamp, timeout_error));
+                    if let Ok(mut error_logger) = ServiceLogger::ffi() {
+                        error_logger.add_breakdown("DIRECT FFI CALL TIMEOUT");
+                        error_logger.error(&format!("❌ Direct HandleWebViewMsg call timed out: {}", timeout_error));
+                    }
 
                     if attempt < config.retry_attempts + 1 {
                         warn!("⚠️ Timeout on attempt {}, retrying...", attempt);
@@ -1177,26 +1191,25 @@ impl T3000MainService {
         info!("🔄 Starting FFI call to T3000_GetLoggingData");
         info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
 
+        // Create sync logger for FFI operations
+        let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
+            error!("Failed to create sync logger: {}", e);
+            AppError::LoggerError(format!("Failed to create sync logger: {}", e))
+        })?;
+
         // Log FFI call start to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🔄 Starting FFI call to T3000_GetLoggingData (timeout: {}s)", timestamp, config.timeout_seconds));
+        sync_logger.add_breakdown("FFI STATIC CALL STARTUP");
+        sync_logger.info(&format!("🔄 Starting FFI call to T3000_GetLoggingData (timeout: {}s)", config.timeout_seconds));
 
         // Enhanced diagnostic logging for T3000 C++ integration
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            "🔧 Enhanced T3000 diagnostic and logging system active");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            "⚡ Starting enhanced T3000 FFI call with comprehensive response data logging");
+        sync_logger.info("🔧 Enhanced T3000 diagnostic and logging system active");
+        sync_logger.info("⚡ Starting enhanced T3000 FFI call with comprehensive response data logging");
 
         // Run FFI call in a blocking task with timeout
         let spawn_result = tokio::time::timeout(
             Duration::from_secs(config.timeout_seconds),
             tokio::task::spawn_blocking(move || {
                 info!("🔌 Calling T3000_GetLoggingData() via FFI...");
-
-                // Add diagnostic logging before FFI call
-                write_structured_log("t3000_ffi_sync_service_sync",
-                    "🔌 About to call T3000_GetLoggingData() - Checking for real T3000 devices vs test data").ok();
 
                 // OLD APPROACH - DISABLED - Now using direct HandleWebViewMsg
                 warn!("⚠️ Old T3000_GetLoggingData approach disabled - using HandleWebViewMsg instead");
@@ -1209,14 +1222,14 @@ impl T3000MainService {
 
                     if data_ptr.is_null() {
                         error!("❌ T3000_GetLoggingData returned null pointer");
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            "❌ T3000_GetLoggingData returned NULL - No data available or C++ function failed").ok();
+                        sync_logger.add_breakdown("FFI NULL POINTER ERROR");
+                        sync_logger.error("❌ T3000_GetLoggingData returned NULL - No data available or C++ function failed");
                         return Err(AppError::FfiError("T3000_GetLoggingData returned null pointer".to_string()));
                     }
 
                     info!("✅ T3000_GetLoggingData returned valid pointer");
-                    write_structured_log("t3000_ffi_sync_service_sync",
-                        "✅ T3000_GetLoggingData returned valid pointer - Starting memory processing").ok();
+                    sync_logger.add_breakdown("FFI VALID POINTER SUCCESS");
+                    sync_logger.info("✅ T3000_GetLoggingData returned valid pointer - Starting memory processing");
 
                     // Convert C string to Rust string
                     let c_str = CStr::from_ptr(data_ptr);
@@ -1228,18 +1241,13 @@ impl T3000MainService {
                     if result.contains("Test Device") || result.contains("test") ||
                        result.contains("mock") || result.contains("sample") {
                         warn!("⚠️  CRITICAL: C++ returned test/mock data instead of real device data!");
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                            "⚠️  CRITICAL DIAGNOSTIC: T3000_GetLoggingData() returned test data. Response size: {} bytes. This suggests:",
-                            result.len()
-                        )).ok();
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            "   1. No real T3000 devices are connected/responding").ok();
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            "   2. C++ function is returning fallback test data").ok();
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            "   3. T3000 network communication may be failing").ok();
-                        write_structured_log("t3000_ffi_sync_service_errors",
-                            "   4. Check T3000 device connectivity and C++ implementation").ok();
+                        sync_logger.add_breakdown("FFI TEST DATA WARNING");
+                        sync_logger.error(&format!("⚠️  CRITICAL DIAGNOSTIC: T3000_GetLoggingData() returned test data. Response size: {} bytes. This suggests:",
+                            result.len()));
+                        sync_logger.error("   1. No real T3000 devices are connected/responding");
+                        sync_logger.error("   2. C++ function is returning fallback test data");
+                        sync_logger.error("   3. T3000 network communication may be failing");
+                        sync_logger.error("   4. Check T3000 device connectivity and C++ implementation");
                     }
 
                     info!("📝 Raw C++ Response Preview: {}",
@@ -1250,10 +1258,9 @@ impl T3000MainService {
                          });
 
                     // Log complete raw C++ response to structured log for debugging
-                    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                    let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                        &format!("[{}] 📊 Raw C++ Response FULL DATA ({} bytes):\n{}",
-                                 timestamp, result.len(), result));
+                    sync_logger.add_breakdown("FFI FULL DATA RESPONSE");
+                    sync_logger.info(&format!("📊 Raw C++ Response FULL DATA ({} bytes):\n{}",
+                                 result.len(), result));
 
                     // Also log the complete response for debugging
                     debug!("🔍 COMPLETE C++ RESPONSE:");
@@ -1278,10 +1285,9 @@ impl T3000MainService {
                                 info!("✅ FFI call completed successfully - {} bytes received", data.len());
 
                                 // Log FFI success to structured log with data size and preview
-                                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
                                 let preview = if data.len() > 200 { format!("{}...", &data[..200]) } else { data.clone() };
-                                let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                                    &format!("[{}] ✅ FFI call completed - {} bytes received. Preview: {}", timestamp, data.len(), preview));
+                                sync_logger.add_breakdown("FFI CALL SUCCESS");
+                                sync_logger.info(&format!("✅ FFI call completed - {} bytes received. Preview: {}", data.len(), preview));
 
                                 Ok(data)
                             }
@@ -1289,9 +1295,8 @@ impl T3000MainService {
                                 error!("❌ FFI call failed: {}", e);
 
                                 // Log FFI error to structured log
-                                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                                let _ = write_structured_log("t3000_ffi_sync_service_errors",
-                                    &format!("[{}] ❌ FFI call failed: {}", timestamp, e));
+                                sync_logger.add_breakdown("FFI CALL ERROR");
+                                sync_logger.error(&format!("❌ FFI call failed: {}", e));
 
                                 Err(e)
                             }
@@ -1316,52 +1321,51 @@ impl T3000MainService {
     fn parse_logging_response(json_data: &str) -> Result<LoggingDataResponse, AppError> {
         info!("🔍 Starting JSON parsing - {} bytes", json_data.len());
 
+        // Create sync logger for JSON parsing operations
+        let mut sync_logger = match ServiceLogger::ffi() {
+            Ok(logger) => logger,
+            Err(e) => {
+                error!("Failed to create sync logger: {}", e);
+                return Err(AppError::LoggerError(format!("Failed to create sync logger: {}", e)));
+            }
+        };
+
         // Log JSON parsing start to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🔍 Starting JSON parsing - {} bytes", timestamp, json_data.len()));
+        sync_logger.add_breakdown("JSON PARSING START");
+        sync_logger.info(&format!("🔍 Starting JSON parsing - {} bytes", json_data.len()));
 
         // Add diagnostic logging to check for test data patterns
         if json_data.contains("Test Device") {
             warn!("⚠️  DIAGNOSTIC: JSON contains 'Test Device' - This indicates test/mock data is being returned!");
-            write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                "[{}] ⚠️  DIAGNOSTIC WARNING: C++ returned test data containing 'Test Device' - Check T3000 C++ implementation",
-                timestamp
-            )).ok();
+            sync_logger.add_breakdown("JSON TEST DATA WARNING");
+            sync_logger.error("⚠️  DIAGNOSTIC WARNING: C++ returned test data containing 'Test Device' - Check T3000 C++ implementation");
         }
 
         // Log full JSON response for diagnostic purposes
         info!("🔍 JSON Content Preview (FULL): {}", json_data);
-        write_structured_log("t3000_ffi_sync_service_sync", &format!(
-            "[{}] 🔍 JSON Content Preview (FULL): {}",
-            timestamp, json_data
-        )).ok();
+        sync_logger.add_breakdown("JSON FULL CONTENT");
+        sync_logger.info(&format!("🔍 JSON Content Preview (FULL): {}", json_data));
 
         let json_value: JsonValue = serde_json::from_str(json_data)
             .map_err(|e| {
                 error!("❌ JSON parse error: {}", e);
                 // Log JSON parse error to structured log
-                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                let _ = write_structured_log("t3000_ffi_sync_service_errors",
-                    &format!("[{}] ❌ JSON parse error: {}", timestamp, e));
+                sync_logger.add_breakdown("JSON PARSE ERROR");
+                sync_logger.error(&format!("❌ JSON parse error: {}", e));
                 AppError::ParseError(format!("Failed to parse LOGGING_DATA JSON: {}", e))
             })?;
 
         info!("✅ JSON parsed successfully");
 
         // Log JSON parsing success to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] ✅ JSON parsed successfully", timestamp));
+        sync_logger.add_breakdown("JSON PARSE SUCCESS");
+        sync_logger.info("✅ JSON parsed successfully");
 
         // Diagnostic: Check all top-level keys in the JSON
         if let Some(obj) = json_value.as_object() {
             let keys: Vec<&String> = obj.keys().collect();
             info!("🔑 JSON Top-level keys: {:?}", keys);
-            write_structured_log("t3000_ffi_sync_service_sync", &format!(
-                "[{}] 🔑 JSON Top-level keys: {:?}",
-                timestamp, keys
-            )).ok();
+            sync_logger.info(&format!("🔑 JSON Top-level keys: {:?}", keys));
         }
 
         // The C++ response structure based on BacnetWebView.cpp analysis:
@@ -1427,17 +1431,15 @@ impl T3000MainService {
         if device_info.panel_name.contains("Test") || device_info.panel_name.contains("Mock") ||
            device_info.panel_name.contains("Dummy") || device_info.panel_name.contains("Sample") {
             warn!("⚠️  DIAGNOSTIC: Device name '{}' suggests test data", device_info.panel_name);
-            write_structured_log("t3000_ffi_sync_service_errors", &format!(
-                "[{}] ⚠️  DIAGNOSTIC: Device name '{}' indicates test/mock data - Check C++ T3000_GetLoggingData() implementation",
-                timestamp, device_info.panel_name
-            )).ok();
+            sync_logger.add_breakdown("DEVICE TEST NAME WARNING");
+            sync_logger.error(&format!("⚠️  DIAGNOSTIC: Device name '{}' indicates test/mock data - Check C++ T3000_GetLoggingData() implementation",
+                device_info.panel_name));
         }
 
         // Log device discovery to structured log
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            &format!("[{}] 🏠 Device Info - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
-                     timestamp, device_info.panel_id, device_info.panel_serial_number,
+        sync_logger.add_breakdown("DEVICE INFO DISCOVERY");
+        sync_logger.info(&format!("🏠 Device Info - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
+                     device_info.panel_id, device_info.panel_serial_number,
                      device_info.panel_name, device_info.panel_ipaddress));
 
         // Parse point data from the "data" array
@@ -1449,9 +1451,8 @@ impl T3000MainService {
             info!("📊 Found data array with {} points", data_array.len());
 
             // Log data array discovery to structured log
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            let _ = write_structured_log("t3000_ffi_sync_service_sync",
-                &format!("[{}] 📊 Found data array with {} points", timestamp, data_array.len()));
+            sync_logger.add_breakdown("DATA ARRAY DISCOVERY");
+            sync_logger.info(&format!("📊 Found data array with {} points", data_array.len()));
 
             for (point_index, point_json) in data_array.iter().enumerate() {
                 if let Some(point_type) = point_json.get("type").and_then(|v| v.as_str()) {
@@ -1548,6 +1549,8 @@ impl T3000MainService {
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
+        let mut sync_logger = ServiceLogger::ffi().map_err(|e| AppError::LoggerError(format!("Failed to create sync logger: {}", e)))?;
+
         // Check if input point exists
         let existing = input_points::Entity::find()
             .filter(input_points::Column::SerialNumber.eq(serial_number))
@@ -1578,53 +1581,59 @@ impl T3000MainService {
             Some(_) => {
                 // UPDATE existing input point
                 info!("🔄 Updating existing INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("INPUT POINT UPDATE");
+                sync_logger.info(&format!(
                     "🔄 INPUT UPDATE - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
                     serial_number, point.index, point.full_label, point.value, point.units
-                )).ok();
+                ));
 
                 let update_result = input_points::Entity::update(input_model)
                     .filter(input_points::Column::SerialNumber.eq(serial_number))
                     .filter(input_points::Column::InputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.add_breakdown("INPUT UPDATE ERROR");
+                        sync_logger.error(&format!(
                             "❌ INPUT UPDATE failed - Serial: {}, Index: {}, Error: {}",
                             serial_number, point.index, e
-                        )).ok();
+                        ));
                         AppError::DatabaseError(format!("Failed to update input point: {}", e))
                     })?;
 
                 info!("✅ INPUT point {}:{} UPDATED", serial_number, point.index);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("INPUT UPDATE SUCCESS");
+                sync_logger.info(&format!(
                     "✅ INPUT UPDATE successful - Serial: {}, Index: {}, Update operation completed",
                     serial_number, point.index
-                )).ok();
+                ));
                 Ok(())
             }
             None => {
                 // INSERT new input point
                 info!("➕ Inserting new INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("INPUT POINT INSERT");
+                sync_logger.info(&format!(
                     "➕ INPUT INSERT - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
                     serial_number, point.index, point.full_label, point.value, point.units
-                )).ok();
+                ));
 
                 let insert_result = input_points::Entity::insert(input_model)
                     .exec(txn).await
                     .map_err(|e| {
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.add_breakdown("INPUT INSERT ERROR");
+                        sync_logger.error(&format!(
                             "❌ INPUT INSERT failed - Serial: {}, Index: {}, Error: {}",
                             serial_number, point.index, e
-                        )).ok();
+                        ));
                         AppError::DatabaseError(format!("Failed to insert input point: {}", e))
                     })?;
 
                 info!("✅ INPUT point {}:{} INSERTED", serial_number, point.index);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("INPUT INSERT SUCCESS");
+                sync_logger.info(&format!(
                     "✅ INPUT INSERT successful - Serial: {}, Index: {}, Last insert ID: {}",
                     serial_number, point.index, insert_result.last_insert_id
-                )).ok();
+                ));
                 Ok(())
             }
         }
@@ -1636,6 +1645,8 @@ impl T3000MainService {
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
+        let mut sync_logger = ServiceLogger::ffi().map_err(|e| AppError::LoggerError(format!("Failed to create sync logger: {}", e)))?;
+
         // Check if output point exists
         let existing = output_points::Entity::find()
             .filter(output_points::Column::SerialNumber.eq(serial_number))
@@ -1666,53 +1677,59 @@ impl T3000MainService {
             Some(_) => {
                 // UPDATE existing output point
                 info!("🔄 Updating existing OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("OUTPUT POINT UPDATE");
+                sync_logger.info(&format!(
                     "🔄 OUTPUT UPDATE - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
                     serial_number, point.index, point.full_label, point.value, point.units
-                )).ok();
+                ));
 
                 let update_result = output_points::Entity::update(output_model)
                     .filter(output_points::Column::SerialNumber.eq(serial_number))
                     .filter(output_points::Column::OutputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.add_breakdown("OUTPUT UPDATE ERROR");
+                        sync_logger.error(&format!(
                             "❌ OUTPUT UPDATE failed - Serial: {}, Index: {}, Error: {}",
                             serial_number, point.index, e
-                        )).ok();
+                        ));
                         AppError::DatabaseError(format!("Failed to update output point: {}", e))
                     })?;
 
                 info!("✅ OUTPUT point {}:{} UPDATED", serial_number, point.index);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("OUTPUT UPDATE SUCCESS");
+                sync_logger.info(&format!(
                     "✅ OUTPUT UPDATE successful - Serial: {}, Index: {}, Update operation completed",
                     serial_number, point.index
-                )).ok();
+                ));
                 Ok(())
             }
             None => {
                 // INSERT new output point
                 info!("➕ Inserting new OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("OUTPUT POINT INSERT");
+                sync_logger.info(&format!(
                     "➕ OUTPUT INSERT - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
                     serial_number, point.index, point.full_label, point.value, point.units
-                )).ok();
+                ));
 
                 let insert_result = output_points::Entity::insert(output_model)
                     .exec(txn).await
                     .map_err(|e| {
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.add_breakdown("OUTPUT INSERT ERROR");
+                        sync_logger.error(&format!(
                             "❌ OUTPUT INSERT failed - Serial: {}, Index: {}, Error: {}",
                             serial_number, point.index, e
-                        )).ok();
+                        ));
                         AppError::DatabaseError(format!("Failed to insert output point: {}", e))
                     })?;
 
                 info!("✅ OUTPUT point {}:{} INSERTED", serial_number, point.index);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("OUTPUT INSERT SUCCESS");
+                sync_logger.info(&format!(
                     "✅ OUTPUT INSERT successful - Serial: {}, Index: {}, Last insert ID: {}",
                     serial_number, point.index, insert_result.last_insert_id
-                )).ok();
+                ));
                 Ok(())
             }
         }
@@ -1724,6 +1741,8 @@ impl T3000MainService {
         serial_number: i32,
         point: &PointData,
     ) -> Result<(), AppError> {
+        let mut sync_logger = ServiceLogger::ffi().map_err(|e| AppError::LoggerError(format!("Failed to create sync logger: {}", e)))?;
+
         // Check if variable point exists
         let existing = variable_points::Entity::find()
             .filter(variable_points::Column::SerialNumber.eq(serial_number))
@@ -1746,53 +1765,59 @@ impl T3000MainService {
             Some(_) => {
                 // UPDATE existing variable point
                 info!("🔄 Updating existing VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("VARIABLE POINT UPDATE");
+                sync_logger.info(&format!(
                     "🔄 VARIABLE UPDATE - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
                     serial_number, point.index, point.full_label, point.value, point.units
-                )).ok();
+                ));
 
                 let update_result = variable_points::Entity::update(variable_model)
                     .filter(variable_points::Column::SerialNumber.eq(serial_number))
                     .filter(variable_points::Column::VariableIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
                     .map_err(|e| {
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.add_breakdown("VARIABLE UPDATE ERROR");
+                        sync_logger.error(&format!(
                             "❌ VARIABLE UPDATE failed - Serial: {}, Index: {}, Error: {}",
                             serial_number, point.index, e
-                        )).ok();
+                        ));
                         AppError::DatabaseError(format!("Failed to update variable point: {}", e))
                     })?;
 
                 info!("✅ VARIABLE point {}:{} UPDATED", serial_number, point.index);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("VARIABLE UPDATE SUCCESS");
+                sync_logger.info(&format!(
                     "✅ VARIABLE UPDATE successful - Serial: {}, Index: {}, Update operation completed",
                     serial_number, point.index
-                )).ok();
+                ));
                 Ok(())
             }
             None => {
                 // INSERT new variable point
                 info!("➕ Inserting new VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("VARIABLE POINT INSERT");
+                sync_logger.info(&format!(
                     "➕ VARIABLE INSERT - Serial: {}, Index: {}, Label: '{}', Value: {}, Units: '{}'",
                     serial_number, point.index, point.full_label, point.value, point.units
-                )).ok();
+                ));
 
                 let insert_result = variable_points::Entity::insert(variable_model)
                     .exec(txn).await
                     .map_err(|e| {
-                        write_structured_log("t3000_ffi_sync_service_errors", &format!(
+                        sync_logger.add_breakdown("VARIABLE INSERT ERROR");
+                        sync_logger.error(&format!(
                             "❌ VARIABLE INSERT failed - Serial: {}, Index: {}, Error: {}",
                             serial_number, point.index, e
-                        )).ok();
+                        ));
                         AppError::DatabaseError(format!("Failed to insert variable point: {}", e))
                     })?;
 
                 info!("✅ VARIABLE point {}:{} INSERTED", serial_number, point.index);
-                write_structured_log("t3000_ffi_sync_service_sync", &format!(
+                sync_logger.add_breakdown("VARIABLE INSERT SUCCESS");
+                sync_logger.info(&format!(
                     "✅ VARIABLE INSERT successful - Serial: {}, Index: {}, Last insert ID: {}",
                     serial_number, point.index, insert_result.last_insert_id
-                )).ok();
+                ));
                 Ok(())
             }
         }
@@ -1851,10 +1876,11 @@ impl T3000MainService {
         // The system will use T3000_GetLoggingData() directly, which should work
         // if the T3000 C++ system is already initialized by the main application.
 
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            "💡 T3000 initialization functions not available - Using direct T3000_GetLoggingData() call");
-        let _ = write_structured_log("t3000_ffi_sync_service_sync",
-            "📋 Assuming T3000 C++ system is initialized by main application");
+        if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+            sync_logger.add_breakdown("T3000 SYSTEM CHECK");
+            sync_logger.info("💡 T3000 initialization functions not available - Using direct T3000_GetLoggingData() call");
+            sync_logger.info("📋 Assuming T3000 C++ system is initialized by main application");
+        }
 
         Ok(())
     }

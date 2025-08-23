@@ -106,28 +106,28 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     };
     if let Err(e) = initialize_logging_service(main_service_config).await {
         let error_msg = format!("T3000 FFI Sync Service initialization failed: {} - Core services will continue", e);
-        let _ = write_structured_log_with_level("T3000_Webview_Initialize", &error_msg, LogLevel::Warn);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
         println!("⚠️  Warning: T3000 FFI Sync Service unavailable - Core services starting anyway");
     } else {
-        let _ = write_structured_log_with_level("T3000_Webview_Initialize", "T3000 FFI Sync Service initialized (Primary T3000 FFI integration service)", LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service initialized (Primary T3000 FFI integration service)", LogLevel::Info);
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
     let main_service_handle = tokio::spawn(async move {
         if let Err(e) = start_logging_sync().await {
             let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
-            let _ = write_structured_log_with_level("T3000_Webview_Initialize", &error_msg, LogLevel::Error);
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
         }
     });
 
-    let _ = write_structured_log_with_level("T3000_Webview_Initialize", "T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)", LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)", LogLevel::Info);
 
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {
         if let Err(e) = crate::t3_socket::start_websocket_service().await {
             // Log WebSocket errors to structured log
             let error_msg = format!("WebSocket service failed: {}", e);
-            let _ = write_structured_log_with_level("T3000_Webview_Socket", &error_msg, LogLevel::Error);
+            let _ = write_structured_log_with_level("T3_Webview_Socket", &error_msg, LogLevel::Error);
         }
     });
 

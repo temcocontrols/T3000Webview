@@ -71,7 +71,7 @@ impl T3000DatabaseBridgeService {
         // Database bridge startup goes to Initialize log
         use crate::logger::{write_structured_log_with_level, LogLevel};
         let startup_msg = format!("T3000 Database Bridge Service started - interval: {}s", interval.as_secs());
-        let _ = write_structured_log_with_level("T3000_Webview_Initialize", &startup_msg, LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", &startup_msg, LogLevel::Info);
 
         // Background sync loop
         loop {

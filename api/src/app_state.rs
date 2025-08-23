@@ -59,7 +59,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
         "=== DATABASE CONNECTION ATTEMPT ===\nPrimary database URL: {}\nWebView T3000 database URL: {}",
         DATABASE_URL.as_str(), T3_DEVICE_DATABASE_URL.as_str()
     );
-    let _ = write_structured_log_with_level("T3000_Webview_Initialize", &log_message, LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_Webview_Initialize", &log_message, LogLevel::Info);
 
     // Check if database files exist
     let primary_path = DATABASE_URL.strip_prefix("sqlite://").unwrap_or(&DATABASE_URL);

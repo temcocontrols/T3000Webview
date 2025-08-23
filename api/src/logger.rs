@@ -64,27 +64,27 @@ impl ServiceLogger {
 
     /// Create a logger for FFI operations
     pub fn ffi() -> Result<Self, std::io::Error> {
-        Self::new("T3000_Webview_FFI")
+        Self::new("T3_Webview_FFI")
     }
 
     /// Create a logger for Socket operations
     pub fn socket() -> Result<Self, std::io::Error> {
-        Self::new("T3000_Webview_Socket")
+        Self::new("T3_Webview_Socket")
     }
 
     /// Create a logger for API operations
     pub fn api() -> Result<Self, std::io::Error> {
-        Self::new("T3000_Webview_API")
+        Self::new("T3_Webview_API")
     }
 
     /// Create a logger for Database operations
     pub fn database() -> Result<Self, std::io::Error> {
-        Self::new("T3000_Webview_Database")
+        Self::new("T3_Webview_Database")
     }
 
     /// Create a logger for Initialize operations
     pub fn initialize() -> Result<Self, std::io::Error> {
-        Self::new("T3000_Webview_Initialize")
+        Self::new("T3_Webview_Initialize")
     }
 
     pub fn log(&mut self, level: LogLevel, message: &str) {
@@ -106,6 +106,12 @@ impl ServiceLogger {
 
     pub fn warn(&mut self, message: &str) {
         self.log(LogLevel::Warn, message);
+    }
+
+    /// Add a breakdown line separator for action rounds
+    pub fn add_breakdown(&mut self, round_description: &str) {
+        let breakdown_line = format!("================================ {} ================================", round_description);
+        self.log(LogLevel::Info, &breakdown_line);
     }
 }
 

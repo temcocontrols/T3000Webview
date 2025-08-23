@@ -66,6 +66,7 @@ pub enum AppError {
     ParseError(String),
     InitializationError(String),
     ServiceError(String),
+    LoggerError(String),
 }
 
 impl std::fmt::Display for AppError {
@@ -80,6 +81,7 @@ impl std::fmt::Display for AppError {
             AppError::ParseError(msg) => write!(f, "Parse Error: {}", msg),
             AppError::InitializationError(msg) => write!(f, "Initialization Error: {}", msg),
             AppError::ServiceError(msg) => write!(f, "Service Error: {}", msg),
+            AppError::LoggerError(msg) => write!(f, "Logger Error: {}", msg),
         }
     }
 }
@@ -122,6 +124,7 @@ impl IntoResponse for AppError {
             AppError::ParseError(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::InitializationError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             AppError::ServiceError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::LoggerError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 
         (status, message).into_response()
