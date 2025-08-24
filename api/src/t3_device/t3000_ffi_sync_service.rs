@@ -1318,7 +1318,7 @@ impl T3000MainService {
     }
 
     /// Parse the complete LOGGING_DATA response from T3000 C++
-    fn parse_logging_response(json_data: &str) -> Result<LoggingDataResponse, AppError> {
+    pub fn parse_logging_response(json_data: &str) -> Result<LoggingDataResponse, AppError> {
         info!("🔍 Starting JSON parsing - {} bytes", json_data.len());
 
         // Create sync logger for JSON parsing operations
@@ -1334,13 +1334,6 @@ impl T3000MainService {
         sync_logger.add_breakdown("JSON PARSING START");
         sync_logger.info(&format!("🔍 Starting JSON parsing - {} bytes", json_data.len()));
 
-        // Add diagnostic logging to check for test data patterns
-        if json_data.contains("Test Device") {
-            warn!("⚠️  DIAGNOSTIC: JSON contains 'Test Device' - This indicates test/mock data is being returned!");
-            sync_logger.add_breakdown("JSON TEST DATA WARNING");
-            sync_logger.error("⚠️  DIAGNOSTIC WARNING: C++ returned test data containing 'Test Device' - Check T3000 C++ implementation");
-        }
-
         // Log full JSON response for diagnostic purposes
         info!("🔍 JSON Content Preview (FULL): {}", json_data);
         sync_logger.add_breakdown("JSON FULL CONTENT");
@@ -1349,161 +1342,182 @@ impl T3000MainService {
         let json_value: JsonValue = serde_json::from_str(json_data)
             .map_err(|e| {
                 error!("❌ JSON parse error: {}", e);
-                // Log JSON parse error to structured log
                 sync_logger.add_breakdown("JSON PARSE ERROR");
                 sync_logger.error(&format!("❌ JSON parse error: {}", e));
                 AppError::ParseError(format!("Failed to parse LOGGING_DATA JSON: {}", e))
             })?;
 
         info!("✅ JSON parsed successfully");
-
-        // Log JSON parsing success to structured log
         sync_logger.add_breakdown("JSON PARSE SUCCESS");
         sync_logger.info("✅ JSON parsed successfully");
-
-        // Diagnostic: Check all top-level keys in the JSON
-        if let Some(obj) = json_value.as_object() {
-            let keys: Vec<&String> = obj.keys().collect();
-            info!("🔑 JSON Top-level keys: {:?}", keys);
-            sync_logger.info(&format!("🔑 JSON Top-level keys: {:?}", keys));
-        }
-
-        // The C++ response structure based on BacnetWebView.cpp analysis:
-        // {
-        //   "action": "LOGGING_DATA_RES",
-        //   "panel_id": npanel_id,
-        //   "panel_name": "Device Name",
-        //   "panel_serial_number": serial,
-        //   "panel_ipaddress": "IP",
-        //   "input_logging_time": "timestamp",
-        //   "output_logging_time": "timestamp",
-        //   "variable_logging_time": "timestamp",
-        //   "data": [ array of all points ]
-        // }
 
         let action = json_value.get("action")
             .and_then(|v| v.as_str())
             .unwrap_or("UNKNOWN")
             .to_string();
 
-        info!("📋 Action: {}", action);
+        info!("� Action: {}", action);
 
-        // Diagnostic: Check if action indicates test data
-        if action.contains("TEST") || action.contains("MOCK") {
-            warn!("⚠️  DIAGNOSTIC: Action '{}' suggests test/mock data", action);
-        }
+        // NEW STRUCTURE: Parse the updated JSON structure with device_data nested arrays
+        // Expected structure:
+        // {
+        //   "action": "LOGGING_DATA_RES",
+        //   "data": [
+        //     {
+        //       "panel_id": 1,
+        //       "panel_name": "Device1",
+        //       "panel_serial_number": 12345,
+        //       "panel_ipaddress": "192.168.1.100",
+        //       "input_logging_time": 123456,
+        //       "output_logging_time": 123457,
+        //       "variable_logging_time": 123458,
+        //       "device_data": [ array of all points for this device ]
+        //     },
+        //     { ... next device }
+        //   ]
+        // }
 
-        // Extract device information from LOGGING_DATA
-        let mut device_info = DeviceInfo {
-            panel_id: json_value.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            panel_name: json_value.get("panel_name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
-            panel_serial_number: json_value.get("panel_serial_number").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            panel_ipaddress: json_value.get("panel_ipaddress").and_then(|v| v.as_str()).unwrap_or("0.0.0.0").to_string(),
-            input_logging_time: json_value.get("input_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            output_logging_time: json_value.get("output_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            variable_logging_time: json_value.get("variable_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-
-            // Initialize extended fields to None - will be populated by additional FFI calls
-            ip_address: None,
-            port: None,
-            bacnet_mstp_mac_id: None,
-            modbus_address: None,
-            pc_ip_address: None,
-            modbus_port: None,
-            bacnet_ip_port: None,
-            show_label_name: None,
-            connection_type: None,
-        };
-
-        // Try to get extended device configuration using new FFI functions
-        Self::populate_extended_device_info(&mut device_info);
-
-        info!("🏠 Device Info - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
-              device_info.panel_id, device_info.panel_serial_number,
-              device_info.panel_name, device_info.panel_ipaddress);
-        info!("⏰ Logging Times - Input: '{}', Output: '{}', Variable: '{}'",
-              device_info.input_logging_time, device_info.output_logging_time, device_info.variable_logging_time);
-        info!("🔧 Extended Config - IP: {:?}, Port: {:?}, Modbus: {:?}, BACnet: {:?}, Connection: {:?}",
-              device_info.ip_address, device_info.port, device_info.modbus_address,
-              device_info.bacnet_mstp_mac_id, device_info.connection_type);
-
-        // Diagnostic: Check for test device indicators
-        if device_info.panel_name.contains("Test") || device_info.panel_name.contains("Mock") ||
-           device_info.panel_name.contains("Dummy") || device_info.panel_name.contains("Sample") {
-            warn!("⚠️  DIAGNOSTIC: Device name '{}' suggests test data", device_info.panel_name);
-            sync_logger.add_breakdown("DEVICE TEST NAME WARNING");
-            sync_logger.error(&format!("⚠️  DIAGNOSTIC: Device name '{}' indicates test/mock data - Check C++ T3000_GetLoggingData() implementation",
-                device_info.panel_name));
-        }
-
-        // Log device discovery to structured log
-        sync_logger.add_breakdown("DEVICE INFO DISCOVERY");
-        sync_logger.info(&format!("🏠 Device Info - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
-                     device_info.panel_id, device_info.panel_serial_number,
-                     device_info.panel_name, device_info.panel_ipaddress));
-
-        // Parse point data from the "data" array
-        let mut input_points = Vec::new();
-        let mut output_points = Vec::new();
-        let mut variable_points = Vec::new();
+        let mut all_devices = Vec::new();
 
         if let Some(data_array) = json_value.get("data").and_then(|v| v.as_array()) {
-            info!("📊 Found data array with {} points", data_array.len());
+            info!("📱 Found {} devices in data array", data_array.len());
+            sync_logger.add_breakdown("MULTI-DEVICE PARSING");
+            sync_logger.info(&format!("� Processing {} devices from C++ response", data_array.len()));
 
-            // Log data array discovery to structured log
-            sync_logger.add_breakdown("DATA ARRAY DISCOVERY");
-            sync_logger.info(&format!("📊 Found data array with {} points", data_array.len()));
+            for (device_index, device_json) in data_array.iter().enumerate() {
+                sync_logger.add_breakdown(&format!("DEVICE {} PROCESSING", device_index + 1));
 
-            for (point_index, point_json) in data_array.iter().enumerate() {
-                if let Some(point_type) = point_json.get("type").and_then(|v| v.as_str()) {
-                    let point_index_value = point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
-                    debug!("🔸 Processing point {}: type={}, index={}", point_index, point_type, point_index_value);
+                // Extract device information from each device object
+                let mut device_info = DeviceInfo {
+                    panel_id: device_json.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                    panel_name: device_json.get("panel_name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
+                    panel_serial_number: device_json.get("panel_serial_number").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                    panel_ipaddress: device_json.get("panel_ipaddress").and_then(|v| v.as_str()).unwrap_or("0.0.0.0").to_string(),
+                    input_logging_time: device_json.get("input_logging_time").and_then(|v| v.as_i64()).map(|t| t.to_string()).unwrap_or("".to_string()),
+                    output_logging_time: device_json.get("output_logging_time").and_then(|v| v.as_i64()).map(|t| t.to_string()).unwrap_or("".to_string()),
+                    variable_logging_time: device_json.get("variable_logging_time").and_then(|v| v.as_i64()).map(|t| t.to_string()).unwrap_or("".to_string()),
 
-                    match Self::parse_point_data(point_json) {
-                        Ok(point_data) => {
-                            match point_type {
-                                "INPUT" => {
-                                    input_points.push(point_data);
-                                    debug!("✅ Added INPUT point {}", point_index_value);
+                    // Initialize extended fields to None
+                    ip_address: None,
+                    port: None,
+                    bacnet_mstp_mac_id: None,
+                    modbus_address: None,
+                    pc_ip_address: None,
+                    modbus_port: None,
+                    bacnet_ip_port: None,
+                    show_label_name: None,
+                    connection_type: None,
+                };
+
+                info!("🏠 Device {} - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
+                      device_index + 1, device_info.panel_id, device_info.panel_serial_number,
+                      device_info.panel_name, device_info.panel_ipaddress);
+
+                sync_logger.info(&format!("🏠 Device {} - Panel ID: {}, Serial: {}, Name: '{}', IP: {}",
+                    device_index + 1, device_info.panel_id, device_info.panel_serial_number,
+                    device_info.panel_name, device_info.panel_ipaddress));
+
+                // Try to get extended device configuration using new FFI functions
+                Self::populate_extended_device_info(&mut device_info);
+
+                // Parse point data from the "device_data" array for this device
+                let mut input_points = Vec::new();
+                let mut output_points = Vec::new();
+                let mut variable_points = Vec::new();
+
+                if let Some(device_data_array) = device_json.get("device_data").and_then(|v| v.as_array()) {
+                    info!("📊 Device {} has {} data points", device_index + 1, device_data_array.len());
+                    sync_logger.info(&format!("📊 Device {} has {} data points", device_index + 1, device_data_array.len()));
+
+                    for (point_index, point_json) in device_data_array.iter().enumerate() {
+                        if let Some(point_type) = point_json.get("type").and_then(|v| v.as_str()) {
+                            let point_index_value = point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+                            debug!("🔸 Device {} Point {}: type={}, index={}", device_index + 1, point_index, point_type, point_index_value);
+
+                            match Self::parse_point_data(point_json) {
+                                Ok(point_data) => {
+                                    match point_type {
+                                        "INPUT" => {
+                                            input_points.push(point_data);
+                                            debug!("✅ Added INPUT point {} for device {}", point_index_value, device_index + 1);
+                                        }
+                                        "OUTPUT" => {
+                                            output_points.push(point_data);
+                                            debug!("✅ Added OUTPUT point {} for device {}", point_index_value, device_index + 1);
+                                        }
+                                        "VARIABLE" => {
+                                            variable_points.push(point_data);
+                                            debug!("✅ Added VARIABLE point {} for device {}", point_index_value, device_index + 1);
+                                        }
+                                        _ => warn!("⚠️  Unknown point type: {}", point_type),
+                                    }
                                 }
-                                "OUTPUT" => {
-                                    output_points.push(point_data);
-                                    debug!("✅ Added OUTPUT point {}", point_index_value);
+                                Err(e) => {
+                                    warn!("⚠️  Failed to parse point {} for device {}: {}", point_index, device_index + 1, e);
                                 }
-                                "VARIABLE" => {
-                                    variable_points.push(point_data);
-                                    debug!("✅ Added VARIABLE point {}", point_index_value);
-                                }
-                                _ => warn!("⚠️  Unknown point type: {}", point_type),
                             }
-                        }
-                        Err(e) => {
-                            warn!("⚠️  Failed to parse point {}: {}", point_index, e);
+                        } else {
+                            warn!("⚠️  Point {} for device {} missing 'type' field", point_index, device_index + 1);
                         }
                     }
                 } else {
-                    warn!("⚠️  Point {} missing 'type' field", point_index);
+                    warn!("⚠️  Device {} has no 'device_data' array", device_index + 1);
                 }
+
+                info!("📈 Device {} Points Summary - INPUT: {}, OUTPUT: {}, VARIABLE: {}",
+                      device_index + 1, input_points.len(), output_points.len(), variable_points.len());
+
+                sync_logger.info(&format!("📈 Device {} Points Summary - INPUT: {}, OUTPUT: {}, VARIABLE: {}",
+                    device_index + 1, input_points.len(), output_points.len(), variable_points.len()));
+
+                let device_with_points = DeviceWithPoints {
+                    device_info,
+                    input_points,
+                    output_points,
+                    variable_points,
+                };
+
+                all_devices.push(device_with_points);
             }
         } else {
-            warn!("⚠️  No 'data' array found in response");
+            warn!("⚠️  No 'data' array found in response - trying legacy single device format");
+            sync_logger.add_breakdown("LEGACY SINGLE DEVICE FALLBACK");
+            sync_logger.warn("⚠️  No 'data' array found - attempting legacy single device parsing");
+
+            // Fallback to legacy single device format for backwards compatibility
+            let mut device_info = DeviceInfo {
+                panel_id: json_value.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                panel_name: json_value.get("panel_name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
+                panel_serial_number: json_value.get("panel_serial_number").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                panel_ipaddress: json_value.get("panel_ipaddress").and_then(|v| v.as_str()).unwrap_or("0.0.0.0").to_string(),
+                input_logging_time: json_value.get("input_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                output_logging_time: json_value.get("output_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                variable_logging_time: json_value.get("variable_logging_time").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+
+                ip_address: None, port: None, bacnet_mstp_mac_id: None, modbus_address: None,
+                pc_ip_address: None, modbus_port: None, bacnet_ip_port: None,
+                show_label_name: None, connection_type: None,
+            };
+
+            Self::populate_extended_device_info(&mut device_info);
+
+            let device_with_points = DeviceWithPoints {
+                device_info,
+                input_points: Vec::new(),
+                output_points: Vec::new(),
+                variable_points: Vec::new(),
+            };
+
+            all_devices.push(device_with_points);
         }
 
-        info!("📈 Parsed Points Summary - INPUT: {}, OUTPUT: {}, VARIABLE: {}",
-              input_points.len(), output_points.len(), variable_points.len());
-
-        let device_with_points = DeviceWithPoints {
-            device_info,
-            input_points,
-            output_points,
-            variable_points,
-        };
-
-        info!("✅ Logging response parsing completed successfully");
+        info!("✅ Logging response parsing completed successfully - {} devices processed", all_devices.len());
+        sync_logger.add_breakdown("PARSING COMPLETE SUCCESS");
+        sync_logger.info(&format!("✅ Multi-device parsing completed - {} devices processed", all_devices.len()));
 
         Ok(LoggingDataResponse {
             action,
-            devices: vec![device_with_points], // Single device per response
+            devices: all_devices,
             timestamp: chrono::Utc::now().to_rfc3339(),
         })
     }

@@ -8,3 +8,6 @@ pub mod websocket_handler;
 // pub mod trendlog_api_service;  // ✅ AVAILABLE - TrendLog API layer for data already collected by main service (not called by default)
 // pub mod trendlog_http_routes;  // ✅ AVAILABLE - HTTP/WebSocket endpoints for trendlog queries (not called by default)
 // pub mod t3000_ffi;             // Temporarily disabled - has unresolved externals
+
+#[cfg(test)]
+pub mod multi_device_tests;
