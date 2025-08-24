@@ -39,7 +39,7 @@ macro_rules! get_t3_device_conn {
 // Helper function to get valid T3000 database table names
 fn get_valid_table_names() -> &'static [&'static str] {
     &[
-        "ALL_NODE", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
+        "DEVICES", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
         "SCHEDULES", "PID_TABLE", "HOLIDAYS", "GRAPHICS", "ALARMS",
         "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA", "TRENDLOG_BUFFER"
     ]
@@ -91,7 +91,7 @@ async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<Dat
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         let description = match table_name.as_str() {
-            "ALL_NODE" => "T3000 devices and nodes (main device table)",
+            "DEVICES" => "T3000 devices and nodes (main device table)",
             "INPUTS" => "Input points and sensors",
             "OUTPUTS" => "Output points and actuators",
             "VARIABLES" => "Variable points and calculated values",
@@ -128,7 +128,7 @@ async fn get_table_data(
     Query(params): Query<QueryParams>,
 ) -> Result<Json<QueryResult>, StatusCode> {
     let db = get_t3_device_conn!(state);
-    let table_name = params.table.unwrap_or_else(|| "ALL_NODE".to_string());
+    let table_name = params.table.unwrap_or_else(|| "DEVICES".to_string());
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10);
     let offset = (page - 1) * per_page;
@@ -143,8 +143,8 @@ async fn get_table_data(
     let query = if let Some(search) = params.search {
         // Use table-specific search logic based on table structure
         match table_name.as_str() {
-            "ALL_NODE" => format!(
-                "SELECT * FROM {} WHERE CAST(Serial_ID AS TEXT) LIKE '%{}%' OR CAST(Product_Name AS TEXT) LIKE '%{}%' OR CAST(Description AS TEXT) LIKE '%{}%' LIMIT {} OFFSET {}",
+            "DEVICES" => format!(
+                "SELECT * FROM {} WHERE CAST(SerialNumber AS TEXT) LIKE '%{}%' OR CAST(Product_Name AS TEXT) LIKE '%{}%' OR CAST(Description AS TEXT) LIKE '%{}%' LIMIT {} OFFSET {}",
                 table_name, search, search, search, per_page, offset
             ),
             "INPUTS" | "OUTPUTS" | "VARIABLES" => format!(
@@ -186,10 +186,18 @@ async fn get_table_data(
 
         // Extract all columns dynamically
         for column_name in &column_names {
-            if let Ok(value) = row.try_get::<Option<String>>("", column_name) {
+            // Try different data types and handle None values properly
+            if let Ok(value) = row.try_get::<String>("", column_name) {
                 row_data.insert(column_name.clone(), json!(value));
-            } else if let Ok(int_value) = row.try_get::<Option<i32>>("", column_name) {
+            } else if let Ok(int_value) = row.try_get::<i32>("", column_name) {
                 row_data.insert(column_name.clone(), json!(int_value));
+            } else if let Ok(opt_value) = row.try_get::<Option<String>>("", column_name) {
+                row_data.insert(column_name.clone(), json!(opt_value));
+            } else if let Ok(opt_int_value) = row.try_get::<Option<i32>>("", column_name) {
+                row_data.insert(column_name.clone(), json!(opt_int_value));
+            } else {
+                // Insert null for columns that can't be read
+                row_data.insert(column_name.clone(), Value::Null);
             }
         }
 

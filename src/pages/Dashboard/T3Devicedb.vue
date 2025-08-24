@@ -435,7 +435,7 @@ const pagination = ref({
 // Table definitions
 const infrastructureTables = ref([
   {
-    name: 'ALL_NODE',
+    name: 'DEVICES',
     label: 'All Nodes/Devices',
     description: 'T3000 devices and nodes',
     icon: 'developer_board',
@@ -569,8 +569,8 @@ const getSelectedTableInfo = () => {
 
 const getTableSpecificColumns = (tableName) => {
   const columnMappings = {
-    ALL_NODE: [
-      { name: 'Serial_ID', label: 'Serial ID', field: 'Serial_ID', sortable: true },
+    DEVICES: [
+      { name: 'SerialNumber', label: 'Serial Number', field: 'SerialNumber', sortable: true },
       { name: 'Product_Name', label: 'Product Name', field: 'Product_Name', sortable: true },
       { name: 'Building_Name', label: 'Building', field: 'Building_Name', sortable: true },
       { name: 'Address', label: 'Address', field: 'Address', sortable: true },
@@ -635,7 +635,7 @@ const getTableSpecificColumns = (tableName) => {
 
 const getFilterOptions = () => {
   if (!selectedTable.value) return []
-  const primaryKeyFields = ['Serial_ID', 'nSerialNumber', 'TrendLog_ID']
+  const primaryKeyFields = ['SerialNumber', 'nSerialNumber', 'TrendLog_ID']
   return tableColumns.value
     .filter(col => col.name !== 'actions' && !primaryKeyFields.includes(col.name))
     .map(col => ({ label: col.label, value: col.name }))
@@ -668,9 +668,9 @@ const loadTableData = async () => {
 
 const getSampleData = (tableName) => {
   const sampleData = {
-    ALL_NODE: [
+    DEVICES: [
       {
-        Serial_ID: 1,
+        SerialNumber: 1,
         Product_Name: 'T3-BB',
         Building_Name: 'Main Building',
         Address: '192.168.1.100',
@@ -678,7 +678,7 @@ const getSampleData = (tableName) => {
         Description: 'Building Controller'
       },
       {
-        Serial_ID: 2,
+        SerialNumber: 2,
         Product_Name: 'T3-8I',
         Building_Name: 'Building B',
         Address: '192.168.1.101',
@@ -746,7 +746,7 @@ const loadTableCounts = async () => {
       console.error(`Error loading count for ${table.name}:`, error)
       // Fallback to sample counts
       const sampleCounts = {
-        ALL_NODE: 2,
+        DEVICES: 2,
         INPUTS: 24,
         OUTPUTS: 16,
         VARIABLES: 8,
@@ -796,7 +796,7 @@ const deleteRecord = (record) => {
     persistent: true
   }).onOk(async () => {
     try {
-      await t3DeviceApi.deleteTableRecord(selectedTable.value, record.id)
+      await t3DeviceApi.deleteRecord(selectedTable.value, record.id)
       $q.notify({
         type: 'positive',
         message: 'Record deleted successfully'
@@ -823,7 +823,7 @@ const deleteSelected = () => {
   }).onOk(async () => {
     try {
       const promises = selectedRows.value.map(record =>
-        t3DeviceApi.deleteTableRecord(selectedTable.value, record.id)
+        t3DeviceApi.deleteRecord(selectedTable.value, record.id)
       )
       await Promise.all(promises)
       $q.notify({
@@ -849,10 +849,10 @@ const saveRecord = async () => {
   try {
     if (dialogMode.value === 'create') {
       // Create new record
-      await t3DeviceApi.createTableRecord(selectedTable.value, formData.value)
+      await t3DeviceApi.createRecord(selectedTable.value, formData.value)
     } else {
       // Update existing record
-      await t3DeviceApi.updateTableRecord(selectedTable.value, formData.value.id, formData.value)
+      await t3DeviceApi.updateRecord(selectedTable.value, formData.value.id, formData.value)
     }
 
     $q.notify({

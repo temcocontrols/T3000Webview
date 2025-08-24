@@ -246,7 +246,7 @@ export class T3DeviceApi {
 }
 
 // Create a default instance
-export const t3DeviceApi = new T3DeviceApi();
+export const t3DeviceApi = new T3DeviceApi('http://localhost:9103');
 
 // Export for direct usage
 export default T3DeviceApi;
