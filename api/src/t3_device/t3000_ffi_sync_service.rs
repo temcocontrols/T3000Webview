@@ -1426,6 +1426,18 @@ impl T3000MainService {
             .one(txn).await
             .map_err(|e| AppError::DatabaseError(format!("Failed to query input point: {}", e)))?;
 
+        // Serialize INPUT-specific fields to JSON for storage in BinaryArray
+        let input_specific_data = serde_json::json!({
+            "control": point.control,
+            "id": point.id,
+            "calibration_l": point.calibration_l,
+            "decom": point.status, // decom is stored in status field but we also keep original
+            "sub_product": point.sub_product,
+            "sub_id": point.sub_id,
+            "sub_panel": point.sub_panel,
+            "network_number": point.network_number
+        });
+
         let input_model = input_points::ActiveModel {
             serial_number: Set(serial_number),
             input_index: Set(Some(point.index.to_string())),
@@ -1442,7 +1454,7 @@ impl T3000MainService {
             signal_type: Set(point.digital_analog.map(|da| da.to_string())),
             label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
             type_field: Set(point.command.clone()),
-            binary_array: Set(None),
+            binary_array: Set(Some(input_specific_data.to_string())),
         };
 
         match existing {
@@ -1508,6 +1520,16 @@ impl T3000MainService {
             .one(txn).await
             .map_err(|e| AppError::DatabaseError(format!("Failed to query output point: {}", e)))?;
 
+        // Serialize OUTPUT-specific fields to JSON for storage in BinaryArray
+        let output_specific_data = serde_json::json!({
+            "high_voltage": point.high_voltage,
+            "low_voltage": point.low_voltage,
+            "hw_switch_status": point.hw_switch_status,
+            "control": point.control,
+            "id": point.id,
+            "decom": point.status // decom is stored in status field but we also keep original
+        });
+
         let output_model = output_points::ActiveModel {
             serial_number: Set(serial_number),
             output_index: Set(Some(point.index.to_string())),
@@ -1520,11 +1542,11 @@ impl T3000MainService {
             calibration: Set(Some(point.calibration.to_string())),
             sign: Set(Some(point.sign.to_string())),
             status: Set(Some(point.status.to_string())),
-            filter_field: Set(None),
-            signal_type: Set(None),
-            label: Set(Some(point.full_label.clone())),
-            type_field: Set(None),
-            binary_array: Set(None),
+            filter_field: Set(point.control.map(|c| c.to_string())),
+            signal_type: Set(point.digital_analog.map(|da| da.to_string())),
+            label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
+            type_field: Set(point.command.clone()),
+            binary_array: Set(Some(output_specific_data.to_string())),
         };
 
         match existing {
