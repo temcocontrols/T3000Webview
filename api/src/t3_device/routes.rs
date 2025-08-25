@@ -184,20 +184,12 @@ async fn get_table_data(
     for row in results {
         let mut row_data = serde_json::Map::new();
 
-        // Extract all columns dynamically
-        for column_name in &column_names {
-            // Try different data types and handle None values properly
-            if let Ok(value) = row.try_get::<String>("", column_name) {
+        // Extract all columns dynamically using index - same as export_table
+        for (index, column_name) in column_names.iter().enumerate() {
+            if let Ok(value) = row.try_get_by_index::<Option<String>>(index) {
                 row_data.insert(column_name.clone(), json!(value));
-            } else if let Ok(int_value) = row.try_get::<i32>("", column_name) {
+            } else if let Ok(int_value) = row.try_get_by_index::<Option<i32>>(index) {
                 row_data.insert(column_name.clone(), json!(int_value));
-            } else if let Ok(opt_value) = row.try_get::<Option<String>>("", column_name) {
-                row_data.insert(column_name.clone(), json!(opt_value));
-            } else if let Ok(opt_int_value) = row.try_get::<Option<i32>>("", column_name) {
-                row_data.insert(column_name.clone(), json!(opt_int_value));
-            } else {
-                // Insert null for columns that can't be read
-                row_data.insert(column_name.clone(), Value::Null);
             }
         }
 
@@ -312,11 +304,11 @@ async fn export_table(
     for row in results {
         let mut row_data = serde_json::Map::new();
 
-        // Extract all columns dynamically
-        for column_name in &column_names {
-            if let Ok(value) = row.try_get::<Option<String>>("", column_name) {
+        // Extract all columns dynamically using index
+        for (index, column_name) in column_names.iter().enumerate() {
+            if let Ok(value) = row.try_get_by_index::<Option<String>>(index) {
                 row_data.insert(column_name.clone(), json!(value));
-            } else if let Ok(int_value) = row.try_get::<Option<i32>>("", column_name) {
+            } else if let Ok(int_value) = row.try_get_by_index::<Option<i32>>(index) {
                 row_data.insert(column_name.clone(), json!(int_value));
             }
         }

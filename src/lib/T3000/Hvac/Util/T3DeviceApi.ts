@@ -70,12 +70,26 @@ export class T3DeviceApi {
    */
   async getTableRecords(table: string, params?: T3DeviceQueryParams): Promise<T3DeviceApiResponse> {
     const searchParams = new URLSearchParams();
-    if (params?.page) searchParams.append('page', params.page.toString());
-    if (params?.per_page) searchParams.append('per_page', params.per_page.toString());
-    if (params?.search) searchParams.append('search', params.search);
+
+    if (params?.page) {
+      searchParams.set('page', params.page.toString());
+    }
+    if (params?.per_page) {
+      searchParams.set('per_page', params.per_page.toString());
+    }
+    if (params?.search) {
+      searchParams.set('search', params.search);
+    }
 
     const url = `api/t3_device/${table}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    return await this.api.get(url).json<T3DeviceApiResponse>();
+    const response = await this.api.get(url).json<T3DeviceApiResponse>();
+
+    return {
+      data: response.data || [],
+      total: response.total || response.count || response.data?.length || 0,
+      message: response.message || `Retrieved ${response.total || response.count || response.data?.length || 0} records from ${table}`,
+      count: response.total || response.count || response.data?.length || 0
+    };
   }
 
   /**
