@@ -266,6 +266,13 @@ pub struct PointData {
     pub sub_id: Option<i32>,
     pub sub_panel: Option<i32>,
     pub network_number: Option<i32>,
+    pub description: Option<String>,
+    pub digital_analog: Option<i32>,
+    pub filter: Option<i32>,
+    pub control: Option<i32>,
+    pub command: Option<String>,
+    pub id: Option<String>,
+    pub calibration_l: Option<f64>,
 
     // OUTPUT specific fields
     pub low_voltage: Option<f64>,
@@ -685,6 +692,14 @@ impl T3000MainService {
             error!("Failed to create sync logger: {}", e);
             AppError::LoggerError(format!("Failed to create sync logger: {}", e))
         })?;
+
+        // Validate SerialNumber - skip devices with SerialNumber=0 (invalid devices)
+        if serial_number == 0 {
+            sync_logger.warn(&format!("⚠️ SKIPPING device with invalid SerialNumber=0 - Name: '{}', IP: '{}', Panel ID: {}",
+                device_info.panel_name, device_info.panel_ipaddress, device_info.panel_id));
+            sync_logger.warn("⚠️ This indicates missing or invalid panel_serial_number in JSON response - check C++ HandleWebViewMsg implementation");
+            return Ok(()); // Skip this device - don't insert/update
+        }
 
         info!("🔍 Checking if device {} exists in database...", serial_number);
         sync_logger.info(&format!("🔍 Database lookup for device - Serial: {}, Name: '{}', IP: '{}'",
@@ -1206,12 +1221,22 @@ impl T3000MainService {
 
             for (device_index, device_json) in data_array.iter().enumerate() {
 
+                // Log raw device JSON for debugging
+                let device_json_str = serde_json::to_string_pretty(device_json).unwrap_or_else(|_| "Invalid JSON".to_string());
+                sync_logger.info(&format!("📋 Raw Device {} JSON: {}", device_index + 1, device_json_str));
 
                 // Extract device information from each device object
+                let panel_serial_number_raw = device_json.get("panel_serial_number");
+                let panel_serial_number = panel_serial_number_raw.and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+
+                // Log detailed parsing info
+                sync_logger.info(&format!("🔍 Device {} parsing - panel_serial_number field: {:?} -> parsed value: {}",
+                    device_index + 1, panel_serial_number_raw, panel_serial_number));
+
                 let mut device_info = DeviceInfo {
                     panel_id: device_json.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
                     panel_name: device_json.get("panel_name").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
-                    panel_serial_number: device_json.get("panel_serial_number").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                    panel_serial_number,
                     panel_ipaddress: device_json.get("panel_ipaddress").and_then(|v| v.as_str()).unwrap_or("0.0.0.0").to_string(),
                     input_logging_time: device_json.get("input_logging_time").and_then(|v| v.as_i64()).map(|t| t.to_string()).unwrap_or("".to_string()),
                     output_logging_time: device_json.get("output_logging_time").and_then(|v| v.as_i64()).map(|t| t.to_string()).unwrap_or("".to_string()),
@@ -1347,7 +1372,9 @@ impl T3000MainService {
         let point_data = PointData {
             index: point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
             panel: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            full_label: point_json.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            full_label: point_json.get("description").and_then(|v| v.as_str()).unwrap_or_else(|| {
+                point_json.get("label").and_then(|v| v.as_str()).unwrap_or("")
+            }).to_string(),
             auto_manual: point_json.get("auto_manual").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             value: point_json.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0),
             pid: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
@@ -1364,6 +1391,13 @@ impl T3000MainService {
             sub_id: None,
             sub_panel: None,
             network_number: None,
+            description: point_json.get("description").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            digital_analog: point_json.get("digital_analog").and_then(|v| v.as_i64()).map(|v| v as i32),
+            filter: point_json.get("filter").and_then(|v| v.as_i64()).map(|v| v as i32),
+            control: point_json.get("control").and_then(|v| v.as_i64()).map(|v| v as i32),
+            command: point_json.get("command").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            id: point_json.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            calibration_l: point_json.get("calibration_l").and_then(|v| v.as_f64()),
 
             // OUTPUT specific fields
             low_voltage: point_json.get("low_voltage").and_then(|v| v.as_f64()),
@@ -1404,10 +1438,10 @@ impl T3000MainService {
             calibration: Set(Some(point.calibration.to_string())),
             sign: Set(Some(point.sign.to_string())),
             status: Set(Some(point.status.to_string())),
-            filter_field: Set(None),
-            signal_type: Set(None),
-            label: Set(Some(point.full_label.clone())),
-            type_field: Set(None),
+            filter_field: Set(point.filter.map(|f| f.to_string())),
+            signal_type: Set(point.digital_analog.map(|da| da.to_string())),
+            label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
+            type_field: Set(point.command.clone()),
             binary_array: Set(None),
         };
 
