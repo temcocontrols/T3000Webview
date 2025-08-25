@@ -108,10 +108,35 @@ impl ServiceLogger {
         self.log(LogLevel::Warn, message);
     }
 
+    /// Add an empty line without timestamp for visual grouping
+    pub fn add_empty_line(&mut self) {
+        let _ = self.log_file.write_all(b"\n");
+        let _ = self.log_file.flush();
+    }
+
     /// Add a breakdown line separator for action rounds
     pub fn add_breakdown(&mut self, round_description: &str) {
-        let breakdown_line = format!("================================ {} ================================", round_description);
-        self.log(LogLevel::Info, &breakdown_line);
+        // Add empty line for visual grouping without timestamps
+        self.add_empty_line();
+    }
+
+    /// Add a section header with === format
+    pub fn add_section(&mut self, section_name: &str) {
+        self.add_empty_line();
+        self.info(&format!("=== {} ===", section_name));
+    }
+
+    /// Add a specialized FFI call header with timestamp and data summary
+    pub fn add_ffi_call_header(&mut self, call_type: &str, total_panels: usize, json_size: usize, data_items: usize, json_response: &str) {
+        let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S");
+        let _ = self.log_file.write_all(format!("=== {} [{}] ===\n", call_type, timestamp).as_bytes());
+        let _ = self.log_file.write_all(format!("Total panels found: {}\n", total_panels).as_bytes());
+        let _ = self.log_file.write_all(format!("JSON response size: {} characters\n", json_size).as_bytes());
+        let _ = self.log_file.write_all(format!("Data items processed: {}\n", data_items).as_bytes());
+        let _ = self.log_file.write_all(b"=== Complete JSON Response ===\n");
+        let _ = self.log_file.write_all(json_response.as_bytes());
+        let _ = self.log_file.write_all(b"\n=== End of Entry ===\n");
+        let _ = self.log_file.flush();
     }
 }
 

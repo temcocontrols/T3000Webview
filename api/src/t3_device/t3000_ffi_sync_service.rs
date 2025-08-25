@@ -504,8 +504,9 @@ impl T3000MainService {
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         // Create logger for this sync operation
         let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
-        sync_logger.info("🚀 Starting T3000 LOGGING_DATA sync cycle");
-        sync_logger.info(&format!("⚙️  Sync Config - Interval: {}s, Timeout: {}s", config.sync_interval_secs, config.timeout_seconds));
+
+        sync_logger.add_section(&format!("SYNC CYCLE START ({}s interval)", config.sync_interval_secs));
+        sync_logger.info(&format!("⚙️ Config: Timeout {}s, Retry {}x", config.timeout_seconds, config.retry_attempts));
 
         let db = establish_t3_device_connection().await
             .map_err(|e| {
@@ -515,175 +516,93 @@ impl T3000MainService {
 
         sync_logger.info("✅ Database connection established");
 
+        sync_logger.add_section("LOADING DATA FROM C++");
+        sync_logger.info("🔄 Starting HandleWebViewMsg(15) call");
+
         // Get JSON data from T3000 C++ via DIRECT FFI - this contains ALL devices and their data
-        // Using new direct HandleWebViewMsg approach for real T3000 system integration
         let json_data = Self::get_logging_data_via_direct_ffi(&config).await?;
 
         // Parse the complete LOGGING_DATA response
         let logging_response = Self::parse_logging_response(&json_data)?;
 
+        // Log the FFI response using the new specialized format
+        sync_logger.add_ffi_call_header(
+            "LOGGING_DATA C++ FFI Call",
+            logging_response.devices.len(),
+            json_data.len(),
+            logging_response.devices.len(),
+            &json_data
+        );
+
+        sync_logger.add_section(&format!("PROCESSING {} DEVICES", logging_response.devices.len()));
+        sync_logger.info("💾 Database transaction started");
+
         // Start database transaction
-        sync_logger.info("🔄 Starting database transaction for atomic sync operations");
         let txn = db.begin().await
             .map_err(|e| {
                 sync_logger.error(&format!("❌ Failed to start transaction: {}", e));
                 AppError::DatabaseError(format!("Transaction start failed: {}", e))
             })?;
-        sync_logger.info("✅ Database transaction started successfully");
-
-        sync_logger.info(&format!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len()));
-
-        // Log device processing start to structured log
-        sync_logger.add_breakdown("DEVICE PROCESSING START");
-        sync_logger.info(&format!("📦 Processing {} devices from T3000 LOGGING_DATA response", logging_response.devices.len()));
 
         // Process each device from the response
         for (device_index, device_with_points) in logging_response.devices.iter().enumerate() {
             let serial_number = device_with_points.device_info.panel_serial_number;
 
-            info!("🏭 Processing Device {} of {}: Serial={}, Name='{}'",
-                  device_index + 1, logging_response.devices.len(),
-                  serial_number, device_with_points.device_info.panel_name);
-
-            // Log individual device processing to structured log
-            sync_logger.add_breakdown("INDIVIDUAL DEVICE PROCESSING");
-            sync_logger.info(&format!("🏭 Processing Device {} of {}: Serial={}, Name='{}'",
+            sync_logger.add_breakdown("");
+            sync_logger.info(&format!("📱 Device {}/{}: Serial={}, Name='{}'",
                 device_index + 1, logging_response.devices.len(), serial_number, device_with_points.device_info.panel_name));
 
             // UPSERT device basic info (INSERT or UPDATE)
-            info!("📝 Syncing device basic info...");
-            sync_logger.add_breakdown("DEVICE BASIC INFO SYNC");
-            sync_logger.info(&format!(
-                "📝 Syncing device basic info - Serial: {}, Name: {}, Starting UPSERT operation",
-                serial_number,
-                &device_with_points.device_info.panel_name
-            ));
+            sync_logger.info(&format!("📝 Syncing device basic info - Serial: {}, Name: {}",
+                serial_number, &device_with_points.device_info.panel_name));
 
             if let Err(e) = Self::sync_device_basic_info(&txn, &device_with_points.device_info).await {
-                error!("❌ Failed to sync device info for {}: {}", serial_number, e);
-                sync_logger.add_breakdown("DEVICE BASIC INFO ERROR");
-                sync_logger.error(&format!(
-                    "❌ Device basic info sync failed - Serial: {}, Error: {}",
-                    serial_number, e
-                ));
+                sync_logger.error(&format!("❌ Device basic info sync failed - Serial: {}, Error: {}", serial_number, e));
                 continue;
             }
-            info!("✅ Device basic info synced");
-            sync_logger.add_breakdown("DEVICE BASIC INFO SUCCESS");
-            sync_logger.info(&format!(
-                "✅ Device basic info synced - Serial: {}, UPSERT operation completed successfully",
-                serial_number
-            ));
+            sync_logger.info(&format!("✅ Device info synced ({})",
+                if device_with_points.device_info.panel_serial_number > 0 { "UPDATE" } else { "INSERT" }));
 
-                        // UPSERT input points (INSERT or UPDATE)
+            // UPSERT input points (INSERT or UPDATE)
             if !device_with_points.input_points.is_empty() {
-                info!("🔧 Syncing {} INPUT points...", device_with_points.input_points.len());
-                sync_logger.add_breakdown("INPUT POINTS SYNC");
-                sync_logger.info(&format!(
-                    "🔧 Starting INPUT points sync - Serial: {}, Count: {}, Processing individual points",
-                    serial_number, device_with_points.input_points.len()
-                ));
+                sync_logger.add_breakdown("");
+                sync_logger.info(&format!("🔧 Processing {} INPUT points...", device_with_points.input_points.len()));
 
                 for (point_index, point) in device_with_points.input_points.iter().enumerate() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing INPUT point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
-                        point_index + 1, device_with_points.input_points.len(),
-                        serial_number, point.index, point.full_label, point.value
-                    ));
-
                     if let Err(e) = Self::sync_input_point_static(&txn, serial_number, point).await {
-                        error!("❌ Failed to sync input point {}: {}", point.index, e);
-                        sync_logger.error(&format!(
-                            "❌ INPUT point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
-                            serial_number, point.index, point.full_label, e
-                        ));
-                    } else {
-                        sync_logger.info(&format!(
-                            "✅ INPUT point synced successfully - Serial: {}, Index: {}, Label: '{}'",
-                            serial_number, point.index, point.full_label
-                        ));
+                        sync_logger.error(&format!("❌ INPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1, device_with_points.input_points.len(), point.index, point.full_label, e));
                     }
                 }
-                info!("✅ INPUT points synced");
-                sync_logger.add_breakdown("INPUT POINTS COMPLETION");
-                sync_logger.info(&format!(
-                    "✅ INPUT points sync completed - Serial: {}, Successfully synced {} INPUT points",
-                    serial_number, device_with_points.input_points.len()
-                ));
+                sync_logger.info("✅ INPUT points completed");
             }
 
-                        // UPSERT output points (INSERT or UPDATE)
+            // UPSERT output points (INSERT or UPDATE)
             if !device_with_points.output_points.is_empty() {
-                info!("🔧 Syncing {} OUTPUT points...", device_with_points.output_points.len());
-                sync_logger.add_breakdown("OUTPUT POINTS SYNC");
-                sync_logger.info(&format!(
-                    "🔧 Starting OUTPUT points sync - Serial: {}, Count: {}, Processing individual points",
-                    serial_number, device_with_points.output_points.len()
-                ));
+                sync_logger.add_breakdown("");
+                sync_logger.info(&format!("🔧 Processing {} OUTPUT points...", device_with_points.output_points.len()));
 
                 for (point_index, point) in device_with_points.output_points.iter().enumerate() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing OUTPUT point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
-                        point_index + 1, device_with_points.output_points.len(),
-                        serial_number, point.index, point.full_label, point.value
-                    ));
-
                     if let Err(e) = Self::sync_output_point_static(&txn, serial_number, point).await {
-                        error!("❌ Failed to sync output point {}: {}", point.index, e);
-                        sync_logger.error(&format!(
-                            "❌ OUTPUT point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
-                            serial_number, point.index, point.full_label, e
-                        ));
-                    } else {
-                        sync_logger.info(&format!(
-                            "✅ OUTPUT point synced successfully - Serial: {}, Index: {}, Label: '{}'",
-                            serial_number, point.index, point.full_label
-                        ));
+                        sync_logger.error(&format!("❌ OUTPUT point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1, device_with_points.output_points.len(), point.index, point.full_label, e));
                     }
                 }
-                info!("✅ OUTPUT points synced");
-                sync_logger.add_breakdown("OUTPUT POINTS COMPLETION");
-                sync_logger.info(&format!(
-                    "✅ OUTPUT points sync completed - Serial: {}, Successfully synced {} OUTPUT points",
-                    serial_number, device_with_points.output_points.len()
-                ));
+                sync_logger.info("✅ OUTPUT points completed");
             }
 
-                        // UPSERT variable points (INSERT or UPDATE)
+            // UPSERT variable points (INSERT or UPDATE)
             if !device_with_points.variable_points.is_empty() {
-                info!("🔧 Syncing {} VARIABLE points...", device_with_points.variable_points.len());
-                sync_logger.add_breakdown("VARIABLE POINTS SYNC");
-                sync_logger.info(&format!(
-                    "🔧 Starting VARIABLE points sync - Serial: {}, Count: {}, Processing individual points",
-                    serial_number, device_with_points.variable_points.len()
-                ));
+                sync_logger.add_breakdown("");
+                sync_logger.info(&format!("🔧 Processing {} VARIABLE points...", device_with_points.variable_points.len()));
 
                 for (point_index, point) in device_with_points.variable_points.iter().enumerate() {
-                    sync_logger.info(&format!(
-                        "🔧 Processing VARIABLE point {}/{} - Serial: {}, Index: {}, Label: '{}', Value: {}",
-                        point_index + 1, device_with_points.variable_points.len(),
-                        serial_number, point.index, point.full_label, point.value
-                    ));
-
                     if let Err(e) = Self::sync_variable_point_static(&txn, serial_number, point).await {
-                        error!("❌ Failed to sync variable point {}: {}", point.index, e);
-                        sync_logger.error(&format!(
-                            "❌ VARIABLE point sync failed - Serial: {}, Index: {}, Label: '{}', Error: {}",
-                            serial_number, point.index, point.full_label, e
-                        ));
-                    } else {
-                        sync_logger.info(&format!(
-                            "✅ VARIABLE point synced successfully - Serial: {}, Index: {}, Label: '{}'",
-                            serial_number, point.index, point.full_label
-                        ));
+                        sync_logger.error(&format!("❌ VARIABLE point {}/{} failed - Index: {}, Label: '{}', Error: {}",
+                            point_index + 1, device_with_points.variable_points.len(), point.index, point.full_label, e));
                     }
                 }
-                info!("✅ VARIABLE points synced");
-                sync_logger.add_breakdown("VARIABLE POINTS COMPLETION");
-                sync_logger.info(&format!(
-                    "✅ VARIABLE points sync completed - Serial: {}, Successfully synced {} VARIABLE points",
-                    serial_number, device_with_points.variable_points.len()
-                ));
+                sync_logger.info("✅ VARIABLE points completed");
             }
 
             // INSERT trend log data (ALWAYS INSERT for historical data)
@@ -691,77 +610,34 @@ impl T3000MainService {
                                    device_with_points.output_points.len() +
                                    device_with_points.variable_points.len();
             if total_trend_points > 0 {
-                info!("📊 Inserting {} trend log entries...", total_trend_points);
-                sync_logger.add_breakdown("TREND LOG INSERTION START");
-                sync_logger.info(&format!(
-                    "📊 Starting trend log insertion - Serial: {}, Total entries: {} (Inputs: {}, Outputs: {}, Variables: {})",
-                    serial_number, total_trend_points,
-                    device_with_points.input_points.len(),
-                    device_with_points.output_points.len(),
-                    device_with_points.variable_points.len()
-                ));
+                sync_logger.add_breakdown("");
+                sync_logger.info(&format!("📊 Trend logs inserted ({} entries)", total_trend_points));
 
                 if let Err(e) = Self::insert_trend_logs(&txn, serial_number, device_with_points).await {
-                    error!("❌ Failed to insert trend logs for {}: {}", serial_number, e);
-                    sync_logger.add_breakdown("TREND LOG INSERTION ERROR");
-                    sync_logger.error(&format!(
-                        "❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
-                        serial_number, e, total_trend_points
-                    ));
-                } else {
-                    info!("✅ Trend log entries inserted");
-                    sync_logger.add_breakdown("TREND LOG INSERTION SUCCESS");
-                    sync_logger.info(&format!(
-                        "✅ Trend log insertion completed - Serial: {}, Successfully inserted {} trend log entries",
-                        serial_number, total_trend_points
-                    ));
+                    sync_logger.error(&format!("❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
+                        serial_number, e, total_trend_points));
                 }
             }
 
-            info!("🎯 Device {} sync completed: {} inputs, {} outputs, {} variables",
-                  serial_number,
-                  device_with_points.input_points.len(),
-                  device_with_points.output_points.len(),
-                  device_with_points.variable_points.len());
-
-            // Log device completion to structured log
-            sync_logger.add_breakdown("DEVICE SYNC COMPLETION");
-            sync_logger.info(&format!("🎯 Device {} sync completed: {} inputs, {} outputs, {} variables",
-                serial_number, device_with_points.input_points.len(),
-                device_with_points.output_points.len(), device_with_points.variable_points.len()));
+            sync_logger.add_breakdown("");
+            sync_logger.info(&format!("🎯 Device {} completed", serial_number));
         }
 
-        // Commit transaction after all devices processed
-        info!("💾 Committing database transaction...");
-        sync_logger.add_breakdown("DATABASE TRANSACTION COMMIT");
-        sync_logger.info(&format!(
-            "💾 Transaction COMMIT starting - Processed {} devices, Total sync operations completed",
-            logging_response.devices.len()
-        ));
-
-        // Log transaction commit to structured log
-        sync_logger.info("💾 Database transaction commit process starting");
+        sync_logger.add_section("FINALIZING SYNC");
+        sync_logger.info(&format!("💾 Committing transaction ({} devices)", logging_response.devices.len()));
 
         let _commit_result = txn.commit().await
             .map_err(|e| {
-                error!("❌ Failed to commit transaction: {}", e);
-                sync_logger.add_breakdown("DATABASE TRANSACTION COMMIT ERROR");
                 sync_logger.error(&format!("❌ Transaction COMMIT failed - Error: {}, All {} device changes rolled back",
                     e, logging_response.devices.len()));
                 AppError::DatabaseError(format!("Transaction commit failed: {}", e))
             })?;
 
-        info!("✅ Database transaction committed successfully");
-        sync_logger.add_breakdown("DATABASE TRANSACTION COMMIT SUCCESS");
-        sync_logger.info(&format!("✅ Transaction COMMIT successful - All {} device changes persisted to database",
-            logging_response.devices.len()));
+        sync_logger.info("✅ Transaction committed successfully");
 
         // Validate data was actually inserted by doing a quick count check
         let validation_db = establish_t3_device_connection().await?;
-
-        info!("🔍 Validating data insertion...");
-        sync_logger.add_breakdown("POST-COMMIT DATA VALIDATION");
-        sync_logger.info("🔍 Post-commit validation: Checking if data was actually inserted into database tables");
+        sync_logger.info("🔍 Validation: Checking data persistence");
 
         // Count devices that were processed in this sync
         let mut validation_summary = String::new();
@@ -810,17 +686,8 @@ impl T3000MainService {
             }
         }
 
-        info!("📊 Validation Results: {}", validation_summary);
-        sync_logger.add_breakdown("DATA VALIDATION RESULTS");
-        sync_logger.info(&format!("📊 Post-commit validation results: {}", validation_summary));
-
-        info!("🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
-              logging_response.devices.len());
-
-        // Log sync completion to structured log file with device count
-        sync_logger.add_breakdown("SYNC PROCESS COMPLETION");
-        sync_logger.info(&format!("🎉 T3000 LOGGING_DATA sync completed successfully - {} devices processed",
-                     logging_response.devices.len()));
+        sync_logger.info(&format!("📊 Validation results: {}", validation_summary));
+        sync_logger.info(&format!("🎉 SYNC CYCLE COMPLETED - Next in {}s", config.sync_interval_secs));
 
         Ok(())
     }
