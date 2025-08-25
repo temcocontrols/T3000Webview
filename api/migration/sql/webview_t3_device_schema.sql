@@ -47,62 +47,59 @@ CREATE TABLE IF NOT EXISTS DEVICES (
 );
 
 -- INPUTS table (Original T3000 input points table)
--- Exact replica of T3000.db INPUTS table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS INPUTS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Input_index TEXT,                          -- C++ Input_index
     Panel TEXT,                                -- C++ Panel
-    Full_Label TEXT,                           -- C++ Full_Label (description[21])
+    Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string in T3000.db)
     Units TEXT,                                -- C++ Units
     Range_Field TEXT,                          -- C++ Range
     Calibration TEXT,                          -- C++ Calibration
     Sign TEXT,                                 -- C++ Sign (calibration_sign)
-    Filter_Field TEXT,                         -- C++ Filter
-    Status TEXT,                               -- C++ Status
-    Signal_Type TEXT,                          -- C++ Signal_Type (digital_analog)
-    Label TEXT,                                -- C++ Label (label[9])
-    Type_Field TEXT,                           -- C++ Type
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded binary data)
+    Filter_Field TEXT,                         -- C++ Filter (from "filter" JSON field)
+    Status TEXT,                               -- C++ Status (from "decom" JSON field)
+    Signal_Type TEXT,                          -- C++ Signal_Type (from "digital_analog" JSON field)
+    Label TEXT,                                -- C++ Label (from "description" or "label" JSON field)
+    Type_Field TEXT                            -- C++ Type (from "command" JSON field)
 );
 
 -- OUTPUTS table (Original T3000 output points table)
--- Exact replica of T3000.db OUTPUTS table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS OUTPUTS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Output_index TEXT,                         -- C++ Output_index
     Panel TEXT,                                -- C++ Panel
-    Full_Label TEXT,                           -- C++ Full_Label (description[19])
+    Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string)
     Units TEXT,                                -- C++ Units
     Range_Field TEXT,                          -- C++ Range
     Calibration TEXT,                          -- C++ Calibration
     Sign TEXT,                                 -- C++ Sign
-    Filter_Field TEXT,                         -- C++ Filter
-    Status TEXT,                               -- C++ Status
-    Signal_Type TEXT,                          -- C++ Signal_Type (digital_analog)
-    Label TEXT,                                -- C++ Label (label[9])
-    Type_Field TEXT,                           -- C++ Type
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
+    Status TEXT,                               -- C++ Status (from "decom" JSON field)
+    Signal_Type TEXT,                          -- C++ Signal_Type (from "digital_analog" JSON field)
+    Label TEXT,                                -- C++ Label (from "description" or "label" JSON field)
+    Type_Field TEXT                            -- C++ Type (from "command" JSON field)
 );
 
 -- VARIABLES table (Original T3000 variable points table)
--- Exact replica of T3000.db VARIABLES table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS VARIABLES (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Variable_index TEXT,                       -- C++ Variable_index
     Panel TEXT,                                -- C++ Panel
-    Full_Label TEXT,                           -- C++ Full_Label (description[21])
+    Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string)
-    Units TEXT,                                -- C++ Units
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Units TEXT                                 -- C++ Units
 );
 
 -- PROGRAMS table (Original T3000 programs table)
--- Exact replica of T3000.db PROGRAMS table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Program_ID TEXT,                           -- C++ Program_ID
@@ -112,12 +109,11 @@ CREATE TABLE IF NOT EXISTS PROGRAMS (
     Program_Size TEXT,                         -- C++ Program_Size
     Program_Pointer TEXT,                      -- C++ Program_Pointer
     Program_Status TEXT,                       -- C++ Program_Status
-    Auto_Manual TEXT,                          -- C++ Auto_Manual
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Auto_Manual TEXT                           -- C++ Auto_Manual
 );
 
 -- SCHEDULES table (Original T3000 schedules table)
--- Exact replica of T3000.db SCHEDULES table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS SCHEDULES (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Schedule_ID TEXT,                          -- C++ Schedule_ID
@@ -134,12 +130,11 @@ CREATE TABLE IF NOT EXISTS SCHEDULES (
     Tuesday_Time TEXT,                         -- C++ Tuesday_Time
     Wednesday_Time TEXT,                       -- C++ Wednesday_Time
     Thursday_Time TEXT,                        -- C++ Thursday_Time
-    Friday_Time TEXT,                          -- C++ Friday_Time
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Friday_Time TEXT                           -- C++ Friday_Time
 );
 
 -- PID_TABLE table (Original T3000 PID controllers table)
--- Exact replica of T3000.db PID_TABLE table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS PID_TABLE (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Loop_Field TEXT,                           -- C++ Loop
@@ -161,12 +156,11 @@ CREATE TABLE IF NOT EXISTS PID_TABLE (
     Setpoint_High TEXT,                        -- C++ Setpoint_High
     Setpoint_Low TEXT,                         -- C++ Setpoint_Low
     Units_State TEXT,                          -- C++ Units_State
-    Variable_State TEXT,                       -- C++ Variable_State
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Variable_State TEXT                        -- C++ Variable_State
 );
 
 -- HOLIDAYS table (Original T3000 holidays table)
--- Exact replica of T3000.db HOLIDAYS table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS HOLIDAYS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Holiday_ID TEXT,                           -- C++ Holiday_ID
@@ -175,24 +169,22 @@ CREATE TABLE IF NOT EXISTS HOLIDAYS (
     Status TEXT,                               -- C++ Status
     Month_Field TEXT,                          -- C++ Month
     Day_Field TEXT,                            -- C++ Day
-    Year_Field TEXT,                           -- C++ Year
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Year_Field TEXT                            -- C++ Year
 );
 
 -- GRAPHICS table (Original T3000 graphics table)
--- Exact replica of T3000.db GRAPHICS table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS GRAPHICS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Graphic_ID TEXT,                           -- C++ Graphic_ID
     Switch_Node TEXT,                          -- C++ Switch_Node
     Graphic_Label TEXT,                        -- C++ Graphic_Label
     Graphic_Picture_File TEXT,                 -- C++ Graphic_Picture_File
-    Graphic_Total_Point TEXT,                  -- C++ Graphic_Total_Point
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Graphic_Total_Point TEXT                   -- C++ Graphic_Total_Point
 );
 
 -- ALARMS table (Original T3000 alarms table)
--- Exact replica of T3000.db ALARMS table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS ALARMS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Alarm_ID TEXT,                             -- C++ Alarm_ID
@@ -209,12 +201,11 @@ CREATE TABLE IF NOT EXISTS ALARMS (
     Action_Field TEXT,                         -- C++ Action
     TimeStamp TEXT,                            -- C++ TimeStamp
     LowLimit TEXT,                             -- C++ LowLimit
-    HighLimit TEXT,                            -- C++ HighLimit
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    HighLimit TEXT                             -- C++ HighLimit
 );
 
 -- MONITORDATA table (Original T3000 monitor data table)
--- Exact replica of T3000.db MONITORDATA table structure
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS MONITORDATA (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Monitor_ID TEXT,                           -- C++ Monitor_ID
@@ -227,8 +218,7 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
     Monitor_Type TEXT,                         -- C++ Monitor_Type
     TimeStamp TEXT,                            -- C++ TimeStamp
     Range_Field TEXT,                          -- C++ Range
-    Calibration TEXT,                          -- C++ Calibration
-    BinaryArray TEXT                           -- C++ BinaryArray (hex encoded)
+    Calibration TEXT                           -- C++ Calibration
 );
 
 -- =================================================================
@@ -238,6 +228,7 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
 
 -- TRENDLOGS table (Main trendlog configuration - T3000 style naming)
 -- Following T3000 naming pattern: uppercase table name, descriptive fields
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS TRENDLOGS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Trendlog_ID TEXT,                          -- C++ Trendlog_ID (following T3000 ID pattern)
@@ -247,35 +238,35 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
     Buffer_Size INTEGER,                       -- C++ Buffer_Size
     Data_Size_KB INTEGER,                      -- C++ Data_Size_KB
     Auto_Manual TEXT,                          -- C++ Auto_Manual (following T3000 pattern)
-    Status TEXT,                               -- C++ Status (following T3000 pattern)
-    BinaryArray TEXT                           -- C++ BinaryArray (following T3000 pattern)
+    Status TEXT                                -- C++ Status (following T3000 pattern)
 );
 
 -- TRENDLOG_INPUTS table (Trendlog input configuration - T3000 style naming)
 -- Links trendlogs to specific input/output/variable points
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS TRENDLOG_INPUTS (
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
     Point_Type TEXT NOT NULL,                  -- C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
     Point_Index TEXT NOT NULL,                 -- C++ Point_Index (references point index)
     Point_Panel TEXT,                          -- C++ Point_Panel
     Point_Label TEXT,                          -- C++ Point_Label
-    Status TEXT,                               -- C++ Status
-    BinaryArray TEXT                           -- C++ BinaryArray
+    Status TEXT                                -- C++ Status
 );
 
 -- TRENDLOG_DATA table (Actual trendlog data storage - T3000 style naming)
 -- Stores the actual trendlog data points
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
     Trendlog_Input_ID INTEGER NOT NULL,       -- C++ reference to TRENDLOG_INPUTS
     TimeStamp TEXT NOT NULL,                   -- C++ TimeStamp (T3000 uses TEXT for timestamps)
     fValue TEXT,                               -- C++ fValue (following T3000 pattern - stored as TEXT)
     Status TEXT,                               -- C++ Status
-    Quality TEXT,                              -- C++ Quality (data quality indicator)
-    BinaryArray TEXT                           -- C++ BinaryArray
+    Quality TEXT                               -- C++ Quality (data quality indicator)
 );
 
 -- TRENDLOG_BUFFER table (Circular buffer management - T3000 style naming)
 -- Manages circular buffer for efficient data storage
+-- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS TRENDLOG_BUFFER (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID
@@ -283,8 +274,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_BUFFER (
     Buffer_Size INTEGER,                       -- C++ Buffer_Size
     Current_Position INTEGER,                  -- C++ Current_Position
     Buffer_Full INTEGER,                       -- C++ Buffer_Full (0/1 flag)
-    Status TEXT,                               -- C++ Status
-    BinaryArray TEXT                           -- C++ BinaryArray
+    Status TEXT                                -- C++ Status
 );
 
 -- =================================================================
@@ -325,38 +315,38 @@ INSERT OR IGNORE INTO DEVICES (
 
 -- Insert sample INPUTS records (T3000 style)
 INSERT OR IGNORE INTO INPUTS (
-    SerialNumber, Input_index, Full_Label, fValue, Units, Status, BinaryArray
+    SerialNumber, Input_index, Full_Label, fValue, Units, Status
 ) VALUES
-(12345, '1', 'Room Temperature', '22.5', 'DEG C', 'Online', '0000000000000000'),
-(12345, '2', 'Humidity Level', '45.2', 'PERCENT', 'Online', '0000000000000000'),
-(12345, '3', 'CO2 Level', '450', 'PPM', 'Online', '0000000000000000');
+(12345, '1', 'Room Temperature', '22.5', 'DEG C', 'Online'),
+(12345, '2', 'Humidity Level', '45.2', 'PERCENT', 'Online'),
+(12345, '3', 'CO2 Level', '450', 'PPM', 'Online');
 
 -- Insert sample OUTPUTS records (T3000 style)
 INSERT OR IGNORE INTO OUTPUTS (
-    SerialNumber, Output_index, Full_Label, fValue, Units, Status, BinaryArray
+    SerialNumber, Output_index, Full_Label, fValue, Units, Status
 ) VALUES
-(12345, '1', 'Cooling Valve', '25.0', 'PERCENT', 'Online', '0000000000000000'),
-(12345, '2', 'Heating Valve', '0.0', 'PERCENT', 'Online', '0000000000000000'),
-(12345, '3', 'Fan Speed', '75.0', 'PERCENT', 'Online', '0000000000000000');
+(12345, '1', 'Cooling Valve', '25.0', 'PERCENT', 'Online'),
+(12345, '2', 'Heating Valve', '0.0', 'PERCENT', 'Online'),
+(12345, '3', 'Fan Speed', '75.0', 'PERCENT', 'Online');
 
 -- Insert sample VARIABLES records (T3000 style)
 INSERT OR IGNORE INTO VARIABLES (
-    SerialNumber, Variable_index, Full_Label, fValue, Units, BinaryArray
+    SerialNumber, Variable_index, Full_Label, fValue, Units
 ) VALUES
-(12345, '1', 'Setpoint Temperature', '21.0', 'DEG C', '0000000000000000'),
-(12345, '2', 'Occupied Schedule', '1', 'ON/OFF', '0000000000000000');
+(12345, '1', 'Setpoint Temperature', '21.0', 'DEG C'),
+(12345, '2', 'Occupied Schedule', '1', 'ON/OFF');
 
 -- Insert sample TRENDLOGS record (T3000 style)
 INSERT OR IGNORE INTO TRENDLOGS (
-    SerialNumber, Trendlog_ID, Trendlog_Label, Interval_Minutes, Buffer_Size, Status, BinaryArray
+    SerialNumber, Trendlog_ID, Trendlog_Label, Interval_Minutes, Buffer_Size, Status
 ) VALUES
-(12345, '1', 'Room Temperature Trend', 15, 1000, 'Online', '0000000000000000');
+(12345, '1', 'Room Temperature Trend', 15, 1000, 'Online');
 
 -- Insert sample TRENDLOG_INPUTS records (T3000 style)
 INSERT OR IGNORE INTO TRENDLOG_INPUTS (
-    Trendlog_ID, Point_Type, Point_Index, Point_Label, Status, BinaryArray
+    Trendlog_ID, Point_Type, Point_Index, Point_Label, Status
 ) VALUES
-('1', 'INPUT', '1', 'Room Temperature', 'Active', '0000000000000000'),
-('1', 'INPUT', '2', 'Humidity Level', 'Active', '0000000000000000');
+('1', 'INPUT', '1', 'Room Temperature', 'Active'),
+('1', 'INPUT', '2', 'Humidity Level', 'Active');
 
 -- Database ready for T3000 WebView development (no foreign key constraints)

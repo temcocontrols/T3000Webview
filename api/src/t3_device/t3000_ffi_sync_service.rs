@@ -809,7 +809,6 @@ impl T3000MainService {
                 f_value: Set(Some(point.value.to_string())),
                 status: Set(Some(point.status.to_string())),
                 quality: Set(Some("Good".to_string())),
-                binary_array: Set(None),
             };
 
             sync_logger.info(&format!("📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -837,7 +836,6 @@ impl T3000MainService {
                 f_value: Set(Some(point.value.to_string())),
                 status: Set(Some(point.status.to_string())),
                 quality: Set(Some("Good".to_string())),
-                binary_array: Set(None),
             };
 
             sync_logger.info(&format!("📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -865,7 +863,6 @@ impl T3000MainService {
                 f_value: Set(Some(point.value.to_string())),
                 status: Set(Some(point.status.to_string())),
                 quality: Set(Some("Good".to_string())),
-                binary_array: Set(None),
             };
 
             sync_logger.info(&format!("📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -1426,18 +1423,6 @@ impl T3000MainService {
             .one(txn).await
             .map_err(|e| AppError::DatabaseError(format!("Failed to query input point: {}", e)))?;
 
-        // Serialize INPUT-specific fields to JSON for storage in BinaryArray
-        let input_specific_data = serde_json::json!({
-            "control": point.control,
-            "id": point.id,
-            "calibration_l": point.calibration_l,
-            "decom": point.status, // decom is stored in status field but we also keep original
-            "sub_product": point.sub_product,
-            "sub_id": point.sub_id,
-            "sub_panel": point.sub_panel,
-            "network_number": point.network_number
-        });
-
         let input_model = input_points::ActiveModel {
             serial_number: Set(serial_number),
             input_index: Set(Some(point.index.to_string())),
@@ -1454,7 +1439,6 @@ impl T3000MainService {
             signal_type: Set(point.digital_analog.map(|da| da.to_string())),
             label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
             type_field: Set(point.command.clone()),
-            binary_array: Set(Some(input_specific_data.to_string())),
         };
 
         match existing {
@@ -1520,16 +1504,6 @@ impl T3000MainService {
             .one(txn).await
             .map_err(|e| AppError::DatabaseError(format!("Failed to query output point: {}", e)))?;
 
-        // Serialize OUTPUT-specific fields to JSON for storage in BinaryArray
-        let output_specific_data = serde_json::json!({
-            "high_voltage": point.high_voltage,
-            "low_voltage": point.low_voltage,
-            "hw_switch_status": point.hw_switch_status,
-            "control": point.control,
-            "id": point.id,
-            "decom": point.status // decom is stored in status field but we also keep original
-        });
-
         let output_model = output_points::ActiveModel {
             serial_number: Set(serial_number),
             output_index: Set(Some(point.index.to_string())),
@@ -1546,7 +1520,6 @@ impl T3000MainService {
             signal_type: Set(point.digital_analog.map(|da| da.to_string())),
             label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
             type_field: Set(point.command.clone()),
-            binary_array: Set(Some(output_specific_data.to_string())),
         };
 
         match existing {
@@ -1616,11 +1589,12 @@ impl T3000MainService {
             serial_number: Set(serial_number),
             variable_index: Set(Some(point.index.to_string())),
             panel: Set(Some(point.pid.to_string())),
-            full_label: Set(Some(point.full_label.clone())),
+            full_label: Set(Some(
+                point.description.as_ref().unwrap_or(&point.full_label).clone()
+            )),
             auto_manual: Set(Some(point.auto_manual.to_string())),
             f_value: Set(Some(point.value.to_string())),
             units: Set(Some(point.units.clone())),
-            binary_array: Set(None), // TODO: Handle binary array if provided in JSON
         };
 
         match existing {
@@ -1683,7 +1657,6 @@ impl T3000MainService {
             f_value: Set(Some(point.value.to_string())),
             status: Set(Some(point.status.to_string())),
             quality: Set(Some("Good".to_string())), // Default quality
-            binary_array: Set(None),
         };
 
         trendlog_data::Entity::insert(trendlog_model)

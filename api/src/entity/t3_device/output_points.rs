@@ -37,8 +37,6 @@ pub struct Model {
     pub label: Option<String>,                  // C++ Label (label[9])
     #[sea_orm(column_name = "Type_Field")]
     pub type_field: Option<String>,             // C++ Type
-    #[sea_orm(column_name = "BinaryArray")]
-    pub binary_array: Option<String>,           // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -17,8 +17,6 @@ pub struct Model {
     pub status: Option<String>,                 // C++ Status
     #[sea_orm(column_name = "Quality")]
     pub quality: Option<String>,                // C++ Quality (data quality indicator)
-    #[sea_orm(column_name = "BinaryArray")]
-    pub binary_array: Option<String>,           // C++ BinaryArray
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

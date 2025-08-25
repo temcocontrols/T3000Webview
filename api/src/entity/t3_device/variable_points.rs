@@ -21,8 +21,6 @@ pub struct Model {
     pub f_value: Option<String>,                // C++ fValue (stored as string)
     #[sea_orm(column_name = "Units")]
     pub units: Option<String>,                  // C++ Units
-    #[sea_orm(column_name = "BinaryArray")]
-    pub binary_array: Option<String>,           // C++ BinaryArray (hex encoded)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
