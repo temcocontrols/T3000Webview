@@ -6,15 +6,19 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "TRENDLOG_INPUTS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub Trendlog_ID: String,                    // C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "Trendlog_ID")]
+    pub trendlog_id: String,                    // C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
 
-    pub Point_Type: String,                     // C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
-    pub Point_Index: String,                    // C++ Point_Index (references point index)
-    pub Point_Panel: Option<String>,            // C++ Point_Panel
-    pub Point_Label: Option<String>,            // C++ Point_Label
-    pub Status: Option<String>,                 // C++ Status
-    pub BinaryArray: Option<String>,            // C++ BinaryArray
+    #[sea_orm(column_name = "Point_Type")]
+    pub point_type: String,                     // C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
+    #[sea_orm(column_name = "Point_Index")]
+    pub point_index: String,                    // C++ Point_Index (references point index)
+    #[sea_orm(column_name = "Point_Panel")]
+    pub point_panel: Option<String>,            // C++ Point_Panel
+    #[sea_orm(column_name = "Point_Label")]
+    pub point_label: Option<String>,            // C++ Point_Label
+    #[sea_orm(column_name = "Status")]
+    pub status: Option<String>,                 // C++ Status
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

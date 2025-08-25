@@ -6,15 +6,19 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "GRAPHICS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
-    pub Graphic_ID: Option<String>,             // C++ Graphic_ID
-    pub Switch_Node: Option<String>,            // C++ Switch_Node
-    pub Graphic_Label: Option<String>,          // C++ Graphic_Label
-    pub Graphic_Picture_File: Option<String>,   // C++ Graphic_Picture_File
-    pub Graphic_Total_Point: Option<String>,    // C++ Graphic_Total_Point
-    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
+    #[sea_orm(column_name = "Graphic_ID")]
+    pub graphic_id: Option<String>,             // C++ Graphic_ID
+    #[sea_orm(column_name = "Switch_Node")]
+    pub switch_node: Option<String>,            // C++ Switch_Node
+    #[sea_orm(column_name = "Graphic_Label")]
+    pub graphic_label: Option<String>,          // C++ Graphic_Label
+    #[sea_orm(column_name = "Graphic_Picture_File")]
+    pub graphic_picture_file: Option<String>,   // C++ Graphic_Picture_File
+    #[sea_orm(column_name = "Graphic_Total_Point")]
+    pub graphic_total_point: Option<String>,    // C++ Graphic_Total_Point
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

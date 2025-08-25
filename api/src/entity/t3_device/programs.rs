@@ -6,18 +6,25 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "PROGRAMS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
-    pub Program_ID: Option<String>,             // C++ Program_ID
-    pub Switch_Node: Option<String>,            // C++ Switch_Node
-    pub Program_Label: Option<String>,          // C++ Program_Label
-    pub Program_List: Option<String>,           // C++ Program_List
-    pub Program_Size: Option<String>,           // C++ Program_Size
-    pub Program_Pointer: Option<String>,        // C++ Program_Pointer
-    pub Program_Status: Option<String>,         // C++ Program_Status
-    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
-    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
+    #[sea_orm(column_name = "Program_ID")]
+    pub program_id: Option<String>,             // C++ Program_ID
+    #[sea_orm(column_name = "Switch_Node")]
+    pub switch_node: Option<String>,            // C++ Switch_Node
+    #[sea_orm(column_name = "Program_Label")]
+    pub program_label: Option<String>,          // C++ Program_Label
+    #[sea_orm(column_name = "Program_List")]
+    pub program_list: Option<String>,           // C++ Program_List
+    #[sea_orm(column_name = "Program_Size")]
+    pub program_size: Option<String>,           // C++ Program_Size
+    #[sea_orm(column_name = "Program_Pointer")]
+    pub program_pointer: Option<String>,        // C++ Program_Pointer
+    #[sea_orm(column_name = "Program_Status")]
+    pub program_status: Option<String>,         // C++ Program_Status
+    #[sea_orm(column_name = "Auto_Manual")]
+    pub auto_manual: Option<String>,            // C++ Auto_Manual
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

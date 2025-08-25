@@ -103,7 +103,7 @@ pub struct InputPointFFIData {
     pub Signal_Type: [c_char; 32],             // INPUTS.Signal_Type
     pub Label: [c_char; 32],                   // INPUTS.Label
     pub Type_Field: [c_char; 32],              // INPUTS.Type_Field
-    pub BinaryArray: [c_char; 512],            // INPUTS.BinaryArray
+    // Removed BinaryArray from schema
 }
 
 #[repr(C)]
@@ -124,7 +124,7 @@ pub struct OutputPointFFIData {
     pub Signal_Type: [c_char; 32],             // OUTPUTS.Signal_Type
     pub Label: [c_char; 32],                   // OUTPUTS.Label
     pub Type_Field: [c_char; 32],              // OUTPUTS.Type_Field
-    pub BinaryArray: [c_char; 512],            // OUTPUTS.BinaryArray
+    // Removed BinaryArray from schema
 }
 
 #[repr(C)]
@@ -137,7 +137,7 @@ pub struct VariablePointFFIData {
     pub Auto_Manual: [c_char; 32],             // VARIABLES.Auto_Manual
     pub fValue: [c_char; 32],                  // VARIABLES.fValue (stored as string)
     pub Units: [c_char; 32],                   // VARIABLES.Units
-    pub BinaryArray: [c_char; 512],            // VARIABLES.BinaryArray
+    // Removed BinaryArray from schema
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -384,7 +384,7 @@ impl T3000FFIService {
                 Signal_Type: Set(Some(Self::c_str_to_string(&input.Signal_Type))),
                 Label: Set(Some(Self::c_str_to_string(&input.Label))),
                 Type_Field: Set(Some(Self::c_str_to_string(&input.Type_Field))),
-                BinaryArray: Set(Some(Self::c_str_to_string(&input.BinaryArray))),
+                // BinaryArray removed from schema
                 ..Default::default()
             };
 
@@ -413,7 +413,7 @@ impl T3000FFIService {
                 Signal_Type: Set(Some(Self::c_str_to_string(&output.Signal_Type))),
                 Label: Set(Some(Self::c_str_to_string(&output.Label))),
                 Type_Field: Set(Some(Self::c_str_to_string(&output.Type_Field))),
-                BinaryArray: Set(Some(Self::c_str_to_string(&output.BinaryArray))),
+                // BinaryArray removed from schema
                 ..Default::default()
             };
 
@@ -434,7 +434,7 @@ impl T3000FFIService {
                 Auto_Manual: Set(Some(Self::c_str_to_string(&variable.Auto_Manual))),
                 fValue: Set(Some(Self::c_str_to_string(&variable.fValue))),
                 Units: Set(Some(Self::c_str_to_string(&variable.Units))),
-                BinaryArray: Set(Some(Self::c_str_to_string(&variable.BinaryArray))),
+                // BinaryArray removed from schema
                 ..Default::default()
             };
 

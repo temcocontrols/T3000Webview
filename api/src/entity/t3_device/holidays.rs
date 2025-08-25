@@ -6,17 +6,23 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "HOLIDAYS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub SerialNumber: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
-    pub Holiday_ID: Option<String>,             // C++ Holiday_ID
-    pub Auto_Manual: Option<String>,            // C++ Auto_Manual
-    pub Holiday_Value: Option<String>,          // C++ Holiday_Value
-    pub Status: Option<String>,                 // C++ Status
-    pub Month_Field: Option<String>,            // C++ Month
-    pub Day_Field: Option<String>,              // C++ Day
-    pub Year_Field: Option<String>,             // C++ Year
-    pub BinaryArray: Option<String>,            // C++ BinaryArray (hex encoded)
+    #[sea_orm(column_name = "Holiday_ID")]
+    pub holiday_id: Option<String>,             // C++ Holiday_ID
+    #[sea_orm(column_name = "Auto_Manual")]
+    pub auto_manual: Option<String>,            // C++ Auto_Manual
+    #[sea_orm(column_name = "Holiday_Value")]
+    pub holiday_value: Option<String>,          // C++ Holiday_Value
+    #[sea_orm(column_name = "Status")]
+    pub status: Option<String>,                 // C++ Status
+    #[sea_orm(column_name = "Month_Field")]
+    pub month_field: Option<String>,            // C++ Month
+    #[sea_orm(column_name = "Day_Field")]
+    pub day_field: Option<String>,              // C++ Day
+    #[sea_orm(column_name = "Year_Field")]
+    pub year_field: Option<String>,             // C++ Year
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
