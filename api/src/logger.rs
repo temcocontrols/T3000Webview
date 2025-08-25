@@ -45,7 +45,6 @@ pub fn write_structured_log_with_level(base_filename: &str, message: &str, level
 /// Centralized logging for T3000 WebView Service
 pub struct ServiceLogger {
     log_file: std::fs::File,
-    category: String,
 }
 
 impl ServiceLogger {
@@ -56,10 +55,7 @@ impl ServiceLogger {
             .append(true)
             .open(log_path)?;
 
-        Ok(ServiceLogger {
-            log_file,
-            category: base_filename.to_string(),
-        })
+    Ok(ServiceLogger { log_file })
     }
 
     /// Create a logger for FFI operations
@@ -115,29 +111,9 @@ impl ServiceLogger {
     }
 
     /// Add a breakdown line separator for action rounds
-    pub fn add_breakdown(&mut self, round_description: &str) {
+    pub fn add_breakdown(&mut self, _round_description: &str) {
         // Just add empty line for visual grouping
         self.add_empty_line();
-    }
-
-    /// Add a section header with === format
-    pub fn add_section(&mut self, section_name: &str) {
-        self.add_empty_line();
-        self.info(&format!("=== {} ===", section_name));
-    }
-
-    /// Add a specialized FFI call header with timestamp and data summary
-    pub fn add_ffi_call_header(&mut self, call_type: &str, total_panels: usize, json_size: usize, data_items: usize, json_response: &str) {
-        let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        self.add_empty_line();
-        let _ = self.log_file.write_all(format!("[{}] [INFO] === {} [{}] ===\n", timestamp, call_type, timestamp).as_bytes());
-        let _ = self.log_file.write_all(format!("[{}] [INFO] Total panels found: {}\n", timestamp, total_panels).as_bytes());
-        let _ = self.log_file.write_all(format!("[{}] [INFO] JSON response size: {} characters\n", timestamp, json_size).as_bytes());
-        let _ = self.log_file.write_all(format!("[{}] [INFO] Data items processed: {}\n", timestamp, data_items).as_bytes());
-        let _ = self.log_file.write_all(format!("[{}] [INFO] === Complete JSON Response ===\n", timestamp).as_bytes());
-        let _ = self.log_file.write_all(json_response.as_bytes());
-        let _ = self.log_file.write_all(format!("\n[{}] [INFO] === End of Entry ===\n", timestamp).as_bytes());
-        let _ = self.log_file.flush();
     }
 }
 

@@ -30,9 +30,8 @@ pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 
-use tokio::sync::broadcast;
 use crate::db_connection::establish_t3_device_connection;
-use crate::logger::{write_structured_log_with_level, LogLevel, write_structured_log};
+use crate::logger::write_structured_log;
 // use crate::t3_device::realtime_data_service::{RealtimeDataService, DataPoint}; // Available but not called
 
 /// Abstracted enhanced application state with T3000 device support
@@ -49,14 +48,14 @@ pub struct T3AppState {
 /// Creates a webview T3000 application state with dual database connections
 pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Error>> {
     // Log database paths before attempting connections
-    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let _timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
 
     // Use structured logging for database connection attempts
     use crate::logger::{write_structured_log_with_level, LogLevel};
     use crate::utils::{DATABASE_URL, T3_DEVICE_DATABASE_URL};
 
     let log_message = format!(
-        "=== DATABASE CONNECTION ATTEMPT ===\nPrimary database URL: {}\nWebView T3000 database URL: {}",
+        "Database connection attempt: primary={}, t3_device={}",
         DATABASE_URL.as_str(), T3_DEVICE_DATABASE_URL.as_str()
     );
     let _ = write_structured_log_with_level("T3_Webview_Initialize", &log_message, LogLevel::Info);

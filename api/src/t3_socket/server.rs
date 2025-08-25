@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};

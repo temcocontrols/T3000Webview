@@ -174,7 +174,9 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
             Err(e.into())
         }
     }
-}async fn shutdown_signal(state: AppState) {
+}
+#[allow(dead_code)]
+async fn shutdown_signal(state: AppState) {
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
 
     // Store the sender in the SHUTDOWN_CHANNEL

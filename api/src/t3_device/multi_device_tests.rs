@@ -3,7 +3,7 @@
 
 #[cfg(test)]
 mod multi_device_tests {
-    use crate::t3_device::t3000_ffi_sync_service::{T3000MainService, LoggingDataResponse};
+    use crate::t3_device::t3000_ffi_sync_service::T3000MainService;
 
     #[test]
     fn test_basic_functionality() {

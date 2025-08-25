@@ -8,13 +8,13 @@ use axum::{
 use sea_orm::{DatabaseBackend, Statement, ConnectionTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
 
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 // use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
+#[allow(dead_code)]
 async fn ensure_t3_device_db_available(state: &T3AppState) -> Result<(), StatusCode> {
     if state.t3_device_conn.is_none() {
         eprintln!("⚠️  T3000 device database unavailable - feature disabled");
@@ -691,7 +691,7 @@ async fn get_table_records(
         Ok(rows) => {
             let data: Vec<Value> = rows.into_iter().map(|row| {
                 let mut obj = serde_json::Map::new();
-                for (i, column) in row.column_names().iter().enumerate() {
+            for (_i, column) in row.column_names().iter().enumerate() {
                     if let Ok(value) = row.try_get::<serde_json::Value>("", column) {
                         obj.insert(column.to_string(), value);
                     }

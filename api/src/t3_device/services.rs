@@ -25,33 +25,56 @@ pub struct DeviceWithPoints {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateDeviceRequest {
-    pub SerialNumber: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)
-    pub PanelId: Option<i32>,                     // T3000: PanelId (new column for panel identification)
-    pub MainBuilding_Name: Option<String>,         // T3000: MainBuilding_Name
-    pub Building_Name: Option<String>,             // T3000: Building_Name
-    pub Floor_Name: Option<String>,                // T3000: Floor_Name
-    pub Room_Name: Option<String>,                 // T3000: Room_Name
-    pub Product_Name: Option<String>,              // T3000: Product_Name
-    pub Product_Class_ID: Option<i32>,             // T3000: Product_Class_ID
-    pub Product_ID: Option<i32>,                   // T3000: Product_ID
-    pub Address: Option<String>,                   // T3000: Address (IP/Modbus address)
-    pub Bautrate: Option<String>,                  // T3000: Bautrate (IP address or baud rate)
-    pub Description: Option<String>,               // T3000: Description
-    pub Status: Option<String>,                    // T3000: Status
+    #[serde(rename = "SerialNumber")]
+    pub serial_number: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)
+    #[serde(rename = "PanelId")]
+    pub panel_id: Option<i32>,                     // T3000: PanelId (new column for panel identification)
+    #[serde(rename = "MainBuilding_Name")]
+    pub main_building_name: Option<String>,        // T3000: MainBuilding_Name
+    #[serde(rename = "Building_Name")]
+    pub building_name: Option<String>,             // T3000: Building_Name
+    #[serde(rename = "Floor_Name")]
+    pub floor_name: Option<String>,                // T3000: Floor_Name
+    #[serde(rename = "Room_Name")]
+    pub room_name: Option<String>,                 // T3000: Room_Name
+    #[serde(rename = "Product_Name")]
+    pub product_name: Option<String>,              // T3000: Product_Name
+    #[serde(rename = "Product_Class_ID")]
+    pub product_class_id: Option<i32>,             // T3000: Product_Class_ID
+    #[serde(rename = "Product_ID")]
+    pub product_id: Option<i32>,                   // T3000: Product_ID
+    #[serde(rename = "Address")]
+    pub address: Option<String>,                   // T3000: Address (IP/Modbus address)
+    #[serde(rename = "Bautrate")]
+    pub bautrate: Option<String>,                  // T3000: Bautrate (IP address or baud rate)
+    #[serde(rename = "Description")]
+    pub description: Option<String>,               // T3000: Description
+    #[serde(rename = "Status")]
+    pub status: Option<String>,                    // T3000: Status
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateDeviceRequest {
-    pub PanelId: Option<i32>,                      // T3000: PanelId (new column for panel identification)
-    pub MainBuilding_Name: Option<String>,         // T3000: MainBuilding_Name
-    pub Building_Name: Option<String>,             // T3000: Building_Name
-    pub Floor_Name: Option<String>,                // T3000: Floor_Name
-    pub Room_Name: Option<String>,                 // T3000: Room_Name
-    pub Product_Name: Option<String>,              // T3000: Product_Name
-    pub Address: Option<String>,                   // T3000: Address
-    pub Bautrate: Option<String>,                  // T3000: Bautrate
-    pub Description: Option<String>,               // T3000: Description
-    pub Status: Option<String>,                    // T3000: Status
+    #[serde(rename = "PanelId")]
+    pub panel_id: Option<i32>,                      // T3000: PanelId (new column for panel identification)
+    #[serde(rename = "MainBuilding_Name")]
+    pub main_building_name: Option<String>,         // T3000: MainBuilding_Name
+    #[serde(rename = "Building_Name")]
+    pub building_name: Option<String>,              // T3000: Building_Name
+    #[serde(rename = "Floor_Name")]
+    pub floor_name: Option<String>,                 // T3000: Floor_Name
+    #[serde(rename = "Room_Name")]
+    pub room_name: Option<String>,                  // T3000: Room_Name
+    #[serde(rename = "Product_Name")]
+    pub product_name: Option<String>,               // T3000: Product_Name
+    #[serde(rename = "Address")]
+    pub address: Option<String>,                    // T3000: Address
+    #[serde(rename = "Bautrate")]
+    pub bautrate: Option<String>,                   // T3000: Bautrate
+    #[serde(rename = "Description")]
+    pub description: Option<String>,                // T3000: Description
+    #[serde(rename = "Status")]
+    pub status: Option<String>,                     // T3000: Status
 }
 
 pub struct T3DeviceService;
@@ -63,7 +86,7 @@ impl T3DeviceService {
         let mut devices_with_stats = Vec::new();
 
         for device in devices_list {
-            let serial_id = device.SerialNumber;
+            let serial_id = device.serial_number;
 
             // Count related points using the correct foreign key
             let input_count = input_points::Entity::find()
@@ -127,29 +150,29 @@ impl T3DeviceService {
     /// Create a new device
     pub async fn create_device(db: &DatabaseConnection, device_data: CreateDeviceRequest) -> Result<devices::Model, AppError> {
         let new_device = devices::ActiveModel {
-            SerialNumber: NotSet, // Auto-generated primary key
-            PanelId: Set(device_data.PanelId),
-            MainBuilding_Name: Set(device_data.MainBuilding_Name),
-            Building_Name: Set(device_data.Building_Name),
-            Floor_Name: Set(device_data.Floor_Name),
-            Room_Name: Set(device_data.Room_Name),
-            Panel_Number: Set(None),
-            Network_Number: Set(None),
-            Product_Name: Set(device_data.Product_Name),
-            Product_Class_ID: Set(device_data.Product_Class_ID),
-            Product_ID: Set(device_data.Product_ID),
-            Screen_Name: Set(None),
-            Bautrate: Set(device_data.Bautrate),
-            Address: Set(device_data.Address),
-            Register: Set(None),
-            Function: Set(None),
-            Description: Set(device_data.Description),
-            High_Units: Set(None),
-            Low_Units: Set(None),
-            Update_Field: Set(None),
-            Status: Set(device_data.Status),
-            Range_Field: Set(None),
-            Calibration: Set(None),
+            serial_number: NotSet, // Auto-generated primary key
+            panel_id: Set(device_data.panel_id),
+            main_building_name: Set(device_data.main_building_name),
+            building_name: Set(device_data.building_name),
+            floor_name: Set(device_data.floor_name),
+            room_name: Set(device_data.room_name),
+            panel_number: Set(None),
+            network_number: Set(None),
+            product_name: Set(device_data.product_name),
+            product_class_id: Set(device_data.product_class_id),
+            product_id: Set(device_data.product_id),
+            screen_name: Set(None),
+            bautrate: Set(device_data.bautrate),
+            address: Set(device_data.address),
+            register: Set(None),
+            function: Set(None),
+            description: Set(device_data.description),
+            high_units: Set(None),
+            low_units: Set(None),
+            update_field: Set(None),
+            status: Set(device_data.status),
+            range_field: Set(None),
+            calibration: Set(None),
 
             // Initialize new network configuration fields as None/defaults
             ip_address: Set(None),
@@ -180,32 +203,32 @@ impl T3DeviceService {
 
         let mut device: devices::ActiveModel = device.into();
 
-        if let Some(panel_id) = device_data.PanelId {
-            device.PanelId = Set(Some(panel_id));
+    if let Some(panel_id) = device_data.panel_id {
+            device.panel_id = Set(Some(panel_id));
         }
-        if let Some(main_building_name) = device_data.MainBuilding_Name {
-            device.MainBuilding_Name = Set(Some(main_building_name));
+    if let Some(main_building_name) = device_data.main_building_name {
+            device.main_building_name = Set(Some(main_building_name));
         }
-        if let Some(building_name) = device_data.Building_Name {
-            device.Building_Name = Set(Some(building_name));
+    if let Some(building_name) = device_data.building_name {
+            device.building_name = Set(Some(building_name));
         }
-        if let Some(floor_name) = device_data.Floor_Name {
-            device.Floor_Name = Set(Some(floor_name));
+    if let Some(floor_name) = device_data.floor_name {
+            device.floor_name = Set(Some(floor_name));
         }
-        if let Some(room_name) = device_data.Room_Name {
-            device.Room_Name = Set(Some(room_name));
+    if let Some(room_name) = device_data.room_name {
+            device.room_name = Set(Some(room_name));
         }
-        if let Some(product_name) = device_data.Product_Name {
-            device.Product_Name = Set(Some(product_name));
+    if let Some(product_name) = device_data.product_name {
+            device.product_name = Set(Some(product_name));
         }
-        if let Some(address) = device_data.Address {
-            device.Address = Set(Some(address));
+    if let Some(address) = device_data.address {
+            device.address = Set(Some(address));
         }
-        if let Some(bautrate) = device_data.Bautrate {
-            device.Bautrate = Set(Some(bautrate));
+    if let Some(bautrate) = device_data.bautrate {
+            device.bautrate = Set(Some(bautrate));
         }
-        if let Some(description) = device_data.Description {
-            device.Description = Set(Some(description));
+    if let Some(description) = device_data.description {
+            device.description = Set(Some(description));
         }
 
         let updated_device = device.update(db).await?;

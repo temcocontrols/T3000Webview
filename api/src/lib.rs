@@ -1,6 +1,5 @@
 use std::panic;
 use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
-use logger::{write_structured_log_with_level, LogLevel};
 
 pub mod app_state;
 pub mod auth;
@@ -82,7 +81,6 @@ use t3_device::t3000_ffi_sync_service::{initialize_logging_service, start_loggin
 /// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Log to file for headless service
-    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
     let startup_msg = format!("T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + Auto-Sync (T3000.db → webview_t3_device.db)");
 
     // Write to structured log file - new Initialize category

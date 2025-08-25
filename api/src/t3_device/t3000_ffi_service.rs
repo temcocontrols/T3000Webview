@@ -294,21 +294,21 @@ impl T3000FFIService {
 
             // Convert FFI data to SeaORM model - now field names match exactly
             let device_model = devices::ActiveModel {
-                SerialNumber: Set(device.SerialNumber),
-                PanelId: Set(Some(device.PanelId)),
-                Product_ID: Set(Some(device.Product_ID)),
-                Product_Class_ID: Set(Some(device.Product_Class_ID)),
-                Panel_Number: Set(Some(device.Panel_Number)),
-                Network_Number: Set(Some(device.Network_Number)),
-                MainBuilding_Name: Set(Some(Self::c_str_to_string(&device.MainBuilding_Name))),
-                Building_Name: Set(Some(Self::c_str_to_string(&device.Building_Name))),
-                Floor_Name: Set(Some(Self::c_str_to_string(&device.Floor_Name))),
-                Room_Name: Set(Some(Self::c_str_to_string(&device.Room_Name))),
-                Product_Name: Set(Some(Self::c_str_to_string(&device.Product_Name))),
-                Description: Set(Some(Self::c_str_to_string(&device.Description))),
-                Bautrate: Set(Some(Self::c_str_to_string(&device.Bautrate))),
-                Address: Set(Some(Self::c_str_to_string(&device.Address))),
-                Status: Set(Some(Self::c_str_to_string(&device.Status))),
+                serial_number: Set(device.SerialNumber),
+                panel_id: Set(Some(device.PanelId)),
+                product_id: Set(Some(device.Product_ID)),
+                product_class_id: Set(Some(device.Product_Class_ID)),
+                panel_number: Set(Some(device.Panel_Number)),
+                network_number: Set(Some(device.Network_Number)),
+                main_building_name: Set(Some(Self::c_str_to_string(&device.MainBuilding_Name))),
+                building_name: Set(Some(Self::c_str_to_string(&device.Building_Name))),
+                floor_name: Set(Some(Self::c_str_to_string(&device.Floor_Name))),
+                room_name: Set(Some(Self::c_str_to_string(&device.Room_Name))),
+                product_name: Set(Some(Self::c_str_to_string(&device.Product_Name))),
+                description: Set(Some(Self::c_str_to_string(&device.Description))),
+                bautrate: Set(Some(Self::c_str_to_string(&device.Bautrate))),
+                address: Set(Some(Self::c_str_to_string(&device.Address))),
+                status: Set(Some(Self::c_str_to_string(&device.Status))),
                 ..Default::default()
             };
 
@@ -369,22 +369,21 @@ impl T3000FFIService {
         for i in 0..(input_count as usize).min(MAX_POINTS) {
             let input = &inputs[i];
             let input_model = input_points::ActiveModel {
-                SerialNumber: Set(Serial_ID),
-                Input_index: Set(Some(Self::c_str_to_string(&input.Input_index))),
-                Panel: Set(Some(Self::c_str_to_string(&input.Panel))),
-                Full_Label: Set(Some(Self::c_str_to_string(&input.Full_Label))),
-                Auto_Manual: Set(Some(Self::c_str_to_string(&input.Auto_Manual))),
-                fValue: Set(Some(Self::c_str_to_string(&input.fValue))),
-                Units: Set(Some(Self::c_str_to_string(&input.Units))),
-                Range_Field: Set(Some(Self::c_str_to_string(&input.Range_Field))),
-                Calibration: Set(Some(Self::c_str_to_string(&input.Calibration))),
-                Sign: Set(Some(Self::c_str_to_string(&input.Sign))),
-                Filter_Field: Set(Some(Self::c_str_to_string(&input.Filter_Field))),
-                Status: Set(Some(Self::c_str_to_string(&input.Status))),
-                Signal_Type: Set(Some(Self::c_str_to_string(&input.Signal_Type))),
-                Label: Set(Some(Self::c_str_to_string(&input.Label))),
-                Type_Field: Set(Some(Self::c_str_to_string(&input.Type_Field))),
-                // BinaryArray removed from schema
+                serial_number: Set(Serial_ID),
+                input_index: Set(Some(Self::c_str_to_string(&input.Input_index))),
+                panel: Set(Some(Self::c_str_to_string(&input.Panel))),
+                full_label: Set(Some(Self::c_str_to_string(&input.Full_Label))),
+                auto_manual: Set(Some(Self::c_str_to_string(&input.Auto_Manual))),
+                f_value: Set(Some(Self::c_str_to_string(&input.fValue))),
+                units: Set(Some(Self::c_str_to_string(&input.Units))),
+                range_field: Set(Some(Self::c_str_to_string(&input.Range_Field))),
+                calibration: Set(Some(Self::c_str_to_string(&input.Calibration))),
+                sign: Set(Some(Self::c_str_to_string(&input.Sign))),
+                filter_field: Set(Some(Self::c_str_to_string(&input.Filter_Field))),
+                status: Set(Some(Self::c_str_to_string(&input.Status))),
+                signal_type: Set(Some(Self::c_str_to_string(&input.Signal_Type))),
+                label: Set(Some(Self::c_str_to_string(&input.Label))),
+                type_field: Set(Some(Self::c_str_to_string(&input.Type_Field))),
                 ..Default::default()
             };
 
@@ -398,22 +397,21 @@ impl T3000FFIService {
         for i in 0..(output_count as usize).min(MAX_POINTS) {
             let output = &outputs[i];
             let output_model = output_points::ActiveModel {
-                SerialNumber: Set(Serial_ID),
-                Output_index: Set(Some(Self::c_str_to_string(&output.Output_index))),
-                Panel: Set(Some(Self::c_str_to_string(&output.Panel))),
-                Full_Label: Set(Some(Self::c_str_to_string(&output.Full_Label))),
-                Auto_Manual: Set(Some(Self::c_str_to_string(&output.Auto_Manual))),
-                fValue: Set(Some(Self::c_str_to_string(&output.fValue))),
-                Units: Set(Some(Self::c_str_to_string(&output.Units))),
-                Range_Field: Set(Some(Self::c_str_to_string(&output.Range_Field))),
-                Calibration: Set(Some(Self::c_str_to_string(&output.Calibration))),
-                Sign: Set(Some(Self::c_str_to_string(&output.Sign))),
-                Filter_Field: Set(Some(Self::c_str_to_string(&output.Filter_Field))),
-                Status: Set(Some(Self::c_str_to_string(&output.Status))),
-                Signal_Type: Set(Some(Self::c_str_to_string(&output.Signal_Type))),
-                Label: Set(Some(Self::c_str_to_string(&output.Label))),
-                Type_Field: Set(Some(Self::c_str_to_string(&output.Type_Field))),
-                // BinaryArray removed from schema
+                serial_number: Set(Serial_ID),
+                output_index: Set(Some(Self::c_str_to_string(&output.Output_index))),
+                panel: Set(Some(Self::c_str_to_string(&output.Panel))),
+                full_label: Set(Some(Self::c_str_to_string(&output.Full_Label))),
+                auto_manual: Set(Some(Self::c_str_to_string(&output.Auto_Manual))),
+                f_value: Set(Some(Self::c_str_to_string(&output.fValue))),
+                units: Set(Some(Self::c_str_to_string(&output.Units))),
+                range_field: Set(Some(Self::c_str_to_string(&output.Range_Field))),
+                calibration: Set(Some(Self::c_str_to_string(&output.Calibration))),
+                sign: Set(Some(Self::c_str_to_string(&output.Sign))),
+                filter_field: Set(Some(Self::c_str_to_string(&output.Filter_Field))),
+                status: Set(Some(Self::c_str_to_string(&output.Status))),
+                signal_type: Set(Some(Self::c_str_to_string(&output.Signal_Type))),
+                label: Set(Some(Self::c_str_to_string(&output.Label))),
+                type_field: Set(Some(Self::c_str_to_string(&output.Type_Field))),
                 ..Default::default()
             };
 
@@ -427,14 +425,13 @@ impl T3000FFIService {
         for i in 0..(variable_count as usize).min(MAX_POINTS) {
             let variable = &variables[i];
             let variable_model = variable_points::ActiveModel {
-                SerialNumber: Set(Serial_ID),
-                Variable_index: Set(Some(Self::c_str_to_string(&variable.Variable_index))),
-                Panel: Set(Some(Self::c_str_to_string(&variable.Panel))),
-                Full_Label: Set(Some(Self::c_str_to_string(&variable.Full_Label))),
-                Auto_Manual: Set(Some(Self::c_str_to_string(&variable.Auto_Manual))),
-                fValue: Set(Some(Self::c_str_to_string(&variable.fValue))),
-                Units: Set(Some(Self::c_str_to_string(&variable.Units))),
-                // BinaryArray removed from schema
+                serial_number: Set(Serial_ID),
+                variable_index: Set(Some(Self::c_str_to_string(&variable.Variable_index))),
+                panel: Set(Some(Self::c_str_to_string(&variable.Panel))),
+                full_label: Set(Some(Self::c_str_to_string(&variable.Full_Label))),
+                auto_manual: Set(Some(Self::c_str_to_string(&variable.Auto_Manual))),
+                f_value: Set(Some(Self::c_str_to_string(&variable.fValue))),
+                units: Set(Some(Self::c_str_to_string(&variable.Units))),
                 ..Default::default()
             };
 

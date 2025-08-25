@@ -7,52 +7,52 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, column_name = "SerialNumber")]
-    pub SerialNumber: i32,                     // C++ SerialNumber (primary key, renamed from Serial_ID)
+    pub serial_number: i32,                     // C++ SerialNumber (primary key, renamed from Serial_ID)
 
     #[sea_orm(column_name = "PanelId")]
-    pub PanelId: Option<i32>,                  // C++ PanelId (new column for panel identification)
+    pub panel_id: Option<i32>,                  // C++ PanelId (new column for panel identification)
     #[sea_orm(column_name = "MainBuilding_Name")]
-    pub MainBuilding_Name: Option<String>,     // C++ MainBuilding_Name
+    pub main_building_name: Option<String>,     // C++ MainBuilding_Name
     #[sea_orm(column_name = "Building_Name")]
-    pub Building_Name: Option<String>,         // C++ Building_Name (network/subnet)
+    pub building_name: Option<String>,          // C++ Building_Name (network/subnet)
     #[sea_orm(column_name = "Floor_Name")]
-    pub Floor_Name: Option<String>,            // C++ Floor_name
+    pub floor_name: Option<String>,             // C++ Floor_name
     #[sea_orm(column_name = "Room_Name")]
-    pub Room_Name: Option<String>,             // C++ Room_name
+    pub room_name: Option<String>,              // C++ Room_name
     #[sea_orm(column_name = "Panel_Number")]
-    pub Panel_Number: Option<i32>,             // C++ Panel_Number
+    pub panel_number: Option<i32>,              // C++ Panel_Number
     #[sea_orm(column_name = "Network_Number")]
-    pub Network_Number: Option<i32>,           // C++ Network_Number
+    pub network_number: Option<i32>,            // C++ Network_Number
     #[sea_orm(column_name = "Product_Name")]
-    pub Product_Name: Option<String>,          // C++ Product_Name
+    pub product_name: Option<String>,           // C++ Product_Name
     #[sea_orm(column_name = "Product_Class_ID")]
-    pub Product_Class_ID: Option<i32>,         // C++ Product_class_ID
+    pub product_class_id: Option<i32>,          // C++ Product_class_ID
     #[sea_orm(column_name = "Product_ID")]
-    pub Product_ID: Option<i32>,               // C++ Product_ID
+    pub product_id: Option<i32>,                // C++ Product_ID
     #[sea_orm(column_name = "Screen_Name")]
-    pub Screen_Name: Option<String>,           // C++ Screen_Name
+    pub screen_name: Option<String>,            // C++ Screen_Name
     #[sea_orm(column_name = "Bautrate")]
-    pub Bautrate: Option<String>,              // C++ Bautrate (IP address or baud rate)
+    pub bautrate: Option<String>,               // C++ Bautrate (IP address or baud rate)
     #[sea_orm(column_name = "Address")]
-    pub Address: Option<String>,               // C++ Address
+    pub address: Option<String>,                // C++ Address
     #[sea_orm(column_name = "Register")]
-    pub Register: Option<String>,              // C++ Register
+    pub register: Option<String>,               // C++ Register
     #[sea_orm(column_name = "Function")]
-    pub Function: Option<String>,              // C++ Function
+    pub function: Option<String>,               // C++ Function
     #[sea_orm(column_name = "Description")]
-    pub Description: Option<String>,           // C++ Description
+    pub description: Option<String>,            // C++ Description
     #[sea_orm(column_name = "High_Units")]
-    pub High_Units: Option<String>,            // C++ High_Units
+    pub high_units: Option<String>,             // C++ High_Units
     #[sea_orm(column_name = "Low_Units")]
-    pub Low_Units: Option<String>,             // C++ Low_Units
+    pub low_units: Option<String>,              // C++ Low_Units
     #[sea_orm(column_name = "Update_Field")]
-    pub Update_Field: Option<String>,          // C++ Update
+    pub update_field: Option<String>,           // C++ Update
     #[sea_orm(column_name = "Status")]
-    pub Status: Option<String>,                // C++ Status
+    pub status: Option<String>,                 // C++ Status
     #[sea_orm(column_name = "Range_Field")]
-    pub Range_Field: Option<String>,           // C++ Range
+    pub range_field: Option<String>,            // C++ Range
     #[sea_orm(column_name = "Calibration")]
-    pub Calibration: Option<String>,           // C++ Calibration
+    pub calibration: Option<String>,            // C++ Calibration
 
     // Additional network communication fields from C++ codebase analysis
     #[sea_orm(column_name = "ip_address")]

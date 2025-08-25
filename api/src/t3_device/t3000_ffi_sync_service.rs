@@ -300,6 +300,7 @@ pub struct DeviceWithPoints {
 }
 
 pub struct T3000MainService {
+    #[allow(dead_code)]
     db: DatabaseConnection,
     config: T3000MainConfig,
     is_running: Arc<AtomicBool>,
@@ -717,13 +718,13 @@ impl T3000MainService {
             })?;
 
         let device_model = devices::ActiveModel {
-            SerialNumber: Set(serial_number),
-            PanelId: Set(Some(device_info.panel_id)),
-            Building_Name: Set(Some(device_info.panel_name.clone())),
-            Product_Name: Set(Some("T3000 Panel".to_string())),
-            Address: Set(Some(device_info.panel_ipaddress.clone())),
-            Status: Set(Some("Online".to_string())),
-            Description: Set(Some(format!("Panel {} - {}", device_info.panel_id, device_info.panel_name))),
+            serial_number: Set(serial_number),
+            panel_id: Set(Some(device_info.panel_id)),
+            building_name: Set(Some(device_info.panel_name.clone())),
+            product_name: Set(Some("T3000 Panel".to_string())),
+            address: Set(Some(device_info.panel_ipaddress.clone())),
+            status: Set(Some("Online".to_string())),
+            description: Set(Some(format!("Panel {} - {}", device_info.panel_id, device_info.panel_name))),
 
             // Extended network configuration fields from Device_Basic_Setting
             ip_address: Set(device_info.ip_address.clone()),
@@ -745,7 +746,7 @@ impl T3000MainService {
                 serial_number, device_info.panel_name));
 
             // UPDATE existing device
-            let update_result = devices::Entity::update(device_model)
+            let _update_result = devices::Entity::update(device_model)
                 .filter(devices::Column::SerialNumber.eq(serial_number))
                 .exec(txn).await
                 .map_err(|e| {
@@ -1030,6 +1031,7 @@ impl T3000MainService {
     }
 
     /// Call T3000 C++ LOGGING_DATA function via FFI
+    #[allow(dead_code)]
     async fn get_logging_data_via_ffi_static(config: &T3000MainConfig) -> Result<String, AppError> {
         info!("🔄 Starting FFI call to T3000_GetLoggingData");
         info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
@@ -1446,7 +1448,7 @@ impl T3000MainService {
                 // UPDATE existing input point
                 info!("🔄 Updating existing INPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
 
-                let update_result = input_points::Entity::update(input_model)
+                let _update_result = input_points::Entity::update(input_model)
                     .filter(input_points::Column::SerialNumber.eq(serial_number))
                     .filter(input_points::Column::InputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
@@ -1527,7 +1529,7 @@ impl T3000MainService {
                 // UPDATE existing output point
                 info!("🔄 Updating existing OUTPUT point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
 
-                let update_result = output_points::Entity::update(output_model)
+                let _update_result = output_points::Entity::update(output_model)
                     .filter(output_points::Column::SerialNumber.eq(serial_number))
                     .filter(output_points::Column::OutputIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
@@ -1602,7 +1604,7 @@ impl T3000MainService {
                 // UPDATE existing variable point
                 info!("🔄 Updating existing VARIABLE point {}:{} - Label: '{}'", serial_number, point.index, point.full_label);
 
-                let update_result = variable_points::Entity::update(variable_model)
+                let _update_result = variable_points::Entity::update(variable_model)
                     .filter(variable_points::Column::SerialNumber.eq(serial_number))
                     .filter(variable_points::Column::VariableIndex.eq(Some(point.index.to_string())))
                     .exec(txn).await
@@ -1646,6 +1648,7 @@ impl T3000MainService {
     }
 
     /// Insert trend log data (always INSERT, never UPDATE for historical data)
+    #[allow(dead_code)]
     async fn insert_trend_log_static(
         txn: &DatabaseTransaction,
         _serial_number: i32, // Not used in current trendlog_data structure
@@ -1691,6 +1694,7 @@ impl T3000MainService {
     }
 
     /// Enhanced diagnostic logging placeholder - T3000 initialization functions not available in current export library
+    #[allow(dead_code)]
     async fn check_t3000_system() -> Result<(), AppError> {
         // NOTE: T3000 initialization functions (T3000_Initialize, T3000_ScanForDevices, etc.)
         // are not available in the current T3000 export library.
