@@ -100,7 +100,7 @@ pub struct InputPointFFIData {
     pub Sign: [c_char; 32],                    // INPUTS.Sign
     pub Filter_Field: [c_char; 32],            // INPUTS.Filter_Field
     pub Status: [c_char; 32],                  // INPUTS.Status
-    pub Signal_Type: [c_char; 32],             // INPUTS.Signal_Type
+    pub Digital_Analog: [c_char; 32],          // INPUTS.Digital_Analog
     pub Label: [c_char; 32],                   // INPUTS.Label
     pub Type_Field: [c_char; 32],              // INPUTS.Type_Field
     // Removed BinaryArray from schema
@@ -121,7 +121,7 @@ pub struct OutputPointFFIData {
     pub Sign: [c_char; 32],                    // OUTPUTS.Sign
     pub Filter_Field: [c_char; 32],            // OUTPUTS.Filter_Field
     pub Status: [c_char; 32],                  // OUTPUTS.Status
-    pub Signal_Type: [c_char; 32],             // OUTPUTS.Signal_Type
+    pub Digital_Analog: [c_char; 32],          // OUTPUTS.Digital_Analog
     pub Label: [c_char; 32],                   // OUTPUTS.Label
     pub Type_Field: [c_char; 32],              // OUTPUTS.Type_Field
     // Removed BinaryArray from schema
@@ -381,7 +381,7 @@ impl T3000FFIService {
                 sign: Set(Some(Self::c_str_to_string(&input.Sign))),
                 filter_field: Set(Some(Self::c_str_to_string(&input.Filter_Field))),
                 status: Set(Some(Self::c_str_to_string(&input.Status))),
-                signal_type: Set(Some(Self::c_str_to_string(&input.Signal_Type))),
+                signal_type: Set(Some(Self::c_str_to_string(&input.Digital_Analog))),
                 label: Set(Some(Self::c_str_to_string(&input.Label))),
                 type_field: Set(Some(Self::c_str_to_string(&input.Type_Field))),
                 ..Default::default()
@@ -409,7 +409,7 @@ impl T3000FFIService {
                 sign: Set(Some(Self::c_str_to_string(&output.Sign))),
                 filter_field: Set(Some(Self::c_str_to_string(&output.Filter_Field))),
                 status: Set(Some(Self::c_str_to_string(&output.Status))),
-                signal_type: Set(Some(Self::c_str_to_string(&output.Signal_Type))),
+                signal_type: Set(Some(Self::c_str_to_string(&output.Digital_Analog))),
                 label: Set(Some(Self::c_str_to_string(&output.Label))),
                 type_field: Set(Some(Self::c_str_to_string(&output.Type_Field))),
                 ..Default::default()

@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS INPUTS (
     Sign TEXT,                                 -- C++ Sign (calibration_sign)
     Filter_Field TEXT,                         -- C++ Filter (from "filter" JSON field)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Signal_Type TEXT,                          -- C++ Signal_Type (from "digital_analog" JSON field)
+    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (formerly Signal_Type)
     Label TEXT,                                -- C++ Label (from "description" or "label" JSON field)
     Type_Field TEXT                            -- C++ Type (from "command" JSON field)
 );
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS OUTPUTS (
     Sign TEXT,                                 -- C++ Sign
     Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Signal_Type TEXT,                          -- C++ Signal_Type (from "digital_analog" JSON field)
+    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (formerly Signal_Type)
     Label TEXT,                                -- C++ Label (from "description" or "label" JSON field)
     Type_Field TEXT                            -- C++ Type (from "command" JSON field)
 );
