@@ -1,4 +1,4 @@
-// T3000 TRENDLOG_DATA Entity - Exact match to T3000.db TRENDLOG_DATA table
+// T3000 TRENDLOG_DATA Entity - Complete T3000 logging data with comprehensive field mapping
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -6,17 +6,38 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "TRENDLOG_DATA")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false, column_name = "Trendlog_Input_ID")]
-    pub trendlog_input_id: i32,                 // C++ reference to TRENDLOG_INPUTS
+    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    pub serial_number: i32,                    // C++ SerialNumber (references DEVICES.SerialNumber)
 
-    #[sea_orm(column_name = "TimeStamp")]
-    pub time_stamp: String,                     // C++ TimeStamp (T3000 uses TEXT for timestamps)
-    #[sea_orm(column_name = "fValue")]
-    pub f_value: Option<String>,                // C++ fValue (following T3000 pattern - stored as TEXT)
-    #[sea_orm(column_name = "Status")]
-    pub status: Option<String>,                 // C++ Status
-    #[sea_orm(column_name = "Quality")]
-    pub quality: Option<String>,                // C++ Quality (data quality indicator)
+    #[sea_orm(primary_key, auto_increment = false, column_name = "PanelId")]
+    pub panel_id: i32,                         // C++ PanelId (panel identification)
+
+    #[sea_orm(primary_key, auto_increment = false, column_name = "PointId")]
+    pub point_id: String,                      // C++ Point ID (e.g., "IN1", "OUT1", "VAR128" from JSON "id" field)
+
+    #[sea_orm(primary_key, auto_increment = false, column_name = "PointIndex")]
+    pub point_index: i32,                      // C++ Point Index (numeric index from JSON "index" field)
+
+    #[sea_orm(primary_key, auto_increment = false, column_name = "PointType")]
+    pub point_type: String,                    // C++ Point Type ('INPUT', 'OUTPUT', 'VARIABLE')
+
+    #[sea_orm(primary_key, auto_increment = false, column_name = "LoggingTime")]
+    pub logging_time: String,                  // C++ Logging Time (input_logging_time, output_logging_time, variable_logging_time)
+
+    #[sea_orm(primary_key, auto_increment = false, column_name = "LoggingTime_Fmt")]
+    pub logging_time_fmt: String,              // C++ Formatted Logging Time (e.g., "2025-08-25 12:23:40")
+
+    #[sea_orm(column_name = "Value")]
+    pub value: String,                         // C++ Point Value (actual sensor/point value)
+
+    #[sea_orm(column_name = "Range_Field")]
+    pub range_field: Option<String>,           // C++ Range (range information for units calculation)
+
+    #[sea_orm(column_name = "Digital_Analog")]
+    pub digital_analog: Option<String>,        // C++ Digital_Analog (0=digital, 1=analog from JSON)
+
+    #[sea_orm(column_name = "Units")]
+    pub units: Option<String>,                 // C++ Units (derived from range: C, degree, h/kh, etc.)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

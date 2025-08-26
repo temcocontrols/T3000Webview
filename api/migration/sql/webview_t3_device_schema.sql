@@ -262,14 +262,20 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_INPUTS (
 );
 
 -- TRENDLOG_DATA table (Actual trendlog data storage - T3000 style naming)
--- Stores the actual trendlog data points
--- Optimized schema - removed unused BinaryArray field
+-- Stores the actual trendlog data points with comprehensive T3000 field mapping
+-- Enhanced schema with complete device and point information for T3000 WebView
 CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
-    Trendlog_Input_ID INTEGER NOT NULL,       -- C++ reference to TRENDLOG_INPUTS
-    TimeStamp TEXT NOT NULL,                   -- C++ TimeStamp (T3000 uses TEXT for timestamps)
-    fValue TEXT,                               -- C++ fValue (following T3000 pattern - stored as TEXT)
-    Status TEXT,                               -- C++ Status
-    Quality TEXT                               -- C++ Quality (data quality indicator)
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
+    PanelId INTEGER NOT NULL,                  -- C++ PanelId (panel identification)
+    PointId TEXT NOT NULL,                     -- C++ Point ID (e.g., "IN1", "OUT1", "VAR128" from JSON "id" field)
+    PointIndex INTEGER NOT NULL,               -- C++ Point Index (numeric index from JSON "index" field)
+    PointType TEXT NOT NULL,                   -- C++ Point Type ('INPUT', 'OUTPUT', 'VARIABLE')
+    Value TEXT NOT NULL,                       -- C++ Point Value (actual sensor/point value)
+    LoggingTime TEXT NOT NULL,                 -- C++ Logging Time (input_logging_time, output_logging_time, variable_logging_time)
+    LoggingTime_Fmt TEXT NOT NULL,             -- C++ Formatted Logging Time (e.g., "2025-08-25 12:23:40")
+    Digital_Analog TEXT,                       -- C++ Digital_Analog (0=digital, 1=analog from JSON)
+    Range_Field TEXT,                          -- C++ Range (range information for units calculation)
+    Units TEXT                                 -- C++ Units (derived from range: C, degree, h/kh, etc.)
 );
 
 -- TRENDLOG_BUFFER table (Circular buffer management - T3000 style naming)
@@ -302,8 +308,13 @@ CREATE INDEX IF NOT EXISTS IDX_ALARMS_SERIAL ON ALARMS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_MONITORDATA_SERIAL ON MONITORDATA(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOGS_SERIAL ON TRENDLOGS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_INPUTS_ID ON TRENDLOG_INPUTS(Trendlog_ID);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_INPUT ON TRENDLOG_DATA(Trendlog_Input_ID);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME ON TRENDLOG_DATA(TimeStamp);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_SERIAL ON TRENDLOG_DATA(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_PANEL ON TRENDLOG_DATA(PanelId);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_POINT_ID ON TRENDLOG_DATA(PointId);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_POINT_INDEX ON TRENDLOG_DATA(PointIndex);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TYPE ON TRENDLOG_DATA(PointType);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME ON TRENDLOG_DATA(LoggingTime);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME_FMT ON TRENDLOG_DATA(LoggingTime_Fmt);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_BUFFER_SERIAL ON TRENDLOG_BUFFER(SerialNumber);
 
 -- =================================================================

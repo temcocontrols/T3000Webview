@@ -785,6 +785,64 @@ impl T3000MainService {
         Ok(())
     }
 
+    /// Format timestamp to "YYYY-MM-DD HH:MM:SS" format for LoggingTime_Fmt
+    fn format_logging_time() -> String {
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+
+    /// Derive units from range value for T3000 points
+    fn derive_units_from_range(range: i32) -> String {
+        match range {
+            0 => "Unused".to_string(),
+            1 => "°C".to_string(),          // Temperature Celsius
+            2 => "°F".to_string(),          // Temperature Fahrenheit
+            3 => "K".to_string(),           // Temperature Kelvin
+            4 => "%".to_string(),           // Percent
+            5 => "V".to_string(),           // Voltage
+            6 => "mV".to_string(),          // Millivolt
+            7 => "A".to_string(),           // Ampere
+            8 => "mA".to_string(),          // Milliampere
+            9 => "Ω".to_string(),           // Ohm
+            10 => "kΩ".to_string(),         // Kiloohm
+            11 => "Pa".to_string(),         // Pascal
+            12 => "kPa".to_string(),        // Kilopascal
+            13 => "bar".to_string(),        // Bar
+            14 => "psi".to_string(),        // PSI
+            15 => "inH2O".to_string(),      // Inches water
+            16 => "mmH2O".to_string(),      // Millimeters water
+            17 => "m/s".to_string(),        // Meters per second
+            18 => "ft/min".to_string(),     // Feet per minute
+            19 => "cfm".to_string(),        // Cubic feet per minute
+            20 => "l/s".to_string(),        // Liters per second
+            21 => "l/min".to_string(),      // Liters per minute
+            22 => "l/h".to_string(),        // Liters per hour
+            23 => "m³/h".to_string(),       // Cubic meters per hour
+            24 => "gal/min".to_string(),    // Gallons per minute
+            25 => "gal/h".to_string(),      // Gallons per hour
+            26 => "W".to_string(),          // Watt
+            27 => "kW".to_string(),         // Kilowatt
+            28 => "BTU/h".to_string(),      // BTU per hour
+            29 => "kBTU/h".to_string(),     // Kilo BTU per hour
+            30 => "ton".to_string(),        // Ton refrigeration
+            31 => "ppm".to_string(),        // Parts per million
+            32 => "ppb".to_string(),        // Parts per billion
+            33 => "rpm".to_string(),        // Revolutions per minute
+            34 => "Hz".to_string(),         // Hertz
+            35 => "lux".to_string(),        // Lux
+            36 => "ft-c".to_string(),       // Foot candle
+            37 => "pH".to_string(),         // pH
+            38 => "g/kg".to_string(),       // Grams per kilogram
+            39 => "RH%".to_string(),        // Relative humidity percent
+            40 => "h".to_string(),          // Hours
+            41 => "min".to_string(),        // Minutes
+            42 => "s".to_string(),          // Seconds
+            43 => "ON/OFF".to_string(),     // Digital on/off
+            44 => "OPEN/CLOSE".to_string(), // Digital open/close
+            45 => "START/STOP".to_string(), // Digital start/stop
+            _ => "Unknown".to_string(),     // Unknown range
+        }
+    }
+
     /// INSERT trend log entries (ALWAYS INSERT for historical data)
     async fn insert_trend_logs(txn: &DatabaseTransaction, serial_number: i32, device_data: &DeviceWithPoints) -> Result<(), AppError> {
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -805,12 +863,19 @@ impl T3000MainService {
         }
 
         for (input_index, point) in device_data.input_points.iter().enumerate() {
+            let units = Self::derive_units_from_range(point.range);
             let trend_model = trendlog_data::ActiveModel {
-                trendlog_input_id: Set(point.index as i32),
-                time_stamp: Set(timestamp.clone()),
-                f_value: Set(Some(point.value.to_string())),
-                status: Set(Some(point.status.to_string())),
-                quality: Set(Some("Good".to_string())),
+                serial_number: Set(serial_number),
+                panel_id: Set(device_data.device_info.panel_id),
+                point_id: Set(point.id.clone().unwrap_or_else(|| format!("IN{}", point.index))), // Use string ID from JSON like "IN1", fallback to "IN{index}"
+                point_index: Set(point.index as i32), // Use numeric index from JSON
+                point_type: Set("INPUT".to_string()),
+                logging_time: Set(device_data.device_info.input_logging_time.clone()),
+                logging_time_fmt: Set(Self::format_logging_time()),
+                value: Set(point.value.to_string()),
+                range_field: Set(Some(point.range.to_string())),
+                digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                units: Set(Some(units)),
             };
 
             sync_logger.info(&format!("📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -832,12 +897,19 @@ impl T3000MainService {
         }
 
         for (output_index, point) in device_data.output_points.iter().enumerate() {
+            let units = Self::derive_units_from_range(point.range);
             let trend_model = trendlog_data::ActiveModel {
-                trendlog_input_id: Set(point.index as i32),
-                time_stamp: Set(timestamp.clone()),
-                f_value: Set(Some(point.value.to_string())),
-                status: Set(Some(point.status.to_string())),
-                quality: Set(Some("Good".to_string())),
+                serial_number: Set(serial_number),
+                panel_id: Set(device_data.device_info.panel_id),
+                point_id: Set(point.id.clone().unwrap_or_else(|| format!("OUT{}", point.index))), // Use string ID from JSON like "OUT1", fallback to "OUT{index}"
+                point_index: Set(point.index as i32), // Use numeric index from JSON
+                point_type: Set("OUTPUT".to_string()),
+                logging_time: Set(device_data.device_info.output_logging_time.clone()),
+                logging_time_fmt: Set(Self::format_logging_time()),
+                value: Set(point.value.to_string()),
+                range_field: Set(Some(point.range.to_string())),
+                digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                units: Set(Some(units)),
             };
 
             sync_logger.info(&format!("📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -859,12 +931,19 @@ impl T3000MainService {
         }
 
         for (variable_index, point) in device_data.variable_points.iter().enumerate() {
+            let units = Self::derive_units_from_range(point.range);
             let trend_model = trendlog_data::ActiveModel {
-                trendlog_input_id: Set(point.index as i32),
-                time_stamp: Set(timestamp.clone()),
-                f_value: Set(Some(point.value.to_string())),
-                status: Set(Some(point.status.to_string())),
-                quality: Set(Some("Good".to_string())),
+                serial_number: Set(serial_number),
+                panel_id: Set(device_data.device_info.panel_id),
+                point_id: Set(point.id.clone().unwrap_or_else(|| format!("VAR{}", point.index))), // Use string ID from JSON like "VAR1", fallback to "VAR{index}"
+                point_index: Set(point.index as i32), // Use numeric index from JSON
+                point_type: Set("VARIABLE".to_string()),
+                logging_time: Set(device_data.device_info.variable_logging_time.clone()),
+                logging_time_fmt: Set(Self::format_logging_time()),
+                value: Set(point.value.to_string()),
+                range_field: Set(Some(point.range.to_string())),
+                digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+                units: Set(Some(units)),
             };
 
             sync_logger.info(&format!("📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -1221,8 +1300,8 @@ impl T3000MainService {
 
             for (device_index, device_json) in data_array.iter().enumerate() {
 
-                // Log raw device JSON for debugging
-                let device_json_str = serde_json::to_string_pretty(device_json).unwrap_or_else(|_| "Invalid JSON".to_string());
+                // Log raw device JSON for debugging (compact single-line format)
+                let device_json_str = serde_json::to_string(device_json).unwrap_or_else(|_| "Invalid JSON".to_string());
                 sync_logger.info(&format!("📋 Raw Device {} JSON: {}", device_index + 1, device_json_str));
 
                 // Extract device information from each device object
@@ -1657,15 +1736,25 @@ impl T3000MainService {
     #[allow(dead_code)]
     async fn insert_trend_log_static(
         txn: &DatabaseTransaction,
-        _serial_number: i32, // Not used in current trendlog_data structure
+        serial_number: i32,
+        panel_id: i32,
         point: &PointData,
+        point_type: &str,
+        logging_time: &str,
     ) -> Result<usize, AppError> {
+        let units = Self::derive_units_from_range(point.range);
         let trendlog_model = trendlog_data::ActiveModel {
-            trendlog_input_id: Set(point.index as i32), // Use point index as reference
-            time_stamp: Set(point.timestamp.clone()),
-            f_value: Set(Some(point.value.to_string())),
-            status: Set(Some(point.status.to_string())),
-            quality: Set(Some("Good".to_string())), // Default quality
+            serial_number: Set(serial_number),
+            panel_id: Set(panel_id),
+            point_id: Set(point.id.clone().unwrap_or_else(|| format!("{}{}", point_type, point.index))), // Use string ID from JSON or generate fallback
+            point_index: Set(point.index as i32), // Use numeric index from JSON
+            point_type: Set(point_type.to_string()),
+            logging_time: Set(logging_time.to_string()),
+            logging_time_fmt: Set(Self::format_logging_time()),
+            value: Set(point.value.to_string()),
+            range_field: Set(Some(point.range.to_string())),
+            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+            units: Set(Some(units)),
         };
 
         trendlog_data::Entity::insert(trendlog_model)
