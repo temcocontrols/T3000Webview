@@ -1,7 +1,7 @@
 // T3000 Device Service - Aligned with pure T3000 structure
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use crate::entity::t3_device::{devices, input_points, output_points};
+use crate::entity::t3_device::{devices, input_points, output_points, variable_points};
 use crate::error::AppError;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,6 +51,26 @@ pub struct CreateDeviceRequest {
     pub description: Option<String>,               // T3000: Description
     #[serde(rename = "Status")]
     pub status: Option<String>,                    // T3000: Status
+
+    // NEW NETWORK CONFIGURATION FIELDS (matching latest entity)
+    #[serde(rename = "IP_Address")]
+    pub ip_address: Option<String>,                // T3000: IP_Address
+    #[serde(rename = "Port")]
+    pub port: Option<i32>,                         // T3000: Port
+    #[serde(rename = "BACnet_MSTP_MAC_ID")]
+    pub bacnet_mstp_mac_id: Option<i32>,           // T3000: BACnet_MSTP_MAC_ID
+    #[serde(rename = "Modbus_Address")]
+    pub modbus_address: Option<u8>,                // T3000: Modbus_Address (u8 type)
+    #[serde(rename = "PC_IP_Address")]
+    pub pc_ip_address: Option<String>,             // T3000: PC_IP_Address
+    #[serde(rename = "Modbus_Port")]
+    pub modbus_port: Option<u16>,                  // T3000: Modbus_Port (u16 type)
+    #[serde(rename = "BACnet_IP_Port")]
+    pub bacnet_ip_port: Option<u16>,               // T3000: BACnet_IP_Port (u16 type)
+    #[serde(rename = "Show_Label_Name")]
+    pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
+    #[serde(rename = "Connection_Type")]
+    pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +95,26 @@ pub struct UpdateDeviceRequest {
     pub description: Option<String>,                // T3000: Description
     #[serde(rename = "Status")]
     pub status: Option<String>,                     // T3000: Status
+
+    // NEW NETWORK CONFIGURATION FIELDS (matching latest entity)
+    #[serde(rename = "IP_Address")]
+    pub ip_address: Option<String>,                // T3000: IP_Address
+    #[serde(rename = "Port")]
+    pub port: Option<i32>,                         // T3000: Port
+    #[serde(rename = "BACnet_MSTP_MAC_ID")]
+    pub bacnet_mstp_mac_id: Option<i32>,           // T3000: BACnet_MSTP_MAC_ID
+    #[serde(rename = "Modbus_Address")]
+    pub modbus_address: Option<u8>,                // T3000: Modbus_Address (u8 type)
+    #[serde(rename = "PC_IP_Address")]
+    pub pc_ip_address: Option<String>,             // T3000: PC_IP_Address
+    #[serde(rename = "Modbus_Port")]
+    pub modbus_port: Option<u16>,                  // T3000: Modbus_Port (u16 type)
+    #[serde(rename = "BACnet_IP_Port")]
+    pub bacnet_ip_port: Option<u16>,               // T3000: BACnet_IP_Port (u16 type)
+    #[serde(rename = "Show_Label_Name")]
+    pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
+    #[serde(rename = "Connection_Type")]
+    pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
 }
 
 pub struct T3DeviceService;
@@ -101,12 +141,18 @@ impl T3DeviceService {
                 .await
                 .unwrap_or(0);
 
+            let variable_count = variable_points::Entity::find()
+                .filter(variable_points::Column::SerialNumber.eq(serial_id))
+                .count(db)
+                .await
+                .unwrap_or(0);
+
             devices_with_stats.push(DeviceWithStats {
                 device,
                 input_count,
                 output_count,
-                variable_count: 0, // Will be updated when variable_points entity is used
-                total_points: input_count + output_count,
+                variable_count,
+                total_points: input_count + output_count + variable_count,
             });
         }
 
@@ -133,9 +179,16 @@ impl T3DeviceService {
             None => return Ok(None),
         };
 
-        // For now return empty points until point entities are properly updated
-        let input_points = vec![];
-        let output_points = vec![];
+        // Fetch actual input and output points for this device
+        let input_points = input_points::Entity::find()
+            .filter(input_points::Column::SerialNumber.eq(device_id))
+            .all(db)
+            .await?;
+
+        let output_points = output_points::Entity::find()
+            .filter(output_points::Column::SerialNumber.eq(device_id))
+            .all(db)
+            .await?;
 
         let point_count = input_points.len() + output_points.len();
 
@@ -174,16 +227,16 @@ impl T3DeviceService {
             range_field: Set(None),
             calibration: Set(None),
 
-            // Initialize new network configuration fields as None/defaults
-            ip_address: Set(None),
-            port: Set(None),
-            bacnet_mstp_mac_id: Set(None),
-            modbus_address: Set(None),
-            pc_ip_address: Set(None),
-            modbus_port: Set(None),
-            bacnet_ip_port: Set(None),
-            show_label_name: Set(None),
-            connection_type: Set(None),
+            // Network configuration fields from latest entity
+            ip_address: Set(device_data.ip_address),
+            port: Set(device_data.port),
+            bacnet_mstp_mac_id: Set(device_data.bacnet_mstp_mac_id),
+            modbus_address: Set(device_data.modbus_address),
+            pc_ip_address: Set(device_data.pc_ip_address),
+            modbus_port: Set(device_data.modbus_port),
+            bacnet_ip_port: Set(device_data.bacnet_ip_port),
+            show_label_name: Set(device_data.show_label_name),
+            connection_type: Set(device_data.connection_type),
         };
 
         let device = new_device.insert(db).await?;
@@ -203,32 +256,61 @@ impl T3DeviceService {
 
         let mut device: devices::ActiveModel = device.into();
 
-    if let Some(panel_id) = device_data.panel_id {
+        if let Some(panel_id) = device_data.panel_id {
             device.panel_id = Set(Some(panel_id));
         }
-    if let Some(main_building_name) = device_data.main_building_name {
+        if let Some(main_building_name) = device_data.main_building_name {
             device.main_building_name = Set(Some(main_building_name));
         }
-    if let Some(building_name) = device_data.building_name {
+        if let Some(building_name) = device_data.building_name {
             device.building_name = Set(Some(building_name));
         }
-    if let Some(floor_name) = device_data.floor_name {
+        if let Some(floor_name) = device_data.floor_name {
             device.floor_name = Set(Some(floor_name));
         }
-    if let Some(room_name) = device_data.room_name {
+        if let Some(room_name) = device_data.room_name {
             device.room_name = Set(Some(room_name));
         }
-    if let Some(product_name) = device_data.product_name {
+        if let Some(product_name) = device_data.product_name {
             device.product_name = Set(Some(product_name));
         }
-    if let Some(address) = device_data.address {
+        if let Some(address) = device_data.address {
             device.address = Set(Some(address));
         }
-    if let Some(bautrate) = device_data.bautrate {
+        if let Some(bautrate) = device_data.bautrate {
             device.bautrate = Set(Some(bautrate));
         }
-    if let Some(description) = device_data.description {
+        if let Some(description) = device_data.description {
             device.description = Set(Some(description));
+        }
+
+        // Update network configuration fields
+        if let Some(ip_address) = device_data.ip_address {
+            device.ip_address = Set(Some(ip_address));
+        }
+        if let Some(port) = device_data.port {
+            device.port = Set(Some(port));
+        }
+        if let Some(bacnet_mstp_mac_id) = device_data.bacnet_mstp_mac_id {
+            device.bacnet_mstp_mac_id = Set(Some(bacnet_mstp_mac_id));
+        }
+        if let Some(modbus_address) = device_data.modbus_address {
+            device.modbus_address = Set(Some(modbus_address));
+        }
+        if let Some(pc_ip_address) = device_data.pc_ip_address {
+            device.pc_ip_address = Set(Some(pc_ip_address));
+        }
+        if let Some(modbus_port) = device_data.modbus_port {
+            device.modbus_port = Set(Some(modbus_port));
+        }
+        if let Some(bacnet_ip_port) = device_data.bacnet_ip_port {
+            device.bacnet_ip_port = Set(Some(bacnet_ip_port));
+        }
+        if let Some(show_label_name) = device_data.show_label_name {
+            device.show_label_name = Set(Some(show_label_name));
+        }
+        if let Some(connection_type) = device_data.connection_type {
+            device.connection_type = Set(Some(connection_type));
         }
 
         let updated_device = device.update(db).await?;

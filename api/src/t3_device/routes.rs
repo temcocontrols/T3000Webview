@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
+use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
 // use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
@@ -444,6 +445,116 @@ async fn get_device_with_points(
     }
 }
 
+// T3000 Points Management Endpoints
+
+async fn get_all_points_by_device(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::get_all_points_by_device(&*db, device_id).await {
+        Ok(points_data) => Ok(Json(json!({
+            "data": points_data,
+            "message": "All points retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_input_points(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::get_input_points_by_device(&*db, device_id).await {
+        Ok(points) => Ok(Json(json!({
+            "input_points": points,
+            "count": points.len(),
+            "message": "Input points retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_output_points(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::get_output_points_by_device(&*db, device_id).await {
+        Ok(points) => Ok(Json(json!({
+            "output_points": points,
+            "count": points.len(),
+            "message": "Output points retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_variable_points(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::get_variable_points_by_device(&*db, device_id).await {
+        Ok(points) => Ok(Json(json!({
+            "variable_points": points,
+            "count": points.len(),
+            "message": "Variable points retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_input_point(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateInputPointRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::create_input_point(&*db, payload).await {
+        Ok(point) => Ok(Json(json!({
+            "input_point": point,
+            "message": "Input point created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_output_point(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateOutputPointRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::create_output_point(&*db, payload).await {
+        Ok(point) => Ok(Json(json!({
+            "output_point": point,
+            "message": "Output point created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_variable_point(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateVariablePointRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3PointsService::create_variable_point(&*db, payload).await {
+        Ok(point) => Ok(Json(json!({
+            "variable_point": point,
+            "message": "Variable point created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
 /* TEMPORARILY DISABLED - DATA COLLECTION ENDPOINTS (Need field name updates)
 // Data Collection endpoints
 async fn start_data_collection(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
@@ -649,6 +760,15 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))
         .route("/devices/:id/points", get(get_device_with_points))
+        .route("/devices/:id/all-points", get(get_all_points_by_device))
+
+        // T3000 Points endpoints
+        .route("/devices/:id/input-points", get(get_input_points))
+        .route("/devices/:id/output-points", get(get_output_points))
+        .route("/devices/:id/variable-points", get(get_variable_points))
+        .route("/input-points", post(create_input_point))
+        .route("/output-points", post(create_output_point))
+        .route("/variable-points", post(create_variable_point))
 
         // Data Collection endpoints - TEMPORARILY DISABLED
         // .route("/collection/start", post(start_data_collection))
