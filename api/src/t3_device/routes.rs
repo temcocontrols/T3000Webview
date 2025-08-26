@@ -12,6 +12,9 @@ use serde_json::{json, Value};
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
+use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
+use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
+use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
 // use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
@@ -555,6 +558,380 @@ async fn create_variable_point(
     }
 }
 
+// T3000 Schedules Management Endpoints
+
+async fn get_schedules_by_device(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ScheduleService::get_schedules_by_device(&*db, device_id).await {
+        Ok(schedules) => Ok(Json(json!({
+            "schedules": schedules,
+            "count": schedules.len(),
+            "device_id": device_id,
+            "message": "Schedules retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_schedule_stats(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ScheduleService::get_schedule_stats_by_device(&*db, device_id).await {
+        Ok(stats) => Ok(Json(json!({
+            "data": stats,
+            "message": "Schedule statistics retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_all_schedules(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ScheduleService::get_all_schedules_with_device_info(&*db).await {
+        Ok(schedules) => Ok(Json(json!({
+            "schedules": schedules,
+            "count": schedules.len(),
+            "message": "All schedules retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_schedule(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateScheduleRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ScheduleService::create_schedule(&*db, payload).await {
+        Ok(schedule) => Ok(Json(json!({
+            "schedule": schedule,
+            "message": "Schedule created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_schedule_by_id(
+    State(state): State<T3AppState>,
+    Path((device_id, schedule_id)): Path<(i32, String)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Since schedules don't have a separate get by ID method, let's get all and filter
+    match T3ScheduleService::get_schedules_by_device(&*db, device_id).await {
+        Ok(schedules) => {
+            let schedule = schedules.into_iter()
+                .find(|s| s.schedule_id.as_ref() == Some(&schedule_id));
+
+            match schedule {
+                Some(schedule) => Ok(Json(json!({
+                    "schedule": schedule,
+                    "message": "Schedule found"
+                }))),
+                None => Err(StatusCode::NOT_FOUND)
+            }
+        },
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn update_schedule(
+    State(state): State<T3AppState>,
+    Path((device_id, schedule_id)): Path<(i32, String)>,
+    Json(payload): Json<UpdateScheduleRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ScheduleService::update_schedule(&*db, device_id, schedule_id, payload).await {
+        Ok(Some(schedule)) => Ok(Json(json!({
+            "schedule": schedule,
+            "message": "Schedule updated successfully"
+        }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn delete_schedule(
+    State(state): State<T3AppState>,
+    Path((device_id, schedule_id)): Path<(i32, String)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ScheduleService::delete_schedule(&*db, device_id, schedule_id).await {
+        Ok(true) => Ok(Json(json!({
+            "message": "Schedule deleted successfully"
+        }))),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+// T3000 Programs Management Endpoints
+
+async fn get_programs_by_device(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::get_programs_by_device(&*db, device_id).await {
+        Ok(programs) => Ok(Json(json!({
+            "programs": programs,
+            "count": programs.len(),
+            "device_id": device_id,
+            "message": "Programs retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_program_stats(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::get_program_stats_by_device(&*db, device_id).await {
+        Ok(stats) => Ok(Json(json!({
+            "data": stats,
+            "message": "Program statistics retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_programs_with_status(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::get_programs_with_status(&*db, device_id).await {
+        Ok(programs_status) => Ok(Json(json!({
+            "data": programs_status,
+            "message": "Programs with status retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_all_programs(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::get_all_programs_with_device_info(&*db).await {
+        Ok(programs) => Ok(Json(json!({
+            "programs": programs,
+            "count": programs.len(),
+            "message": "All programs retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_program(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateProgramRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::create_program(&*db, payload).await {
+        Ok(program) => Ok(Json(json!({
+            "program": program,
+            "message": "Program created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_program_by_id(
+    State(state): State<T3AppState>,
+    Path((device_id, program_id)): Path<(i32, String)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::get_program_by_id(&*db, device_id, program_id).await {
+        Ok(Some(program)) => Ok(Json(json!({
+            "program": program,
+            "message": "Program found"
+        }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn update_program(
+    State(state): State<T3AppState>,
+    Path((device_id, program_id)): Path<(i32, String)>,
+    Json(payload): Json<UpdateProgramRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::update_program(&*db, device_id, program_id, payload).await {
+        Ok(Some(program)) => Ok(Json(json!({
+            "program": program,
+            "message": "Program updated successfully"
+        }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn delete_program(
+    State(state): State<T3AppState>,
+    Path((device_id, program_id)): Path<(i32, String)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3ProgramService::delete_program(&*db, device_id, program_id).await {
+        Ok(true) => Ok(Json(json!({
+            "message": "Program deleted successfully"
+        }))),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+// T3000 Trendlogs Management Endpoints
+
+async fn get_trendlogs_by_device(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::get_trendlogs_by_device(&*db, device_id).await {
+        Ok(trendlogs) => Ok(Json(json!({
+            "trendlogs": trendlogs,
+            "count": trendlogs.len(),
+            "device_id": device_id,
+            "message": "Trendlogs retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_trendlog_stats(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::get_trendlog_stats_by_device(&*db, device_id).await {
+        Ok(stats) => Ok(Json(json!({
+            "data": stats,
+            "message": "Trendlog statistics retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_trendlogs_with_config(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::get_trendlogs_with_config(&*db, device_id).await {
+        Ok(trendlogs_config) => Ok(Json(json!({
+            "data": trendlogs_config,
+            "message": "Trendlogs with configuration retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_all_trendlogs(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::get_all_trendlogs_with_device_info(&*db).await {
+        Ok(trendlogs) => Ok(Json(json!({
+            "trendlogs": trendlogs,
+            "count": trendlogs.len(),
+            "message": "All trendlogs retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn create_trendlog(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateTrendlogRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::create_trendlog(&*db, payload).await {
+        Ok(trendlog) => Ok(Json(json!({
+            "trendlog": trendlog,
+            "message": "Trendlog created successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn get_trendlog_by_index(
+    State(state): State<T3AppState>,
+    Path((device_id, trendlog_index)): Path<(i32, String)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::get_trendlog_by_index(&*db, device_id, trendlog_index).await {
+        Ok(Some(trendlog)) => Ok(Json(json!({
+            "trendlog": trendlog,
+            "message": "Trendlog found"
+        }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn update_trendlog(
+    State(state): State<T3AppState>,
+    Path((device_id, trendlog_index)): Path<(i32, String)>,
+    Json(payload): Json<UpdateTrendlogRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::update_trendlog(&*db, device_id, trendlog_index, payload).await {
+        Ok(Some(trendlog)) => Ok(Json(json!({
+            "trendlog": trendlog,
+            "message": "Trendlog updated successfully"
+        }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+async fn delete_trendlog(
+    State(state): State<T3AppState>,
+    Path((device_id, trendlog_index)): Path<(i32, String)>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogService::delete_trendlog(&*db, device_id, trendlog_index).await {
+        Ok(true) => Ok(Json(json!({
+            "message": "Trendlog deleted successfully"
+        }))),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
 /* TEMPORARILY DISABLED - DATA COLLECTION ENDPOINTS (Need field name updates)
 // Data Collection endpoints
 async fn start_data_collection(State(state): State<T3AppState>) -> Result<Json<Value>, StatusCode> {
@@ -769,6 +1146,35 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/input-points", post(create_input_point))
         .route("/output-points", post(create_output_point))
         .route("/variable-points", post(create_variable_point))
+
+        // T3000 Schedules endpoints
+        .route("/devices/:id/schedules", get(get_schedules_by_device))
+        .route("/devices/:id/schedules/stats", get(get_schedule_stats))
+        .route("/schedules", get(get_all_schedules))
+        .route("/schedules", post(create_schedule))
+        .route("/devices/:device_id/schedules/:schedule_id", get(get_schedule_by_id))
+        .route("/devices/:device_id/schedules/:schedule_id", put(update_schedule))
+        .route("/devices/:device_id/schedules/:schedule_id", delete(delete_schedule))
+
+        // T3000 Programs endpoints
+        .route("/devices/:id/programs", get(get_programs_by_device))
+        .route("/devices/:id/programs/stats", get(get_program_stats))
+        .route("/devices/:id/programs/status", get(get_programs_with_status))
+        .route("/programs", get(get_all_programs))
+        .route("/programs", post(create_program))
+        .route("/devices/:device_id/programs/:program_id", get(get_program_by_id))
+        .route("/devices/:device_id/programs/:program_id", put(update_program))
+        .route("/devices/:device_id/programs/:program_id", delete(delete_program))
+
+        // T3000 Trendlogs endpoints
+        .route("/devices/:id/trendlogs", get(get_trendlogs_by_device))
+        .route("/devices/:id/trendlogs/stats", get(get_trendlog_stats))
+        .route("/devices/:id/trendlogs/config", get(get_trendlogs_with_config))
+        .route("/trendlogs", get(get_all_trendlogs))
+        .route("/trendlogs", post(create_trendlog))
+        .route("/devices/:device_id/trendlogs/:trendlog_index", get(get_trendlog_by_index))
+        .route("/devices/:device_id/trendlogs/:trendlog_index", put(update_trendlog))
+        .route("/devices/:device_id/trendlogs/:trendlog_index", delete(delete_trendlog))
 
         // Data Collection endpoints - TEMPORARILY DISABLED
         // .route("/collection/start", post(start_data_collection))
