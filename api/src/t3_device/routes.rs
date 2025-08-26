@@ -1114,7 +1114,7 @@ END DISABLED DATA COLLECTION SECTION */
 
 pub fn t3_device_routes() -> Router<T3AppState> {
     Router::new()
-        // Generic table endpoints for T3Devicedb.vue interface
+        // Generic table endpoints for T3DeviceDb.vue interface
         .route("/:table", get(get_table_records))           // GET /api/t3_device/{table}
         .route("/:table/count", get(get_table_count))       // GET /api/t3_device/{table}/count
         .route("/:table", post(create_table_record))        // POST /api/t3_device/{table}
@@ -1186,7 +1186,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
 }
 
 // ============================================================================
-// GENERIC TABLE HANDLERS - For T3Devicedb.vue interface
+// GENERIC TABLE HANDLERS - For T3DeviceDb.vue interface
 // ============================================================================
 
 /// Get all records from a specific table
