@@ -9,8 +9,10 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
-    #[sea_orm(column_name = "Input_index")]
-    pub input_index: Option<String>,            // C++ Input_index
+    #[sea_orm(column_name = "InputId")]
+    pub input_id: Option<String>,               // C++ InputId (JSON "id" field, e.g., "IN1", "IN2")
+    #[sea_orm(column_name = "Input_Index")]
+    pub input_index: Option<String>,            // C++ Input_Index (renamed from Input_index)
     #[sea_orm(column_name = "Panel")]
     pub panel: Option<String>,                  // C++ Panel
     #[sea_orm(column_name = "Full_Label")]
@@ -20,7 +22,7 @@ pub struct Model {
     #[sea_orm(column_name = "fValue")]
     pub f_value: Option<String>,                // C++ fValue (stored as string in T3000.db)
     #[sea_orm(column_name = "Units")]
-    pub units: Option<String>,                  // C++ Units
+    pub units: Option<String>,                  // C++ Units (derived from Range_Field)
     #[sea_orm(column_name = "Range_Field")]
     pub range_field: Option<String>,            // C++ Range
     #[sea_orm(column_name = "Calibration")]

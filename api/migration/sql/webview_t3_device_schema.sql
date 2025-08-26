@@ -50,12 +50,13 @@ CREATE TABLE IF NOT EXISTS DEVICES (
 -- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS INPUTS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
-    Input_index TEXT,                          -- C++ Input_index
+    InputId TEXT,                              -- C++ InputId (JSON "id" field, e.g., "IN1", "IN2")
+    Input_Index TEXT,                          -- C++ Input_Index (renamed from Input_index)
     Panel TEXT,                                -- C++ Panel
     Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string in T3000.db)
-    Units TEXT,                                -- C++ Units
+    Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range
     Calibration TEXT,                          -- C++ Calibration
     Sign TEXT,                                 -- C++ Sign (calibration_sign)
@@ -70,12 +71,13 @@ CREATE TABLE IF NOT EXISTS INPUTS (
 -- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS OUTPUTS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
-    Output_index TEXT,                         -- C++ Output_index
+    OutputId TEXT,                             -- C++ OutputId (JSON "id" field, e.g., "OUT1", "OUT2")
+    Output_Index TEXT,                         -- C++ Output_Index (renamed from Output_index)
     Panel TEXT,                                -- C++ Panel
     Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string)
-    Units TEXT,                                -- C++ Units
+    Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range
     Calibration TEXT,                          -- C++ Calibration
     Sign TEXT,                                 -- C++ Sign
@@ -90,12 +92,13 @@ CREATE TABLE IF NOT EXISTS OUTPUTS (
 -- Updated to match runtime schema and support real JSON data
 CREATE TABLE IF NOT EXISTS VARIABLES (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
-    Variable_index TEXT,                       -- C++ Variable_index
+    VariableId TEXT,                           -- C++ VariableId (JSON "id" field, e.g., "VAR1", "VAR128")
+    Variable_Index TEXT,                       -- C++ Variable_Index (renamed from Variable_index)
     Panel TEXT,                                -- C++ Panel
     Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string)
-    Units TEXT,                                -- C++ Units
+    Units TEXT,                                -- C++ Units (derived from Range_Field: °C, °F, %, ppm, etc.)
     Range_Field TEXT,                          -- C++ Range_Field (from "range" JSON field)
     Calibration TEXT,                          -- C++ Calibration
     Sign TEXT,                                 -- C++ Sign
