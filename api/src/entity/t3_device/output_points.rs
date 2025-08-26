@@ -32,7 +32,7 @@ pub struct Model {
     #[sea_orm(column_name = "Status")]
     pub status: Option<String>,                 // C++ Status
     #[sea_orm(column_name = "Digital_Analog")]
-    pub signal_type: Option<String>,            // From JSON field "digital_analog" (formerly Signal_Type)
+    pub digital_analog: Option<String>,         // From JSON field "digital_analog" (0=digital, 1=analog)
     #[sea_orm(column_name = "Label")]
     pub label: Option<String>,                  // C++ Label (label[9])
     #[sea_orm(column_name = "Type_Field")]

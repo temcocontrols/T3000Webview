@@ -259,6 +259,7 @@ pub struct PointData {
     pub sign: i32,
     pub status: i32,
     pub timestamp: String,        // ISO 8601 timestamp from T3000
+    pub label: Option<String>,    // Direct label field from JSON
 
     // INPUT specific fields
     pub decom: Option<String>,
@@ -1371,9 +1372,7 @@ impl T3000MainService {
         let point_data = PointData {
             index: point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
             panel: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-            full_label: point_json.get("description").and_then(|v| v.as_str()).unwrap_or_else(|| {
-                point_json.get("label").and_then(|v| v.as_str()).unwrap_or("")
-            }).to_string(),
+            full_label: point_json.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             auto_manual: point_json.get("auto_manual").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             value: point_json.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0),
             pid: point_json.get("pid").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
@@ -1383,6 +1382,7 @@ impl T3000MainService {
             sign: point_json.get("calibration_sign").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             status: point_json.get("decom").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             timestamp: chrono::Utc::now().to_rfc3339(),
+            label: point_json.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()),
 
             // INPUT specific fields
             decom: point_json.get("decom").and_then(|v| v.as_str()).map(|s| s.to_string()),
@@ -1437,9 +1437,9 @@ impl T3000MainService {
             calibration: Set(Some(point.calibration.to_string())),
             sign: Set(Some(point.sign.to_string())),
             status: Set(Some(point.status.to_string())),
-            filter_field: Set(point.filter.map(|f| f.to_string())),
-            signal_type: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
+            filter_field: Set(point.control.map(|c| c.to_string())),
+            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+            label: Set(point.label.clone()),
             type_field: Set(point.command.clone()),
         };
 
@@ -1519,8 +1519,8 @@ impl T3000MainService {
             sign: Set(Some(point.sign.to_string())),
             status: Set(Some(point.status.to_string())),
             filter_field: Set(point.control.map(|c| c.to_string())),
-            signal_type: Set(point.digital_analog.map(|da| da.to_string())),
-            label: Set(point.description.as_ref().or(Some(&point.full_label)).map(|s| s.clone())),
+            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+            label: Set(point.label.clone()),
             type_field: Set(point.command.clone()),
         };
 
@@ -1591,12 +1591,18 @@ impl T3000MainService {
             serial_number: Set(serial_number),
             variable_index: Set(Some(point.index.to_string())),
             panel: Set(Some(point.pid.to_string())),
-            full_label: Set(Some(
-                point.description.as_ref().unwrap_or(&point.full_label).clone()
-            )),
+            full_label: Set(Some(point.full_label.clone())),
             auto_manual: Set(Some(point.auto_manual.to_string())),
             f_value: Set(Some(point.value.to_string())),
             units: Set(Some(point.units.clone())),
+            range_field: Set(Some(point.range.to_string())),
+            calibration: Set(Some(point.calibration.to_string())),
+            sign: Set(Some(point.sign.to_string())),
+            filter_field: Set(point.control.map(|c| c.to_string())),
+            status: Set(Some(point.status.to_string())),
+            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
+            label: Set(point.label.clone()),
+            type_field: Set(point.command.clone()),
         };
 
         match existing {

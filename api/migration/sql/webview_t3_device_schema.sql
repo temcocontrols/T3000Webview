@@ -59,11 +59,11 @@ CREATE TABLE IF NOT EXISTS INPUTS (
     Range_Field TEXT,                          -- C++ Range
     Calibration TEXT,                          -- C++ Calibration
     Sign TEXT,                                 -- C++ Sign (calibration_sign)
-    Filter_Field TEXT,                         -- C++ Filter (from "filter" JSON field)
+    Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (formerly Signal_Type)
-    Label TEXT,                                -- C++ Label (from "description" or "label" JSON field)
-    Type_Field TEXT                            -- C++ Type (from "command" JSON field)
+    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Label TEXT,                                -- C++ Label (from "label" JSON field directly)
+    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
 );
 
 -- OUTPUTS table (Original T3000 output points table)
@@ -81,13 +81,13 @@ CREATE TABLE IF NOT EXISTS OUTPUTS (
     Sign TEXT,                                 -- C++ Sign
     Filter_Field TEXT,                         -- C++ Filter (from "control" JSON field)
     Status TEXT,                               -- C++ Status (from "decom" JSON field)
-    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (formerly Signal_Type)
-    Label TEXT,                                -- C++ Label (from "description" or "label" JSON field)
-    Type_Field TEXT                            -- C++ Type (from "command" JSON field)
+    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Label TEXT,                                -- C++ Label (from "label" JSON field directly)
+    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
 );
 
 -- VARIABLES table (Original T3000 variable points table)
--- Optimized schema - removed unused BinaryArray field
+-- Updated to match runtime schema and support real JSON data
 CREATE TABLE IF NOT EXISTS VARIABLES (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Variable_index TEXT,                       -- C++ Variable_index
@@ -95,7 +95,15 @@ CREATE TABLE IF NOT EXISTS VARIABLES (
     Full_Label TEXT,                           -- C++ Full_Label (description from JSON)
     Auto_Manual TEXT,                          -- C++ Auto_Manual
     fValue TEXT,                               -- C++ fValue (stored as string)
-    Units TEXT                                 -- C++ Units
+    Units TEXT,                                -- C++ Units
+    Range_Field TEXT,                          -- C++ Range_Field (from "range" JSON field)
+    Calibration TEXT,                          -- C++ Calibration
+    Sign TEXT,                                 -- C++ Sign
+    Filter_Field TEXT,                         -- C++ Filter_Field (from "control" JSON field)
+    Status TEXT,                               -- C++ Status
+    Digital_Analog TEXT,                       -- From JSON field "digital_analog" (0=digital, 1=analog)
+    Label TEXT,                                -- C++ Label (from "label" JSON field directly)
+    Type_Field TEXT                            -- C++ Type_Field (from "command" JSON field)
 );
 
 -- PROGRAMS table (Original T3000 programs table)

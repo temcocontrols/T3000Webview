@@ -381,7 +381,7 @@ impl T3000FFIService {
                 sign: Set(Some(Self::c_str_to_string(&input.Sign))),
                 filter_field: Set(Some(Self::c_str_to_string(&input.Filter_Field))),
                 status: Set(Some(Self::c_str_to_string(&input.Status))),
-                signal_type: Set(Some(Self::c_str_to_string(&input.Digital_Analog))),
+                digital_analog: Set(Some(Self::c_str_to_string(&input.Digital_Analog))),
                 label: Set(Some(Self::c_str_to_string(&input.Label))),
                 type_field: Set(Some(Self::c_str_to_string(&input.Type_Field))),
                 ..Default::default()
@@ -409,7 +409,7 @@ impl T3000FFIService {
                 sign: Set(Some(Self::c_str_to_string(&output.Sign))),
                 filter_field: Set(Some(Self::c_str_to_string(&output.Filter_Field))),
                 status: Set(Some(Self::c_str_to_string(&output.Status))),
-                signal_type: Set(Some(Self::c_str_to_string(&output.Digital_Analog))),
+                digital_analog: Set(Some(Self::c_str_to_string(&output.Digital_Analog))),
                 label: Set(Some(Self::c_str_to_string(&output.Label))),
                 type_field: Set(Some(Self::c_str_to_string(&output.Type_Field))),
                 ..Default::default()

@@ -21,6 +21,22 @@ pub struct Model {
     pub f_value: Option<String>,                // C++ fValue (stored as string)
     #[sea_orm(column_name = "Units")]
     pub units: Option<String>,                  // C++ Units
+    #[sea_orm(column_name = "Range_Field")]
+    pub range_field: Option<String>,            // C++ Range_Field
+    #[sea_orm(column_name = "Calibration")]
+    pub calibration: Option<String>,            // C++ Calibration
+    #[sea_orm(column_name = "Sign")]
+    pub sign: Option<String>,                   // C++ Sign
+    #[sea_orm(column_name = "Filter_Field")]
+    pub filter_field: Option<String>,           // C++ Filter_Field
+    #[sea_orm(column_name = "Status")]
+    pub status: Option<String>,                 // C++ Status
+    #[sea_orm(column_name = "Digital_Analog")]
+    pub digital_analog: Option<String>,         // From JSON field "digital_analog"
+    #[sea_orm(column_name = "Label")]
+    pub label: Option<String>,                  // C++ Label
+    #[sea_orm(column_name = "Type_Field")]
+    pub type_field: Option<String>,             // C++ Type_Field
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
