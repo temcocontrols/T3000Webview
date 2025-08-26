@@ -41,7 +41,7 @@ fn get_valid_table_names() -> &'static [&'static str] {
     &[
         "DEVICES", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
         "SCHEDULES", "PID_TABLE", "HOLIDAYS", "GRAPHICS", "ALARMS",
-        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA", "TRENDLOG_BUFFER"
+        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA"
     ]
 }
 
@@ -105,7 +105,6 @@ async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<Dat
             "TRENDLOGS" => "Trend log configurations",
             "TRENDLOG_INPUTS" => "Trend log input point configurations",
             "TRENDLOG_DATA" => "Historical trend data",
-            "TRENDLOG_BUFFER" => "Trend data buffer",
             _ => "Database table",
         };
 

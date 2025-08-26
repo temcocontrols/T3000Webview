@@ -281,19 +281,6 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
     Units TEXT                                 -- C++ Units (derived from range: C, degree, h/kh, etc.)
 );
 
--- TRENDLOG_BUFFER table (Circular buffer management - T3000 style naming)
--- Manages circular buffer for efficient data storage
--- Optimized schema - removed unused BinaryArray field
-CREATE TABLE IF NOT EXISTS TRENDLOG_BUFFER (
-    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
-    Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID
-    Buffer_Index INTEGER,                      -- C++ Buffer_Index (circular buffer position)
-    Buffer_Size INTEGER,                       -- C++ Buffer_Size
-    Current_Position INTEGER,                  -- C++ Current_Position
-    Buffer_Full INTEGER,                       -- C++ Buffer_Full (0/1 flag)
-    Status TEXT                                -- C++ Status
-);
-
 -- =================================================================
 -- INDEXES for performance (T3000 style naming)
 -- =================================================================
@@ -318,7 +305,6 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_POINT_INDEX ON TRENDLOG_DATA(PointI
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TYPE ON TRENDLOG_DATA(PointType);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME ON TRENDLOG_DATA(LoggingTime);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME_FMT ON TRENDLOG_DATA(LoggingTime_Fmt);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_BUFFER_SERIAL ON TRENDLOG_BUFFER(SerialNumber);
 
 -- =================================================================
 -- SAMPLE DATA (for testing - T3000 style data)

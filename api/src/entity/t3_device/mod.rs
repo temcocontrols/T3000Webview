@@ -9,7 +9,6 @@ pub mod output_points;
 pub mod pid_controllers;
 pub mod programs;
 pub mod schedules;
-pub mod trendlog_buffer;
 pub mod trendlog_data;
 pub mod trendlog_inputs;
 pub mod trendlogs;
