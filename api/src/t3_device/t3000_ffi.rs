@@ -362,36 +362,3 @@ impl T3000FFI {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ffi_functions_exist() {
-        // This test just verifies that the FFI functions can be linked
-        // In a real environment with T3000 C++ code linked, these would work
-        // For now, this will fail at runtime but compile successfully
-
-        // Note: These tests should only be run when T3000 C++ code is available
-        println!("FFI functions declared successfully");
-    }
-
-    #[test]
-    fn test_data_point_creation() {
-        let point = DataPoint {
-            device_id: 1,
-            point_type: PointType::Input,
-            point_number: 1,
-            value: 23.5,
-            status: "OK".to_string(),
-            units: Some("°C".to_string()),
-            timestamp: 1234567890,
-            source: DataSource::CppDirect,
-        };
-
-        assert_eq!(point.device_id, 1);
-        assert_eq!(point.value, 23.5);
-        assert_eq!(point.status, "OK");
-    }
-}

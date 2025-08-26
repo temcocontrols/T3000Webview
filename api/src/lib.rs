@@ -13,6 +13,10 @@ pub mod server;
 pub mod user;
 pub mod utils;
 
+// T3000 device modules
+pub mod t3_device;
+pub mod t3_socket;
+
 #[repr(C)]
 pub enum RustError {
     Ok = 0,
@@ -72,9 +76,6 @@ pub extern "C" fn run_server() -> RustError {
 // ============================================================================
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
-
-pub mod t3_device;
-pub mod t3_socket;
 
 use t3_device::t3000_ffi_sync_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
 

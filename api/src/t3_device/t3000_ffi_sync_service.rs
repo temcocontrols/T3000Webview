@@ -791,54 +791,43 @@ impl T3000MainService {
     }
 
     /// Derive units from range value for T3000 points
+    /// Updated to match T3000 frontend variable range mappings from T3Data.ts
     fn derive_units_from_range(range: i32) -> String {
         match range {
             0 => "Unused".to_string(),
-            1 => "°C".to_string(),          // Temperature Celsius
-            2 => "°F".to_string(),          // Temperature Fahrenheit
-            3 => "K".to_string(),           // Temperature Kelvin
-            4 => "%".to_string(),           // Percent
-            5 => "V".to_string(),           // Voltage
-            6 => "mV".to_string(),          // Millivolt
-            7 => "A".to_string(),           // Ampere
-            8 => "mA".to_string(),          // Milliampere
-            9 => "Ω".to_string(),           // Ohm
-            10 => "kΩ".to_string(),         // Kiloohm
-            11 => "Pa".to_string(),         // Pascal
-            12 => "kPa".to_string(),        // Kilopascal
-            13 => "bar".to_string(),        // Bar
-            14 => "psi".to_string(),        // PSI
-            15 => "inH2O".to_string(),      // Inches water
-            16 => "mmH2O".to_string(),      // Millimeters water
-            17 => "m/s".to_string(),        // Meters per second
-            18 => "ft/min".to_string(),     // Feet per minute
-            19 => "cfm".to_string(),        // Cubic feet per minute
-            20 => "l/s".to_string(),        // Liters per second
-            21 => "l/min".to_string(),      // Liters per minute
-            22 => "l/h".to_string(),        // Liters per hour
-            23 => "m³/h".to_string(),       // Cubic meters per hour
-            24 => "gal/min".to_string(),    // Gallons per minute
-            25 => "gal/h".to_string(),      // Gallons per hour
-            26 => "W".to_string(),          // Watt
-            27 => "kW".to_string(),         // Kilowatt
-            28 => "BTU/h".to_string(),      // BTU per hour
-            29 => "kBTU/h".to_string(),     // Kilo BTU per hour
-            30 => "ton".to_string(),        // Ton refrigeration
-            31 => "ppm".to_string(),        // Parts per million
-            32 => "ppb".to_string(),        // Parts per billion
-            33 => "rpm".to_string(),        // Revolutions per minute
-            34 => "Hz".to_string(),         // Hertz
-            35 => "lux".to_string(),        // Lux
-            36 => "ft-c".to_string(),       // Foot candle
-            37 => "pH".to_string(),         // pH
-            38 => "g/kg".to_string(),       // Grams per kilogram
-            39 => "RH%".to_string(),        // Relative humidity percent
-            40 => "h".to_string(),          // Hours
-            41 => "min".to_string(),        // Minutes
-            42 => "s".to_string(),          // Seconds
-            43 => "ON/OFF".to_string(),     // Digital on/off
-            44 => "OPEN/CLOSE".to_string(), // Digital open/close
-            45 => "START/STOP".to_string(), // Digital start/stop
+            1 => "Deg.C".to_string(),       // Temperature Celsius
+            2 => "Deg.F".to_string(),       // Temperature Fahrenheit
+            3 => "Feet per Min".to_string(), // Feet per minute (FPM)
+            4 => "Pascals".to_string(),     // Pascals (corrected from %)
+            5 => "KPascals".to_string(),    // Kilopascals
+            6 => "lbs/sqr.inch".to_string(), // PSI
+            7 => "inches of WC".to_string(), // Inches water column
+            8 => "Watts".to_string(),       // Watts
+            9 => "KWatts".to_string(),      // Kilowatts
+            10 => "KWH".to_string(),        // Kilowatt hours
+            11 => "Volts".to_string(),      // Volts
+            12 => "KV".to_string(),         // Kilovolts
+            13 => "Amps".to_string(),       // Amperes
+            14 => "ma".to_string(),         // Milliamperes
+            15 => "CFM".to_string(),        // Cubic feet per minute
+            16 => "Seconds".to_string(),    // Seconds
+            17 => "Minutes".to_string(),    // Minutes
+            18 => "Hours".to_string(),      // Hours
+            19 => "Days".to_string(),       // Days
+            20 => "Time".to_string(),       // Time
+            21 => "Ohms".to_string(),       // Ohms
+            22 => "%".to_string(),          // Percent
+            23 => "%RH".to_string(),        // Relative humidity percent
+            24 => "p/min".to_string(),      // Pulses per minute (corrected from gal/min)
+            25 => "Counts".to_string(),     // Counts
+            26 => "%Open".to_string(),      // Percent open
+            27 => "Kg".to_string(),         // Kilograms
+            28 => "L/Hour".to_string(),     // Liters per hour
+            29 => "GPH".to_string(),        // Gallons per hour
+            30 => "GAL".to_string(),        // Gallons
+            31 => "CF".to_string(),         // Cubic feet
+            32 => "BTU".to_string(),        // BTU
+            33 => "CMH".to_string(),        // Cubic meters per hour
             _ => "Unknown".to_string(),     // Unknown range
         }
     }
