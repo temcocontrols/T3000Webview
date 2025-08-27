@@ -73,7 +73,7 @@ class WebSocketClient {
   }
 
   private onOpen(event: Event) {
-    // LogUtil.Debug('= ws: connection opened:', event);
+    LogUtil.Debug('= ws: connection opened:', event);
 
     this.retries = 0;
     // this.startPing();
@@ -88,7 +88,7 @@ class WebSocketClient {
   }
 
   private onMessage(event: MessageEvent) {
-    // LogUtil.Debug('= Ws message received:', event.data);
+    LogUtil.Debug('= Ws message received:', event.data);
     try {
       this.processMessage(event.data);
     } catch (error) {
@@ -97,7 +97,7 @@ class WebSocketClient {
   }
 
   private onClose(event: CloseEvent) {
-    // LogUtil.Debug('= ws: connection closed:', event);
+    LogUtil.Debug('= ws: connection closed:', event);
     this.cleanup();
     if (!this.isDestroyed) {
       this.attemptReconnect();
