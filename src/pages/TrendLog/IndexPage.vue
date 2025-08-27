@@ -17,7 +17,7 @@
   2. JSON is URL-encoded and passed as alldata parameter
   3. IndexPage decodes and parses JSON to display trend log data
   4. Falls back to API endpoints if JSON parsing fails
-  5. Falls back to demo data if API endpoints are unavailable
+  5. Shows error state if no valid data source is available (no mock data in production)
 
   API Endpoints Attempted (if JSON parsing fails):
   1. Primary: /api/data/device/{panelid}/trend_logs/{trendlogid}
@@ -53,7 +53,7 @@
           📚 Historical Data (From Database)
         </span>
         <span v-else class="source-badge fallback">
-          🔄 Demo Data
+          ⚠️ No Data Available
         </span>
       </div>
 
@@ -547,38 +547,45 @@ const initializeT3000Data = async () => {
       }
     }
 
+    // PRODUCTION: Mock data fallback commented out - not needed for production
     // If both communication methods failed, create fallback data
+    // if (!dataLoaded) {
+    //   LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, creating minimal T3000_Data structure')
+
+    //   // Create minimal data structure for the TrendLogChart
+    //   const mockEntry = {
+    //     id: `MON${trendlog_id}`,
+    //     label: `TRL${sn}_${panel_id}_${trendlog_id}`,
+    //     description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
+    //     pid: panel_id,
+    //     type: "MON",
+    //     value: 0,
+    //     unit: "",
+    //     status: 1,
+    //     input: [],
+    //     range: [],
+    //     num_inputs: 14,
+    //     an_inputs: 12
+    //   }
+
+    //   // Add to panelsData if not already present
+    //   const existingEntry = T3000_Data.value.panelsData.find(entry =>
+    //     entry.id === mockEntry.id && entry.pid === panel_id
+    //   )
+
+    //   if (!existingEntry) {
+    //     LogUtil.Info('📝 Adding fallback entry to panelsData')
+    //     T3000_Data.value.panelsData.push(mockEntry)
+    //   }
+
+    //   T3000_Data.value.loadingPanel = null
+    //   LogUtil.Info('📝 Created minimal T3000_Data structure for standalone usage')
+    // }
+
+    // Clear loading state if no data was loaded
     if (!dataLoaded) {
-      LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, creating minimal T3000_Data structure')
-
-      // Create minimal data structure for the TrendLogChart
-      const mockEntry = {
-        id: `MON${trendlog_id}`,
-        label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-        description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
-        pid: panel_id,
-        type: "MON",
-        value: 0,
-        unit: "",
-        status: 1,
-        input: [],
-        range: [],
-        num_inputs: 14,
-        an_inputs: 12
-      }
-
-      // Add to panelsData if not already present
-      const existingEntry = T3000_Data.value.panelsData.find(entry =>
-        entry.id === mockEntry.id && entry.pid === panel_id
-      )
-
-      if (!existingEntry) {
-        LogUtil.Info('📝 Adding fallback entry to panelsData')
-        T3000_Data.value.panelsData.push(mockEntry)
-      }
-
       T3000_Data.value.loadingPanel = null
-      LogUtil.Info('📝 Created minimal T3000_Data structure for standalone usage')
+      LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, no data loaded')
     }
 
     LogUtil.Info('✅ T3000_Data initialization completed')
