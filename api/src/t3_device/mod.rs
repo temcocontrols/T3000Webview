@@ -4,6 +4,7 @@ pub mod points_service;         // ✅ NEW - T3000 Points Management Service (in
 pub mod schedules_service;      // ✅ NEW - T3000 Schedules Management Service
 pub mod programs_service;       // ✅ NEW - T3000 Programs Management Service
 pub mod trendlogs_service;      // ✅ NEW - T3000 Trendlogs Management Service
+pub mod trendlog_data_service;  // ✅ NEW - T3000 TrendLog Historical Data Service (TRENDLOG_DATA table)
 pub mod t3000_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sync integration service (collects ALL data)
 pub mod websocket_handler;
 // pub mod database_bridge_service; // ✅ AVAILABLE - T3000 C++ DB → Rust DB bridge (not called by default)

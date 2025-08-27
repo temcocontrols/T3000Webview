@@ -44,6 +44,19 @@
 
     <!-- Chart Content -->
     <div v-else-if="hasScheduleItemData" class="chart-wrapper">
+      <!-- Data Source Indicator -->
+      <div class="data-source-indicator">
+        <span v-if="dataSource === 'json'" class="source-badge realtime">
+          📡 Real-time Data (From C++ Backend)
+        </span>
+        <span v-else-if="dataSource === 'api'" class="source-badge historical">
+          📚 Historical Data (From Database)
+        </span>
+        <span v-else class="source-badge fallback">
+          🔄 Demo Data
+        </span>
+      </div>
+
       <TrendLogChart
         :itemData="scheduleItemData"
         :title="pageTitle"
@@ -71,6 +84,7 @@ import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
+import { useTrendlogDataAPI } from 'src/composables/useTrendlogDataAPI'
 
 // Define component name
 defineOptions({
@@ -81,12 +95,16 @@ defineOptions({
 const route = useRoute()
 const $q = useQuasar()
 
+// API integration for historical data
+const trendlogAPI = useTrendlogDataAPI()
+
 // Page state
 const pageTitle = ref('T3000 Trend Log Analysis')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const trendLogItemData = ref<any>(null)
 const jsonValidationStatus = ref<'pending' | 'valid' | 'invalid' | 'error' | null>(null)
+const dataSource = ref<'json' | 'api' | 'fallback'>('json') // Track data source
 
 // URL Parameters with enhanced JSON handling
 const urlParams = computed(() => ({
@@ -276,8 +294,8 @@ const formatDataFromQueryParams = () => {
   return { chartData, scheduleData }
 }
 
-// Load data based on query parameters
-const loadTrendLogItemData = () => {
+// Load data based on query parameters with API integration
+const loadTrendLogItemData = async () => {
   LogUtil.Debug('Loading trend log data from query parameters...')
   LogUtil.Debug('Current scheduleItemData before update:', scheduleItemData.value)
 
@@ -285,27 +303,97 @@ const loadTrendLogItemData = () => {
     isLoading.value = true
     error.value = null
 
-    const formattedData = formatDataFromQueryParams()
+    const params = getValidatedParameters()
 
-    if (formattedData) {
-      trendLogItemData.value = formattedData.chartData
-      scheduleItemData.value = formattedData.scheduleData
-      pageTitle.value = formattedData.chartData.title
-      LogUtil.Debug('Data formatted from query parameters:', formattedData)
-      LogUtil.Debug('scheduleItemData updated to:', scheduleItemData.value)
+    // Priority 1: Try to load from JSON data (realtime data from C++ backend)
+    if (params.all_data && params.isValid) {
+      LogUtil.Info('📊 Loading data from JSON parameters (realtime)')
+      dataSource.value = 'json'
+
+      const formattedData = formatDataFromQueryParams()
+      if (formattedData) {
+        trendLogItemData.value = formattedData.chartData
+        scheduleItemData.value = formattedData.scheduleData
+        pageTitle.value = formattedData.chartData.title
+        LogUtil.Debug('Data formatted from JSON parameters:', formattedData)
+        LogUtil.Debug('scheduleItemData updated to:', scheduleItemData.value)
+        return
+      }
+    }
+
+    // Priority 2: Try to load from API (historical data)
+    if (params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
+      LogUtil.Info('📚 Loading data from API (historical)')
+      dataSource.value = 'api'
+
+      const historyRequest = {
+        serial_number: params.sn,
+        panel_id: params.panel_id,
+        trendlog_id: params.trendlog_id.toString(),
+        limit: 1000, // Get last 1000 data points
+        point_types: ['INPUT', 'OUTPUT', 'VARIABLE'] // All point types
+      }
+
+      const historyData = await trendlogAPI.getTrendlogHistory(historyRequest)
+
+      if (historyData && historyData.data && historyData.data.length > 0) {
+        // Convert API data to TrendLogChart format
+        const apiScheduleData = {
+          id: historyData.trendlog_id,
+          label: `TRL${params.sn}_${params.panel_id}_${params.trendlog_id}`,
+          description: `Historical Trend Log ${params.trendlog_id} from Panel ${params.panel_id}`,
+          pid: params.panel_id,
+          type: "MON",
+          value: historyData.data[0]?.value || 0,
+          unit: historyData.data[0]?.units || "",
+          status: 1,
+          input: [],
+          range: [],
+          num_inputs: historyData.count,
+          an_inputs: historyData.data.filter(d => d.is_analog).length,
+          // Add the historical data
+          scheduleData: historyData.data.map((point, index) => ({
+            time: point.time,
+            value: point.value,
+            index: index,
+            units: point.units,
+            point_type: point.point_type
+          }))
+        }
+
+        trendLogItemData.value = apiScheduleData
+        scheduleItemData.value = apiScheduleData
+        pageTitle.value = `Historical Trend Log ${params.trendlog_id} - Device ${params.sn}`
+
+        LogUtil.Info('✅ Historical data loaded from API:', {
+          count: historyData.count,
+          trendlog_id: historyData.trendlog_id
+        })
+        return
+      }
+    }
+
+    // Priority 3: Fallback - no valid data available
+    LogUtil.Warn('⚠️ No valid data source available')
+    dataSource.value = 'fallback'
+    trendLogItemData.value = null
+    scheduleItemData.value = null
+    pageTitle.value = 'T3000 Trend Log Analysis'
+
+    if (trendlogAPI.error.value) {
+      error.value = `Failed to load historical data: ${trendlogAPI.error.value}`
+    } else if (!params.isValid) {
+      error.value = 'Missing required parameters: sn, panel_id, and trendlog_id'
     } else {
-      trendLogItemData.value = null
-      scheduleItemData.value = null
-      pageTitle.value = 'T3000 Trend Log Analysis'
-      LogUtil.Debug('No valid parameters provided')
-      LogUtil.Debug('scheduleItemData set to null')
+      error.value = 'No trend log data available'
     }
 
   } catch (err) {
-    console.error('Error formatting data:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to format data'
+    console.error('Error loading trend log data:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to load trend log data'
     trendLogItemData.value = null
     scheduleItemData.value = null
+    dataSource.value = 'fallback'
   } finally {
     isLoading.value = false
   }
@@ -500,11 +588,79 @@ const initializeT3000Data = async () => {
       loadingPanel: T3000_Data.value.loadingPanel
     })
 
+    // Set up realtime data saving for socket data (port 9104)
+    setupRealtimeDataSaving(sn, panel_id)
+
   } catch (error) {
     LogUtil.Error('❌ Error initializing T3000_Data:', error)
     // Ensure loading state is cleared on error
     T3000_Data.value.loadingPanel = null
   }
+}
+
+// Set up realtime data saving for socket port 9104
+const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
+  LogUtil.Info('🔄 Setting up realtime data saving for socket port 9104')
+
+  // Set up a watcher on T3000_Data.panelsData to detect realtime updates
+  watch(
+    () => T3000_Data.value.panelsData,
+    async (newPanelsData, oldPanelsData) => {
+      // Only process if we have valid data and this is a realtime update
+      if (!newPanelsData || newPanelsData.length === 0) return
+
+      try {
+        // Find the panel data for our device
+        const panelData = newPanelsData.find(panel => panel.pid === panelId)
+        if (!panelData) return
+
+        // Check if this is a new update (different from old data)
+        const oldPanelData = oldPanelsData?.find(panel => panel.pid === panelId)
+        if (oldPanelData && JSON.stringify(panelData) === JSON.stringify(oldPanelData)) {
+          return // No change, skip saving
+        }
+
+        LogUtil.Info('💾 Detected realtime data update, saving to database')
+
+        // Convert panel data to database format
+        const dataPoints = []
+
+        // Process the panel data based on its structure
+        if (panelData.input && Array.isArray(panelData.input)) {
+          panelData.input.forEach((point, index) => {
+            if (point && typeof point === 'object' && point.value !== undefined) {
+              dataPoints.push({
+                serial_number: serialNumber,
+                panel_id: panelId,
+                point_id: point.id || `IN${index + 1}`,
+                point_index: index + 1,
+                point_type: 'INPUT',
+                value: point.value.toString(),
+                range_field: point.range?.toString(),
+                digital_analog: point.digital_analog?.toString(),
+                units: point.units
+              })
+            }
+          })
+        }
+
+        // Add similar processing for other point types if available
+        // (output, variable points would be processed similarly)
+
+        if (dataPoints.length > 0) {
+          // Save batch data to database
+          const savedCount = await trendlogAPI.saveRealtimeBatch(dataPoints)
+          LogUtil.Info(`✅ Saved ${savedCount} realtime data points to database`)
+        }
+
+      } catch (error) {
+        LogUtil.Warn('⚠️ Error processing realtime data for database saving:', error)
+      }
+    },
+    { deep: true } // Deep watch to detect changes in nested objects
+  )
+
+  LogUtil.Info('✅ Realtime data saving watcher setup completed')
 }
 
 onMounted(() => {
@@ -523,7 +679,7 @@ onMounted(() => {
   // Initialize T3000_Data with proper WebSocket and WebView2 communication
   initializeT3000Data()
 
-  // Load and format data from query parameters
+  // Load and format data from query parameters (with API integration)
   loadTrendLogItemData()
 })
 </script>
@@ -673,10 +829,50 @@ onMounted(() => {
   transform: translateY(1px);
 }
 
+/* Data Source Indicator */
+.data-source-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+
+.source-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.source-badge.realtime {
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+}
+
+.source-badge.historical {
+  background: linear-gradient(45deg, #2196F3, #1976D2);
+}
+
+.source-badge.fallback {
+  background: linear-gradient(45deg, #FF9800, #F57C00);
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .chart-wrapper {
     padding: 8px;
+  }
+
+  .data-source-indicator {
+    top: 5px;
+    right: 5px;
+  }
+
+  .source-badge {
+    font-size: 11px;
+    padding: 3px 8px;
   }
 }
 

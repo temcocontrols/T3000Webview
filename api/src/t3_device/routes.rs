@@ -15,6 +15,7 @@ use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest,
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
 use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
+use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest};
 // use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
@@ -1176,6 +1177,14 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:device_id/trendlogs/:trendlog_index", put(update_trendlog))
         .route("/devices/:device_id/trendlogs/:trendlog_index", delete(delete_trendlog))
 
+        // T3000 Trendlog Data endpoints (TRENDLOG_DATA table - Historical Data)
+        .route("/devices/:device_id/trendlogs/:trendlog_id/history", post(get_trendlog_history))
+        .route("/devices/:device_id/trendlog-data/stats", get(get_trendlog_data_stats))
+        .route("/devices/:device_id/trendlog-data/recent", get(get_recent_trendlog_data))
+        .route("/trendlog-data/realtime", post(save_realtime_trendlog_data))
+        .route("/trendlog-data/realtime/batch", post(save_realtime_trendlog_batch))
+        .route("/devices/:device_id/trendlog-data/cleanup", delete(cleanup_old_trendlog_data))
+
         // Data Collection endpoints - TEMPORARILY DISABLED
         // .route("/collection/start", post(start_data_collection))
         // .route("/collection/stop", post(stop_data_collection))
@@ -1376,5 +1385,127 @@ async fn delete_table_record(
             eprintln!("Database error: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
+    }
+}
+
+// ============================================================================
+// TRENDLOG DATA HANDLERS - For TrendLog IndexPage.vue historical data integration
+// ============================================================================
+
+/// Get trendlog history data for TrendLogChart component
+async fn get_trendlog_history(
+    State(state): State<T3AppState>,
+    Path((device_id, trendlog_id)): Path<(i32, String)>,
+    Json(mut payload): Json<TrendlogHistoryRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Ensure the payload has the correct device_id and trendlog_id from the URL path
+    payload.serial_number = device_id;
+    payload.trendlog_id = trendlog_id;
+
+    match T3TrendlogDataService::get_trendlog_history(&*db, payload).await {
+        Ok(history_data) => Ok(Json(history_data)),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Get trendlog data statistics
+async fn get_trendlog_data_stats(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    let panel_id = params.get("panel_id")
+        .and_then(|p| p.parse::<i32>().ok())
+        .unwrap_or(1);
+
+    match T3TrendlogDataService::get_data_statistics(&*db, device_id, panel_id).await {
+        Ok(stats) => Ok(Json(stats)),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Get recent trendlog data for realtime display
+async fn get_recent_trendlog_data(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    let panel_id = params.get("panel_id")
+        .and_then(|p| p.parse::<i32>().ok())
+        .unwrap_or(1);
+
+    let limit = params.get("limit")
+        .and_then(|l| l.parse::<u64>().ok());
+
+    let point_types = params.get("point_types")
+        .map(|types| types.split(',').map(|s| s.to_string()).collect::<Vec<String>>());
+
+    match T3TrendlogDataService::get_recent_data(&*db, device_id, panel_id, point_types, limit).await {
+        Ok(recent_data) => Ok(Json(json!({
+            "data": recent_data,
+            "count": recent_data.len(),
+            "message": "Recent trendlog data retrieved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Save realtime trendlog data from socket port 9104
+async fn save_realtime_trendlog_data(
+    State(state): State<T3AppState>,
+    Json(payload): Json<CreateTrendlogDataRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogDataService::save_realtime_data(&*db, payload).await {
+        Ok(saved_data) => Ok(Json(json!({
+            "data": saved_data,
+            "message": "Realtime trendlog data saved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Save realtime trendlog data batch from socket port 9104
+async fn save_realtime_trendlog_batch(
+    State(state): State<T3AppState>,
+    Json(payload): Json<Vec<CreateTrendlogDataRequest>>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3TrendlogDataService::save_realtime_batch(&*db, payload).await {
+        Ok(rows_affected) => Ok(Json(json!({
+            "rows_affected": rows_affected,
+            "message": "Realtime trendlog batch data saved successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Cleanup old trendlog data
+async fn cleanup_old_trendlog_data(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    let days_to_keep = params.get("days")
+        .and_then(|d| d.parse::<i64>().ok())
+        .unwrap_or(30); // Default keep 30 days
+
+    match T3TrendlogDataService::cleanup_old_data(&*db, device_id, days_to_keep).await {
+        Ok(rows_deleted) => Ok(Json(json!({
+            "rows_deleted": rows_deleted,
+            "days_kept": days_to_keep,
+            "message": "Old trendlog data cleaned up successfully"
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
