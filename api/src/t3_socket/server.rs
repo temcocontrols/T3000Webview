@@ -11,23 +11,28 @@ use uuid::Uuid;
 
 use super::types::*;
 use crate::utils::log_message;
+use crate::logger::{write_structured_log_with_level, LogLevel};
 // use crate::t3_device::trend_collector::TrendDataCollector; // Temporarily disabled
+
+/// Helper function to log WebSocket messages to both console and structured log file
+fn log_socket_message(message: &str, level: LogLevel) {
+    // Log to console for immediate debugging
+    log_message(message, false);
+
+    // Log to structured file with T3_Webview_Socket_MMDD_HHHH.txt pattern
+    let _ = write_structured_log_with_level("T3_Webview_Socket", message, level);
+}
 
 /// Start the WebSocket service on port 9104
 pub async fn start_websocket_service() -> Result<(), Box<dyn Error>> {
-    // Log to structured log for headless service
-    use crate::logger::{write_structured_log_with_level, LogLevel};
-    let start_msg = "Initializing WebSocket Service on port 9104";
-    let _ = write_structured_log_with_level("T3_Webview_Socket", &start_msg, LogLevel::Info);
+    log_socket_message("🚀 Initializing WebSocket Service on port 9104", LogLevel::Info);
 
     let clients = crate::t3_socket::create_clients();
 
     // Start the WebSocket server (blocking)
     start_websocket_server_blocking(clients).await;
 
-    // Log success to structured log
-    let success_msg = "WebSocket Service started successfully on port 9104";
-    let _ = write_structured_log_with_level("T3_Webview_Socket", &success_msg, LogLevel::Info);
+    log_socket_message("✅ WebSocket Service started successfully on port 9104", LogLevel::Info);
 
     Ok(())
 }
@@ -45,21 +50,16 @@ pub async fn start_websocket_server_blocking(clients: Clients) {
         .await
         .unwrap();
 
-    log_message(
-        &format!(
-            "WebSocket server listening on {:?}",
-            ws_listener.local_addr()
-        ),
-        true,
+    log_socket_message(
+        &format!("🌐 WebSocket server listening on {:?}", ws_listener.local_addr()),
+        LogLevel::Info
     );
 
     loop {
         match ws_listener.accept().await {
             Ok((socket, addr)) => {
-                log_message(&format!(""), true);
-                log_message(&format!(""), true);
-                log_message(&format!("🔗 New client connected: {:?}", addr), true);
-                log_message(&format!("📡 Socket details: {:?}", socket), true);
+                log_socket_message(&format!("🔗 New client connected: {:?}", addr), LogLevel::Info);
+                log_socket_message(&format!("📡 Socket details: {:?}", socket), LogLevel::Info);
 
                 let config = WebSocketConfig {
                     max_message_size: Some(MAX_MESSAGE_SIZE),
@@ -70,12 +70,12 @@ pub async fn start_websocket_server_blocking(clients: Clients) {
                 let clients = clients.clone();
                 tokio::spawn(async move {
                     if let Err(e) = handle_websocket(socket, clients, config.clone()).await {
-                        log_message(&format!("❌ WebSocket error: {:?}", e), true);
+                        log_socket_message(&format!("❌ WebSocket error: {:?}", e), LogLevel::Error);
                     }
                 });
             }
             Err(e) => {
-                log_message(&format!("❌ Failed to accept connection: {:?}", e), true);
+                log_socket_message(&format!("❌ Failed to accept connection: {:?}", e), LogLevel::Error);
             }
         }
     }
@@ -87,27 +87,25 @@ async fn handle_websocket(
     clients: Clients,
     config: WebSocketConfig,
 ) -> Result<(), Box<dyn Error>> {
-    log_message(&format!("🚀 Starting WebSocket handler"), true);
-    log_message(&format!("📊 Stream: {:?}", stream), true);
-    log_message(&format!(""), true);
+    let peer_addr = stream.peer_addr()?;
+    log_socket_message(&format!("🚀 Starting WebSocket handler for {}", peer_addr), LogLevel::Info);
 
     let ws_stream = match accept_hdr_async_with_config(
         stream,
         |_req: &Request, response: Response| {
-            log_message(&format!("📥 Received connection request: {:#?}", _req), true);
-            log_message(&format!("📤 Responding with: {:#?}", response), true);
+            log_socket_message("📥 Received connection request", LogLevel::Info);
             Ok(response)
         },
         Some(config),
     )
     .await
     {
-        Ok(ws) => ws,
+        Ok(ws) => {
+            log_socket_message(&format!("✅ WebSocket handshake completed for {}", peer_addr), LogLevel::Info);
+            ws
+        },
         Err(e) => {
-            log_message(
-                &format!("Failed to accept websocket connection: {:?}", e),
-                true,
-            );
+            log_socket_message(&format!("❌ Failed to accept websocket connection from {}: {:?}", peer_addr, e), LogLevel::Error);
             return Err(Box::new(e));
         }
     };
@@ -116,21 +114,22 @@ async fn handle_websocket(
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     // Spawn task to handle outgoing messages
+    let peer_addr_clone = peer_addr.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            log_message(&format!("📤 Sending message to client: {:?}", msg), true);
+            log_socket_message(&format!("📤 Sending message to client {}: {:?}", peer_addr_clone, msg), LogLevel::Info);
             if let Err(e) = write.send(msg).await {
-                log_message(&format!("❌ Error sending message to client: {:?}", e), true);
+                log_socket_message(&format!("❌ Error sending message to client {}: {:?}", peer_addr_clone, e), LogLevel::Error);
                 break;
             } else {
-                log_message(&format!("✅ Message sent successfully"), true);
+                log_socket_message(&format!("✅ Message sent successfully to {}", peer_addr_clone), LogLevel::Info);
             }
         }
-        log_message(&format!("📤 Outgoing message handler stopped"), true);
+        log_socket_message(&format!("📤 Outgoing message handler stopped for {}", peer_addr_clone), LogLevel::Info);
     });
 
     // Handle incoming messages
-    log_message(&format!("👂 Starting to listen for incoming messages..."), true);
+    log_socket_message(&format!("👂 Starting to listen for incoming messages from {}...", peer_addr), LogLevel::Info);
     while let Some(msg) = read.next().await {
         let msg = msg?;
 
@@ -138,22 +137,21 @@ async fn handle_websocket(
         let info_msg = msg.clone();
         let frame_size = info_msg.into_data().len();
 
-        log_message(&format!("📊 Received frame - Size: {} bytes", frame_size), true);
-        log_message(&format!("📥 Raw message: {:?}", msg), true);
+        log_socket_message(&format!("📊 Received frame from {} - Size: {} bytes", peer_addr, frame_size), LogLevel::Info);
 
         if msg.is_text() || msg.is_binary() {
             let msg_text = msg.to_text()?;
-            log_message(&format!("📝 Message text content: {}", msg_text), true);
+            log_socket_message(&format!("📝 Message text content from {}: {}", peer_addr, msg_text), LogLevel::Info);
 
             let json_msg: serde_json::Value = match serde_json::from_str(msg_text) {
                 Ok(json) => {
-                    log_message(&format!("✅ Successfully parsed JSON: {:#}", json), true);
+                    log_socket_message(&format!("✅ Successfully parsed JSON from {}", peer_addr), LogLevel::Info);
                     json
                 },
                 Err(e) => {
-                    log_message(
-                        &format!("❌ Message with incorrect JSON format: {} - Error: {:?}", msg_text, e),
-                        true,
+                    log_socket_message(
+                        &format!("❌ Message with incorrect JSON format from {}: {} - Error: {:?}", peer_addr, msg_text, e),
+                        LogLevel::Warn,
                     );
                     continue;
                 }
@@ -161,33 +159,32 @@ async fn handle_websocket(
 
             // Handle message structure: {"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"..."}}
             if let Some(message) = json_msg.get("message") {
-                log_message(&format!("🔧 Processing structured message with header"), true);
-                log_message(&format!("📋 Message payload: {:#}", message), true);
+                log_socket_message(&format!("🔧 Processing structured message with header from {}", peer_addr), LogLevel::Info);
 
                 // NON-INVASIVE: Intercept data for trend collection (preserves existing functionality)
-                intercept_trend_data(&json_msg).await;
+                intercept_trend_data(&json_msg, &peer_addr).await;
 
                 if let Some(action) = message.get("action").and_then(|a| a.as_i64()) {
-                    log_message(&format!("⚡ Processing action: {}", action), true);
+                    log_socket_message(&format!("⚡ Processing action {} from {}", action, peer_addr), LogLevel::Info);
 
                     if action == ACTION_BIND_CLIENT {
-                        log_message(&format!("🔗 Binding client..."), true);
+                        log_socket_message(&format!("🔗 Binding client from {}...", peer_addr), LogLevel::Info);
                         bind_clients(message, &clients, &tx).await?;
-                        log_message(&format!("✅ Client bound successfully"), true);
+                        log_socket_message(&format!("✅ Client from {} bound successfully", peer_addr), LogLevel::Info);
 
                         sleep(Duration::from_secs(1)).await;
-                        log_message(&format!("📢 Notifying web clients..."), true);
+                        log_socket_message(&format!("📢 Notifying web clients about {} connection...", peer_addr), LogLevel::Info);
                         if let Err(e) = notify_web_clients(message, &clients).await {
-                            log_message(&format!("❌ Failed to notify web clients: {:?}", e), true);
+                            log_socket_message(&format!("❌ Failed to notify web clients about {}: {:?}", peer_addr, e), LogLevel::Error);
                         } else {
-                            log_message(&format!("✅ Web clients notified successfully"), true);
+                            log_socket_message(&format!("✅ Web clients notified about {} successfully", peer_addr), LogLevel::Info);
                         }
                     } else {
-                        log_message(&format!("📡 Forwarding message to data client..."), true);
+                        log_socket_message(&format!("📡 Forwarding message from {} to data client...", peer_addr), LogLevel::Info);
                         if let Err(e) = send_message_to_data_client(message, &clients).await {
-                            log_message(&format!("❌ Failed to send message to data client: {:?}", e), true);
+                            log_socket_message(&format!("❌ Failed to send message from {} to data client: {:?}", peer_addr, e), LogLevel::Error);
                         } else {
-                            log_message(&format!("✅ Message forwarded to data client"), true);
+                            log_socket_message(&format!("✅ Message from {} forwarded to data client", peer_addr), LogLevel::Info);
                         }
                     }
                 } else {
@@ -197,7 +194,7 @@ async fn handle_websocket(
                 log_message(&format!("🔧 Processing direct message (no header)"), true);
 
                 // NON-INVASIVE: Intercept data for trend collection (preserves existing functionality)
-                intercept_trend_data(&json_msg).await;
+                intercept_trend_data(&json_msg, &peer_addr).await;
 
                 // Handle direct messages and transfer processed data back to web clients
                 if let Some(action) = json_msg.get("action") {
@@ -424,27 +421,26 @@ async fn notify_web_clients(
 
 /// NON-INVASIVE: Intercept WebSocket messages for trend data collection
 /// This function runs in parallel with existing message handling
-async fn intercept_trend_data(json_msg: &serde_json::Value) {
-    // Enhanced logging for trend data interception
-    log_message(&format!("🔍 Intercepting message for trend data analysis..."), false);
+async fn intercept_trend_data(json_msg: &serde_json::Value, peer_addr: &std::net::SocketAddr) {
+    log_socket_message(&format!("🔍 Intercepting message from {} for trend data analysis...", peer_addr), LogLevel::Info);
 
     let message_size = json_msg.to_string().len();
-    log_message(&format!("📊 Message size: {} bytes", message_size), false);
+    log_socket_message(&format!("📊 Message size from {}: {} bytes", peer_addr, message_size), LogLevel::Info);
 
     // Check for action patterns that might indicate trend data
     if let Some(action) = json_msg.get("action") {
         if let Some(action_str) = action.as_str() {
-            log_message(&format!("🔍 String action detected: {}", action_str), false);
+            log_socket_message(&format!("🔍 String action detected from {}: {}", peer_addr, action_str), LogLevel::Info);
             if action_str.contains("data") || action_str.contains("trend") || action_str.contains("value") ||
                action_str.contains("monitor") || action_str.contains("point") || action_str.contains("input") ||
                action_str.contains("output") || action_str.contains("variable") {
-                log_message(&format!("🎯 Potential trend data action: {}", action_str), true);
+                log_socket_message(&format!("🎯 Potential trend data action from {}: {}", peer_addr, action_str), LogLevel::Info);
             }
         } else if let Some(action_int) = action.as_i64() {
-            log_message(&format!("🔍 Numeric action detected: {}", action_int), false);
+            log_socket_message(&format!("🔍 Numeric action detected from {}: {}", peer_addr, action_int), LogLevel::Info);
             // Log specific action codes that might be related to data
             if action_int > 0 && action_int < 1000 {
-                log_message(&format!("🎯 Potential data action code: {}", action_int), true);
+                log_socket_message(&format!("🎯 Potential data action code from {}: {}", peer_addr, action_int), LogLevel::Info);
             }
         }
     }
@@ -452,57 +448,34 @@ async fn intercept_trend_data(json_msg: &serde_json::Value) {
     // Check for specific trend data field patterns
     let mut data_fields_found = Vec::new();
 
-    if json_msg.get("input").is_some() {
-        data_fields_found.push("input");
-    }
-    if json_msg.get("output").is_some() {
-        data_fields_found.push("output");
-    }
-    if json_msg.get("variable").is_some() {
-        data_fields_found.push("variable");
-    }
-    if json_msg.get("points").is_some() {
-        data_fields_found.push("points");
-    }
-    if json_msg.get("trend").is_some() {
-        data_fields_found.push("trend");
-    }
-    if json_msg.get("monitor").is_some() {
-        data_fields_found.push("monitor");
-    }
-    if json_msg.get("value").is_some() {
-        data_fields_found.push("value");
-    }
-    if json_msg.get("data").is_some() {
-        data_fields_found.push("data");
-    }
+    if json_msg.get("input").is_some() { data_fields_found.push("input"); }
+    if json_msg.get("output").is_some() { data_fields_found.push("output"); }
+    if json_msg.get("variable").is_some() { data_fields_found.push("variable"); }
+    if json_msg.get("points").is_some() { data_fields_found.push("points"); }
+    if json_msg.get("trend").is_some() { data_fields_found.push("trend"); }
+    if json_msg.get("monitor").is_some() { data_fields_found.push("monitor"); }
+    if json_msg.get("value").is_some() { data_fields_found.push("value"); }
+    if json_msg.get("data").is_some() { data_fields_found.push("data"); }
 
     if !data_fields_found.is_empty() {
-        log_message(&format!("🎯 Found potential point data fields: {:?}", data_fields_found), true);
+        log_socket_message(&format!("🎯 Found potential point data fields from {}: {:?}", peer_addr, data_fields_found), LogLevel::Info);
 
-        // Log sample of the data structure for debugging
-        let data_sample = serde_json::json!({
-            "detected_fields": data_fields_found,
-            "message_keys": json_msg.as_object().map(|obj| obj.keys().collect::<Vec<_>>()),
-            "timestamp": chrono::Utc::now().to_rfc3339()
-        });
-        log_message(&format!("📋 Data structure analysis: {}", data_sample), false);
     }
 
     // Check for nested message structures (common in T3000 protocol)
     if let Some(message) = json_msg.get("message") {
-        log_message(&format!("🔍 Found nested message structure"), false);
+        log_socket_message(&format!("🔍 Found nested message structure from {}", peer_addr), LogLevel::Info);
         if let Some(nested_action) = message.get("action") {
-            log_message(&format!("🔍 Nested action: {:?}", nested_action), false);
+            log_socket_message(&format!("🔍 Nested action from {}: {:?}", peer_addr, nested_action), LogLevel::Info);
         }
     }
 
     // Check for client identification and data source info
     if let Some(client_id) = json_msg.get("clientId") {
-        log_message(&format!("👤 Client ID in message: {:?}", client_id), false);
+        log_socket_message(&format!("👤 Client ID in message from {}: {:?}", peer_addr, client_id), LogLevel::Info);
     }
 
     if let Some(from) = json_msg.get("from") {
-        log_message(&format!("📍 Message source: {:?}", from), false);
+        log_socket_message(&format!("📍 Message source from {}: {:?}", peer_addr, from), LogLevel::Info);
     }
 }
