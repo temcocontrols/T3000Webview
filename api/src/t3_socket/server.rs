@@ -133,6 +133,11 @@ async fn handle_websocket(
     while let Some(msg) = read.next().await {
         let msg = msg?;
 
+        // ═══════════════════════════════════════════════════════════════════════════════════════
+        log_socket_message("", LogLevel::Info);
+        log_socket_message("🔄 ═══════════ NEW MESSAGE PROCESSING CYCLE ═══════════", LogLevel::Info);
+        log_socket_message("", LogLevel::Info);
+
         // Log the frame size and message details
         let info_msg = msg.clone();
         let frame_size = info_msg.into_data().len();
@@ -140,6 +145,11 @@ async fn handle_websocket(
         log_socket_message(&format!("📊 Received frame from {} - Size: {} bytes", peer_addr, frame_size), LogLevel::Info);
 
         if msg.is_text() || msg.is_binary() {
+            // ─────────────────────────────────────────────────────────────────────
+            log_socket_message("", LogLevel::Info);
+            log_socket_message("📥 ────────── MESSAGE PARSING PHASE ──────────", LogLevel::Info);
+            log_socket_message("", LogLevel::Info);
+
             let msg_text = msg.to_text()?;
             log_socket_message(&format!("📝 Message text content from {}: {}", peer_addr, msg_text), LogLevel::Info);
 
@@ -159,6 +169,11 @@ async fn handle_websocket(
 
             // Handle message structure: {"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"..."}}
             if let Some(message) = json_msg.get("message") {
+                // ─────────────────────────────────────────────────────────────────────
+                log_socket_message("", LogLevel::Info);
+                log_socket_message("🔧 ────────── STRUCTURED MESSAGE PROCESSING ──────────", LogLevel::Info);
+                log_socket_message("", LogLevel::Info);
+
                 log_socket_message(&format!("🔧 Processing structured message with header from {}", peer_addr), LogLevel::Info);
 
                 // NON-INVASIVE: Intercept data for trend collection (preserves existing functionality)
@@ -168,69 +183,118 @@ async fn handle_websocket(
                     log_socket_message(&format!("⚡ Processing action {} from {}", action, peer_addr), LogLevel::Info);
 
                     if action == ACTION_BIND_CLIENT {
+                        // ═════════════════════════════════════════════════════════════════
+                        log_socket_message("", LogLevel::Info);
+                        log_socket_message("🔗 ═══════ CLIENT BINDING PROCESS ═══════", LogLevel::Info);
+                        log_socket_message("", LogLevel::Info);
+
                         log_socket_message(&format!("🔗 Binding client from {}...", peer_addr), LogLevel::Info);
                         bind_clients(message, &clients, &tx).await?;
                         log_socket_message(&format!("✅ Client from {} bound successfully", peer_addr), LogLevel::Info);
 
                         sleep(Duration::from_secs(1)).await;
+
+                        // ─────────────────────────────────────────────────────────────────
+                        log_socket_message("", LogLevel::Info);
+                        log_socket_message("📢 ─────── WEB CLIENT NOTIFICATION PROCESS ───────", LogLevel::Info);
+                        log_socket_message("", LogLevel::Info);
+
                         log_socket_message(&format!("📢 Notifying web clients about {} connection...", peer_addr), LogLevel::Info);
                         if let Err(e) = notify_web_clients(message, &clients).await {
                             log_socket_message(&format!("❌ Failed to notify web clients about {}: {:?}", peer_addr, e), LogLevel::Error);
                         } else {
                             log_socket_message(&format!("✅ Web clients notified about {} successfully", peer_addr), LogLevel::Info);
                         }
+
+                        // ─────────────────────────────────────────────────────────────────
+                        log_socket_message("", LogLevel::Info);
+                        log_socket_message("🔗 ═════ CLIENT BINDING COMPLETE ═════", LogLevel::Info);
+                        log_socket_message("", LogLevel::Info);
                     } else {
+                        // ═════════════════════════════════════════════════════════════════
+                        log_socket_message("", LogLevel::Info);
+                        log_socket_message("📡 ═══════ MESSAGE FORWARDING PROCESS ═══════", LogLevel::Info);
+                        log_socket_message("", LogLevel::Info);
+
                         log_socket_message(&format!("📡 Forwarding message from {} to data client...", peer_addr), LogLevel::Info);
                         if let Err(e) = send_message_to_data_client(message, &clients).await {
                             log_socket_message(&format!("❌ Failed to send message from {} to data client: {:?}", peer_addr, e), LogLevel::Error);
                         } else {
                             log_socket_message(&format!("✅ Message from {} forwarded to data client", peer_addr), LogLevel::Info);
                         }
+
+                        // ─────────────────────────────────────────────────────────────────
+                        log_socket_message("", LogLevel::Info);
+                        log_socket_message("📡 ═════ MESSAGE FORWARDING COMPLETE ═════", LogLevel::Info);
+                        log_socket_message("", LogLevel::Info);
                     }
                 } else {
-                    log_message(&format!("⚠️ Message has no valid action field"), true);
+                    log_socket_message(&format!("⚠️ Message from {} has no valid action field", peer_addr), LogLevel::Warn);
                 }
             } else {
-                log_message(&format!("🔧 Processing direct message (no header)"), true);
+                // ─────────────────────────────────────────────────────────────────────
+                log_socket_message("", LogLevel::Info);
+                log_socket_message("🔧 ────────── DIRECT MESSAGE PROCESSING ──────────", LogLevel::Info);
+                log_socket_message("", LogLevel::Info);
+
+                log_socket_message(&format!("🔧 Processing direct message (no header) from {}", peer_addr), LogLevel::Info);
 
                 // NON-INVASIVE: Intercept data for trend collection (preserves existing functionality)
                 intercept_trend_data(&json_msg, &peer_addr).await;
 
                 // Handle direct messages and transfer processed data back to web clients
                 if let Some(action) = json_msg.get("action") {
-                    log_message(&format!("📤 Sending processed data back to web client"), true);
+                    // ═════════════════════════════════════════════════════════════════
+                    log_socket_message("", LogLevel::Info);
+                    log_socket_message("📤 ═══════ WEB CLIENT DATA RESPONSE ═══════", LogLevel::Info);
+                    log_socket_message("", LogLevel::Info);
+
+                    log_socket_message(&format!("📤 Sending processed data back to web client from {}", peer_addr), LogLevel::Info);
 
                     if let Some(action_int) = action.as_i64() {
-                        log_message(&format!("⚡ Processing integer action: {}", action_int), true);
+                        log_socket_message(&format!("⚡ Processing integer action {} from {}", action_int, peer_addr), LogLevel::Info);
                         // Handle action as an integer
                         if action_int != ACTION_BIND_CLIENT {
                             if let Err(e) = send_data_to_web_client(msg.clone(), &clients).await {
-                                log_message(&format!("❌ Failed to send data to web client: {:?}", e), true);
+                                log_socket_message(&format!("❌ Failed to send data to web client from {}: {:?}", peer_addr, e), LogLevel::Error);
                             } else {
-                                log_message(&format!("✅ Data sent to web client successfully"), true);
+                                log_socket_message(&format!("✅ Data from {} sent to web client successfully", peer_addr), LogLevel::Info);
                             }
                         }
                     } else if let Some(action_str) = action.as_str() {
-                        log_message(&format!("⚡ Processing string action: {}", action_str), true);
+                        log_socket_message(&format!("⚡ Processing string action '{}' from {}", action_str, peer_addr), LogLevel::Info);
                         // Handle action as a string
                         if let Err(e) = send_data_to_web_client(msg.clone(), &clients).await {
-                            log_message(&format!("❌ Failed to send data to web client: {:?}", e), true);
+                            log_socket_message(&format!("❌ Failed to send data to web client from {}: {:?}", peer_addr, e), LogLevel::Error);
                         } else {
-                            log_message(&format!("✅ Data sent to web client successfully"), true);
+                            log_socket_message(&format!("✅ Data from {} sent to web client successfully", peer_addr), LogLevel::Info);
                         }
                     } else {
-                        log_message("⚠️ Action is neither an integer nor a string", true);
+                        log_socket_message(&format!("⚠️ Action from {} is neither an integer nor a string", peer_addr), LogLevel::Warn);
                     }
+
+                    // ─────────────────────────────────────────────────────────────────
+                    log_socket_message("", LogLevel::Info);
+                    log_socket_message("📤 ═════ WEB CLIENT DATA RESPONSE COMPLETE ═════", LogLevel::Info);
+                    log_socket_message("", LogLevel::Info);
                 } else {
-                    log_message(&format!("⚠️ Direct message has no action field"), true);
+                    log_socket_message(&format!("⚠️ Direct message from {} has no action field", peer_addr), LogLevel::Warn);
                 }
             }
+        } else if msg.is_close() {
+            log_socket_message(&format!("🔚 Client {} sent close message", peer_addr), LogLevel::Info);
+            break;
         } else {
-            log_message(&format!("⚠️ Received non-text/non-binary message: {:?}", msg), true);
+            log_socket_message(&format!("⚠️ Received non-text/non-binary message from {}: {:?}", peer_addr, msg), LogLevel::Warn);
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════════
+        log_socket_message("", LogLevel::Info);
+        log_socket_message("🔄 ═════════ MESSAGE PROCESSING CYCLE COMPLETE ═════════", LogLevel::Info);
+        log_socket_message("", LogLevel::Info);
     }
 
-    log_message(&format!("🔚 WebSocket connection closed - stopped listening for messages"), true);
+    log_socket_message(&format!("🔚 WebSocket connection from {} closed - stopped listening for messages", peer_addr), LogLevel::Info);
     Ok(())
 }
 
@@ -241,13 +305,13 @@ async fn bind_clients(
     tx: &tokio::sync::mpsc::UnboundedSender<Message>,
 ) -> Result<(), Box<dyn Error>> {
     if let Some(client_id_str) = message.get("clientId").and_then(|id| id.as_str()) {
-        log_message(&format!("🔗 Binding client ID: {}", client_id_str), true);
+        log_socket_message(&format!("🔗 Binding client ID: {}", client_id_str), LogLevel::Info);
 
         let mut clients = clients.lock().unwrap();
         let client_count_before = clients.len();
 
         if client_id_str == T3000_DATA_CLIENT_ID {
-            log_message(&format!("🔄 Removing existing T3000 data client"), true);
+            log_socket_message("🔄 Removing existing T3000 data client", LogLevel::Info);
             clients.retain(|(id, _)| {
                 *id != Uuid::parse_str(T3000_DATA_CLIENT_ID).unwrap()
             });
@@ -257,10 +321,10 @@ async fn bind_clients(
         clients.push((client_id, tx.clone()));
 
         let client_count_after = clients.len();
-        log_message(&format!("👥 Client count: {} → {}", client_count_before, client_count_after), true);
-        log_message(&format!("✅ Client {} bound successfully", client_id_str), true);
+        log_socket_message(&format!("👥 Client count: {} → {}", client_count_before, client_count_after), LogLevel::Info);
+        log_socket_message(&format!("✅ Client {} bound successfully", client_id_str), LogLevel::Info);
     } else {
-        log_message(&format!("⚠️ No clientId found in bind message"), true);
+        log_socket_message("⚠️ No clientId found in bind message", LogLevel::Warn);
     }
     Ok(())
 }
@@ -270,7 +334,7 @@ async fn send_message_to_data_client(
     message: &serde_json::Value,
     clients: &Clients,
 ) -> Result<(), Box<dyn Error>> {
-    log_message(&format!("📡 Looking for T3000 data client..."), true);
+    log_socket_message("📡 Looking for T3000 data client...", LogLevel::Info);
 
     let clients = clients.lock().unwrap();
     let client_count = clients.len();
