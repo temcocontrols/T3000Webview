@@ -2553,11 +2553,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 					logContent.Format(_T("Data items processed: %d\n"), device_count);
 					file.WriteString(logContent);
 
-					// Log first 500 chars of JSON for inspection
-					file.WriteString(_T("=== JSON Response Preview (first 500 chars) ===\n"));
-					CString jsonPreview = outmsg.Left(500);
-					file.WriteString(jsonPreview);
-					file.WriteString(_T("\n... [truncated] ...\n"));
+					// Log full JSON response for complete inspection
+					file.WriteString(_T("=== Complete JSON Response ===\n"));
+					file.WriteString(outmsg);
+					file.WriteString(_T("\n"));
 
 					file.WriteString(_T("=== End of Entry ===\r\n"));
 					file.Close();
