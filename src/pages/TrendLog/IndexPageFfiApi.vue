@@ -1,5 +1,5 @@
 <!--
-  TrendLog IndexPage - Standalone page for displaying T3000 trend logs
+  TrendLog IndexPageFfiApi - T3000 FFI API Integration for displaying trend logs
 
   URL Parameters:
   - sn: Serial number of the T3000 device (required for real data)
@@ -8,20 +8,22 @@
   - all_data: Monitor point data in URL-encoded JSON format (from C++ backend)
 
   Example URLs:
-  - Demo mode: http://localhost:3003/#/trend-log
-  - Real data: http://localhost:3003/#/trend-log?sn=123&panel_id=3&trendlog_id=1
-  - With JSON data: http://localhost:3003/#/trend-log?sn=123&panel_id=3&trendlog_id=1&all_data=<URL-encoded-JSON>
+  - Demo mode: http://localhost:3003/#/trend-log-ffi
+  - Real data: http://localhost:3003/#/trend-log-ffi?sn=123&panel_id=3&trendlog_id=1
+  - With JSON data: http://localhost:3003/#/trend-log-ffi?sn=123&panel_id=3&trendlog_id=1&all_data=<URL-encoded-JSON>
 
-  Data Flow:
+  Data Flow (NEW FFI API):
   1. C++ CBacnetMonitor::OnBnClickedBtnMonitorGraphic() generates JSON from Str_monitor_point
-  2. JSON is URL-encoded and passed as alldata parameter
-  3. IndexPage decodes and parses JSON to display trend log data
-  4. Falls back to API endpoints if JSON parsing fails
-  5. Shows error state if no valid data source is available (no mock data in production)
+  2. JSON is URL-encoded and passed as alldata parameter (Priority 1)
+  3. Falls back to NEW FFI API endpoints (/api/t3000/*) with HTTP retry patterns
+  4. Uses same JSON structure as WebSocket for consistency
+  5. Shows error state if no valid data source is available
 
-  API Endpoints Attempted (if JSON parsing fails):
-  1. Primary: /api/data/device/{panelid}/trend_logs/{trendlogid}
-  2. Fallback: /api/modbus-registers/{trendlogid}
+  NEW FFI API Endpoints (with HTTP retry):
+  1. Primary: /api/t3000/devices/{panel_id} - Direct FFI call with retry
+  2. Realtime: /api/t3000/realtime/{panel_id} - Real-time FFI data
+  3. Points: /api/t3000/devices/{panel_id}/points - All device points
+  4. Status: /api/t3000/status - System status check
 -->
 <template>
   <div class="trend-log-page">
@@ -29,7 +31,8 @@
     <div v-if="isLoading" class="loading-wrapper">
       <div class="loading-content">
         <div class="loading-spinner"></div>
-        <p>Loading trend log data...</p>
+        <p>Loading trend log data via FFI API...</p>
+        <p v-if="ffiApi.isLoading.value" class="loading-detail">🔄 FFI API call in progress...</p>
       </div>
     </div>
 
@@ -38,7 +41,13 @@
       <div class="error-content">
         <h3>Error Loading Data</h3>
         <p>{{ error }}</p>
-        <button @click="loadTrendLogItemData" class="retry-button">Retry</button>
+        <div v-if="ffiApi.hasError.value" class="ffi-error-details">
+          <p><strong>FFI API Error:</strong> {{ ffiApi.error.value }}</p>
+          <button @click="ffiApi.clearError(); loadTrendLogItemData()" class="retry-button">
+            Clear Error & Retry
+          </button>
+        </div>
+        <button v-else @click="loadTrendLogItemData" class="retry-button">Retry</button>
       </div>
     </div>
 
@@ -49,12 +58,24 @@
         <span v-if="dataSource === 'json'" class="source-badge realtime">
           📡 Real-time Data (From C++ Backend)
         </span>
-        <span v-else-if="dataSource === 'api'" class="source-badge historical">
-          📚 Historical Data (From Database)
+        <span v-else-if="dataSource === 'ffi-api'" class="source-badge ffi-api">
+          🔧 FFI API Data (HTTP with Retry)
+        </span>
+        <span v-else-if="dataSource === 'ffi-realtime'" class="source-badge ffi-realtime">
+          ⚡ FFI Real-time (HTTP Direct)
         </span>
         <span v-else class="source-badge fallback">
           ⚠️ No Data Available
         </span>
+      </div>
+
+      <!-- System Status (if available) -->
+      <div v-if="systemStatus" class="system-status-indicator">
+        <span :class="['status-badge', systemStatus.status === 'running' ? 'running' : 'offline']">
+          {{ systemStatus.status === 'running' ? '🟢' : '🔴' }}
+          FFI Service: {{ systemStatus.status }}
+        </span>
+        <span class="timestamp">{{ new Date(systemStatus.timestamp).toLocaleTimeString() }}</span>
       </div>
 
       <TrendLogChart
@@ -68,7 +89,11 @@
       <div class="no-data-content">
         <h3>No Data Available</h3>
         <p>Please provide valid URL parameters to display trend log data.</p>
-        <button @click="loadTrendLogItemData" class="retry-button">Load Data</button>
+        <div class="api-actions">
+          <button @click="loadTrendLogItemData" class="retry-button">Load Data</button>
+          <button @click="refreshSystemData" class="refresh-button">🔄 Refresh FFI Data</button>
+          <button @click="checkSystemStatus" class="status-button">📊 Check FFI Status</button>
+        </div>
       </div>
     </div>
   </div>
@@ -78,33 +103,31 @@
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
-import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
-import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
-import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
-import Hvac from 'src/lib/T3000/Hvac/Hvac'
-import { t3000DataManager } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
-import { useTrendlogDataAPI } from 'src/composables/useTrendlogDataAPI'
+import TrendLogChart from '../../components/newui/TrendLogChart.vue'
+import { scheduleItemData } from '../../lib/T3000/Hvac/Data/Constant/RefConstant'
+import LogUtil from '../../lib/T3000/Hvac/Util/LogUtil'
+import { useT3000FfiApi } from '../../lib/T3000/Hvac/Opt/FFI/T3000FfiApi'
 
 // Define component name
 defineOptions({
-  name: 'TrendLogIndexPage'
+  name: 'TrendLogIndexPageFfiApi'
 })
 
 // Route and URL parameters
 const route = useRoute()
 const $q = useQuasar()
 
-// API integration for historical data
-const trendlogAPI = useTrendlogDataAPI()
+// NEW: FFI API integration with HTTP retry patterns
+const ffiApi = useT3000FfiApi()
 
 // Page state
-const pageTitle = ref('T3000 Trend Log Analysis')
+const pageTitle = ref('T3000 Trend Log Analysis - FFI API')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const trendLogItemData = ref<any>(null)
 const jsonValidationStatus = ref<'pending' | 'valid' | 'invalid' | 'error' | null>(null)
-const dataSource = ref<'json' | 'api' | 'fallback'>('json') // Track data source
+const dataSource = ref<'json' | 'ffi-api' | 'ffi-realtime' | 'fallback'>('json')
+const systemStatus = ref<any>(null)
 
 // URL Parameters with enhanced JSON handling
 const urlParams = computed(() => ({
@@ -113,22 +136,6 @@ const urlParams = computed(() => ({
   trendlog_id: route.query.trendlog_id ? Number(route.query.trendlog_id) : null,
   all_data: route.query.all_data as string || null
 }))
-
-// Function to get and validate parameters
-const getValidatedParameters = () => {
-  const params = urlParams.value
-
-  // Check if we have the minimum required parameters (allow trendlog_id=0)
-  const hasRequiredParams = params.sn !== null && params.panel_id !== null && params.trendlog_id !== null
-
-  return {
-    sn: params.sn,
-    panel_id: params.panel_id,
-    trendlog_id: params.trendlog_id,
-    all_data: params.all_data,
-    isValid: hasRequiredParams
-  }
-}
 
 // Computed properties for template
 const hasValidParameters = computed(() => {
@@ -142,87 +149,39 @@ const hasScheduleItemData = computed(() => {
          Object.keys(scheduleItemData.value).length > 0
 })
 
-const isJsonData = computed(() => {
-  const { all_data } = urlParams.value
-  if (!all_data) return false
-
-  // Check if it looks like JSON (starts with { or URL-encoded {)
-  return all_data.startsWith('{') || all_data.includes('%7B')
-})
-
 // Helper function to decode URL-encoded JSON with C++ error detection
 const decodeUrlEncodedJson = (encodedString: string): any | null => {
   try {
     jsonValidationStatus.value = 'pending'
-
-    // Decode URL encoding
     const decoded = decodeURIComponent(encodedString)
     LogUtil.Debug('Decoded JSON string:', decoded)
 
-    // Check for C++ JSON conversion error
-    if (decoded.includes('"error":"JSON conversion failed"') ||
-        decoded === '{"error":"JSON conversion failed"}') {
+    if (decoded.includes('"error":"JSON conversion failed"')) {
       LogUtil.Debug('Detected C++ JSON conversion error')
       jsonValidationStatus.value = 'error'
       return null
     }
 
-    // Parse JSON
     const parsed = JSON.parse(decoded)
-    LogUtil.Debug('Parsed JSON object:', parsed)
-
-    // Additional check for error object
-    if (parsed.error && parsed.error.includes('JSON conversion failed')) {
-      LogUtil.Debug('Detected C++ JSON conversion error in parsed object')
-      jsonValidationStatus.value = 'error'
-      return null
-    }
-
-    // Validate structure
-    const isValid = validateTrendLogJsonStructure(parsed)
-    jsonValidationStatus.value = isValid ? 'valid' : 'invalid'
-
+    jsonValidationStatus.value = 'valid'
     return parsed
   } catch (error) {
     console.error('Failed to decode and parse JSON:', error)
-    console.error('Original encoded string:', encodedString)
     jsonValidationStatus.value = 'invalid'
     return null
   }
 }
 
-// Helper function to validate JSON structure
-const validateTrendLogJsonStructure = (data: any): boolean => {
-  if (!data || typeof data !== 'object') return false
-
-  // If it's a direct t3Entry object (from C++)
-  if (data.command && data.id && Array.isArray(data.input) && Array.isArray(data.range)) {
-    return true
-  }
-
-  // If it's wrapped in a structure with t3Entry
-  if (data.t3Entry &&
-      typeof data.t3Entry === 'object' &&
-      Array.isArray(data.t3Entry.input) &&
-      Array.isArray(data.t3Entry.range)) {
-    return true
-  }
-
-  return false
-}
-
-// Simple data formatter - convert query parameters to TrendLogChart format
+// Format data from query parameters
 const formatDataFromQueryParams = () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
-  // Must have required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
     return null
   }
 
-  let t3EntryData = null
+  let t3EntryData: any = null
 
-  // If all_data is provided, try to parse it
   if (all_data) {
     const decodedData = decodeUrlEncodedJson(all_data)
     if (decodedData && jsonValidationStatus.value === 'valid') {
@@ -230,7 +189,6 @@ const formatDataFromQueryParams = () => {
     }
   }
 
-  // If no all_data or parsing failed, create basic structure
   if (!t3EntryData) {
     t3EntryData = {
       an_inputs: 12,
@@ -250,19 +208,6 @@ const formatDataFromQueryParams = () => {
     }
   }
 
-  // Ensure required fields are set
-  t3EntryData.pid = panel_id
-  t3EntryData.label = t3EntryData.label || `TRL${sn}_${panel_id}_${trendlog_id}`
-  t3EntryData.command = t3EntryData.command || `${panel_id}MON${trendlog_id}`
-  t3EntryData.id = t3EntryData.id || `MON${trendlog_id}`
-
-  // Format for TrendLogChart
-  const chartData = {
-    title: t3EntryData.label || 'T3000 Trend Log Analysis',
-    t3Entry: t3EntryData
-  }
-
-  // Format for scheduleItemData
   const scheduleData = {
     active: false,
     cat: "TrendLog",
@@ -283,30 +228,29 @@ const formatDataFromQueryParams = () => {
     },
     showDimensions: true,
     t3Entry: t3EntryData,
-    title: chartData.title,
+    title: t3EntryData?.label || 'T3000 Trend Log Analysis - FFI API',
     translate: [583, 68],
     type: "Monitor",
     width: 60,
     zindex: 1
   }
 
-  LogUtil.Debug('formatDataFromQueryParams created scheduleData:', scheduleData)
-  return { chartData, scheduleData }
+  return { chartData: { title: scheduleData.title, t3Entry: t3EntryData }, scheduleData }
 }
 
-// Load data based on query parameters with API integration
+// NEW: Load data using FFI API with HTTP retry patterns
 const loadTrendLogItemData = async () => {
-  LogUtil.Debug('Loading trend log data from query parameters...')
-  LogUtil.Debug('Current scheduleItemData before update:', scheduleItemData.value)
+  LogUtil.Debug('Loading trend log data via FFI API...')
 
   try {
     isLoading.value = true
     error.value = null
+    ffiApi.clearError()
 
-    const params = getValidatedParameters()
+    const params = urlParams.value
 
-    // Priority 1: Try to load from JSON data (realtime data from C++ backend)
-    if (params.all_data && params.isValid) {
+    // Priority 1: Try JSON data from URL parameters
+    if (params.all_data && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
       LogUtil.Info('📊 Loading data from JSON parameters (realtime)')
       dataSource.value = 'json'
 
@@ -315,406 +259,172 @@ const loadTrendLogItemData = async () => {
         trendLogItemData.value = formattedData.chartData
         scheduleItemData.value = formattedData.scheduleData
         pageTitle.value = formattedData.chartData.title
-        LogUtil.Debug('Data formatted from JSON parameters:', formattedData)
-        LogUtil.Debug('scheduleItemData updated to:', scheduleItemData.value)
         return
       }
     }
 
-    // Priority 2: Try to load from API (historical data)
-    if (params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
-      LogUtil.Info('📚 Loading data from API (historical)')
-      dataSource.value = 'api'
+    // Priority 2: Try FFI API - Real-time data
+    if (params.panel_id !== null) {
+      LogUtil.Info('🔧 Loading data via FFI API (realtime)')
+      dataSource.value = 'ffi-realtime'
 
-      const historyRequest = {
-        serial_number: params.sn,
-        panel_id: params.panel_id,
-        trendlog_id: params.trendlog_id.toString(),
-        limit: 1000, // Get last 1000 data points
-        point_types: ['INPUT', 'OUTPUT', 'VARIABLE'] // All point types
-      }
+      try {
+        const deviceData = await ffiApi.getDeviceRealtimeData(params.panel_id)
 
-      const historyData = await trendlogAPI.getTrendlogHistory(historyRequest)
+        if (deviceData && deviceData.device_info) {
+          const ffiScheduleData = {
+            id: params.trendlog_id || 0,
+            label: `FFI_${deviceData.device_info.panel_name}_${params.trendlog_id || 0}`,
+            description: `FFI Real-time Trend Log ${params.trendlog_id || 0} from ${deviceData.device_info.panel_name}`,
+            pid: deviceData.device_info.panel_id,
+            type: "MON",
+            value: 0,
+            unit: "",
+            status: 1,
+            input: deviceData.input_points || [],
+            output: deviceData.output_points || [],
+            variable: deviceData.variable_points || [],
+            range: [],
+            num_inputs: (deviceData.input_points?.length || 0) + (deviceData.output_points?.length || 0) + (deviceData.variable_points?.length || 0),
+            an_inputs: deviceData.input_points?.filter(p => p.digital_analog === 0).length || 0,
+            device_info: deviceData.device_info,
+            last_updated: new Date().toISOString()
+          }
 
-      if (historyData && historyData.data && historyData.data.length > 0) {
-        // Convert API data to TrendLogChart format
-        const apiScheduleData = {
-          id: historyData.trendlog_id,
-          label: `TRL${params.sn}_${params.panel_id}_${params.trendlog_id}`,
-          description: `Historical Trend Log ${params.trendlog_id} from Panel ${params.panel_id}`,
-          pid: params.panel_id,
-          type: "MON",
-          value: historyData.data[0]?.value || 0,
-          unit: historyData.data[0]?.units || "",
-          status: 1,
-          input: [],
-          range: [],
-          num_inputs: historyData.count,
-          an_inputs: historyData.data.filter(d => d.is_analog).length,
-          // Add the historical data
-          scheduleData: historyData.data.map((point, index) => ({
-            time: point.time,
-            value: point.value,
-            index: index,
-            units: point.units,
-            point_type: point.point_type
-          }))
+          trendLogItemData.value = ffiScheduleData
+          scheduleItemData.value = ffiScheduleData
+          pageTitle.value = `FFI Real-time: ${deviceData.device_info.panel_name} - TrendLog ${params.trendlog_id || 0}`
+
+          LogUtil.Info('✅ FFI Real-time data loaded')
+          return
         }
-
-        trendLogItemData.value = apiScheduleData
-        scheduleItemData.value = apiScheduleData
-        pageTitle.value = `Historical Trend Log ${params.trendlog_id} - Device ${params.sn}`
-
-        LogUtil.Info('✅ Historical data loaded from API:', {
-          count: historyData.count,
-          trendlog_id: historyData.trendlog_id
-        })
-        return
+      } catch (ffiError) {
+        LogUtil.Warn('⚠️ FFI Real-time API failed, trying standard FFI API...', ffiError)
       }
     }
 
-    // Priority 3: Fallback - no valid data available
+    // Priority 3: Try FFI API - Standard device data
+    if (params.panel_id !== null) {
+      LogUtil.Info('🔧 Loading data via FFI API (standard)')
+      dataSource.value = 'ffi-api'
+
+      try {
+        const deviceData = await ffiApi.getDeviceById(params.panel_id)
+
+        if (deviceData && deviceData.device_info) {
+          const ffiScheduleData = {
+            id: params.trendlog_id || 0,
+            label: `FFI_${deviceData.device_info.panel_name}_${params.trendlog_id || 0}`,
+            description: `FFI Standard Trend Log ${params.trendlog_id || 0} from ${deviceData.device_info.panel_name}`,
+            pid: deviceData.device_info.panel_id,
+            type: "MON",
+            value: 0,
+            unit: "",
+            status: 1,
+            input: deviceData.input_points || [],
+            output: deviceData.output_points || [],
+            variable: deviceData.variable_points || [],
+            range: [],
+            device_info: deviceData.device_info,
+            last_updated: new Date().toISOString()
+          }
+
+          trendLogItemData.value = ffiScheduleData
+          scheduleItemData.value = ffiScheduleData
+          pageTitle.value = `FFI API: ${deviceData.device_info.panel_name} - TrendLog ${params.trendlog_id || 0}`
+
+          LogUtil.Info('✅ FFI API data loaded')
+          return
+        }
+      } catch (ffiError) {
+        LogUtil.Error('❌ FFI API failed:', ffiError)
+      }
+    }
+
+    // Fallback - no valid data available
     LogUtil.Warn('⚠️ No valid data source available')
     dataSource.value = 'fallback'
     trendLogItemData.value = null
-    scheduleItemData.value = null
-    pageTitle.value = 'T3000 Trend Log Analysis'
+    scheduleItemData.value = {}
 
-    if (trendlogAPI.error.value) {
-      error.value = `Failed to load historical data: ${trendlogAPI.error.value}`
-    } else if (!params.isValid) {
-      error.value = 'Missing required parameters: sn, panel_id, and trendlog_id'
+    if (ffiApi.hasError.value) {
+      error.value = `FFI API Error: ${ffiApi.error.value}`
     } else {
-      error.value = 'No trend log data available'
+      error.value = 'No trend log data available via FFI API'
     }
 
   } catch (err) {
-    console.error('Error loading trend log data:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to load trend log data'
+    console.error('Error loading trend log data via FFI API:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to load trend log data via FFI API'
     trendLogItemData.value = null
-    scheduleItemData.value = null
+    scheduleItemData.value = {}
     dataSource.value = 'fallback'
   } finally {
     isLoading.value = false
   }
 }
 
-// Watch for URL parameter changes and refresh scheduleItemData
+// Check system status
+const checkSystemStatus = async () => {
+  try {
+    LogUtil.Info('📊 Checking FFI API system status...')
+    const status = await ffiApi.getSystemStatus()
+    systemStatus.value = status
+    LogUtil.Info('✅ FFI API system status:', status)
+  } catch (err) {
+    LogUtil.Error('❌ Failed to get system status:', err)
+    systemStatus.value = { status: 'error', error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+// Refresh system data
+const refreshSystemData = async () => {
+  try {
+    LogUtil.Info('🔄 Refreshing FFI API system data...')
+    await ffiApi.refreshAllData()
+    LogUtil.Info('✅ FFI API system data refreshed')
+    await loadTrendLogItemData()
+  } catch (err) {
+    LogUtil.Error('❌ Failed to refresh system data:', err)
+  }
+}
+
+// Watch for URL parameter changes
 watch(
   () => route.query,
   () => {
-    LogUtil.Debug('URL parameters changed, refreshing data...')
+    LogUtil.Debug('URL parameters changed, refreshing FFI API data...')
     loadTrendLogItemData()
   },
   { immediate: false }
 )
 
-// Watch scheduleItemData to ensure TrendLogChart receives updates
-watch(
-  () => scheduleItemData.value,
-  (newValue, oldValue) => {
-    LogUtil.Debug('scheduleItemData changed:')
-    LogUtil.Debug('Old value:', oldValue)
-    LogUtil.Debug('New value:', newValue)
+// Initialize on mount
+onMounted(async () => {
+  LogUtil.Info('🚀 TrendLog IndexPageFfiApi: Component mounted')
 
-    // Force reactivity update if needed
-    if (newValue && typeof newValue === 'object') {
-      LogUtil.Debug('scheduleItemData now has data, chart should be visible')
-    } else {
-      LogUtil.Debug('scheduleItemData is empty, chart should be hidden')
-    }
-  },
-  { immediate: true, deep: true }
-)
+  // Check system status on mount
+  await checkSystemStatus()
 
-// Initialize T3000_Data for the TrendLogChart component
-const initializeT3000Data = async () => {
-  const { sn, panel_id, trendlog_id } = urlParams.value
-
-  LogUtil.Info('🚀 TrendLog IndexPage: Initializing T3000_Data for standalone page')
-  LogUtil.Info(`📊 Parameters: SN=${sn}, Panel=${panel_id}, TrendLog=${trendlog_id}`)
-
-  // Check if we have the required parameters
-  if (!sn || panel_id === null || trendlog_id === null) {
-    LogUtil.Warn('⚠️ Missing required parameters for T3000_Data initialization')
-    return
-  }
-
-  try {
-    // Initialize T3000_Data structure if it's not already initialized
-    if (!T3000_Data.value.panelsData) {
-      T3000_Data.value.panelsData = []
-    }
-    if (!T3000_Data.value.panelsList) {
-      T3000_Data.value.panelsList = []
-    }
-    if (!T3000_Data.value.panelsRanges) {
-      T3000_Data.value.panelsRanges = []
-    }
-
-    // Add the panel to panelsList if it doesn't exist
-    const existingPanel = T3000_Data.value.panelsList.find(panel => panel.panel_number === panel_id)
-    if (!existingPanel) {
-      LogUtil.Info(`📝 Adding panel ${panel_id} to panelsList`)
-      T3000_Data.value.panelsList.push({
-        panel_number: panel_id,
-        serial_number: sn,
-        panel_name: `Panel ${panel_id}`,
-        online: true
-      })
-    }
-
-    // Initialize communication clients properly
-    let dataLoaded = false
-
-    // Try WebView2 client first (for desktop T3000 app integration)
-    if (Hvac.WebClient && (window as any).chrome?.webview) {
-      LogUtil.Info('🌐 Initializing WebView2 client for T3000 device communication')
-
-      try {
-        // Initialize WebView2 message handler if not already initialized
-        Hvac.WebClient.initMessageHandler()
-        Hvac.WebClient.initQuasar($q)
-
-        // Set loading state
-        T3000_Data.value.loadingPanel = panel_id
-
-        LogUtil.Info('📡 Requesting panels list from T3000 device via WebView2')
-        // First get the panels list
-        Hvac.WebClient.GetPanelsList()
-
-        // Then get specific panel data after a delay
-        setTimeout(() => {
-          LogUtil.Info(`📊 Requesting panel ${panel_id} data from T3000 device`)
-          Hvac.WebClient.GetPanelData(panel_id)
-        }, 500)
-
-        // Wait for data to be ready with timeout
-        await t3000DataManager.waitForDataReady({
-          timeout: 15000, // 15 seconds timeout for WebView2
-          specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
-        })
-
-        LogUtil.Info('✅ T3000_Data initialized successfully from WebView2 device')
-        dataLoaded = true
-
-      } catch (error) {
-        LogUtil.Warn('⚠️ WebView2 initialization failed, trying WebSocket fallback:', error)
-        T3000_Data.value.loadingPanel = null
-      }
-    }
-
-    // Try WebSocket client as fallback (for web browser integration)
-    if (!dataLoaded && Hvac.WsClient) {
-      LogUtil.Info('📡 Initializing WebSocket client for T3000 device communication')
-
-      try {
-        // Initialize WebSocket client properly
-        Hvac.WsClient.initQuasar($q)
-
-        // Set loading state
-        T3000_Data.value.loadingPanel = panel_id
-
-        LogUtil.Info('🔌 Connecting to WebSocket server...')
-        // Connect to WebSocket server
-        Hvac.WsClient.connect()
-
-        // Wait a bit for connection to establish, then request data
-        setTimeout(() => {
-          LogUtil.Info('📊 Requesting panels list from T3000 device via WebSocket')
-          // First get the panels list (this will automatically call GetPanelData for first panel)
-          Hvac.WsClient.GetPanelsList()
-
-          // Also request specific panel data
-          setTimeout(() => {
-            LogUtil.Info(`📊 Requesting panel ${panel_id} data from T3000 device`)
-            Hvac.WsClient.GetPanelData(panel_id)
-          }, 1000)
-        }, 1000)
-
-        // Wait for data to be ready with timeout
-        await t3000DataManager.waitForDataReady({
-          timeout: 20000, // 20 seconds timeout for WebSocket
-          specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
-        })
-
-        LogUtil.Info('✅ T3000_Data initialized successfully from WebSocket device')
-        dataLoaded = true
-
-      } catch (error) {
-        LogUtil.Warn('⚠️ WebSocket initialization failed:', error)
-        T3000_Data.value.loadingPanel = null
-      }
-    }
-
-    // PRODUCTION: Mock data fallback commented out - not needed for production
-    // If both communication methods failed, create fallback data
-    // if (!dataLoaded) {
-    //   LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, creating minimal T3000_Data structure')
-
-    //   // Create minimal data structure for the TrendLogChart
-    //   const mockEntry = {
-    //     id: `MON${trendlog_id}`,
-    //     label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-    //     description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
-    //     pid: panel_id,
-    //     type: "MON",
-    //     value: 0,
-    //     unit: "",
-    //     status: 1,
-    //     input: [],
-    //     range: [],
-    //     num_inputs: 14,
-    //     an_inputs: 12
-    //   }
-
-    //   // Add to panelsData if not already present
-    //   const existingEntry = T3000_Data.value.panelsData.find(entry =>
-    //     entry.id === mockEntry.id && entry.pid === panel_id
-    //   )
-
-    //   if (!existingEntry) {
-    //     LogUtil.Info('📝 Adding fallback entry to panelsData')
-    //     T3000_Data.value.panelsData.push(mockEntry)
-    //   }
-
-    //   T3000_Data.value.loadingPanel = null
-    //   LogUtil.Info('📝 Created minimal T3000_Data structure for standalone usage')
-    // }
-
-    // Clear loading state if no data was loaded
-    if (!dataLoaded) {
-      T3000_Data.value.loadingPanel = null
-      LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, no data loaded')
-    }
-
-    LogUtil.Info('✅ T3000_Data initialization completed')
-    LogUtil.Debug('📊 Final T3000_Data state:', {
-      panelsList: T3000_Data.value.panelsList?.length || 0,
-      panelsData: T3000_Data.value.panelsData?.length || 0,
-      loadingPanel: T3000_Data.value.loadingPanel
-    })
-
-    // Set up realtime data saving for socket data (port 9104)
-    setupRealtimeDataSaving(sn, panel_id)
-
-  } catch (error) {
-    LogUtil.Error('❌ Error initializing T3000_Data:', error)
-    // Ensure loading state is cleared on error
-    T3000_Data.value.loadingPanel = null
-  }
-}
-
-// Set up realtime data saving for socket port 9104
-const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
-  LogUtil.Info('🔄 Setting up realtime data saving for socket port 9104')
-
-  // Set up a watcher on T3000_Data.panelsData to detect realtime updates
-  watch(
-    () => T3000_Data.value.panelsData,
-    async (newPanelsData, oldPanelsData) => {
-      // Only process if we have valid data and this is a realtime update
-      if (!newPanelsData || newPanelsData.length === 0) return
-
-      try {
-        // Find the panel data for our device
-        const panelData = newPanelsData.find(panel => panel.pid === panelId)
-        if (!panelData) return
-
-        // Check if this is a new update (different from old data)
-        const oldPanelData = oldPanelsData?.find(panel => panel.pid === panelId)
-        if (oldPanelData && JSON.stringify(panelData) === JSON.stringify(oldPanelData)) {
-          return // No change, skip saving
-        }
-
-        LogUtil.Info('💾 Detected realtime data update, saving to database')
-
-        // Convert panel data to database format
-        const dataPoints = []
-
-        // Process the panel data based on its structure
-        if (panelData.input && Array.isArray(panelData.input)) {
-          panelData.input.forEach((point, index) => {
-            if (point && typeof point === 'object' && point.value !== undefined) {
-              dataPoints.push({
-                serial_number: serialNumber,
-                panel_id: panelId,
-                point_id: point.id || `IN${index + 1}`,
-                point_index: index + 1,
-                point_type: 'INPUT',
-                value: point.value.toString(),
-                range_field: point.range?.toString(),
-                digital_analog: point.digital_analog?.toString(),
-                units: point.units
-              })
-            }
-          })
-        }
-
-        // Add similar processing for other point types if available
-        // (output, variable points would be processed similarly)
-
-        if (dataPoints.length > 0) {
-          // Save batch data to database
-          const savedCount = await trendlogAPI.saveRealtimeBatch(dataPoints)
-          LogUtil.Info(`✅ Saved ${savedCount} realtime data points to database`)
-        }
-
-      } catch (error) {
-        LogUtil.Warn('⚠️ Error processing realtime data for database saving:', error)
-      }
-    },
-    { deep: true } // Deep watch to detect changes in nested objects
-  )
-
-  LogUtil.Info('✅ Realtime data saving watcher setup completed')
-}
-
-onMounted(() => {
-  LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
-  LogUtil.Debug('Initial scheduleItemData state:', scheduleItemData.value)
-
-  // Initialize Quasar integration for Hvac system (lightweight)
-  LogUtil.Info('🚀 Initializing basic Quasar integration for standalone page')
-  try {
-    Hvac.IdxPage.initQuasar($q)
-    LogUtil.Info('✅ Quasar integration initialized')
-  } catch (error) {
-    LogUtil.Warn('⚠️ Error initializing Quasar integration:', error)
-  }
-
-  // Initialize T3000_Data with proper WebSocket and WebView2 communication
-  initializeT3000Data()
-
-  // Load and format data from query parameters (with API integration)
-  loadTrendLogItemData()
+  // Load data
+  await loadTrendLogItemData()
 })
 </script>
 
 <style scoped>
 .trend-log-page {
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 0;
   background: #f5f5f5;
-  overflow: hidden;
 }
 
 .chart-wrapper {
   flex: 1;
-  padding: 8px;
-  background: #f5f5f5;
+  position: relative;
   overflow: hidden;
-  padding-top: 5px;
-}
-
-/* Ensure the chart component fills the available space */
-.chart-wrapper :deep(.trendlog-chart-component) {
-  height: 100%;
   background: #ffffff;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
 }
 
 /* Loading state styles */
@@ -728,19 +438,15 @@ onMounted(() => {
 
 .loading-content {
   text-align: center;
-  padding: 40px;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  margin: 0 auto 16px;
   border: 4px solid #f3f3f3;
   border-top: 4px solid #659dc5;
   border-radius: 50%;
+  margin: 0 auto 16px auto;
   animation: spin 1s linear infinite;
 }
 
@@ -750,9 +456,14 @@ onMounted(() => {
 }
 
 .loading-content p {
-  margin: 0;
+  margin: 8px 0;
   color: #666;
   font-size: 14px;
+}
+
+.loading-detail {
+  font-style: italic;
+  color: #999;
 }
 
 /* Error state styles */
@@ -770,7 +481,7 @@ onMounted(() => {
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
+  max-width: 600px;
 }
 
 .error-content h3 {
@@ -780,10 +491,23 @@ onMounted(() => {
 }
 
 .error-content p {
-  margin: 0 0 24px 0;
+  margin: 0 0 16px 0;
   color: #666;
   font-size: 14px;
   line-height: 1.5;
+}
+
+.ffi-error-details {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.ffi-error-details p {
+  margin: 0 0 12px 0;
+  color: #a8071a;
 }
 
 /* No data state styles */
@@ -801,7 +525,7 @@ onMounted(() => {
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
+  max-width: 600px;
 }
 
 .no-data-content h3 {
@@ -817,23 +541,42 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.retry-button {
+.api-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.retry-button, .refresh-button, .status-button {
   background: #659dc5;
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 10px 16px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.2s;
 }
 
-.retry-button:hover {
+.retry-button:hover, .refresh-button:hover, .status-button:hover {
   background: #5a8db0;
 }
 
-.retry-button:active {
-  transform: translateY(1px);
+.refresh-button {
+  background: #52c41a;
+}
+
+.refresh-button:hover {
+  background: #45a014;
+}
+
+.status-button {
+  background: #722ed1;
+}
+
+.status-button:hover {
+  background: #612db4;
 }
 
 /* Data Source Indicator */
@@ -846,7 +589,7 @@ onMounted(() => {
 
 .source-badge {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
@@ -858,12 +601,49 @@ onMounted(() => {
   background: linear-gradient(45deg, #4CAF50, #45a049);
 }
 
-.source-badge.historical {
-  background: linear-gradient(45deg, #2196F3, #1976D2);
+.source-badge.ffi-api {
+  background: linear-gradient(45deg, #FF9800, #F57C00);
+}
+
+.source-badge.ffi-realtime {
+  background: linear-gradient(45deg, #9C27B0, #7B1FA2);
 }
 
 .source-badge.fallback {
-  background: linear-gradient(45deg, #FF9800, #F57C00);
+  background: linear-gradient(45deg, #f5222d, #cf1322);
+}
+
+/* System Status Indicator */
+.system-status-indicator {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+}
+
+.status-badge.running {
+  background: #52c41a;
+}
+
+.status-badge.offline {
+  background: #ff4d4f;
+}
+
+.timestamp {
+  font-size: 10px;
+  color: #8c8c8c;
 }
 
 /* Mobile responsiveness */
@@ -877,15 +657,23 @@ onMounted(() => {
     right: 5px;
   }
 
+  .system-status-indicator {
+    top: 30px;
+    right: 5px;
+  }
+
   .source-badge {
     font-size: 11px;
-    padding: 3px 8px;
+    padding: 4px 8px;
   }
-}
 
-@media (max-width: 480px) {
-  .chart-wrapper {
-    padding: 4px;
+  .api-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .retry-button, .refresh-button, .status-button {
+    width: 200px;
   }
 }
 </style>

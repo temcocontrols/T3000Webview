@@ -67,6 +67,9 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         conn: app_state.conn.clone(),
     };
 
+    // Create the FFI API routes without state initially
+    let ffi_routes = crate::t3_device::t3_ffi_api_service::create_api_routes();
+
     Ok(Router::new()
         .nest(
             "/api",
@@ -79,6 +82,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         )
         // T3000 device routes with T3AppState
         .nest("/api/t3_device", t3_device_routes())
+        // NEW: T3000 FFI API routes - merge without state conflict
+        .merge(ffi_routes)
         // Real-time trend data routes - TEMPORARILY DISABLED
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
