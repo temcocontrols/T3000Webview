@@ -78,13 +78,13 @@
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
+import TrendLogChart from 'src/components/newui/TrendLogChart.vue'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
-import { useTrendlogDataAPI } from 'src/composables/useTrendlogDataAPI'
+import { useTrendlogDataAPI } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
 
 // Define component name
 defineOptions({
