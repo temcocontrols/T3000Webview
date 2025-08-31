@@ -121,7 +121,7 @@ const routes = [
     children: [
       {
         path: "",
-        component: createOptimizedComponent(() => import("pages/TrendLog/IndexPage.vue"), "TrendLogIndexPage", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("pages/TrendLog/IndexPageFfiApi.vue"), "TrendLogIndexPageFfiApi", { category: 'normal' }),
       }
     ],
   },
