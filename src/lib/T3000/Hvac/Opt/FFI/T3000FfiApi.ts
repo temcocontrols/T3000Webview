@@ -101,6 +101,7 @@ export function useT3000FfiApi() {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const lastResponse = ref<any>(null)
+  const isReady = ref(true) // FFI API is always ready if server is running
 
   // Configuration
   const apiConfig = {
@@ -283,11 +284,77 @@ export function useT3000FfiApi() {
     }
   }
 
+  /// GetSystemStatus - Health check for FFI service
+  const getSystemStatus = async (): Promise<any> => {
+    try {
+      // Simple health check - try to get panels list with short timeout
+      const healthCheckConfig = {
+        timeout: 5000, // 5 second timeout for health check
+        headers: { 'Content-Type': 'application/json' }
+      }
+
+      const payload = createMessagePayload(MessageType.GET_PANELS_LIST)
+      const response = await axios.post(`${apiConfig.baseURL}/api/t3000/ffi/call`, payload, healthCheckConfig)
+
+      return {
+        status: 'running',
+        timestamp: new Date().toISOString(),
+        service: 'FFI API',
+        version: '1.0.0'
+      }
+    } catch (err) {
+      return {
+        status: 'offline',
+        timestamp: new Date().toISOString(),
+        service: 'FFI API',
+        error: err instanceof Error ? err.message : 'Unknown error'
+      }
+    }
+  }
+
+  /// Additional WebSocket-compatible methods expected by Vue components
+
+  /// GetDeviceRealtimeData - Alias for GetPanelData for compatibility
+  const getDeviceRealtimeData = async (panelId: number): Promise<any> => {
+    return await ffiGetPanelData(panelId)
+  }
+
+  /// GetDeviceById - Alias for GetPanelData for compatibility
+  const getDeviceById = async (panelId: number): Promise<any> => {
+    return await ffiGetPanelData(panelId)
+  }
+
+  /// RefreshAllData - Refresh all panel data for compatibility
+  const refreshAllData = async (): Promise<any> => {
+    try {
+      // First get the panels list, then refresh each panel
+      const panelsResponse = await ffiGetPanelsList()
+      const panels = panelsResponse?.data?.panels || []
+
+      const refreshPromises = panels.map((panel: any) =>
+        ffiGetPanelData(panel.panel_id || panel.id)
+      )
+
+      const results = await Promise.allSettled(refreshPromises)
+      return {
+        status: 'success',
+        refreshed: results.length,
+        timestamp: new Date().toISOString()
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      error.value = errorMessage
+      throw new Error(`RefreshAllData failed: ${errorMessage}`)
+    }
+  }
+
   // Return all methods and state
   return {
     // State
     isLoading: computed(() => isLoading.value),
     error: computed(() => error.value),
+    hasError: computed(() => error.value !== null),
+    isReady: computed(() => isReady.value),
     lastResponse: computed(() => lastResponse.value),
 
     // WebSocket-compatible methods
@@ -296,6 +363,10 @@ export function useT3000FfiApi() {
     ffiGetInitialData,
     ffiGetEntries,
     ffiGetSelectedDeviceInfo,
+    getSystemStatus,
+    getDeviceRealtimeData,
+    getDeviceById,
+    refreshAllData,
 
     // Utility methods
     clearError: () => { error.value = null },

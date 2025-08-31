@@ -48,11 +48,13 @@ impl T3000FfiApiService {
 
             let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
 
-            // Try to find T3000.exe
+            // Try to find T3000.exe - look in same directory as Rust API first
             let t3000_paths = vec![
+                "T3000.exe",  // Same directory as Rust API
+                "./T3000.exe",  // Current directory explicitly
+                "../T3000.exe",  // Parent directory
                 r"E:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3000.exe",
-                r"C:\T3000\T3000.exe",
-                "T3000.exe"
+                r"C:\T3000\T3000.exe"
             ];
 
             for path in &t3000_paths {
@@ -87,6 +89,19 @@ impl T3000FfiApiService {
     pub async fn call_ffi(&self, message: &str) -> Result<String, Error> {
         let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
 
+        // Parse the JSON to extract the action number
+        let action = match serde_json::from_str::<serde_json::Value>(message) {
+            Ok(json) => {
+                json.get("message")
+                    .and_then(|m| m.get("action"))
+                    .and_then(|a| a.as_i64())
+                    .unwrap_or(0) as i32
+            }
+            Err(_) => 0
+        };
+
+        api_logger.info(&format!("📡 FFI Call - Action: {}, Message: {}", action, message));
+
         unsafe {
             if !Self::load_t3000_function() {
                 return Err(Error::ServerError("T3000 FFI functions not loaded".to_string()));
@@ -98,7 +113,7 @@ impl T3000FfiApiService {
 
                 let mut buffer = vec![0u8; self.max_buffer_size];
                 let result = func(
-                    0,  // Action parameter (not used when passing full message)
+                    action,  // Use extracted action from JSON message
                     message_cstring.as_ptr() as *mut c_char,
                     message.len() as i32
                 );
