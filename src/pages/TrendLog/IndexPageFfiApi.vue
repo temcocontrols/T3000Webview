@@ -103,7 +103,7 @@
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import TrendLogChart from '../../components/newui/TrendLogChart.vue'
+import TrendLogChart from '../../components/newui/TrendLogChartFfiApi.vue'
 import { scheduleItemData } from '../../lib/T3000/Hvac/Data/Constant/RefConstant'
 import LogUtil from '../../lib/T3000/Hvac/Util/LogUtil'
 import { useT3000FfiApi } from '../../lib/T3000/Hvac/Opt/FFI/T3000FfiApi'

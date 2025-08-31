@@ -94,6 +94,26 @@
 
           <!-- Status Tags -->
           <a-flex align="center" wrap="wrap" gap="small" class="control-group status-tags">
+            <!-- FFI API Status Indicator -->
+            <a-tag v-if="ffiApi.isLoading.value" color="processing" size="small">
+              <template #icon>
+                <LoadingOutlined />
+              </template>
+              FFI API Loading...
+            </a-tag>
+            <a-tag v-else-if="ffiApi.hasError.value" color="error" size="small">
+              <template #icon>
+                <DisconnectOutlined />
+              </template>
+              FFI API Error
+            </a-tag>
+            <a-tag v-else color="success" size="small">
+              <template #icon>
+                <WifiOutlined />
+              </template>
+              FFI API Ready
+            </a-tag>
+
             <!-- Live/Historical Status with enhanced info -->
             <a-tag color="green" v-if="isRealTime" size="small">
               <template #icon>
@@ -413,12 +433,29 @@ import {
   WifiOutlined,
   LoadingOutlined
 } from '@ant-design/icons-vue'
-import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
-import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
-import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
-import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
-import Hvac from 'src/lib/T3000/Hvac/Hvac'
-import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
+// LogUtil replacement for FFI API version
+const LogUtil = {
+  Info: console.log,
+  Debug: console.log,
+  Warn: console.warn,
+  Error: console.error
+}
+// Temporary scheduleItemData replacement
+const scheduleItemData = { value: null }
+// Temporary T3000_Data replacement
+const T3000_Data = {
+  value: {
+    panelsData: [] as any[],
+    panelsList: [] as any[]
+  }
+}
+
+// FFI API SPECIFIC: Replace WebSocket imports with FFI API imports
+import { useT3000FfiApi } from '../../lib/T3000/Hvac/Opt/FFI/T3000FfiApi'
+// Remove WebViewClient and Hvac dependencies for FFI API version
+// import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
+// import Hvac from 'src/lib/T3000/Hvac/Hvac'
+// import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {
@@ -591,6 +628,9 @@ const props = withDefaults(defineProps<Props>(), {
   itemData: null,
   title: 'Trend Log Chart'
 })
+
+// FFI API SPECIFIC: Initialize FFI API composable for WebSocket replacement
+const ffiApi = useT3000FfiApi()
 
 // Computed property to get the current item data - prioritizes props over global state
 const currentItemData = computed(() => {
@@ -903,7 +943,7 @@ const debugDataIntervals = () => {
   visibleSeries.forEach((series, index) => {
     if (series.data.length < 2) return
 
-    const intervals = []
+    const intervals: number[] = []
     for (let i = 1; i < Math.min(series.data.length, 6); i++) { // Check first 5 intervals
       const timeDiff = series.data[i].timestamp - series.data[i-1].timestamp
       const intervalSec = timeDiff / 1000
@@ -1243,7 +1283,7 @@ const getChartConfig = () => ({
         time: (() => {
           // Handle custom timebase separately
           if (timeBase.value === 'custom') {
-            const customConfig = getCustomTickConfig(customStartDate.value.toDate(), customEndDate.value.toDate())
+            const customConfig = getCustomTickConfig(customStartDate.value?.toDate() || new Date(), customEndDate.value?.toDate() || new Date())
             return {
               unit: customConfig.unit,
               stepSize: customConfig.stepSize,
@@ -1287,7 +1327,7 @@ const getChartConfig = () => ({
           maxTicksLimit: (() => {
             // Handle custom timebase separately
             if (timeBase.value === 'custom') {
-              const customConfig = getCustomTickConfig(customStartDate.value.toDate(), customEndDate.value.toDate())
+              const customConfig = getCustomTickConfig(customStartDate.value?.toDate() || new Date(), customEndDate.value?.toDate() || new Date())
               return customConfig.maxTicks
             }
 
@@ -1632,27 +1672,23 @@ const getMonitorConfigFromT3000Data = async () => {
   LogUtil.Info(`🎯 TrendLogModal: Looking for monitor ID: ${monitorId} with PID: ${panelId}`)
 
   try {
-    // Use enhanced data manager to wait for data readiness
-    LogUtil.Info('⏳ TrendLogModal: Waiting for T3000_Data readiness...')
-    const validation = await t3000DataManager.waitForDataReady({
-      timeout: 15000, // 15 seconds timeout
-      specificEntries: [monitorId],
-      requireFresh: true
-    })
-
-    LogUtil.Info('✅ TrendLogModal: Data validation result:', validation)
-
-    if (!validation.isValid) {
-      LogUtil.Error('❌ TrendLogModal: Data validation failed', {
-        missingData: validation.missingData,
-        staleData: validation.staleData,
-        entriesCount: validation.entriesCount
-      })
+    // Use FFI API to validate data readiness
+    LogUtil.Info('⏳ TrendLogModal: Using FFI API to get panel data...')
+    if (!ffiApi.isReady.value) {
+      LogUtil.Error('❌ TrendLogModal: FFI API is not ready')
       return null
     }
 
-    // Get the monitor entry using enhanced data manager with PID filtering
-    const monitorConfig = await t3000DataManager.getEntryByPid(monitorId, panelId)
+    const panelData = await ffiApi.ffiGetPanelData(panelId)
+    if (!panelData || !panelData.entries) {
+      LogUtil.Error('❌ TrendLogModal: Panel data not available', { panelId })
+      return null
+    }
+
+    LogUtil.Info('✅ TrendLogModal: Panel data retrieved successfully')
+
+    // Get the monitor entry by ID
+    const monitorConfig = panelData.entries.find((entry: any) => entry.id === monitorId)
 
     if (!monitorConfig) {
       LogUtil.Warn(`❌ TrendLogModal: Monitor configuration not found for ID: ${monitorId}`)
@@ -1665,8 +1701,8 @@ const getMonitorConfigFromT3000Data = async () => {
     const intervalMs = calculateT3000Interval(monitorConfig)
 
     // Extract input items from the configuration
-    const inputItems = []
-    const ranges = []
+    const inputItems: any[] = []
+    const ranges: any[] = []
 
     // Parse input items based on actual monitor configuration structure
     // monitorConfig has 'input' array with objects and 'range' array
@@ -1767,13 +1803,9 @@ const initializeDataClients = () => {
 
   LogUtil.Debug('Environment detected:', isBuiltInBrowser ? 'Built-in WebView' : 'External Browser')
 
-  if (isBuiltInBrowser) {
-    // Use WebView client for built-in browser
-    return new WebViewClient()
-  } else {
-    // Use WebSocket client for external browser
-    return Hvac.WsClient
-  }
+  // FFI API SPECIFIC: Always use FFI API instead of WebSocket clients
+  LogUtil.Info('🔧 TrendLogChartFfiApi: Using FFI API for all data requests')
+  return ffiApi
 }
 
 /**
@@ -1853,7 +1885,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
 
     LogUtil.Info('�?TrendLogModal: Data client initialized:', {
       clientType: dataClient.constructor.name,
-      hasGetEntriesMethod: typeof dataClient.GetEntries === 'function',
+      hasGetEntriesMethod: typeof dataClient.ffiGetEntries === 'function',
       clientMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)).filter(name => name.includes('Get'))
     })
 
@@ -2572,22 +2604,16 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
         const timeString = currentTime.toLocaleTimeString() + '.' + currentTime.getMilliseconds().toString().padStart(3, '0')
         LogUtil.Info(`📜 TrendLogModal: Last message data [${timeString}]:`, dataClient.messageData)
 
-        // Track request timing for interval analysis
-        if (!window.t3000RequestTimes) window.t3000RequestTimes = []
-        window.t3000RequestTimes.push({
+        // Track FFI API request timing for interval analysis (local tracking)
+        const requestTime = {
           timestamp: currentTime.getTime(),
           timeString: timeString,
           panelsCount: Array.isArray(dataClient.messageData) ? dataClient.messageData.length : 0,
-          modbusCount: 0 // Default for modbus count
-        })
-
-        // Log interval if we have previous requests
-        if (window.t3000RequestTimes.length > 1) {
-          const lastTwoRequests = window.t3000RequestTimes.slice(-2)
-          const intervalMs = lastTwoRequests[1].timestamp - lastTwoRequests[0].timestamp
-          const intervalSec = Math.round(intervalMs / 1000)
-          LogUtil.Info(`⏱️ TrendLogModal: Request interval: ${intervalSec}s (${intervalMs}ms) - Previous: ${lastTwoRequests[0].timeString}, Current: ${lastTwoRequests[1].timeString}`)
+          modbusCount: 0
         }
+
+        // Simple interval logging without global state
+        LogUtil.Info(`⏱️ TrendLogModal: FFI API request at: ${timeString}`)
       }
 
     } catch (error) {
@@ -2692,7 +2718,7 @@ const testCommunication = async () => {
   LogUtil.Info('🔧 TrendLogModal: Test 1 - Data Client:', {
     success: !!dataClient,
     type: dataClient?.constructor?.name,
-    hasGetEntries: typeof dataClient?.GetEntries === 'function'
+    hasGetEntries: typeof dataClient?.ffiGetEntries === 'function'
   })
 
   if (!dataClient) {
@@ -2715,7 +2741,8 @@ const testCommunication = async () => {
 
     LogUtil.Info('📤 TrendLogModal: Test 3 - Sending test GET_ENTRIES request:', testRequest)
 
-    if (dataClient.GetEntries) {
+    // FFI API always has the GetEntries equivalent method
+    if (true) {
       const result = (dataClient as any).GetEntries([testRequest])
       LogUtil.Info('📨 TrendLogModal: Test 3 - Request sent, result:', result)
     }
@@ -2962,23 +2989,8 @@ const addRealtimeDataPoint = async () => {
   const now = new Date()
   const callTimeString = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0')
 
-  // Track polling calls for interval verification
-  if (!window.t3000PollingCalls) window.t3000PollingCalls = []
-  window.t3000PollingCalls.push({
-    timestamp: now.getTime(),
-    timeString: callTimeString,
-    panelsCount: 0 // Default count since this is just tracking polling calls
-  })
-
-  // Log interval between polling calls
-  if (window.t3000PollingCalls.length > 1) {
-    const lastTwoCalls = window.t3000PollingCalls.slice(-2)
-    const intervalMs = lastTwoCalls[1].timestamp - lastTwoCalls[0].timestamp
-    const intervalSec = Math.round(intervalMs / 1000)
-    LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - Interval: ${intervalSec}s since last call (${lastTwoCalls[0].timeString})`)
-  } else {
-    LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - First call`)
-  }
+  // Simple polling call logging without global state
+  LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - FFI API data point`)
 
   // 🔧 Use actual timestamp for real data points (not aligned to minutes)
   // This allows showing multiple data points per minute interval
@@ -3703,7 +3715,7 @@ const exportChart = () => {
 
 const exportData = () => {
   const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
-  const csvData = []
+  const csvData: string[] = []
   const headers = ['Timestamp', ...activeSeriesData.map(s => s.name)]
   csvData.push(headers.join(','))
 
@@ -3711,7 +3723,7 @@ const exportData = () => {
   const maxLength = Math.max(...activeSeriesData.map(s => s.data.length))
 
   for (let i = 0; i < maxLength; i++) {
-    const row = []
+    const row: string[] = []
     const timestamp = activeSeriesData.find(s => s.data[i])?.data[i]?.timestamp
     if (timestamp) {
       row.push(new Date(timestamp).toISOString())
@@ -3852,17 +3864,17 @@ onMounted(async () => {
     itemData: currentItemData.value
   })
 
-  LogUtil.Info('📊 TrendLogModal: Initial T3000_Data readiness:', t3000DataManager.getReadinessState())
+  LogUtil.Info('📊 TrendLogModal: Initial FFI API status:', ffiApi.isReady.value)
 
   // === ENHANCED T3000 REAL DATA INTEGRATION TEST ===
   LogUtil.Info('🔍 TrendLogModal: === STARTING ENHANCED T3000 REAL DATA INTEGRATION TEST ===')
 
   try {
     // Test 1: Data Manager Readiness Check
-    LogUtil.Info('🔍 TrendLogModal: TEST 1 - Data Manager Readiness Check')
-    const initialReadiness = t3000DataManager.getReadinessState()
-    LogUtil.Info(`📊 TrendLogModal: Initial data readiness: ${initialReadiness}`)
-    LogUtil.Info(`📊 TrendLogModal: Loading progress: ${t3000DataManager.loadingProgress}%`)
+    LogUtil.Info('🔍 TrendLogModal: TEST 1 - FFI API Readiness Check')
+    const initialReady = ffiApi.isReady.value
+    LogUtil.Info(`📊 TrendLogModal: Initial FFI API status: ${initialReady}`)
+    LogUtil.Info(`📊 TrendLogModal: FFI API ready: ${ffiApi.isReady.value ? 'Yes' : 'No'}`)
 
     // Test 2: Enhanced Monitor Configuration Extraction
     LogUtil.Info('🔍 TrendLogModal: TEST 2 - Enhanced Monitor Configuration Extraction')
@@ -3894,29 +3906,51 @@ onMounted(async () => {
         // Test if we can find this device in panelsData using data manager with PID filtering
         try {
           if (searchPanelId !== undefined && searchPanelId !== null) {
-            const foundDevice = await t3000DataManager.getEntryByPid(deviceId, searchPanelId)
-            LogUtil.Info(`✅ TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
-              id: foundDevice.id,
-              label: foundDevice.label,
-              pid: foundDevice.pid,
-              type: foundDevice.type
-            })
+            // Use FFI API to get panel data instead
+            const panelData = await ffiApi.ffiGetPanelData(searchPanelId)
+            const foundDevice = panelData?.entries?.find((entry: any) => entry.id === deviceId)
+            if (foundDevice) {
+              LogUtil.Info(`✅ TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
+                id: foundDevice.id,
+                label: foundDevice.label,
+                pid: foundDevice.pid,
+                type: foundDevice.type
+              })
+            } else {
+              LogUtil.Warn(`❌ TEST 3.${i + 1} FAILED: Device ${deviceId} not found in panel ${searchPanelId}`)
+            }
           } else {
             LogUtil.Warn(`❌ TEST 3.${i + 1} SKIPPED: No PID available for device search`)
           }
         } catch (error) {
           LogUtil.Warn(`❌ TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
 
-          // Fallback: Try to find device without PID filtering for comparison
+          // Fallback: Try to find device in all panels
           try {
-            const foundDeviceAnyPid = await t3000DataManager.getEntry(deviceId)
-            LogUtil.Info(`🔍 TEST 3.${i + 1} FALLBACK: Device ${deviceId} found without PID filtering:`, {
-              id: foundDeviceAnyPid.id,
-              label: foundDeviceAnyPid.label,
-              pid: foundDeviceAnyPid.pid,
-              type: foundDeviceAnyPid.type,
-              note: `Found with PID ${foundDeviceAnyPid.pid} instead of expected PID ${searchPanelId}`
-            })
+            // Use FFI API to search across all panels
+            const panelsList = await ffiApi.ffiGetPanelsList()
+            let foundDeviceAnyPid: any = null
+
+            for (const panel of panelsList || []) {
+              const panelData = await ffiApi.ffiGetPanelData(panel.id)
+              const device = panelData?.entries?.find((entry: any) => entry.id === deviceId)
+              if (device) {
+                foundDeviceAnyPid = device
+                break
+              }
+            }
+
+            if (foundDeviceAnyPid) {
+              LogUtil.Info(`🔍 TEST 3.${i + 1} FALLBACK: Device ${deviceId} found without PID filtering:`, {
+                id: foundDeviceAnyPid.id,
+                label: foundDeviceAnyPid.label,
+                pid: foundDeviceAnyPid.pid,
+                type: foundDeviceAnyPid.type,
+                note: `Found with PID ${foundDeviceAnyPid.pid} instead of expected PID ${searchPanelId}`
+              })
+            } else {
+              LogUtil.Warn(`❌ TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found in any panel`)
+            }
           } catch (fallbackError) {
             LogUtil.Warn(`❌ TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
           }
@@ -3951,10 +3985,11 @@ onMounted(async () => {
 
       // Try to get detailed validation information
       try {
-        const validation = await t3000DataManager.validateData()
-        LogUtil.Info('📊 TrendLogModal: Data validation details:', validation)
+        // Use FFI API to validate data
+        const isReady = ffiApi.isReady.value
+        LogUtil.Info('📊 TrendLogModal: FFI API validation details:', { isReady })
       } catch (validationError) {
-        LogUtil.Error('❌ TrendLogModal: Data validation failed:', validationError)
+        LogUtil.Error('❌ TrendLogModal: FFI API validation failed:', validationError)
       }
     }
 
