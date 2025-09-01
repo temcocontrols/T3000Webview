@@ -790,6 +790,23 @@ impl T3000MainService {
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
     }
 
+    /// Convert Unix timestamp to formatted local time string for LoggingTime_Fmt
+    /// Takes a Unix timestamp string and converts it to "YYYY-MM-DD HH:MM:SS" format in local timezone
+    fn format_unix_timestamp_to_local(unix_timestamp_str: &str) -> String {
+        // Parse the Unix timestamp (handle both string and numeric formats)
+        if let Ok(unix_timestamp) = unix_timestamp_str.parse::<i64>() {
+            // Convert Unix timestamp to DateTime
+            if let Some(datetime) = chrono::DateTime::from_timestamp(unix_timestamp, 0) {
+                // Get local timezone offset (this will use system timezone)
+                let local_datetime = datetime.with_timezone(&chrono::Local);
+                return local_datetime.format("%Y-%m-%d %H:%M:%S").to_string();
+            }
+        }
+
+        // Fallback to current UTC time if parsing fails
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+
     /// Derive units from range value for T3000 points
     /// Updated to match T3000 frontend variable range mappings from T3Data.ts
     fn derive_units_from_range(range: i32) -> String {
@@ -860,7 +877,7 @@ impl T3000MainService {
                 point_index: Set(point.index as i32), // Use numeric index from JSON
                 point_type: Set("INPUT".to_string()),
                 logging_time: Set(device_data.device_info.input_logging_time.clone()),
-                logging_time_fmt: Set(Self::format_logging_time()),
+                logging_time_fmt: Set(Self::format_unix_timestamp_to_local(&device_data.device_info.input_logging_time)),
                 value: Set(point.value.to_string()),
                 range_field: Set(Some(point.range.to_string())),
                 digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
@@ -894,7 +911,7 @@ impl T3000MainService {
                 point_index: Set(point.index as i32), // Use numeric index from JSON
                 point_type: Set("OUTPUT".to_string()),
                 logging_time: Set(device_data.device_info.output_logging_time.clone()),
-                logging_time_fmt: Set(Self::format_logging_time()),
+                logging_time_fmt: Set(Self::format_unix_timestamp_to_local(&device_data.device_info.output_logging_time)),
                 value: Set(point.value.to_string()),
                 range_field: Set(Some(point.range.to_string())),
                 digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
@@ -928,7 +945,7 @@ impl T3000MainService {
                 point_index: Set(point.index as i32), // Use numeric index from JSON
                 point_type: Set("VARIABLE".to_string()),
                 logging_time: Set(device_data.device_info.variable_logging_time.clone()),
-                logging_time_fmt: Set(Self::format_logging_time()),
+                logging_time_fmt: Set(Self::format_unix_timestamp_to_local(&device_data.device_info.variable_logging_time)),
                 value: Set(point.value.to_string()),
                 range_field: Set(Some(point.range.to_string())),
                 digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
@@ -1757,7 +1774,7 @@ impl T3000MainService {
             point_index: Set(point.index as i32), // Use numeric index from JSON
             point_type: Set(point_type.to_string()),
             logging_time: Set(logging_time.to_string()),
-            logging_time_fmt: Set(Self::format_logging_time()),
+            logging_time_fmt: Set(Self::format_unix_timestamp_to_local(logging_time)),
             value: Set(point.value.to_string()),
             range_field: Set(Some(point.range.to_string())),
             digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
