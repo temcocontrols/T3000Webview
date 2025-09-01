@@ -579,18 +579,52 @@ const getChipLabelText = (prefix: string): string => {
 const getSeriesNameText = (series: SeriesConfig): string => {
   // Remove the prefix (IN -, OUT -, VAR -, etc.) from the description for cleaner display
   const fullDescription = series.description || series.name
-  
+
   // Check if description has the pattern "PREFIX - Description" and remove the prefix
   const prefixPattern = /^(IN|OUT|VAR|HOL)\s*-\s*/
   const cleanName = fullDescription.replace(prefixPattern, '')
-  
+
   console.log('[TrendLogChart] getSeriesNameText - Cleaning series name:', {
     original: fullDescription,
     cleaned: cleanName,
     removedPrefix: prefixPattern.test(fullDescription)
   })
-  
+
   return cleanName
+}
+
+// Function to convert Unix timestamp to local time string
+const formatTimestampToLocal = (unixTimestamp: number): string => {
+  // Handle both seconds and milliseconds Unix timestamps
+  const timestamp = unixTimestamp > 1e10 ? unixTimestamp : unixTimestamp * 1000
+  const date = new Date(timestamp)
+
+  console.log('[TrendLogChart] formatTimestampToLocal - Converting timestamp:', {
+    input: unixTimestamp,
+    adjustedTimestamp: timestamp,
+    utcString: date.toISOString(),
+    localString: date.toLocaleString(),
+    localDateString: date.toLocaleString('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  })
+
+  // Return local time in YYYY-MM-DD HH:mm:ss format
+  return date.toLocaleString('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(/(\d{4})-(\d{2})-(\d{2}), (\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3 $4:$5:$6')
 }
 
 interface Props {
@@ -1333,7 +1367,15 @@ const getChartConfig = () => ({
         padding: 8,
         callbacks: {
           title: (context: any) => {
-            const date = new Date(context[0].parsed.x)
+            const timestamp = context[0].parsed.x
+
+            // Check if this looks like a Unix timestamp (either seconds or milliseconds)
+            if (typeof timestamp === 'number' && timestamp > 1e9) {
+              return formatTimestampToLocal(timestamp)
+            }
+
+            // Fallback to standard date conversion
+            const date = new Date(timestamp)
             return date.toLocaleString()
           },
           label: (context: any) => {
@@ -2837,17 +2879,68 @@ const addMockRealtimeDataPoint = (timestamp: number) => {
 }
 
 const createChart = () => {
-  if (!chartCanvas.value) return
+  const isStandalone = !(window as any).chrome?.webview;
 
-  const ctx = chartCanvas.value.getContext('2d')
-  if (!ctx) return
+  console.log('[TrendLogChart] createChart - Browser environment:', {
+    isStandaloneBrowser: isStandalone,
+    userAgent: navigator.userAgent,
+    hasCanvasRef: !!chartCanvas.value,
+    canvasWidth: chartCanvas.value?.offsetWidth || 0,
+    canvasHeight: chartCanvas.value?.offsetHeight || 0
+  });
 
-  // Destroy existing chart
-  if (chartInstance) {
-    chartInstance.destroy()
+  if (!chartCanvas.value) {
+    console.error('[TrendLogChart] createChart - Canvas ref not available');
+    return;
   }
 
-  chartInstance = new Chart(ctx, getChartConfig())
+  // Check if canvas has proper dimensions (important for standalone browsers)
+  if (chartCanvas.value.offsetWidth === 0 || chartCanvas.value.offsetHeight === 0) {
+    console.warn('[TrendLogChart] createChart - Canvas has zero dimensions, delaying creation');
+    setTimeout(() => createChart(), 100);
+    return;
+  }
+
+  const ctx = chartCanvas.value.getContext('2d');
+  if (!ctx) {
+    console.error('[TrendLogChart] createChart - Failed to get 2D context');
+    return;
+  }
+
+  try {
+    // Destroy existing chart
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    const config = getChartConfig();
+
+    // Force responsive behavior for standalone browsers
+    if (isStandalone && config.options) {
+      config.options.responsive = true;
+      config.options.maintainAspectRatio = false;
+      (config.options as any).animation = false; // Disable animations for better standalone performance
+    }
+
+    chartInstance = new Chart(ctx, config);
+
+    console.log('[TrendLogChart] createChart - Chart created successfully:', {
+      hasInstance: !!chartInstance,
+      datasetsCount: chartInstance.data.datasets.length
+    });
+
+  } catch (error) {
+    console.error('[TrendLogChart] createChart - Error:', {
+      error: error.message,
+      isStandalone,
+      canvasInfo: {
+        width: chartCanvas.value.width,
+        height: chartCanvas.value.height,
+        offsetWidth: chartCanvas.value.offsetWidth,
+        offsetHeight: chartCanvas.value.offsetHeight
+      }
+    });
+  }
 }
 
 const updateChart = () => {
@@ -3465,7 +3558,12 @@ const exportData = () => {
     const row = []
     const timestamp = activeSeriesData.find(s => s.data[i])?.data[i]?.timestamp
     if (timestamp) {
-      row.push(new Date(timestamp).toISOString())
+      // Use local time formatting instead of UTC
+      if (typeof timestamp === 'number' && timestamp > 1e9) {
+        row.push(formatTimestampToLocal(timestamp))
+      } else {
+        row.push(new Date(timestamp).toLocaleString())
+      }
       activeSeriesData.forEach(series => {
         row.push(series.data[i]?.value?.toFixed(2) || '')
       })
@@ -3725,6 +3823,37 @@ onMounted(async () => {
 
   // Initialize chart since component is always visible
   nextTick(async () => {
+    const isStandalone = !(window as any).chrome?.webview;
+
+    console.log('[TrendLogChart] onMounted - Initializing chart:', {
+      isStandaloneBrowser: isStandalone,
+      documentReadyState: document.readyState,
+      canvasReady: !!chartCanvas.value
+    });
+
+    // Add extra delay for standalone browsers to ensure proper DOM layout
+    if (isStandalone) {
+      console.log('[TrendLogChart] onMounted - Adding delay for standalone browser');
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+
+    // Verify canvas is ready with proper dimensions
+    if (chartCanvas.value) {
+      const canvasInfo = {
+        offsetWidth: chartCanvas.value.offsetWidth,
+        offsetHeight: chartCanvas.value.offsetHeight,
+        parentVisible: chartCanvas.value.parentElement?.offsetWidth > 0
+      };
+
+      console.log('[TrendLogChart] onMounted - Canvas readiness check:', canvasInfo);
+
+      // If canvas still has no dimensions, wait longer for layout
+      if (canvasInfo.offsetWidth === 0 || canvasInfo.offsetHeight === 0) {
+        console.log('[TrendLogChart] onMounted - Canvas not ready, waiting for layout...');
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+
     await initializeData()
     createChart()
     if (isRealTime.value) {
