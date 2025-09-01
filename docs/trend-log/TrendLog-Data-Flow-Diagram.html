@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrendLog Data Flow Diagram</title>
+    <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .diagram-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .issue-highlight {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success-highlight {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        h1, h2 { color: #333; }
+        h3 { color: #666; }
+    </style>
+</head>
+<body>
+    <h1>🔍 TrendLog Data Flow Analysis</h1>
+
+    <div class="diagram-container">
+        <h2>Complete Data Flow Diagram</h2>
+        <div class="mermaid">
+            graph TB
+                %% C++ Backend Layer
+                A["🏭 C++ CBacnetMonitor<br/>OnBnClickedBtnMonitorGraphic()"] -->|"Collect panel data"| B["📦 URL Generation<br/>sn, panel_id, trendlog_id"]
+                B -->|"Encode all_data JSON"| C["🌐 WebView2 URL<br/>?sn=123&panel_id=45&..."]
+
+                %% Frontend Entry Point
+                C -->|"Page load"| D["📄 IndexPageSocket.vue<br/>urlParams.value"]
+
+                %% Data Source Priority
+                D -->|"Parse parameters"| E{"🔄 Data Source Priority"}
+                E -->|"1. JSON params"| F["⚡ formatDataFromQueryParams()<br/>Fast path"]
+                E -->|"2. API fallback"| G["🔌 loadFromAPI()<br/>Historical data"]
+                E -->|"3. T3000 realtime"| H["📡 T3000_Data<br/>WebSocket updates"]
+
+                %% Data Processing
+                F -->|"Create t3Entry"| I["📊 scheduleItemData<br/>Reactive ref"]
+                G -->|"Convert API response"| I
+                H -->|"Real-time updates"| I
+
+                %% Device Description System
+                J["🗃️ T3000_Data.value.panelsData<br/>Device metadata"] -->|"Lookup descriptions"| K["🔍 getDeviceDescription()<br/>panelId, pointNumber"]
+
+                %% TrendLogChart Component
+                I -->|":itemData prop"| L["📈 TrendLogChart.vue<br/>Vue component"]
+                L -->|"props.itemData.t3Entry"| M["⚙️ generateDataSeries()<br/>Process input/range arrays"]
+
+                %% Series Generation
+                M -->|"For each point"| N["🎯 Point Processing<br/>panelId + pointNumber"]
+                N -->|"Request description"| K
+                K -->|"Return name or null"| O["📝 Series Name Creation<br/>description || fallback"]
+
+                %% Final Output
+                O -->|"Generate series list"| P["📋 Left Panel Display<br/>Series checkboxes"]
+
+                %% Issue Detection Points
+                Q["❌ Common Issues"] -.->|"T3000_Data not loaded"| K
+                Q -.->|"Wrong panelId mapping"| N
+                Q -.->|"URL encoding errors"| F
+                Q -.->|"Props not reactive"| L
+                Q -.->|"Timing issues"| H
+
+                %% Success Path
+                R["✅ Success Indicators"] -.->|"Real device names"| P
+                R -.->|"Correct panel mapping"| N
+                R -.->|"Data reactivity"| I
+
+                style A fill:#ffcccc
+                style P fill:#ccffcc
+                style Q fill:#ffffcc
+                style R fill:#ccffff
+                style K fill:#ffdddd
+                style M fill:#ddffdd
+        </div>
+    </div>
+
+    <div class="issue-highlight">
+        <h3>🚨 Identified Issue Pattern</h3>
+        <p><strong>Problem:</strong> "BMC01E1E-xx" test data appearing instead of real device names</p>
+        <p><strong>Root Cause:</strong> Hardcoded series name generation was fixed, but underlying data flow needs verification</p>
+        <p><strong>Status:</strong> ✅ Fixed hardcoded names, 🔄 Need to verify T3000_Data timing and panel mapping</p>
+    </div>
+
+    <div class="success-highlight">
+        <h3>✅ Recent Fixes Applied</h3>
+        <ul>
+            <li>Replaced hardcoded "BMC01E1E" pattern with real device descriptions</li>
+            <li>Added comprehensive diagnostic logging throughout data flow</li>
+            <li>Enhanced getDeviceDescription() with detailed logging</li>
+            <li>Added watchers for data source changes</li>
+        </ul>
+    </div>
+
+    <div class="diagram-container">
+        <h2>Data Transformation Points</h2>
+        <div class="mermaid">
+            graph LR
+                A["C++ Panel Data<br/>{inputs: [...], ranges: [...]}"]
+                A -->|"JSON.stringify + URL encode"| B["URL Parameter<br/>all_data=encoded_json"]
+                B -->|"decodeUrlEncodedJson()"| C["JavaScript Object<br/>{t3Entry: {...}}"]
+                C -->|"Vue props"| D["TrendLogChart Props<br/>props.itemData"]
+                D -->|"generateDataSeries()"| E["Series Array<br/>[{name, data, panelId}]"]
+                E -->|"v-for rendering"| F["Left Panel UI<br/>Series checkboxes"]
+
+                %% Verification Points
+                G["🔍 Check Points"] -.->|"1. JSON integrity"| B
+                G -.->|"2. Parsing success"| C
+                G -.->|"3. Props reactivity"| D
+                G -.->|"4. Description lookup"| E
+                G -.->|"5. UI rendering"| F
+
+                style A fill:#e1f5fe
+                style F fill:#e8f5e8
+                style G fill:#fff3e0
+        </div>
+    </div>
+
+    <div class="code-block">
+        <h3>Key Data Structures</h3>
+        <pre>
+// C++ Side (Original)
+PanelData {
+  inputs: [
+    {id: 1, description: "Supply Air Temp", ...},
+    {id: 2, description: "Return Air Temp", ...}
+  ],
+  ranges: [
+    {id: 1, description: "Damper Position", ...}
+  ]
+}
+
+// URL Parameter (Encoded)
+all_data = "encoded_json_string"
+
+// JavaScript (Parsed)
+scheduleItemData = {
+  t3Entry: {
+    pid: 45,
+    input: [1, 2, 3, 4],
+    range: [5, 6, 7, 8],
+    label: "TRL123_45_0"
+  }
+}
+
+// T3000_Data (Device Metadata)
+T3000_Data.value.panelsData = {
+  45: {
+    inputs: [{description: "Supply Air Temp"}, ...],
+    ranges: [{description: "Damper Position"}, ...]
+  }
+}
+
+// Final Series (Display)
+series = [
+  {name: "Supply Air Temp", panelId: 45, pointNumber: 1},
+  {name: "Return Air Temp", panelId: 45, pointNumber: 2}
+]
+        </pre>
+    </div>
+
+    <div class="issue-highlight">
+        <h3>🎯 Debugging Strategy</h3>
+        <ol>
+            <li><strong>Run the updated code</strong> - Check browser console for new diagnostic logs</li>
+            <li><strong>Verify T3000_Data timing</strong> - Ensure device data loads before series generation</li>
+            <li><strong>Check panel ID mapping</strong> - Confirm URL panel_id matches T3000_Data keys</li>
+            <li><strong>Validate point numbers</strong> - Ensure input/range arrays align with device structure</li>
+            <li><strong>Monitor real-time updates</strong> - Check if data updates properly trigger re-rendering</li>
+        </ol>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+    </script>
+</body>
+</html>

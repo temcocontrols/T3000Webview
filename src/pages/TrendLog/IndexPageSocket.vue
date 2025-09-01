@@ -208,8 +208,17 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
 const formatDataFromQueryParams = () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
+  console.log('[IndexPageSocket] formatDataFromQueryParams - Raw URL params:', {
+    sn: sn,
+    panel_id: panel_id,
+    trendlog_id: trendlog_id,
+    all_data_preview: all_data ? all_data.substring(0, 100) + '...' : null,
+    all_data_length: all_data ? all_data.length : 0
+  });
+
   // Must have required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
+    console.log('[IndexPageSocket] formatDataFromQueryParams - Missing required parameters');
     return null
   }
 
@@ -218,13 +227,27 @@ const formatDataFromQueryParams = () => {
   // If all_data is provided, try to parse it
   if (all_data) {
     const decodedData = decodeUrlEncodedJson(all_data)
+    console.log('[IndexPageSocket] formatDataFromQueryParams - Decoded all_data:', {
+      decodedData: decodedData,
+      jsonValidationStatus: jsonValidationStatus.value,
+      hasT3Entry: !!(decodedData && decodedData.t3Entry)
+    });
+
     if (decodedData && jsonValidationStatus.value === 'valid') {
       t3EntryData = decodedData.t3Entry || decodedData
+      console.log('[IndexPageSocket] formatDataFromQueryParams - Using decoded t3Entry:', {
+        pid: t3EntryData.pid,
+        inputCount: t3EntryData.input?.length,
+        rangeCount: t3EntryData.range?.length,
+        inputArray: t3EntryData.input,
+        rangeArray: t3EntryData.range
+      });
     }
   }
 
   // If no all_data or parsing failed, create basic structure
   if (!t3EntryData) {
+    console.log('[IndexPageSocket] formatDataFromQueryParams - Creating fallback t3Entry structure');
     t3EntryData = {
       an_inputs: 12,
       command: `${panel_id}MON${trendlog_id}`,
@@ -254,6 +277,18 @@ const formatDataFromQueryParams = () => {
     title: t3EntryData.label || 'T3000 Trend Log Analysis',
     t3Entry: t3EntryData
   }
+
+  console.log('[IndexPageSocket] formatDataFromQueryParams - Final chart data:', {
+    title: chartData.title,
+    t3Entry: {
+      pid: chartData.t3Entry.pid,
+      label: chartData.t3Entry.label,
+      inputCount: chartData.t3Entry.input?.length,
+      rangeCount: chartData.t3Entry.range?.length,
+      input: chartData.t3Entry.input,
+      range: chartData.t3Entry.range
+    }
+  });
 
   // Format for scheduleItemData
   const scheduleData = {
@@ -390,6 +425,16 @@ watch(
 watch(
   () => scheduleItemData.value,
   (newValue, oldValue) => {
+    console.log('[IndexPageSocket] scheduleItemData watcher triggered:', {
+      newValue: newValue,
+      oldValue: oldValue,
+      hasNewT3Entry: !!(newValue && (newValue as any).t3Entry),
+      newPid: (newValue as any)?.t3Entry?.pid,
+      newInputCount: (newValue as any)?.t3Entry?.input?.length,
+      newRangeCount: (newValue as any)?.t3Entry?.range?.length,
+      dataSource: dataSource.value,
+      timestamp: new Date().toISOString()
+    });
     // Force reactivity update if needed
   },
   { immediate: true, deep: true }
@@ -399,8 +444,19 @@ watch(
 const initializeT3000Data = async () => {
   const { sn, panel_id, trendlog_id } = urlParams.value
 
+  console.log('[IndexPageSocket] initializeT3000Data - Starting initialization:', {
+    sn, panel_id, trendlog_id,
+    currentT3000State: {
+      panelsDataKeys: Object.keys(T3000_Data.value.panelsData || {}),
+      panelsListLength: T3000_Data.value.panelsList?.length || 0,
+      panelsRangesKeys: Object.keys(T3000_Data.value.panelsRanges || {}),
+      loadingPanel: T3000_Data.value.loadingPanel
+    }
+  });
+
   // Check if we have the required parameters
   if (!sn || panel_id === null || trendlog_id === null) {
+    console.log('[IndexPageSocket] initializeT3000Data - Missing required parameters');
     return
   }
 
