@@ -577,9 +577,20 @@ const getChipLabelText = (prefix: string): string => {
 
 // Function to process series names for display in the 14 items list
 const getSeriesNameText = (series: SeriesConfig): string => {
-  // Currently returns the series description or name as-is
-  // This function can be extended later to implement other logic for series name display
-  return series.description || series.name
+  // Remove the prefix (IN -, OUT -, VAR -, etc.) from the description for cleaner display
+  const fullDescription = series.description || series.name
+  
+  // Check if description has the pattern "PREFIX - Description" and remove the prefix
+  const prefixPattern = /^(IN|OUT|VAR|HOL)\s*-\s*/
+  const cleanName = fullDescription.replace(prefixPattern, '')
+  
+  console.log('[TrendLogChart] getSeriesNameText - Cleaning series name:', {
+    original: fullDescription,
+    cleaned: cleanName,
+    removedPrefix: prefixPattern.test(fullDescription)
+  })
+  
+  return cleanName
 }
 
 interface Props {
