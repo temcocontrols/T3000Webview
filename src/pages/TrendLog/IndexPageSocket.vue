@@ -157,23 +157,19 @@ const decodeUrlEncodedJson = (encodedString: string): any | null => {
 
     // Decode URL encoding
     const decoded = decodeURIComponent(encodedString)
-    LogUtil.Debug('Decoded JSON string:', decoded)
 
     // Check for C++ JSON conversion error
     if (decoded.includes('"error":"JSON conversion failed"') ||
         decoded === '{"error":"JSON conversion failed"}') {
-      LogUtil.Debug('Detected C++ JSON conversion error')
       jsonValidationStatus.value = 'error'
       return null
     }
 
     // Parse JSON
     const parsed = JSON.parse(decoded)
-    LogUtil.Debug('Parsed JSON object:', parsed)
 
     // Additional check for error object
     if (parsed.error && parsed.error.includes('JSON conversion failed')) {
-      LogUtil.Debug('Detected C++ JSON conversion error in parsed object')
       jsonValidationStatus.value = 'error'
       return null
     }
@@ -184,8 +180,6 @@ const decodeUrlEncodedJson = (encodedString: string): any | null => {
 
     return parsed
   } catch (error) {
-    console.error('Failed to decode and parse JSON:', error)
-    console.error('Original encoded string:', encodedString)
     jsonValidationStatus.value = 'invalid'
     return null
   }
@@ -290,40 +284,31 @@ const formatDataFromQueryParams = () => {
     zindex: 1
   }
 
-  LogUtil.Debug('formatDataFromQueryParams created scheduleData:', scheduleData)
   return { chartData, scheduleData }
 }
 
 // Load data based on query parameters with API integration
 const loadTrendLogItemData = async () => {
-  LogUtil.Debug('Loading trend log data from query parameters...')
-  LogUtil.Debug('Current scheduleItemData before update:', scheduleItemData.value)
-
   try {
     isLoading.value = true
     error.value = null
 
     const params = getValidatedParameters()
 
-    // Priority 1: Try to load from JSON data (realtime data from C++ backend)
-    if (params.all_data && params.isValid) {
-      LogUtil.Info('📊 Loading data from JSON parameters (realtime)')
+    // Priority 1: Try to load data from JSON parameters (realtime)
+    if (params.all_data) {
       dataSource.value = 'json'
-
       const formattedData = formatDataFromQueryParams()
       if (formattedData) {
         trendLogItemData.value = formattedData.chartData
         scheduleItemData.value = formattedData.scheduleData
         pageTitle.value = formattedData.chartData.title
-        LogUtil.Debug('Data formatted from JSON parameters:', formattedData)
-        LogUtil.Debug('scheduleItemData updated to:', scheduleItemData.value)
         return
       }
     }
 
     // Priority 2: Try to load from API (historical data)
     if (params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
-      LogUtil.Info('📚 Loading data from API (historical)')
       dataSource.value = 'api'
 
       const historyRequest = {
@@ -364,17 +349,11 @@ const loadTrendLogItemData = async () => {
         trendLogItemData.value = apiScheduleData
         scheduleItemData.value = apiScheduleData
         pageTitle.value = `Historical Trend Log ${params.trendlog_id} - Device ${params.sn}`
-
-        LogUtil.Info('✅ Historical data loaded from API:', {
-          count: historyData.count,
-          trendlog_id: historyData.trendlog_id
-        })
         return
       }
     }
 
     // Priority 3: Fallback - no valid data available
-    LogUtil.Warn('⚠️ No valid data source available')
     dataSource.value = 'fallback'
     trendLogItemData.value = null
     scheduleItemData.value = null
@@ -403,7 +382,6 @@ const loadTrendLogItemData = async () => {
 watch(
   () => route.query,
   () => {
-    LogUtil.Debug('URL parameters changed, refreshing data...')
     loadTrendLogItemData()
   },
   { immediate: false }
@@ -413,16 +391,7 @@ watch(
 watch(
   () => scheduleItemData.value,
   (newValue, oldValue) => {
-    LogUtil.Debug('scheduleItemData changed:')
-    LogUtil.Debug('Old value:', oldValue)
-    LogUtil.Debug('New value:', newValue)
-
     // Force reactivity update if needed
-    if (newValue && typeof newValue === 'object') {
-      LogUtil.Debug('scheduleItemData now has data, chart should be visible')
-    } else {
-      LogUtil.Debug('scheduleItemData is empty, chart should be hidden')
-    }
   },
   { immediate: true, deep: true }
 )
@@ -431,12 +400,8 @@ watch(
 const initializeT3000Data = async () => {
   const { sn, panel_id, trendlog_id } = urlParams.value
 
-  LogUtil.Info('🚀 TrendLog IndexPage: Initializing T3000_Data for standalone page')
-  LogUtil.Info(`📊 Parameters: SN=${sn}, Panel=${panel_id}, TrendLog=${trendlog_id}`)
-
   // Check if we have the required parameters
   if (!sn || panel_id === null || trendlog_id === null) {
-    LogUtil.Warn('⚠️ Missing required parameters for T3000_Data initialization')
     return
   }
 
@@ -455,7 +420,6 @@ const initializeT3000Data = async () => {
     // Add the panel to panelsList if it doesn't exist
     const existingPanel = T3000_Data.value.panelsList.find(panel => panel.panel_number === panel_id)
     if (!existingPanel) {
-      LogUtil.Info(`📝 Adding panel ${panel_id} to panelsList`)
       T3000_Data.value.panelsList.push({
         panel_number: panel_id,
         serial_number: sn,
@@ -469,8 +433,6 @@ const initializeT3000Data = async () => {
 
     // Try WebView2 client first (for desktop T3000 app integration)
     if (Hvac.WebClient && (window as any).chrome?.webview) {
-      LogUtil.Info('🌐 Initializing WebView2 client for T3000 device communication')
-
       try {
         // Initialize WebView2 message handler if not already initialized
         Hvac.WebClient.initMessageHandler()
@@ -479,13 +441,11 @@ const initializeT3000Data = async () => {
         // Set loading state
         T3000_Data.value.loadingPanel = panel_id
 
-        LogUtil.Info('📡 Requesting panels list from T3000 device via WebView2')
         // First get the panels list
         Hvac.WebClient.GetPanelsList()
 
         // Then get specific panel data after a delay
         setTimeout(() => {
-          LogUtil.Info(`📊 Requesting panel ${panel_id} data from T3000 device`)
           Hvac.WebClient.GetPanelData(panel_id)
         }, 500)
 
@@ -495,19 +455,15 @@ const initializeT3000Data = async () => {
           specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
         })
 
-        LogUtil.Info('✅ T3000_Data initialized successfully from WebView2 device')
         dataLoaded = true
 
       } catch (error) {
-        LogUtil.Warn('⚠️ WebView2 initialization failed, trying WebSocket fallback:', error)
         T3000_Data.value.loadingPanel = null
       }
     }
 
     // Try WebSocket client as fallback (for web browser integration)
     if (!dataLoaded && Hvac.WsClient) {
-      LogUtil.Info('📡 Initializing WebSocket client for T3000 device communication')
-
       try {
         // Initialize WebSocket client properly
         Hvac.WsClient.initQuasar($q)
@@ -515,19 +471,16 @@ const initializeT3000Data = async () => {
         // Set loading state
         T3000_Data.value.loadingPanel = panel_id
 
-        LogUtil.Info('🔌 Connecting to WebSocket server...')
         // Connect to WebSocket server
         Hvac.WsClient.connect()
 
         // Wait a bit for connection to establish, then request data
         setTimeout(() => {
-          LogUtil.Info('📊 Requesting panels list from T3000 device via WebSocket')
           // First get the panels list (this will automatically call GetPanelData for first panel)
           Hvac.WsClient.GetPanelsList()
 
           // Also request specific panel data
           setTimeout(() => {
-            LogUtil.Info(`📊 Requesting panel ${panel_id} data from T3000 device`)
             Hvac.WsClient.GetPanelData(panel_id)
           }, 1000)
         }, 1000)
@@ -538,11 +491,9 @@ const initializeT3000Data = async () => {
           specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
         })
 
-        LogUtil.Info('✅ T3000_Data initialized successfully from WebSocket device')
         dataLoaded = true
 
       } catch (error) {
-        LogUtil.Warn('⚠️ WebSocket initialization failed:', error)
         T3000_Data.value.loadingPanel = null
       }
     }
@@ -588,18 +539,10 @@ const initializeT3000Data = async () => {
       LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, no data loaded')
     }
 
-    LogUtil.Info('✅ T3000_Data initialization completed')
-    LogUtil.Debug('📊 Final T3000_Data state:', {
-      panelsList: T3000_Data.value.panelsList?.length || 0,
-      panelsData: T3000_Data.value.panelsData?.length || 0,
-      loadingPanel: T3000_Data.value.loadingPanel
-    })
-
     // Set up realtime data saving for socket data (port 9104)
     setupRealtimeDataSaving(sn, panel_id)
 
   } catch (error) {
-    LogUtil.Error('❌ Error initializing T3000_Data:', error)
     // Ensure loading state is cleared on error
     T3000_Data.value.loadingPanel = null
   }
@@ -607,8 +550,6 @@ const initializeT3000Data = async () => {
 
 // Set up realtime data saving for socket port 9104
 const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
-  LogUtil.Info('🔄 Setting up realtime data saving for socket port 9104')
-
   // Set up a watcher on T3000_Data.panelsData to detect realtime updates
   watch(
     () => T3000_Data.value.panelsData,
@@ -626,8 +567,6 @@ const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
         if (oldPanelData && JSON.stringify(panelData) === JSON.stringify(oldPanelData)) {
           return // No change, skip saving
         }
-
-        LogUtil.Info('💾 Detected realtime data update, saving to database')
 
         // Convert panel data to database format
         const dataPoints = []

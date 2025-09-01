@@ -595,13 +595,6 @@ const props = withDefaults(defineProps<Props>(), {
 // Computed property to get the current item data - prioritizes props over global state
 const currentItemData = computed(() => {
   const data = props.itemData || scheduleItemData.value
-  LogUtil.Debug('TrendLogChart: Using item data source:', {
-    usingPropsItemData: !!props.itemData,
-    usingGlobalScheduleData: !props.itemData,
-    hasData: !!data,
-    t3EntryId: (data as any)?.t3Entry?.id,
-    t3EntryPid: (data as any)?.t3Entry?.pid
-  })
   return data
 })
 
@@ -621,11 +614,8 @@ const isRealTime = ref(true)
 // Dynamic interval calculation based on T3000 monitorConfig
 const calculateT3000Interval = (monitorConfig: any): number => {
   if (!monitorConfig) {
-    LogUtil.Warn('📊 TrendLogModal: No monitorConfig available, using default 60s interval')
     return 60000 // Default fallback: 1 minute
   }
-
-  LogUtil.Info('🔍 TrendLogModal: Raw monitorConfig received:', monitorConfig)
 
   const {
     hour_interval_time = 0,
@@ -642,15 +632,6 @@ const calculateT3000Interval = (monitorConfig: any): number => {
   const intervalMs = totalSeconds > 0
     ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
     : 60000  // Default 1 minute if all intervals are 0
-
-  LogUtil.Info('🔄 TrendLogModal: Calculated T3000 interval:', {
-    hour_interval_time,
-    minute_interval_time,
-    second_interval_time,
-    totalSeconds,
-    intervalMs,
-    intervalMinutes: intervalMs / 60000
-  })
 
   return intervalMs
 }
@@ -709,7 +690,6 @@ const generateDataSeries = (): SeriesConfig[] => {
 
   // If no real input data, return empty array to show empty list
   if (!hasInputData || !hasRangeData) {
-    LogUtil.Info('🔍 TrendLogChart: No real input data found, showing empty list')
     return []
   }
 
@@ -719,11 +699,8 @@ const generateDataSeries = (): SeriesConfig[] => {
 
   // Additional check: if actualItemCount is 0, return empty array
   if (actualItemCount === 0) {
-    LogUtil.Info('🔍 TrendLogChart: No valid input items found, showing empty list')
     return []
   }
-
-  LogUtil.Info(`🔍 TrendLogChart: Generating series for ${actualItemCount} real input items`)
 
   const colors = [
     '#FF0000', // Bright Red
@@ -893,30 +870,7 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
 
 // Debug function to verify data generation intervals
 const debugDataIntervals = () => {
-  const visibleSeries = dataSeries.value.filter(series => series.visible)
-  if (visibleSeries.length === 0) return
-
-  console.log('=== DATA INTERVAL DEBUG ===')
-  console.log(`Expected interval: ${getInternalIntervalSeconds()} seconds`)
-  console.log(`TimeBase: ${timeBase.value}`)
-
-  visibleSeries.forEach((series, index) => {
-    if (series.data.length < 2) return
-
-    const intervals = []
-    for (let i = 1; i < Math.min(series.data.length, 6); i++) { // Check first 5 intervals
-      const timeDiff = series.data[i].timestamp - series.data[i-1].timestamp
-      const intervalSec = timeDiff / 1000
-      intervals.push(intervalSec)
-    }
-
-    const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length
-    console.log(`Series ${index + 1} (${series.name}):`)
-    console.log(`  Data points: ${series.data.length}`)
-    console.log(`  Average interval: ${avgInterval.toFixed(1)} seconds`)
-    console.log(`  First intervals: ${intervals.map(i => i.toFixed(1)).join(', ')} seconds`)
-  })
-  console.log('=========================')
+  // Debug function disabled in production
 }
 
 // Computed property to track current interval for debugging
@@ -1604,50 +1558,27 @@ const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: D
  * @returns Monitor configuration with input items and timing intervals
  */
 const getMonitorConfigFromT3000Data = async () => {
-  LogUtil.Info('🔍 TrendLogModal: === ENHANCED MONITOR CONFIG EXTRACTION ===')
-
   // Get the monitor ID and PID from current item data (props or global)
   const monitorId = (currentItemData.value as any)?.t3Entry?.id
   const panelId = (currentItemData.value as any)?.t3Entry?.pid
 
-  LogUtil.Info('📊 TrendLogModal: Monitor extraction info:', {
-    usingPropsItemData: !!props.itemData,
-    usingGlobalScheduleData: !props.itemData,
-    currentItemData: currentItemData.value,
-    monitorId,
-    panelId,
-    fullT3Entry: (currentItemData.value as any)?.t3Entry
-  })
-
   if (!monitorId) {
-    LogUtil.Warn('❌ TrendLogModal: No monitor ID found in currentItemData.t3Entry.id')
     return null
   }
 
   if (!panelId && panelId !== 0) {
-    LogUtil.Warn('❌ TrendLogModal: No panel ID found in currentItemData.t3Entry.pid')
     return null
   }
 
-  LogUtil.Info(`🎯 TrendLogModal: Looking for monitor ID: ${monitorId} with PID: ${panelId}`)
-
   try {
     // Use enhanced data manager to wait for data readiness
-    LogUtil.Info('⏳ TrendLogModal: Waiting for T3000_Data readiness...')
     const validation = await t3000DataManager.waitForDataReady({
       timeout: 15000, // 15 seconds timeout
       specificEntries: [monitorId],
       requireFresh: true
     })
 
-    LogUtil.Info('✅ TrendLogModal: Data validation result:', validation)
-
     if (!validation.isValid) {
-      LogUtil.Error('❌ TrendLogModal: Data validation failed', {
-        missingData: validation.missingData,
-        staleData: validation.staleData,
-        entriesCount: validation.entriesCount
-      })
       return null
     }
 
@@ -1655,11 +1586,8 @@ const getMonitorConfigFromT3000Data = async () => {
     const monitorConfig = await t3000DataManager.getEntryByPid(monitorId, panelId)
 
     if (!monitorConfig) {
-      LogUtil.Warn(`❌ TrendLogModal: Monitor configuration not found for ID: ${monitorId}`)
       return null
     }
-
-    LogUtil.Info('✅ TrendLogModal: Found monitor configuration:', monitorConfig)
 
     // Calculate the data retrieval interval in milliseconds using the unified function
     const intervalMs = calculateT3000Interval(monitorConfig)
@@ -1671,8 +1599,6 @@ const getMonitorConfigFromT3000Data = async () => {
     // Parse input items based on actual monitor configuration structure
     // monitorConfig has 'input' array with objects and 'range' array
     if (monitorConfig.input && Array.isArray(monitorConfig.input)) {
-      LogUtil.Info(`🔍 TrendLogModal: Extracting ${monitorConfig.input.length} input items from monitor config`)
-
       for (let i = 0; i < monitorConfig.input.length; i++) {
         const inputItem = monitorConfig.input[i]
         if (inputItem && inputItem.panel !== undefined && inputItem.point_number !== undefined) {
@@ -1688,28 +1614,12 @@ const getMonitorConfigFromT3000Data = async () => {
           // Get corresponding range value
           const rangeValue = (monitorConfig.range && monitorConfig.range[i]) ? monitorConfig.range[i] : 0
           ranges.push(rangeValue)
-
-          // **DEBUG FIRST ITEM SPECIFICALLY**
-          if (i === 0) {
-            LogUtil.Info(`🚨 FIRST ITEM (index 0) EXTRACTION DEBUG:`, {
-              inputItem,
-              extractedRangeValue: rangeValue,
-              monitorConfigRangeArray: monitorConfig.range,
-              rangeAtIndex0: monitorConfig.range ? monitorConfig.range[0] : 'NO_RANGE_ARRAY',
-              expectedDeviceId: `IN${inputItem.point_number + 1}` // Should be IN1 for point_number=0
-            })
-          }
-
-          LogUtil.Info(`📝 TrendLogModal: Item ${i}: point_type=${inputItem.point_type}, point_number=${inputItem.point_number}, range=${rangeValue}`)
         }
       }
     }
 
-    LogUtil.Info(`✅ TrendLogModal: Extracted ranges array:`, ranges)
-
     // Check if we actually have valid input items with meaningful data
     if (inputItems.length === 0) {
-      LogUtil.Info('❌ TrendLogModal: No valid input items found in monitor config, returning null')
       return null
     }
 
@@ -1721,7 +1631,6 @@ const getMonitorConfigFromT3000Data = async () => {
     )
 
     if (validInputItems.length === 0) {
-      LogUtil.Info('❌ TrendLogModal: No input items with valid point numbers found, returning null')
       return null
     }
 
@@ -1738,17 +1647,9 @@ const getMonitorConfigFromT3000Data = async () => {
       originalConfig: monitorConfig
     }
 
-    LogUtil.Info('🎯 TrendLogModal: Processed monitor configuration:', {
-      id: result.id,
-      inputItemsCount: result.inputItems.length,
-      rangesCount: result.ranges.length,
-      dataInterval: result.dataIntervalMs
-    })
-
     return result
 
   } catch (error) {
-    LogUtil.Error('❌ TrendLogModal: Error extracting monitor config:', error)
     return null
   }
 }
@@ -1758,14 +1659,10 @@ const getMonitorConfigFromT3000Data = async () => {
  * Initialize WebSocket and WebView clients for data communication
  */
 const initializeDataClients = () => {
-  LogUtil.Debug('=== INITIALIZING DATA CLIENTS ===')
-
   // Check if we're running in built-in browser (WebView) or external browser (WebSocket)
   const isBuiltInBrowser = window.location.protocol === 'ms-appx-web:' ||
                           (window as any).chrome?.webview !== undefined ||
                           (window as any).external?.sendMessage !== undefined
-
-  LogUtil.Debug('Environment detected:', isBuiltInBrowser ? 'Built-in WebView' : 'External Browser')
 
   if (isBuiltInBrowser) {
     // Use WebView client for built-in browser
@@ -1786,15 +1683,12 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
     const panelsData = T3000_Data.value.panelsData || []
 
     if (panelsData.length > 0) {
-      LogUtil.Info(`✅ TrendLogModal: PanelsData loaded with ${panelsData.length} devices`)
       return true
     }
 
-    LogUtil.Info(`⏳ TrendLogModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
     await new Promise(resolve => setTimeout(resolve, 200)) // Reduced from 500ms to 200ms for faster detection
   }
 
-  LogUtil.Warn(`❌ TrendLogModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
   return false
 }
 
@@ -1803,38 +1697,26 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
  */
 const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
   try {
-    LogUtil.Info('🔄 TrendLogModal: Starting real-time monitor data fetch...')
-
     // Set loading state
     isLoading.value = true
 
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Info('❌ TrendLogModal: No monitor config found, falling back to mock data')
       isLoading.value = false
       return []
     }
-
-    LogUtil.Info('✅ TrendLogModal: Monitor config extracted:', monitorConfig)
-    LogUtil.Info('📊 TrendLogModal: Monitor config details:', {
-      id: monitorConfigData.id,
-      inputItemsCount: monitorConfigData.inputItems?.length || 0,
-      rangesCount: monitorConfigData.ranges?.length || 0,
-      dataInterval: monitorConfigData.dataIntervalMs
-    })
 
     // Check if panelsData is already available - if so, proceed immediately
     const currentPanelsData = T3000_Data.value.panelsData || []
     let panelsDataReady = false
 
     if (currentPanelsData.length > 0) {
-      LogUtil.Info(`✅ TrendLogModal: PanelsData already available with ${currentPanelsData.length} devices - proceeding immediately`)
       panelsDataReady = true
     } else {
       // Only wait if panelsData is not already available
-      LogUtil.Info('⏳ TrendLogModal: PanelsData not ready, waiting for it to load...')
       panelsDataReady = await waitForPanelsData(5000) // Reduced timeout from 10s to 5s
+    }
     }
 
     if (!panelsDataReady) {
