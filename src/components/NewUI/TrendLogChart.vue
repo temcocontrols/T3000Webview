@@ -543,10 +543,10 @@ interface SeriesConfig {
   isEmpty?: boolean
   unitType: 'digital' | 'analog'      // NEW: Type of data (digital binary or analog continuous)
   unitCode: number                    // NEW: Unit code from T3000 (1-22 digital, 31-63 analog)
-  digitalStates?: [string, string]   // NEW: State labels for digital units ['Low', 'High']
-  itemType?: string                  // NEW: T3000 item type (VAR, Input, Output, HOL, etc.)
-  prefix?: string                    // NEW: Category prefix (IN, OUT, VAR, etc.)
-  description?: string               // NEW: Device description
+  digitalStates?: [string, string]    // NEW: State labels for digital units ['Low', 'High']
+  itemType?: string                   // NEW: T3000 item type (VAR, Input, Output, HOL, etc.)
+  prefix?: string                     // NEW: Category prefix (IN, OUT, VAR, etc.)
+  description?: string                // NEW: Device description
 }
 
 /**
@@ -595,6 +595,15 @@ const props = withDefaults(defineProps<Props>(), {
 // Computed property to get the current item data - prioritizes props over global state
 const currentItemData = computed(() => {
   const data = props.itemData || scheduleItemData.value
+  LogUtil.Info('🔄 TrendLogChart: currentItemData computed update', {
+    hasPropsData: !!props.itemData,
+    hasScheduleData: !!scheduleItemData.value,
+    dataSource: props.itemData ? 'props' : 'scheduleItemData',
+    dataId: data?.t3Entry?.id,
+    dataPid: data?.t3Entry?.pid,
+    hasT3000PanelsData: !!(T3000_Data.value?.panelsData),
+    t3000PanelsDataLength: T3000_Data.value?.panelsData?.length || 0
+  })
   return data
 })
 
@@ -667,18 +676,55 @@ const expandedSeries = ref<Set<number>>(new Set())
 // Helper: Get device description from T3000_Data.value.panelsData
 const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
   const panelsData = T3000_Data.value.panelsData
-  if (!panelsData || !Array.isArray(panelsData)) return ''
+  LogUtil.Info('🔍 TrendLogChart: getDeviceDescription called', {
+    panelId,
+    pointType,
+    pointNumber,
+    hasPanelsData: !!panelsData,
+    panelsDataLength: panelsData?.length || 0
+  })
+
+  if (!panelsData || !Array.isArray(panelsData)) {
+    LogUtil.Warn('⚠️ TrendLogChart: No panelsData available for device description')
+    return ''
+  }
+
   const pointTypeInfo = getPointTypeInfo(pointType)
-  if (!pointTypeInfo || !pointTypeInfo.category) return ''
+  if (!pointTypeInfo || !pointTypeInfo.category) {
+    LogUtil.Warn('⚠️ TrendLogChart: No point type info found', { pointType })
+    return ''
+  }
+
   const idToFind = `${pointTypeInfo.category}${pointNumber+1}` // Adjusted to match T3000.rc format
+  LogUtil.Info('🔍 TrendLogChart: Searching for device', {
+    idToFind,
+    panelId,
+    pointTypeCategory: pointTypeInfo.category
+  })
+
   const device = panelsData.find(
     (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
   )
+
+  LogUtil.Info('🎯 TrendLogChart: Device search result', {
+    found: !!device,
+    deviceDescription: device?.description || '',
+    deviceId: device?.id,
+    devicePid: device?.pid
+  })
+
   return device?.description || ''
 }
 
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
+  LogUtil.Info('🏗️ TrendLogChart: generateDataSeries called', {
+    hasPropsItemData: !!props.itemData,
+    hasT3Entry: !!props.itemData?.t3Entry,
+    propsItemDataId: props.itemData?.t3Entry?.id,
+    propsItemDataPid: props.itemData?.t3Entry?.pid
+  })
+
   // Check if we have real input data from t3Entry
   const hasInputData = props.itemData?.t3Entry?.input &&
                       Array.isArray(props.itemData.t3Entry.input) &&
@@ -688,8 +734,24 @@ const generateDataSeries = (): SeriesConfig[] => {
                       Array.isArray(props.itemData.t3Entry.range) &&
                       props.itemData.t3Entry.range.length > 0
 
+  LogUtil.Info('🔍 TrendLogChart: generateDataSeries data validation', {
+    hasInputData,
+    hasRangeData,
+    inputLength: props.itemData?.t3Entry?.input?.length || 0,
+    rangeLength: props.itemData?.t3Entry?.range?.length || 0,
+    inputDataSample: props.itemData?.t3Entry?.input?.slice(0, 3) || [],
+    rangeDataSample: props.itemData?.t3Entry?.range?.slice(0, 3) || [],
+    t3EntryStructure: {
+      id: props.itemData?.t3Entry?.id,
+      pid: props.itemData?.t3Entry?.pid,
+      minute_interval_time: props.itemData?.t3Entry?.minute_interval_time,
+      second_interval_time: props.itemData?.t3Entry?.second_interval_time
+    }
+  })
+
   // If no real input data, return empty array to show empty list
   if (!hasInputData || !hasRangeData) {
+    LogUtil.Warn('⚠️ TrendLogChart: No valid input/range data, returning empty series')
     return []
   }
 
@@ -719,7 +781,7 @@ const generateDataSeries = (): SeriesConfig[] => {
     '#0000AA', // Navy Blue
   ]
 
-  return Array.from({ length: actualItemCount }, (_, index) => {
+  const result = Array.from({ length: actualItemCount }, (_, index) => {
     const inputItem = inputData[index]
     const rangeValue = rangeData[index]
 
@@ -760,8 +822,19 @@ const generateDataSeries = (): SeriesConfig[] => {
     const itemTypeName = itemTypeMap[pointType] || 'VAR'
     const formattedItemType = `${panelId}${itemTypeName}${pointNumber + 1}`
 
-    // Generate series name based on actual data
-    const seriesName = `BMC01E1E-${index + 1}P${panelId}B`
+    // Generate series name based on actual device data - use description if available
+    const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
+
+    LogUtil.Info('🏷️ TrendLogChart: Generating series name', {
+      index,
+      panelId,
+      pointType,
+      pointNumber,
+      description,
+      generatedName: seriesName,
+      itemTypeName,
+      formattedItemType
+    })
 
     return {
       name: seriesName,
@@ -778,9 +851,109 @@ const generateDataSeries = (): SeriesConfig[] => {
       description: cleanDescription
     }
   })
+
+  LogUtil.Info('✅ TrendLogChart: generateDataSeries completed', {
+    generatedSeriesCount: result.length,
+    seriesNames: result.map(s => s.name),
+    actualItemCount
+  })
+
+  return result
 }
 
 const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
+
+// Regenerate data series when data source changes
+const regenerateDataSeries = () => {
+  LogUtil.Info('🔄 TrendLogChart: regenerateDataSeries called', {
+    currentSeriesCount: dataSeries.value?.length || 0,
+    hasCurrentData: !!currentItemData.value,
+    timestamp: new Date().toISOString()
+  })
+
+  const newSeries = generateDataSeries()
+  dataSeries.value = newSeries
+
+  LogUtil.Info('✅ TrendLogChart: Data series regenerated', {
+    newSeriesCount: newSeries.length,
+    newSeriesNames: newSeries.map(s => s.name)
+  })
+}
+
+// Watch currentItemData and regenerate series when it changes
+watch(currentItemData, (newData, oldData) => {
+  LogUtil.Info('🔄 TrendLogChart: currentItemData watcher triggered', {
+    hasNewData: !!newData,
+    hasOldData: !!oldData,
+    newDataId: newData?.t3Entry?.id,
+    oldDataId: oldData?.t3Entry?.id,
+    idsChanged: newData?.t3Entry?.id !== oldData?.t3Entry?.id,
+    willRegenerate: !!newData
+  })
+
+  if (newData) {
+    regenerateDataSeries()
+  }
+}, { immediate: true, deep: true })
+
+// Watch dataSeries for updates
+watch(dataSeries, (newSeries, oldSeries) => {
+  LogUtil.Info('📋 TrendLogChart: dataSeries updated', {
+    newSeriesCount: newSeries?.length || 0,
+    oldSeriesCount: oldSeries?.length || 0,
+    seriesChanged: newSeries?.length !== oldSeries?.length,
+    newSeriesNames: newSeries?.map(s => s.name) || []
+  })
+}, { deep: true })
+
+// Watch props.itemData for changes
+watch(() => props.itemData, (newData, oldData) => {
+  LogUtil.Info('🔄 TrendLogChart: props.itemData changed', {
+    hasNewData: !!newData,
+    hasOldData: !!oldData,
+    newDataId: newData?.t3Entry?.id,
+    oldDataId: oldData?.t3Entry?.id,
+    newDataPid: newData?.t3Entry?.pid,
+    oldDataPid: oldData?.t3Entry?.pid,
+    idsChanged: newData?.t3Entry?.id !== oldData?.t3Entry?.id,
+    pidsChanged: newData?.t3Entry?.pid !== oldData?.t3Entry?.pid,
+    timestamp: new Date().toISOString()
+  })
+}, { deep: true })
+
+// Watch T3000_Data for panels data changes
+watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
+  LogUtil.Info('🏢 TrendLogChart: T3000_Data.panelsData changed', {
+    hasNewPanelsData: !!newPanelsData,
+    hasOldPanelsData: !!oldPanelsData,
+    newPanelsDataLength: newPanelsData?.length || 0,
+    oldPanelsDataLength: oldPanelsData?.length || 0,
+    lengthChanged: (newPanelsData?.length || 0) !== (oldPanelsData?.length || 0),
+    willTriggerRegeneration: !!newPanelsData,
+    timestamp: new Date().toISOString()
+  })
+
+  // Regenerate data series when panels data becomes available or changes
+  if (newPanelsData && currentItemData.value) {
+    LogUtil.Info('🔄 TrendLogChart: Triggering regeneration due to panels data change')
+    regenerateDataSeries()
+  }
+}, { deep: true })
+
+// Watch scheduleItemData for changes
+watch(scheduleItemData, (newData, oldData) => {
+  LogUtil.Info('🔄 TrendLogChart: scheduleItemData changed', {
+    hasNewData: !!newData,
+    hasOldData: !!oldData,
+    newDataId: (newData as any)?.t3Entry?.id,
+    oldDataId: (oldData as any)?.t3Entry?.id,
+    newDataPid: (newData as any)?.t3Entry?.pid,
+    oldDataPid: (oldData as any)?.t3Entry?.pid,
+    idsChanged: (newData as any)?.t3Entry?.id !== (oldData as any)?.t3Entry?.id,
+    pidsChanged: (newData as any)?.t3Entry?.pid !== (oldData as any)?.t3Entry?.pid,
+    timestamp: new Date().toISOString()
+  })
+}, { deep: true })
 
 // Get internal interval value from props - combine minute and second intervals
 const getInternalIntervalSeconds = (): number => {
@@ -909,7 +1082,13 @@ const totalDataPoints = computed(() => {
 })
 
 const visibleSeriesCount = computed(() => {
-  return dataSeries.value.filter(series => series.visible).length
+  const count = dataSeries.value.filter(series => series.visible).length
+  LogUtil.Info('👁️ TrendLogChart: visibleSeriesCount computed', {
+    visibleCount: count,
+    totalCount: dataSeries.value.length,
+    visibleSeries: dataSeries.value.filter(s => s.visible).map(s => s.name)
+  })
+  return count
 })
 
 const timeBaseLabel = computed(() => {
@@ -1905,6 +2084,12 @@ const initializeRealDataSeries = async () => {
     }
 
     // Update the reactive data series
+    LogUtil.Info('🔄 TrendLogChart: initializeRealDataSeries updating dataSeries', {
+      previousSeriesCount: dataSeries.value.length,
+      newSeriesCount: newDataSeries.length,
+      newSeriesNames: newDataSeries.map(s => s.name),
+      timestamp: new Date().toISOString()
+    })
     dataSeries.value = newDataSeries
 
     // Update sync time since we successfully loaded real data
@@ -2148,6 +2333,15 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
  * Send GET_ENTRIES request for a single device
  */
 const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceIndex: number, deviceType: string): Promise<void> => {
+  LogUtil.Info('📡 TrendLogChart: sendGetEntriesRequest called', {
+    panelId,
+    deviceIndex,
+    deviceType,
+    hasDataClient: !!dataClient,
+    hasGetEntriesMethod: !!(dataClient?.GetEntries),
+    timestamp: new Date().toISOString()
+  })
+
   const requestData = [{
     panelId: panelId,
     index: deviceIndex,
@@ -2157,6 +2351,7 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
   if (dataClient && dataClient.GetEntries) {
     try {
       dataClient.GetEntries(requestData)
+      LogUtil.Info('✅ TrendLogChart: GetEntries request sent successfully', { requestData })
     } catch (error) {
       LogUtil.Error('Error calling GetEntries:', error)
     }
@@ -2274,21 +2469,29 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
-
-
-
+    LogUtil.Info('📨 TrendLogChart: GET_ENTRIES response received', {
+      hasData: !!msgData?.data,
+      dataType: Array.isArray(msgData?.data) ? 'array' : typeof msgData?.data,
+      dataLength: Array.isArray(msgData?.data) ? msgData.data.length : 0,
+      timestamp: new Date().toISOString()
+    })
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('�?TrendLogModal: Valid data array received, processing...')
+        LogUtil.Info('✅ TrendLogChart: Valid data array received, processing...', {
+          entryCount: msgData.data.length
+        })
         updateChartWithNewData(msgData.data)
       } else if (msgData.data) {
-
+        LogUtil.Warn('⚠️ TrendLogChart: Data received but not an array', {
+          dataType: typeof msgData.data,
+          data: msgData.data
+        })
       } else {
-        LogUtil.Info('�?TrendLogModal: No data in response or data is null/undefined')
+        LogUtil.Warn('⚠️ TrendLogChart: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('�?TrendLogModal: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('❌ TrendLogChart: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
@@ -2312,7 +2515,12 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  * Update chart with new data from GET_ENTRIES response
  */
 const updateChartWithNewData = (newData: any[]) => {
-
+  LogUtil.Info('📊 TrendLogChart: updateChartWithNewData called', {
+    newDataLength: newData?.length || 0,
+    currentSeriesCount: dataSeries.value?.length || 0,
+    newDataSample: newData?.slice(0, 3) || [],
+    timestamp: new Date().toISOString()
+  })
 
   const currentTime = Date.now()
 
@@ -2324,6 +2532,13 @@ const updateChartWithNewData = (newData: any[]) => {
         value: parseFloat(dataPoint.value) || 0
       }
 
+      LogUtil.Info(`📈 TrendLogChart: Adding data point to series ${index}`, {
+        seriesName: dataSeries.value[index].name,
+        newValue: newPoint.value,
+        timestamp: newPoint.timestamp,
+        seriesDataLength: dataSeries.value[index].data.length
+      })
+
       // Add new point to series data
       dataSeries.value[index].data.push(newPoint)
 
@@ -2332,8 +2547,12 @@ const updateChartWithNewData = (newData: any[]) => {
       if (dataSeries.value[index].data.length > maxDataPoints) {
         dataSeries.value[index].data = dataSeries.value[index].data.slice(-maxDataPoints)
       }
-
-
+    } else {
+      LogUtil.Warn(`⚠️ TrendLogChart: No series found for data point ${index}`, {
+        dataPointIndex: index,
+        totalSeries: dataSeries.value.length,
+        dataPoint
+      })
     }
   })
 
@@ -2459,12 +2678,22 @@ const initializeData = async () => {
 }
 
 const addRealtimeDataPoint = async () => {
+  LogUtil.Info('⏱️ TrendLogChart: addRealtimeDataPoint called', {
+    isRealTimeMode: isRealTime.value,
+    dataSeriesCount: dataSeries.value?.length || 0,
+    hasMonitorConfig: !!monitorConfig.value,
+    timestamp: new Date().toISOString()
+  })
+
   // Only add data if we're in real-time mode
-  if (!isRealTime.value) return
+  if (!isRealTime.value) {
+    LogUtil.Info('⏸️ TrendLogChart: Skipping realtime update - not in real-time mode')
+    return
+  }
 
   // Safety check: If no data series exist, don't generate mock data
   if (dataSeries.value.length === 0) {
-
+    LogUtil.Warn('⚠️ TrendLogChart: No data series available for realtime update')
     return
   }
 
@@ -2480,8 +2709,17 @@ const addRealtimeDataPoint = async () => {
 
   if (monitorConfigData && monitorConfigData.inputItems.length > 0) {
     // Use real-time data from T3000
+    LogUtil.Info('📡 TrendLogChart: Fetching real-time monitor data', {
+      monitorConfigItemsCount: monitorConfigData.inputItems.length,
+      currentDataSeriesCount: dataSeries.value.length
+    })
+
     try {
       const realTimeData = await fetchRealTimeMonitorData()
+      LogUtil.Info('📊 TrendLogChart: Real-time data fetched', {
+        realTimeDataLength: realTimeData?.length || 0,
+        hasValidData: Array.isArray(realTimeData)
+      })
 
       dataSeries.value.forEach((series, index) => {
         if (series.isEmpty || !realTimeData[index]) return
@@ -2496,6 +2734,11 @@ const addRealtimeDataPoint = async () => {
           }
 
           series.data.push(newPoint)
+          LogUtil.Info(`📈 TrendLogChart: Added real-time point to series ${index}`, {
+            seriesName: series.name,
+            newValue: newPoint.value,
+            seriesDataLength: series.data.length
+          })
 
           // Remove old points to maintain window size
           const maxDataPoints = Math.max(100, getTimeRangeMinutes(timeBase.value) / 5)
@@ -2505,11 +2748,11 @@ const addRealtimeDataPoint = async () => {
         }
       })
 
-      LogUtil.Debug('Added real-time data points from T3000')
+      LogUtil.Info('✅ TrendLogChart: Real-time data points processing completed')
       // Update sync time only when real data is successfully processed
       lastSyncTime.value = new Date().toLocaleTimeString()
     } catch (error) {
-      LogUtil.Warn('Failed to get real-time data, falling back to mock data:', error)
+      LogUtil.Warn('⚠️ TrendLogChart: Failed to get real-time data, falling back to mock data:', error)
       // Fall back to mock data generation
       addMockRealtimeDataPoint(timestamp)
     }
@@ -2693,6 +2936,12 @@ const updateChart = () => {
     }
   }
 
+  LogUtil.Info('🔄 TrendLogChart: Chart updated with new config', {
+    hasChartInstance: !!chartInstance,
+    visibleSeriesCount: dataSeries.value?.filter(s => s.visible)?.length || 0,
+    totalSeriesCount: dataSeries.value?.length || 0,
+    timestamp: new Date().toISOString()
+  })
   chartInstance.update('none')
 }
 
@@ -3335,7 +3584,14 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
 
 // Lifecycle
 onMounted(async () => {
-
+  LogUtil.Info('🚀 TrendLogChart: Component mounted', {
+    hasPropsItemData: !!props.itemData,
+    propsItemDataId: props.itemData?.t3Entry?.id,
+    propsItemDataPid: props.itemData?.t3Entry?.pid,
+    hasScheduleItemData: !!scheduleItemData.value,
+    currentDataSeriesCount: dataSeries.value?.length || 0,
+    timestamp: new Date().toISOString()
+  })
 
   LogUtil.Info('📊 TrendLogModal: Current item data source:', {
     usingPropsItemData: !!props.itemData,
