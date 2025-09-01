@@ -81,7 +81,6 @@ import { useQuasar } from 'quasar'
 import TrendLogChart from 'src/components/newui/TrendLogChart.vue'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
-import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
@@ -536,7 +535,6 @@ const initializeT3000Data = async () => {
     // Clear loading state if no data was loaded
     if (!dataLoaded) {
       T3000_Data.value.loadingPanel = null
-      LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, no data loaded')
     }
 
     // Set up realtime data saving for socket data (port 9104)
@@ -596,30 +594,22 @@ const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
         if (dataPoints.length > 0) {
           // Save batch data to database
           const savedCount = await trendlogAPI.saveRealtimeBatch(dataPoints)
-          LogUtil.Info(`✅ Saved ${savedCount} realtime data points to database`)
         }
 
       } catch (error) {
-        LogUtil.Warn('⚠️ Error processing realtime data for database saving:', error)
+        // Error processing realtime data for database saving
       }
     },
     { deep: true } // Deep watch to detect changes in nested objects
   )
-
-  LogUtil.Info('✅ Realtime data saving watcher setup completed')
 }
 
 onMounted(() => {
-  LogUtil.Debug('TrendLog IndexPage mounted with query params:', route.query)
-  LogUtil.Debug('Initial scheduleItemData state:', scheduleItemData.value)
-
   // Initialize Quasar integration for Hvac system (lightweight)
-  LogUtil.Info('🚀 Initializing basic Quasar integration for standalone page')
   try {
     Hvac.IdxPage.initQuasar($q)
-    LogUtil.Info('✅ Quasar integration initialized')
   } catch (error) {
-    LogUtil.Warn('⚠️ Error initializing Quasar integration:', error)
+    // Error initializing Quasar integration
   }
 
   // Initialize T3000_Data with proper WebSocket and WebView2 communication

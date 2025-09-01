@@ -1030,6 +1030,12 @@ class WebSocketClient {
     setTimeout(() => {
       IdxUtils.refreshMoveableGuides();
     }, 100);
+
+    // Refresh element count in right-side panel after loading graphic entry
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
+    if (currentDevice) {
+      this.deviceOpt?.refreshGraphicPanelElementCount(currentDevice);
+    }
   }
 
   public HandleOpenEntryEditWindowRes(msgData) {

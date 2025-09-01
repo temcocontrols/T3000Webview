@@ -1717,10 +1717,8 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
       // Only wait if panelsData is not already available
       panelsDataReady = await waitForPanelsData(5000) // Reduced timeout from 10s to 5s
     }
-    }
 
     if (!panelsDataReady) {
-      LogUtil.Error('❌ TrendLogModal: PanelsData not available, cannot proceed')
       isLoading.value = false
       return []
     }
@@ -1729,15 +1727,8 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     const dataClient = initializeDataClients()
 
     if (!dataClient) {
-      LogUtil.Info('�?TrendLogModal: No data client available')
       return []
     }
-
-    LogUtil.Info('�?TrendLogModal: Data client initialized:', {
-      clientType: dataClient.constructor.name,
-      hasGetEntriesMethod: typeof dataClient.GetEntries === 'function',
-      clientMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)).filter(name => name.includes('Get'))
-    })
 
     // Setup message handlers for GET_ENTRIES responses
     setupGetEntriesResponseHandlers(dataClient)
@@ -1745,20 +1736,14 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Get current device for panelId - use the first available panel as fallback
     const panelsList = T3000_Data.value.panelsList || []
     const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
-    LogUtil.Info('📊 TrendLogModal: Using panelId:', currentPanelId)
-    LogUtil.Info('📊 TrendLogModal: Available panels:', panelsList.map(p => ({ id: p.panel_number, name: p.panel_name })))
 
     // Get panels data for device mapping
     const panelsData = T3000_Data.value.panelsData || []
-    LogUtil.Info('PANELS TrendLogModal: Total panelsData count:', panelsData)
-    LogUtil.Info('PANELS TrendLogModal: PanelsData structure sample:', panelsData.slice(0, 2))
 
     // Instead of finding a single panel, return all panelData for the currentPanelId
     const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
     if (!currentPanelData) {
-      LogUtil.Info('ERROR TrendLogModal: No panel data found for panelId:', currentPanelData)
-      LogUtil.Info('PANELS TrendLogModal: Available panel PIDs:', panelsData.map(p => p.pid))
       return []
     }
 
@@ -1766,18 +1751,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     let devicesArray = currentPanelData
 
     if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
-      LogUtil.Info('ERROR TrendLogModal: No devices found in panel data')
       return []
     }
 
-    LogUtil.Info('DEVICES TrendLogModal: Found', devicesArray.length, 'devices in panel')
-    LogUtil.Info('DEVICES TrendLogModal: Sample devices from panel:', devicesArray.slice(0, 5).map(d => ({ id: d.id, label: d.label })))
-
     // Fetch data for all input items
-    LogUtil.Info('🔄 TrendLogModal: Starting to fetch data for', monitorConfigData.inputItems.length, 'input items')
-
     const allDataPromises = monitorConfigData.inputItems.map(async (inputItem, index) => {
-      LogUtil.Info(`🔄 TrendLogModal: Processing input item ${index + 1}/${monitorConfigData.inputItems.length}`)
       return await fetchSingleItemData(dataClient, inputItem, {
         ...monitorConfigData,
         panelId: currentPanelId,
@@ -1787,21 +1765,10 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     const allDataResults = await Promise.all(allDataPromises)
-    LogUtil.Info('�?TrendLogModal: All data fetched successfully, results count:', allDataResults.length)
-
-    // Log detailed results
-    allDataResults.forEach((result, index) => {
-      LogUtil.Info(`📈 TrendLogModal: Series ${index} result:`, {
-        dataPointCount: result.length,
-        firstValue: result[0]?.value,
-        hasData: result.length > 0 && result[0]?.value !== 0
-      })
-    })
 
     return allDataResults
 
   } catch (error) {
-    LogUtil.Error('❌ TrendLogModal: Error fetching real-time monitor data:', error)
     return []
   } finally {
     // Clear loading state
@@ -1814,58 +1781,30 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
  */
 const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any): Promise<DataPoint[]> => {
   try {
-    LogUtil.Info(`🔍 TrendLogModal: Processing input item:`, inputItem)
-    LogUtil.Info(`🔧 TrendLogModal: Config passed to fetchSingleItemData:`, {
-      panelId: config.panelId,
-      itemIndex: config.itemIndex,
-      panelDataLength: config.panelData?.length,
-      rangesLength: config.ranges?.length
-    })
-
     // Extract index from config (this should match the input item index in the array)
     const itemIndex = config.itemIndex || 0
     const rangeValue = config.ranges[itemIndex] || 0
 
-    LogUtil.Info(`📊 TrendLogModal: Processing item ${itemIndex}, range value: ${rangeValue}`)
-
     // Log device mapping details
     const deviceId = logDeviceMapping(inputItem, itemIndex, rangeValue)
-
-    // Debug: Log all available devices in panelData
-    LogUtil.Info(`🔍 TrendLogModal: Available devices in panelData:`,
-      config.panelData.map(device => ({ id: device.id, label: device.label, value: device.value }))
-    )
 
     // Find matching device in panelsData using new enhanced lookup
     const matchingDevice = findPanelDataDevice(inputItem, config.panelData)
 
     if (!matchingDevice) {
-      LogUtil.Info(`❌ TrendLogModal: No device found with ID: ${deviceId}, leaving as empty`)
-      LogUtil.Info(`🔍 TrendLogModal: Searched for "${deviceId}" in ${config.panelData.length} devices`)
       return [{
         timestamp: Date.now(),
         value: 0
       }]
     }
 
-    LogUtil.Info(`✅ TrendLogModal: Found matching device:`, matchingDevice)
-
     // Process the device value using enhanced logic with panel data + input range
     const processedValue = processDeviceValue(matchingDevice, rangeValue)
-    LogUtil.Info(`📊 TrendLogModal: Processed value:`, processedValue)
 
     // Send GET_ENTRIES request to get latest data from T3000
     const deviceIndex = parseInt(matchingDevice.index) || 0
     // const deviceType = mapPointTypeToString(inputItem.point_type)
     const deviceType=inputItem.point_type
-
-    LogUtil.Info(`📤 TrendLogModal: About to send GET_ENTRIES:`, {
-      panelId: config.panelId,
-      deviceIndex,
-      deviceType,
-      clientType: dataClient.constructor.name,
-      hasGetEntriesMethod: typeof dataClient.GetEntries === 'function'
-    })
 
     await sendGetEntriesRequest(dataClient, config.panelId, deviceIndex, deviceType)
 
@@ -1876,12 +1815,9 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       value: processedValue.value
     }
 
-    LogUtil.Info(`📈 TrendLogModal: Returning data point for item ${itemIndex}:`, resultDataPoint)
-
     return [resultDataPoint]
 
   } catch (error) {
-    LogUtil.Error('�?TrendLogModal: Error fetching single item data:', error)
     return [{
       timestamp: Date.now(),
       value: 0
@@ -1893,52 +1829,20 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
  * Initialize data series from real T3000 monitor configuration
  */
 const initializeRealDataSeries = async () => {
-  LogUtil.Info('🚀 TrendLogModal: === INITIALIZING REAL DATA SERIES ===', {
-    hasMonitorConfig: !!monitorConfig.value,
-    inputItemsLength: monitorConfig.value?.inputItems?.length || 0,
-    rangesLength: monitorConfig.value?.ranges?.length || 0
-  })
-
   const monitorConfigData = monitorConfig.value
   if (!monitorConfigData) {
-    LogUtil.Info('No monitor configuration found, clearing series')
     dataSeries.value = []
     return
   }
 
-  LogUtil.Info('📊 TrendLogModal: Starting real data series initialization with config:', {
-    inputItemsCount: monitorConfigData.inputItems?.length,
-    rangesCount: monitorConfigData.ranges?.length,
-    id: monitorConfigData.id
-  })
-
   try {
     // Fetch real-time data for all items
-    LogUtil.Info('🔄 TrendLogModal: Fetching real-time data...')
     const realTimeData = await fetchRealTimeMonitorData()
-
-    LogUtil.Info('📈 TrendLogModal: Real-time data fetch completed:', {
-      seriesCount: realTimeData.length,
-      hasData: realTimeData.length > 0,
-      sampleData: realTimeData.slice(0, 3).map((series, index) => ({
-        seriesIndex: index,
-        dataPointsCount: series.length,
-        firstValue: series[0]?.value,
-        isEmpty: series.length === 0
-      }))
-    })
 
     // Check if we have any real data at all
     const hasAnyRealData = realTimeData.some(series => series.length > 0)
 
-    LogUtil.Info('🔍 TrendLogModal: Real data availability check:', {
-      realTimeDataLength: realTimeData.length,
-      hasAnyRealData: hasAnyRealData,
-      sampleSeriesLengths: realTimeData.slice(0, 5).map(series => series.length)
-    })
-
     if (!hasAnyRealData) {
-      LogUtil.Info('🚫 TrendLogModal: No real data available for any series, showing empty state - CLEARING SERIES')
       dataSeries.value = []
       return
     }
@@ -1954,43 +1858,8 @@ const initializeRealDataSeries = async () => {
 
       // Skip series that have no data
       if (itemData.length === 0) {
-        LogUtil.Info(`Skipping series ${i + 1} - no data available`)
         continue
       }
-
-      LogUtil.Info(`📊 TrendLogModal: Processing series ${i + 1}/${monitorConfigData.inputItems.length}:`, {
-        inputItem,
-        pointTypeInfo,
-        rangeValue,
-        dataPointsCount: itemData.length
-      })
-
-      // *** DETAILED VALUE LOGGING FOR 14 ITEMS FROM T3000 ***
-      LogUtil.Info(`🔍 [SERIES ${i + 1}] T3000 Data Details:`, {
-        seriesNumber: i + 1,
-        panelId: inputItem.panel,
-        pointType: inputItem.point_type,
-        pointNumber: inputItem.point_number,
-        rangeValue: rangeValue,
-        dataType: rangeValue === 1 ? 'DIGITAL' : 'ANALOG',
-        rawDataPoints: itemData.length,
-        firstDataPoint: itemData[0] ? {
-          timestamp: itemData[0].timestamp,
-          value: itemData[0].value,
-          timestampReadable: new Date(itemData[0].timestamp).toISOString()
-        } : 'NO DATA',
-        lastDataPoint: itemData.length > 0 ? {
-          timestamp: itemData[itemData.length - 1].timestamp,
-          value: itemData[itemData.length - 1].value,
-          timestampReadable: new Date(itemData[itemData.length - 1].timestamp).toISOString()
-        } : 'NO DATA',
-        valueRange: itemData.length > 0 ? {
-          min: Math.min(...itemData.map(d => d.value)),
-          max: Math.max(...itemData.map(d => d.value)),
-          average: itemData.reduce((sum, d) => sum + d.value, 0) / itemData.length
-        } : 'NO DATA',
-        dataSource: itemData.length > 0 ? 'T3000_REAL_DATA' : 'NO_DATA_AVAILABLE'
-      })
 
       // Use device description for series name
       const prefix = pointTypeInfo.category

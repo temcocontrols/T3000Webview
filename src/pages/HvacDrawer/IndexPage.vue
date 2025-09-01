@@ -1648,6 +1648,9 @@ function addObject(item, group = undefined, addToHistory = true) {
   Array.from(lines).forEach(function (el) {
     appState.value.elementGuidelines.push(el);
   });
+
+  // Refresh element count in right-side panel after adding item
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
   return item;
 }
 
@@ -1895,6 +1898,9 @@ function removeObject(item) {
   appState.value.items.splice(index, 1);
 
   appState.value.selectedTargets = [];
+
+  // Refresh element count in right-side panel after removing item
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // Duplicate an item and select the new copy
@@ -2362,6 +2368,9 @@ function deleteSelected() {
     });
     appState.value.selectedTargets = [];
     appState.value.activeItemIndex = null;
+
+    // Refresh element count in right-side panel after deleting selected items
+    Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
   }
 }
 
@@ -2625,6 +2634,9 @@ function weldSelected() {
     }
   });
 
+  // Refresh element count in right-side panel after welding (removing) items
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
+
   Hvac.IdxPage.refreshMoveable();
 }
 
@@ -2638,6 +2650,9 @@ function undoAction() {
   appState.value = cloneDeep(undoHistory.value[0].state);
   undoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
+
+  // Refresh element count in right-side panel after undo
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // Redo the last undone action
@@ -2650,6 +2665,9 @@ function redoAction() {
   appState.value = cloneDeep(redoHistory.value[0].state);
   redoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
+
+  // Refresh element count in right-side panel after redo
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -2811,6 +2829,9 @@ function executeImportFromJson() {
           IdxUtils.refreshMoveableGuides();
         }, 100);
         Hvac.IdxPage.refreshMoveable();
+
+        // Refresh element count in right-side panel after import
+        Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
       })
       .onCancel(() => {
         importJsonDialog.value.active = false;
@@ -2826,6 +2847,9 @@ function executeImportFromJson() {
     IdxUtils.refreshMoveableGuides();
   }, 100);
   Hvac.IdxPage.refreshMoveable();
+
+  // Refresh element count in right-side panel after import
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // // Computed property for zoom control
