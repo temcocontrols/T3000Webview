@@ -1902,32 +1902,10 @@ const initializeRealDataSeries = async () => {
       }
 
       newDataSeries.push(seriesConfig)
-
-      LogUtil.Info(`�?TrendLogModal: Created series "${seriesConfig.name}":`, {
-        type: seriesConfig.unitType,
-        unit: seriesConfig.unit,
-        dataPoints: seriesConfig.data.length,
-        visible: seriesConfig.visible,
-        isEmpty: seriesConfig.isEmpty,
-        color: seriesConfig.color
-      })
     }
 
     // Update the reactive data series
     dataSeries.value = newDataSeries
-
-    LogUtil.Info('🎉 TrendLogModal: Real data series initialization complete:', {
-      totalSeries: newDataSeries.length,
-      visibleSeries: newDataSeries.filter(s => s.visible && !s.isEmpty).length,
-      emptySeries: newDataSeries.filter(s => s.isEmpty).length,
-      digitalSeries: newDataSeries.filter(s => s.unitType === 'digital').length,
-      analogSeries: newDataSeries.filter(s => s.unitType === 'analog').length
-    })
-
-    LogUtil.Debug(`Successfully initialized ${newDataSeries.length} real data series`)
-
-    // Log the monitor info (chartTitle is computed from props, so we don't modify it)
-    LogUtil.Debug(`Chart title will be: ${monitorConfigData.label} (${monitorConfigData.id}) - Real-time Data`)
 
     // Update sync time since we successfully loaded real data
     lastSyncTime.value = new Date().toLocaleTimeString()
@@ -1948,20 +1926,13 @@ const initializeRealDataSeries = async () => {
 const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
   const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
 
-  LogUtil.Info(`🔍 TrendLogModal: Looking for device with ID: ${deviceId}`, {
-    inputItem,
-    generatedDeviceId: deviceId,
-    availableDevices: panelsData.map(d => d.id)
-  })
-
   const device = panelsData.find(device => device.id === deviceId)
 
   if (!device) {
-    LogUtil.Warn(`❌ TrendLogModal: Device ${deviceId} not found in panelsData`)
+    LogUtil.Warn(`Device ${deviceId} not found in panelsData`)
     return null
   }
 
-  LogUtil.Info(`✅ TrendLogModal: Found device ${deviceId}:`, device)
   return device
 }
 
@@ -1975,15 +1946,6 @@ const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
   // Secondary: Use panel data digital_analog field (1=analog, 0=digital)
   const isAnalogByPanelData = panelData.digital_analog === 1
 
-  LogUtil.Info(`🔍 TrendLogModal: Device type determination:`, {
-    deviceId: panelData.id,
-    inputRangeValue,
-    isAnalogByRange,
-    panelDataDigitalAnalog: panelData.digital_analog,
-    isAnalogByPanelData,
-    finalDecision: isAnalogByRange
-  })
-
   // Use input range as primary source of truth
   return isAnalogByRange
 }
@@ -1994,32 +1956,9 @@ const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
 const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
   let rawValue: number
 
-  // Enhanced logging for digital outputs (OUT1, OUT2) to understand data structure
-  if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
-    LogUtil.Info(`🔍 DIGITAL OUTPUT DEBUG - ${panelData.id} Full Device Data:`, {
-      id: panelData.id,
-      value: panelData.value,
-      control: panelData.control,
-      digital_analog: panelData.digital_analog,
-      range: panelData.range,
-      label: panelData.label,
-      unit: panelData.unit,
-      index: panelData.index,
-      auto_manual: panelData.auto_manual,
-      pid: panelData.pid,
-      isAnalogClassification: isAnalog,
-      allFields: Object.keys(panelData)
-    })
-  }
-
   if (isAnalog) {
     // Analog devices: use 'value' field
     rawValue = parseFloat(panelData.value) || 0
-    LogUtil.Info(`📊 TrendLogModal: Using analog value field:`, {
-      deviceId: panelData.id,
-      valueField: panelData.value,
-      parsedValue: rawValue
-    })
   } else {
     // Digital devices: For OUT1/OUT2, check multiple potential fields
     if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
@@ -2031,36 +1970,14 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
       // Use the field with the highest non-zero value, or control as fallback
       if (valueValue > 0) {
         rawValue = valueValue
-        LogUtil.Info(`📊 TrendLogModal: Digital output using 'value' field:`, {
-          deviceId: panelData.id,
-          selectedField: 'value',
-          selectedValue: rawValue
-        })
       } else if (autoManualValue > 0) {
         rawValue = autoManualValue
-        LogUtil.Info(`📊 TrendLogModal: Digital output using 'auto_manual' field:`, {
-          deviceId: panelData.id,
-          selectedField: 'auto_manual',
-          selectedValue: rawValue
-        })
       } else {
         rawValue = controlValue
-        LogUtil.Info(`📊 TrendLogModal: Digital output using 'control' field (fallback):`, {
-          deviceId: panelData.id,
-          selectedField: 'control',
-          selectedValue: rawValue
-        })
       }
     } else {
       // Regular digital devices: use 'control' field
       rawValue = parseFloat(panelData.control) || 0
-      LogUtil.Info(`📊 TrendLogModal: Using digital control field:`, {
-        deviceId: panelData.id,
-        controlField: panelData.control,
-        parsedValue: rawValue,
-        digitalAnalogFlag: panelData.digital_analog,
-        rangeField: panelData.range
-      })
     }
   }
 
@@ -2197,65 +2114,17 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
   // Get the correct raw value from panel data
   const rawValue = getDeviceValue(panelData, isAnalog)
 
-  // **CRITICAL DEBUG FOR FIRST ITEM ISSUE**
-  if (panelData.id === 'IN1') {
-    LogUtil.Info(`🚨 FIRST ITEM DEBUG - IN1 Processing:`, {
-      deviceId: panelData.id,
-      inputRangeValue,
-      isAnalog,
-      rawValue,
-      panelDataValue: panelData.value,
-      panelDataControl: panelData.control,
-      panelDataDigitalAnalog: panelData.digital_analog,
-      panelDataRange: panelData.range,
-      willDivideBy1000: isAnalog
-    })
-  }
-
   if (isAnalog) {
     // Analog processing: only divide by 1000 if value is larger than 1000
     // This handles cases where some values are already in correct scale
     let processedValue: number
     if (rawValue > 1000) {
       processedValue = rawValue / 1000
-      LogUtil.Info(`📊 TrendLogModal: Large analog value divided by 1000:`, {
-        deviceId: panelData.id,
-        rawValue,
-        processedValue,
-        operation: 'DIVIDED_BY_1000'
-      })
     } else {
       processedValue = rawValue
-      LogUtil.Info(`📊 TrendLogModal: Small analog value used as-is:`, {
-        deviceId: panelData.id,
-        rawValue,
-        processedValue,
-        operation: 'USED_AS_IS'
-      })
     }
 
     const unit = getAnalogUnit(panelData.range)
-
-    LogUtil.Info(`📊 TrendLogModal: Analog value processing:`, {
-      deviceId: panelData.id,
-      rawValue,
-      processedValue,
-      unit,
-      panelDataRange: panelData.range
-    })
-
-    // **ADDITIONAL DEBUG FOR FIRST ITEM**
-    if (panelData.id === 'IN1') {
-      LogUtil.Info(`🚨 FIRST ITEM FINAL RESULT:`, {
-        deviceId: 'IN1',
-        rawValue,
-        processedValue,
-        wasLargerThan1000: rawValue > 1000,
-        expectedIfRawWas8000: 8000 / 1000,
-        expectedIfRawWas8: 8,
-        actualResult: processedValue
-      })
-    }
 
     return {
       value: processedValue,
@@ -2266,14 +2135,6 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
     // Digital processing: use control value as-is with state labels
     const digitalStates = getDigitalUnit(panelData.range)
     const displayValue = rawValue > 0 ? `1 (${digitalStates.high})` : `0 (${digitalStates.low})`
-
-    LogUtil.Info(`📊 TrendLogModal: Digital value processing:`, {
-      deviceId: panelData.id,
-      rawValue,
-      displayValue,
-      digitalStates,
-      panelDataRange: panelData.range
-    })
 
     return {
       value: rawValue,
@@ -2293,63 +2154,14 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
     type: deviceType
   }]
 
-  LogUtil.Info(`📤 TrendLogModal: Preparing GET_ENTRIES request:`, {
-    panelId,
-    deviceIndex,
-    deviceType,
-    requestData,
-    clientType: dataClient?.constructor?.name,
-    hasGetEntriesMethod: typeof dataClient?.GetEntries === 'function',
-    clientConnectionStatus: dataClient?.socket?.readyState || 'unknown'
-  })
-
   if (dataClient && dataClient.GetEntries) {
     try {
-      LogUtil.Info(`🚀 TrendLogModal: Calling GetEntries method on ${dataClient.constructor.name}`)
-      const result = dataClient.GetEntries(requestData)
-      LogUtil.Info(`📨 TrendLogModal: GetEntries call completed, result:`, result)
-
-      // Log additional client state for debugging
-      if (dataClient.socket) {
-        LogUtil.Info(`🔌 TrendLogModal: WebSocket state:`, {
-          readyState: dataClient.socket.readyState,
-          readyStateText: ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][dataClient.socket.readyState],
-          url: dataClient.socket.url
-        })
-      }
-
-      if (dataClient.messageData) {
-        const currentTime = new Date()
-        const timeString = currentTime.toLocaleTimeString() + '.' + currentTime.getMilliseconds().toString().padStart(3, '0')
-        LogUtil.Info(`📜 TrendLogModal: Last message data [${timeString}]:`, dataClient.messageData)
-
-        // Track request timing for interval analysis
-        if (!window.t3000RequestTimes) window.t3000RequestTimes = []
-        window.t3000RequestTimes.push({
-          timestamp: currentTime.getTime(),
-          timeString: timeString,
-          panelsCount: Array.isArray(dataClient.messageData) ? dataClient.messageData.length : 0,
-          modbusCount: 0 // Default for modbus count
-        })
-
-        // Log interval if we have previous requests
-        if (window.t3000RequestTimes.length > 1) {
-          const lastTwoRequests = window.t3000RequestTimes.slice(-2)
-          const intervalMs = lastTwoRequests[1].timestamp - lastTwoRequests[0].timestamp
-          const intervalSec = Math.round(intervalMs / 1000)
-          LogUtil.Info(`⏱️ TrendLogModal: Request interval: ${intervalSec}s (${intervalMs}ms) - Previous: ${lastTwoRequests[0].timeString}, Current: ${lastTwoRequests[1].timeString}`)
-        }
-      }
-
+      dataClient.GetEntries(requestData)
     } catch (error) {
-      LogUtil.Error('�?TrendLogModal: Error calling GetEntries:', error)
+      LogUtil.Error('Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('�?TrendLogModal: GetEntries method not available:', {
-      hasDataClient: !!dataClient,
-      clientType: dataClient?.constructor?.name,
-      availableMethods: dataClient ? Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)) : 'N/A'
-    })
+    LogUtil.Error('GetEntries method not available on data client')
   }
 }
 
@@ -2357,12 +2169,10 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
  * Send GET_ENTRIES requests for multiple devices
  */
 const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{panelId: number, index: number, type: string}>): Promise<void> => {
-  LogUtil.Info(`📤 TrendLogModal: Sending batch GET_ENTRIES request for ${requests.length} devices:`, requests)
-
   if (dataClient && dataClient.GetEntries) {
     dataClient.GetEntries(requests)
   } else {
-    LogUtil.Error('�?TrendLogModal: No GetEntries method available on data client')
+    LogUtil.Error('No GetEntries method available on data client')
   }
 }
 
@@ -2370,19 +2180,10 @@ const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{pane
  * Enhanced device lookup with proper mapping
  */
 const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
-  LogUtil.Info(`🔍 TrendLogModal: Looking for device with ID: ${deviceId}`)
-
   const matchingDevice = panelData.find(device => device.id === deviceId)
 
-  if (matchingDevice) {
-    LogUtil.Info(`�?TrendLogModal: Found device:`, {
-      id: matchingDevice.id,
-      value: matchingDevice.value,
-      label: matchingDevice.label,
-      unit: matchingDevice.unit
-    })
-  } else {
-    LogUtil.Info(`�?TrendLogModal: No device found with ID: ${deviceId}`)
+  if (!matchingDevice) {
+    LogUtil.Warn(`No device found with ID: ${deviceId}`)
   }
 
   return matchingDevice
@@ -2401,34 +2202,7 @@ const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
  */
 const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => {
   const deviceId = generateDeviceId(inputItem.point_type, inputItem.point_number)
-  const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
-
-  LogUtil.Info(`📊 TrendLogModal: Input Item ${index + 1} Enhanced Mapping:`, {
-    inputItem,
-    pointType: inputItem.point_type,
-    pointNumber: inputItem.point_number,
-    pointTypeInfo,
-    generatedDeviceId: deviceId,
-    rangeValue,
-    deviceIdBreakdown: {
-      typeString: mapPointTypeToString(inputItem.point_type),
-      deviceIndex: inputItem.point_number + 1,
-      formula: `${mapPointTypeToString(inputItem.point_type)}${inputItem.point_number + 1}`
-    },
-    rangeAnalysis: {
-      inputRange: rangeValue,
-      isAnalogByRange: rangeValue === 0,
-      isDigitalByRange: rangeValue === 1,
-      rangeCategory: rangeValue === 0 ? 'Analog' : rangeValue === 1 ? 'Digital' : 'Unknown'
-    },
-    processingPlan: {
-      willUseValueField: rangeValue === 0,
-      willUseControlField: rangeValue === 1,
-      willDivideBy1000: rangeValue === 0,
-      willShowDigitalStates: rangeValue === 1
-    }
-  })
-
+  // Core mapping info only
   return deviceId
 }
 
@@ -2436,15 +2210,11 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
  * Debug function to test socket/webview communication manually
  */
 const testCommunication = async () => {
-  LogUtil.Info('🧪 TrendLogModal: === MANUAL COMMUNICATION TEST ===')
+
 
   // Test 1: Data Client Creation
   const dataClient = initializeDataClients()
-  LogUtil.Info('🔧 TrendLogModal: Test 1 - Data Client:', {
-    success: !!dataClient,
-    type: dataClient?.constructor?.name,
-    hasGetEntries: typeof dataClient?.GetEntries === 'function'
-  })
+
 
   if (!dataClient) {
     LogUtil.Error('�?TrendLogModal: Cannot proceed - no data client available')
@@ -2464,11 +2234,11 @@ const testCommunication = async () => {
       type: 'IN'
     }
 
-    LogUtil.Info('📤 TrendLogModal: Test 3 - Sending test GET_ENTRIES request:', testRequest)
+
 
     if (dataClient.GetEntries) {
       const result = (dataClient as any).GetEntries([testRequest])
-      LogUtil.Info('📨 TrendLogModal: Test 3 - Request sent, result:', result)
+
     }
 
     // Wait a bit to see if response comes back
@@ -2480,7 +2250,7 @@ const testCommunication = async () => {
     LogUtil.Error('�?TrendLogModal: Test 3 - Error sending request:', error)
   }
 
-  LogUtil.Info('🏁 TrendLogModal: === MANUAL COMMUNICATION TEST COMPLETE ===')
+
 }
 
 // Add testCommunication to global scope for manual testing
@@ -2490,12 +2260,8 @@ const testCommunication = async () => {
  * Setup message handlers for GET_ENTRIES responses
  */
 const setupGetEntriesResponseHandlers = (dataClient: any) => {
-  LogUtil.Info('🔧 TrendLogModal: Setting up GET_ENTRIES response handlers')
-  LogUtil.Info('🔧 TrendLogModal: Client details:', {
-    clientType: dataClient?.constructor?.name,
-    hasHandleGetEntriesRes: typeof dataClient?.HandleGetEntriesRes === 'function',
-    originalHandlerExists: !!dataClient?.HandleGetEntriesRes
-  })
+
+
 
   if (!dataClient) {
     LogUtil.Error('�?TrendLogModal: No dataClient provided to setupGetEntriesResponseHandlers')
@@ -2504,28 +2270,20 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
   // Store original handler if it exists
   const originalHandler = dataClient.HandleGetEntriesRes
-  LogUtil.Info('💾 TrendLogModal: Stored original handler:', typeof originalHandler)
+
 
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
-    LogUtil.Info('📨 TrendLogModal: === GET_ENTRIES RESPONSE RECEIVED ===')
-    LogUtil.Info('📨 TrendLogModal: Full response data:', msgData)
-    LogUtil.Info('📨 TrendLogModal: Response structure:', {
-      hasData: !!msgData.data,
-      dataType: typeof msgData.data,
-      isArray: Array.isArray(msgData.data),
-      dataLength: msgData.data?.length,
-      action: msgData.action,
-      status: msgData.status,
-      error: msgData.error
-    })
+
+
+
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
         LogUtil.Info('�?TrendLogModal: Valid data array received, processing...')
         updateChartWithNewData(msgData.data)
       } else if (msgData.data) {
-        LogUtil.Info('⚠️ TrendLogModal: Data received but not array format:', msgData.data)
+
       } else {
         LogUtil.Info('�?TrendLogModal: No data in response or data is null/undefined')
       }
@@ -2535,16 +2293,16 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
     // Call original handler if it existed
     if (originalHandler && typeof originalHandler === 'function') {
-      LogUtil.Info('🔄 TrendLogModal: Calling original HandleGetEntriesRes handler')
+
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
         LogUtil.Error('�?TrendLogModal: Error calling original handler:', error)
       }
     } else {
-      LogUtil.Info('ℹ️ TrendLogModal: No original handler to call')
+
     }
-    LogUtil.Info('📨 TrendLogModal: === GET_ENTRIES RESPONSE PROCESSING COMPLETE ===')
+
   }
 
   LogUtil.Info('�?TrendLogModal: GET_ENTRIES response handler setup complete')
@@ -2554,7 +2312,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  * Update chart with new data from GET_ENTRIES response
  */
 const updateChartWithNewData = (newData: any[]) => {
-  LogUtil.Info('📈 TrendLogModal: Updating chart with new data:', newData)
+
 
   const currentTime = Date.now()
 
@@ -2575,7 +2333,7 @@ const updateChartWithNewData = (newData: any[]) => {
         dataSeries.value[index].data = dataSeries.value[index].data.slice(-maxDataPoints)
       }
 
-      LogUtil.Info(`📊 TrendLogModal: Updated series ${index} with value: ${newPoint.value}`)
+
     }
   })
 
@@ -2609,14 +2367,14 @@ const initializeData = async () => {
   // First, try to initialize with real T3000 data
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
-    LogUtil.Info('🌐 *** USING REAL T3000 DATA *** - TrendLogModal: Real monitor data available, initializing with real data series')
+
 
     // Quick check: if we already have recent data, skip unnecessary re-fetching
     const hasRecentData = dataSeries.value.length > 0 &&
                          dataSeries.value.some(series => series.data.length > 0)
 
     if (hasRecentData) {
-      LogUtil.Info('✅ TrendLogModal: Recent data already available, skipping refetch')
+
       return
     }
 
@@ -2635,7 +2393,7 @@ const initializeData = async () => {
 
     try {
       // Test the real data fetching system
-      LogUtil.Info('🔄 TrendLogModal: Testing real data fetch...')
+
 
       // Immediately indicate we're loading real data
       isLoading.value = true
@@ -2643,7 +2401,7 @@ const initializeData = async () => {
       const realTimeData = await fetchRealTimeMonitorData()
 
       if (realTimeData && realTimeData.length > 0) {
-        LogUtil.Info('✅ TrendLogModal: Real data fetch successful, got', realTimeData.length, 'data series')
+
 
         // Log sample data for first few series
         realTimeData.slice(0, 3).forEach((seriesData, index) => {
@@ -2669,7 +2427,7 @@ const initializeData = async () => {
 
         return
       } else {
-        LogUtil.Info('⚠️ TrendLogModal: Real data fetch returned empty results')
+
         isLoading.value = false
       }
     } catch (error) {
@@ -2677,7 +2435,7 @@ const initializeData = async () => {
       isLoading.value = false // Clear loading state on error
     }
   } else {
-    LogUtil.Info('🔍 TrendLogModal: No real monitor data available, maintaining empty state')
+
     LogUtil.Info('📊 Empty State Configuration:', {
       configExists: !!monitorConfigData,
       hasInputItems: !!(monitorConfigData?.inputItems),
@@ -2692,7 +2450,7 @@ const initializeData = async () => {
 
   // If no data series available, maintain empty state (no mock/test data generation)
   if (dataSeries.value.length === 0) {
-    LogUtil.Info('🚫 TrendLogModal: No data series available, maintaining empty state')
+
     return
   }
 
@@ -2706,30 +2464,12 @@ const addRealtimeDataPoint = async () => {
 
   // Safety check: If no data series exist, don't generate mock data
   if (dataSeries.value.length === 0) {
-    LogUtil.Info('No data series available for real-time updates, skipping')
+
     return
   }
 
   const now = new Date()
   const callTimeString = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0')
-
-  // Track polling calls for interval verification
-  if (!window.t3000PollingCalls) window.t3000PollingCalls = []
-  window.t3000PollingCalls.push({
-    timestamp: now.getTime(),
-    timeString: callTimeString,
-    panelsCount: 0 // Default count since this is just tracking polling calls
-  })
-
-  // Log interval between polling calls
-  if (window.t3000PollingCalls.length > 1) {
-    const lastTwoCalls = window.t3000PollingCalls.slice(-2)
-    const intervalMs = lastTwoCalls[1].timestamp - lastTwoCalls[0].timestamp
-    const intervalSec = Math.round(intervalMs / 1000)
-    LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - Interval: ${intervalSec}s since last call (${lastTwoCalls[0].timeString})`)
-  } else {
-    LogUtil.Info(`🔄 TrendLogModal: addRealtimeDataPoint called [${callTimeString}] - First call`)
-  }
 
   // 🔧 Use actual timestamp for real data points (not aligned to minutes)
   // This allows showing multiple data points per minute interval
@@ -2784,7 +2524,7 @@ const addRealtimeDataPoint = async () => {
 const addMockRealtimeDataPoint = (timestamp: number) => {
   // Safety check: Don't add mock data if no series exist
   if (dataSeries.value.length === 0) {
-    LogUtil.Info('No data series available for mock real-time updates, skipping')
+
     return
   }
 
@@ -3595,7 +3335,7 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
 
 // Lifecycle
 onMounted(async () => {
-  LogUtil.Info('🚀 TrendLogModal: Component mounted - starting enhanced T3000 data integration test')
+
 
   LogUtil.Info('📊 TrendLogModal: Current item data source:', {
     usingPropsItemData: !!props.itemData,
@@ -3603,28 +3343,28 @@ onMounted(async () => {
     itemData: currentItemData.value
   })
 
-  LogUtil.Info('📊 TrendLogModal: Initial T3000_Data readiness:', t3000DataManager.getReadinessState())
+
 
   // === ENHANCED T3000 REAL DATA INTEGRATION TEST ===
-  LogUtil.Info('🔍 TrendLogModal: === STARTING ENHANCED T3000 REAL DATA INTEGRATION TEST ===')
+
 
   try {
     // Test 1: Data Manager Readiness Check
-    LogUtil.Info('🔍 TrendLogModal: TEST 1 - Data Manager Readiness Check')
+
     const initialReadiness = t3000DataManager.getReadinessState()
-    LogUtil.Info(`📊 TrendLogModal: Initial data readiness: ${initialReadiness}`)
-    LogUtil.Info(`📊 TrendLogModal: Loading progress: ${t3000DataManager.loadingProgress}%`)
+
+
 
     // Test 2: Enhanced Monitor Configuration Extraction
-    LogUtil.Info('🔍 TrendLogModal: TEST 2 - Enhanced Monitor Configuration Extraction')
+
     const monitorConfigData = await getMonitorConfigFromT3000Data()
 
     if (monitorConfigData) {
       // Set the reactive monitor config variable for all functions to use
       monitorConfig.value = monitorConfigData
 
-      LogUtil.Info('✅ TEST 2 PASSED: Monitor Configuration Found')
-      LogUtil.Info('📋 TrendLogModal: Monitor Configuration:', monitorConfigData)
+
+
       LogUtil.Info(`📊 TrendLogModal: Found ${monitorConfigData.inputItems.length} input items to monitor`)
       LogUtil.Info(`⏱️ TrendLogModal: Data retrieval interval: ${monitorConfigData.dataIntervalMs}ms`)
 
