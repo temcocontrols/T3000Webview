@@ -794,10 +794,64 @@ const generateDataSeries = (): SeriesConfig[] => {
     }
   })
 
-  // If no real input data, return empty array to show empty list
+  // If no real input data, generate demo data for debugging/testing
   if (!hasInputData || !hasRangeData) {
-    LogUtil.Warn('⚠️ TrendLogChart: No valid input/range data, returning empty series')
-    return []
+    LogUtil.Warn('⚠️ TrendLogChart: No valid input/range data, generating demo series for testing', {
+      hasInputData,
+      hasRangeData,
+      inputLength: props.itemData?.t3Entry?.input?.length || 0,
+      rangeLength: props.itemData?.t3Entry?.range?.length || 0
+    })
+
+    // Generate demo data series for visualization
+    const demoSeries: SeriesConfig[] = [
+      {
+        name: 'Demo Temperature',
+        unit: '°C',
+        color: '#FF6B6B',
+        visible: true,
+        isEmpty: false,
+        data: [],
+        unitType: 'analog',
+        unitCode: 31,
+        itemType: 'Input',
+        prefix: 'IN',
+        description: 'Demo temperature sensor'
+      },
+      {
+        name: 'Demo Humidity',
+        unit: '%RH',
+        color: '#4ECDC4',
+        visible: true,
+        isEmpty: false,
+        data: [],
+        unitType: 'analog',
+        unitCode: 32,
+        itemType: 'Input',
+        prefix: 'IN',
+        description: 'Demo humidity sensor'
+      },
+      {
+        name: 'Demo Pressure',
+        unit: 'kPa',
+        color: '#45B7D1',
+        visible: true,
+        isEmpty: false,
+        data: [],
+        unitType: 'analog',
+        unitCode: 33,
+        itemType: 'Input',
+        prefix: 'IN',
+        description: 'Demo pressure sensor'
+      }
+    ]
+
+    LogUtil.Info('✅ TrendLogChart: Generated demo data series', {
+      generatedSeriesCount: demoSeries.length,
+      seriesNames: demoSeries.map(s => s.name)
+    })
+
+    return demoSeries
   }
 
   const inputData = props.itemData.t3Entry.input
@@ -2720,10 +2774,19 @@ const initializeData = async () => {
     isLoading.value = false
   }
 
-  // If no data series available, maintain empty state (no mock/test data generation)
+  // If no data series available, generate demo data for testing/debugging
   if (dataSeries.value.length === 0) {
-
+    LogUtil.Info('📊 TrendLogChart: No data series available - maintaining empty state', {
+      dataSeriesLength: dataSeries.value.length,
+      hasMonitorConfig: !!monitorConfig.value
+    })
     return
+  }
+
+  // For data series with no actual data, generate demo data points
+  if (dataSeries.value.some(series => series.data.length === 0)) {
+    LogUtil.Info('📊 TrendLogChart: Generating demo data points for empty series')
+    await generateDemoDataPoints()
   }
 
   // For real data series, update the chart
@@ -2876,6 +2939,24 @@ const addMockRealtimeDataPoint = (timestamp: number) => {
   })
 
   // Note: We don't update lastSyncTime here since this is mock data, not real sync
+}
+
+const generateDemoDataPoints = async () => {
+  LogUtil.Info('📊 TrendLogChart: Generating demo data points for empty series')
+
+  const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
+
+  dataSeries.value.forEach((series, index) => {
+    if (series.data.length === 0) {
+      LogUtil.Info(`📈 Generating demo data for series: ${series.name}`)
+
+      // Generate demo data using existing mock data function
+      const demoData = generateMockData(index, timeRangeMinutes)
+      series.data = demoData
+
+      LogUtil.Info(`✅ Generated ${demoData.length} demo data points for ${series.name}`)
+    }
+  })
 }
 
 const createChart = () => {
