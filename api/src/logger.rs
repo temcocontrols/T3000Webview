@@ -2,7 +2,7 @@ use std::fs::{OpenOptions, create_dir_all};
 use std::io::Write;
 use chrono::{Utc, Timelike};
 
-/// Creates structured log file path with 4-hour bucket system: T3WebLog/YYYY-MM/filename_MMDD_HHHH.txt
+/// Creates structured log file path with 4-hour bucket system: T3WebLog/YYYY-MM/MMDD/filename_HHHH.txt
 pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io::Error> {
     let now = Utc::now();
     let year_month = now.format("%Y-%m").to_string();
@@ -14,12 +14,12 @@ pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io
     let end_hour = start_hour + 3;
     let hour_bucket = format!("{:02}{:02}", start_hour, end_hour);
 
-    // Create the directory structure: T3WebLog/YYYY-MM/
-    let log_dir = format!("T3WebLog/{}", year_month);
+    // Create the directory structure: T3WebLog/YYYY-MM/MMDD/
+    let log_dir = format!("T3WebLog/{}/{}", year_month, month_day);
     create_dir_all(&log_dir)?;
 
-    // Create the full log file path with new naming convention
-    let log_filename = format!("{}/{}_{}_{}.txt", log_dir, base_filename, month_day, hour_bucket);
+    // Create the full log file path with 4-hour bucket: filename_HHHH.txt
+    let log_filename = format!("{}/{}_{}.txt", log_dir, base_filename, hour_bucket);
     Ok(log_filename)
 }
 
