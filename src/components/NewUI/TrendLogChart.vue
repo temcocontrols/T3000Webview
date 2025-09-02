@@ -794,64 +794,16 @@ const generateDataSeries = (): SeriesConfig[] => {
     }
   })
 
-  // If no real input data, generate demo data for debugging/testing
+  // If no real input data, return empty array for now
   if (!hasInputData || !hasRangeData) {
-    LogUtil.Warn('⚠️ TrendLogChart: No valid input/range data, generating demo series for testing', {
+    LogUtil.Warn('⚠️ TrendLogChart: No valid input/range data found', {
       hasInputData,
       hasRangeData,
       inputLength: props.itemData?.t3Entry?.input?.length || 0,
       rangeLength: props.itemData?.t3Entry?.range?.length || 0
     })
 
-    // Generate demo data series for visualization
-    const demoSeries: SeriesConfig[] = [
-      {
-        name: 'Demo Temperature',
-        unit: '°C',
-        color: '#FF6B6B',
-        visible: true,
-        isEmpty: false,
-        data: [],
-        unitType: 'analog',
-        unitCode: 31,
-        itemType: 'Input',
-        prefix: 'IN',
-        description: 'Demo temperature sensor'
-      },
-      {
-        name: 'Demo Humidity',
-        unit: '%RH',
-        color: '#4ECDC4',
-        visible: true,
-        isEmpty: false,
-        data: [],
-        unitType: 'analog',
-        unitCode: 32,
-        itemType: 'Input',
-        prefix: 'IN',
-        description: 'Demo humidity sensor'
-      },
-      {
-        name: 'Demo Pressure',
-        unit: 'kPa',
-        color: '#45B7D1',
-        visible: true,
-        isEmpty: false,
-        data: [],
-        unitType: 'analog',
-        unitCode: 33,
-        itemType: 'Input',
-        prefix: 'IN',
-        description: 'Demo pressure sensor'
-      }
-    ]
-
-    LogUtil.Info('✅ TrendLogChart: Generated demo data series', {
-      generatedSeriesCount: demoSeries.length,
-      seriesNames: demoSeries.map(s => s.name)
-    })
-
-    return demoSeries
+    return []
   }
 
   const inputData = props.itemData.t3Entry.input
