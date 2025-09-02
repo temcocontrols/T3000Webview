@@ -753,12 +753,15 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
 
   LogUtil.Info('🎯 TrendLogChart: Device search result', {
     found: !!device,
+    deviceLabel: device?.label || '',
+    deviceFullLabel: device?.fullLabel || '',
     deviceDescription: device?.description || '',
     deviceId: device?.id,
     devicePid: device?.pid
   })
 
-  return device?.description || ''
+  // Priority: label -> fullLabel -> description -> empty string
+  return device?.label || device?.fullLabel || device?.description || ''
 }
 
 // Chart data - T3000 mixed digital/analog series (always 14 items)
@@ -873,7 +876,7 @@ const generateDataSeries = (): SeriesConfig[] => {
     const itemTypeName = itemTypeMap[pointType] || 'VAR'
     const formattedItemType = `${panelId}${itemTypeName}${pointNumber + 1}`
 
-    // Generate series name based on actual device data - use description if available
+    // Generate series name based on actual device data - prioritize label -> fullLabel -> description
     const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
 
     LogUtil.Info('🏷️ TrendLogChart: Generating series name', {
@@ -881,7 +884,7 @@ const generateDataSeries = (): SeriesConfig[] => {
       panelId,
       pointType,
       pointNumber,
-      description,
+      deviceDataUsed: description,
       generatedName: seriesName,
       itemTypeName,
       formattedItemType
