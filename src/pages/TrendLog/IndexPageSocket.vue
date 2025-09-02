@@ -208,17 +208,24 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
 const formatDataFromQueryParams = () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
-  console.log('[IndexPageSocket] formatDataFromQueryParams - Raw URL params:', {
+  // ===========================================
+  // JSON Parsing Parameter Debugging
+  // ===========================================
+  console.log('🔧 [IndexPageSocket] formatDataFromQueryParams - JSON Processing Analysis')
+  console.log('─'.repeat(50))
+  console.log('📋 Raw URL Parameters:', {
     sn: sn,
     panel_id: panel_id,
     trendlog_id: trendlog_id,
-    all_data_preview: all_data ? all_data.substring(0, 100) + '...' : null,
-    all_data_length: all_data ? all_data.length : 0
+    all_data_present: !!all_data,
+    all_data_length: all_data ? all_data.length : 0,
+    all_data_preview: all_data ? all_data.substring(0, 150) + '...' : null
   });
 
   // Must have required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
-    console.log('[IndexPageSocket] formatDataFromQueryParams - Missing required parameters');
+    console.log('❌ [IndexPageSocket] Missing required parameters - Validation failed');
+    console.log('─'.repeat(50))
     return null
   }
 
@@ -226,28 +233,36 @@ const formatDataFromQueryParams = () => {
 
   // If all_data is provided, try to parse it
   if (all_data) {
+    console.log('🔄 [IndexPageSocket] Processing all_data JSON...')
     const decodedData = decodeUrlEncodedJson(all_data)
-    console.log('[IndexPageSocket] formatDataFromQueryParams - Decoded all_data:', {
-      decodedData: decodedData,
+    console.log('🔍 [IndexPageSocket] JSON Decode Results:', {
+      decodeSuccessful: !!decodedData,
       jsonValidationStatus: jsonValidationStatus.value,
-      hasT3Entry: !!(decodedData && decodedData.t3Entry)
+      hasT3Entry: !!(decodedData && decodedData.t3Entry),
+      decodedKeys: decodedData ? Object.keys(decodedData) : [],
+      t3EntryKeys: decodedData?.t3Entry ? Object.keys(decodedData.t3Entry) : []
     });
 
     if (decodedData && jsonValidationStatus.value === 'valid') {
       t3EntryData = decodedData.t3Entry || decodedData
-      console.log('[IndexPageSocket] formatDataFromQueryParams - Using decoded t3Entry:', {
+      console.log('✅ [IndexPageSocket] Using decoded t3Entry data:', {
         pid: t3EntryData.pid,
+        id: t3EntryData.id,
+        label: t3EntryData.label,
         inputCount: t3EntryData.input?.length,
         rangeCount: t3EntryData.range?.length,
-        inputArray: t3EntryData.input,
-        rangeArray: t3EntryData.range
+        inputDataSample: t3EntryData.input?.slice(0, 3) || [],
+        rangeDataSample: t3EntryData.range?.slice(0, 3) || []
       });
+    } else {
+      console.log('❌ [IndexPageSocket] JSON decode failed or invalid')
     }
   }
 
   // If no all_data or parsing failed, create basic structure
   if (!t3EntryData) {
-    console.log('[IndexPageSocket] formatDataFromQueryParams - Creating fallback t3Entry structure');
+    console.log('🔄 [IndexPageSocket] Creating fallback t3Entry structure');
+    console.log('─'.repeat(50))
     t3EntryData = {
       an_inputs: 12,
       command: `${panel_id}MON${trendlog_id}`,
@@ -329,20 +344,48 @@ const loadTrendLogItemData = async () => {
 
     const params = getValidatedParameters()
 
+    // ===========================================
+    // Load Function Parameter Debugging
+    // ===========================================
+    console.log('📊 [IndexPageSocket] loadTrendLogItemData - Parameter Analysis')
+    console.log('─'.repeat(60))
+    console.log('📋 Function Parameters:', {
+      sn: params.sn,
+      panel_id: params.panel_id,
+      trendlog_id: params.trendlog_id,
+      isValid: params.isValid,
+      hasAllData: !!params.all_data,
+      allDataSize: params.all_data?.length || 0
+    })
+
+    console.log('🎯 Data Loading Strategy:', {
+      priority1_json: !!params.all_data,
+      priority2_api: params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null,
+      priority3_fallback: !params.all_data && !params.isValid
+    })
+    console.log('─'.repeat(60))
+
     // Priority 1: Try to load data from JSON parameters (realtime)
     if (params.all_data) {
+      console.log('🔄 [IndexPageSocket] Using Priority 1: JSON Data from C++ Backend')
       dataSource.value = 'json'
       const formattedData = formatDataFromQueryParams()
       if (formattedData) {
         trendLogItemData.value = formattedData.chartData
         scheduleItemData.value = formattedData.scheduleData
         pageTitle.value = formattedData.chartData.title
+        console.log('✅ [IndexPageSocket] JSON data loaded successfully:', {
+          title: formattedData.chartData.title,
+          t3Entry_id: formattedData.scheduleData?.t3Entry?.id,
+          dataSource: dataSource.value
+        })
         return
       }
     }
 
     // Priority 2: Try to load from API (historical data)
     if (params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
+      console.log('🔄 [IndexPageSocket] Using Priority 2: API Historical Data')
       dataSource.value = 'api'
 
       const historyRequest = {
@@ -353,7 +396,16 @@ const loadTrendLogItemData = async () => {
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE'] // All point types
       }
 
+      console.log('📡 [IndexPageSocket] API Request Details:', historyRequest)
+
       const historyData = await trendlogAPI.getTrendlogHistory(historyRequest)
+
+      console.log('📨 [IndexPageSocket] API Response:', {
+        hasData: !!historyData,
+        dataCount: historyData?.data?.length || 0,
+        trendlogId: historyData?.trendlog_id,
+        sampleData: historyData?.data?.slice(0, 3) || []
+      })
 
       if (historyData && historyData.data && historyData.data.length > 0) {
         // Convert API data to TrendLogChart format
@@ -383,15 +435,40 @@ const loadTrendLogItemData = async () => {
         trendLogItemData.value = apiScheduleData
         scheduleItemData.value = apiScheduleData
         pageTitle.value = `Historical Trend Log ${params.trendlog_id} - Device ${params.sn}`
+        console.log('✅ [IndexPageSocket] API data loaded successfully:', {
+          title: pageTitle.value,
+          dataCount: historyData.data.length,
+          dataSource: dataSource.value
+        })
         return
+      } else {
+        console.log('⚠️ [IndexPageSocket] API returned empty or invalid data:', {
+          hasHistoryData: !!historyData,
+          hasDataArray: !!(historyData?.data),
+          dataLength: historyData?.data?.length || 0
+        })
       }
     }
 
     // Priority 3: Fallback - no valid data available
+    console.log('❌ [IndexPageSocket] Using Priority 3: Fallback (No Data)')
     dataSource.value = 'fallback'
     trendLogItemData.value = null
     scheduleItemData.value = null
     pageTitle.value = 'T3000 Trend Log Analysis'
+
+    const errorDetails = {
+      hasApiError: !!trendlogAPI.error.value,
+      apiErrorMessage: trendlogAPI.error.value,
+      isValidParams: params.isValid,
+      missingParams: {
+        sn: params.sn === null,
+        panel_id: params.panel_id === null,
+        trendlog_id: params.trendlog_id === null
+      }
+    }
+
+    console.log('🚨 [IndexPageSocket] Fallback Error Analysis:', errorDetails)
 
     if (trendlogAPI.error.value) {
       error.value = `Failed to load historical data: ${trendlogAPI.error.value}`
@@ -415,7 +492,45 @@ const loadTrendLogItemData = async () => {
 // Watch for URL parameter changes and refresh scheduleItemData
 watch(
   () => route.query,
-  () => {
+  (newQuery, oldQuery) => {
+    console.log('🔄 [IndexPageSocket] Route Query Changed - URL Parameter Debug')
+    console.log('─'.repeat(60))
+
+    const oldParams = {
+      sn: oldQuery?.sn ? Number(oldQuery.sn) : null,
+      panel_id: oldQuery?.panel_id ? Number(oldQuery.panel_id) : null,
+      trendlog_id: oldQuery?.trendlog_id ? Number(oldQuery.trendlog_id) : null,
+      all_data: oldQuery?.all_data as string || null
+    }
+
+    const newParams = urlParams.value
+
+    console.log('📥 Previous Parameters:', {
+      sn: oldParams.sn,
+      panel_id: oldParams.panel_id,
+      trendlog_id: oldParams.trendlog_id,
+      all_data_length: oldParams.all_data?.length || 0
+    })
+
+    console.log('📤 New Parameters:', {
+      sn: newParams.sn,
+      panel_id: newParams.panel_id,
+      trendlog_id: newParams.trendlog_id,
+      all_data_length: newParams.all_data?.length || 0,
+      all_data_preview: newParams.all_data?.substring(0, 150) + (newParams.all_data?.length > 150 ? '...' : '')
+    })
+
+    console.log('🔍 Parameter Changes:', {
+      sn_changed: oldParams.sn !== newParams.sn,
+      panel_id_changed: oldParams.panel_id !== newParams.panel_id,
+      trendlog_id_changed: oldParams.trendlog_id !== newParams.trendlog_id,
+      all_data_changed: oldParams.all_data !== newParams.all_data,
+      validation_status: getValidatedParameters().isValid
+    })
+
+    console.log('🚀 Triggering loadTrendLogItemData...')
+    console.log('─'.repeat(60))
+
     loadTrendLogItemData()
   },
   { immediate: false }
@@ -661,6 +776,62 @@ const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
 }
 
 onMounted(() => {
+  // ===========================================
+  // URL Parameter Debugging Information
+  // ===========================================
+  console.log('🔍 [IndexPageSocket] URL Parameter Debug Information')
+  console.log('═'.repeat(80))
+
+  const rawQuery = route.query
+  const params = urlParams.value
+  const validation = getValidatedParameters()
+
+  console.log('📋 Raw Route Query:', rawQuery)
+  console.log('📋 Parsed URL Parameters:', {
+    sn: params.sn,
+    panel_id: params.panel_id,
+    trendlog_id: params.trendlog_id,
+    all_data_present: !!params.all_data,
+    all_data_length: params.all_data?.length || 0,
+    all_data_preview: params.all_data?.substring(0, 200) + (params.all_data?.length > 200 ? '...' : '')
+  })
+
+  console.log('✅ Parameter Validation:', {
+    hasRequiredParams: validation.isValid,
+    sn_valid: params.sn !== null && !isNaN(params.sn),
+    panel_id_valid: params.panel_id !== null && !isNaN(params.panel_id),
+    trendlog_id_valid: params.trendlog_id !== null && !isNaN(params.trendlog_id),
+    all_data_format: params.all_data ? (params.all_data.startsWith('{') ? 'JSON' : params.all_data.includes('%7B') ? 'URL-encoded JSON' : 'Unknown') : 'None'
+  })
+
+  console.log('🌐 Full URL Info:', {
+    href: window.location.href,
+    origin: window.location.origin,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash
+  })
+
+  if (params.all_data) {
+    try {
+      const decoded = decodeUrlEncodedJson(params.all_data)
+      console.log('🔄 JSON Data Analysis:', {
+        canParse: !!decoded,
+        hasT3Entry: !!(decoded && decoded.t3Entry),
+        t3Entry_id: decoded?.t3Entry?.id,
+        t3Entry_pid: decoded?.t3Entry?.pid,
+        t3Entry_label: decoded?.t3Entry?.label,
+        inputCount: decoded?.t3Entry?.input?.length || 0,
+        rangeCount: decoded?.t3Entry?.range?.length || 0
+      })
+    } catch (e) {
+      console.log('❌ JSON Parse Error:', e.message)
+    }
+  }
+
+  console.log('═'.repeat(80))
+  console.log('🚀 [IndexPageSocket] Starting component initialization...')
+
   // Initialize Quasar integration for Hvac system (lightweight)
   try {
     Hvac.IdxPage.initQuasar($q)
