@@ -843,7 +843,7 @@ const generateDataSeries = (): SeriesConfig[] => {
     '#FF8000', // Orange
     '#AA00AA', // Magenta
     '#00AAAA', // Cyan
-    '#FFFF00', // Yellow
+    '#CC6600', // Dark Orange (replaces Yellow for better readability)
     '#AA0000', // Dark Red
     '#0066AA', // Steel Blue
     '#AA6600', // Brown/Orange
@@ -3860,6 +3860,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
 
     isLoading.value = true
     dataSource.value = 'api'
+    isRealTime.value = false // Auto Scroll should be off for historical data
 
     // Extract specific points from current data series
     const specificPoints = extractSpecificPoints()
