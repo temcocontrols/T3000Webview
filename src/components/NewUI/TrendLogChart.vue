@@ -591,20 +591,17 @@ const getChipLabelText = (prefix: string): string => {
 
 // Function to process series names for display in the 14 items list
 const getSeriesNameText = (series: SeriesConfig): string => {
-  // Remove the prefix (IN -, OUT -, VAR -, etc.) from the description for cleaner display
-  const fullDescription = series.description || series.name
+  // Use the series name directly - no need to clean since we preserve original names
+  const displayName = series.name || 'Unknown'
 
-  // Check if description has the pattern "PREFIX - Description" and remove the prefix
-  const prefixPattern = /^(IN|OUT|VAR|HOL)\s*-\s*/
-  const cleanName = fullDescription.replace(prefixPattern, '')
-
-  console.log('[TrendLogChart] getSeriesNameText - Cleaning series name:', {
-    original: fullDescription,
-    cleaned: cleanName,
-    removedPrefix: prefixPattern.test(fullDescription)
+  console.log('[TrendLogChart] getSeriesNameText - Using preserved series name:', {
+    seriesName: series.name,
+    displayName: displayName,
+    description: series.description,
+    preservedOriginal: true
   })
 
-  return cleanName
+  return displayName
 }
 
 // Function to convert Unix timestamp to local time string
@@ -3956,11 +3953,12 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
 const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
   console.log('🔄 [TrendLogChart] convertApiDataToSeries - Processing API data into chart series')
 
-  // Store original series for name preservation
+  // Store original series for name preservation and MAINTAIN ORIGINAL SEQUENCE
   const originalSeries = dataSeries.value || []
-  console.log('💾 [TrendLogChart] Preserving original series names:', {
+  console.log('💾 [TrendLogChart] Preserving original series order and names:', {
     originalSeriesCount: originalSeries.length,
-    originalNames: originalSeries.map(s => s.name)
+    originalNames: originalSeries.map(s => s.name),
+    originalSequence: originalSeries.map((s, i) => `${i}: ${s.name}`)
   })
 
   // Group data points by point_id and point_type
@@ -3984,81 +3982,123 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
     }))
   })
 
-  // Convert each group to a series
+  // MAINTAIN ORIGINAL SEQUENCE: Create series in the same order as original
   const series: SeriesConfig[] = []
-  let colorIndex = 0
-
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
     '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
     '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#F4D03F'
   ]
 
-  groupedData.forEach((points, seriesKey) => {
-    const firstPoint = points[0]
-    const pointType = firstPoint.point_type || 'UNKNOWN'
-    const pointId = firstPoint.point_id || 'UNK'
+  // Process in original series order to maintain sequence
+  originalSeries.forEach((originalSeries, index) => {
+    // Find matching API data for this original series
+    let matchingApiData: any[] | undefined = undefined
+    let matchedKey: string | undefined = undefined
 
-    // Find matching original series to preserve the name and other properties
-    const matchingOriginal = originalSeries.find(origSeries => {
-      // Try to match by point_id pattern (IN1, OUT1, VAR1, etc.)
-      const origItemType = origSeries.itemType || ''
-      return origItemType.includes(pointId) || origSeries.name.includes(pointId)
+    // Try different matching strategies
+    groupedData.forEach((apiPoints, apiKey) => {
+      if (matchingApiData) return // Already found a match
+
+      const [apiPointType, apiPointId] = apiKey.split('_')
+
+      // Strategy 1: Match by itemType containing point ID
+      if (originalSeries.itemType && originalSeries.itemType.includes(apiPointId)) {
+        matchingApiData = apiPoints
+        matchedKey = apiKey
+        return
+      }
+
+      // Strategy 2: Match by name containing point ID
+      if (originalSeries.name.includes(apiPointId)) {
+        matchingApiData = apiPoints
+        matchedKey = apiKey
+        return
+      }
+
+      // Strategy 3: Match by prefix and sequence (e.g., INPUT series 0 matches IN1)
+      if (originalSeries.prefix === apiPointType) {
+        const expectedPointId = `${apiPointType === 'INPUT' ? 'IN' :
+                                  apiPointType === 'OUTPUT' ? 'OUT' :
+                                  apiPointType === 'VARIABLE' ? 'VAR' : 'UNK'}${index + 1}`
+        if (apiPointId === expectedPointId) {
+          matchingApiData = apiPoints
+          matchedKey = apiKey
+          return
+        }
+      }
     })
 
-    console.log('🔍 [TrendLogChart] Series matching:', {
-      apiSeriesKey: seriesKey,
-      pointId,
-      pointType,
-      foundMatch: !!matchingOriginal,
-      originalName: matchingOriginal?.name || 'Not found',
-      originalItemType: matchingOriginal?.itemType || 'Not found'
-    })
+    if (matchingApiData && matchedKey) {
+      // Remove from grouped data to avoid duplicate processing
+      groupedData.delete(matchedKey)
 
-    // Sort points by time
-    points.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+      // Sort points by time
+      matchingApiData.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
 
-    // Convert to chart data format
-    const chartData: DataPoint[] = points.map(point => ({
-      timestamp: new Date(point.time).getTime(),
-      value: typeof point.value === 'number' ? point.value : parseFloat(point.value) || 0
-    }))
+      // Convert to chart data format
+      const chartData: DataPoint[] = matchingApiData.map(point => ({
+        timestamp: new Date(point.time).getTime(),
+        value: typeof point.value === 'number' ? point.value : parseFloat(point.value) || 0
+      }))
 
-    // Determine unit info
-    const isAnalog = firstPoint.is_analog !== false
-    const unitInfo = isAnalog ?
-      { type: 'analog' as const, symbol: firstPoint.units || '' } :
-      { type: 'digital' as const, states: ['Low', 'High'] as [string, string] }
+      const seriesConfig: SeriesConfig = {
+        // PRESERVE ORIGINAL NAME - no time range labels
+        name: originalSeries.name,
+        color: originalSeries.color || colors[index % colors.length],
+        data: chartData,
+        visible: originalSeries.visible !== false, // Preserve visibility state
+        unit: originalSeries.unit || '',
+        unitType: originalSeries.unitType,
+        unitCode: originalSeries.unitCode,
+        digitalStates: originalSeries.digitalStates,
+        itemType: originalSeries.itemType,
+        prefix: originalSeries.prefix,
+        // PRESERVE ORIGINAL DESCRIPTION - no time range labels
+        description: originalSeries.description
+      }
 
-    const seriesConfig: SeriesConfig = {
-      // PRESERVE ORIGINAL NAME: Use original series name if found, otherwise create generic name
-      name: matchingOriginal?.name || `${pointType}_${pointId}`,
-      color: matchingOriginal?.color || colors[colorIndex % colors.length],
-      data: chartData,
-      visible: matchingOriginal?.visible !== false, // Preserve visibility state
-      unit: matchingOriginal?.unit || unitInfo.symbol || '',
-      unitType: matchingOriginal?.unitType || unitInfo.type,
-      unitCode: matchingOriginal?.unitCode || (isAnalog ? 52 : 1),
-      digitalStates: matchingOriginal?.digitalStates || (unitInfo.type === 'digital' ? unitInfo.states : undefined),
-      itemType: matchingOriginal?.itemType || pointType,
-      prefix: matchingOriginal?.prefix || pointType,
-      // PRESERVE ORIGINAL DESCRIPTION: Use original description if available
-      description: matchingOriginal?.description || `${pointType} ${pointId} - ${timeRanges.timebaseLabel} data`
+      series.push(seriesConfig)
+
+      console.log('✅ [TrendLogChart] Series matched and preserved:', {
+        index,
+        originalName: originalSeries.name,
+        apiKey: matchedKey,
+        dataPoints: chartData.length
+      })
+    } else {
+      // No matching API data - create empty series to maintain sequence
+      const emptySeries: SeriesConfig = {
+        name: originalSeries.name,
+        color: originalSeries.color || colors[index % colors.length],
+        data: [], // Empty data
+        visible: originalSeries.visible !== false,
+        unit: originalSeries.unit || '',
+        unitType: originalSeries.unitType,
+        unitCode: originalSeries.unitCode,
+        digitalStates: originalSeries.digitalStates,
+        itemType: originalSeries.itemType,
+        prefix: originalSeries.prefix,
+        description: originalSeries.description,
+        isEmpty: true // Mark as empty for UI handling
+      }
+
+      series.push(emptySeries)
+
+      console.log('⚠️ [TrendLogChart] No API data found for series:', {
+        index,
+        originalName: originalSeries.name,
+        createdEmpty: true
+      })
     }
-
-    series.push(seriesConfig)
-    colorIndex++
   })
 
-  console.log('✅ [TrendLogChart] Series conversion completed with name preservation:', {
+  console.log('✅ [TrendLogChart] Series conversion completed with sequence preservation:', {
     seriesCount: series.length,
     totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
-    timeRange: timeRanges.timebaseLabel,
-    namePreservation: series.map(s => ({
-      name: s.name,
-      dataPoints: s.data.length,
-      wasPreserved: !s.name.includes('_') // Names with underscores are generic
-    }))
+    sequencePreserved: true,
+    seriesNamesInOrder: series.map((s, i) => `${i}: ${s.name}`),
+    emptySeriesCount: series.filter(s => s.isEmpty).length
   })
 
   return series
