@@ -3787,8 +3787,24 @@ const extractSpecificPoints = () => {
         pointIndex = index
       }
 
-      // Generate point_id in format that matches database
-      const pointId = `${pointType}_${panelId}_${pointIndex}`
+      // Generate point_id in database-compatible format
+      let pointId: string
+      if (pointType === 'INPUT') {
+        // Convert from 0-based index to 1-based database format: "IN1", "IN2", etc.
+        pointId = `IN${pointIndex + 1}`
+      } else if (pointType === 'OUTPUT') {
+        // Convert from 0-based index to 1-based database format: "OUT1", "OUT2", etc.
+        pointId = `OUT${pointIndex + 1}`
+      } else if (pointType === 'VARIABLE') {
+        // Convert from 0-based index to 1-based database format: "VAR1", "VAR2", etc.
+        pointId = `VAR${pointIndex + 1}`
+      } else if (pointType === 'MONITOR') {
+        // Keep monitor format for now, may need adjustment
+        pointId = `HOL${pointIndex + 1}`
+      } else {
+        // Default fallback
+        pointId = `VAR${pointIndex + 1}`
+      }
 
       points.push({
         point_id: pointId,
@@ -3800,18 +3816,19 @@ const extractSpecificPoints = () => {
       console.log(`📍 [TrendLogChart] Extracted point ${index + 1}:`, {
         seriesName: series.name,
         itemType: itemType,
-        pointId: pointId,
+        pointId: pointId, // Database-compatible format like "IN1", "OUT2", "VAR3"
         pointType: pointType,
         pointIndex: pointIndex,
-        panelId: panelId
+        panelId: panelId,
+        conversion: `${itemType} → ${pointId}` // Show format conversion
       })
 
     } catch (error) {
       console.warn(`⚠️ [TrendLogChart] Failed to extract point info for series ${index}:`, error)
-      // Add fallback point
+      // Add fallback point with database-compatible format
       const deviceParams = extractDeviceParameters()
       points.push({
-        point_id: `VARIABLE_${deviceParams.panel_id}_${index}`,
+        point_id: `VAR${index + 1}`, // Use database format "VAR1", "VAR2", etc.
         point_type: 'VARIABLE',
         point_index: index,
         panel_id: deviceParams.panel_id || 2
@@ -3821,7 +3838,8 @@ const extractSpecificPoints = () => {
 
   console.log('✅ [TrendLogChart] Point extraction completed:', {
     totalPoints: points.length,
-    pointSummary: points.map(p => `${p.point_type}_${p.panel_id}_${p.point_index}`)
+    pointFormats: points.map(p => p.point_id), // Show database-compatible formats like "IN1", "OUT2", "VAR3"
+    conversionInfo: 'Frontend formats converted to database-compatible point_ids'
   })
 
   return points

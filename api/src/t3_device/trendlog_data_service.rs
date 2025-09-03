@@ -123,12 +123,29 @@ impl T3TrendlogDataService {
         // NEW: Apply specific points filter if provided (more precise than point_types)
         if let Some(specific_points) = &request.specific_points {
             if !specific_points.is_empty() {
-                // Log the specific points filtering
+                // Log detailed analysis of received point formats
                 let filter_info = format!(
                     "🎯 [TrendlogDataService] Applying specific points filter: {} points",
                     specific_points.len()
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
+
+                // Log each point with format analysis
+                for (i, point) in specific_points.iter().enumerate() {
+                    let format_analysis = if point.point_id.starts_with("IN") ||
+                                            point.point_id.starts_with("OUT") ||
+                                            point.point_id.starts_with("VAR") {
+                        "✅ Database-compatible format"
+                    } else {
+                        "❌ Legacy format - needs conversion"
+                    };
+
+                    let point_analysis = format!(
+                        "📍 [TrendlogDataService] Point {}: id='{}', type={}, index={}, panel={} - {}",
+                        i + 1, point.point_id, point.point_type, point.point_index, point.panel_id, format_analysis
+                    );
+                    let _ = write_structured_log_with_level("T3_Webview_API", &point_analysis, LogLevel::Info);
+                }
 
                 // Create conditions for each specific point
                 use sea_orm::Condition;
