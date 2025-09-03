@@ -3956,6 +3956,13 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
 const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
   console.log('🔄 [TrendLogChart] convertApiDataToSeries - Processing API data into chart series')
 
+  // Store original series for name preservation
+  const originalSeries = dataSeries.value || []
+  console.log('💾 [TrendLogChart] Preserving original series names:', {
+    originalSeriesCount: originalSeries.length,
+    originalNames: originalSeries.map(s => s.name)
+  })
+
   // Group data points by point_id and point_type
   const groupedData = new Map<string, any[]>()
 
@@ -3992,6 +3999,22 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
     const pointType = firstPoint.point_type || 'UNKNOWN'
     const pointId = firstPoint.point_id || 'UNK'
 
+    // Find matching original series to preserve the name and other properties
+    const matchingOriginal = originalSeries.find(origSeries => {
+      // Try to match by point_id pattern (IN1, OUT1, VAR1, etc.)
+      const origItemType = origSeries.itemType || ''
+      return origItemType.includes(pointId) || origSeries.name.includes(pointId)
+    })
+
+    console.log('🔍 [TrendLogChart] Series matching:', {
+      apiSeriesKey: seriesKey,
+      pointId,
+      pointType,
+      foundMatch: !!matchingOriginal,
+      originalName: matchingOriginal?.name || 'Not found',
+      originalItemType: matchingOriginal?.itemType || 'Not found'
+    })
+
     // Sort points by time
     points.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
 
@@ -4008,32 +4031,33 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
       { type: 'digital' as const, states: ['Low', 'High'] as [string, string] }
 
     const seriesConfig: SeriesConfig = {
-      name: `${pointType}_${pointId}`,
-      color: colors[colorIndex % colors.length],
+      // PRESERVE ORIGINAL NAME: Use original series name if found, otherwise create generic name
+      name: matchingOriginal?.name || `${pointType}_${pointId}`,
+      color: matchingOriginal?.color || colors[colorIndex % colors.length],
       data: chartData,
-      visible: true,
-      unit: unitInfo.symbol || '',
-      unitType: unitInfo.type,
-      unitCode: isAnalog ? 52 : 1, // Default to % for analog, Off/On for digital
-      digitalStates: unitInfo.type === 'digital' ? unitInfo.states : undefined,
-      itemType: pointType,
-      prefix: pointType,
-      description: `${pointType} ${pointId} - ${timeRanges.timebaseLabel} data`
+      visible: matchingOriginal?.visible !== false, // Preserve visibility state
+      unit: matchingOriginal?.unit || unitInfo.symbol || '',
+      unitType: matchingOriginal?.unitType || unitInfo.type,
+      unitCode: matchingOriginal?.unitCode || (isAnalog ? 52 : 1),
+      digitalStates: matchingOriginal?.digitalStates || (unitInfo.type === 'digital' ? unitInfo.states : undefined),
+      itemType: matchingOriginal?.itemType || pointType,
+      prefix: matchingOriginal?.prefix || pointType,
+      // PRESERVE ORIGINAL DESCRIPTION: Use original description if available
+      description: matchingOriginal?.description || `${pointType} ${pointId} - ${timeRanges.timebaseLabel} data`
     }
 
     series.push(seriesConfig)
     colorIndex++
   })
 
-  console.log('✅ [TrendLogChart] Series conversion completed:', {
+  console.log('✅ [TrendLogChart] Series conversion completed with name preservation:', {
     seriesCount: series.length,
     totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
     timeRange: timeRanges.timebaseLabel,
-    seriesDetails: series.map(s => ({
+    namePreservation: series.map(s => ({
       name: s.name,
       dataPoints: s.data.length,
-      unitType: s.unitType,
-      unit: s.unit
+      wasPreserved: !s.name.includes('_') // Names with underscores are generic
     }))
   })
 
