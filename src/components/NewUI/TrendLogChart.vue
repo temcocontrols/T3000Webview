@@ -206,42 +206,44 @@
 
               <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
               <div class="header-line-2">
-                <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center;">
-                    <span>All</span>
-                    <DownOutlined style="margin-left: 4px;" />
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="handleAllMenu" class="all-dropdown-menu">
-                      <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
-                        <CheckOutlined />
-                        Enable All
-                      </a-menu-item>
-                      <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
-                        <DisconnectOutlined />
-                        Disable All
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-                <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center;">
-                    <span>By Type</span>
-                    <DownOutlined style="margin-left: 4px;" />
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
-                      <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
-                        <LineChartOutlined />
-                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
-                        <BarChartOutlined />
-                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
+                <div class="left-controls">
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center;">
+                      <span>All</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
+                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                          <CheckOutlined />
+                          Enable All
+                        </a-menu-item>
+                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                          <DisconnectOutlined />
+                          Disable All
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center;">
+                      <span>By Type</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
+                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                          <LineChartOutlined />
+                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                          <BarChartOutlined />
+                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </div>
                 <div class="auto-scroll-toggle">
                   <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
                   <a-switch v-model:checked="isRealTime" size="small" checked-children="On" un-checked-children="Off"
@@ -1230,6 +1232,10 @@ const setTimeBase = (value: string) => {
   }
 
   timeBase.value = value
+  // Turn Auto Scroll on when setting timebase to 5m (real-time mode)
+  if (value === '5m') {
+    isRealTime.value = true
+  }
   onTimeBaseChange()
 }
 
@@ -3222,6 +3228,7 @@ const zoomOut = () => {
 const resetToDefaultTimebase = () => {
   timeBase.value = '5m'
   timeOffset.value = 0 // Reset time navigation as well
+  isRealTime.value = true // Turn Auto Scroll on when returning to 5m timebase
   onTimeBaseChange()
   // message.info('Reset to default 5 minutes timebase')
 }
@@ -4649,10 +4656,16 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between; /* Changed from flex-start to space-between */
   width: 100%;
   gap: 8px;
   margin-top: 2px;
+}
+
+.left-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between the dropdown buttons */
 }
 
 .control-group {
