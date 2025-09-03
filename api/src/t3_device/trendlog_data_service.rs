@@ -58,12 +58,12 @@ pub struct TrendlogHistoryRequest {
 pub struct T3TrendlogDataService;
 
 impl T3TrendlogDataService {
-    /// Scale large values: if value > 1000, divide by 1000
+    /// Scale large values: if value >= 1000, divide by 1000
     /// Returns (scaled_value, original_value, was_scaled)
     fn scale_value_if_needed(raw_value: &str) -> (f64, f64, bool) {
         let original_value = raw_value.parse::<f64>().unwrap_or(0.0);
         let mut scaled_value = original_value;
-        let was_scaled = original_value > 1000.0;
+        let was_scaled = original_value >= 1000.0;
 
         if was_scaled {
             scaled_value = original_value / 1000.0;
@@ -242,7 +242,7 @@ impl T3TrendlogDataService {
         // Format the data for the TrendLogChart component
         let format_start_time = std::time::Instant::now();
         let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
-            // Scale value if needed (divide by 1000 if > 1000)
+            // Scale value if needed (divide by 1000 if >= 1000)
             let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
 
             // Log scaling operations for debugging
