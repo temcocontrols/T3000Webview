@@ -190,6 +190,18 @@
               <!-- Line 1: Title with modal title and series count -->
               <div class="header-line-1">
                 <h7>{{ chartTitle }} - Data Series ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
+                <!-- Data Source Indicator -->
+                <div class="data-source-indicator">
+                  <span v-if="dataSource === 'realtime'" class="source-badge realtime">
+                    📡 Real-time
+                  </span>
+                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
+                    📚 Historical ({{ timeBase }})
+                  </span>
+                  <span v-else class="source-badge fallback">
+                    ⚠️ Fallback
+                  </span>
+                </div>
               </div>
 
               <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
@@ -386,6 +398,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { message, notification } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import Chart from 'chart.js/auto'
@@ -419,6 +432,7 @@ import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
 import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
+import { useTrendlogDataAPI } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {
@@ -701,6 +715,13 @@ const showLegend = ref(false)  // Hide legend by default to give more space to c
 const smoothLines = ref(false)
 const showPoints = ref(false)
 const lastSyncTime = ref('No data synced yet')
+
+// API integration for timebase data fetching
+const trendlogAPI = useTrendlogDataAPI()
+const dataSource = ref<'realtime' | 'api' | 'fallback'>('realtime') // Track data source for timebase changes
+
+// Route for URL parameter extraction
+const route = useRoute()
 
 // Reactive monitor configuration
 const monitorConfig = ref(null as any)
@@ -1008,6 +1029,20 @@ watch(scheduleItemData, (newData, oldData) => {
     timestamp: new Date().toISOString()
   })
 }, { deep: true })
+
+// Watch timeBase for changes and API data fetching
+watch(timeBase, (newTimeBase, oldTimeBase) => {
+  LogUtil.Info('🕒 TrendLogChart: timeBase changed - API Data Fetch Analysis', {
+    oldTimeBase: oldTimeBase,
+    newTimeBase: newTimeBase,
+    is5Minutes: newTimeBase === '5m',
+    isCustom: newTimeBase === 'custom',
+    needsApiData: newTimeBase !== '5m' && newTimeBase !== 'custom',
+    currentDataSource: dataSource.value,
+    willTriggerApiCall: newTimeBase !== '5m' && newTimeBase !== 'custom',
+    timestamp: new Date().toISOString()
+  })
+}, { immediate: false })
 
 // Get internal interval value from props - combine minute and second intervals
 const getInternalIntervalSeconds = (): number => {
@@ -2642,8 +2677,13 @@ const initializeData = async () => {
   LogUtil.Info('🚀 TrendLogModal: Starting data initialization...', {
     currentDataSeriesLength: dataSeries.value.length,
     hasMonitorConfig: !!monitorConfig.value,
-    monitorInputItemsLength: monitorConfig.value?.inputItems?.length || 0
+    monitorInputItemsLength: monitorConfig.value?.inputItems?.length || 0,
+    currentTimeBase: timeBase.value,
+    currentDataSource: dataSource.value
   })
+
+  // Set data source to realtime for standard initialization
+  dataSource.value = 'realtime'
 
   // First, try to initialize with real T3000 data
   const monitorConfigData = monitorConfig.value
@@ -2698,6 +2738,14 @@ const initializeData = async () => {
         // Clear loading state immediately after successful initialization
         isLoading.value = false
 
+        // Confirm realtime data source
+        dataSource.value = 'realtime'
+        LogUtil.Info('✅ TrendLogChart: Real-time data initialization completed', {
+          dataSource: dataSource.value,
+          timeBase: timeBase.value,
+          seriesCount: dataSeries.value.length
+        })
+
         // Update chart immediately to show data without delay
         updateChart()
 
@@ -2708,15 +2756,16 @@ const initializeData = async () => {
 
         return
       } else {
-
+        LogUtil.Warn('⚠️ TrendLogChart: No real-time data available - Setting fallback source')
+        dataSource.value = 'fallback'
         isLoading.value = false
       }
     } catch (error) {
       LogUtil.Error('❌ TrendLogModal: Failed to initialize real data series:', error)
+      dataSource.value = 'fallback'
       isLoading.value = false // Clear loading state on error
     }
   } else {
-
     LogUtil.Info('📊 Empty State Configuration:', {
       configExists: !!monitorConfigData,
       hasInputItems: !!(monitorConfigData?.inputItems),
@@ -2726,6 +2775,7 @@ const initializeData = async () => {
       panelsDataLength: T3000_Data.value.panelsData?.length || 0,
       dataType: 'NO_DATA_AVAILABLE'
     })
+    dataSource.value = 'fallback'
     isLoading.value = false
   }
 
@@ -3239,22 +3289,100 @@ const setView = (viewNumber: number) => {
 
 // Event handlers
 const onTimeBaseChange = async () => {
+  console.log('🕒 [TrendLogChart] onTimeBaseChange - Timebase Change Analysis')
+  console.log('─'.repeat(60))
+  console.log('📋 Timebase Change Details:', {
+    newTimeBase: timeBase.value,
+    previousTimeOffset: timeOffset.value,
+    isCustomTimebase: timeBase.value === 'custom',
+    needsApiData: timeBase.value !== '5m' && timeBase.value !== 'custom',
+    currentDataSource: dataSource?.value || 'unknown'
+  })
+
   if (timeBase.value !== 'custom') {
     // Reset time offset when timebase changes
     timeOffset.value = 0
-    await initializeData()
+
+    // Check if timebase is NOT 5 minutes - need to get data from API/database
+    if (timeBase.value !== '5m') {
+      console.log('🌐 [TrendLogChart] Non-5m timebase detected - Fetching historical data from API')
+
+      // Calculate time range based on selected timebase
+      const timeRanges = calculateTimeRangeForTimebase(timeBase.value)
+      console.log('📅 [TrendLogChart] Calculated time range:', {
+        timeBase: timeBase.value,
+        startTime: timeRanges.startTime,
+        endTime: timeRanges.endTime,
+        durationMinutes: timeRanges.durationMinutes,
+        expectedDataPoints: timeRanges.expectedDataPoints
+      })
+
+      // Try to get device parameters from current data
+      const deviceParams = extractDeviceParameters()
+      console.log('🔍 [TrendLogChart] Device parameters:', deviceParams)
+
+      if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
+        console.log('✅ [TrendLogChart] Valid device parameters - Making API request')
+        await fetchHistoricalDataForTimebase(deviceParams, timeRanges)
+      } else {
+        console.log('❌ [TrendLogChart] Missing device parameters - Cannot fetch API data:', {
+          hasSN: !!deviceParams.sn,
+          hasPanelId: deviceParams.panel_id !== null,
+          hasTrendlogId: deviceParams.trendlog_id !== null
+        })
+        // Fall back to standard initialization
+        await initializeData()
+      }
+    } else {
+      console.log('🔄 [TrendLogChart] 5m timebase - Using standard real-time data initialization')
+      await initializeData()
+    }
   }
+
+  console.log('─'.repeat(60))
 }
 
 const onCustomDateChange = async () => {
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
-    // Generate data for custom date range
-    await initializeData()
+    console.log('📅 [TrendLogChart] onCustomDateChange - Custom Date Range API Request')
+    console.log('─'.repeat(60))
+
+    // Extract device parameters
+    const deviceParams = extractDeviceParameters()
+
+    console.log('📋 Custom Date Range Details:', {
+      startDate: customStartDate.value.toISOString(),
+      endDate: customEndDate.value.toISOString(),
+      durationHours: Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60 * 60)),
+      deviceParams: deviceParams
+    })
+
+    if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
+      console.log('🌐 [TrendLogChart] Custom date range - Fetching historical data from API')
+
+      // Create time range object for custom dates
+      const customTimeRanges = {
+        startTime: customStartDate.value.toISOString(),
+        endTime: customEndDate.value.toISOString(),
+        durationMinutes: Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60)),
+        expectedDataPoints: Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 15)), // Assume 15-second intervals
+        timebaseLabel: `Custom Range (${customStartDate.value.format('DD/MM HH:mm')} - ${customEndDate.value.format('DD/MM HH:mm')})`
+      }
+
+      await fetchHistoricalDataForTimebase(deviceParams, customTimeRanges)
+    } else {
+      console.log('❌ [TrendLogChart] Missing device parameters for custom date range - Using standard initialization')
+      // Generate data for custom date range
+      await initializeData()
+    }
+
     // Force chart recreation to ensure proper axis scaling
     if (chartInstance) {
       chartInstance.destroy()
       createChart()
     }
+
+    console.log('─'.repeat(60))
   }
 }
 
@@ -3506,6 +3634,280 @@ const handleByTypeMenu = ({ key }: { key: string }) => {
 const handleCancel = () => {
   stopRealTimeUpdates()
   // Remove modal close since this is now just a chart component
+}
+
+// Timebase API Integration Helper Functions
+const calculateTimeRangeForTimebase = (timeBase: string) => {
+  const now = dayjs()
+  let startTime: string
+  let endTime: string
+  let durationMinutes: number
+
+  const timeRangeMapping = {
+    '5m': { duration: 5, label: '5 minutes' },
+    '10m': { duration: 10, label: '10 minutes' },
+    '30m': { duration: 30, label: '30 minutes' },
+    '1h': { duration: 60, label: '1 hour' },
+    '4h': { duration: 240, label: '4 hours' },
+    '12h': { duration: 720, label: '12 hours' },
+    '1d': { duration: 1440, label: '1 day' },
+    '4d': { duration: 5760, label: '4 days' }
+  }
+
+  const config = timeRangeMapping[timeBase as keyof typeof timeRangeMapping] || { duration: 60, label: '1 hour' }
+  durationMinutes = config.duration
+
+  // Calculate start and end times
+  endTime = now.toISOString()
+  startTime = now.subtract(durationMinutes, 'minute').toISOString()
+
+  // Estimate expected data points based on T3000 typical intervals
+  const typicalIntervalSeconds = 15 // T3000 default 15-second interval
+  const expectedDataPoints = Math.floor((durationMinutes * 60) / typicalIntervalSeconds)
+
+  return {
+    startTime,
+    endTime,
+    durationMinutes,
+    expectedDataPoints,
+    timebaseLabel: config.label
+  }
+}
+
+const extractDeviceParameters = () => {
+  // Try to extract device parameters from various sources
+  let sn: number | null = null
+  let panel_id: number | null = null
+  let trendlog_id: number | null = null
+
+  // Method 1: Try from URL parameters (route)
+  try {
+    if (route.query.sn) sn = parseInt(route.query.sn as string)
+    if (route.query.panel_id) panel_id = parseInt(route.query.panel_id as string)
+    if (route.query.trendlog_id) trendlog_id = parseInt(route.query.trendlog_id as string)
+  } catch (error) {
+    // Route parameter parsing failed, continue with other methods
+  }
+
+  // Method 2: Try from current item data (props)
+  if (props.itemData?.t3Entry) {
+    const t3Entry = props.itemData.t3Entry
+
+    // Use panel_id from t3Entry if not found in URL
+    if (panel_id === null) {
+      panel_id = t3Entry.pid || null
+    }
+
+    // Extract trendlog_id from id (e.g., "MON1" -> 1) if not found in URL
+    if (trendlog_id === null && t3Entry.id && typeof t3Entry.id === 'string') {
+      const match = t3Entry.id.match(/MON(\d+)|TRL(\d+)/i)
+      trendlog_id = match ? parseInt(match[1] || match[2]) : null
+    }
+  }
+
+  // Method 3: Try from T3000_Data if still missing
+  if (!sn && T3000_Data.value.panelsList && T3000_Data.value.panelsList.length > 0) {
+    sn = T3000_Data.value.panelsList[0].serial_number
+  }
+
+  if (!panel_id && T3000_Data.value.panelsList && T3000_Data.value.panelsList.length > 0) {
+    panel_id = T3000_Data.value.panelsList[0].panel_number
+  }
+
+  console.log('🔍 [TrendLogChart] Device parameter extraction results:', {
+    method1_url: {
+      sn: route.query.sn ? parseInt(route.query.sn as string) : null,
+      panel_id: route.query.panel_id ? parseInt(route.query.panel_id as string) : null,
+      trendlog_id: route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
+    },
+    method2_props: {
+      pid: props.itemData?.t3Entry?.pid,
+      t3Entry_id: props.itemData?.t3Entry?.id
+    },
+    method3_t3000Data: {
+      panelsListLength: T3000_Data.value.panelsList?.length || 0,
+      firstPanelSN: T3000_Data.value.panelsList?.[0]?.serial_number,
+      firstPanelNumber: T3000_Data.value.panelsList?.[0]?.panel_number
+    },
+    finalResult: { sn, panel_id, trendlog_id }
+  })
+
+  return { sn, panel_id, trendlog_id }
+}
+
+const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any) => {
+  try {
+    console.log('📡 [TrendLogChart] fetchHistoricalDataForTimebase - Starting API request to port 9103')
+    console.log('─'.repeat(50))
+
+    isLoading.value = true
+    dataSource.value = 'api'
+
+    const historyRequest = {
+      serial_number: deviceParams.sn,
+      panel_id: deviceParams.panel_id,
+      trendlog_id: deviceParams.trendlog_id.toString(),
+      start_time: timeRanges.startTime,
+      end_time: timeRanges.endTime,
+      limit: Math.min(timeRanges.expectedDataPoints * 2, 5000), // Request up to 2x expected points, max 5000
+      point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'] // All point types
+    }
+
+    console.log('📤 [TrendLogChart] API Request Details (Port 9103):', {
+      endpoint: `localhost:9104/api/t3_device/devices/${deviceParams.sn}/trendlogs/${deviceParams.trendlog_id}/history`,
+      ...historyRequest,
+      timeRange: `${timeRanges.timebaseLabel} (${timeRanges.durationMinutes} minutes)`,
+      expectedPoints: timeRanges.expectedDataPoints
+    })
+
+    const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
+
+    console.log('📥 [TrendLogChart] API Response Analysis (Port 9103):', {
+      hasResponse: !!historyResponse,
+      hasData: !!(historyResponse?.data),
+      dataCount: historyResponse?.data?.length || 0,
+      trendlogId: historyResponse?.trendlog_id,
+      panelId: historyResponse?.panel_id,
+      message: historyResponse?.message,
+      hasError: !!trendlogAPI.error.value,
+      errorMessage: trendlogAPI.error.value
+    })
+
+    if (historyResponse && historyResponse.data && historyResponse.data.length > 0) {
+      // Convert API data to chart format
+      console.log('🔄 [TrendLogChart] Converting API data to chart format...')
+
+      // Process the historical data into series format
+      const historicalSeries = convertApiDataToSeries(historyResponse.data, timeRanges)
+
+      console.log('✅ [TrendLogChart] API data conversion completed:', {
+        seriesCount: historicalSeries.length,
+        totalDataPoints: historicalSeries.reduce((sum, series) => sum + series.data.length, 0),
+        seriesNames: historicalSeries.map(s => s.name),
+        timeRange: `${timeRanges.startTime} to ${timeRanges.endTime}`
+      })
+
+      // Update the data series with historical data
+      dataSeries.value = historicalSeries
+
+      // Update chart to display new data
+      updateChart()
+
+      // Update last sync time
+      lastSyncTime.value = `API data loaded at ${dayjs().format('HH:mm:ss')}`
+
+    } else {
+      console.log('⚠️ [TrendLogChart] No historical data available - Using fallback')
+      dataSource.value = 'fallback'
+
+      // Fall back to standard initialization if API fails
+      await initializeData()
+    }
+
+  } catch (error) {
+    console.error('❌ [TrendLogChart] fetchHistoricalDataForTimebase error:', error)
+    dataSource.value = 'fallback'
+
+    // Show error notification
+    notification.error({
+      message: 'Historical Data Error',
+      description: `Failed to load ${timeRanges.timebaseLabel} historical data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      duration: 4.5
+    })
+
+    // Fall back to standard initialization
+    await initializeData()
+  } finally {
+    isLoading.value = false
+    console.log('─'.repeat(50))
+  }
+}
+
+const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
+  console.log('🔄 [TrendLogChart] convertApiDataToSeries - Processing API data into chart series')
+
+  // Group data points by point_id and point_type
+  const groupedData = new Map<string, any[]>()
+
+  apiData.forEach(point => {
+    const key = `${point.point_type}_${point.point_id}`
+    if (!groupedData.has(key)) {
+      groupedData.set(key, [])
+    }
+    groupedData.get(key)!.push(point)
+  })
+
+  console.log('📊 [TrendLogChart] Data grouping results:', {
+    totalApiPoints: apiData.length,
+    uniqueSeries: groupedData.size,
+    seriesKeys: Array.from(groupedData.keys()),
+    sampleSizes: Array.from(groupedData.entries()).slice(0, 5).map(([key, points]) => ({
+      seriesKey: key,
+      pointCount: points.length
+    }))
+  })
+
+  // Convert each group to a series
+  const series: SeriesConfig[] = []
+  let colorIndex = 0
+
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#F4D03F'
+  ]
+
+  groupedData.forEach((points, seriesKey) => {
+    const firstPoint = points[0]
+    const pointType = firstPoint.point_type || 'UNKNOWN'
+    const pointId = firstPoint.point_id || 'UNK'
+
+    // Sort points by time
+    points.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+
+    // Convert to chart data format
+    const chartData: DataPoint[] = points.map(point => ({
+      timestamp: new Date(point.time).getTime(),
+      value: typeof point.value === 'number' ? point.value : parseFloat(point.value) || 0
+    }))
+
+    // Determine unit info
+    const isAnalog = firstPoint.is_analog !== false
+    const unitInfo = isAnalog ?
+      { type: 'analog' as const, symbol: firstPoint.units || '' } :
+      { type: 'digital' as const, states: ['Low', 'High'] as [string, string] }
+
+    const seriesConfig: SeriesConfig = {
+      name: `${pointType}_${pointId}`,
+      color: colors[colorIndex % colors.length],
+      data: chartData,
+      visible: true,
+      unit: unitInfo.symbol || '',
+      unitType: unitInfo.type,
+      unitCode: isAnalog ? 52 : 1, // Default to % for analog, Off/On for digital
+      digitalStates: unitInfo.type === 'digital' ? unitInfo.states : undefined,
+      itemType: pointType,
+      prefix: pointType,
+      description: `${pointType} ${pointId} - ${timeRanges.timebaseLabel} data`
+    }
+
+    series.push(seriesConfig)
+    colorIndex++
+  })
+
+  console.log('✅ [TrendLogChart] Series conversion completed:', {
+    seriesCount: series.length,
+    totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
+    timeRange: timeRanges.timebaseLabel,
+    seriesDetails: series.map(s => ({
+      name: s.name,
+      dataPoints: s.data.length,
+      unitType: s.unitType,
+      unit: s.unit
+    }))
+  })
+
+  return series
 }
 
 // Utility functions
@@ -3998,11 +4400,45 @@ onUnmounted(() => {
   margin-bottom: 5px;
 }
 
+.header-line-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .header-line-1 h7 {
   margin: 0;
   color: #262626;
   font-size: 13px;
   font-weight: 600;
+}
+
+/* Data Source Indicator */
+.data-source-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.source-badge.realtime {
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+}
+
+.source-badge.historical {
+  background: linear-gradient(45deg, #2196F3, #1976D2);
+}
+
+.source-badge.fallback {
+  background: linear-gradient(45deg, #FF9800, #F57C00);
 }
 
 .header-line-2 {

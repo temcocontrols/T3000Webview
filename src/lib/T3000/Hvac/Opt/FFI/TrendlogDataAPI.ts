@@ -2,6 +2,9 @@
 // Handles historical data API calls for TrendLog IndexPage.vue
 import { ref } from 'vue'
 
+// API Configuration - Port 9103 for T3000 HTTP API (9104 is WebSocket only)
+const TRENDLOG_API_BASE_URL = 'http://localhost:9103'
+
 export interface TrendlogHistoryRequest {
   serial_number: number
   panel_id: number
@@ -58,7 +61,7 @@ export function useTrendlogDataAPI() {
     error.value = null
 
     try {
-      const response = await fetch(`/api/devices/${request.serial_number}/trendlogs/${request.trendlog_id}/history`, {
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/devices/${request.serial_number}/trendlogs/${request.trendlog_id}/history`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +91,7 @@ export function useTrendlogDataAPI() {
    */
   const saveRealtimeData = async (dataPoint: RealtimeDataRequest): Promise<boolean> => {
     try {
-      const response = await fetch('/api/trendlog-data/realtime', {
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlog-data/realtime`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +112,7 @@ export function useTrendlogDataAPI() {
    */
   const saveRealtimeBatch = async (dataPoints: RealtimeDataRequest[]): Promise<number> => {
     try {
-      const response = await fetch('/api/trendlog-data/realtime/batch', {
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlog-data/realtime/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +151,7 @@ export function useTrendlogDataAPI() {
         params.set('point_types', pointTypes.join(','))
       }
 
-      const response = await fetch(`/api/devices/${serialNumber}/trendlog-data/recent?${params}`)
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/devices/${serialNumber}/trendlog-data/recent?${params}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch recent data: ${response.status}`)
@@ -171,7 +174,7 @@ export function useTrendlogDataAPI() {
         panel_id: panelId.toString()
       })
 
-      const response = await fetch(`/api/devices/${serialNumber}/trendlog-data/stats?${params}`)
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/devices/${serialNumber}/trendlog-data/stats?${params}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch statistics: ${response.status}`)
