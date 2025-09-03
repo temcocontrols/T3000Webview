@@ -3657,9 +3657,20 @@ const calculateTimeRangeForTimebase = (timeBase: string) => {
   const config = timeRangeMapping[timeBase as keyof typeof timeRangeMapping] || { duration: 60, label: '1 hour' }
   durationMinutes = config.duration
 
-  // Calculate start and end times
-  endTime = now.toISOString()
-  startTime = now.subtract(durationMinutes, 'minute').toISOString()
+  // Calculate start and end times - Format for LoggingTime_Fmt column
+  const formatTimeForDB = (date: any): string => {
+    const jsDate = date.toDate()
+    const year = jsDate.getFullYear()
+    const month = (jsDate.getMonth() + 1).toString().padStart(2, '0')
+    const day = jsDate.getDate().toString().padStart(2, '0')
+    const hours = jsDate.getHours().toString().padStart(2, '0')
+    const minutes = jsDate.getMinutes().toString().padStart(2, '0')
+    const seconds = jsDate.getSeconds().toString().padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+
+  endTime = formatTimeForDB(now)
+  startTime = formatTimeForDB(now.subtract(durationMinutes, 'minute'))
 
   // Estimate expected data points based on T3000 typical intervals
   const typicalIntervalSeconds = 15 // T3000 default 15-second interval

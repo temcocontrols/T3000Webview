@@ -78,7 +78,7 @@
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import TrendLogChart from 'src/components/newui/TrendLogChart.vue'
+import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
@@ -388,10 +388,27 @@ const loadTrendLogItemData = async () => {
       console.log('🔄 [IndexPageSocket] Using Priority 2: API Historical Data')
       dataSource.value = 'api'
 
+      // Generate time range: start_time should be 1 hour ago, end_time should be current time
+      const now = new Date()
+      const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000))
+
+      // Format times as "YYYY-MM-DD HH:MM:SS" to match LoggingTime_Fmt format
+      const formatTimeForDB = (date: Date): string => {
+        const year = date.getFullYear()
+        const month = (date.getMonth() + 1).toString().padStart(2, '0')
+        const day = date.getDate().toString().padStart(2, '0')
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const seconds = date.getSeconds().toString().padStart(2, '0')
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      }
+
       const historyRequest = {
         serial_number: params.sn,
         panel_id: params.panel_id,
         trendlog_id: params.trendlog_id.toString(),
+        start_time: formatTimeForDB(oneHourAgo), // 1 hour ago
+        end_time: formatTimeForDB(now), // Current time
         limit: 1000, // Get last 1000 data points
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE'] // All point types
       }

@@ -10,8 +10,8 @@ export interface TrendlogHistoryRequest {
   serial_number: number
   panel_id: number
   trendlog_id: string
-  start_time?: string
-  end_time?: string
+  start_time?: string  // Format: "YYYY-MM-DD HH:MM:SS" to match LoggingTime_Fmt column
+  end_time?: string    // Format: "YYYY-MM-DD HH:MM:SS" to match LoggingTime_Fmt column
   limit?: number
   point_types?: string[] // ["INPUT", "OUTPUT", "VARIABLE"]
   // New specific point filtering for timebase requests
