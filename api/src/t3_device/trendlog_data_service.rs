@@ -58,6 +58,20 @@ pub struct TrendlogHistoryRequest {
 pub struct T3TrendlogDataService;
 
 impl T3TrendlogDataService {
+    /// Scale large values: if value > 1000, divide by 1000
+    /// Returns (scaled_value, original_value, was_scaled)
+    fn scale_value_if_needed(raw_value: &str) -> (f64, f64, bool) {
+        let original_value = raw_value.parse::<f64>().unwrap_or(0.0);
+        let mut scaled_value = original_value;
+        let was_scaled = original_value > 1000.0;
+
+        if was_scaled {
+            scaled_value = original_value / 1000.0;
+        }
+
+        (scaled_value, original_value, was_scaled)
+    }
+
     /// Get historical trendlog data for a specific device and trendlog
     pub async fn get_trendlog_history(
         db: &DatabaseConnection,
@@ -228,18 +242,29 @@ impl T3TrendlogDataService {
         // Format the data for the TrendLogChart component
         let format_start_time = std::time::Instant::now();
         let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
-            // Parse the value as a float for the chart
-            let numeric_value = data.value.parse::<f64>().unwrap_or(0.0);
+            // Scale value if needed (divide by 1000 if > 1000)
+            let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
+
+            // Log scaling operations for debugging
+            if was_scaled {
+                let scale_info = format!(
+                    "📏 [TrendlogDataService] Value scaled - Point: {}, Original: {:.2}, Scaled: {:.3}",
+                    data.point_id, original_value, scaled_value
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &scale_info, LogLevel::Info);
+            }
 
             serde_json::json!({
                 "time": data.logging_time_fmt,
-                "value": numeric_value,
+                "value": scaled_value,
                 "point_id": data.point_id,
                 "point_type": data.point_type,
                 "point_index": data.point_index,
                 "units": data.units,
                 "range": data.range_field,
                 "raw_value": data.value,
+                "original_value": original_value, // Include original value for reference
+                "was_scaled": was_scaled, // Indicate if value was scaled
                 "is_analog": data.digital_analog.as_ref().map(|da| da == "1").unwrap_or(true)
             })
         }).collect();

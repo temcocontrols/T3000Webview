@@ -1447,11 +1447,39 @@ async fn get_recent_trendlog_data(
         .map(|types| types.split(',').map(|s| s.to_string()).collect::<Vec<String>>());
 
     match T3TrendlogDataService::get_recent_data(&*db, device_id, panel_id, point_types, limit).await {
-        Ok(recent_data) => Ok(Json(json!({
-            "data": recent_data,
-            "count": recent_data.len(),
-            "message": "Recent trendlog data retrieved successfully"
-        }))),
+        Ok(recent_data) => {
+            // Format the data with value scaling (same as history query)
+            let formatted_data: Vec<serde_json::Value> = recent_data.iter().map(|data| {
+                // Apply the same scaling logic as in history query
+                let original_value = data.value.parse::<f64>().unwrap_or(0.0);
+                let mut scaled_value = original_value;
+                let was_scaled = original_value > 1000.0;
+
+                if was_scaled {
+                    scaled_value = original_value / 1000.0;
+                }
+
+                serde_json::json!({
+                    "time": data.logging_time_fmt,
+                    "value": scaled_value,
+                    "point_id": data.point_id,
+                    "point_type": data.point_type,
+                    "point_index": data.point_index,
+                    "units": data.units,
+                    "range": data.range_field,
+                    "raw_value": data.value,
+                    "original_value": original_value,
+                    "was_scaled": was_scaled,
+                    "is_analog": data.digital_analog.as_ref().map(|da| da == "1").unwrap_or(true)
+                })
+            }).collect();
+
+            Ok(Json(json!({
+                "data": formatted_data,
+                "count": formatted_data.len(),
+                "message": "Recent trendlog data retrieved successfully"
+            })))
+        },
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }

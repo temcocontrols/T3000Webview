@@ -25,13 +25,15 @@ export interface TrendlogHistoryRequest {
 
 export interface TrendlogDataPoint {
   time: string
-  value: number
+  value: number              // Scaled value (divided by 1000 if original > 1000)
   point_id: string
   point_type: string
   point_index: number
   units?: string
   range?: string
-  raw_value: string
+  raw_value: string          // Original string value from database
+  original_value?: number    // Original numeric value before scaling
+  was_scaled?: boolean       // Indicates if value was scaled down
   is_analog: boolean
 }
 
