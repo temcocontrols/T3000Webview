@@ -1,5 +1,6 @@
 // T3000 TrendLog Data API Composable
 // Handles historical data API calls for TrendLog IndexPage.vue
+// Enhanced with specific point filtering for timebase functionality
 import { ref } from 'vue'
 
 // API Configuration - Port 9103 for T3000 HTTP API (9104 is WebSocket only)
@@ -13,6 +14,13 @@ export interface TrendlogHistoryRequest {
   end_time?: string
   limit?: number
   point_types?: string[] // ["INPUT", "OUTPUT", "VARIABLE"]
+  // New specific point filtering for timebase requests
+  specific_points?: {
+    point_id: string
+    point_type: string
+    point_index: number
+    panel_id: number
+  }[]
 }
 
 export interface TrendlogDataPoint {

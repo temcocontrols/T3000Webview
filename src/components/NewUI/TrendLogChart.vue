@@ -3735,6 +3735,98 @@ const extractDeviceParameters = () => {
   return { sn, panel_id, trendlog_id }
 }
 
+/**
+ * Extract specific point information from current data series
+ * This is used to tell the API exactly which points we need historical data for
+ */
+const extractSpecificPoints = () => {
+  const points: Array<{
+    point_id: string
+    point_type: string
+    point_index: number
+    panel_id: number
+  }> = []
+
+  if (!dataSeries.value || dataSeries.value.length === 0) {
+    console.log('⚠️ [TrendLogChart] No data series available for point extraction')
+    return points
+  }
+
+  // Extract points from current series configuration
+  dataSeries.value.forEach((series, index) => {
+    try {
+      // Parse the itemType format: "2Input1" -> Panel=2, Type=Input, Index=0
+      const itemType = series.itemType || `${extractDeviceParameters().panel_id}VAR${index + 1}`
+
+      // Extract panel ID from itemType (first digit(s))
+      const panelMatch = itemType.match(/^(\d+)/)
+      const panelId = panelMatch ? parseInt(panelMatch[1]) : extractDeviceParameters().panel_id || 2
+
+      // Extract point type and convert to API format
+      let pointType: string
+      let pointIndex: number
+
+      if (itemType.includes('Input')) {
+        pointType = 'INPUT'
+        const indexMatch = itemType.match(/Input(\d+)$/)
+        pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index // Convert to 0-based index
+      } else if (itemType.includes('Output')) {
+        pointType = 'OUTPUT'
+        const indexMatch = itemType.match(/Output(\d+)$/)
+        pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
+      } else if (itemType.includes('VAR')) {
+        pointType = 'VARIABLE'
+        const indexMatch = itemType.match(/VAR(\d+)$/)
+        pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
+      } else if (itemType.includes('HOL')) {
+        pointType = 'MONITOR'
+        const indexMatch = itemType.match(/HOL(\d+)$/)
+        pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
+      } else {
+        pointType = 'VARIABLE' // Default fallback
+        pointIndex = index
+      }
+
+      // Generate point_id in format that matches database
+      const pointId = `${pointType}_${panelId}_${pointIndex}`
+
+      points.push({
+        point_id: pointId,
+        point_type: pointType,
+        point_index: pointIndex,
+        panel_id: panelId
+      })
+
+      console.log(`📍 [TrendLogChart] Extracted point ${index + 1}:`, {
+        seriesName: series.name,
+        itemType: itemType,
+        pointId: pointId,
+        pointType: pointType,
+        pointIndex: pointIndex,
+        panelId: panelId
+      })
+
+    } catch (error) {
+      console.warn(`⚠️ [TrendLogChart] Failed to extract point info for series ${index}:`, error)
+      // Add fallback point
+      const deviceParams = extractDeviceParameters()
+      points.push({
+        point_id: `VARIABLE_${deviceParams.panel_id}_${index}`,
+        point_type: 'VARIABLE',
+        point_index: index,
+        panel_id: deviceParams.panel_id || 2
+      })
+    }
+  })
+
+  console.log('✅ [TrendLogChart] Point extraction completed:', {
+    totalPoints: points.length,
+    pointSummary: points.map(p => `${p.point_type}_${p.panel_id}_${p.point_index}`)
+  })
+
+  return points
+}
+
 const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any) => {
   try {
     console.log('📡 [TrendLogChart] fetchHistoricalDataForTimebase - Starting API request to port 9103')
@@ -3743,6 +3835,11 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
     isLoading.value = true
     dataSource.value = 'api'
 
+    // Extract specific points from current data series
+    const specificPoints = extractSpecificPoints()
+
+    // Enhanced API request with specific point filtering
+    // This ensures we only fetch data for the exact points displayed in the chart
     const historyRequest = {
       serial_number: deviceParams.sn,
       panel_id: deviceParams.panel_id,
@@ -3750,14 +3847,18 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
       start_time: timeRanges.startTime,
       end_time: timeRanges.endTime,
       limit: Math.min(timeRanges.expectedDataPoints * 2, 5000), // Request up to 2x expected points, max 5000
-      point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'] // All point types
+      point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types
+      specific_points: specificPoints // NEW: Pass specific points to filter
     }
 
     console.log('📤 [TrendLogChart] API Request Details (Port 9103):', {
-      endpoint: `localhost:9104/api/t3_device/devices/${deviceParams.sn}/trendlogs/${deviceParams.trendlog_id}/history`,
+      endpoint: `localhost:9103/api/t3_device/devices/${deviceParams.sn}/trendlogs/${deviceParams.trendlog_id}/history`,
       ...historyRequest,
       timeRange: `${timeRanges.timebaseLabel} (${timeRanges.durationMinutes} minutes)`,
-      expectedPoints: timeRanges.expectedDataPoints
+      expectedPoints: timeRanges.expectedDataPoints,
+      specificPointsCount: specificPoints.length,
+      specificPointsSummary: specificPoints.map(p => `${p.point_type}_P${p.panel_id}_${p.point_index}`),
+      requestSize: JSON.stringify(historyRequest).length + ' bytes'
     })
 
     const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)

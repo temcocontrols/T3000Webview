@@ -35,6 +35,14 @@ pub struct CreateTrendlogDataRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SpecificPoint {
+    pub point_id: String,
+    pub point_type: String,
+    pub point_index: i32,
+    pub panel_id: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TrendlogHistoryRequest {
     pub serial_number: i32,
     pub panel_id: i32,
@@ -43,6 +51,7 @@ pub struct TrendlogHistoryRequest {
     pub end_time: Option<String>,    // Optional end time filter
     pub limit: Option<u64>,          // Optional limit for pagination
     pub point_types: Option<Vec<String>>, // Optional point types filter ["INPUT", "OUTPUT", "VARIABLE"]
+    pub specific_points: Option<Vec<SpecificPoint>>, // NEW: Specific points to filter
 }
 
 pub struct T3TrendlogDataService;
@@ -60,6 +69,36 @@ impl T3TrendlogDataService {
         // Apply point types filter if provided
         if let Some(point_types) = &request.point_types {
             query = query.filter(trendlog_data::Column::PointType.is_in(point_types.clone()));
+        }
+
+        // NEW: Apply specific points filter if provided (more precise than point_types)
+        if let Some(specific_points) = &request.specific_points {
+            if !specific_points.is_empty() {
+                // Create conditions for each specific point
+                use sea_orm::Condition;
+
+                let mut condition = Condition::any();
+
+                for point in specific_points {
+                    // Match by point_id, point_type, point_index, and panel_id
+                    let point_condition = Condition::all()
+                        .add(trendlog_data::Column::PointId.eq(point.point_id.clone()))
+                        .add(trendlog_data::Column::PointType.eq(point.point_type.clone()))
+                        .add(trendlog_data::Column::PointIndex.eq(point.point_index))
+                        .add(trendlog_data::Column::PanelId.eq(point.panel_id));
+
+                    condition = condition.add(point_condition);
+                }
+
+                query = query.filter(condition);
+
+                // Log the filtering for debugging
+                println!("🔍 [TrendlogDataService] Applying specific points filter: {} points", specific_points.len());
+                for (i, point) in specific_points.iter().enumerate() {
+                    println!("   Point {}: ID={}, Type={}, Index={}, Panel={}",
+                        i + 1, point.point_id, point.point_type, point.point_index, point.panel_id);
+                }
+            }
         }
 
         // Apply time range filter if provided
@@ -99,13 +138,31 @@ impl T3TrendlogDataService {
             })
         }).collect();
 
+        // Create detailed response message
+        let specific_points_count = request.specific_points.as_ref().map(|sp| sp.len()).unwrap_or(0);
+        let message = if specific_points_count > 0 {
+            format!("Trendlog history data retrieved successfully (filtered for {} specific points)", specific_points_count)
+        } else {
+            "Trendlog history data retrieved successfully".to_string()
+        };
+
+        println!("✅ [TrendlogDataService] Query completed: {} records, {} specific points",
+            formatted_data.len(), specific_points_count);
+
         Ok(serde_json::json!({
             "device_id": request.serial_number,
             "panel_id": request.panel_id,
             "trendlog_id": request.trendlog_id,
             "data": formatted_data,
             "count": formatted_data.len(),
-            "message": "Trendlog history data retrieved successfully"
+            "message": message,
+            "filtering": {
+                "specific_points_applied": specific_points_count > 0,
+                "specific_points_count": specific_points_count,
+                "time_range_applied": request.start_time.is_some() || request.end_time.is_some(),
+                "start_time": request.start_time,
+                "end_time": request.end_time
+            }
         }))
     }
 
