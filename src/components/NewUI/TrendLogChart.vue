@@ -187,13 +187,13 @@
           <!-- Data Series -->
           <div class="control-section">
             <div class="data-series-header">
-              <!-- Line 1: Title with modal title and series count -->
+              <!-- Single line: Title, count, and status -->
               <div class="header-line-1">
-                <h7>{{ chartTitle }} - Data Series ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
+                <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
                 <!-- Data Source Indicator -->
                 <div class="data-source-indicator">
                   <span v-if="dataSource === 'realtime'" class="source-badge realtime">
-                    📡 Real-time
+                    📡 Live
                   </span>
                   <span v-else-if="dataSource === 'api'" class="source-badge historical">
                     📚 Historical ({{ timeBase }})
@@ -4599,6 +4599,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px; /* Add space between title and badge */
+  flex-wrap: nowrap; /* Prevent wrapping */
 }
 
 .header-line-1 h7 {
@@ -4606,22 +4608,29 @@ onUnmounted(() => {
   color: #262626;
   font-size: 13px;
   font-weight: 600;
+  flex: 1; /* Allow title to take available space */
+  min-width: 0; /* Allow text truncation if needed */
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis for very long titles */
 }
 
 /* Data Source Indicator */
 .data-source-indicator {
   display: flex;
   align-items: center;
+  flex-shrink: 0; /* Prevent badge from shrinking */
 }
 
 .source-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 6px; /* Slightly more compact padding */
   border-radius: 10px;
-  font-size: 10px;
+  font-size: 9px; /* Slightly smaller font */
   font-weight: 500;
   color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  white-space: nowrap; /* Prevent badge text from wrapping */
 }
 
 .source-badge.realtime {
