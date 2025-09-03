@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use chrono::Utc;
 use crate::entity::t3_device::trendlog_data;
 use crate::error::AppError;
+use crate::logger::{write_structured_log_with_level, LogLevel};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TrendlogDataPoint {
@@ -62,6 +63,49 @@ impl T3TrendlogDataService {
         db: &DatabaseConnection,
         request: TrendlogHistoryRequest
     ) -> Result<serde_json::Value, AppError> {
+        // Log the start of the request
+        let request_info = format!(
+            "🔍 [TrendlogDataService] Starting history query - Device: {}, Panel: {}, Trendlog: {}, Time: {} to {}, Limit: {:?}",
+            request.serial_number,
+            request.panel_id,
+            request.trendlog_id,
+            request.start_time.as_deref().unwrap_or("N/A"),
+            request.end_time.as_deref().unwrap_or("N/A"),
+            request.limit
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+
+        // Execute the query with proper error handling
+        match Self::execute_history_query(db, &request).await {
+            Ok(result) => {
+                // Log successful completion
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_API",
+                    "🎉 [TrendlogDataService] History query completed successfully",
+                    LogLevel::Info
+                );
+                Ok(result)
+            },
+            Err(error) => {
+                // Log the error with full context
+                let error_info = format!(
+                    "❌ [TrendlogDataService] History query failed - Device: {}, Panel: {}, Error: {}",
+                    request.serial_number,
+                    request.panel_id,
+                    error
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                Err(error)
+            }
+        }
+    }
+
+    /// Internal method to execute the actual history query
+    async fn execute_history_query(
+        db: &DatabaseConnection,
+        request: &TrendlogHistoryRequest
+    ) -> Result<serde_json::Value, AppError> {
+
         let mut query = trendlog_data::Entity::find()
             .filter(trendlog_data::Column::SerialNumber.eq(request.serial_number))
             .filter(trendlog_data::Column::PanelId.eq(request.panel_id));
@@ -69,17 +113,29 @@ impl T3TrendlogDataService {
         // Apply point types filter if provided
         if let Some(point_types) = &request.point_types {
             query = query.filter(trendlog_data::Column::PointType.is_in(point_types.clone()));
+            let filter_info = format!(
+                "📋 [TrendlogDataService] Applied point types filter: {:?}",
+                point_types
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
         }
 
         // NEW: Apply specific points filter if provided (more precise than point_types)
         if let Some(specific_points) = &request.specific_points {
             if !specific_points.is_empty() {
+                // Log the specific points filtering
+                let filter_info = format!(
+                    "🎯 [TrendlogDataService] Applying specific points filter: {} points",
+                    specific_points.len()
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
+
                 // Create conditions for each specific point
                 use sea_orm::Condition;
 
                 let mut condition = Condition::any();
 
-                for point in specific_points {
+                for (i, point) in specific_points.iter().enumerate() {
                     // Match by point_id, point_type, point_index, and panel_id
                     let point_condition = Condition::all()
                         .add(trendlog_data::Column::PointId.eq(point.point_id.clone()))
@@ -88,26 +144,36 @@ impl T3TrendlogDataService {
                         .add(trendlog_data::Column::PanelId.eq(point.panel_id));
 
                     condition = condition.add(point_condition);
+
+                    // Log each point detail
+                    let point_detail = format!(
+                        "   Point {}: ID={}, Type={}, Index={}, Panel={}",
+                        i + 1, point.point_id, point.point_type, point.point_index, point.panel_id
+                    );
+                    let _ = write_structured_log_with_level("T3_Webview_API", &point_detail, LogLevel::Info);
                 }
 
                 query = query.filter(condition);
-
-                // Log the filtering for debugging
-                println!("🔍 [TrendlogDataService] Applying specific points filter: {} points", specific_points.len());
-                for (i, point) in specific_points.iter().enumerate() {
-                    println!("   Point {}: ID={}, Type={}, Index={}, Panel={}",
-                        i + 1, point.point_id, point.point_type, point.point_index, point.panel_id);
-                }
             }
         }
 
         // Apply time range filter if provided
         if let Some(start_time) = &request.start_time {
             query = query.filter(trendlog_data::Column::LoggingTimeFmt.gte(start_time.clone()));
+            let time_filter_info = format!(
+                "⏰ [TrendlogDataService] Applied start time filter: {}",
+                start_time
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
         }
 
         if let Some(end_time) = &request.end_time {
             query = query.filter(trendlog_data::Column::LoggingTimeFmt.lte(end_time.clone()));
+            let time_filter_info = format!(
+                "⏰ [TrendlogDataService] Applied end time filter: {}",
+                end_time
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
         }
 
         // Order by logging time (newest first for realtime, oldest first for history)
@@ -116,11 +182,34 @@ impl T3TrendlogDataService {
         // Apply limit if provided
         if let Some(limit) = request.limit {
             query = query.limit(limit);
+            let limit_info = format!(
+                "📊 [TrendlogDataService] Applied result limit: {}",
+                limit
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &limit_info, LogLevel::Info);
         }
 
+        // Log query execution start
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            "🔄 [TrendlogDataService] Executing database query...",
+            LogLevel::Info
+        );
+
+        let query_start_time = std::time::Instant::now();
         let trendlog_data_list = query.all(db).await?;
+        let query_duration = query_start_time.elapsed();
+
+        // Log query completion with performance metrics
+        let query_result_info = format!(
+            "📈 [TrendlogDataService] Query completed in {:.3}ms - Retrieved {} records",
+            query_duration.as_millis(),
+            trendlog_data_list.len()
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &query_result_info, LogLevel::Info);
 
         // Format the data for the TrendLogChart component
+        let format_start_time = std::time::Instant::now();
         let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
             // Parse the value as a float for the chart
             let numeric_value = data.value.parse::<f64>().unwrap_or(0.0);
@@ -137,6 +226,15 @@ impl T3TrendlogDataService {
                 "is_analog": data.digital_analog.as_ref().map(|da| da == "1").unwrap_or(true)
             })
         }).collect();
+        let format_duration = format_start_time.elapsed();
+
+        // Log data formatting completion
+        let format_info = format!(
+            "🔄 [TrendlogDataService] Data formatting completed in {:.3}ms - {} data points processed",
+            format_duration.as_millis(),
+            formatted_data.len()
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &format_info, LogLevel::Info);
 
         // Create detailed response message
         let specific_points_count = request.specific_points.as_ref().map(|sp| sp.len()).unwrap_or(0);
@@ -146,8 +244,39 @@ impl T3TrendlogDataService {
             "Trendlog history data retrieved successfully".to_string()
         };
 
-        println!("✅ [TrendlogDataService] Query completed: {} records, {} specific points",
-            formatted_data.len(), specific_points_count);
+        // Final success log with comprehensive summary
+        let success_summary = format!(
+            "✅ [TrendlogDataService] Request completed successfully - Device: {}, Panel: {}, Records: {}, Specific Points: {}, Time Range: {} to {}",
+            request.serial_number,
+            request.panel_id,
+            formatted_data.len(),
+            specific_points_count,
+            request.start_time.as_deref().unwrap_or("N/A"),
+            request.end_time.as_deref().unwrap_or("N/A")
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &success_summary, LogLevel::Info);
+
+        // Log sample data points for debugging (first 3 records)
+        if !formatted_data.is_empty() {
+            let sample_count = std::cmp::min(3, formatted_data.len());
+            let sample_info = format!(
+                "🔍 [TrendlogDataService] Sample data (first {} of {} records):",
+                sample_count, formatted_data.len()
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &sample_info, LogLevel::Info);
+
+            for (i, sample) in formatted_data.iter().take(sample_count).enumerate() {
+                let sample_detail = format!(
+                    "   Record {}: Time={}, Value={}, Point={}, Type={}",
+                    i + 1,
+                    sample["time"].as_str().unwrap_or("N/A"),
+                    sample["value"].as_f64().unwrap_or(0.0),
+                    sample["point_id"].as_str().unwrap_or("N/A"),
+                    sample["point_type"].as_str().unwrap_or("N/A")
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &sample_detail, LogLevel::Info);
+            }
+        }
 
         Ok(serde_json::json!({
             "device_id": request.serial_number,
@@ -171,6 +300,20 @@ impl T3TrendlogDataService {
         db: &DatabaseConnection,
         data_point: CreateTrendlogDataRequest
     ) -> Result<trendlog_data::Model, AppError> {
+        // Log the start of save operation
+        let save_info = format!(
+            "💾 [TrendlogDataService] Saving realtime data - Device: {}, Panel: {}, Point: {} ({}), Value: {}",
+            data_point.serial_number,
+            data_point.panel_id,
+            data_point.point_id,
+            data_point.point_type,
+            data_point.value
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &save_info, LogLevel::Info);
+
+        // Save point_id for error logging (before data_point is moved)
+        let point_id_for_logging = data_point.point_id.clone();
+
         // Generate timestamp for logging
         let now = Utc::now();
         let logging_time = now.timestamp().to_string();
@@ -183,15 +326,35 @@ impl T3TrendlogDataService {
             point_index: Set(data_point.point_index),
             point_type: Set(data_point.point_type),
             logging_time: Set(logging_time),
-            logging_time_fmt: Set(logging_time_fmt),
+            logging_time_fmt: Set(logging_time_fmt.clone()),
             value: Set(data_point.value),
             range_field: Set(data_point.range_field),
             digital_analog: Set(data_point.digital_analog),
             units: Set(data_point.units),
         };
 
-        let saved_data_point = new_data_point.insert(db).await?;
-        Ok(saved_data_point)
+        match new_data_point.insert(db).await {
+            Ok(saved_data_point) => {
+                // Log successful save
+                let success_info = format!(
+                    "✅ [TrendlogDataService] Realtime data saved successfully - Point: {}, Time: {}",
+                    saved_data_point.point_id,
+                    logging_time_fmt
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+                Ok(saved_data_point)
+            },
+            Err(error) => {
+                // Log save error
+                let error_info = format!(
+                    "❌ [TrendlogDataService] Failed to save realtime data - Point: {}, Error: {}",
+                    point_id_for_logging,
+                    error
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                Err(error.into())
+            }
+        }
     }
 
     /// Batch save realtime data points (for multiple points at once)
@@ -200,8 +363,20 @@ impl T3TrendlogDataService {
         data_points: Vec<CreateTrendlogDataRequest>
     ) -> Result<u64, AppError> {
         if data_points.is_empty() {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_API",
+                "⚠️ [TrendlogDataService] Batch save called with empty data_points array",
+                LogLevel::Warn
+            );
             return Ok(0);
         }
+
+        // Log batch save start
+        let batch_info = format!(
+            "📦 [TrendlogDataService] Starting batch save - {} data points",
+            data_points.len()
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &batch_info, LogLevel::Info);
 
         let now = Utc::now();
         let logging_time = now.timestamp().to_string();
@@ -224,12 +399,32 @@ impl T3TrendlogDataService {
         }).collect();
 
         let count = active_models.len() as u64;
-        let _result = trendlog_data::Entity::insert_many(active_models)
-            .exec(db)
-            .await?;
+        let batch_start_time = std::time::Instant::now();
 
-        // For insert_many, we return the count of inserted items
-        Ok(count)
+        match trendlog_data::Entity::insert_many(active_models).exec(db).await {
+            Ok(_result) => {
+                let batch_duration = batch_start_time.elapsed();
+                // Log successful batch save
+                let success_info = format!(
+                    "✅ [TrendlogDataService] Batch save completed in {:.3}ms - {} records inserted, Time: {}",
+                    batch_duration.as_millis(),
+                    count,
+                    logging_time_fmt
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+                Ok(count)
+            },
+            Err(error) => {
+                // Log batch save error
+                let error_info = format!(
+                    "❌ [TrendlogDataService] Batch save failed - {} points, Error: {}",
+                    count,
+                    error
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                Err(error.into())
+            }
+        }
     }
 
     /// Get recent trendlog data (for realtime display)
@@ -240,6 +435,16 @@ impl T3TrendlogDataService {
         point_types: Option<Vec<String>>,
         limit: Option<u64>
     ) -> Result<Vec<trendlog_data::Model>, AppError> {
+        // Log recent data request
+        let recent_info = format!(
+            "📊 [TrendlogDataService] Getting recent data - Device: {}, Panel: {}, Types: {:?}, Limit: {:?}",
+            serial_number,
+            panel_id,
+            point_types,
+            limit
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &recent_info, LogLevel::Info);
+
         let mut query = trendlog_data::Entity::find()
             .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
             .filter(trendlog_data::Column::PanelId.eq(panel_id));
@@ -254,8 +459,27 @@ impl T3TrendlogDataService {
             query = query.limit(limit_val);
         }
 
-        let recent_data = query.all(db).await?;
-        Ok(recent_data)
+        match query.all(db).await {
+            Ok(recent_data) => {
+                // Log successful retrieval
+                let success_info = format!(
+                    "✅ [TrendlogDataService] Recent data retrieved - {} records found",
+                    recent_data.len()
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+                Ok(recent_data)
+            },
+            Err(error) => {
+                // Log error
+                let error_info = format!(
+                    "❌ [TrendlogDataService] Failed to get recent data - Device: {}, Error: {}",
+                    serial_number,
+                    error
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                Err(error.into())
+            }
+        }
     }
 
     /// Delete old trendlog data (for cleanup/maintenance)
@@ -282,6 +506,16 @@ impl T3TrendlogDataService {
         serial_number: i32,
         panel_id: i32
     ) -> Result<serde_json::Value, AppError> {
+        // Log statistics request
+        let stats_info = format!(
+            "📈 [TrendlogDataService] Getting data statistics - Device: {}, Panel: {}",
+            serial_number,
+            panel_id
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &stats_info, LogLevel::Info);
+
+        let stats_start_time = std::time::Instant::now();
+
         // Get total count of data points
         let total_count = trendlog_data::Entity::find()
             .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
@@ -320,6 +554,19 @@ impl T3TrendlogDataService {
             .await?;
 
         let latest_timestamp = latest_data.map(|data| data.logging_time_fmt);
+        let stats_duration = stats_start_time.elapsed();
+
+        // Log statistics completion
+        let completion_info = format!(
+            "✅ [TrendlogDataService] Statistics completed in {:.3}ms - Total: {}, Input: {}, Output: {}, Variable: {}, Latest: {}",
+            stats_duration.as_millis(),
+            total_count,
+            input_count,
+            output_count,
+            variable_count,
+            latest_timestamp.as_deref().unwrap_or("N/A")
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &completion_info, LogLevel::Info);
 
         Ok(serde_json::json!({
             "device_id": serial_number,
