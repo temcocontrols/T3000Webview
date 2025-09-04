@@ -852,6 +852,7 @@ impl T3000MainService {
     /// INSERT trend log entries (ALWAYS INSERT for historical data)
     async fn insert_trend_logs(txn: &DatabaseTransaction, serial_number: i32, device_data: &DeviceWithPoints) -> Result<(), AppError> {
         let timestamp = chrono::Utc::now().to_rfc3339();
+        let config = T3000MainConfig::default(); // Get config to use sync_interval_secs
 
         // Create sync logger for trend log operations
         let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
@@ -882,6 +883,9 @@ impl T3000MainService {
                 range_field: Set(Some(point.range.to_string())),
                 digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
                 units: Set(Some(units)),
+                data_source: Set(Some("FFI_SYNC".to_string())),
+                sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
+                created_by: Set(Some("FFI_SYNC_SERVICE".to_string())),
             };
 
             sync_logger.info(&format!("📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -916,6 +920,9 @@ impl T3000MainService {
                 range_field: Set(Some(point.range.to_string())),
                 digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
                 units: Set(Some(units)),
+                data_source: Set(Some("FFI_SYNC".to_string())),
+                sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
+                created_by: Set(Some("FFI_SYNC_SERVICE".to_string())),
             };
 
             sync_logger.info(&format!("📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -950,6 +957,9 @@ impl T3000MainService {
                 range_field: Set(Some(point.range.to_string())),
                 digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
                 units: Set(Some(units)),
+                data_source: Set(Some("FFI_SYNC".to_string())),
+                sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
+                created_by: Set(Some("FFI_SYNC_SERVICE".to_string())),
             };
 
             sync_logger.info(&format!("📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
@@ -1767,6 +1777,8 @@ impl T3000MainService {
         logging_time: &str,
     ) -> Result<usize, AppError> {
         let units = Self::derive_units_from_range(point.range);
+        let config = T3000MainConfig::default(); // Get config to use sync_interval_secs
+
         let trendlog_model = trendlog_data::ActiveModel {
             serial_number: Set(serial_number),
             panel_id: Set(panel_id),
@@ -1779,6 +1791,9 @@ impl T3000MainService {
             range_field: Set(Some(point.range.to_string())),
             digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
             units: Set(Some(units)),
+            data_source: Set(Some("FFI_SYNC".to_string())),
+            sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
+            created_by: Set(Some("FFI_SYNC_SERVICE".to_string())),
         };
 
         trendlog_data::Entity::insert(trendlog_model)

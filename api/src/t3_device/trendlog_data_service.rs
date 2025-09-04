@@ -2,9 +2,12 @@
 // Handles TRENDLOG_DATA table operations for historical trend data storage and retrieval
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use chrono::Utc;
+use chrono::{Duration, NaiveDateTime, Utc};
 use crate::entity::t3_device::trendlog_data;
 use crate::error::AppError;
+
+// Default sync interval to match T3000MainConfig::sync_interval_secs
+const DEFAULT_SYNC_INTERVAL_SECS: i32 = 30;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,6 +36,10 @@ pub struct CreateTrendlogDataRequest {
     pub range_field: Option<String>,
     pub digital_analog: Option<String>,
     pub units: Option<String>,
+    // Enhanced source tracking
+    pub data_source: Option<String>,     // 'REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL'
+    pub sync_interval: Option<i32>,      // Sync interval in seconds
+    pub created_by: Option<String>,      // 'FRONTEND', 'BACKEND', 'API'
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,6 +48,26 @@ pub struct SpecificPoint {
     pub point_type: String,
     pub point_index: i32,
     pub panel_id: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SmartTrendlogRequest {
+    pub serial_number: i32,
+    pub panel_id: i32,
+    pub lookback_minutes: i32,
+    pub max_points: Option<usize>,
+    pub data_sources: Vec<String>,
+    pub consolidate_duplicates: bool,
+    pub specific_points: Option<Vec<SpecificPoint>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SmartTrendlogResponse {
+    pub data: Vec<serde_json::Value>,
+    pub total_points: usize,
+    pub sources_used: Vec<String>,
+    pub consolidation_applied: bool,
+    pub has_historical_data: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -373,6 +400,10 @@ impl T3TrendlogDataService {
             range_field: Set(data_point.range_field),
             digital_analog: Set(data_point.digital_analog),
             units: Set(data_point.units),
+            // Enhanced source tracking
+            data_source: Set(Some(data_point.data_source.unwrap_or_else(|| "REALTIME".to_string()))),
+            sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
+            created_by: Set(Some(data_point.created_by.unwrap_or_else(|| "FRONTEND".to_string()))),
         };
 
         match new_data_point.insert(db).await {
@@ -437,6 +468,10 @@ impl T3TrendlogDataService {
                 range_field: Set(data_point.range_field),
                 digital_analog: Set(data_point.digital_analog),
                 units: Set(data_point.units),
+                // Enhanced source tracking
+                data_source: Set(Some(data_point.data_source.unwrap_or_else(|| "REALTIME".to_string()))),
+                sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
+                created_by: Set(Some(data_point.created_by.unwrap_or_else(|| "FRONTEND".to_string()))),
             }
         }).collect();
 
@@ -620,5 +655,135 @@ impl T3TrendlogDataService {
             "latest_timestamp": latest_timestamp,
             "message": "Trendlog data statistics retrieved successfully"
         }))
+    }
+
+    /// Smart trendlog data retrieval with source prioritization and consolidation
+    pub async fn get_smart_trendlog_data(
+        db: &DatabaseConnection,
+        request: SmartTrendlogRequest
+    ) -> Result<SmartTrendlogResponse, AppError> {
+        let cutoff_time = Utc::now() - Duration::minutes(request.lookback_minutes as i64);
+
+        let smart_info = format!(
+            "🧠 [TrendlogDataService] Smart trendlog query - Device: {}, Panel: {}, Lookback: {}m, Sources: {:?}",
+            request.serial_number,
+            request.panel_id,
+            request.lookback_minutes,
+            request.data_sources
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &smart_info, LogLevel::Info);
+
+        // Build query with data source priority
+        let mut query = trendlog_data::Entity::find()
+            .filter(trendlog_data::Column::SerialNumber.eq(request.serial_number))
+            .filter(trendlog_data::Column::PanelId.eq(request.panel_id))
+            .filter(trendlog_data::Column::LoggingTimeFmt.gte(cutoff_time.format("%Y-%m-%d %H:%M:%S").to_string()));
+
+        if !request.data_sources.is_empty() {
+            query = query.filter(trendlog_data::Column::DataSource.is_in(request.data_sources.clone()));
+        }
+
+        if let Some(points) = &request.specific_points {
+            let point_ids: Vec<String> = points.iter().map(|p| p.point_id.clone()).collect();
+            query = query.filter(trendlog_data::Column::PointId.is_in(point_ids));
+        }
+
+        // Order by data source priority (FFI_SYNC first), then time
+        let raw_data = query
+            .order_by_asc(trendlog_data::Column::LoggingTimeFmt)
+            .limit(request.max_points.unwrap_or(10000) as u64)
+            .all(db)
+            .await?;
+
+        let has_historical_data = !raw_data.is_empty();
+
+        // Apply data consolidation if requested
+        let final_data = if request.consolidate_duplicates {
+            Self::consolidate_by_priority(raw_data)
+        } else {
+            raw_data
+        };
+
+        // Format data with scaling
+        let formatted_data: Vec<serde_json::Value> = final_data.into_iter().map(|data| {
+            let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
+
+            serde_json::json!({
+                "time": data.logging_time_fmt,
+                "value": scaled_value,
+                "point_id": data.point_id,
+                "point_type": data.point_type,
+                "point_index": data.point_index,
+                "units": data.units,
+                "range": data.range_field,
+                "raw_value": data.value,
+                "original_value": original_value,
+                "was_scaled": was_scaled,
+                "is_analog": data.digital_analog.as_deref() == Some("1"),
+                "data_source": data.data_source.unwrap_or_else(|| "UNKNOWN".to_string()),
+                "sync_interval": data.sync_interval.unwrap_or(30)
+            })
+        }).collect();
+
+        let smart_result = SmartTrendlogResponse {
+            data: formatted_data.clone(),
+            total_points: formatted_data.len(),
+            sources_used: request.data_sources,
+            consolidation_applied: request.consolidate_duplicates,
+            has_historical_data,
+        };
+
+        let completion_info = format!(
+            "✅ [TrendlogDataService] Smart query completed - Points: {}, HasHistorical: {}, Sources: {:?}",
+            smart_result.total_points,
+            smart_result.has_historical_data,
+            smart_result.sources_used
+        );
+        let _ = write_structured_log_with_level("T3_Webview_API", &completion_info, LogLevel::Info);
+
+        Ok(smart_result)
+    }
+
+    /// Consolidate data points by source priority (FFI_SYNC > REALTIME > others)
+    fn consolidate_by_priority(data_points: Vec<trendlog_data::Model>) -> Vec<trendlog_data::Model> {
+        use std::collections::HashMap;
+
+        // Group by point_id and approximate time (30-second tolerance)
+        let mut time_groups: HashMap<String, Vec<trendlog_data::Model>> = HashMap::new();
+
+        for point in data_points {
+            // Create composite key: point_id + rounded_time
+            let time_key = if let Ok(parsed_time) = chrono::NaiveDateTime::parse_from_str(&point.logging_time_fmt, "%Y-%m-%d %H:%M:%S") {
+                let rounded_minutes = parsed_time.and_utc().timestamp() / 30 * 30; // 30-second groups
+                format!("{}_{}", point.point_id, rounded_minutes)
+            } else {
+                format!("{}_{}", point.point_id, point.logging_time_fmt)
+            };
+
+            time_groups.entry(time_key).or_insert_with(Vec::new).push(point);
+        }
+
+        // For each group, select highest priority data source
+        let mut consolidated: Vec<trendlog_data::Model> = Vec::new();
+
+        for group_points in time_groups.into_values() {
+            let best_point = group_points.into_iter().min_by_key(|point| {
+                match point.data_source.as_deref() {
+                    Some("FFI_SYNC") => 1,      // Highest priority
+                    Some("REALTIME") => 2,      // Second priority
+                    Some("HISTORICAL") => 3,    // Third priority
+                    Some("MANUAL") => 4,        // Lowest priority
+                    _ => 999,                   // Unknown sources last
+                }
+            });
+
+            if let Some(point) = best_point {
+                consolidated.push(point);
+            }
+        }
+
+        // Sort by time
+        consolidated.sort_by(|a, b| a.logging_time_fmt.cmp(&b.logging_time_fmt));
+        consolidated
     }
 }

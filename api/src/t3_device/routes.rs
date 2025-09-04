@@ -15,7 +15,7 @@ use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest,
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
 use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
-use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest};
+use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest, SmartTrendlogRequest};
 // use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
@@ -1181,6 +1181,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:device_id/trendlogs/:trendlog_id/history", post(get_trendlog_history))
         .route("/devices/:device_id/trendlog-data/stats", get(get_trendlog_data_stats))
         .route("/devices/:device_id/trendlog-data/recent", get(get_recent_trendlog_data))
+        .route("/devices/:device_id/trendlog-data/smart", post(get_smart_trendlog_data))
         .route("/trendlog-data/realtime", post(save_realtime_trendlog_data))
         .route("/trendlog-data/realtime/batch", post(save_realtime_trendlog_batch))
         .route("/devices/:device_id/trendlog-data/cleanup", delete(cleanup_old_trendlog_data))
@@ -1480,6 +1481,38 @@ async fn get_recent_trendlog_data(
                 "message": "Recent trendlog data retrieved successfully"
             })))
         },
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}
+
+/// Smart trendlog data retrieval with source consolidation
+async fn get_smart_trendlog_data(
+    State(state): State<T3AppState>,
+    Path(device_id): Path<i32>,
+    Json(request): Json<SmartTrendlogRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Create smart trendlog request with device_id
+    let smart_request = SmartTrendlogRequest {
+        serial_number: device_id,
+        panel_id: request.panel_id,
+        lookback_minutes: request.lookback_minutes,
+        data_sources: request.data_sources,
+        specific_points: request.specific_points,
+        consolidate_duplicates: request.consolidate_duplicates,
+        max_points: request.max_points,
+    };
+
+    match T3TrendlogDataService::get_smart_trendlog_data(&*db, smart_request).await {
+        Ok(response) => Ok(Json(json!({
+            "data": response.data,
+            "total_points": response.total_points,
+            "sources_used": response.sources_used,
+            "consolidation_applied": response.consolidation_applied,
+            "has_historical_data": response.has_historical_data,
+            "message": "Smart trendlog data retrieved successfully"
+        }))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
