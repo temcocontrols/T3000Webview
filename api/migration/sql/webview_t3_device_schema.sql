@@ -278,16 +278,21 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
     LoggingTime_Fmt TEXT NOT NULL,             -- C++ Formatted Logging Time (e.g., "2025-08-25 12:23:40")
     Digital_Analog TEXT,                       -- C++ Digital_Analog (0=digital, 1=analog from JSON)
     Range_Field TEXT,                          -- C++ Range (range information for units calculation)
-    Units TEXT                                 -- C++ Units (derived from range: C, degree, h/kh, etc.)
+    Units TEXT,                                -- C++ Units (derived from range: C, degree, h/kh, etc.)
+    DataSource TEXT DEFAULT 'REALTIME',       -- Data source tracking ('REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL')
+    SyncInterval INTEGER DEFAULT 30,          -- Sync interval in seconds
+    CreatedBy TEXT DEFAULT 'FRONTEND'         -- Creator identification ('FRONTEND', 'BACKEND', 'API')
 );
 
 -- =================================================================
--- INDEXES for performance (T3000 style naming)
+-- INDEXES for performance (T3000 style naming + new source tracking)
 -- =================================================================
 
 CREATE INDEX IF NOT EXISTS IDX_DEVICES_SERIAL ON DEVICES(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_INPUTS_SERIAL ON INPUTS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_OUTPUTS_SERIAL ON OUTPUTS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_SOURCE_TIME ON TRENDLOG_DATA(SerialNumber, PanelId, DataSource, LoggingTime_Fmt);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_RECENT_QUERY ON TRENDLOG_DATA(SerialNumber, PanelId, LoggingTime_Fmt DESC);
 CREATE INDEX IF NOT EXISTS IDX_VARIABLES_SERIAL ON VARIABLES(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_PROGRAMS_SERIAL ON PROGRAMS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_SCHEDULES_SERIAL ON SCHEDULES(SerialNumber);

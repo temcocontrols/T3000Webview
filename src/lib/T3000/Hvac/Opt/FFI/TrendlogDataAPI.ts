@@ -14,13 +14,34 @@ export interface TrendlogHistoryRequest {
   end_time?: string    // Format: "YYYY-MM-DD HH:MM:SS" to match LoggingTime_Fmt column
   limit?: number
   point_types?: string[] // ["INPUT", "OUTPUT", "VARIABLE"]
-  // New specific point filtering for timebase requests
+    // New specific point filtering for timebase requests
   specific_points?: {
     point_id: string
     point_type: string
     point_index: number
-    panel_id: number
   }[]
+}
+
+export interface SmartTrendlogRequest {
+  serial_number: number
+  panel_id: number
+  lookback_minutes: number
+  data_sources: string[] // ["FFI_SYNC", "REALTIME", "HISTORICAL", "MANUAL"]
+  specific_points?: {
+    point_id: string
+    point_type: string
+    point_index: number
+  }[]
+  consolidate_duplicates: boolean
+  max_points?: number
+}
+
+export interface SmartTrendlogResponse {
+  data: any[]
+  total_points: number
+  sources_used: string[]
+  consolidation_applied: boolean
+  has_historical_data: boolean
 }
 
 export interface TrendlogDataPoint {
@@ -198,6 +219,38 @@ export function useTrendlogDataAPI() {
   }
 
   /**
+   * Smart trendlog data retrieval with source prioritization
+   */
+  const getSmartTrendlogData = async (request: SmartTrendlogRequest): Promise<SmartTrendlogResponse | null> => {
+    try {
+      const response = await fetch(
+        `${TRENDLOG_API_BASE_URL}/devices/${request.serial_number}/trendlog-data/smart`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request)
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch smart trendlog data: ${response.status}`)
+      }
+
+      const result = await response.json()
+      return {
+        data: result.data || [],
+        total_points: result.total_points || 0,
+        sources_used: result.sources_used || [],
+        consolidation_applied: result.consolidation_applied || false,
+        has_historical_data: result.has_historical_data || false
+      }
+    } catch (err) {
+      console.error('Failed to fetch smart trendlog data:', err)
+      return null
+    }
+  }
+
+  /**
    * Convert socket data from port 9104 to format suitable for database saving
    * Used when processing realtime data from WebSocket connection
    */
@@ -234,6 +287,7 @@ export function useTrendlogDataAPI() {
     saveRealtimeBatch,
     getRecentData,
     getDataStatistics,
+    getSmartTrendlogData,
 
     // Utility Methods
     formatSocketDataForSave
