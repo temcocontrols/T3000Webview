@@ -77,6 +77,10 @@ export interface RealtimeDataRequest {
   range_field?: string
   digital_analog?: string
   units?: string
+  // Enhanced source tracking
+  data_source?: string     // 'REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL'
+  sync_interval?: number   // Sync interval in seconds
+  created_by?: string      // 'FRONTEND', 'BACKEND', 'API'
 }
 
 export function useTrendlogDataAPI() {

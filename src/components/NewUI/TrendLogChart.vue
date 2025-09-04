@@ -570,6 +570,9 @@ interface SeriesConfig {
   itemType?: string                   // NEW: T3000 item type (VAR, Input, Output, HOL, etc.)
   prefix?: string                     // NEW: Category prefix (IN, OUT, VAR, etc.)
   description?: string                // NEW: Device description
+  pointType?: number                  // NEW: Actual point type number from T3000
+  pointNumber?: number                // NEW: Point number for reference
+  panelId?: number                    // NEW: Panel ID for reference
 }
 
 /**
@@ -939,7 +942,10 @@ const generateDataSeries = (): SeriesConfig[] => {
       digitalStates: digitalStates,
       itemType: formattedItemType,
       prefix: pointTypeInfo.category, // Add prefix from category
-      description: cleanDescription
+      description: cleanDescription,
+      pointType: pointType, // Add the actual point type number
+      pointNumber: pointNumber, // Add point number for reference
+      panelId: panelId // Add panel ID for reference
     }
   })
 
@@ -2899,32 +2905,134 @@ const addRealtimeDataPoint = async () => {
         hasValidData: Array.isArray(realTimeData)
       })
 
+      // Get device parameters for database saving
+      const deviceParams = extractDeviceParameters()
+
+      // Prepare batch data for database saving
+      const realtimeDataForSave = []
+
       dataSeries.value.forEach((series, index) => {
         if (series.isEmpty || !realTimeData[index]) return
 
-        // Get the latest real data point
-        const latestData = realTimeData[index]
-        if (latestData && latestData.length > 0) {
-          const latestPoint = latestData[latestData.length - 1]
-          const newPoint = {
-            timestamp: timestamp,
-            value: latestPoint.value
+          // Get the latest real data point
+          const latestData = realTimeData[index]
+          if (latestData && latestData.length > 0) {
+            const latestPoint = latestData[latestData.length - 1]
+            const newPoint = {
+              timestamp: timestamp,
+              value: latestPoint.value
+            }
+
+            series.data.push(newPoint)
+
+            // Update series unit from the matching device data if not already set
+            if (!series.unit) {
+              try {
+                // Get the monitor config to find the input item for this series
+                const monitorConfigData = monitorConfig.value
+                if (monitorConfigData?.inputItems?.[index]) {
+                  const inputItem = monitorConfigData.inputItems[index]
+
+                  // Get panels data for device lookup
+                  const panelsData = T3000_Data.value.panelsData || []
+                  const currentPanelId = T3000_Data.value.panelsList?.[0]?.panel_number || 1
+                  const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
+
+                  // Find matching device
+                  const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
+                  if (matchingDevice?.range !== undefined) {
+                    if (series.unitType === 'digital') {
+                      series.unit = '' // Digital units don't show symbols, just state names
+                    } else {
+                      // For analog, use the actual device range (T3000 unit code)
+                      series.unit = getAnalogUnit(matchingDevice.range) || ''
+                    }
+
+                    LogUtil.Info(`🔧 TrendLogChart: Updated series unit from device data`, {
+                      seriesName: series.name,
+                      unit: series.unit,
+                      deviceRange: matchingDevice.range,
+                      unitType: series.unitType
+                    })
+                  }
+                }
+              } catch (error) {
+                LogUtil.Error('Failed to determine series unit from device data:', error)
+              }
+            }
+
+            LogUtil.Info(`📈 TrendLogChart: Added real-time point to series ${index}`, {
+              seriesName: series.name,
+              newValue: newPoint.value,
+              seriesDataLength: series.data.length,
+              seriesUnit: series.unit
+            })          // Prepare data for database save
+          // Get the actual point type info for consistent categorization
+          const actualPointType = series.pointType || 3 // Default to VAR if not available
+          const pointTypeInfo = getPointTypeInfo(actualPointType)
+
+          // Generate proper T3000 point ID format (e.g., IN3, OUT1, VAR5)
+          const pointNumber = (series.pointNumber || index) + 1 // T3000 uses 1-based indexing
+          const pointId = `${pointTypeInfo.category}${pointNumber}`
+
+          // Get the actual real-time update interval in seconds
+          const actualIntervalMs = monitorConfig.value?.dataIntervalMs || updateInterval.value
+          const actualIntervalSec = Math.round(actualIntervalMs / 1000)
+
+          // For database storage, use raw value (not display-processed value)
+          // The processDeviceValue function only divides by 1000 if rawValue > 1000
+          // So we need to restore it only for values that were actually divided
+          let databaseValue = newPoint.value
+          if (series.unitType === 'analog') {
+            // If the display value * 1000 would be > 1000, then it was divided for display
+            // This means the original raw value was >= 1000, so we restore it
+            if (newPoint.value * 1000 >= 1000) {
+              databaseValue = newPoint.value * 1000
+            }
+            // If newPoint.value * 1000 < 1000, then the original was < 1000 and wasn't divided
+            // so we keep the value as-is
           }
 
-          series.data.push(newPoint)
-          LogUtil.Info(`📈 TrendLogChart: Added real-time point to series ${index}`, {
-            seriesName: series.name,
-            newValue: newPoint.value,
-            seriesDataLength: series.data.length
-          })
-
-          // Remove old points to maintain window size
+          realtimeDataForSave.push({
+            serial_number: deviceParams.sn || 0,
+            panel_id: deviceParams.panel_id || 0,
+            point_id: pointId, // Use T3000 standard format like IN3, OUT1, VAR5
+            point_index: series.pointNumber || index, // Use actual point number from series
+            point_type: pointTypeInfo.category, // Use the category from point type info (OUT, IN, VAR, etc.)
+            value: databaseValue.toString(), // Use raw value for database storage
+            range_field: (series.unitCode || 0).toString(), // Convert unitCode to string for range field
+            digital_analog: series.unitType === 'digital' ? '1' : '0',
+            units: series.unit || '', // Now series.unit should be properly set from real-time processing
+            // Enhanced source tracking for FRONTEND real-time data
+            data_source: 'REALTIME',
+            sync_interval: actualIntervalSec, // Use actual real-time update interval in seconds
+            created_by: 'FRONTEND'
+          })          // Remove old points to maintain window size
           const maxDataPoints = Math.max(100, getTimeRangeMinutes(timeBase.value) / 5)
           if (series.data.length > maxDataPoints) {
             series.data.shift()
           }
         }
       })
+
+      // Save real-time data to database (batch operation for efficiency)
+      if (realtimeDataForSave.length > 0) {
+        try {
+          const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataForSave)
+          LogUtil.Info('💾 TrendLogChart: Real-time data saved to database', {
+            pointsSaved: realtimeDataForSave.length,
+            rowsAffected: rowsAffected,
+            deviceSerial: deviceParams.sn,
+            panelId: deviceParams.panel_id
+          })
+        } catch (error) {
+          LogUtil.Warn('⚠️ TrendLogChart: Failed to save real-time data to database', {
+            error: error.message,
+            pointsCount: realtimeDataForSave.length
+          })
+          // Don't throw error - display should continue even if database save fails
+        }
+      }
 
       LogUtil.Info('✅ TrendLogChart: Real-time data points processing completed')
       // Update sync time only when real data is successfully processed
