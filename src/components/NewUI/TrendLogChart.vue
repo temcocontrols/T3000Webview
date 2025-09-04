@@ -1250,10 +1250,14 @@ const setTimeBase = (value: string) => {
   }
 
   timeBase.value = value
-  // Turn Auto Scroll on when setting timebase to 5m (real-time mode)
+
+  // Update Auto Scroll state based on timebase
   if (value === '5m') {
-    isRealTime.value = true
+    isRealTime.value = true // Enable Auto Scroll for 5m (real-time)
+  } else {
+    isRealTime.value = false // Disable Auto Scroll for historical timebases
   }
+
   onTimeBaseChange()
 }
 
@@ -3272,6 +3276,14 @@ const zoomIn = () => {
   if (currentIndex > 0) {
     const newTimebase = timebaseProgression[currentIndex - 1]
     timeBase.value = newTimebase
+
+    // Update Auto Scroll state based on timebase
+    if (newTimebase === '5m') {
+      isRealTime.value = true // Enable Auto Scroll for 5m (real-time)
+    } else {
+      isRealTime.value = false // Disable Auto Scroll for historical timebases
+    }
+
     onTimeBaseChange()
     // message.info(`Zoomed in to ${getTimeBaseLabel()}`)
   }
@@ -3282,6 +3294,14 @@ const zoomOut = () => {
   if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
     const newTimebase = timebaseProgression[currentIndex + 1]
     timeBase.value = newTimebase
+
+    // Update Auto Scroll state based on timebase
+    if (newTimebase === '5m') {
+      isRealTime.value = true // Enable Auto Scroll for 5m (real-time)
+    } else {
+      isRealTime.value = false // Disable Auto Scroll for historical timebases
+    }
+
     onTimeBaseChange()
     // message.info(`Zoomed out to ${getTimeBaseLabel()}`)
   }
@@ -3480,6 +3500,7 @@ const applyCustomDateRange = () => {
 
     // Set timebase to custom and apply changes
     timeBase.value = 'custom'
+    isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
     customDateModalVisible.value = false
     onCustomDateChange()
     message.success('Custom date range applied successfully')
