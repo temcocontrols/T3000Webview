@@ -4168,7 +4168,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
       updateChart()
 
       // Update last sync time
-      lastSyncTime.value = `API data loaded at ${dayjs().format('HH:mm:ss')}`
+      lastSyncTime.value = dayjs().format('HH:mm:ss')
 
     } else {
       console.log('⚠️ [TrendLogChart] No historical data available - Using fallback')
