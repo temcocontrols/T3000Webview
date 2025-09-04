@@ -3096,8 +3096,9 @@ const createChart = () => {
 const updateChart = () => {
   if (!chartInstance) return
 
-  chartInstance.data.datasets = dataSeries.value
-    .filter(series => series.visible && series.data.length > 0)
+  const visibleSeries = dataSeries.value.filter(series => series.visible && series.data.length > 0)
+
+  chartInstance.data.datasets = visibleSeries
     .map(series => {
       // Ensure data points are sorted by timestamp for proper line drawing
       const sortedData = series.data
@@ -4443,6 +4444,40 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
 })
 
 // Remove modal visibility watcher since this is now always visible as a component
+
+// Debug function to diagnose chart data issues
+const diagnosticReport = () => {
+  const report = {
+    timestamp: new Date().toISOString(),
+    dataSource: dataSource.value,
+    isRealTime: isRealTime.value,
+    isLoading: isLoading.value,
+    hasMonitorConfig: !!monitorConfig.value,
+    monitorConfigItems: monitorConfig.value?.inputItems?.length || 0,
+    totalSeries: dataSeries.value.length,
+    visibleSeries: dataSeries.value.filter(s => s.visible).length,
+    seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+    hasChartInstance: !!chartInstance,
+    chartDatasets: chartInstance?.data?.datasets?.length || 0,
+    seriesDetails: dataSeries.value.map((series, index) => ({
+      index,
+      name: series.name,
+      visible: series.visible,
+      dataPoints: series.data.length,
+      isEmpty: series.isEmpty,
+      lastValue: series.data.length > 0 ? series.data[series.data.length - 1].value : null,
+      lastTimestamp: series.data.length > 0 ? new Date(series.data[series.data.length - 1].timestamp).toLocaleString() : null
+    })),
+    panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+    panelsListLength: T3000_Data.value.panelsList?.length || 0
+  }
+
+  LogUtil.Info('🔍 DIAGNOSTIC REPORT - TrendLogChart State:', report)
+  console.log('🔍 DIAGNOSTIC REPORT - TrendLogChart State:', report)
+  return report
+}
+
+// Expose diagnostic function globally for console debugging
 
 // Lifecycle
 onMounted(async () => {
