@@ -2236,6 +2236,17 @@ const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
 }
 
 /**
+ * Scale large values for display: if value >= 1000, divide by 1000
+ * Matches the backend scaling logic for consistency between real-time and historical data
+ */
+const scaleValueIfNeeded = (rawValue: number): number => {
+  if (rawValue >= 1000) {
+    return rawValue / 1000
+  }
+  return rawValue
+}
+
+/**
  * Get the correct value from panel data based on device type
  */
 const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
@@ -2243,14 +2254,14 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
 
   if (isAnalog) {
     // Analog devices: use 'value' field
-    rawValue = parseFloat(panelData.value) || 0
+    rawValue = scaleValueIfNeeded(parseFloat(panelData.value) || 0)
   } else {
     // Digital devices: For OUT1/OUT2, check multiple potential fields
     if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
       // Try different fields for digital outputs
-      const controlValue = parseFloat(panelData.control) || 0
-      const valueValue = parseFloat(panelData.value) || 0
-      const autoManualValue = parseFloat(panelData.auto_manual) || 0
+      const controlValue = scaleValueIfNeeded(parseFloat(panelData.control) || 0)
+      const valueValue = scaleValueIfNeeded(parseFloat(panelData.value) || 0)
+      const autoManualValue = scaleValueIfNeeded(parseFloat(panelData.auto_manual) || 0)
 
       // Use the field with the highest non-zero value, or control as fallback
       if (valueValue > 0) {
@@ -2262,7 +2273,7 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
       }
     } else {
       // Regular digital devices: use 'control' field
-      rawValue = parseFloat(panelData.control) || 0
+      rawValue = scaleValueIfNeeded(parseFloat(panelData.control) || 0)
     }
   }
 
@@ -2629,7 +2640,7 @@ const updateChartWithNewData = (newData: any[]) => {
     if (index < dataSeries.value.length && dataSeries.value[index]) {
       const newPoint: DataPoint = {
         timestamp: currentTime,
-        value: parseFloat(dataPoint.value) || 0
+        value: scaleValueIfNeeded(parseFloat(dataPoint.value) || 0)
       }
 
       LogUtil.Info(`📈 TrendLogChart: Adding data point to series ${index}`, {
