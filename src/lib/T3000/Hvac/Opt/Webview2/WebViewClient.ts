@@ -69,37 +69,19 @@ class WebViewClient {
     const actionDetails = this.getActionDetails(message?.action);
 
     this.webview.postMessage(message);
-    LogUtil.Debug('= Wv2 Sent message to T3:', {
-      messageDetails: {
-        action: message?.action,
-        actionName: actionDetails.name,
-        actionDescription: actionDetails.description,
-        actionCategory: actionDetails.category,
-        implemented: actionDetails.implemented
-      },
-      messageContext: {
-        panelId: message?.panelId,
-        viewitem: message?.viewitem,
-        msgId: message?.msgId,
-        serialNumber: message?.serialNumber,
-        hasData: !!message?.data,
-        dataType: message?.data ? typeof message.data : null,
-        dataLength: Array.isArray(message?.data) ? message.data.length :
-                   (typeof message?.data === 'string' ? message.data.length : null)
-      },
-      fullMessage: message,
-      timestamp: new Date().toISOString()
-    });
+    LogUtil.Debug(`= Wv2 Sent message to T3, action= ${actionDetails.name} | ${message?.action}, message=`, message);
   }
 
   // Handle messages received from the native code T3 application
   handleMessage(event: any) {
     const data = event?.data ?? {};
-    LogUtil.Debug('= Wv2 Received message from T3:', data);
+
+    // Get response action details for consistent logging
+    const actionDetails = this.getActionDetails(data?.action);
+    LogUtil.Debug(`= Wv2 Received message from T3, action= ${actionDetails.name} | ${data?.action}, message=`, data);
 
     try {
       this.processMessageData(data);
-      LogUtil.Debug('= Wv2 ========================');
     } catch (error) {
       T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);
     }
@@ -245,50 +227,6 @@ class WebViewClient {
   });
   */
   GetPanelsList(panelId?: number, viewitem?: number, data?: any) {
-    // Create detailed call stack information
-    const callStack = new Error().stack;
-    const stackLines = callStack ? callStack.split('\n') : [];
-    const callerInfo = stackLines.slice(1, 6); // Get top 5 stack frames
-
-    // Extract the immediate caller information
-    const immediateCallerLine = stackLines[2] || 'Unknown caller';
-    const callerMatch = immediateCallerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
-    const callerDetails = callerMatch ? {
-      functionName: callerMatch[1],
-      fileName: callerMatch[2].split('/').pop() || callerMatch[2],
-      lineNumber: callerMatch[3],
-      columnNumber: callerMatch[4]
-    } : {
-      functionName: 'Unknown',
-      fileName: immediateCallerLine.trim(),
-      lineNumber: 'Unknown',
-      columnNumber: 'Unknown'
-    };
-
-    console.log('= Wv2: GET PANELS LIST REQUEST - Sending request to T3000 C++ backend:', {
-      action: 'GET_PANELS_LIST',
-      messageType: MessageType.GET_PANELS_LIST,
-      requestParams: { panelId, viewitem, data },
-      callerInformation: {
-        immediateCallerFunction: callerDetails.functionName,
-        callerFile: callerDetails.fileName,
-        callerLine: callerDetails.lineNumber,
-        callerColumn: callerDetails.columnNumber,
-        fullCallerContext: immediateCallerLine.trim()
-      },
-      callStackTrace: {
-        topCallers: callerInfo.map(line => line.trim()),
-        requestOrigin: this.identifyRequestOrigin(callerInfo),
-        triggerSource: this.categorizeCallSource(callerInfo)
-      },
-      currentT3000State: {
-        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-        panelsListLength: T3000_Data.value.panelsList?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      },
-      timestamp: new Date().toISOString()
-    });
-
     this.FormatMessageData(MessageType.GET_PANELS_LIST, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
@@ -300,51 +238,6 @@ class WebViewClient {
   });
   */
   GetPanelData(panelId?: number, viewitem?: number, data?: any) {
-    // Create detailed call stack information
-    const callStack = new Error().stack;
-    const stackLines = callStack ? callStack.split('\n') : [];
-    const callerInfo = stackLines.slice(1, 6); // Get top 5 stack frames
-
-    // Extract the immediate caller information
-    const immediateCallerLine = stackLines[2] || 'Unknown caller';
-    const callerMatch = immediateCallerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
-    const callerDetails = callerMatch ? {
-      functionName: callerMatch[1],
-      fileName: callerMatch[2].split('/').pop() || callerMatch[2],
-      lineNumber: callerMatch[3],
-      columnNumber: callerMatch[4]
-    } : {
-      functionName: 'Unknown',
-      fileName: immediateCallerLine.trim(),
-      lineNumber: 'Unknown',
-      columnNumber: 'Unknown'
-    };
-
-    console.log('= Wv2: GET PANEL DATA REQUEST - Sending request to T3000 C++ backend:', {
-      action: 'GET_PANEL_DATA',
-      messageType: MessageType.GET_PANEL_DATA,
-      requestParams: { panelId, viewitem, data },
-      targetPanelId: panelId,
-      callerInformation: {
-        immediateCallerFunction: callerDetails.functionName,
-        callerFile: callerDetails.fileName,
-        callerLine: callerDetails.lineNumber,
-        callerColumn: callerDetails.columnNumber,
-        fullCallerContext: immediateCallerLine.trim()
-      },
-      callStackTrace: {
-        topCallers: callerInfo.map(line => line.trim()),
-        requestOrigin: this.identifyRequestOrigin(callerInfo),
-        triggerSource: this.categorizeCallSource(callerInfo)
-      },
-      currentT3000State: {
-        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-        panelsListLength: T3000_Data.value.panelsList?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      },
-      timestamp: new Date().toISOString()
-    });
-
     this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
@@ -461,178 +354,41 @@ class WebViewClient {
   public HandleGetPanelDataRes(msgData) {
     // action: 0, // GET_PANEL_DATA_RES
 
-    // load graphic list from GET_PANEL_DATA_RES
-    // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
-
-    /*
-    if (arg.data.action === "GET_PANEL_DATA_RES") {
-      // if (getPanelsInterval && arg.data?.panel_id) {
-      //   clearInterval(getPanelsInterval);
-      // }
-
-      if (arg.data?.panel_id) {
-        this.idxPage.clearGetPanelsInterval();
-      }
-
-      if (arg.data?.panel_id) {
-
-        const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
-        if (check1) {
-          T3000_Data.value.loadingPanel++;
-          const index = T3000_Data.value.loadingPanel;
-          window.chrome?.webview?.postMessage({
-            action: 0, // GET_PANEL_DATA
-            panelId: T3000_Data.value.panelsList[index].panel_number,
-          });
-        }
-
-        const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
-        if (check2) {
-          T3000_Data.value.loadingPanel = null;
-        }
-
-        T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-          (item) => item.pid !== arg.data.panel_id
-        );
-
-        T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-          arg.data.data
-        );
-
-        T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-
-        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-          (item) => item.pid !== arg.data.panel_id
-        );
-
-        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
-
-        refreshLinkedEntries(arg.data.data);
-      }
-    }
-    */
-
-    // if (getPanelsInterval && arg.data?.panel_id) {
-    //   clearInterval(getPanelsInterval);
-    // }
-
     if (msgData?.panel_id) {
       this.idxPage.clearGetPanelsInterval();
     }
 
     if (msgData?.panel_id) {
-      console.log('= Wv2: PANEL DATA RESPONSE START - Processing panel data from T3000 backend:', {
-        incomingPanelId: msgData.panel_id,
-        incomingDataLength: msgData.data?.length || 0,
-        incomingRangesLength: msgData.ranges?.length || 0,
-        beforeUpdate: {
-          panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-          panelsRangesLength: T3000_Data.value.panelsRanges?.length || 0,
-          loadingPanel: T3000_Data.value.loadingPanel,
-          panelsListLength: T3000_Data.value.panelsList?.length || 0
-        },
-        timestamp: new Date().toISOString()
-      });
-
       const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
       if (check1) {
         T3000_Data.value.loadingPanel++;
         const index = T3000_Data.value.loadingPanel;
-
-        console.log('= Wv2: LOADING NEXT PANEL - Moving to next panel in sequence:', {
-          previousLoadingPanel: T3000_Data.value.loadingPanel - 1,
-          newLoadingPanel: T3000_Data.value.loadingPanel,
-          nextPanelIndex: index,
-          nextPanelNumber: T3000_Data.value.panelsList[index]?.panel_number,
-          totalPanels: T3000_Data.value.panelsList.length,
-          action: 'will_call_GetPanelData_for_next_panel',
-          timestamp: new Date().toISOString()
-        });
-
         this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
       }
 
       const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
       if (check2) {
-        console.log('= Wv2: ALL PANELS LOADED - Completed loading all panels, clearing loading state:', {
-          finalLoadingPanel: T3000_Data.value.loadingPanel,
-          totalPanelsLoaded: T3000_Data.value.panelsList.length,
-          finalPanelsDataLength: T3000_Data.value.panelsData.length,
-          action: 'setting_loadingPanel_to_null',
-          timestamp: new Date().toISOString()
-        });
         T3000_Data.value.loadingPanel = null;
       }
 
       // Filter out existing data for this panel
-      const beforeFilterLength = T3000_Data.value.panelsData.length;
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== msgData.panel_id
       );
-      const afterFilterLength = T3000_Data.value.panelsData.length;
-
-      console.log('= Wv2: PANEL DATA FILTER - Removed existing data for panel:', {
-        panelId: msgData.panel_id,
-        beforeFilterLength,
-        afterFilterLength,
-        removedItems: beforeFilterLength - afterFilterLength,
-        timestamp: new Date().toISOString()
-      });
 
       // Add new panel data
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-        msgData.data
-      );
-
-      console.log('= Wv2: PANEL DATA ADDED - Added new data for panel:', {
-        panelId: msgData.panel_id,
-        addedItemsLength: msgData.data?.length || 0,
-        totalPanelsDataLength: T3000_Data.value.panelsData.length,
-        addedItemsSample: msgData.data?.slice(0, 3),
-        timestamp: new Date().toISOString()
-      });
-
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(msgData.data);
       T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
       selectPanelOptions.value = T3000_Data.value.panelsData;
 
-      console.log('= Wv2: PANEL DATA SORTED - Sorted panels data and updated select options:', {
-        totalSortedLength: T3000_Data.value.panelsData.length,
-        selectOptionsLength: selectPanelOptions.value.length,
-        timestamp: new Date().toISOString()
-      });
-
       // Handle panel ranges
-      const beforeRangesFilterLength = T3000_Data.value.panelsRanges.length;
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== msgData.panel_id
       );
-      const afterRangesFilterLength = T3000_Data.value.panelsRanges.length;
-
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
-
-      console.log('= Wv2: PANEL RANGES UPDATED - Updated ranges data for panel:', {
-        panelId: msgData.panel_id,
-        beforeRangesFilterLength,
-        afterRangesFilterLength,
-        addedRangesLength: msgData.ranges?.length || 0,
-        totalRangesLength: T3000_Data.value.panelsRanges.length,
-        timestamp: new Date().toISOString()
-      });
 
       this.idxUtils.refreshLinkedEntries(msgData.data);
       this.idxUtils.refreshLinkedEntries2(msgData.data);
-
-      console.log('= Wv2: PANEL DATA RESPONSE COMPLETE - Finished processing panel data:', {
-        panelId: msgData.panel_id,
-        finalState: {
-          panelsDataLength: T3000_Data.value.panelsData.length,
-          panelsRangesLength: T3000_Data.value.panelsRanges.length,
-          loadingPanel: T3000_Data.value.loadingPanel
-        },
-        linkedEntriesRefreshed: true,
-        timestamp: new Date().toISOString()
-      });
     }
   }
 
@@ -727,36 +483,8 @@ class WebViewClient {
 
   public HandleGetPanelsListRes(msgData) {
     // action: 4, // GET_PANELS_LIST_RES
-    console.log('= Wv2: PANELS LIST RESPONSE - Received panels list from T3000 C++ backend:', {
-      incomingDataLength: msgData.data?.length || 0,
-      incomingData: msgData.data,
-      beforeUpdate: {
-        panelsListLength: T3000_Data.value.panelsList?.length || 0,
-        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      },
-      action: 'GET_PANELS_LIST_RES',
-      timestamp: new Date().toISOString()
-    });
-
-    /*
-    if (arg.data.action === "GET_PANELS_LIST_RES") {
-      if (arg.data.data?.length) {
-        T3000_Data.value.panelsList = arg.data.data;
-        T3000_Data.value.loadingPanel = 0;
-        window.chrome?.webview?.postMessage({
-          action: 0, // GET_PANEL_DATA
-          panelId: T3000_Data.value.panelsList[0].panel_number,
-        });
-      }
-    }
-    */
 
     if (!msgData.data?.length) {
-      console.log('= Wv2: PANELS LIST RESPONSE FAILED - No data received or empty data:', {
-        msgData,
-        timestamp: new Date().toISOString()
-      });
       return;
     }
 
@@ -764,60 +492,11 @@ class WebViewClient {
     T3000_Data.value.panelsList = msgData.data;
     T3000_Data.value.loadingPanel = 0;
 
-    console.log('= Wv2: PANELS LIST UPDATED - T3000_Data.panelsList updated:', {
-      newPanelsListLength: T3000_Data.value.panelsList.length,
-      newPanelsList: T3000_Data.value.panelsList,
-      loadingPanelSet: T3000_Data.value.loadingPanel,
-      nextAction: 'will_call_GetPanelData_for_first_panel',
-      firstPanelNumber: T3000_Data.value.panelsList[0]?.panel_number,
-      timestamp: new Date().toISOString()
-    });
-
     this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
-    // LogUtil.Debug('= Wv2: HandleGetEntriesRes START =================');
-    // LogUtil.Debug('= Wv2: HandleGetEntriesRes / received data length:', msgData.data?.length || 0);
-    // LogUtil.Debug('= Wv2: HandleGetEntriesRes / BEFORE - panelsData length:', T3000_Data.value.panelsData.length);
-
-    // Log sample of incoming data to see what's being updated
-    if (msgData.data && msgData.data.length > 0) {
-      // LogUtil.Debug('= Wv2: HandleGetEntriesRes / sample incoming data (first 3):',
-      //   msgData.data.slice(0, 3).map(item => ({
-      //     id: item.id,
-      //     pid: item.pid,
-      //     index: item.index,
-      //     type: item.type,
-      //     hasInputArray: Array.isArray(item.input),
-      //     hasRangeArray: Array.isArray(item.range),
-      //     inputLength: item.input?.length,
-      //     rangeLength: item.range?.length
-      //   }))
-      // );
-    }
-
-    /*
-    if (arg.data.action === "GET_ENTRIES_RES") {
-      arg.data.data.forEach((item) => {
-        const itemIndex = T3000_Data.value.panelsData.findIndex(
-          (ii) =>
-            ii.index === item.index &&
-            ii.type === item.type &&
-            ii.pid === item.pid
-        );
-        if (itemIndex !== -1) {
-          T3000_Data.value.panelsData[itemIndex] = item;
-        }
-      });
-
-      if (!linkT3EntryDialog.value.active) {
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-      }
-      refreshLinkedEntries(arg.data.data);
-    }
-    */
 
     msgData.data.forEach((item, itemIdx) => {
       const itemIndex = T3000_Data.value.panelsData.findIndex(
@@ -828,22 +507,8 @@ class WebViewClient {
       );
 
       if (itemIndex !== -1) {
-        // Found existing item - log what we're about to replace
+        // Found existing item
         const existingItem = T3000_Data.value.panelsData[itemIndex];
-
-        // LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: REPLACING existing item at index ${itemIndex}:`, {
-        //   id: existingItem.id,
-        //   pid: existingItem.pid,
-        //   type: existingItem.type,
-        //   existingHasInput: Array.isArray(existingItem.input),
-        //   existingInputLength: existingItem.input?.length,
-        //   existingHasRange: Array.isArray(existingItem.range),
-        //   existingRangeLength: existingItem.range?.length,
-        //   newHasInput: Array.isArray(item.input),
-        //   newInputLength: item.input?.length,
-        //   newHasRange: Array.isArray(item.range),
-        //   newRangeLength: item.range?.length
-        // });
 
         // 🚨 CRITICAL CHECK: Prevent data corruption!
         // Don't replace detailed monitor configs with simplified versions
@@ -858,7 +523,6 @@ class WebViewClient {
         const potentialDataLoss = existingHasComplexData && newLacksComplexData;
 
         if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
-          // LogUtil.Warn(`🚨 DATA CORRUPTION PREVENTED! Attempted to replace detailed monitor config with simplified version:`, {
           //   id: item.id,
           //   pid: item.pid,
           //   existingDetails: {
@@ -883,7 +547,6 @@ class WebViewClient {
           const commonFields = existingKeys.filter(key => newKeys.includes(key));
           const fieldsToUpdate = commonFields.filter(key => !criticalFields.includes(key));
 
-          // LogUtil.Debug(`📊 HandleGetEntriesRes / Smart field comparison for ${item.id}:`, {
           //   existingKeys: existingKeys.length,
           //   newKeys: newKeys.length,
           //   commonFields: commonFields.length,
@@ -896,16 +559,13 @@ class WebViewClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' → '${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`✅ HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
         } else if (potentialDataLoss) {
           // Handle other types of potential data loss (not just monitors)
-          // LogUtil.Warn(`⚠️ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
           //   id: item.id,
           //   pid: item.pid,
           //   type: item.type,
@@ -923,20 +583,16 @@ class WebViewClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' → '${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`✅ HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
         } else {
           // Safe to do full replacement
           T3000_Data.value.panelsData[itemIndex] = item;
-          // LogUtil.Debug(`✅ HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
-        // LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
         //   id: item.id,
         //   pid: item.pid,
         //   index: item.index,
@@ -951,9 +607,6 @@ class WebViewClient {
 
     this.idxUtils.refreshLinkedEntries(msgData.data);
     this.idxUtils.refreshLinkedEntries2(msgData.data);
-
-    // LogUtil.Debug('= Wv2: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
-    // LogUtil.Debug('= Wv2: HandleGetEntriesRes END ===================');
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
@@ -1047,7 +700,6 @@ class WebViewClient {
 
   public HandleSaveNewLibraryDataRes(msgData) {
     // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
-    LogUtil.Debug('= Wv2 Handle SAVE_NEW_LIBRARY_DATA_RES:', msgData);
   }
 
   public HandleDeleteImageRes(msgData) {
@@ -1148,75 +800,6 @@ class WebViewClient {
     });
 
     return complexFields;
-  }
-
-  // Helper method to identify the origin of requests based on call stack
-  private identifyRequestOrigin(callerInfo: string[]): string {
-    for (const caller of callerInfo) {
-      if (caller.includes('IndexPageSocket')) {
-        return 'TrendLogIndexPageSocket.vue';
-      }
-      if (caller.includes('IndexPage')) {
-        return 'IndexPage.vue';
-      }
-      if (caller.includes('initializeT3000Data')) {
-        return 'T3000_Data_Initialization';
-      }
-      if (caller.includes('onMounted')) {
-        return 'Component_OnMounted_Lifecycle';
-      }
-      if (caller.includes('setTimeout')) {
-        return 'Delayed_Timer_Execution';
-      }
-      if (caller.includes('HandleGetPanelsListRes')) {
-        return 'Auto_Chain_After_PanelsList_Response';
-      }
-      if (caller.includes('HandleGetPanelDataRes')) {
-        return 'Auto_Chain_After_PanelData_Response';
-      }
-      if (caller.includes('watch')) {
-        return 'Vue_Reactive_Watcher';
-      }
-      if (caller.includes('loadTrendLogItemData')) {
-        return 'Data_Loading_Function';
-      }
-    }
-    return 'Unknown_Origin';
-  }
-
-  // Helper method to categorize the source of the call
-  private categorizeCallSource(callerInfo: string[]): string {
-    const stackString = callerInfo.join(' ');
-
-    if (stackString.includes('initializeT3000Data')) {
-      return 'INITIALIZATION_REQUEST';
-    }
-    if (stackString.includes('onMounted')) {
-      return 'COMPONENT_MOUNT_REQUEST';
-    }
-    if (stackString.includes('setTimeout')) {
-      return 'DELAYED_EXECUTION_REQUEST';
-    }
-    if (stackString.includes('HandleGetPanelsListRes')) {
-      return 'AUTO_CHAIN_AFTER_PANELS_LIST';
-    }
-    if (stackString.includes('HandleGetPanelDataRes')) {
-      return 'AUTO_CHAIN_AFTER_PANEL_DATA';
-    }
-    if (stackString.includes('watch')) {
-      return 'REACTIVE_WATCHER_TRIGGER';
-    }
-    if (stackString.includes('loadTrendLogItemData')) {
-      return 'EXPLICIT_DATA_LOAD_REQUEST';
-    }
-    if (stackString.includes('retry') || stackString.includes('Retry')) {
-      return 'USER_RETRY_REQUEST';
-    }
-    if (stackString.includes('route')) {
-      return 'ROUTE_CHANGE_TRIGGER';
-    }
-
-    return 'MANUAL_OR_DIRECT_CALL';
   }
 
   // Helper method to get detailed information about action codes
