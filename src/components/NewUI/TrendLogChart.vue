@@ -430,6 +430,7 @@ import {
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
 import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
+import { ranges as rangeDefinitions, T3_Types } from 'src/lib/T3000/Hvac/Data/Constants/RangeDefinitions'
 import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
@@ -618,6 +619,100 @@ const getSeriesNameText = (series: SeriesConfig): string => {
   })
 
   return displayName
+}
+
+// Helper function to get unit information from panel data
+const getUnitFromPanelData = (panelId: number, pointType: number, pointNumber: number): string => {
+  const panelsData = T3000_Data.value.panelsData
+  const panelsRanges = T3000_Data.value.panelsRanges
+
+  LogUtil.Info('= TLChart: getUnitFromPanelData called', {
+    panelId,
+    pointType,
+    pointNumber,
+    hasPanelsData: !!panelsData,
+    panelsDataLength: panelsData?.length || 0,
+    hasPanelsRanges: !!panelsRanges,
+    panelsRangesLength: panelsRanges?.length || 0
+  })
+
+  if (!panelsData || !Array.isArray(panelsData)) {
+    LogUtil.Info('= TLChart: getUnitFromPanelData - No panels data available')
+    return ''
+  }
+
+  const pointTypeInfo = getPointTypeInfo(pointType)
+  if (!pointTypeInfo || !pointTypeInfo.category) {
+    LogUtil.Info('= TLChart: getUnitFromPanelData - Invalid point type', { pointType })
+    return ''
+  }
+
+  const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
+  const device = panelsData.find(
+    (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
+  )
+
+  LogUtil.Info('= TLChart: getUnitFromPanelData - Device lookup', {
+    idToFind,
+    deviceFound: !!device,
+    deviceUnit: device?.unit,
+    deviceRange: device?.range
+  })
+
+  if (device && device.unit !== undefined) {
+    // First try to get unit from ranges data if available
+    if (panelsRanges && Array.isArray(panelsRanges)) {
+      const rangeData = panelsRanges.find(
+        (r: any) => String(r.pid) === String(panelId) && r.index === device.range
+      )
+      if (rangeData) {
+        LogUtil.Info('= TLChart: getUnitFromPanelData - Found range data', { rangeData })
+        // For digital ranges, return the on/off labels if meaningful
+        if (rangeData.type === 'digital' && (rangeData.on || rangeData.off)) {
+          return `${rangeData.off}/${rangeData.on}` // e.g., "Off/On", "Manual/Auto"
+        }
+        // For analog ranges, use the unit mapping below
+      }
+    }
+
+    // Use the proper RangeDefinitions instead of hardcoded constants
+    const pointTypeInfo = getPointTypeInfo(pointType)
+    let ranges: any[] = []
+
+    if (pointTypeInfo.category === 'IN') {
+      ranges = rangeDefinitions.analog.input
+    } else if (pointTypeInfo.category === 'OUT') {
+      ranges = rangeDefinitions.analog.output
+    } else if (pointTypeInfo.category === 'VAR') {
+      ranges = rangeDefinitions.analog.variable
+    }
+
+    // Find the range definition by unit ID
+    const rangeInfo = ranges.find(r => r.id === device.unit)
+    if (rangeInfo && rangeInfo.unit) {
+      LogUtil.Info('= TLChart: getUnitFromPanelData - Using RangeDefinitions', {
+        pointType: pointTypeInfo.category,
+        unitId: device.unit,
+        rangeInfo
+      })
+      return rangeInfo.unit
+    }
+
+    // If not found in analog ranges, check digital ranges
+    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.unit)
+    if (digitalRange) {
+      LogUtil.Info('= TLChart: getUnitFromPanelData - Using digital RangeDefinitions', { digitalRange })
+      return `${digitalRange.off}/${digitalRange.on}`
+    }
+
+    LogUtil.Info('= TLChart: getUnitFromPanelData - No range definition found', {
+      unitId: device.unit,
+      pointType: pointTypeInfo.category
+    })
+  }
+
+  LogUtil.Info('= TLChart: getUnitFromPanelData - No unit found, returning empty')
+  return ''
 }
 
 // Function to convert Unix timestamp to local time string
@@ -943,10 +1038,10 @@ const generateDataSeries = (): SeriesConfig[] => {
     let digitalStates: [string, string] | undefined
 
     if (isDigital) {
-      unit = ''
+      unit = '' // Digital units don't show unit symbols
       digitalStates = ['Low', 'High'] // Default digital states
     } else {
-      unit = '' // Will be determined based on context
+      unit = getUnitFromPanelData(panelId, pointType, pointNumber) // Get unit from panel data
       digitalStates = undefined
     }
 
@@ -2361,19 +2456,34 @@ const initializeRealDataSeries = async () => {
       // Determine unit type based on range value: 0 = analog, 1 = digital
       const isDigital = rangeValue === 1
 
+      LogUtil.Info('= TLChart: Series generation - Range analysis', {
+        inputItemIndex: i,
+        panelId: inputItem.panel,
+        pointType: inputItem.point_type,
+        pointNumber: inputItem.point_number,
+        rangeValue,
+        isDigital
+      })
+
       let unitType: 'digital' | 'analog'
       let unitSymbol: string
       let digitalStates: [string, string] | undefined
 
       if (isDigital) {
         unitType = 'digital'
-        unitSymbol = ''
+        unitSymbol = '' // Digital units don't show unit symbols
         digitalStates = ['Low', 'High'] // Default digital states
       } else {
         unitType = 'analog'
-        unitSymbol = '' // Will be determined based on point type or context
+        unitSymbol = getUnitFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number) // Get unit from panel data
         digitalStates = undefined
       }
+
+      LogUtil.Info('= TLChart: Series generation - Unit determination result', {
+        unitType,
+        unitSymbol,
+        digitalStates
+      })
 
       const seriesConfig: SeriesConfig = {
         name: seriesName,
@@ -2441,8 +2551,9 @@ const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
   // Primary: Use input range value (0=analog, 1=digital)
   const isAnalogByRange = inputRangeValue === 0
 
-  // Secondary: Use panel data digital_analog field (1=analog, 0=digital)
-  const isAnalogByPanelData = panelData.digital_analog === 1
+  // Secondary: Use panel data control field (0=analog, 1=digital)
+  // Note: digital_analog field indicates if point is in use (1=used, 0=unused)
+  const isAnalogByPanelData = panelData.control === 0
 
   // Use input range as primary source of truth
   return isAnalogByRange
@@ -3160,7 +3271,7 @@ const addRealtimeDataPoint = async () => {
             point_type: pointTypeInfo.category, // Use the category from point type info (OUT, IN, VAR, etc.)
             value: databaseValue.toString(), // Use raw value for database storage
             range_field: (series.unitCode || 0).toString(), // Convert unitCode to string for range field
-            digital_analog: series.unitType === 'digital' ? '1' : '0',
+            digital_analog: '1', // Point is in use (always 1 for real-time data being saved)
             units: series.unit || '', // Now series.unit should be properly set from real-time processing
             // Enhanced source tracking for FRONTEND real-time data
             data_source: 'REALTIME',
