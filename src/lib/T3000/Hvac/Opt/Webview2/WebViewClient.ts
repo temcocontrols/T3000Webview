@@ -174,8 +174,37 @@ class WebViewClient {
 
     this.message = {};
 
-    // get the serial_number base on panelId
-    const serialNumber = this.deviceOpt.getSerialNumber(panelId);
+    // Smart serial number resolution - handle both full app and component usage
+    let serialNumber = null;
+
+    // Method 1: Try deviceOpt (full T3000 app with manual device selection)
+    if (this.deviceOpt && typeof this.deviceOpt.getSerialNumber === 'function') {
+      try {
+        serialNumber = this.deviceOpt.getSerialNumber(panelId);
+      } catch (error) {
+        // Silent fallback if deviceOpt method fails
+      }
+    }
+
+    // Method 2: Fallback to URL parameter (built-in Edge pages)
+    if (!serialNumber) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const snParam = urlParams.get('sn');
+      if (snParam) {
+        serialNumber = parseInt(snParam, 10);
+        if (isNaN(serialNumber)) {
+          serialNumber = snParam; // Keep as string if not a number
+        }
+      }
+    }
+
+    // Method 3: Fallback to panels list lookup (if panelId provided)
+    if (!serialNumber && panelId && typeof T3000_Data !== 'undefined' && T3000_Data.value?.panelsList) {
+      const panel = T3000_Data.value.panelsList.find(p => p.panel_number === panelId);
+      if (panel && panel.serial_number) {
+        serialNumber = panel.serial_number;
+      }
+    }
 
     if (action !== null && action !== undefined) {
       this.message.action = action;
@@ -205,6 +234,18 @@ class WebViewClient {
     const needAppedSerialNumber = panelId != null && serialNumber != null;
     if (needAppedSerialNumber) {
       this.message.serialNumber = serialNumber;
+      LogUtil.Debug('= Wv2: setMessageData - Serial number resolved:', {
+        panelId: panelId,
+        serialNumber: serialNumber,
+        method: this.deviceOpt ? 'deviceOpt' : (new URLSearchParams(window.location.search).get('sn') ? 'URL_param' : 'panels_list'),
+        action: action
+      });
+    } else if (panelId != null) {
+      LogUtil.Warn('= Wv2: setMessageData - No serial number found for panelId:', panelId, {
+        hasDeviceOpt: !!this.deviceOpt,
+        urlSn: new URLSearchParams(window.location.search).get('sn'),
+        panelsListLength: typeof T3000_Data !== 'undefined' ? T3000_Data.value?.panelsList?.length || 0 : 'N/A'
+      });
     }
   }
 
