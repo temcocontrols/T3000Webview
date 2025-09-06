@@ -625,6 +625,81 @@ export const T3000_Data = ref({
   loadingPanel: null,
 });
 
+// Log the initial T3000_Data store creation
+console.log('= T3Data: STORE INITIALIZATION - T3000_Data reactive store created:', {
+  initialState: {
+    panelsData: T3000_Data.value.panelsData,
+    panelsList: T3000_Data.value.panelsList,
+    panelsRanges: T3000_Data.value.panelsRanges,
+    loadingPanel: T3000_Data.value.loadingPanel
+  },
+  storeLocation: 'src/lib/T3000/Hvac/Data/T3Data.ts',
+  timestamp: new Date().toISOString(),
+  note: 'This is the global reactive store shared across all components'
+});
+
+// Add a watcher to track all changes to T3000_Data
+import { watch } from 'vue';
+
+watch(T3000_Data, (newValue, oldValue) => {
+  console.log('= T3Data: STORE CHANGE DETECTED - T3000_Data reactive store updated:', {
+    changes: {
+      panelsDataLength: {
+        old: oldValue?.panelsData?.length || 0,
+        new: newValue?.panelsData?.length || 0
+      },
+      panelsListLength: {
+        old: oldValue?.panelsList?.length || 0,
+        new: newValue?.panelsList?.length || 0
+      },
+      panelsRangesLength: {
+        old: oldValue?.panelsRanges?.length || 0,
+        new: newValue?.panelsRanges?.length || 0
+      },
+      loadingPanel: {
+        old: oldValue?.loadingPanel,
+        new: newValue?.loadingPanel
+      }
+    },
+    newState: newValue,
+    timestamp: new Date().toISOString(),
+    stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n') // Show where change originated
+  });
+}, { deep: true });
+
+// Utility function to log complete T3000_Data flow state
+export const logT3000DataFlowState = (context: string, additionalInfo?: any) => {
+  console.log(`= T3Data: FLOW STATE SNAPSHOT - ${context}:`, {
+    currentState: {
+      panelsData: {
+        length: T3000_Data.value.panelsData.length,
+        uniquePanels: Array.from(new Set(T3000_Data.value.panelsData.map(item => item.pid))),
+        sampleItems: T3000_Data.value.panelsData.slice(0, 3).map(item => ({
+          pid: item.pid,
+          type: item.type,
+          id: item.id,
+          description: item.description
+        }))
+      },
+      panelsList: {
+        length: T3000_Data.value.panelsList.length,
+        panels: T3000_Data.value.panelsList.map(panel => ({
+          panel_number: panel.panel_number,
+          device_name: panel.device_name
+        }))
+      },
+      panelsRanges: {
+        length: T3000_Data.value.panelsRanges.length,
+        uniquePanels: Array.from(new Set(T3000_Data.value.panelsRanges.map(item => item.pid)))
+      },
+      loadingPanel: T3000_Data.value.loadingPanel
+    },
+    context,
+    additionalInfo,
+    timestamp: new Date().toISOString()
+  });
+};
+
 export const grpNav = ref([]); // Navigation history for grouped elements
 
 // Panel options for selection

@@ -65,8 +65,31 @@ class WebViewClient {
       return;
     }
 
+    // Decode action details for better logging
+    const actionDetails = this.getActionDetails(message?.action);
+
     this.webview.postMessage(message);
-    LogUtil.Debug('= Wv2 Sent message to T3:', message);
+    LogUtil.Debug('= Wv2 Sent message to T3:', {
+      messageDetails: {
+        action: message?.action,
+        actionName: actionDetails.name,
+        actionDescription: actionDetails.description,
+        actionCategory: actionDetails.category,
+        implemented: actionDetails.implemented
+      },
+      messageContext: {
+        panelId: message?.panelId,
+        viewitem: message?.viewitem,
+        msgId: message?.msgId,
+        serialNumber: message?.serialNumber,
+        hasData: !!message?.data,
+        dataType: message?.data ? typeof message.data : null,
+        dataLength: Array.isArray(message?.data) ? message.data.length :
+                   (typeof message?.data === 'string' ? message.data.length : null)
+      },
+      fullMessage: message,
+      timestamp: new Date().toISOString()
+    });
   }
 
   // Handle messages received from the native code T3 application
@@ -222,6 +245,50 @@ class WebViewClient {
   });
   */
   GetPanelsList(panelId?: number, viewitem?: number, data?: any) {
+    // Create detailed call stack information
+    const callStack = new Error().stack;
+    const stackLines = callStack ? callStack.split('\n') : [];
+    const callerInfo = stackLines.slice(1, 6); // Get top 5 stack frames
+
+    // Extract the immediate caller information
+    const immediateCallerLine = stackLines[2] || 'Unknown caller';
+    const callerMatch = immediateCallerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
+    const callerDetails = callerMatch ? {
+      functionName: callerMatch[1],
+      fileName: callerMatch[2].split('/').pop() || callerMatch[2],
+      lineNumber: callerMatch[3],
+      columnNumber: callerMatch[4]
+    } : {
+      functionName: 'Unknown',
+      fileName: immediateCallerLine.trim(),
+      lineNumber: 'Unknown',
+      columnNumber: 'Unknown'
+    };
+
+    console.log('= Wv2: GET PANELS LIST REQUEST - Sending request to T3000 C++ backend:', {
+      action: 'GET_PANELS_LIST',
+      messageType: MessageType.GET_PANELS_LIST,
+      requestParams: { panelId, viewitem, data },
+      callerInformation: {
+        immediateCallerFunction: callerDetails.functionName,
+        callerFile: callerDetails.fileName,
+        callerLine: callerDetails.lineNumber,
+        callerColumn: callerDetails.columnNumber,
+        fullCallerContext: immediateCallerLine.trim()
+      },
+      callStackTrace: {
+        topCallers: callerInfo.map(line => line.trim()),
+        requestOrigin: this.identifyRequestOrigin(callerInfo),
+        triggerSource: this.categorizeCallSource(callerInfo)
+      },
+      currentT3000State: {
+        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+        panelsListLength: T3000_Data.value.panelsList?.length || 0,
+        loadingPanel: T3000_Data.value.loadingPanel
+      },
+      timestamp: new Date().toISOString()
+    });
+
     this.FormatMessageData(MessageType.GET_PANELS_LIST, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
@@ -233,6 +300,51 @@ class WebViewClient {
   });
   */
   GetPanelData(panelId?: number, viewitem?: number, data?: any) {
+    // Create detailed call stack information
+    const callStack = new Error().stack;
+    const stackLines = callStack ? callStack.split('\n') : [];
+    const callerInfo = stackLines.slice(1, 6); // Get top 5 stack frames
+
+    // Extract the immediate caller information
+    const immediateCallerLine = stackLines[2] || 'Unknown caller';
+    const callerMatch = immediateCallerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
+    const callerDetails = callerMatch ? {
+      functionName: callerMatch[1],
+      fileName: callerMatch[2].split('/').pop() || callerMatch[2],
+      lineNumber: callerMatch[3],
+      columnNumber: callerMatch[4]
+    } : {
+      functionName: 'Unknown',
+      fileName: immediateCallerLine.trim(),
+      lineNumber: 'Unknown',
+      columnNumber: 'Unknown'
+    };
+
+    console.log('= Wv2: GET PANEL DATA REQUEST - Sending request to T3000 C++ backend:', {
+      action: 'GET_PANEL_DATA',
+      messageType: MessageType.GET_PANEL_DATA,
+      requestParams: { panelId, viewitem, data },
+      targetPanelId: panelId,
+      callerInformation: {
+        immediateCallerFunction: callerDetails.functionName,
+        callerFile: callerDetails.fileName,
+        callerLine: callerDetails.lineNumber,
+        callerColumn: callerDetails.columnNumber,
+        fullCallerContext: immediateCallerLine.trim()
+      },
+      callStackTrace: {
+        topCallers: callerInfo.map(line => line.trim()),
+        requestOrigin: this.identifyRequestOrigin(callerInfo),
+        triggerSource: this.categorizeCallSource(callerInfo)
+      },
+      currentT3000State: {
+        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+        panelsListLength: T3000_Data.value.panelsList?.length || 0,
+        loadingPanel: T3000_Data.value.loadingPanel
+      },
+      timestamp: new Date().toISOString()
+    });
+
     this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
@@ -410,43 +522,117 @@ class WebViewClient {
     }
 
     if (msgData?.panel_id) {
+      console.log('= Wv2: PANEL DATA RESPONSE START - Processing panel data from T3000 backend:', {
+        incomingPanelId: msgData.panel_id,
+        incomingDataLength: msgData.data?.length || 0,
+        incomingRangesLength: msgData.ranges?.length || 0,
+        beforeUpdate: {
+          panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+          panelsRangesLength: T3000_Data.value.panelsRanges?.length || 0,
+          loadingPanel: T3000_Data.value.loadingPanel,
+          panelsListLength: T3000_Data.value.panelsList?.length || 0
+        },
+        timestamp: new Date().toISOString()
+      });
 
       const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
       if (check1) {
         T3000_Data.value.loadingPanel++;
         const index = T3000_Data.value.loadingPanel;
-        // window.chrome?.webview?.postMessage({
-        //   action: 0, // GET_PANEL_DATA
-        //   panelId: T3000_Data.value.panelsList[index].panel_number,
-        // });
+
+        console.log('= Wv2: LOADING NEXT PANEL - Moving to next panel in sequence:', {
+          previousLoadingPanel: T3000_Data.value.loadingPanel - 1,
+          newLoadingPanel: T3000_Data.value.loadingPanel,
+          nextPanelIndex: index,
+          nextPanelNumber: T3000_Data.value.panelsList[index]?.panel_number,
+          totalPanels: T3000_Data.value.panelsList.length,
+          action: 'will_call_GetPanelData_for_next_panel',
+          timestamp: new Date().toISOString()
+        });
 
         this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
       }
 
       const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
       if (check2) {
+        console.log('= Wv2: ALL PANELS LOADED - Completed loading all panels, clearing loading state:', {
+          finalLoadingPanel: T3000_Data.value.loadingPanel,
+          totalPanelsLoaded: T3000_Data.value.panelsList.length,
+          finalPanelsDataLength: T3000_Data.value.panelsData.length,
+          action: 'setting_loadingPanel_to_null',
+          timestamp: new Date().toISOString()
+        });
         T3000_Data.value.loadingPanel = null;
       }
 
+      // Filter out existing data for this panel
+      const beforeFilterLength = T3000_Data.value.panelsData.length;
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== msgData.panel_id
       );
+      const afterFilterLength = T3000_Data.value.panelsData.length;
 
+      console.log('= Wv2: PANEL DATA FILTER - Removed existing data for panel:', {
+        panelId: msgData.panel_id,
+        beforeFilterLength,
+        afterFilterLength,
+        removedItems: beforeFilterLength - afterFilterLength,
+        timestamp: new Date().toISOString()
+      });
+
+      // Add new panel data
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
         msgData.data
       );
 
+      console.log('= Wv2: PANEL DATA ADDED - Added new data for panel:', {
+        panelId: msgData.panel_id,
+        addedItemsLength: msgData.data?.length || 0,
+        totalPanelsDataLength: T3000_Data.value.panelsData.length,
+        addedItemsSample: msgData.data?.slice(0, 3),
+        timestamp: new Date().toISOString()
+      });
+
       T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
       selectPanelOptions.value = T3000_Data.value.panelsData;
 
+      console.log('= Wv2: PANEL DATA SORTED - Sorted panels data and updated select options:', {
+        totalSortedLength: T3000_Data.value.panelsData.length,
+        selectOptionsLength: selectPanelOptions.value.length,
+        timestamp: new Date().toISOString()
+      });
+
+      // Handle panel ranges
+      const beforeRangesFilterLength = T3000_Data.value.panelsRanges.length;
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== msgData.panel_id
       );
+      const afterRangesFilterLength = T3000_Data.value.panelsRanges.length;
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
 
+      console.log('= Wv2: PANEL RANGES UPDATED - Updated ranges data for panel:', {
+        panelId: msgData.panel_id,
+        beforeRangesFilterLength,
+        afterRangesFilterLength,
+        addedRangesLength: msgData.ranges?.length || 0,
+        totalRangesLength: T3000_Data.value.panelsRanges.length,
+        timestamp: new Date().toISOString()
+      });
+
       this.idxUtils.refreshLinkedEntries(msgData.data);
       this.idxUtils.refreshLinkedEntries2(msgData.data);
+
+      console.log('= Wv2: PANEL DATA RESPONSE COMPLETE - Finished processing panel data:', {
+        panelId: msgData.panel_id,
+        finalState: {
+          panelsDataLength: T3000_Data.value.panelsData.length,
+          panelsRangesLength: T3000_Data.value.panelsRanges.length,
+          loadingPanel: T3000_Data.value.loadingPanel
+        },
+        linkedEntriesRefreshed: true,
+        timestamp: new Date().toISOString()
+      });
     }
   }
 
@@ -541,6 +727,17 @@ class WebViewClient {
 
   public HandleGetPanelsListRes(msgData) {
     // action: 4, // GET_PANELS_LIST_RES
+    console.log('= Wv2: PANELS LIST RESPONSE - Received panels list from T3000 C++ backend:', {
+      incomingDataLength: msgData.data?.length || 0,
+      incomingData: msgData.data,
+      beforeUpdate: {
+        panelsListLength: T3000_Data.value.panelsList?.length || 0,
+        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+        loadingPanel: T3000_Data.value.loadingPanel
+      },
+      action: 'GET_PANELS_LIST_RES',
+      timestamp: new Date().toISOString()
+    });
 
     /*
     if (arg.data.action === "GET_PANELS_LIST_RES") {
@@ -555,9 +752,27 @@ class WebViewClient {
     }
     */
 
-    if (!msgData.data?.length) return;
+    if (!msgData.data?.length) {
+      console.log('= Wv2: PANELS LIST RESPONSE FAILED - No data received or empty data:', {
+        msgData,
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    // Update the global store
     T3000_Data.value.panelsList = msgData.data;
     T3000_Data.value.loadingPanel = 0;
+
+    console.log('= Wv2: PANELS LIST UPDATED - T3000_Data.panelsList updated:', {
+      newPanelsListLength: T3000_Data.value.panelsList.length,
+      newPanelsList: T3000_Data.value.panelsList,
+      loadingPanelSet: T3000_Data.value.loadingPanel,
+      nextAction: 'will_call_GetPanelData_for_first_panel',
+      firstPanelNumber: T3000_Data.value.panelsList[0]?.panel_number,
+      timestamp: new Date().toISOString()
+    });
+
     this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
 
@@ -933,6 +1148,194 @@ class WebViewClient {
     });
 
     return complexFields;
+  }
+
+  // Helper method to identify the origin of requests based on call stack
+  private identifyRequestOrigin(callerInfo: string[]): string {
+    for (const caller of callerInfo) {
+      if (caller.includes('IndexPageSocket')) {
+        return 'TrendLogIndexPageSocket.vue';
+      }
+      if (caller.includes('IndexPage')) {
+        return 'IndexPage.vue';
+      }
+      if (caller.includes('initializeT3000Data')) {
+        return 'T3000_Data_Initialization';
+      }
+      if (caller.includes('onMounted')) {
+        return 'Component_OnMounted_Lifecycle';
+      }
+      if (caller.includes('setTimeout')) {
+        return 'Delayed_Timer_Execution';
+      }
+      if (caller.includes('HandleGetPanelsListRes')) {
+        return 'Auto_Chain_After_PanelsList_Response';
+      }
+      if (caller.includes('HandleGetPanelDataRes')) {
+        return 'Auto_Chain_After_PanelData_Response';
+      }
+      if (caller.includes('watch')) {
+        return 'Vue_Reactive_Watcher';
+      }
+      if (caller.includes('loadTrendLogItemData')) {
+        return 'Data_Loading_Function';
+      }
+    }
+    return 'Unknown_Origin';
+  }
+
+  // Helper method to categorize the source of the call
+  private categorizeCallSource(callerInfo: string[]): string {
+    const stackString = callerInfo.join(' ');
+
+    if (stackString.includes('initializeT3000Data')) {
+      return 'INITIALIZATION_REQUEST';
+    }
+    if (stackString.includes('onMounted')) {
+      return 'COMPONENT_MOUNT_REQUEST';
+    }
+    if (stackString.includes('setTimeout')) {
+      return 'DELAYED_EXECUTION_REQUEST';
+    }
+    if (stackString.includes('HandleGetPanelsListRes')) {
+      return 'AUTO_CHAIN_AFTER_PANELS_LIST';
+    }
+    if (stackString.includes('HandleGetPanelDataRes')) {
+      return 'AUTO_CHAIN_AFTER_PANEL_DATA';
+    }
+    if (stackString.includes('watch')) {
+      return 'REACTIVE_WATCHER_TRIGGER';
+    }
+    if (stackString.includes('loadTrendLogItemData')) {
+      return 'EXPLICIT_DATA_LOAD_REQUEST';
+    }
+    if (stackString.includes('retry') || stackString.includes('Retry')) {
+      return 'USER_RETRY_REQUEST';
+    }
+    if (stackString.includes('route')) {
+      return 'ROUTE_CHANGE_TRIGGER';
+    }
+
+    return 'MANUAL_OR_DIRECT_CALL';
+  }
+
+  // Helper method to get detailed information about action codes
+  private getActionDetails(action: number): any {
+    const actionMap = {
+      0: {
+        name: 'GET_PANEL_DATA',
+        description: 'Request panel data from T3000 backend',
+        category: 'Data_Request',
+        implemented: true,
+        responseAction: 'GET_PANEL_DATA_RES'
+      },
+      1: {
+        name: 'GET_INITIAL_DATA',
+        description: 'Request initial application data and state',
+        category: 'Initialization',
+        implemented: true,
+        responseAction: 'GET_INITIAL_DATA_RES'
+      },
+      2: {
+        name: 'SAVE_GRAPHIC_DATA',
+        description: 'Save graphic/layout data to T3000',
+        category: 'Data_Save',
+        implemented: true,
+        responseAction: 'SAVE_GRAPHIC_DATA_RES'
+      },
+      3: {
+        name: 'UPDATE_ENTRY',
+        description: 'Update a specific entry/field value',
+        category: 'Data_Update',
+        implemented: true,
+        responseAction: 'UPDATE_ENTRY_RES'
+      },
+      4: {
+        name: 'GET_PANELS_LIST',
+        description: 'Request list of available panels',
+        category: 'Data_Request',
+        implemented: true,
+        responseAction: 'GET_PANELS_LIST_RES'
+      },
+      5: {
+        name: 'GET_PANEL_RANGE_INFO',
+        description: 'Request panel range information',
+        category: 'Data_Request',
+        implemented: false, // Marked with ❓！
+        responseAction: 'GET_PANEL_RANGE_INFO_RES'
+      },
+      6: {
+        name: 'GET_ENTRIES',
+        description: 'Request specific entries data',
+        category: 'Data_Request',
+        implemented: true,
+        responseAction: 'GET_ENTRIES_RES'
+      },
+      7: {
+        name: 'LOAD_GRAPHIC_ENTRY',
+        description: 'Load graphic entry for editing',
+        category: 'UI_Navigation',
+        implemented: true,
+        responseAction: 'LOAD_GRAPHIC_ENTRY_RES'
+      },
+      8: {
+        name: 'OPEN_ENTRY_EDIT_WINDOW',
+        description: 'Open entry edit window in T3000',
+        category: 'UI_Action',
+        implemented: true,
+        responseAction: 'OPEN_ENTRY_EDIT_WINDOW_RES'
+      },
+      9: {
+        name: 'SAVE_IMAGE',
+        description: 'Save image file to T3000 library',
+        category: 'File_Operation',
+        implemented: true,
+        responseAction: 'SAVE_IMAGE_RES'
+      },
+      10: {
+        name: 'SAVE_LIBRARY_DATA',
+        description: 'Save library data to T3000',
+        category: 'Data_Save',
+        implemented: true, // Marked with ✔❓
+        responseAction: 'SAVE_LIBRARY_DATA_RES'
+      },
+      11: {
+        name: 'DELETE_IMAGE',
+        description: 'Delete image from T3000 library',
+        category: 'File_Operation',
+        implemented: true,
+        responseAction: 'DELETE_IMAGE_RES'
+      },
+      12: {
+        name: 'GET_SELECTED_DEVICE_INFO',
+        description: 'Get information about selected device',
+        category: 'Device_Info',
+        implemented: true,
+        responseAction: 'GET_SELECTED_DEVICE_INFO_RES'
+      },
+      13: {
+        name: 'BIND_DEVICE',
+        description: 'Bind/connect to a device',
+        category: 'Device_Operation',
+        implemented: false, // Marked with ❓！
+        responseAction: 'BIND_DEVICE_RES'
+      },
+      14: {
+        name: 'SAVE_NEW_LIBRARY_DATA',
+        description: 'Save new library data to T3000',
+        category: 'Data_Save',
+        implemented: false, // Marked with ❓！
+        responseAction: 'SAVE_NEW_LIBRARY_DATA_RES'
+      }
+    };
+
+    return actionMap[action] || {
+      name: 'UNKNOWN_ACTION',
+      description: `Unknown action code: ${action}`,
+      category: 'Unknown',
+      implemented: false,
+      responseAction: 'UNKNOWN_RES'
+    };
   }
 
   //#endregion

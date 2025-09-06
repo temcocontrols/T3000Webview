@@ -222,15 +222,45 @@ class WebSocketClient {
       this.socket.send(message);
       const currentDateTime = new Date().toLocaleString();
 
-      // Parse message to check action type
+      // Parse message to check action type and add detailed logging
       try {
         const parsedMessage = JSON.parse(message);
-        // if (parsedMessage?.message.action !== 1&&parsedMessage?.message.action !== 6) {
-        LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
-        // }
+        const messageContent = parsedMessage?.message || parsedMessage;
+        const actionDetails = this.getActionDetails(messageContent?.action);
+
+        LogUtil.Debug('= WS: Sent message to T3000 backend:', {
+          messageDetails: {
+            action: messageContent?.action,
+            actionName: actionDetails.name,
+            actionDescription: actionDetails.description,
+            actionCategory: actionDetails.category,
+            implemented: actionDetails.implemented
+          },
+          messageContext: {
+            panelId: messageContent?.panelId,
+            viewitem: messageContent?.viewitem,
+            msgId: messageContent?.msgId,
+            serialNumber: messageContent?.serialNumber,
+            hasData: !!messageContent?.data,
+            dataType: messageContent?.data ? typeof messageContent.data : null,
+            dataLength: Array.isArray(messageContent?.data) ? messageContent.data.length :
+                       (typeof messageContent?.data === 'string' ? messageContent.data.length : null)
+          },
+          connectionInfo: {
+            socketState: this.socket.readyState,
+            socketUrl: this.socket.url,
+            timestamp: currentDateTime
+          },
+          rawMessage: message
+        });
       } catch {
-        // If parsing fails, log normally
-        LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
+        // If parsing fails, log normally with basic info
+        LogUtil.Debug('= WS: Sent message to T3000 backend (unparseable):', {
+          messageType: 'RAW_STRING',
+          messageLength: message?.length || 0,
+          timestamp: currentDateTime,
+          rawMessage: message
+        });
       }
       } catch (error) {
       LogUtil.Error('Failed to send message:', error);
@@ -424,6 +454,50 @@ class WebSocketClient {
   public GetPanelData(panelId: number) {
     // action: 0, // GET_PANEL_DATA
 
+    // Create detailed call stack information
+    const callStack = new Error().stack;
+    const stackLines = callStack ? callStack.split('\n') : [];
+    const callerInfo = stackLines.slice(1, 6); // Get top 5 stack frames
+
+    // Extract the immediate caller information
+    const immediateCallerLine = stackLines[2] || 'Unknown caller';
+    const callerMatch = immediateCallerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
+    const callerDetails = callerMatch ? {
+      functionName: callerMatch[1],
+      fileName: callerMatch[2].split('/').pop() || callerMatch[2],
+      lineNumber: callerMatch[3],
+      columnNumber: callerMatch[4]
+    } : {
+      functionName: 'Unknown',
+      fileName: immediateCallerLine.trim(),
+      lineNumber: 'Unknown',
+      columnNumber: 'Unknown'
+    };
+
+    console.log('= WS: GET PANEL DATA REQUEST - Sending WebSocket request to T3000 backend:', {
+      action: 'GET_PANEL_DATA',
+      messageType: MessageType.GET_PANEL_DATA,
+      targetPanelId: panelId,
+      callerInformation: {
+        immediateCallerFunction: callerDetails.functionName,
+        callerFile: callerDetails.fileName,
+        callerLine: callerDetails.lineNumber,
+        callerColumn: callerDetails.columnNumber,
+        fullCallerContext: immediateCallerLine.trim()
+      },
+      callStackTrace: {
+        topCallers: callerInfo.map(line => line.trim()),
+        requestOrigin: this.identifyRequestOrigin(callerInfo),
+        triggerSource: this.categorizeCallSource(callerInfo)
+      },
+      currentT3000State: {
+        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+        panelsListLength: T3000_Data.value.panelsList?.length || 0,
+        loadingPanel: T3000_Data.value.loadingPanel
+      },
+      timestamp: new Date().toISOString()
+    });
+
     this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, null, null);
     this.sendMessage(this.messageData);
 
@@ -468,6 +542,49 @@ class WebSocketClient {
 
   public GetPanelsList() {
     // action: 4, // GET_PANELS_LIST
+
+    // Create detailed call stack information
+    const callStack = new Error().stack;
+    const stackLines = callStack ? callStack.split('\n') : [];
+    const callerInfo = stackLines.slice(1, 6); // Get top 5 stack frames
+
+    // Extract the immediate caller information
+    const immediateCallerLine = stackLines[2] || 'Unknown caller';
+    const callerMatch = immediateCallerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
+    const callerDetails = callerMatch ? {
+      functionName: callerMatch[1],
+      fileName: callerMatch[2].split('/').pop() || callerMatch[2],
+      lineNumber: callerMatch[3],
+      columnNumber: callerMatch[4]
+    } : {
+      functionName: 'Unknown',
+      fileName: immediateCallerLine.trim(),
+      lineNumber: 'Unknown',
+      columnNumber: 'Unknown'
+    };
+
+    console.log('= WS: GET PANELS LIST REQUEST - Sending WebSocket request to T3000 backend:', {
+      action: 'GET_PANELS_LIST',
+      messageType: MessageType.GET_PANELS_LIST,
+      callerInformation: {
+        immediateCallerFunction: callerDetails.functionName,
+        callerFile: callerDetails.fileName,
+        callerLine: callerDetails.lineNumber,
+        callerColumn: callerDetails.columnNumber,
+        fullCallerContext: immediateCallerLine.trim()
+      },
+      callStackTrace: {
+        topCallers: callerInfo.map(line => line.trim()),
+        requestOrigin: this.identifyRequestOrigin(callerInfo),
+        triggerSource: this.categorizeCallSource(callerInfo)
+      },
+      currentT3000State: {
+        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+        panelsListLength: T3000_Data.value.panelsList?.length || 0,
+        loadingPanel: T3000_Data.value.loadingPanel
+      },
+      timestamp: new Date().toISOString()
+    });
 
     this.FormatMessageData(MessageType.GET_PANELS_LIST, null, null, null);
     this.sendMessage(this.messageData);
@@ -689,35 +806,70 @@ class WebSocketClient {
         T3000_Data.value.loadingPanel = null;
       }
 
+      console.log('= WS: PANEL DATA RESPONSE START - Processing panel data from WebSocket:', {
+        incomingPanelId: msgData.panel_id,
+        incomingDataLength: msgData.data?.length || 0,
+        incomingRangesLength: msgData.ranges?.length || 0,
+        beforeUpdate: {
+          panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+          panelsRangesLength: T3000_Data.value.panelsRanges?.length || 0,
+          loadingPanel: T3000_Data.value.loadingPanel
+        },
+        timestamp: new Date().toISOString()
+      });
+
       // Log filtering operation
       const beforeFilterLength = T3000_Data.value.panelsData.length;
       const itemsToRemove = T3000_Data.value.panelsData.filter(item => item.pid === msgData.panel_id);
-      LogUtil.Debug('= ws: HandleGetPanelDataRes / filtering out items with pid:', msgData.panel_id, 'found:', itemsToRemove.length, 'items to remove');
+      console.log('= WS: PANEL DATA FILTER - Removing existing data for panel:', {
+        panelId: msgData.panel_id,
+        beforeFilterLength,
+        itemsToRemoveCount: itemsToRemove.length,
+        timestamp: new Date().toISOString()
+      });
 
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== msgData.panel_id
       );
 
       const afterFilterLength = T3000_Data.value.panelsData.length;
-      LogUtil.Debug('= ws: HandleGetPanelDataRes / AFTER filter - panelsData length:', afterFilterLength, 'removed:', beforeFilterLength - afterFilterLength);
+      console.log('= WS: PANEL DATA FILTERED - Completed filtering:', {
+        afterFilterLength,
+        removedItems: beforeFilterLength - afterFilterLength,
+        timestamp: new Date().toISOString()
+      });
 
       // Log concatenation operation
       const newDataLength = msgData.data ? msgData.data.length : 0;
-      LogUtil.Debug('= ws: HandleGetPanelDataRes / concatenating new data length:', newDataLength);
+      console.log('= WS: PANEL DATA CONCAT - Adding new data:', {
+        newDataLength,
+        addedItemsSample: msgData.data?.slice(0, 3),
+        timestamp: new Date().toISOString()
+      });
 
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
         msgData.data
       );
 
       const finalLength = T3000_Data.value.panelsData.length;
-      LogUtil.Debug('= ws: HandleGetPanelDataRes / AFTER concat - panelsData length:', finalLength, 'expected:', afterFilterLength + newDataLength);
+      console.log('= WS: PANEL DATA ADDED - Completed adding new data:', {
+        finalLength,
+        expectedLength: afterFilterLength + newDataLength,
+        actuallyAdded: finalLength - afterFilterLength,
+        timestamp: new Date().toISOString()
+      });
 
       // Log unique pid counts to see if we have duplicates
       const pidCounts = {};
       T3000_Data.value.panelsData.forEach(item => {
         pidCounts[item.pid] = (pidCounts[item.pid] || 0) + 1;
       });
-      LogUtil.Debug('= ws: HandleGetPanelDataRes / PID distribution after concat:', pidCounts);
+      console.log('= WS: PANEL DATA PID ANALYSIS - PID distribution after update:', {
+        pidCounts,
+        uniquePanels: Object.keys(pidCounts).length,
+        totalItems: finalLength,
+        timestamp: new Date().toISOString()
+      });
 
       // Check for any unexpected duplicates
       const duplicatePids = Object.keys(pidCounts).filter(pid => pidCounts[pid] > 1);
@@ -1283,6 +1435,200 @@ class WebSocketClient {
     });
 
     return complexFields;
+  }
+
+  // Helper method to identify the origin of requests based on call stack
+  private identifyRequestOrigin(callerInfo: string[]): string {
+    for (const caller of callerInfo) {
+      if (caller.includes('IndexPageSocket')) {
+        return 'TrendLogIndexPageSocket.vue';
+      }
+      if (caller.includes('IndexPage')) {
+        return 'IndexPage.vue';
+      }
+      if (caller.includes('initializeT3000Data')) {
+        return 'T3000_Data_Initialization';
+      }
+      if (caller.includes('onMounted')) {
+        return 'Component_OnMounted_Lifecycle';
+      }
+      if (caller.includes('setTimeout')) {
+        return 'Delayed_Timer_Execution';
+      }
+      if (caller.includes('HandleGetPanelsListRes')) {
+        return 'Auto_Chain_After_PanelsList_Response';
+      }
+      if (caller.includes('HandleGetPanelDataRes')) {
+        return 'Auto_Chain_After_PanelData_Response';
+      }
+      if (caller.includes('watch')) {
+        return 'Vue_Reactive_Watcher';
+      }
+      if (caller.includes('loadTrendLogItemData')) {
+        return 'Data_Loading_Function';
+      }
+      if (caller.includes('connect')) {
+        return 'WebSocket_Connection_Establishment';
+      }
+    }
+    return 'Unknown_Origin';
+  }
+
+  // Helper method to categorize the source of the call
+  private categorizeCallSource(callerInfo: string[]): string {
+    const stackString = callerInfo.join(' ');
+
+    if (stackString.includes('initializeT3000Data')) {
+      return 'INITIALIZATION_REQUEST';
+    }
+    if (stackString.includes('onMounted')) {
+      return 'COMPONENT_MOUNT_REQUEST';
+    }
+    if (stackString.includes('setTimeout')) {
+      return 'DELAYED_EXECUTION_REQUEST';
+    }
+    if (stackString.includes('HandleGetPanelsListRes')) {
+      return 'AUTO_CHAIN_AFTER_PANELS_LIST';
+    }
+    if (stackString.includes('HandleGetPanelDataRes')) {
+      return 'AUTO_CHAIN_AFTER_PANEL_DATA';
+    }
+    if (stackString.includes('watch')) {
+      return 'REACTIVE_WATCHER_TRIGGER';
+    }
+    if (stackString.includes('loadTrendLogItemData')) {
+      return 'EXPLICIT_DATA_LOAD_REQUEST';
+    }
+    if (stackString.includes('retry') || stackString.includes('Retry')) {
+      return 'USER_RETRY_REQUEST';
+    }
+    if (stackString.includes('route')) {
+      return 'ROUTE_CHANGE_TRIGGER';
+    }
+    if (stackString.includes('connect')) {
+      return 'WEBSOCKET_CONNECTION_TRIGGER';
+    }
+
+    return 'MANUAL_OR_DIRECT_CALL';
+  }
+
+  // Helper method to get detailed information about action codes
+  private getActionDetails(action: number): any {
+    const actionMap = {
+      0: {
+        name: 'GET_PANEL_DATA',
+        description: 'Request panel data from T3000 backend',
+        category: 'Data_Request',
+        implemented: true,
+        responseAction: 'GET_PANEL_DATA_RES'
+      },
+      1: {
+        name: 'GET_INITIAL_DATA',
+        description: 'Request initial application data and state',
+        category: 'Initialization',
+        implemented: true,
+        responseAction: 'GET_INITIAL_DATA_RES'
+      },
+      2: {
+        name: 'SAVE_GRAPHIC_DATA',
+        description: 'Save graphic/layout data to T3000',
+        category: 'Data_Save',
+        implemented: true,
+        responseAction: 'SAVE_GRAPHIC_DATA_RES'
+      },
+      3: {
+        name: 'UPDATE_ENTRY',
+        description: 'Update a specific entry/field value',
+        category: 'Data_Update',
+        implemented: true,
+        responseAction: 'UPDATE_ENTRY_RES'
+      },
+      4: {
+        name: 'GET_PANELS_LIST',
+        description: 'Request list of available panels',
+        category: 'Data_Request',
+        implemented: true,
+        responseAction: 'GET_PANELS_LIST_RES'
+      },
+      5: {
+        name: 'GET_PANEL_RANGE_INFO',
+        description: 'Request panel range information',
+        category: 'Data_Request',
+        implemented: false, // Marked with ❓！
+        responseAction: 'GET_PANEL_RANGE_INFO_RES'
+      },
+      6: {
+        name: 'GET_ENTRIES',
+        description: 'Request specific entries data',
+        category: 'Data_Request',
+        implemented: true,
+        responseAction: 'GET_ENTRIES_RES'
+      },
+      7: {
+        name: 'LOAD_GRAPHIC_ENTRY',
+        description: 'Load graphic entry for editing',
+        category: 'UI_Navigation',
+        implemented: true,
+        responseAction: 'LOAD_GRAPHIC_ENTRY_RES'
+      },
+      8: {
+        name: 'OPEN_ENTRY_EDIT_WINDOW',
+        description: 'Open entry edit window in T3000',
+        category: 'UI_Action',
+        implemented: true,
+        responseAction: 'OPEN_ENTRY_EDIT_WINDOW_RES'
+      },
+      9: {
+        name: 'SAVE_IMAGE',
+        description: 'Save image file to T3000 library',
+        category: 'File_Operation',
+        implemented: true,
+        responseAction: 'SAVE_IMAGE_RES'
+      },
+      10: {
+        name: 'SAVE_LIBRARY_DATA',
+        description: 'Save library data to T3000',
+        category: 'Data_Save',
+        implemented: true, // Marked with ✔❓
+        responseAction: 'SAVE_LIBRARY_DATA_RES'
+      },
+      11: {
+        name: 'DELETE_IMAGE',
+        description: 'Delete image from T3000 library',
+        category: 'File_Operation',
+        implemented: true,
+        responseAction: 'DELETE_IMAGE_RES'
+      },
+      12: {
+        name: 'GET_SELECTED_DEVICE_INFO',
+        description: 'Get information about selected device',
+        category: 'Device_Info',
+        implemented: true,
+        responseAction: 'GET_SELECTED_DEVICE_INFO_RES'
+      },
+      13: {
+        name: 'BIND_DEVICE',
+        description: 'Bind/connect to a device',
+        category: 'Device_Operation',
+        implemented: false, // Marked with ❓！
+        responseAction: 'BIND_DEVICE_RES'
+      },
+      14: {
+        name: 'SAVE_NEW_LIBRARY_DATA',
+        description: 'Save new library data to T3000',
+        category: 'Data_Save',
+        implemented: false, // Marked with ❓！
+        responseAction: 'SAVE_NEW_LIBRARY_DATA_RES'
+      }
+    };
+
+    return actionMap[action] || {
+      name: 'UNKNOWN_ACTION',
+      description: `Unknown action code: ${action}`,
+      category: 'Unknown',
+      implemented: false,
+      responseAction: 'UNKNOWN_RES'
+    };
   }
 
   //#endregion

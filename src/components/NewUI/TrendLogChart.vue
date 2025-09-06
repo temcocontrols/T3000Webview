@@ -8,349 +8,341 @@
     },
   }">
     <!-- Remove the modal wrapper - this is now just the chart content -->
-      <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
-      <div class="top-controls-bar">
-        <a-flex wrap="wrap" gap="small" class="controls-main-flex">
-          <!-- Time Base Control -->
-          <a-flex align="center" gap="small" class="control-group">
-            <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
-            <a-dropdown placement="bottomRight">
-              <a-button size="small" style="display: flex; align-items: center;">
-                <span>{{ getTimeBaseLabel() }}</span>
-                <DownOutlined style="margin-left: 4px;" />
-              </a-button>
-              <template #overlay>
-                <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
-                  <a-menu-item key="5m">5 minutes</a-menu-item>
-                  <a-menu-item key="10m">10 minutes</a-menu-item>
-                  <a-menu-item key="30m">30 minutes</a-menu-item>
-                  <a-menu-item key="1h">1 hour</a-menu-item>
-                  <a-menu-item key="4h">4 hours</a-menu-item>
-                  <a-menu-item key="12h">12 hours</a-menu-item>
-                  <a-menu-item key="1d">1 day</a-menu-item>
-                  <a-menu-item key="4d">4 days</a-menu-item>
-                  <a-menu-divider />
-                  <a-menu-item key="custom">Custom Define</a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-          </a-flex>
-
-          <!-- Navigation Arrows -->
-          <a-flex align="center" class="control-group">
-            <a-button-group size="small">
-              <a-button @click="moveTimeLeft" :disabled="isRealTime">
-                <template #icon>
-                  <LeftOutlined />
-                </template>
-              </a-button>
-              <a-button @click="moveTimeRight" :disabled="isRealTime">
-                <template #icon>
-                  <RightOutlined />
-                </template>
-              </a-button>
-            </a-button-group>
-          </a-flex>
-
-          <!-- Zoom Controls -->
-          <a-flex align="center" class="control-group">
-            <a-button-group size="small">
-              <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
-                        style="display: flex; align-items: center; gap: 2px;">
-                <ZoomOutOutlined />
-                <span>Zoom Out</span>
-              </a-button>
-              <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
-                        style="display: flex; align-items: center; gap: 2px;">
-                <ZoomInOutlined />
-                <span>Zoom In</span>
-              </a-button>
-            </a-button-group>
-          </a-flex>
-
-          <!-- Reset Button -->
-          <a-flex align="center" class="control-group">
-            <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 5 minutes timebase"
-                      style="display: flex; align-items: center; gap: 2px;">
-              <ReloadOutlined />
-              <span>Reset</span>
+    <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
+    <div class="top-controls-bar">
+      <a-flex wrap="wrap" gap="small" class="controls-main-flex">
+        <!-- Time Base Control -->
+        <a-flex align="center" gap="small" class="control-group">
+          <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
+          <a-dropdown placement="bottomRight">
+            <a-button size="small" style="display: flex; align-items: center;">
+              <span>{{ getTimeBaseLabel() }}</span>
+              <DownOutlined style="margin-left: 4px;" />
             </a-button>
-          </a-flex>
-
-          <!-- View Buttons -->
-          <a-flex align="center" class="control-group">
-            <a-button-group size="small">
-              <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)">
-                View 1
-              </a-button>
-              <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)">
-                View 2
-              </a-button>
-              <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)">
-                View 3
-              </a-button>
-            </a-button-group>
-          </a-flex>
-
-          <!-- Status Tags -->
-          <a-flex align="center" wrap="wrap" gap="small" class="control-group status-tags">
-            <!-- Live/Historical Status with enhanced info -->
-            <a-tag color="green" v-if="isRealTime" size="small">
-              <template #icon>
-                <SyncOutlined :spin="true" />
-              </template>
-              Live - {{ lastSyncTime }}
-            </a-tag>
-            <a-tag color="blue" v-else size="small">
-              <template #icon>
-                <ClockCircleOutlined />
-              </template>
-              Historical
-            </a-tag>
-
-            <!-- Range Info -->
-            <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
-          </a-flex>
-
-          <!-- Chart Options -->
-          <a-flex align="center" class="control-group chart-options">
-            <a-dropdown placement="bottomRight">
-              <a-button size="small" style="display: flex; align-items: center;">
-                <SettingOutlined style="margin-right: 4px;" />
-                <span>Chart</span>
-                <DownOutlined style="margin-left: 4px;" />
-              </a-button>
-              <template #overlay>
-                <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
-                  <a-menu-item key="grid">
-                    <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
-                    Show Grid
-                  </a-menu-item>
-                  <a-menu-item key="legend">
-                    <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
-                    Show Legend
-                  </a-menu-item>
-                  <a-menu-item key="smooth">
-                    <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
-                    Smooth Lines
-                  </a-menu-item>
-                  <a-menu-item key="points">
-                    <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
-                    Show Points
-                  </a-menu-item>
-                  <a-menu-divider />
-                  <a-menu-item key="reset">
-                    <ReloadOutlined />
-                    Reset to Default
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-          </a-flex>
-
-          <!-- Export Options -->
-          <a-flex align="center" class="control-group export-options">
-            <a-dropdown placement="bottomRight">
-              <a-button size="small" style="display: flex; align-items: center;">
-                <ExportOutlined style="margin-right: 4px;" />
-                <span>Export</span>
-                <DownOutlined style="margin-left: 4px;" />
-              </a-button>
-              <template #overlay>
-                <a-menu class="export-options-menu" @click="handleExportMenu">
-                  <a-menu-item key="png">
-                    <FileImageOutlined />
-                    Export as PNG
-                  </a-menu-item>
-                  <a-menu-item key="jpg">
-                    <FileImageOutlined />
-                    Export as JPG
-                  </a-menu-item>
-                  <a-menu-divider />
-                  <a-menu-item key="csv">
-                    <FileExcelOutlined />
-                    Export Data (CSV)
-                  </a-menu-item>
-                  <a-menu-item key="json">
-                    <FileTextOutlined />
-                    Export Data (JSON)
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-          </a-flex>
+            <template #overlay>
+              <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
+                <a-menu-item key="5m">5 minutes</a-menu-item>
+                <a-menu-item key="10m">10 minutes</a-menu-item>
+                <a-menu-item key="30m">30 minutes</a-menu-item>
+                <a-menu-item key="1h">1 hour</a-menu-item>
+                <a-menu-item key="4h">4 hours</a-menu-item>
+                <a-menu-item key="12h">12 hours</a-menu-item>
+                <a-menu-item key="1d">1 day</a-menu-item>
+                <a-menu-item key="4d">4 days</a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="custom">Custom Define</a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
         </a-flex>
-      </div>
 
-      <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
-        <div class="left-panel">
-          <!-- Data Series -->
-          <div class="control-section">
-            <div class="data-series-header">
-              <!-- Single line: Title, count, and status -->
-              <div class="header-line-1">
-                <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
-                <!-- Data Source Indicator -->
-                <div class="data-source-indicator">
-                  <span v-if="dataSource === 'realtime'" class="source-badge realtime">
-                    📡 Live
-                  </span>
-                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                    📚 Historical ({{ timeBase }})
-                  </span>
-                  <span v-else class="source-badge fallback">
-                    ⚠️ Fallback
-                  </span>
-                </div>
-              </div>
+        <!-- Navigation Arrows -->
+        <a-flex align="center" class="control-group">
+          <a-button-group size="small">
+            <a-button @click="moveTimeLeft" :disabled="isRealTime">
+              <template #icon>
+                <LeftOutlined />
+              </template>
+            </a-button>
+            <a-button @click="moveTimeRight" :disabled="isRealTime">
+              <template #icon>
+                <RightOutlined />
+              </template>
+            </a-button>
+          </a-button-group>
+        </a-flex>
 
-              <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
-              <div class="header-line-2">
-                <div class="left-controls">
-                  <a-dropdown>
-                    <a-button size="small" style="display: flex; align-items: center;">
-                      <span>All</span>
-                      <DownOutlined style="margin-left: 4px;" />
-                    </a-button>
-                    <template #overlay>
-                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
-                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
-                          <CheckOutlined />
-                          Enable All
-                        </a-menu-item>
-                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
-                          <DisconnectOutlined />
-                          Disable All
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                  <a-dropdown>
-                    <a-button size="small" style="display: flex; align-items: center;">
-                      <span>By Type</span>
-                      <DownOutlined style="margin-left: 4px;" />
-                    </a-button>
-                    <template #overlay>
-                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
-                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
-                          <LineChartOutlined />
-                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                        </a-menu-item>
-                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
-                          <BarChartOutlined />
-                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                </div>
-                <div class="auto-scroll-toggle">
-                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                  <a-switch v-model:checked="isRealTime" size="small" checked-children="On" un-checked-children="Off"
-                    @change="onRealTimeToggle" />
-                </div>
+        <!-- Zoom Controls -->
+        <a-flex align="center" class="control-group">
+          <a-button-group size="small">
+            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
+              style="display: flex; align-items: center; gap: 2px;">
+              <ZoomOutOutlined />
+              <span>Zoom Out</span>
+            </a-button>
+            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
+              style="display: flex; align-items: center; gap: 2px;">
+              <ZoomInOutlined />
+              <span>Zoom In</span>
+            </a-button>
+          </a-button-group>
+        </a-flex>
+
+        <!-- Reset Button -->
+        <a-flex align="center" class="control-group">
+          <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 5 minutes timebase"
+            style="display: flex; align-items: center; gap: 2px;">
+            <ReloadOutlined />
+            <span>Reset</span>
+          </a-button>
+        </a-flex>
+
+        <!-- View Buttons -->
+        <a-flex align="center" class="control-group">
+          <a-button-group size="small">
+            <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)">
+              View 1
+            </a-button>
+            <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)">
+              View 2
+            </a-button>
+            <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)">
+              View 3
+            </a-button>
+          </a-button-group>
+        </a-flex>
+
+        <!-- Status Tags -->
+        <a-flex align="center" wrap="wrap" gap="small" class="control-group status-tags">
+          <!-- Live/Historical Status with enhanced info -->
+          <a-tag color="green" v-if="isRealTime" size="small">
+            <template #icon>
+              <SyncOutlined :spin="true" />
+            </template>
+            Live - {{ lastSyncTime }}
+          </a-tag>
+          <a-tag color="blue" v-else size="small">
+            <template #icon>
+              <ClockCircleOutlined />
+            </template>
+            Historical
+          </a-tag>
+
+          <!-- Range Info -->
+          <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
+        </a-flex>
+
+        <!-- Chart Options -->
+        <a-flex align="center" class="control-group chart-options">
+          <a-dropdown placement="bottomRight">
+            <a-button size="small" style="display: flex; align-items: center;">
+              <SettingOutlined style="margin-right: 4px;" />
+              <span>Chart</span>
+              <DownOutlined style="margin-left: 4px;" />
+            </a-button>
+            <template #overlay>
+              <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
+                <a-menu-item key="grid">
+                  <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
+                  Show Grid
+                </a-menu-item>
+                <a-menu-item key="legend">
+                  <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
+                  Show Legend
+                </a-menu-item>
+                <a-menu-item key="smooth">
+                  <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
+                  Smooth Lines
+                </a-menu-item>
+                <a-menu-item key="points">
+                  <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
+                  Show Points
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="reset">
+                  <ReloadOutlined />
+                  Reset to Default
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </a-flex>
+
+        <!-- Export Options -->
+        <a-flex align="center" class="control-group export-options">
+          <a-dropdown placement="bottomRight">
+            <a-button size="small" style="display: flex; align-items: center;">
+              <ExportOutlined style="margin-right: 4px;" />
+              <span>Export</span>
+              <DownOutlined style="margin-left: 4px;" />
+            </a-button>
+            <template #overlay>
+              <a-menu class="export-options-menu" @click="handleExportMenu">
+                <a-menu-item key="png">
+                  <FileImageOutlined />
+                  Export as PNG
+                </a-menu-item>
+                <a-menu-item key="jpg">
+                  <FileImageOutlined />
+                  Export as JPG
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="csv">
+                  <FileExcelOutlined />
+                  Export Data (CSV)
+                </a-menu-item>
+                <a-menu-item key="json">
+                  <FileTextOutlined />
+                  Export Data (JSON)
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </a-flex>
+      </a-flex>
+    </div>
+
+    <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
+      <div class="left-panel">
+        <!-- Data Series -->
+        <div class="control-section">
+          <div class="data-series-header">
+            <!-- Single line: Title, count, and status -->
+            <div class="header-line-1">
+              <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
+              <!-- Data Source Indicator -->
+              <div class="data-source-indicator">
+                <span v-if="dataSource === 'realtime'" class="source-badge realtime">
+                  📡 Live
+                </span>
+                <span v-else-if="dataSource === 'api'" class="source-badge historical">
+                  📚 Historical ({{ timeBase }})
+                </span>
+                <span v-else class="source-badge fallback">
+                  ⚠️ Fallback
+                </span>
               </div>
             </div>
-            <div class="series-list">
-              <!-- Empty state when no data series available -->
-              <div v-if="dataSeries.length === 0" class="series-empty-state">
-                <div class="empty-state-content">
-                  <div v-if="dataSource === 'fallback'" class="empty-state-icon">⚠️</div>
-                  <div v-else class="empty-state-icon">📊</div>
 
-                  <div v-if="dataSource === 'fallback'" class="empty-state-text">Data Connection Error</div>
-                  <div v-else class="empty-state-text">No trend log data available</div>
-
-                  <div v-if="dataSource === 'fallback'" class="empty-state-subtitle">
-                    Unable to load real-time or historical data. Check system connections.
-                  </div>
-                  <div v-else class="empty-state-subtitle">Configure monitor points to see data series</div>
-                </div>
+            <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+            <div class="header-line-2">
+              <div class="left-controls">
+                <a-dropdown>
+                  <a-button size="small" style="display: flex; align-items: center;">
+                    <span>All</span>
+                    <DownOutlined style="margin-left: 4px;" />
+                  </a-button>
+                  <template #overlay>
+                    <a-menu @click="handleAllMenu" class="all-dropdown-menu">
+                      <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                        <CheckOutlined />
+                        Enable All
+                      </a-menu-item>
+                      <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                        <DisconnectOutlined />
+                        Disable All
+                      </a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
+                <a-dropdown>
+                  <a-button size="small" style="display: flex; align-items: center;">
+                    <span>By Type</span>
+                    <DownOutlined style="margin-left: 4px;" />
+                  </a-button>
+                  <template #overlay>
+                    <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
+                      <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                        <LineChartOutlined />
+                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                      </a-menu-item>
+                      <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                        <BarChartOutlined />
+                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                      </a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
               </div>
+              <div class="auto-scroll-toggle">
+                <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                <a-switch v-model:checked="isRealTime" size="small" checked-children="On" un-checked-children="Off"
+                  @change="onRealTimeToggle" />
+              </div>
+            </div>
+          </div>
+          <div class="series-list">
+            <!-- Empty state when no data series available -->
+            <div v-if="dataSeries.length === 0" class="series-empty-state">
+              <div class="empty-state-content">
+                <div v-if="dataSource === 'fallback'" class="empty-state-icon">⚠️</div>
+                <div v-else class="empty-state-icon">📊</div>
 
-              <!-- Regular series list when data is available -->
-              <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
-                'series-disabled': !series.visible
-              }">
-                <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
-                  <div class="series-toggle-indicator"
-                       :class="{ 'active': series.visible, 'inactive': !series.visible }"
-                       :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
-                    <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
-                  </div>
-                  <div class="series-info">
-                    <div class="series-name-line">
-                      <div class="series-name-container">
-                        <span class="series-name">{{ getSeriesNameText(series) }}</span>
-                        <q-chip
-                          v-if="series.prefix"
-                          :label="getChipLabelText(series.prefix)"
-                          color="grey-4"
-                          text-color="grey-8"
-                          size="xs"
-                          dense
-                          class="series-prefix-tag-small"
-                        />
-                        <!-- Series name processed with dedicated function, chip placed after -->
-                      </div>
-                      <span class="series-inline-tags">
-                        <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
+                <div v-if="dataSource === 'fallback'" class="empty-state-text">Data Connection Error</div>
+                <div v-else class="empty-state-text">No trend log data available</div>
+
+                <div v-if="dataSource === 'fallback'" class="empty-state-subtitle">
+                  Unable to load real-time or historical data. Check system connections.
+                </div>
+                <div v-else class="empty-state-subtitle">Configure monitor points to see data series</div>
+              </div>
+            </div>
+
+            <!-- Regular series list when data is available -->
+            <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
+              'series-disabled': !series.visible
+            }">
+              <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
+                <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
+                  :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
+                  <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
+                </div>
+                <div class="series-info">
+                  <div class="series-name-line">
+                    <div class="series-name-container">
+                      <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                      <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
+                        text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
+                      <!-- Series name processed with dedicated function, chip placed after -->
+                    </div>
+                    <span class="series-inline-tags">
+                      <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
                           {{ series.itemType }}
                         </a-tag> -->
-                        <span class="unit-info">{{ series.unit }}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div class="series-controls">
-                    <a-button size="small" type="text" class="expand-toggle"
-                      @click="(e) => toggleSeriesExpansion(index, e)">
-                      <template #icon>
-                        <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
-                        <RightOutlined v-else class="expand-icon" />
-                      </template>
-                    </a-button>
+                      <span class="unit-info">{{ series.unit }}</span>
+                    </span>
                   </div>
                 </div>
-                <div v-if="expandedSeries.has(index)" class="series-stats">
-                  <div class="stat-item">
-                    <span class="stat-label">Last:</span>
-                    <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Avg:</span>
-                    <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Min:</span>
-                    <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Max:</span>
-                    <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
-                  </div>
+                <div class="series-controls">
+                  <a-button size="small" type="text" class="expand-toggle"
+                    @click="(e) => toggleSeriesExpansion(index, e)">
+                    <template #icon>
+                      <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
+                      <RightOutlined v-else class="expand-icon" />
+                    </template>
+                  </a-button>
+                </div>
+              </div>
+              <div v-if="expandedSeries.has(index)" class="series-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Last:</span>
+                  <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Avg:</span>
+                  <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Min:</span>
+                  <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Max:</span>
+                  <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Right Panel: Chart -->
-        <div class="right-panel">
-          <div class="chart-container" ref="chartContainer">
-            <canvas ref="chartCanvas" class="chart-canvas"></canvas>
-          </div>
+      <!-- Right Panel: Chart -->
+      <div class="right-panel">
+        <div class="chart-container" ref="chartContainer">
+          <canvas ref="chartCanvas" class="chart-canvas"></canvas>
         </div>
       </div>
+    </div>
 
-      <!-- Loading overlay -->
-      <div v-if="isLoading" class="loading-overlay">
-        <a-spin size="large" />
-        <div class="loading-text">Loading trend log data...</div>
-      </div>
+    <!-- Loading overlay -->
+    <div v-if="isLoading" class="loading-overlay">
+      <a-spin size="large" />
+      <div class="loading-text">Loading trend log data...</div>
+    </div>
 
     <!-- Custom Date Range Modal -->
-    <a-modal v-model:visible="customDateModalVisible" title="X Axis" :width="320" centered
-             @ok="applyCustomDateRange" @cancel="cancelCustomDateRange">
+    <a-modal v-model:visible="customDateModalVisible" title="X Axis" :width="320" centered @ok="applyCustomDateRange"
+      @cancel="cancelCustomDateRange">
       <div class="custom-date-modal">
         <!-- Start Time Row -->
         <a-row :gutter="8" class="date-time-row">
@@ -359,11 +351,11 @@
           </a-col>
           <a-col :span="11">
             <a-date-picker v-model:value="customStartDate" placeholder="Date" size="small"
-                          style="width: 100%; font-size: 11px;" format="DD/MM/YYYY" />
+              style="width: 100%; font-size: 11px;" format="DD/MM/YYYY" />
           </a-col>
           <a-col :span="9">
             <a-time-picker v-model:value="customStartTime" placeholder="Time" size="small"
-                          style="width: 100%; font-size: 11px;" format="HH:mm" />
+              style="width: 100%; font-size: 11px;" format="HH:mm" />
           </a-col>
         </a-row>
 
@@ -374,11 +366,11 @@
           </a-col>
           <a-col :span="11">
             <a-date-picker v-model:value="customEndDate" placeholder="Date" size="small"
-                          style="width: 100%; font-size: 11px;" format="DD/MM/YYYY" />
+              style="width: 100%; font-size: 11px;" format="DD/MM/YYYY" />
           </a-col>
           <a-col :span="9">
             <a-time-picker v-model:value="customEndTime" placeholder="Time" size="small"
-                          style="width: 100%; font-size: 11px;" format="HH:mm" />
+              style="width: 100%; font-size: 11px;" format="HH:mm" />
           </a-col>
         </a-row>
 
@@ -578,6 +570,21 @@ interface SeriesConfig {
 /**
  * Map T3000 point types to readable names and determine data characteristics
  */
+/*
+ * TrendLogChart Component - Data Flow Tracking
+ *
+ * LOGGING APPROACH (Clean & Essential):
+ * - = TLChart DataFlow: Key data flow events for 14 panel items
+ * - Focus on: How panel items are extracted, API messages sent, data received
+ * - Removed: Excessive decorative logs, temporary debug code, verbose diagnostics
+ *
+ * KEY DATA FLOW POINTS LOGGED:
+ * 1. Panel item extraction (extractSpecificPoints) - which 14 items we need
+ * 2. API requests (fetchHistoricalDataForTimebase) - which messages trigger data fetch
+ * 3. Data conversion (convertApiDataToSeries) - how API data becomes chart data
+ * 4. Component initialization - real-time vs historical data sources
+ */
+
 const getPointTypeInfo = (pointType: number) => {
   const pointTypeMap = {
     1: { name: 'Output', type: 'digital', category: 'OUT' },
@@ -606,11 +613,8 @@ const getSeriesNameText = (series: SeriesConfig): string => {
   // Use the series name directly - no need to clean since we preserve original names
   const displayName = series.name || 'Unknown'
 
-  console.log('[TrendLogChart] getSeriesNameText - Using preserved series name:', {
-    seriesName: series.name,
-    displayName: displayName,
-    description: series.description,
-    preservedOriginal: true
+  console.log('= TLChart DataFlow: Panel item name processing:', {
+    name: displayName
   })
 
   return displayName
@@ -622,21 +626,8 @@ const formatTimestampToLocal = (unixTimestamp: number): string => {
   const timestamp = unixTimestamp > 1e10 ? unixTimestamp : unixTimestamp * 1000
   const date = new Date(timestamp)
 
-  console.log('[TrendLogChart] formatTimestampToLocal - Converting timestamp:', {
-    input: unixTimestamp,
-    adjustedTimestamp: timestamp,
-    utcString: date.toISOString(),
-    localString: date.toLocaleString(),
-    localDateString: date.toLocaleString('en-CA', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    })
-  })
+  // Clean simple logging for data flow tracking
+  // console.log('= TLChart DataFlow: Timestamp conversion for chart data point')
 
   // Return local time in YYYY-MM-DD HH:mm:ss format
   return date.toLocaleString('en-CA', {
@@ -663,7 +654,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Computed property to get the current item data - prioritizes props over global state
 const currentItemData = computed(() => {
   const data = props.itemData || scheduleItemData.value
-  LogUtil.Info('🔄 TrendLogChart: currentItemData computed update', {
+  LogUtil.Info('= TLChart: currentItemData computed update', {
     hasPropsData: !!props.itemData,
     hasScheduleData: !!scheduleItemData.value,
     dataSource: props.itemData ? 'props' : 'scheduleItemData',
@@ -702,8 +693,8 @@ const calculateT3000Interval = (monitorConfig: any): number => {
 
   // Convert to milliseconds
   const totalSeconds = (hour_interval_time * 3600) +
-                      (minute_interval_time * 60) +
-                      second_interval_time
+    (minute_interval_time * 60) +
+    second_interval_time
 
   // If no intervals specified at all, default to 1 minute, otherwise use calculated value
   const intervalMs = totalSeconds > 0
@@ -732,7 +723,7 @@ const dataSource = ref<'realtime' | 'api' | 'fallback'>('realtime') // Track dat
 // Watch for fallback mode and clear data when entering it
 watch(dataSource, (newSource) => {
   if (newSource === 'fallback') {
-    LogUtil.Info('🧹 TrendLogChart: Entering fallback mode - clearing all chart data')
+    LogUtil.Info('= TLChart: Entering fallback mode - clearing all chart data')
     dataSeries.value = []
     // Update chart to show empty state
     updateChart()
@@ -760,53 +751,113 @@ const expandedSeries = ref<Set<number>>(new Set())
 
 // Helper: Get device description from T3000_Data.value.panelsData
 const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
-  const panelsData = T3000_Data.value.panelsData
-  LogUtil.Info('🔍 TrendLogChart: getDeviceDescription called', {
-    panelId,
-    pointType,
-    pointNumber,
-    hasPanelsData: !!panelsData,
-    panelsDataLength: panelsData?.length || 0
-  })
+  // INPUT: what we need to find
+  LogUtil.Info('= TLChart: getDeviceDescription INPUT', { panelId: panelId, pointType: pointType, pointNumber: pointNumber })
 
+  const panelsData = T3000_Data.value.panelsData
+
+  // SOURCE: where we get data from
   if (!panelsData || !Array.isArray(panelsData)) {
-    LogUtil.Warn('⚠️ TrendLogChart: No panelsData available for device description')
+    LogUtil.Warn('= TLChart: getDeviceDescription FAILED - No data source')
     return ''
   }
 
   const pointTypeInfo = getPointTypeInfo(pointType)
   if (!pointTypeInfo || !pointTypeInfo.category) {
-    LogUtil.Warn('⚠️ TrendLogChart: No point type info found', { pointType })
+    LogUtil.Warn('= TLChart: getDeviceDescription FAILED - Invalid point type')
     return ''
   }
 
-  const idToFind = `${pointTypeInfo.category}${pointNumber+1}` // Adjusted to match T3000.rc format
-  LogUtil.Info('🔍 TrendLogChart: Searching for device', {
-    idToFind,
-    panelId,
-    pointTypeCategory: pointTypeInfo.category
+  // SEARCH: generate ID and find device, the panel data is 1 based, but the param from t3000 is 0 based
+  /* Panel data example
+  {
+    "auto_manual": 1,
+    "calibration_h": 0,
+    "calibration_l": 0,
+    "calibration_sign": 0,
+    "command": "1IN1",
+    "control": 0,
+    "decom": 32,
+    "description": "IN1-Test111",
+    "digital_analog": 1,
+    "filter": 5,
+    "id": "IN1",
+    "index": 0,
+    "label": "IN1_1111",
+    "pid": 1,
+    "range": 11,
+    "type": "INPUT",
+    "unit": 11,
+    "value": 17000
+  }
+  */
+
+  /*
+  "input": [
+      {
+          "network": 0,
+          "panel": 1,
+          "point_number": 0,
+          "point_type": 2, //IN BAC_IN+1
+          "sub_panel": 0
+      },
+      {
+          "network": 0,
+          "panel": 1,
+          "point_number": 0,
+          "point_type": 3, //VAR BAC_VAR+1
+          "sub_panel": 0
+      },
+      {
+          "network": 0,
+          "panel": 1,
+          "point_number": 0,
+          "point_type": 1,//OUT BAC_OUT+1
+          "sub_panel": 0
+      }
+   ]
+   */
+
+  const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
+  LogUtil.Info('= TLChart: getDeviceDescription SEARCH', {
+    pointTypeCategory: pointTypeInfo.category,
+    pointNumber: pointNumber,
+    pointNumberPlus1: pointNumber + 1,
+    idToFind: idToFind,
+    panelId: panelId
   })
 
   const device = panelsData.find(
     (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
   )
 
-  LogUtil.Info('🎯 TrendLogChart: Device search result', {
-    found: !!device,
-    deviceLabel: device?.label || '',
-    deviceFullLabel: device?.fullLabel || '',
-    deviceDescription: device?.description || '',
-    deviceId: device?.id,
-    devicePid: device?.pid
-  })
+  // FOUND: what data we retrieved
+  if (device) {
+    LogUtil.Info('= TLChart: getDeviceDescription FOUND', device)
 
-  // Priority: label -> fullLabel -> description -> empty string
-  return device?.label || device?.fullLabel || device?.description || ''
+    // use command as the 2nd priority, fullLabel as 3rd, description as 4th, id as last to match the T3000 ui behavior
+    const finalOutput = device?.label || device?.command || device?.fullLabel || device?.description || device?.id || ''
+
+    // OUTPUT: what we return
+    LogUtil.Info('= TLChart: getDeviceDescription OUTPUT', { result: finalOutput })
+    return finalOutput
+  } else {
+    LogUtil.Warn('= TLChart: getDeviceDescription NOT_FOUND', {
+      panelId: panelId,
+      searchId: idToFind,
+      availableDevicesForPanel: panelsData.filter(d => String(d.pid) === String(panelId)).map(d => ({
+        pid: d.pid,
+        id: d.id,
+        label: d.label
+      }))
+    })
+    return ''
+  }
 }
 
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
-  LogUtil.Info('🏗️ TrendLogChart: generateDataSeries called', {
+  LogUtil.Info('= TLChart: generateDataSeries called for 14 panel items', {
     hasPropsItemData: !!props.itemData,
     hasT3Entry: !!props.itemData?.t3Entry,
     propsItemDataId: props.itemData?.t3Entry?.id,
@@ -815,14 +866,14 @@ const generateDataSeries = (): SeriesConfig[] => {
 
   // Check if we have real input data from t3Entry
   const hasInputData = props.itemData?.t3Entry?.input &&
-                      Array.isArray(props.itemData.t3Entry.input) &&
-                      props.itemData.t3Entry.input.length > 0
+    Array.isArray(props.itemData.t3Entry.input) &&
+    props.itemData.t3Entry.input.length > 0
 
   const hasRangeData = props.itemData?.t3Entry?.range &&
-                      Array.isArray(props.itemData.t3Entry.range) &&
-                      props.itemData.t3Entry.range.length > 0
+    Array.isArray(props.itemData.t3Entry.range) &&
+    props.itemData.t3Entry.range.length > 0
 
-  LogUtil.Info('🔍 TrendLogChart: generateDataSeries data validation', {
+  LogUtil.Info('= TLChart: generateDataSeries data validation', {
     hasInputData,
     hasRangeData,
     inputLength: props.itemData?.t3Entry?.input?.length || 0,
@@ -839,9 +890,9 @@ const generateDataSeries = (): SeriesConfig[] => {
 
   // If no real input data, return empty array for now
   if (!hasInputData || !hasRangeData) {
-    LogUtil.Warn('⚠️ TrendLogChart: No valid input/range data found', {
-      hasInputData,
-      hasRangeData,
+    LogUtil.Warn('= TLChart: No valid input/range data found', {
+      hasInputData: hasInputData,
+      hasRangeData: hasRangeData,
       inputLength: props.itemData?.t3Entry?.input?.length || 0,
       rangeLength: props.itemData?.t3Entry?.range?.length || 0
     })
@@ -879,10 +930,10 @@ const generateDataSeries = (): SeriesConfig[] => {
     const inputItem = inputData[index]
     const rangeValue = rangeData[index]
 
-    // Use actual data from input item
-    const panelId = inputItem.panel || 2
-    const pointType = inputItem.point_type || 3
-    const pointNumber = inputItem.point_number || index
+    // Use actual data from input item, do not use || will cause error: 0 is a falsy value in JavaScript!
+    const panelId = inputItem.panel
+    const pointType = inputItem.point_type
+    const pointNumber = inputItem.point_number
 
     // Determine unit type based on range value: 0 = analog, 1 = digital
     const isDigital = rangeValue === 1
@@ -919,15 +970,15 @@ const generateDataSeries = (): SeriesConfig[] => {
     // Generate series name based on actual device data - prioritize label -> fullLabel -> description
     const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
 
-    LogUtil.Info('🏷️ TrendLogChart: Generating series name', {
-      index,
-      panelId,
-      pointType,
-      pointNumber,
+    LogUtil.Info('= TLChart: Generating series name', {
+      index: index,
+      panelId: panelId,
+      pointType: pointType,
+      pointNumber: pointNumber,
       deviceDataUsed: description,
       generatedName: seriesName,
-      itemTypeName,
-      formattedItemType
+      itemTypeName: itemTypeName,
+      formattedItemType: formattedItemType
     })
 
     return {
@@ -949,20 +1000,91 @@ const generateDataSeries = (): SeriesConfig[] => {
     }
   })
 
-  LogUtil.Info('✅ TrendLogChart: generateDataSeries completed', {
+  LogUtil.Info('= TLChart: 14 panel items series generation completed', {
     generatedSeriesCount: result.length,
     seriesNames: result.map(s => s.name),
-    actualItemCount
+    actualItemCount: actualItemCount
   })
 
   return result
 }
 
-const dataSeries = ref<SeriesConfig[]>(generateDataSeries())
+const dataSeries = ref<SeriesConfig[]>([
+  // Test analog series - will appear in upper zone
+  {
+    name: 'Temperature Sensor',
+    color: '#FF6B35',
+    data: [],
+    visible: true,
+    unit: '°C',
+    isEmpty: false,
+    unitType: 'analog',
+    unitCode: 1,
+    digitalStates: null,
+    itemType: 'Test_Analog',
+    prefix: 'TEMP',
+    description: 'Temperature Sensor Test',
+    pointType: 1,
+    pointNumber: 1,
+    panelId: 1
+  },
+  {
+    name: 'Pressure Gauge',
+    color: '#F7931E',
+    data: [],
+    visible: true,
+    unit: 'PSI',
+    isEmpty: false,
+    unitType: 'analog',
+    unitCode: 1,
+    digitalStates: null,
+    itemType: 'Test_Analog_2',
+    prefix: 'PRESS',
+    description: 'Pressure Gauge Test',
+    pointType: 2,
+    pointNumber: 2,
+    panelId: 1
+  },
+  // Test digital series - will appear in lower zone
+  {
+    name: 'Fan Status',
+    color: '#06FFA5',
+    data: [],
+    visible: true,
+    unit: '',
+    isEmpty: false,
+    unitType: 'digital',
+    unitCode: 0,
+    digitalStates: ['Off', 'On'],
+    itemType: 'Test_Digital',
+    prefix: 'FAN',
+    description: 'Fan Status Test',
+    pointType: 1,
+    pointNumber: 1,
+    panelId: 1
+  },
+  {
+    name: 'Pump Control',
+    color: '#118AB2',
+    data: [],
+    visible: true,
+    unit: '',
+    isEmpty: false,
+    unitType: 'digital',
+    unitCode: 0,
+    digitalStates: ['Stopped', 'Running'],
+    itemType: 'Test_Digital_2',
+    prefix: 'PUMP',
+    description: 'Pump Control Test',
+    pointType: 2,
+    pointNumber: 2,
+    panelId: 1
+  }
+])
 
 // Regenerate data series when data source changes
 const regenerateDataSeries = () => {
-  LogUtil.Info('🔄 TrendLogChart: regenerateDataSeries called', {
+  LogUtil.Info('= TLChart: regenerateDataSeries called', {
     currentSeriesCount: dataSeries.value?.length || 0,
     hasCurrentData: !!currentItemData.value,
     timestamp: new Date().toISOString()
@@ -971,7 +1093,7 @@ const regenerateDataSeries = () => {
   const newSeries = generateDataSeries()
   dataSeries.value = newSeries
 
-  LogUtil.Info('✅ TrendLogChart: Data series regenerated', {
+  LogUtil.Info('= TLChart: Data series regenerated', {
     newSeriesCount: newSeries.length,
     newSeriesNames: newSeries.map(s => s.name)
   })
@@ -979,7 +1101,7 @@ const regenerateDataSeries = () => {
 
 // Watch currentItemData and regenerate series when it changes
 watch(currentItemData, (newData, oldData) => {
-  LogUtil.Info('🔄 TrendLogChart: currentItemData watcher triggered', {
+  LogUtil.Info('= TLChart: currentItemData watcher triggered', {
     hasNewData: !!newData,
     hasOldData: !!oldData,
     newDataId: newData?.t3Entry?.id,
@@ -995,7 +1117,7 @@ watch(currentItemData, (newData, oldData) => {
 
 // Watch dataSeries for updates
 watch(dataSeries, (newSeries, oldSeries) => {
-  LogUtil.Info('📋 TrendLogChart: dataSeries updated', {
+  LogUtil.Info('= TLChart: dataSeries updated', {
     newSeriesCount: newSeries?.length || 0,
     oldSeriesCount: oldSeries?.length || 0,
     seriesChanged: newSeries?.length !== oldSeries?.length,
@@ -1005,7 +1127,7 @@ watch(dataSeries, (newSeries, oldSeries) => {
 
 // Watch props.itemData for changes
 watch(() => props.itemData, (newData, oldData) => {
-  LogUtil.Info('🔄 TrendLogChart: props.itemData changed', {
+  LogUtil.Info('= TLChart: props.itemData changed', {
     hasNewData: !!newData,
     hasOldData: !!oldData,
     newDataId: newData?.t3Entry?.id,
@@ -1020,7 +1142,7 @@ watch(() => props.itemData, (newData, oldData) => {
 
 // Watch T3000_Data for panels data changes
 watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
-  LogUtil.Info('🏢 TrendLogChart: T3000_Data.panelsData changed', {
+  LogUtil.Info('= TLChart: T3000_Data.panelsData changed', {
     hasNewPanelsData: !!newPanelsData,
     hasOldPanelsData: !!oldPanelsData,
     newPanelsDataLength: newPanelsData?.length || 0,
@@ -1032,14 +1154,14 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
 
   // Regenerate data series when panels data becomes available or changes
   if (newPanelsData && currentItemData.value) {
-    LogUtil.Info('🔄 TrendLogChart: Triggering regeneration due to panels data change')
+    LogUtil.Info('= TLChart: Triggering regeneration due to panels data change')
     regenerateDataSeries()
   }
 }, { deep: true })
 
 // Watch scheduleItemData for changes
 watch(scheduleItemData, (newData, oldData) => {
-  LogUtil.Info('🔄 TrendLogChart: scheduleItemData changed', {
+  LogUtil.Info('= TLChart: scheduleItemData changed', {
     hasNewData: !!newData,
     hasOldData: !!oldData,
     newDataId: (newData as any)?.t3Entry?.id,
@@ -1054,7 +1176,7 @@ watch(scheduleItemData, (newData, oldData) => {
 
 // Watch timeBase for changes and API data fetching
 watch(timeBase, (newTimeBase, oldTimeBase) => {
-  LogUtil.Info('🕒 TrendLogChart: timeBase changed - API Data Fetch Analysis', {
+  LogUtil.Info('= TLChart: timeBase changed - API Data Fetch Analysis', {
     oldTimeBase: oldTimeBase,
     newTimeBase: newTimeBase,
     is5Minutes: newTimeBase === '5m',
@@ -1195,7 +1317,7 @@ const totalDataPoints = computed(() => {
 
 const visibleSeriesCount = computed(() => {
   const count = dataSeries.value.filter(series => series.visible).length
-  LogUtil.Info('👁️ TrendLogChart: visibleSeriesCount computed', {
+  LogUtil.Info('= TLChart: visibleSeriesCount computed', {
     visibleCount: count,
     totalCount: dataSeries.value.length,
     visibleSeries: dataSeries.value.filter(s => s.visible).map(s => s.name)
@@ -1350,7 +1472,7 @@ const getChartConfig = () => ({
           .sort((a, b) => a.timestamp - b.timestamp)
           .map(point => ({
             x: point.timestamp,
-            y: point.value
+            y: mapValueToYAxis(point.value, series.unitType) // Apply two-zone mapping
           }))
 
         return {
@@ -1587,26 +1709,22 @@ const getChartConfig = () => ({
         })()
       },
       y: {
-        // Enhanced Y-axis configuration - always show proper range and grid
-        min: (() => {
-          // If we have data, let Chart.js auto-scale with some padding
-          if (dataSeries.value.some(series => series.visible && series.data.length > 0)) {
-            return undefined // Let Chart.js auto-scale
-          }
-          // If no data, show a reasonable default range starting from 0
-          return 0
-        })(),
-        max: (() => {
-          // If we have data, let Chart.js auto-scale with some padding
-          if (dataSeries.value.some(series => series.visible && series.data.length > 0)) {
-            return undefined // Let Chart.js auto-scale
-          }
-          // If no data, show a reasonable default range up to 100
-          return 100
-        })(),
+        // Two-zone Y-axis configuration for analog (upper) and digital (lower) data
+        min: -0.5, // Extend below to provide space below digital values
+        max: 11,
         grid: {
-          color: '#d0d0d0',  // Always show grid - remove conditional
-          display: true      // Always display grid
+          color: (ctx: any) => {
+            // Different grid colors for different zones
+            const value = ctx.tick.value
+            if (value === 2.5) return '#000000' // Black line at zone divider
+            if (value <= 2.5) return '#e8f4ff' // Light blue for digital zone (bottom)
+            return '#f0f0f0' // Light gray for analog zone (top)
+          },
+          display: true,
+          lineWidth: (ctx: any) => {
+            // Thicker line at zone divider
+            return ctx.tick.value === 2.5 ? 3 : 1
+          }
         },
         ticks: {
           color: '#595959',
@@ -1614,13 +1732,28 @@ const getChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          // Format y-axis numbers to remove decimal places (e.g., 60.0 → 60)
+          stepSize: 0.5, // Smaller step size for finer control
+          // Custom tick callback for two-zone layout with digital values at bottom
           callback: function (value: any) {
-            // Format all numeric values as integers (remove decimal places)
             if (typeof value === 'number') {
-              return Math.round(value).toString()
+              // Bottom zone (Digital): below the divider line with more spacing
+              if (value <= 2.5) {
+                if (value === -0.5) return '' // Space below x-axis
+                if (value === 0) return '0 (Off)' // First digital value
+                if (value === 0.5) return '' // Space between values
+                if (value === 1) return '' // More space
+                if (value === 1.5) return '1 (On)' // Second digital value with larger gap
+                if (value === 2) return '' // Space before divider
+                if (value === 2.5) return '' // At divider line
+              }
+
+              // Upper zone (Analog): above the divider line
+              if (value >= 3) {
+                const analogValue = (value - 3) * 100 // Start from 0, increment by 100
+                return analogValue.toString()
+              }
             }
-            return value?.toString() || ''
+            return ''
           }
         }
       }
@@ -1628,7 +1761,57 @@ const getChartConfig = () => ({
   }
 })
 
-// Time navigation tracking
+// Value mapping for two-zone Y-axis layout
+const mapValueToYAxis = (value: number, unitType: 'analog' | 'digital'): number => {
+  if (unitType === 'digital') {
+    // Digital values map to bottom zone (below divider at 2.5)
+    // 0 maps to position 0 (where "0 (Off)" label is)
+    // 1 maps to position 1.5 (where "1 (On)" label is) - larger gap
+    return value === 0 ? 0 : 1.5
+  } else {
+    // Analog values map to upper zone (3-11, above divider at 2.5)
+    // Normalize large analog values to fit in the 3-11 range
+    const normalizedValue = Math.max(0, Math.min(8, value / 1000)) // Scale down by 1000, clamp to 0-8
+    return 3 + normalizedValue // Shift to 3-11 range
+  }
+}
+
+// Section divider plugin for Chart.js
+const sectionDividerPlugin = {
+  id: 'sectionDivider',
+  afterDraw: (chart: any) => {
+    const ctx = chart.ctx
+    const chartArea = chart.chartArea
+
+    // Calculate the Y position for the divider (at value 2.5, between zones)
+    const yScale = chart.scales.y
+    const dividerY = yScale.getPixelForValue(2.5)
+
+    // Draw thick black divider line
+    ctx.save()
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(chartArea.left, dividerY)
+    ctx.lineTo(chartArea.right, dividerY)
+    ctx.stroke()
+
+    // Add zone labels
+    ctx.fillStyle = '#000000'
+    ctx.font = 'bold 12px Inter, Arial, sans-serif'
+    ctx.textAlign = 'left'
+
+    // Upper zone label (Analog) - above the divider line
+    const upperZoneY = yScale.getPixelForValue(7) // Middle of upper zone (3-11)
+    ctx.fillText('Analog Values', chartArea.left + 10, upperZoneY)
+
+    // Lower zone label (Digital) - below the divider line
+    const lowerZoneY = yScale.getPixelForValue(0.75) // Middle of lower zone (-0.5 to 2.5)
+    ctx.fillText('Digital Values', chartArea.left + 10, lowerZoneY)
+
+    ctx.restore()
+  }
+}// Time navigation tracking
 const timeOffset = ref(0) // Offset in minutes from current time
 
 // Add helper to get current time window with proper alignment (simplified)
@@ -1881,8 +2064,7 @@ const getMonitorConfigFromT3000Data = async () => {
     // Use enhanced data manager to wait for data readiness
     const validation = await t3000DataManager.waitForDataReady({
       timeout: 15000, // 15 seconds timeout
-      specificEntries: [monitorId],
-      requireFresh: true
+      specificEntries: [monitorId]
     })
 
     if (!validation.isValid) {
@@ -1968,8 +2150,8 @@ const getMonitorConfigFromT3000Data = async () => {
 const initializeDataClients = () => {
   // Check if we're running in built-in browser (WebView) or external browser (WebSocket)
   const isBuiltInBrowser = window.location.protocol === 'ms-appx-web:' ||
-                          (window as any).chrome?.webview !== undefined ||
-                          (window as any).external?.sendMessage !== undefined
+    (window as any).chrome?.webview !== undefined ||
+    (window as any).external?.sendMessage !== undefined
 
   if (isBuiltInBrowser) {
     // Use WebView client for built-in browser
@@ -2111,7 +2293,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     // Send GET_ENTRIES request to get latest data from T3000
     const deviceIndex = parseInt(matchingDevice.index) || 0
     // const deviceType = mapPointTypeToString(inputItem.point_type)
-    const deviceType=inputItem.point_type
+    const deviceType = inputItem.point_type
 
     await sendGetEntriesRequest(dataClient, config.panelId, deviceIndex, deviceType)
 
@@ -2212,7 +2394,7 @@ const initializeRealDataSeries = async () => {
     }
 
     // Update the reactive data series
-    LogUtil.Info('🔄 TrendLogChart: initializeRealDataSeries updating dataSeries', {
+    LogUtil.Info('= TLChart: initializeRealDataSeries updating dataSeries', {
       previousSeriesCount: dataSeries.value.length,
       newSeriesCount: newDataSeries.length,
       newSeriesNames: newDataSeries.map(s => s.name),
@@ -2224,8 +2406,8 @@ const initializeRealDataSeries = async () => {
     lastSyncTime.value = new Date().toLocaleTimeString()
 
   } catch (error) {
-    LogUtil.Error('Error initializing real data series:', error)
-    LogUtil.Warn('Setting fallback mode - no mock data will be generated')
+    LogUtil.Error('= TLChart: Error initializing real data series:', error)
+    LogUtil.Warn('= TLChart: Setting fallback mode - no mock data will be generated')
     dataSource.value = 'fallback'
     // Clear any existing data when entering fallback mode
     dataSeries.value = []
@@ -2245,7 +2427,7 @@ const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
   const device = panelsData.find(device => device.id === deviceId)
 
   if (!device) {
-    LogUtil.Warn(`Device ${deviceId} not found in panelsData`)
+    LogUtil.Warn('= TLChart: Device not found in panelsData', { deviceId: deviceId })
     return null
   }
 
@@ -2493,7 +2675,7 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
   if (dataClient && dataClient.GetEntries) {
     try {
       dataClient.GetEntries(requestData)
-      LogUtil.Info('✅ TrendLogChart: GetEntries request sent successfully', { requestData })
+      LogUtil.Info('�?TrendLogChart: GetEntries request sent successfully', { requestData })
     } catch (error) {
       LogUtil.Error('Error calling GetEntries:', error)
     }
@@ -2505,7 +2687,7 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
 /**
  * Send GET_ENTRIES requests for multiple devices
  */
-const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{panelId: number, index: number, type: string}>): Promise<void> => {
+const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{ panelId: number, index: number, type: string }>): Promise<void> => {
   if (dataClient && dataClient.GetEntries) {
     dataClient.GetEntries(requests)
   } else {
@@ -2590,8 +2772,8 @@ const testCommunication = async () => {
 
 }
 
-// Add testCommunication to global scope for manual testing
-;(window as any).testTimeSeriesCommunication = testCommunication
+  // Add testCommunication to global scope for manual testing
+  ; (window as any).testTimeSeriesCommunication = testCommunication
 
 /**
  * Setup message handlers for GET_ENTRIES responses
@@ -2620,7 +2802,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('✅ TrendLogChart: Valid data array received, processing...', {
+        LogUtil.Info('�?TrendLogChart: Valid data array received, processing...', {
           entryCount: msgData.data.length
         })
         updateChartWithNewData(msgData.data)
@@ -2633,7 +2815,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
         LogUtil.Warn('⚠️ TrendLogChart: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('❌ TrendLogChart: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('�?TrendLogChart: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
@@ -2719,12 +2901,10 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = async () => {
-  LogUtil.Info('🚀 TrendLogModal: Starting data initialization...', {
+  LogUtil.Info('= TLChart: Starting data initialization for 14 panel items', {
     currentDataSeriesLength: dataSeries.value.length,
     hasMonitorConfig: !!monitorConfig.value,
-    monitorInputItemsLength: monitorConfig.value?.inputItems?.length || 0,
-    currentTimeBase: timeBase.value,
-    currentDataSource: dataSource.value
+    timeBase: timeBase.value
   })
 
   // Set data source to realtime for standard initialization
@@ -2734,48 +2914,31 @@ const initializeData = async () => {
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
 
-
     // Quick check: if we already have recent data, skip unnecessary re-fetching
     const hasRecentData = dataSeries.value.length > 0 &&
-                         dataSeries.value.some(series => series.data.length > 0)
+      dataSeries.value.some(series => series.data.length > 0)
 
     if (hasRecentData) {
-
+      console.log('= TLChart DataFlow: Recent data already available, skipping re-fetch')
       return
     }
 
-    LogUtil.Info('📡 Real T3000 Data Source Info:', {
+    LogUtil.Info('= TLChart: Real T3000 data source detected:', {
       totalInputItems: monitorConfigData.inputItems.length,
-      hasRanges: monitorConfigData.ranges && monitorConfigData.ranges.length > 0,
-      monitorId: monitorConfigData.id,
-      dataType: 'REAL_T3000_DATA'
-    })
-    LogUtil.Info('📊 TrendLogModal: Monitor config details:', {
-      id: monitorConfigData.id,
-      inputItemsCount: monitorConfigData.inputItems.length,
-      rangesCount: monitorConfigData.ranges.length,
-      dataInterval: monitorConfigData.dataIntervalMs
+      monitorId: monitorConfigData.id
     })
 
     try {
-      // Test the real data fetching system
-
-
       // Immediately indicate we're loading real data
       isLoading.value = true
 
+      console.log('= TLChart DataFlow: Fetching real-time monitor data via T3000_Data message')
       const realTimeData = await fetchRealTimeMonitorData()
 
       if (realTimeData && realTimeData.length > 0) {
-
-
-        // Log sample data for first few series
-        realTimeData.slice(0, 3).forEach((seriesData, index) => {
-          LogUtil.Info(`📈 TrendLogModal: Series ${index} sample data:`, {
-            dataPointsCount: seriesData.length,
-            firstPoint: seriesData[0],
-            lastPoint: seriesData[seriesData.length - 1]
-          })
+        console.log('= TLChart DataFlow: Real-time data received:', {
+          seriesCount: realTimeData.length,
+          dataType: 'REAL_T3000_DATA'
         })
 
         await initializeRealDataSeries()
@@ -2785,11 +2948,7 @@ const initializeData = async () => {
 
         // Confirm realtime data source
         dataSource.value = 'realtime'
-        LogUtil.Info('✅ TrendLogChart: Real-time data initialization completed', {
-          dataSource: dataSource.value,
-          timeBase: timeBase.value,
-          seriesCount: dataSeries.value.length
-        })
+        LogUtil.Info('= TLChart: Real-time data initialization completed for 14 panel items')
 
         // Update chart immediately to show data without delay
         updateChart()
@@ -2801,7 +2960,7 @@ const initializeData = async () => {
 
         return
       } else {
-        LogUtil.Warn('⚠️ TrendLogChart: No real-time data available - Setting fallback source')
+        LogUtil.Warn('= TLChart: No real-time data available - using fallback')
         dataSource.value = 'fallback'
         // Clear all data when entering fallback mode
         dataSeries.value = []
@@ -2810,7 +2969,7 @@ const initializeData = async () => {
         startFallbackRecovery()
       }
     } catch (error) {
-      LogUtil.Error('❌ TrendLogModal: Failed to initialize real data series:', error)
+      LogUtil.Error('= TLChart: Failed to initialize real data series:', error)
       dataSource.value = 'fallback'
       // Clear all data when entering fallback mode
       dataSeries.value = []
@@ -2914,59 +3073,59 @@ const addRealtimeDataPoint = async () => {
       dataSeries.value.forEach((series, index) => {
         if (series.isEmpty || !realTimeData[index]) return
 
-          // Get the latest real data point
-          const latestData = realTimeData[index]
-          if (latestData && latestData.length > 0) {
-            const latestPoint = latestData[latestData.length - 1]
-            const newPoint = {
-              timestamp: timestamp,
-              value: latestPoint.value
-            }
+        // Get the latest real data point
+        const latestData = realTimeData[index]
+        if (latestData && latestData.length > 0) {
+          const latestPoint = latestData[latestData.length - 1]
+          const newPoint = {
+            timestamp: timestamp,
+            value: latestPoint.value
+          }
 
-            series.data.push(newPoint)
+          series.data.push(newPoint)
 
-            // Update series unit from the matching device data if not already set
-            if (!series.unit) {
-              try {
-                // Get the monitor config to find the input item for this series
-                const monitorConfigData = monitorConfig.value
-                if (monitorConfigData?.inputItems?.[index]) {
-                  const inputItem = monitorConfigData.inputItems[index]
+          // Update series unit from the matching device data if not already set
+          if (!series.unit) {
+            try {
+              // Get the monitor config to find the input item for this series
+              const monitorConfigData = monitorConfig.value
+              if (monitorConfigData?.inputItems?.[index]) {
+                const inputItem = monitorConfigData.inputItems[index]
 
-                  // Get panels data for device lookup
-                  const panelsData = T3000_Data.value.panelsData || []
-                  const currentPanelId = T3000_Data.value.panelsList?.[0]?.panel_number || 1
-                  const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
+                // Get panels data for device lookup
+                const panelsData = T3000_Data.value.panelsData || []
+                const currentPanelId = T3000_Data.value.panelsList?.[0]?.panel_number || 1
+                const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
-                  // Find matching device
-                  const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
-                  if (matchingDevice?.range !== undefined) {
-                    if (series.unitType === 'digital') {
-                      series.unit = '' // Digital units don't show symbols, just state names
-                    } else {
-                      // For analog, use the actual device range (T3000 unit code)
-                      series.unit = getAnalogUnit(matchingDevice.range) || ''
-                    }
-
-                    LogUtil.Info(`🔧 TrendLogChart: Updated series unit from device data`, {
-                      seriesName: series.name,
-                      unit: series.unit,
-                      deviceRange: matchingDevice.range,
-                      unitType: series.unitType
-                    })
+                // Find matching device
+                const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
+                if (matchingDevice?.range !== undefined) {
+                  if (series.unitType === 'digital') {
+                    series.unit = '' // Digital units don't show symbols, just state names
+                  } else {
+                    // For analog, use the actual device range (T3000 unit code)
+                    series.unit = getAnalogUnit(matchingDevice.range) || ''
                   }
-                }
-              } catch (error) {
-                LogUtil.Error('Failed to determine series unit from device data:', error)
-              }
-            }
 
-            LogUtil.Info(`📈 TrendLogChart: Added real-time point to series ${index}`, {
-              seriesName: series.name,
-              newValue: newPoint.value,
-              seriesDataLength: series.data.length,
-              seriesUnit: series.unit
-            })          // Prepare data for database save
+                  LogUtil.Info(`🔧 TrendLogChart: Updated series unit from device data`, {
+                    seriesName: series.name,
+                    unit: series.unit,
+                    deviceRange: matchingDevice.range,
+                    unitType: series.unitType
+                  })
+                }
+              }
+            } catch (error) {
+              LogUtil.Error('Failed to determine series unit from device data:', error)
+            }
+          }
+
+          LogUtil.Info(`📈 TrendLogChart: Added real-time point to series ${index}`, {
+            seriesName: series.name,
+            newValue: newPoint.value,
+            seriesDataLength: series.data.length,
+            seriesUnit: series.unit
+          })          // Prepare data for database save
           // Get the actual point type info for consistent categorization
           const actualPointType = series.pointType || 3 // Default to VAR if not available
           const pointTypeInfo = getPointTypeInfo(actualPointType)
@@ -3034,7 +3193,7 @@ const addRealtimeDataPoint = async () => {
         }
       }
 
-      LogUtil.Info('✅ TrendLogChart: Real-time data points processing completed')
+      LogUtil.Info('�?TrendLogChart: Real-time data points processing completed')
       // Update sync time only when real data is successfully processed
       lastSyncTime.value = new Date().toLocaleTimeString()
 
@@ -3135,7 +3294,7 @@ const generateDemoDataPoints = async () => {
       const demoData = generateMockData(index, timeRangeMinutes)
       series.data = demoData
 
-      LogUtil.Info(`✅ Generated ${demoData.length} demo data points for ${series.name}`)
+      LogUtil.Info(`�?Generated ${demoData.length} demo data points for ${series.name}`)
     }
   })
 }
@@ -3143,29 +3302,23 @@ const generateDemoDataPoints = async () => {
 const createChart = () => {
   const isStandalone = !(window as any).chrome?.webview;
 
-  console.log('[TrendLogChart] createChart - Browser environment:', {
-    isStandaloneBrowser: isStandalone,
-    userAgent: navigator.userAgent,
-    hasCanvasRef: !!chartCanvas.value,
-    canvasWidth: chartCanvas.value?.offsetWidth || 0,
-    canvasHeight: chartCanvas.value?.offsetHeight || 0
-  });
+  console.log('= TLChart DataFlow: Creating chart in browser environment')
 
   if (!chartCanvas.value) {
-    console.error('[TrendLogChart] createChart - Canvas ref not available');
+    console.error('= TLChart createChart - Canvas ref not available');
     return;
   }
 
   // Check if canvas has proper dimensions (important for standalone browsers)
   if (chartCanvas.value.offsetWidth === 0 || chartCanvas.value.offsetHeight === 0) {
-    console.warn('[TrendLogChart] createChart - Canvas has zero dimensions, delaying creation');
+    console.warn('= TLChart createChart - Canvas has zero dimensions, delaying creation');
     setTimeout(() => createChart(), 100);
     return;
   }
 
   const ctx = chartCanvas.value.getContext('2d');
   if (!ctx) {
-    console.error('[TrendLogChart] createChart - Failed to get 2D context');
+    console.error('= TLChart createChart - Failed to get 2D context');
     return;
   }
 
@@ -3177,6 +3330,9 @@ const createChart = () => {
 
     const config = getChartConfig();
 
+    // Register the section divider plugin
+    Chart.register(sectionDividerPlugin);
+
     // Force responsive behavior for standalone browsers
     if (isStandalone && config.options) {
       config.options.responsive = true;
@@ -3186,13 +3342,10 @@ const createChart = () => {
 
     chartInstance = new Chart(ctx, config);
 
-    console.log('[TrendLogChart] createChart - Chart created successfully:', {
-      hasInstance: !!chartInstance,
-      datasetsCount: chartInstance.data.datasets.length
-    });
+    console.log('= TLChart DataFlow: Chart created successfully with panel data');
 
   } catch (error) {
-    console.error('[TrendLogChart] createChart - Error:', {
+    console.error('= TLChart createChart - Error:', {
       error: error.message,
       isStandalone,
       canvasInfo: {
@@ -3483,15 +3636,7 @@ const setView = (viewNumber: number) => {
 
 // Event handlers
 const onTimeBaseChange = async () => {
-  console.log('🕒 [TrendLogChart] onTimeBaseChange - Timebase Change Analysis')
-  console.log('─'.repeat(60))
-  console.log('📋 Timebase Change Details:', {
-    newTimeBase: timeBase.value,
-    previousTimeOffset: timeOffset.value,
-    isCustomTimebase: timeBase.value === 'custom',
-    needsApiData: timeBase.value !== '5m' && timeBase.value !== 'custom',
-    currentDataSource: dataSource?.value || 'unknown'
-  })
+  console.log('= TLChart DataFlow: Timebase changed to:', timeBase.value)
 
   if (timeBase.value !== 'custom') {
     // Reset time offset when timebase changes
@@ -3499,60 +3644,52 @@ const onTimeBaseChange = async () => {
 
     // Check if timebase is NOT 5 minutes - need to get data from API/database
     if (timeBase.value !== '5m') {
-      console.log('🌐 [TrendLogChart] Non-5m timebase detected - Fetching historical data from API')
+      console.log('= TLChart DataFlow: Non-5m timebase - fetching historical data from API')
 
       // Calculate time range based on selected timebase
       const timeRanges = calculateTimeRangeForTimebase(timeBase.value)
-      console.log('📅 [TrendLogChart] Calculated time range:', {
+      console.log('= TLChart DataFlow: Time range calculated:', {
         timeBase: timeBase.value,
-        startTime: timeRanges.startTime,
-        endTime: timeRanges.endTime,
-        durationMinutes: timeRanges.durationMinutes,
-        expectedDataPoints: timeRanges.expectedDataPoints
+        duration: timeRanges.durationMinutes + ' minutes'
       })
 
       // Try to get device parameters from current data
       const deviceParams = extractDeviceParameters()
-      console.log('🔍 [TrendLogChart] Device parameters:', deviceParams)
+      console.log('= TLChart DataFlow: Device parameters extracted for API request:', {
+        hasSN: !!deviceParams.sn,
+        hasPanelId: deviceParams.panel_id !== null,
+        hasTrendlogId: deviceParams.trendlog_id !== null
+      })
 
       if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-        console.log('✅ [TrendLogChart] Valid device parameters - Making API request')
+        console.log('= TLChart DataFlow: Valid device parameters - making API request for 14 panel items')
         await fetchHistoricalDataForTimebase(deviceParams, timeRanges)
       } else {
-        console.log('❌ [TrendLogChart] Missing device parameters - Cannot fetch API data:', {
-          hasSN: !!deviceParams.sn,
-          hasPanelId: deviceParams.panel_id !== null,
-          hasTrendlogId: deviceParams.trendlog_id !== null
-        })
-        // Fall back to standard initialization
+        console.log('= TLChart DataFlow: Missing device parameters - using fallback initialization')
         await initializeData()
       }
     } else {
-      console.log('🔄 [TrendLogChart] 5m timebase - Using standard real-time data initialization')
+      console.log('= TLChart DataFlow: 5m timebase - using real-time data initialization')
       await initializeData()
     }
   }
-
-  console.log('─'.repeat(60))
 }
 
 const onCustomDateChange = async () => {
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
-    console.log('📅 [TrendLogChart] onCustomDateChange - Custom Date Range API Request')
-    console.log('─'.repeat(60))
+    console.log('= TLChart DataFlow: Custom date range selected - fetching historical data')
 
     // Extract device parameters
     const deviceParams = extractDeviceParameters()
+    const durationHours = Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60 * 60))
 
-    console.log('📋 Custom Date Range Details:', {
-      startDate: customStartDate.value.toISOString(),
-      endDate: customEndDate.value.toISOString(),
-      durationHours: Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60 * 60)),
-      deviceParams: deviceParams
+    console.log('= TLChart DataFlow: Custom range details:', {
+      durationHours: durationHours,
+      hasValidParams: !!(deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null)
     })
 
     if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-      console.log('🌐 [TrendLogChart] Custom date range - Fetching historical data from API')
+      console.log('= TLChart DataFlow: Making API request for custom date range')
 
       // Create time range object for custom dates
       const customTimeRanges = {
@@ -3565,8 +3702,7 @@ const onCustomDateChange = async () => {
 
       await fetchHistoricalDataForTimebase(deviceParams, customTimeRanges)
     } else {
-      console.log('❌ [TrendLogChart] Missing device parameters for custom date range - Using standard initialization')
-      // Generate data for custom date range
+      console.log('= TLChart DataFlow: Missing device parameters - using standard initialization')
       await initializeData()
     }
 
@@ -3575,8 +3711,6 @@ const onCustomDateChange = async () => {
       chartInstance.destroy()
       createChart()
     }
-
-    console.log('─'.repeat(60))
   }
 }
 
@@ -3754,7 +3888,7 @@ const startRealTimeUpdates = () => {
   }
 
   // Track when timer starts
-  LogUtil.Info(`⏰ TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
+  LogUtil.Info(`�?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
 
   realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
 }
@@ -3783,7 +3917,7 @@ const startFallbackRecovery = () => {
           const realTimeData = await fetchRealTimeMonitorData()
 
           if (realTimeData && realTimeData.length > 0) {
-            LogUtil.Info('✅ TrendLogChart: Fallback recovery successful - real data is now available')
+            LogUtil.Info('�?TrendLogChart: Fallback recovery successful - real data is now available')
             dataSource.value = 'realtime'
 
             // Reinitialize data series with real data
@@ -3794,7 +3928,7 @@ const startFallbackRecovery = () => {
             stopFallbackRecovery()
           }
         } catch (error) {
-          LogUtil.Info('⏳ TrendLogChart: Fallback recovery attempt failed, will retry in 10 seconds')
+          LogUtil.Info('�?TrendLogChart: Fallback recovery attempt failed, will retry in 10 seconds')
         }
       }
     } else {
@@ -3968,22 +4102,9 @@ const extractDeviceParameters = () => {
     panel_id = T3000_Data.value.panelsList[0].panel_number
   }
 
-  console.log('🔍 [TrendLogChart] Device parameter extraction results:', {
-    method1_url: {
-      sn: route.query.sn ? parseInt(route.query.sn as string) : null,
-      panel_id: route.query.panel_id ? parseInt(route.query.panel_id as string) : null,
-      trendlog_id: route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
-    },
-    method2_props: {
-      pid: props.itemData?.t3Entry?.pid,
-      t3Entry_id: props.itemData?.t3Entry?.id
-    },
-    method3_t3000Data: {
-      panelsListLength: T3000_Data.value.panelsList?.length || 0,
-      firstPanelSN: T3000_Data.value.panelsList?.[0]?.serial_number,
-      firstPanelNumber: T3000_Data.value.panelsList?.[0]?.panel_number
-    },
-    finalResult: { sn, panel_id, trendlog_id }
+  console.log('= TLChart DataFlow: Device parameter extraction for API request:', {
+    methods_used: ['URL params', 'props.itemData', 'T3000_Data'],
+    final_result: { sn, panel_id, trendlog_id }
   })
 
   return { sn, panel_id, trendlog_id }
@@ -3991,7 +4112,7 @@ const extractDeviceParameters = () => {
 
 /**
  * Extract specific point information from current data series
- * This is used to tell the API exactly which points we need historical data for
+ * This determines which of the 14 panel items we need to fetch values for
  */
 const extractSpecificPoints = () => {
   const points: Array<{
@@ -4002,9 +4123,11 @@ const extractSpecificPoints = () => {
   }> = []
 
   if (!dataSeries.value || dataSeries.value.length === 0) {
-    console.log('⚠️ [TrendLogChart] No data series available for point extraction')
+    console.log('= TLChart DataFlow: No data series available for 14-item point extraction')
     return points
   }
+
+  console.log('= TLChart DataFlow: Extracting 14 panel items from series data')
 
   // Extract points from current series configuration
   dataSeries.value.forEach((series, index) => {
@@ -4044,19 +4167,14 @@ const extractSpecificPoints = () => {
       // Generate point_id in database-compatible format
       let pointId: string
       if (pointType === 'INPUT') {
-        // Convert from 0-based index to 1-based database format: "IN1", "IN2", etc.
         pointId = `IN${pointIndex + 1}`
       } else if (pointType === 'OUTPUT') {
-        // Convert from 0-based index to 1-based database format: "OUT1", "OUT2", etc.
         pointId = `OUT${pointIndex + 1}`
       } else if (pointType === 'VARIABLE') {
-        // Convert from 0-based index to 1-based database format: "VAR1", "VAR2", etc.
         pointId = `VAR${pointIndex + 1}`
       } else if (pointType === 'MONITOR') {
-        // Keep monitor format for now, may need adjustment
         pointId = `HOL${pointIndex + 1}`
       } else {
-        // Default fallback
         pointId = `VAR${pointIndex + 1}`
       }
 
@@ -4067,18 +4185,15 @@ const extractSpecificPoints = () => {
         panel_id: panelId
       })
 
-      console.log(`📍 [TrendLogChart] Extracted point ${index + 1}:`, {
-        seriesName: series.name,
+      console.log('= TLChart DataFlow: Extracted panel item:', {
+        itemNumber: index + 1,
         itemType: itemType,
         pointId: pointId, // Database-compatible format like "IN1", "OUT2", "VAR3"
-        pointType: pointType,
-        pointIndex: pointIndex,
-        panelId: panelId,
-        conversion: `${itemType} → ${pointId}` // Show format conversion
+        pointType: pointType
       })
 
     } catch (error) {
-      console.warn(`⚠️ [TrendLogChart] Failed to extract point info for series ${index}:`, error)
+      console.warn('= TLChart DataFlow: Failed to extract point info for item', index, ':', error)
       // Add fallback point with database-compatible format
       const deviceParams = extractDeviceParameters()
       points.push({
@@ -4090,10 +4205,9 @@ const extractSpecificPoints = () => {
     }
   })
 
-  console.log('✅ [TrendLogChart] Point extraction completed:', {
-    totalPoints: points.length,
-    pointFormats: points.map(p => p.point_id), // Show database-compatible formats like "IN1", "OUT2", "VAR3"
-    conversionInfo: 'Frontend formats converted to database-compatible point_ids'
+  console.log('= TLChart DataFlow: 14 panel items extraction completed:', {
+    totalItems: points.length,
+    itemFormats: points.map(p => p.point_id)
   })
 
   return points
@@ -4101,8 +4215,7 @@ const extractSpecificPoints = () => {
 
 const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any) => {
   try {
-    console.log('📡 [TrendLogChart] fetchHistoricalDataForTimebase - Starting API request to port 9103')
-    console.log('─'.repeat(50))
+    console.log('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
 
     isLoading.value = true
     dataSource.value = 'api'
@@ -4124,41 +4237,28 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
       specific_points: specificPoints // NEW: Pass specific points to filter
     }
 
-    console.log('📤 [TrendLogChart] API Request Details (Port 9103):', {
-      endpoint: `localhost:9103/api/t3_device/devices/${deviceParams.sn}/trendlogs/${deviceParams.trendlog_id}/history`,
-      ...historyRequest,
-      timeRange: `${timeRanges.timebaseLabel} (${timeRanges.durationMinutes} minutes)`,
-      expectedPoints: timeRanges.expectedDataPoints,
-      specificPointsCount: specificPoints.length,
-      specificPointsSummary: specificPoints.map(p => `${p.point_type}_P${p.panel_id}_${p.point_index}`),
-      requestSize: JSON.stringify(historyRequest).length + ' bytes'
+    console.log('= TLChart DataFlow: API request details:', {
+      device: `SN:${deviceParams.sn}, Panel:${deviceParams.panel_id}, TrendLog:${deviceParams.trendlog_id}`,
+      pointsRequested: specificPoints.length,
+      timeRange: `${timeRanges.durationMinutes} minutes`
     })
 
     const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
 
-    console.log('📥 [TrendLogChart] API Response Analysis (Port 9103):', {
-      hasResponse: !!historyResponse,
-      hasData: !!(historyResponse?.data),
-      dataCount: historyResponse?.data?.length || 0,
-      trendlogId: historyResponse?.trendlog_id,
-      panelId: historyResponse?.panel_id,
-      message: historyResponse?.message,
-      hasError: !!trendlogAPI.error.value,
-      errorMessage: trendlogAPI.error.value
+    console.log('= TLChart DataFlow: API response received:', {
+      hasData: !!(historyResponse?.data && historyResponse.data.length > 0),
+      dataPointsCount: historyResponse?.data?.length || 0
     })
 
     if (historyResponse && historyResponse.data && historyResponse.data.length > 0) {
-      // Convert API data to chart format
-      console.log('🔄 [TrendLogChart] Converting API data to chart format...')
+      console.log('= TLChart DataFlow: Converting API data to chart format for 14 panel items')
 
       // Process the historical data into series format
       const historicalSeries = convertApiDataToSeries(historyResponse.data, timeRanges)
 
-      console.log('✅ [TrendLogChart] API data conversion completed:', {
+      console.log('= TLChart DataFlow: Chart conversion completed:', {
         seriesCount: historicalSeries.length,
-        totalDataPoints: historicalSeries.reduce((sum, series) => sum + series.data.length, 0),
-        seriesNames: historicalSeries.map(s => s.name),
-        timeRange: `${timeRanges.startTime} to ${timeRanges.endTime}`
+        totalDataPoints: historicalSeries.reduce((sum, series) => sum + series.data.length, 0)
       })
 
       // Update the data series with historical data
@@ -4171,7 +4271,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
       lastSyncTime.value = dayjs().format('HH:mm:ss')
 
     } else {
-      console.log('⚠️ [TrendLogChart] No historical data available - Using fallback')
+      console.log('= TLChart DataFlow: No historical data available - using fallback')
       dataSource.value = 'fallback'
       // Clear all data when entering fallback mode
       dataSeries.value = []
@@ -4181,7 +4281,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
     }
 
   } catch (error) {
-    console.error('❌ [TrendLogChart] fetchHistoricalDataForTimebase error:', error)
+    console.error('= TLChart DataFlow: API request failed:', error instanceof Error ? error.message : error)
     dataSource.value = 'fallback'
     // Clear all data when entering fallback mode
     dataSeries.value = []
@@ -4189,7 +4289,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
     // Show error notification
     notification.error({
       message: 'Historical Data Error',
-      description: `Failed to load ${timeRanges.timebaseLabel} historical data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      description: `Failed to load historical data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       duration: 4.5
     })
 
@@ -4197,19 +4297,17 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
     await initializeData()
   } finally {
     isLoading.value = false
-    console.log('─'.repeat(50))
   }
 }
 
 const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
-  console.log('🔄 [TrendLogChart] convertApiDataToSeries - Processing API data into chart series')
+  console.log('= TLChart DataFlow: Converting API data to chart series format')
 
   // Store original series for name preservation and MAINTAIN ORIGINAL SEQUENCE
   const originalSeries = dataSeries.value || []
-  console.log('💾 [TrendLogChart] Preserving original series order and names:', {
+  console.log('= TLChart DataFlow: Preserving original 14-item series order:', {
     originalSeriesCount: originalSeries.length,
-    originalNames: originalSeries.map(s => s.name),
-    originalSequence: originalSeries.map((s, i) => `${i}: ${s.name}`)
+    preservingSequence: originalSeries.length > 0
   })
 
   // Group data points by point_id and point_type
@@ -4223,14 +4321,9 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
     groupedData.get(key)!.push(point)
   })
 
-  console.log('📊 [TrendLogChart] Data grouping results:', {
+  console.log('= TLChart DataFlow: Grouping API data by point types:', {
     totalApiPoints: apiData.length,
-    uniqueSeries: groupedData.size,
-    seriesKeys: Array.from(groupedData.keys()),
-    sampleSizes: Array.from(groupedData.entries()).slice(0, 5).map(([key, points]) => ({
-      seriesKey: key,
-      pointCount: points.length
-    }))
+    uniqueSeries: groupedData.size
   })
 
   // MAINTAIN ORIGINAL SEQUENCE: Create series in the same order as original
@@ -4270,8 +4363,8 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
       // Strategy 3: Match by prefix and sequence (e.g., INPUT series 0 matches IN1)
       if (originalSeries.prefix === apiPointType) {
         const expectedPointId = `${apiPointType === 'INPUT' ? 'IN' :
-                                  apiPointType === 'OUTPUT' ? 'OUT' :
-                                  apiPointType === 'VARIABLE' ? 'VAR' : 'UNK'}${index + 1}`
+          apiPointType === 'OUTPUT' ? 'OUT' :
+            apiPointType === 'VARIABLE' ? 'VAR' : 'UNK'}${index + 1}`
         if (apiPointId === expectedPointId) {
           matchingApiData = apiPoints
           matchedKey = apiKey
@@ -4311,10 +4404,9 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
 
       series.push(seriesConfig)
 
-      console.log('✅ [TrendLogChart] Series matched and preserved:', {
-        index,
-        originalName: originalSeries.name,
-        apiKey: matchedKey,
+      console.log('= TLChart DataFlow: Matched panel item to API data:', {
+        itemIndex: index,
+        name: originalSeries.name,
         dataPoints: chartData.length
       })
     } else {
@@ -4336,20 +4428,17 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
 
       series.push(emptySeries)
 
-      console.log('⚠️ [TrendLogChart] No API data found for series:', {
-        index,
-        originalName: originalSeries.name,
-        createdEmpty: true
+      console.log('= TLChart DataFlow: No API data found for panel item:', {
+        itemIndex: index,
+        name: originalSeries.name
       })
     }
   })
 
-  console.log('✅ [TrendLogChart] Series conversion completed with sequence preservation:', {
-    seriesCount: series.length,
-    totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
-    sequencePreserved: true,
-    seriesNamesInOrder: series.map((s, i) => `${i}: ${s.name}`),
-    emptySeriesCount: series.filter(s => s.isEmpty).length
+  console.log('= TLChart DataFlow: 14 panel items series conversion completed:', {
+    totalItems: series.length,
+    itemsWithData: series.filter(s => !s.isEmpty).length,
+    totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0)
   })
 
   return series
@@ -4357,7 +4446,7 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
 
 // Utility functions
 const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
-  if (data.length ===  0) return 'N/A'
+  if (data.length === 0) return 'N/A'
 
   const lastValue = data[data.length - 1].value
 
@@ -4601,8 +4690,9 @@ const diagnosticReport = () => {
     panelsListLength: T3000_Data.value.panelsList?.length || 0
   }
 
-  LogUtil.Info('🔍 DIAGNOSTIC REPORT - TrendLogChart State:', report)
-  console.log('🔍 DIAGNOSTIC REPORT - TrendLogChart State:', report)
+  // Removed diagnostic report - kept essential data flow tracking only
+  // LogUtil.Info('= TLChart DataFlow: Component state diagnostic available if needed')
+  // console.log('= TLChart DataFlow: Component state diagnostic available if needed')
   return report
 }
 
@@ -4610,7 +4700,7 @@ const diagnosticReport = () => {
 
 // Lifecycle
 onMounted(async () => {
-  LogUtil.Info('🚀 TrendLogChart: Component mounted', {
+  LogUtil.Info('= TLChart: Component mounted', {
     hasPropsItemData: !!props.itemData,
     propsItemDataId: props.itemData?.t3Entry?.id,
     propsItemDataPid: props.itemData?.t3Entry?.pid,
@@ -4668,17 +4758,17 @@ onMounted(async () => {
         try {
           if (searchPanelId !== undefined && searchPanelId !== null) {
             const foundDevice = await t3000DataManager.getEntryByPid(deviceId, searchPanelId)
-            LogUtil.Info(`✅ TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
+            LogUtil.Info(`�?TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
               id: foundDevice.id,
               label: foundDevice.label,
               pid: foundDevice.pid,
               type: foundDevice.type
             })
           } else {
-            LogUtil.Warn(`❌ TEST 3.${i + 1} SKIPPED: No PID available for device search`)
+            LogUtil.Warn(`�?TEST 3.${i + 1} SKIPPED: No PID available for device search`)
           }
         } catch (error) {
-          LogUtil.Warn(`❌ TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
+          LogUtil.Warn(`�?TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
 
           // Fallback: Try to find device without PID filtering for comparison
           try {
@@ -4691,7 +4781,7 @@ onMounted(async () => {
               note: `Found with PID ${foundDeviceAnyPid.pid} instead of expected PID ${searchPanelId}`
             })
           } catch (fallbackError) {
-            LogUtil.Warn(`❌ TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
+            LogUtil.Warn(`�?TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
           }
         }
       }
@@ -4700,25 +4790,25 @@ onMounted(async () => {
       LogUtil.Info('🔍 TrendLogModal: TEST 4 - Data Client Initialization:')
       const dataClient = initializeDataClients()
       if (dataClient) {
-        LogUtil.Info('✅ TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
+        LogUtil.Info('�?TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
         LogUtil.Info('🔧 TrendLogModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
       } else {
-        LogUtil.Warn('❌ TEST 4 FAILED: No data client available')
+        LogUtil.Warn('�?TEST 4 FAILED: No data client available')
       }
 
       // Test 5: Value Processing
       LogUtil.Info('🔍 TrendLogModal: TEST 5 - Value Processing Test:')
       // Test digital value processing
       const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
-      LogUtil.Info('✅ TEST 5.1 Digital Value Processing:', testDigitalValue)
+      LogUtil.Info('�?TEST 5.1 Digital Value Processing:', testDigitalValue)
 
       // Test analog value processing
       const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
-      LogUtil.Info('✅ TEST 5.2 Analog Value Processing:', testAnalogValue)
+      LogUtil.Info('�?TEST 5.2 Analog Value Processing:', testAnalogValue)
 
       LogUtil.Info('🏁 TrendLogModal: === ENHANCED T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
     } else {
-      LogUtil.Warn('❌ TEST 2 FAILED: No Monitor Configuration Found')
+      LogUtil.Warn('�?TEST 2 FAILED: No Monitor Configuration Found')
       LogUtil.Info('🔍 TrendLogModal: Debugging info:')
       LogUtil.Info('📊 TrendLogModal: currentItemData.t3Entry:', (currentItemData.value as any)?.t3Entry)
 
@@ -4727,12 +4817,12 @@ onMounted(async () => {
         const validation = await t3000DataManager.validateData()
         LogUtil.Info('📊 TrendLogModal: Data validation details:', validation)
       } catch (validationError) {
-        LogUtil.Error('❌ TrendLogModal: Data validation failed:', validationError)
+        LogUtil.Error('�?TrendLogModal: Data validation failed:', validationError)
       }
     }
 
   } catch (error) {
-    LogUtil.Error('❌ TrendLogModal: Enhanced data integration test failed:', error)
+    LogUtil.Error('�?TrendLogModal: Enhanced data integration test failed:', error)
   }
 
   // Apply default view configuration to ensure settings are properly initialized
@@ -4742,32 +4832,24 @@ onMounted(async () => {
   nextTick(async () => {
     const isStandalone = !(window as any).chrome?.webview;
 
-    console.log('[TrendLogChart] onMounted - Initializing chart:', {
-      isStandaloneBrowser: isStandalone,
-      documentReadyState: document.readyState,
-      canvasReady: !!chartCanvas.value
-    });
+    console.log('= TLChart DataFlow: Initializing chart component')
 
     // Add extra delay for standalone browsers to ensure proper DOM layout
-    if (isStandalone) {
-      console.log('[TrendLogChart] onMounted - Adding delay for standalone browser');
+    if (!(window as any).chrome?.webview) {
+      console.log('= TLChart DataFlow: Adding delay for standalone browser');
       await new Promise(resolve => setTimeout(resolve, 150));
     }
 
     // Verify canvas is ready with proper dimensions
     if (chartCanvas.value) {
-      const canvasInfo = {
-        offsetWidth: chartCanvas.value.offsetWidth,
-        offsetHeight: chartCanvas.value.offsetHeight,
-        parentVisible: chartCanvas.value.parentElement?.offsetWidth > 0
-      };
+      const canvasReady = chartCanvas.value.offsetWidth > 0 && chartCanvas.value.offsetHeight > 0
 
-      console.log('[TrendLogChart] onMounted - Canvas readiness check:', canvasInfo);
+      console.log('= TLChart DataFlow: Canvas readiness check:', { ready: canvasReady })
 
       // If canvas still has no dimensions, wait longer for layout
-      if (canvasInfo.offsetWidth === 0 || canvasInfo.offsetHeight === 0) {
-        console.log('[TrendLogChart] onMounted - Canvas not ready, waiting for layout...');
-        await new Promise(resolve => setTimeout(resolve, 300));
+      if (!canvasReady) {
+        console.log('= TLChart DataFlow: Canvas not ready, waiting for layout...')
+        await new Promise(resolve => setTimeout(resolve, 300))
       }
     }
 
@@ -4884,8 +4966,10 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px; /* Add space between title and badge */
-  flex-wrap: nowrap; /* Prevent wrapping */
+  gap: 8px;
+  /* Add space between title and badge */
+  flex-wrap: nowrap;
+  /* Prevent wrapping */
 }
 
 .header-line-1 h7 {
@@ -4893,29 +4977,37 @@ onUnmounted(() => {
   color: #262626;
   font-size: 13px;
   font-weight: 600;
-  flex: 1; /* Allow title to take available space */
-  min-width: 0; /* Allow text truncation if needed */
-  white-space: nowrap; /* Prevent text wrapping */
+  flex: 1;
+  /* Allow title to take available space */
+  min-width: 0;
+  /* Allow text truncation if needed */
+  white-space: nowrap;
+  /* Prevent text wrapping */
   overflow: hidden;
-  text-overflow: ellipsis; /* Add ellipsis for very long titles */
+  text-overflow: ellipsis;
+  /* Add ellipsis for very long titles */
 }
 
 /* Data Source Indicator */
 .data-source-indicator {
   display: flex;
   align-items: center;
-  flex-shrink: 0; /* Prevent badge from shrinking */
+  flex-shrink: 0;
+  /* Prevent badge from shrinking */
 }
 
 .source-badge {
   display: inline-block;
-  padding: 2px 6px; /* Slightly more compact padding */
+  padding: 2px 6px;
+  /* Slightly more compact padding */
   border-radius: 10px;
-  font-size: 9px; /* Slightly smaller font */
+  font-size: 9px;
+  /* Slightly smaller font */
   font-weight: 500;
   color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  white-space: nowrap; /* Prevent badge text from wrapping */
+  white-space: nowrap;
+  /* Prevent badge text from wrapping */
 }
 
 .source-badge.realtime {
@@ -4934,7 +5026,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between; /* Changed from flex-start to space-between */
+  justify-content: space-between;
+  /* Changed from flex-start to space-between */
   width: 100%;
   gap: 8px;
   margin-top: 2px;
@@ -4943,7 +5036,8 @@ onUnmounted(() => {
 .left-controls {
   display: flex;
   align-items: center;
-  gap: 8px; /* Space between the dropdown buttons */
+  gap: 8px;
+  /* Space between the dropdown buttons */
 }
 
 .control-group {
@@ -5791,6 +5885,7 @@ onUnmounted(() => {
 
 /* Mobile responsive layout - Control Group Optimized */
 @media (max-width: 768px) {
+
   /* Top controls - Individual control group wrapping */
   .top-controls-bar {
     padding: 3px !important;
@@ -5998,7 +6093,7 @@ onUnmounted(() => {
   font-size: 11px !important;
 }
 
-.custom-date-modal .ant-picker-input > input {
+.custom-date-modal .ant-picker-input>input {
   font-size: 11px !important;
   padding: 2px 8px !important;
 }
@@ -6050,7 +6145,7 @@ onUnmounted(() => {
   font-size: 12px !important;
 }
 
-.ant-modal-content{
+.ant-modal-content {
   padding: 10px 14px !important;
 }
 </style>
