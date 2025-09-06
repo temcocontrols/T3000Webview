@@ -78,7 +78,7 @@ class WebViewClient {
 
     // Get response action details for consistent logging
     const actionDetails = this.getActionDetails(data?.action);
-    LogUtil.Debug(`= Wv2 Received message from T3, action= ${actionDetails.name} | ${data?.action}, message=`, data);
+    LogUtil.Debug(`= Wv2 Received message from T3, action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
 
     try {
       this.processMessageData(data);
@@ -425,6 +425,7 @@ class WebViewClient {
         //   panelId: T3000_Data.value.panelsList[index].panel_number,
         // });
 
+        console.log("= Wv2 HandleGetPanelDataRes / requesting next panel data:", T3000_Data.value.panelsList[index].panel_number);
         this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
       }
 
@@ -565,6 +566,8 @@ class WebViewClient {
     // Update the global store
     T3000_Data.value.panelsList = msgData.data;
     T3000_Data.value.loadingPanel = 0;
+
+            console.log("= Wv2 HandleGetPanelsListRes / requesting next panel data:" );
 
     this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
