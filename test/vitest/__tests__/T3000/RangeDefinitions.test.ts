@@ -11,7 +11,7 @@ import {
   type DigitalRange,
   type AnalogRange,
   type RangeDefinitions
-} from '../../../../src/lib/T3000/Hvac/Data/Constants/RangeDefinitions';
+} from '../../../../src/lib/T3000/Hvac/Data/Constant/T3Range';
 
 describe('RangeDefinitions', () => {
   describe('Digital Ranges', () => {

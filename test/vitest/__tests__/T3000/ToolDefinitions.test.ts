@@ -13,7 +13,7 @@ import {
   getAllCategories,
   type Tool,
   type ToolCategory
-} from '../../../../src/lib/T3000/Hvac/Data/Constants/ToolDefinitions';
+} from '../../../../src/lib/T3000/Hvac/Data/Constant/ToolDefinitions';
 
 describe('ToolDefinitions', () => {
   describe('Tool Configuration', () => {
