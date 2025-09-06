@@ -354,15 +354,77 @@ class WebViewClient {
   public HandleGetPanelDataRes(msgData) {
     // action: 0, // GET_PANEL_DATA_RES
 
+    // load graphic list from GET_PANEL_DATA_RES
+    // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
+
+    /*
+    if (arg.data.action === "GET_PANEL_DATA_RES") {
+      // if (getPanelsInterval && arg.data?.panel_id) {
+      //   clearInterval(getPanelsInterval);
+      // }
+
+      if (arg.data?.panel_id) {
+        this.idxPage.clearGetPanelsInterval();
+      }
+
+      if (arg.data?.panel_id) {
+
+        const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+        if (check1) {
+          T3000_Data.value.loadingPanel++;
+          const index = T3000_Data.value.loadingPanel;
+          window.chrome?.webview?.postMessage({
+            action: 0, // GET_PANEL_DATA
+            panelId: T3000_Data.value.panelsList[index].panel_number,
+          });
+        }
+
+        const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+        if (check2) {
+          T3000_Data.value.loadingPanel = null;
+        }
+
+        T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+          (item) => item.pid !== arg.data.panel_id
+        );
+
+        T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+          arg.data.data
+        );
+
+        T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+        selectPanelOptions.value = T3000_Data.value.panelsData;
+
+        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+          (item) => item.pid !== arg.data.panel_id
+        );
+
+        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+
+        refreshLinkedEntries(arg.data.data);
+      }
+    }
+    */
+
+    // if (getPanelsInterval && arg.data?.panel_id) {
+    //   clearInterval(getPanelsInterval);
+    // }
+
     if (msgData?.panel_id) {
       this.idxPage.clearGetPanelsInterval();
     }
 
     if (msgData?.panel_id) {
+
       const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
       if (check1) {
         T3000_Data.value.loadingPanel++;
         const index = T3000_Data.value.loadingPanel;
+        // window.chrome?.webview?.postMessage({
+        //   action: 0, // GET_PANEL_DATA
+        //   panelId: T3000_Data.value.panelsList[index].panel_number,
+        // });
+
         this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
       }
 
@@ -385,6 +447,7 @@ class WebViewClient {
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== msgData.panel_id
       );
+
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
 
       this.idxUtils.refreshLinkedEntries(msgData.data);
@@ -484,9 +547,20 @@ class WebViewClient {
   public HandleGetPanelsListRes(msgData) {
     // action: 4, // GET_PANELS_LIST_RES
 
-    if (!msgData.data?.length) {
-      return;
+    /*
+    if (arg.data.action === "GET_PANELS_LIST_RES") {
+      if (arg.data.data?.length) {
+        T3000_Data.value.panelsList = arg.data.data;
+        T3000_Data.value.loadingPanel = 0;
+        window.chrome?.webview?.postMessage({
+          action: 0, // GET_PANEL_DATA
+          panelId: T3000_Data.value.panelsList[0].panel_number,
+        });
+      }
     }
+    */
+
+    if (!msgData.data?.length) return;
 
     // Update the global store
     T3000_Data.value.panelsList = msgData.data;
@@ -497,6 +571,46 @@ class WebViewClient {
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
+    // LogUtil.Debug('= Wv2: HandleGetEntriesRes START =================');
+    // LogUtil.Debug('= Wv2: HandleGetEntriesRes / received data length:', msgData.data?.length || 0);
+    // LogUtil.Debug('= Wv2: HandleGetEntriesRes / BEFORE - panelsData length:', T3000_Data.value.panelsData.length);
+
+    // Log sample of incoming data to see what's being updated
+    if (msgData.data && msgData.data.length > 0) {
+      // LogUtil.Debug('= Wv2: HandleGetEntriesRes / sample incoming data (first 3):',
+      //   msgData.data.slice(0, 3).map(item => ({
+      //     id: item.id,
+      //     pid: item.pid,
+      //     index: item.index,
+      //     type: item.type,
+      //     hasInputArray: Array.isArray(item.input),
+      //     hasRangeArray: Array.isArray(item.range),
+      //     inputLength: item.input?.length,
+      //     rangeLength: item.range?.length
+      //   }))
+      // );
+    }
+
+    /*
+    if (arg.data.action === "GET_ENTRIES_RES") {
+      arg.data.data.forEach((item) => {
+        const itemIndex = T3000_Data.value.panelsData.findIndex(
+          (ii) =>
+            ii.index === item.index &&
+            ii.type === item.type &&
+            ii.pid === item.pid
+        );
+        if (itemIndex !== -1) {
+          T3000_Data.value.panelsData[itemIndex] = item;
+        }
+      });
+
+      if (!linkT3EntryDialog.value.active) {
+        selectPanelOptions.value = T3000_Data.value.panelsData;
+      }
+      refreshLinkedEntries(arg.data.data);
+    }
+    */
 
     msgData.data.forEach((item, itemIdx) => {
       const itemIndex = T3000_Data.value.panelsData.findIndex(
@@ -509,6 +623,20 @@ class WebViewClient {
       if (itemIndex !== -1) {
         // Found existing item
         const existingItem = T3000_Data.value.panelsData[itemIndex];
+
+        // LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: REPLACING existing item at index ${itemIndex}:`, {
+        //   id: existingItem.id,
+        //   pid: existingItem.pid,
+        //   type: existingItem.type,
+        //   existingHasInput: Array.isArray(existingItem.input),
+        //   existingInputLength: existingItem.input?.length,
+        //   existingHasRange: Array.isArray(existingItem.range),
+        //   existingRangeLength: existingItem.range?.length,
+        //   newHasInput: Array.isArray(item.input),
+        //   newInputLength: item.input?.length,
+        //   newHasRange: Array.isArray(item.range),
+        //   newRangeLength: item.range?.length
+        // });
 
         // 🚨 CRITICAL CHECK: Prevent data corruption!
         // Don't replace detailed monitor configs with simplified versions
@@ -523,6 +651,7 @@ class WebViewClient {
         const potentialDataLoss = existingHasComplexData && newLacksComplexData;
 
         if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
+          // LogUtil.Warn(`🚨 DATA CORRUPTION PREVENTED! Attempted to replace detailed monitor config with simplified version:`, {
           //   id: item.id,
           //   pid: item.pid,
           //   existingDetails: {
@@ -547,6 +676,7 @@ class WebViewClient {
           const commonFields = existingKeys.filter(key => newKeys.includes(key));
           const fieldsToUpdate = commonFields.filter(key => !criticalFields.includes(key));
 
+          // LogUtil.Debug(`📊 HandleGetEntriesRes / Smart field comparison for ${item.id}:`, {
           //   existingKeys: existingKeys.length,
           //   newKeys: newKeys.length,
           //   commonFields: commonFields.length,
@@ -559,13 +689,16 @@ class WebViewClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
+              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' → '${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
+          // LogUtil.Info(`✅ HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
         } else if (potentialDataLoss) {
           // Handle other types of potential data loss (not just monitors)
+          // LogUtil.Warn(`⚠️ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
           //   id: item.id,
           //   pid: item.pid,
           //   type: item.type,
@@ -583,16 +716,20 @@ class WebViewClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
+              // LogUtil.Debug(`🔄 HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' → '${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
+          // LogUtil.Info(`✅ HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
         } else {
           // Safe to do full replacement
           T3000_Data.value.panelsData[itemIndex] = item;
+          // LogUtil.Debug(`✅ HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
+        // LogUtil.Debug(`= Wv2: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
         //   id: item.id,
         //   pid: item.pid,
         //   index: item.index,
@@ -607,6 +744,9 @@ class WebViewClient {
 
     this.idxUtils.refreshLinkedEntries(msgData.data);
     this.idxUtils.refreshLinkedEntries2(msgData.data);
+
+    // LogUtil.Debug('= Wv2: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
+    // LogUtil.Debug('= Wv2: HandleGetEntriesRes END ===================');
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
@@ -700,6 +840,7 @@ class WebViewClient {
 
   public HandleSaveNewLibraryDataRes(msgData) {
     // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
+    LogUtil.Debug('= Wv2 Handle SAVE_NEW_LIBRARY_DATA_RES:', msgData);
   }
 
   public HandleDeleteImageRes(msgData) {
