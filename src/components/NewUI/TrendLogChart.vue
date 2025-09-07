@@ -1104,78 +1104,7 @@ const generateDataSeries = (): SeriesConfig[] => {
   return result
 }
 
-const dataSeries = ref<SeriesConfig[]>([
-  // Test analog series - will appear in upper zone
-  {
-    name: 'Temperature Sensor',
-    color: '#FF6B35',
-    data: [],
-    visible: true,
-    unit: '°C',
-    isEmpty: false,
-    unitType: 'analog',
-    unitCode: 1,
-    digitalStates: null,
-    itemType: 'Test_Analog',
-    prefix: 'TEMP',
-    description: 'Temperature Sensor Test',
-    pointType: 1,
-    pointNumber: 1,
-    panelId: 1
-  },
-  {
-    name: 'Pressure Gauge',
-    color: '#F7931E',
-    data: [],
-    visible: true,
-    unit: 'PSI',
-    isEmpty: false,
-    unitType: 'analog',
-    unitCode: 1,
-    digitalStates: null,
-    itemType: 'Test_Analog_2',
-    prefix: 'PRESS',
-    description: 'Pressure Gauge Test',
-    pointType: 2,
-    pointNumber: 2,
-    panelId: 1
-  },
-  // Test digital series - will appear in lower zone
-  {
-    name: 'Fan Status',
-    color: '#06FFA5',
-    data: [],
-    visible: true,
-    unit: '',
-    isEmpty: false,
-    unitType: 'digital',
-    unitCode: 0,
-    digitalStates: ['Off', 'On'],
-    itemType: 'Test_Digital',
-    prefix: 'FAN',
-    description: 'Fan Status Test',
-    pointType: 1,
-    pointNumber: 1,
-    panelId: 1
-  },
-  {
-    name: 'Pump Control',
-    color: '#118AB2',
-    data: [],
-    visible: true,
-    unit: '',
-    isEmpty: false,
-    unitType: 'digital',
-    unitCode: 0,
-    digitalStates: ['Stopped', 'Running'],
-    itemType: 'Test_Digital_2',
-    prefix: 'PUMP',
-    description: 'Pump Control Test',
-    pointType: 2,
-    pointNumber: 2,
-    panelId: 1
-  }
-])
+const dataSeries = ref<SeriesConfig[]>([])
 
 // Regenerate data series when data source changes
 const regenerateDataSeries = () => {
@@ -2785,13 +2714,22 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
 
   if (dataClient && dataClient.GetEntries) {
     try {
-      dataClient.GetEntries(undefined, undefined, requestData)
-      LogUtil.Info('�?TrendLogChart: GetEntries request sent successfully', { requestData })
+      // CORRECT FORMAT: GetEntries(panelId?, viewitem?, data?)
+      // Examples from codebase:
+      // - IdxPage.ts: GetEntries(null, null, etries)
+      // - Your test: GetEntries(undefined, undefined, [testRequest])
+      dataClient.GetEntries(panelId, null, requestData)
+
+      LogUtil.Info('✅ TrendLogChart: GetEntries request sent with CORRECT format', {
+        panelId,
+        viewitem: null,
+        requestData
+      })
     } catch (error) {
-      LogUtil.Error('Error calling GetEntries:', error)
+      LogUtil.Error('❌ Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('GetEntries method not available on data client')
+    LogUtil.Error('❌ GetEntries method not available on data client')
   }
 }
 
@@ -2800,9 +2738,19 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
  */
 const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{ panelId: number, index: number, type: string }>): Promise<void> => {
   if (dataClient && dataClient.GetEntries) {
-    dataClient.GetEntries(undefined, undefined, requests)
+    // For batch requests, use the primary panelId from the first request
+    const primaryPanelId = requests[0]?.panelId || null
+
+    LogUtil.Info('📡 TrendLogChart: sendBatchGetEntriesRequest called', {
+      primaryPanelId,
+      requestCount: requests.length,
+      requests
+    })
+
+    // CORRECT FORMAT: GetEntries(panelId?, viewitem?, data?)
+    dataClient.GetEntries(primaryPanelId, null, requests)
   } else {
-    LogUtil.Error('No GetEntries method available on data client')
+    LogUtil.Error('❌ No GetEntries method available on data client')
   }
 }
 
