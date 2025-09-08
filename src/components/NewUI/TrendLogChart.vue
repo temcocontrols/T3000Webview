@@ -595,18 +595,18 @@ interface SeriesConfig {
 
 const getPointTypeInfo = (pointType: number) => {
   const pointTypeMap = {
-    1: { name: 'Output', type: 'digital', category: 'OUT' },
-    2: { name: 'Input', type: 'analog', category: 'IN' },
-    3: { name: 'Variable', type: 'analog', category: 'VAR' },
-    4: { name: 'Program', type: 'digital', category: 'PRG' },
-    5: { name: 'Controller', type: 'analog', category: 'CON' },
-    6: { name: 'Screen', type: 'digital', category: 'SCR' },
-    7: { name: 'Holiday', type: 'digital', category: 'HOL' },
-    8: { name: 'Schedule', type: 'digital', category: 'SCH' },
-    9: { name: 'Monitor', type: 'analog', category: 'MON' }
+    1: { name: 'Output', category: 'OUT' },
+    2: { name: 'Input', category: 'IN' },
+    3: { name: 'Variable', category: 'VAR' },
+    4: { name: 'Program', category: 'PRG' },
+    5: { name: 'Controller', category: 'CON' },
+    6: { name: 'Screen', category: 'SCR' },
+    7: { name: 'Holiday', category: 'HOL' },
+    8: { name: 'Schedule', category: 'SCH' },
+    9: { name: 'Monitor', category: 'MON' }
   }
 
-  return pointTypeMap[pointType] || { name: `Type_${pointType}`, type: 'analog', category: '' }
+  return pointTypeMap[pointType] || { name: `Type_${pointType}`, category: '' }
 }
 
 // Function to generate chip label text for series prefix display
@@ -858,7 +858,7 @@ const generateDataSeries = (): SeriesConfig[] => {
     // Determine digital/analog type and units
     const digitalAnalog = getDigitalAnalogFromPanelData(panelId, pointType, pointNumber)
     const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
-    const unitType: 'digital' | 'analog' = isDigital ? 'digital' : 'analog'
+    const unitType = isDigital ? 'digital' : 'analog'
 
     const unit = isDigital ? '' : getUnitFromPanelData(panelId, pointType, pointNumber)
     const digitalStates: [string, string] | undefined = isDigital ? ['Low', 'High'] : undefined
@@ -2730,8 +2730,8 @@ const updateChartWithNewData = (validDataItems: any[]) => {
         // If dataItem has explicit panel/point info, use that
         if (dataItem.panelId !== undefined && dataItem.pointType !== undefined && dataItem.pointNumber !== undefined) {
           return series.panelId === dataItem.panelId &&
-                 series.pointType === dataItem.pointType &&
-                 series.pointNumber === dataItem.pointNumber
+            series.pointType === dataItem.pointType &&
+            series.pointNumber === dataItem.pointNumber
         }
         // Otherwise fall back to string comparison
         return false
