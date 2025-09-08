@@ -1898,212 +1898,9 @@ const getCurrentTimeWindow = () => {
   }
 }
 
-// Data generation and management - Updated to use timebase-specific intervals
-const generateMockData = (seriesIndex: number, timeRangeMinutes: number): DataPoint[] => {
-  const now = new Date()
-  // Align current time to exact minute
-  const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
 
-  // Apply time offset for navigation
-  const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
-
-  const startTime = new Date(offsetTime.getTime() - timeRangeMinutes * 60 * 1000)
-  const endTime = offsetTime.getTime()
-
-  // Works
-  // Determine data point interval based on timebase (optimal recommendations)
-  const getDataPointInterval = (timeBase: string): number => {
-    const intervals = {
-      '5m': 1,     // Every 1 minute
-      '15m': 1,    // Every 1 minute
-      '30m': 1,    // Every 1 minute
-      '1h': 5,     // Every 1 minute
-      '6h': 20,    // Every 20 minutes (optimal)
-      '12h': 40,   // Every 40 minutes (optimal)
-      '24h': 80,   // Every 80 minutes (optimal)
-      '7d': 360    // Every 360 minutes (2 hours) (optimal)
-    }
-    return intervals[timeBase] || 1
-  }
-
-  // Use internal interval from props (in seconds) for accurate data generation
-  const dataIntervalSeconds = getInternalIntervalSeconds()
-  const dataIntervalMinutes = dataIntervalSeconds / 60
-  const dataPointCount = Math.floor(timeRangeMinutes / dataIntervalMinutes) + 1 // +1 to include both start and end points
-  const series = dataSeries.value[seriesIndex]
-  const data: DataPoint[] = []
-
-  if (series.unitType === 'digital') {
-    // Digital data: Generate step-like transitions between 0 and 1
-    let currentState = Math.random() > 0.5 ? 1 : 0
-
-    for (let i = 0; i < dataPointCount; i++) {
-      // Calculate timestamp: start time plus i * dataInterval in seconds (converted to milliseconds)
-      const timestamp = startTime.getTime() + i * dataIntervalSeconds * 1000
-
-      // Randomly change state (about 10% chance per point for realistic transitions)
-      if (Math.random() < 0.1) {
-        currentState = currentState === 1 ? 0 : 1
-      }
-
-      data.push({ timestamp, value: currentState })
-    }
-  } else {
-    // Analog data: Generate continuous values with realistic ranges
-    // For analog items (range = 0), generate values like 8000 as per your specification
-    const rangeValue = series.unitCode // This is now 0 or 1
-    let baseValue: number
-    let range: number
-
-    if (rangeValue === 0) { // Analog
-      // Generate realistic analog values - some in thousands as per your example (8000)
-      if (seriesIndex % 4 === 0) {
-        // Temperature-like values in thousands (like 8000)
-        baseValue = 7000 + seriesIndex * 200
-        range = 1000
-      } else if (seriesIndex % 4 === 1) {
-        // Pressure values
-        baseValue = 1000 + seriesIndex * 100
-        range = 300
-      } else if (seriesIndex % 4 === 2) {
-        // Flow values
-        baseValue = 500 + seriesIndex * 50
-        range = 200
-      } else {
-        // Other analog values
-        baseValue = 100 + seriesIndex * 20
-        range = 50
-      }
-    } else {
-      // This shouldn't happen for analog branch, but safety fallback
-      baseValue = 100
-      range = 50
-    }
-
-    for (let i = 0; i < dataPointCount; i++) {
-      // Calculate timestamp: start time plus i * dataInterval in seconds (converted to milliseconds)
-      const timestamp = startTime.getTime() + i * dataIntervalSeconds * 1000
-
-      // Generate smooth sine wave with some noise for realistic analog data
-      const sineValue = Math.sin((i / dataPointCount) * Math.PI * 2) * (range / 3)
-      const noise = (Math.random() - 0.5) * (range / 5)
-      const value = baseValue + sineValue + noise
-
-      data.push({ timestamp, value: Math.round(value * 100) / 100 })
-    }
-  }
-
-  return data
-}
-
-// Generate data for custom date range
-const generateCustomDateData = (seriesIndex: number, startDate: Date, endDate: Date): DataPoint[] => {
-  const totalMinutes = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60))
-
-  // Use appropriate interval based on the total time range
-  let dataIntervalMinutes: number
-  if (totalMinutes <= 60) {
-    dataIntervalMinutes = 1 // 1 minute intervals for short ranges
-  } else if (totalMinutes <= 720) {
-    dataIntervalMinutes = 5 // 5 minute intervals for up to 12 hours
-  } else if (totalMinutes <= 2880) {
-    dataIntervalMinutes = 15 // 15 minute intervals for up to 2 days
-  } else {
-    dataIntervalMinutes = 60 // 1 hour intervals for longer ranges
-  }
-
-  // Calculate number of complete intervals + ensure endpoint is included
-  const numCompleteIntervals = Math.floor(totalMinutes / dataIntervalMinutes)
-  const series = dataSeries.value[seriesIndex]
-  const data: DataPoint[] = []
-
-  if (series.unitType === 'digital') {
-    // Digital data: Generate step-like transitions between 0 and 1
-    let currentState = Math.random() > 0.5 ? 1 : 0
-
-    // Generate data points for complete intervals
-    for (let i = 0; i <= numCompleteIntervals; i++) {
-      const timestamp = startDate.getTime() + i * dataIntervalMinutes * 60 * 1000
-
-      // Don't exceed the end date
-      if (timestamp > endDate.getTime()) break
-
-      // Randomly change state (about 10% chance per point for realistic transitions)
-      if (Math.random() < 0.1) {
-        currentState = currentState === 1 ? 0 : 1
-      }
-
-      data.push({ timestamp, value: currentState })
-    }
-
-    // Always ensure the exact end point is included
-    const lastPoint = data[data.length - 1]
-    if (!lastPoint || lastPoint.timestamp < endDate.getTime()) {
-      // Keep the same state for the endpoint
-      data.push({ timestamp: endDate.getTime(), value: currentState })
-    }
-  } else {
-    // Analog data: Generate realistic sensor data with large values as per specification
-    const rangeValue = series.unitCode // This is now 0 or 1
-    let baseValue: number
-    let range: number
-
-    if (rangeValue === 0) { // Analog
-      // Generate realistic analog values - some in thousands as per your example (8000)
-      if (seriesIndex % 4 === 0) {
-        // Temperature-like values in thousands (like 8000)
-        baseValue = 7000 + seriesIndex * 200
-        range = 1000
-      } else if (seriesIndex % 4 === 1) {
-        // Pressure values
-        baseValue = 1000 + seriesIndex * 100
-        range = 300
-      } else if (seriesIndex % 4 === 2) {
-        // Flow values
-        baseValue = 500 + seriesIndex * 50
-        range = 200
-      } else {
-        // Other analog values
-        baseValue = 100 + seriesIndex * 20
-        range = 50
-      }
-    } else {
-      // This shouldn't happen for analog branch, but safety fallback
-      baseValue = 100
-      range = 50
-    }
-
-    // Generate data points for complete intervals
-    for (let i = 0; i <= numCompleteIntervals; i++) {
-      const timestamp = startDate.getTime() + i * dataIntervalMinutes * 60 * 1000
-
-      // Don't exceed the end date
-      if (timestamp > endDate.getTime()) break
-
-      // Generate smooth sine wave with some noise for realistic analog data
-      const totalDataPoints = numCompleteIntervals + 1
-      const sineValue = Math.sin((i / totalDataPoints) * Math.PI * 2) * (range / 3)
-      const noise = (Math.random() - 0.5) * (range / 5)
-      const value = baseValue + sineValue + noise
-
-      data.push({ timestamp, value: Math.round(value * 100) / 100 })
-    }
-
-    // Always ensure the exact end point is included
-    const lastPoint = data[data.length - 1]
-    if (!lastPoint || lastPoint.timestamp < endDate.getTime()) {
-      // Generate value for the endpoint using same formula
-      const totalDataPoints = numCompleteIntervals + 1
-      const sineValue = Math.sin((totalDataPoints / totalDataPoints) * Math.PI * 2) * (range / 3)
-      const noise = (Math.random() - 0.5) * (range / 5)
-      const value = baseValue + sineValue + noise
-
-      data.push({ timestamp: endDate.getTime(), value: Math.round(value * 100) / 100 })
-    }
-  }
-
-  return data
-}
+// Data generation and management functions removed
+// Only real-time data from T3000 API will be used
 
 // ====================================================================================
 // REAL DATA INTEGRATION: T3000 Monitor Data Extraction and Real-time Data Fetching
@@ -2669,7 +2466,7 @@ const initializeRealDataSeries = async () => {
 
   } catch (error) {
     LogUtil.Error('= TLChart: Error initializing real data series:', error)
-    LogUtil.Warn('= TLChart: Setting fallback mode - no mock data will be generated')
+    LogUtil.Warn('= TLChart: Setting fallback mode - chart will remain empty')
     dataSource.value = 'fallback'
     // Clear any existing data when entering fallback mode
     dataSeries.value = []
@@ -3338,7 +3135,7 @@ const initializeData = async () => {
     startFallbackRecovery()
   }
 
-  // If no data series available, generate demo data for testing/debugging
+  // If no data series available, chart will remain empty (no mock data generation)
   if (dataSeries.value.length === 0) {
     LogUtil.Info('📊 TrendLogChart: No data series available - maintaining empty state', {
       dataSeriesLength: dataSeries.value.length,
@@ -3347,17 +3144,14 @@ const initializeData = async () => {
     return
   }
 
-  // Skip demo data generation if in fallback mode - fallback should show empty chart
+  // Skip data generation if in fallback mode - fallback should show empty chart
   if (dataSource.value === 'fallback') {
-    LogUtil.Info('📊 TrendLogChart: Skipping demo data generation - in fallback mode (should show empty chart)')
+    LogUtil.Info('📊 TrendLogChart: Skipping data generation - in fallback mode (should show empty chart)')
     return
   }
 
-  // For data series with no actual data, generate demo data points
-  if (dataSeries.value.some(series => series.data.length === 0)) {
-    LogUtil.Info('📊 TrendLogChart: Generating demo data points for empty series')
-    await generateDemoDataPoints()
-  }
+  // Real data only - no synthetic data generation
+  LogUtil.Info('📊 TrendLogChart: Mock/demo data generation removed - chart will only show real data')
 
   // For real data series, update the chart
   updateChart()
@@ -3369,7 +3163,7 @@ const addRealtimeDataPoint = async () => {
     return
   }
 
-  // Safety check: If no data series exist, don't generate mock data
+  // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
     console.log('Realtime Update -> No data series available')
     return
@@ -3403,81 +3197,18 @@ const addRealtimeDataPoint = async () => {
 
     } catch (error) {
       LogUtil.Warn('TrendLogChart: Failed to send batch request, setting fallback mode:', error)
-      // Set fallback mode - do not generate mock data
+      // Set fallback mode - chart will remain empty
       dataSource.value = 'fallback'
       // Clear all data when entering fallback mode
       dataSeries.value = []
       // Start recovery attempts
       startFallbackRecovery()
     }
-  } else if (dataSource.value !== 'fallback') {
-    // Only use mock data generation if not in fallback mode
-    addMockRealtimeDataPoint(Date.now())
+  } else {
+    // In fallback mode or no real data - do nothing, let chart remain empty
+    LogUtil.Info('TrendLogChart: No real data available - fallback mode, chart remains empty')
   }
-  // If in fallback mode, do nothing - let chart remain empty
-
   updateChart()
-}
-
-const addMockRealtimeDataPoint = (timestamp: number) => {
-  // Safety check: Don't add mock data if no series exist
-  if (dataSeries.value.length === 0) {
-
-    return
-  }
-
-  dataSeries.value.forEach((series, index) => {
-    if (series.isEmpty) return
-
-    let newValue: number
-
-    if (series.unitType === 'digital') {
-      // Digital data: Randomly change state occasionally (simulate T3000 digital input changes)
-      const lastValue = series.data.length > 0 ? series.data[series.data.length - 1].value : 0
-      // 3% chance to change state each update (simulating real digital state changes)
-      if (Math.random() < 0.03) {
-        newValue = lastValue === 1 ? 0 : 1
-      } else {
-        newValue = lastValue
-      }
-    } else {
-      // Analog data: Generate realistic continuous values
-      const unitCode = series.unitCode
-      const lastPoint = series.data[series.data.length - 1]
-      const lastValue = lastPoint ? lastPoint.value : 0
-
-      // Different variation patterns based on unit type
-      let variation: number
-      if (unitCode === 31 || unitCode === 32) { // Temperature
-        variation = Math.sin(Date.now() * 0.0001) * 1 + Math.random() * 0.5 - 0.25
-      } else if (unitCode === 54) { // Percent
-        variation = Math.sin(Date.now() * 0.0002) * 5 + Math.random() * 2 - 1
-      } else if (unitCode === 44) { // Volts
-        variation = Math.sin(Date.now() * 0.0001) * 0.2 + Math.random() * 0.1 - 0.05
-      } else if (unitCode === 49) { // Watts
-        variation = Math.sin(Date.now() * 0.0001) * 10 + Math.random() * 5 - 2.5
-      } else if (unitCode === 42) { // CFM
-        variation = Math.sin(Date.now() * 0.0001) * 50 + Math.random() * 20 - 10
-      } else {
-        variation = Math.sin(Date.now() * 0.0001) * 2 + Math.random() * 1 - 0.5
-      }
-
-      newValue = Math.max(0, lastValue + variation) // Ensure non-negative
-    }
-
-    // Only add new point if timestamp is different from last point (avoid duplicates)
-    const lastTimestamp = series.data.length > 0 ? series.data[series.data.length - 1].timestamp : 0
-    if (timestamp > lastTimestamp) {
-      series.data.push({ timestamp, value: newValue })
-
-      // Keep only the last 500 points for performance (approximately 8+ hours of data)
-      if (series.data.length > 500) {
-        series.data.shift()
-      }
-    }
-  })
-
-  // Note: We don't update lastSyncTime here since this is mock data, not real sync
 }
 
 const generateDemoDataPoints = async () => {
@@ -3489,11 +3220,11 @@ const generateDemoDataPoints = async () => {
     if (series.data.length === 0) {
       LogUtil.Info(`📈 Generating demo data for series: ${series.name}`)
 
-      // Generate demo data using existing mock data function
-      const demoData = generateMockData(index, timeRangeMinutes)
+      // Demo data generation removed
+      const demoData = []  // Mock data generation removed
       series.data = demoData
 
-      LogUtil.Info(`�?Generated ${demoData.length} demo data points for ${series.name}`)
+      LogUtil.Info(`Mock data generation disabled for ${series.name}`)
     }
   })
 }

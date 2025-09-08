@@ -68,17 +68,25 @@ class WebViewClient {
     // Decode action details for better logging
     const actionDetails = this.getActionDetails(message?.action);
 
+    // Add high-precision timestamp for message tracking
+    const timestamp = new Date();
+    const timestampString = `${timestamp.toLocaleTimeString()}.${timestamp.getMilliseconds().toString().padStart(3, '0')}`;
+
     this.webview.postMessage(message);
-      LogUtil.Debug(`= Wv2 Sent message to T3, action= ${actionDetails.name} | ${message?.action}, message=`, message);
+      LogUtil.Debug(`= Wv2 Sent message to T3 [${timestampString}], action= ${actionDetails.name} | ${message?.action}, message=`, message);
   }
 
   // Handle messages received from the native code T3 application
   handleMessage(event: any) {
     const data = event?.data ?? {};
 
+    // Add high-precision timestamp for message tracking
+    const timestamp = new Date();
+    const timestampString = `${timestamp.toLocaleTimeString()}.${timestamp.getMilliseconds().toString().padStart(3, '0')}`;
+
     // Get response action details for consistent logging
     const actionDetails = this.getActionDetails(data?.action);
-      LogUtil.Debug(`= Wv2 Received message from T3, action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
+      LogUtil.Debug(`= Wv2 Received message from T3 [${timestampString}], action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
 
     try {
       this.processMessageData(data);
