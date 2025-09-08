@@ -66,8 +66,6 @@ class T3000DataManager {
    * Initialize the data manager with watchers
    */
   private initializeManager(): void {
-    LogUtil.Info('= T3DataManager: Initializing data management system')
-
     // Track initial state
     this.trackDataFlow('INIT', T3000_Data.value.panelsData?.length || 0)
 
@@ -102,12 +100,6 @@ class T3000DataManager {
     if (this.dataFlowHistory.length > this.MAX_HISTORY) {
       this.dataFlowHistory.shift()
     }
-
-    LogUtil.Info(`= T3DataManager: Data flow - ${action}`, {
-      entryCount,
-      source,
-      total: this.dataFlowHistory.length
-    })
   }
 
   /**
@@ -174,10 +166,6 @@ class T3000DataManager {
     const previousState = this.dataReadiness.value
     this.dataReadiness.value = state
 
-    if (previousState !== state) {
-      LogUtil.Info(`= T3DataManager: State changed from ${previousState} to ${state}`)
-    }
-
     if (state === DataReadiness.READY) {
       this.resolvePendingRequests()
     } else if (state === DataReadiness.ERROR) {
@@ -206,39 +194,11 @@ class T3000DataManager {
     const panelsData = T3000_Data.value.panelsData
     const loadingPanel = T3000_Data.value.loadingPanel
 
-    console.log('= T3DataManager: ASSESS DATA STATE - Evaluating current T3000_Data state:', {
-      panelsDataLength: panelsData?.length || 0,
-      loadingPanel,
-      hasData: this.isDataComplete(panelsData),
-      currentReadiness: this.dataReadiness,
-      timestamp: new Date().toISOString(),
-      dataAnalysis: {
-        totalItems: panelsData?.length || 0,
-        uniquePanels: Array.from(new Set(panelsData?.map(item => item.pid) || [])).length,
-        sampleData: panelsData?.slice(0, 3)
-      }
-    });
-
     if (loadingPanel !== null) {
-      console.log('= T3DataManager: STATE ASSESSMENT - Data is currently loading:', {
-        loadingPanel,
-        newState: DataReadiness.LOADING,
-        timestamp: new Date().toISOString()
-      });
       this.setDataReadiness(DataReadiness.LOADING)
     } else if (this.isDataComplete(panelsData)) {
-      console.log('= T3DataManager: STATE ASSESSMENT - Data is complete and ready:', {
-        dataLength: panelsData.length,
-        newState: DataReadiness.READY,
-        timestamp: new Date().toISOString()
-      });
       this.setDataReadiness(DataReadiness.READY)
     } else {
-      console.log('= T3DataManager: STATE ASSESSMENT - Data not initialized or incomplete:', {
-        dataLength: panelsData?.length || 0,
-        newState: DataReadiness.NOT_INITIALIZED,
-        timestamp: new Date().toISOString()
-      });
       this.setDataReadiness(DataReadiness.NOT_INITIALIZED)
     }
   }
@@ -497,8 +457,6 @@ class T3000DataManager {
    * Clean up resources
    */
   public destroy(): void {
-    LogUtil.Info('= T3DataManager: Cleaning up resources')
-
     // Clear all pending requests
     this.rejectPendingRequests('Manager destroyed')
 
