@@ -2688,151 +2688,83 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  * Update chart with new data from GET_ENTRIES response
  */
 const updateChartWithNewData = (validDataItems: any[]) => {
-  if (!dataSeries.value || dataSeries.value.length === 0) {
-    LogUtil.Info('📈 TrendLogChart: No data series configured for chart update')
+  if (!dataSeries.value?.length || !Array.isArray(validDataItems) || !validDataItems.length) {
+    LogUtil.Debug('📈 TrendLogChart: No data to process', {
+      hasSeriesConfig: !!dataSeries.value?.length,
+      dataItemsCount: validDataItems?.length || 0
+    })
     return
   }
 
-  if (!Array.isArray(validDataItems) || validDataItems.length === 0) {
-    LogUtil.Warn('📈 TrendLogChart: No valid data items provided for update')
-    return
-  }
+  // Print complete validDataItems structure for debugging
+  LogUtil.Debug('📊 TrendLogChart: Full validDataItems received:', {
+    count: validDataItems.length,
+    items: validDataItems.map(item => ({
+      id: item.id,
+      type: item.type,
+      value: item.value,
+      digital_analog: item.digital_analog,
+      description: item.description,
+      label: item.label,
+      fullItem: item
+    }))
+  })
 
   const timestamp = new Date()
+  let matched = 0
 
-  LogUtil.Info('🔄 TrendLogChart: Chart Update Process Starting', {
-    validDataItemCount: validDataItems.length,
-    currentSeriesCount: dataSeries.value.length,
-    seriesNames: dataSeries.value.map(s => s.name),
-    timestamp: timestamp.toISOString()
-  })
+  validDataItems.forEach((dataItem, index) => {
+    // Find matching series by itemType or fallback to position
+    const targetSeries = dataSeries.value.find(series =>
+      series.itemType?.includes(dataItem.id)
+    ) || dataSeries.value[index]
 
-  let successfulMatches = 0
-  let unmatchedItems = 0
-
-  for (const dataItem of validDataItems) {
-    try {
-      let seriesIndex = -1
-      let targetSeries = null
-      let matchMethod = ''
-
-      // Step 1: Try to match by series itemType (preferred method)
-      for (let i = 0; i < dataSeries.value.length; i++) {
-        const series = dataSeries.value[i]
-        if (series && series.itemType && Array.isArray(series.itemType)) {
-          if (series.itemType.includes(dataItem.id)) {
-            seriesIndex = i
-            targetSeries = series
-            matchMethod = 'itemType'
-            break
-          }
-        }
-      }
-
-      // Step 2: If no match by itemType, try position-based matching (fallback)
-      if (seriesIndex === -1) {
-        const itemIndex = validDataItems.indexOf(dataItem)
-        if (itemIndex < dataSeries.value.length) {
-          seriesIndex = itemIndex
-          targetSeries = dataSeries.value[seriesIndex]
-          matchMethod = 'position'
-        }
-      }
-
-      if (targetSeries && seriesIndex !== -1) {
-        // Create data point with comprehensive information
-        const dataPoint: DataPoint = {
-          timestamp: timestamp.getTime(),
-          value: scaleValueIfNeeded(parseFloat(dataItem.value) || 0),
-          id: dataItem.id,
-          type: dataItem.type,
-          digital_analog: dataItem.digital_analog || BAC_UNITS_ANALOG,
-          description: dataItem.description || dataItem.label || `Point ${dataItem.id}`
-        }
-
-        // Initialize series data array if needed
-        if (!targetSeries.data) {
-          targetSeries.data = []
-        }
-
-        // Add new data point
-        targetSeries.data.push(dataPoint)
-
-        // Maintain data point limit for performance
-        const maxDataPoints = 100
-        if (targetSeries.data.length > maxDataPoints) {
-          const removedCount = targetSeries.data.length - maxDataPoints
-          targetSeries.data = targetSeries.data.slice(-maxDataPoints)
-        }
-
-        // Update series metadata if available
-        if (dataItem.description && !targetSeries.description) {
-          targetSeries.description = dataItem.description
-        }
-        if (dataItem.label && targetSeries.name === targetSeries.description) {
-          targetSeries.name = dataItem.label
-        }
-
-        successfulMatches++
-
-        LogUtil.Info('✅ TrendLogChart: Data Point Mapped Successfully', {
-          itemId: dataItem.id,
-          itemType: dataItem.type,
-          value: dataItem.value,
-          scaledValue: dataPoint.value,
-          digitalAnalog: dataPoint.digital_analog === BAC_UNITS_DIGITAL ? 'Digital' : 'Analog',
-          seriesName: targetSeries.name,
-          seriesIndex: seriesIndex,
-          matchMethod: matchMethod,
-          totalPointsInSeries: targetSeries.data.length,
-          description: dataPoint.description
-        })
-
-      } else {
-        unmatchedItems++
-        LogUtil.Warn('❌ TrendLogChart: No Series Match Found', {
-          itemId: dataItem.id,
-          itemType: dataItem.type,
-          value: dataItem.value,
-          availableSeriesCount: dataSeries.value.length,
-          availableSeriesNames: dataSeries.value.map(s => s.name),
-          seriesItemTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType }))
-        })
-      }
-    } catch (error) {
-      unmatchedItems++
-      LogUtil.Error(`❌ TrendLogChart: Error processing data item ${dataItem.id}:`, error)
+    if (!targetSeries) {
+      //LogUtil.Debug(`❌ No series match for item ${dataItem.id}`)
+      return
     }
-  }
 
-  // Summary of data processing
-  LogUtil.Info('📊 TrendLogChart: Data Processing Summary', {
-    totalProcessed: validDataItems.length,
-    successfulMatches,
-    unmatchedItems,
-    matchRate: `${((successfulMatches / validDataItems.length) * 100).toFixed(1)}%`,
-    seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
+    // Create and add data point
+    const dataPoint: DataPoint = {
+      timestamp: timestamp.getTime(),
+      value: scaleValueIfNeeded(parseFloat(dataItem.value) || 0),
+      id: dataItem.id,
+      type: dataItem.type,
+      digital_analog: dataItem.digital_analog || BAC_UNITS_ANALOG,
+      description: dataItem.description || dataItem.label || `Point ${dataItem.id}`
+    }
+
+    targetSeries.data = targetSeries.data || []
+    targetSeries.data.push(dataPoint)
+
+    // Limit data points for performance
+    if (targetSeries.data.length > 100) {
+      targetSeries.data = targetSeries.data.slice(-100)
+    }
+
+    // Update series metadata
+    if (dataItem.description && !targetSeries.description) {
+      targetSeries.description = dataItem.description
+    }
+    if (dataItem.label && targetSeries.name === targetSeries.description) {
+      targetSeries.name = dataItem.label
+    }
+
+    matched++
   })
 
-  // Update the chart
+  LogUtil.Debug('🎯 TrendLogChart: Processing complete', {
+    processed: validDataItems.length,
+    matched,
+    seriesWithData: dataSeries.value.filter(s => s.data?.length).length,
+    totalDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+  })
+
+  // Update chart if instance exists
   if (chartInstance) {
-    try {
-      updateChart()
-
-      const totalDataPoints = dataSeries.value.reduce((sum, series) => sum + (series.data?.length || 0), 0)
-
-      LogUtil.Info('🎯 TrendLogChart: ChartJS Update Completed', {
-        chartUpdated: true,
-        totalDataPointsInChart: totalDataPoints,
-        activeSeriesCount: dataSeries.value.filter(s => s.data && s.data.length > 0).length,
-        updateTimestamp: new Date().toLocaleTimeString()
-      })
-
-    } catch (error) {
-      LogUtil.Error('❌ TrendLogChart: ChartJS Update Error:', error)
-    }
+    updateChart()
   } else {
-    LogUtil.Warn('⚠️ TrendLogChart: Chart instance not available for update')
+    LogUtil.Debug('⚠️ Chart instance not available for update')
   }
 }
 

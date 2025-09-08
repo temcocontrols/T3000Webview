@@ -84,6 +84,7 @@ import { T3000_Data, logT3000DataFlowState } from 'src/lib/T3000/Hvac/Data/T3Dat
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 
 // Define component name
 defineOptions({
@@ -208,8 +209,31 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
 const formatDataFromQueryParams = () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
-  // Validate required parameters (allow trendlog_id=0)
+  // Print 1: Full original raw query parameters
+  LogUtil.Debug('📊 IndexPageSocket - Original Query Parameters:', route.query)
+
+  // Print 2: Complete readable object with decoded all_data
+  const readableQuery = {
+    sn: route.query.sn,
+    panel_id: route.query.panel_id,
+    trendlog_id: route.query.trendlog_id,
+    all_data_decoded: all_data ? (() => {
+      try {
+        return decodeUrlEncodedJson(all_data)
+      } catch (error) {
+        return { error: 'Failed to decode', raw_preview: all_data.substring(0, 200) + '...' }
+      }
+    })() : null,
+    // Include any other query parameters
+    ...Object.fromEntries(
+      Object.entries(route.query).filter(([key]) =>
+        !['sn', 'panel_id', 'trendlog_id', 'all_data'].includes(key)
+      )
+    )
+  }
+  LogUtil.Debug('📊 IndexPageSocket - Readable Query Object:', readableQuery)  // Validate required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
+    LogUtil.Debug('❌ IndexPageSocket: Missing required parameters for trend log data')
     return null
   }
 

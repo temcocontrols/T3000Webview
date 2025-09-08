@@ -242,14 +242,14 @@ class WebViewClient {
     const needAppedSerialNumber = panelId != null && serialNumber != null;
     if (needAppedSerialNumber) {
       this.message.serialNumber = serialNumber;
-      LogUtil.Debug('= Wv2: setMessageData - Serial number resolved:', {
+      LogUtil.Debug('= Wv2 SetMessageData - Serial number resolved:', {
         panelId: panelId,
         serialNumber: serialNumber,
         method: this.deviceOpt ? 'deviceOpt' : (new URLSearchParams(window.location.search).get('sn') ? 'URL_param' : 'panels_list'),
         action: action
       });
     } else if (panelId != null) {
-      LogUtil.Warn('= Wv2: setMessageData - No serial number found for panelId:', panelId, {
+      LogUtil.Warn('= Wv2 SetMessageData - No serial number found for panelId:', panelId, {
         hasDeviceOpt: !!this.deviceOpt,
         urlSn: new URLSearchParams(window.location.search).get('sn'),
         panelsListLength: typeof T3000_Data !== 'undefined' ? T3000_Data.value?.panelsList?.length || 0 : 'N/A'
