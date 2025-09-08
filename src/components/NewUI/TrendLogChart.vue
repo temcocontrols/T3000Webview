@@ -2707,20 +2707,46 @@ const updateChartWithNewData = (validDataItems: any[]) => {
       description: item.description,
       label: item.label,
       fullItem: item
-    }))
+    })),
+    seriesItemTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, panelId: s.panelId, pointType: s.pointType, pointNumber: s.pointNumber }))
   })
 
   const timestamp = new Date()
   let matched = 0
+  let unmatched = 0
 
   validDataItems.forEach((dataItem, index) => {
-    // Find matching series by itemType or fallback to position
-    const targetSeries = dataSeries.value.find(series =>
-      series.itemType?.includes(dataItem.id)
-    ) || dataSeries.value[index]
+    let targetSeries = null
+
+    // Method 1: Try to match by exact itemType string
+    targetSeries = dataSeries.value.find(series =>
+      series.itemType === dataItem.id
+    )
+
+    // Method 2: If dataItem.id contains panel/type/number info, try to parse and match
+    if (!targetSeries && typeof dataItem.id === 'string') {
+      // Try to match by comparing components (panelId, pointType, pointNumber)
+      targetSeries = dataSeries.value.find(series => {
+        // If dataItem has explicit panel/point info, use that
+        if (dataItem.panelId !== undefined && dataItem.pointType !== undefined && dataItem.pointNumber !== undefined) {
+          return series.panelId === dataItem.panelId &&
+                 series.pointType === dataItem.pointType &&
+                 series.pointNumber === dataItem.pointNumber
+        }
+        // Otherwise fall back to string comparison
+        return false
+      })
+    }
+
+    // Method 3: Fallback to position-based matching (least reliable)
+    if (!targetSeries && index < dataSeries.value.length) {
+      targetSeries = dataSeries.value[index]
+      LogUtil.Debug(`⚠️ Using position-based matching for item ${dataItem.id} -> series ${targetSeries.name}`)
+    }
 
     if (!targetSeries) {
-      //LogUtil.Debug(`❌ No series match for item ${dataItem.id}`)
+      unmatched++
+      //LogUtil.Debug(`❌ No series match found for item ${dataItem.id}`)
       return
     }
 
@@ -2756,6 +2782,8 @@ const updateChartWithNewData = (validDataItems: any[]) => {
   LogUtil.Debug('🎯 TrendLogChart: Processing complete', {
     processed: validDataItems.length,
     matched,
+    unmatched,
+    matchRate: `${((matched / validDataItems.length) * 100).toFixed(1)}%`,
     seriesWithData: dataSeries.value.filter(s => s.data?.length).length,
     totalDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
   })
