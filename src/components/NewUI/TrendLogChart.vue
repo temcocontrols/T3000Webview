@@ -246,7 +246,7 @@
               </div>
               <div class="auto-scroll-toggle">
                 <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                <a-switch v-model:checked="isRealTime" size="small" checked-children="On" un-checked-children="Off"
+                <a-switch v-model:checked="isRealTime" size="small"
                   @change="onRealTimeToggle" />
               </div>
             </div>
@@ -1758,10 +1758,10 @@ const getChartConfig = () => ({
               // Bottom zone (Digital): below the divider line with more spacing
               if (value <= 2.5) {
                 if (value === -0.5) return '' // Space below x-axis
-                if (value === 0) return '0 (Off)' // First digital value
+                if (value === 0) return '0' // First digital value
                 if (value === 0.5) return '' // Space between values
                 if (value === 1) return '' // More space
-                if (value === 1.5) return '1 (On)' // Second digital value with larger gap
+                if (value === 1.5) return '1' // Second digital value with larger gap
                 if (value === 2) return '' // Space before divider
                 if (value === 2.5) return '' // At divider line
               }
@@ -1784,8 +1784,8 @@ const getChartConfig = () => ({
 const mapValueToYAxis = (value: number, unitType: 'analog' | 'digital'): number => {
   if (unitType === 'digital') {
     // Digital values map to bottom zone (below divider at 2.5)
-    // 0 maps to position 0 (where "0 (Off)" label is)
-    // 1 maps to position 1.5 (where "1 (On)" label is) - larger gap
+    // 0 maps to position 0 (where "0" label is)
+    // 1 maps to position 1.5 (where "1" label is) - larger gap
     return value === 0 ? 0 : 1.5
   } else {
     // Analog values map to upper zone (3-11, above divider at 2.5)
@@ -1822,11 +1822,11 @@ const sectionDividerPlugin = {
 
     // Upper zone label (Analog) - above the divider line
     const upperZoneY = yScale.getPixelForValue(7) // Middle of upper zone (3-11)
-    ctx.fillText('Analog Values', chartArea.left + 10, upperZoneY)
+    // ctx.fillText('Analog Values', chartArea.left + 10, upperZoneY) // Removed per user request
 
     // Lower zone label (Digital) - below the divider line
     const lowerZoneY = yScale.getPixelForValue(0.75) // Middle of lower zone (-0.5 to 2.5)
-    ctx.fillText('Digital Values', chartArea.left + 10, lowerZoneY)
+    // ctx.fillText('Digital Values', chartArea.left + 10, lowerZoneY) // Removed per user request
 
     ctx.restore()
   }
