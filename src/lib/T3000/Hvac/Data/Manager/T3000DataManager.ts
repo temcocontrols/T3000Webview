@@ -118,6 +118,43 @@ class T3000DataManager {
       countDelta: newCount - oldCount
     })
 
+    // Log full T3000_Data details after update for tracking
+    LogUtil.Debug('= T3DataManager: T3000_DATA UPDATED - Full data details:', {
+      updateInfo: {
+        timestamp: new Date().toISOString(),
+        source: this.detectChangeSource(),
+        previousCount: oldCount,
+        newCount: newCount,
+        countDelta: newCount - oldCount
+      },
+      fullT3000Data: {
+        panelsData: {
+          length: newCount,
+          data: newData
+        },
+        panelsList: {
+          length: T3000_Data.value.panelsList?.length || 0,
+          data: T3000_Data.value.panelsList
+        },
+        panelsRanges: {
+          length: T3000_Data.value.panelsRanges?.length || 0,
+          data: T3000_Data.value.panelsRanges
+        },
+        loadingPanel: T3000_Data.value.loadingPanel
+      },
+      dataAnalysis: {
+        uniquePanels: Array.from(new Set(newData?.map(item => item.pid) || [])),
+        sampleEntries: newData?.slice(0, 5).map(item => ({
+          pid: item.pid,
+          type: item.type,
+          id: item.id,
+          label: item.label,
+          value: item.value,
+          units: item.units
+        })) || []
+      }
+    });
+
     // Check if data is now ready
     if (this.isDataComplete(newData)) {
       this.setDataReadiness(DataReadiness.READY)

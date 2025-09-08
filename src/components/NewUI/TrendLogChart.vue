@@ -246,8 +246,7 @@
               </div>
               <div class="auto-scroll-toggle">
                 <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                <a-switch v-model:checked="isRealTime" size="small"
-                  @change="onRealTimeToggle" />
+                <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
               </div>
             </div>
           </div>
@@ -704,17 +703,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Computed property to get the current item data - prioritizes props over global state
 const currentItemData = computed(() => {
-  const data = props.itemData || scheduleItemData.value
-  LogUtil.Info('= TLChart: currentItemData computed update', {
-    hasPropsData: !!props.itemData,
-    hasScheduleData: !!scheduleItemData.value,
-    dataSource: props.itemData ? 'props' : 'scheduleItemData',
-    dataId: data?.t3Entry?.id,
-    dataPid: data?.t3Entry?.pid,
-    hasT3000PanelsData: !!(T3000_Data.value?.panelsData),
-    t3000PanelsDataLength: T3000_Data.value?.panelsData?.length || 0
-  })
-  return data
+  return props.itemData || scheduleItemData.value
 })
 
 // Remove modal-specific emits since this is now just a chart component
@@ -909,32 +898,12 @@ const dataSeries = ref<SeriesConfig[]>([])
 
 // Regenerate data series when data source changes
 const regenerateDataSeries = () => {
-  LogUtil.Info('= TLChart: regenerateDataSeries called', {
-    currentSeriesCount: dataSeries.value?.length || 0,
-    hasCurrentData: !!currentItemData.value,
-    timestamp: new Date().toISOString()
-  })
-
   const newSeries = generateDataSeries()
   dataSeries.value = newSeries
-
-  LogUtil.Info('= TLChart: Data series regenerated', {
-    newSeriesCount: newSeries.length,
-    newSeriesNames: newSeries.map(s => s.name)
-  })
 }
 
 // Watch currentItemData and regenerate series when it changes
-watch(currentItemData, (newData, oldData) => {
-  LogUtil.Info('= TLChart: currentItemData watcher triggered', {
-    hasNewData: !!newData,
-    hasOldData: !!oldData,
-    newDataId: newData?.t3Entry?.id,
-    oldDataId: oldData?.t3Entry?.id,
-    idsChanged: newData?.t3Entry?.id !== oldData?.t3Entry?.id,
-    willRegenerate: !!newData
-  })
-
+watch(currentItemData, (newData) => {
   if (newData) {
     regenerateDataSeries()
   }
@@ -942,27 +911,12 @@ watch(currentItemData, (newData, oldData) => {
 
 // Watch dataSeries for updates
 watch(dataSeries, (newSeries, oldSeries) => {
-  LogUtil.Info('= TLChart: dataSeries updated', {
-    newSeriesCount: newSeries?.length || 0,
-    oldSeriesCount: oldSeries?.length || 0,
-    seriesChanged: newSeries?.length !== oldSeries?.length,
-    newSeriesNames: newSeries?.map(s => s.name) || []
-  })
+  // Series updated, reactive changes handled automatically
 }, { deep: true })
 
 // Watch props.itemData for changes
 watch(() => props.itemData, (newData, oldData) => {
-  LogUtil.Info('= TLChart: props.itemData changed', {
-    hasNewData: !!newData,
-    hasOldData: !!oldData,
-    newDataId: newData?.t3Entry?.id,
-    oldDataId: oldData?.t3Entry?.id,
-    newDataPid: newData?.t3Entry?.pid,
-    oldDataPid: oldData?.t3Entry?.pid,
-    idsChanged: newData?.t3Entry?.id !== oldData?.t3Entry?.id,
-    pidsChanged: newData?.t3Entry?.pid !== oldData?.t3Entry?.pid,
-    timestamp: new Date().toISOString()
-  })
+  // Props data changed, handled by currentItemData watcher
 }, { deep: true })
 
 // Watch T3000_Data for panels data changes
@@ -1136,13 +1090,7 @@ const totalDataPoints = computed(() => {
 })
 
 const visibleSeriesCount = computed(() => {
-  const count = dataSeries.value.filter(series => series.visible).length
-  LogUtil.Info('= TLChart: visibleSeriesCount computed', {
-    visibleCount: count,
-    totalCount: dataSeries.value.length,
-    visibleSeries: dataSeries.value.filter(s => s.visible).map(s => s.name)
-  })
-  return count
+  return dataSeries.value.filter(series => series.visible).length
 })
 
 const timeBaseLabel = computed(() => {
@@ -4486,155 +4434,33 @@ const diagnosticReport = () => {
 
 // Lifecycle
 onMounted(async () => {
-  LogUtil.Info('= TLChart: Component mounted', {
-    hasPropsItemData: !!props.itemData,
-    propsItemDataId: props.itemData?.t3Entry?.id,
-    propsItemDataPid: props.itemData?.t3Entry?.pid,
-    hasScheduleItemData: !!scheduleItemData.value,
-    currentDataSeriesCount: dataSeries.value?.length || 0,
-    timestamp: new Date().toISOString()
-  })
-
-  LogUtil.Info('📊 TrendLogModal: Current item data source:', {
-    usingPropsItemData: !!props.itemData,
-    usingGlobalScheduleData: !props.itemData,
-    itemData: currentItemData.value
-  })
-
-
-
-  // === ENHANCED T3000 REAL DATA INTEGRATION TEST ===
-
-
   try {
-    // Test 1: Data Manager Readiness Check
-
-    const initialReadiness = t3000DataManager.getReadinessState()
-
-
-
-    // Test 2: Enhanced Monitor Configuration Extraction
-
+    // Initialize monitor configuration
     const monitorConfigData = await getMonitorConfigFromT3000Data()
-
     if (monitorConfigData) {
-      // Set the reactive monitor config variable for all functions to use
       monitorConfig.value = monitorConfigData
 
-
-
-      LogUtil.Info(`📊 TrendLogModal: Found ${monitorConfigData.inputItems.length} input items to monitor`)
-      LogUtil.Info(`⏱️ TrendLogModal: Data retrieval interval: ${monitorConfigData.dataIntervalMs}ms`)
-
-      // Test 3: Device Mapping for each input item
-      LogUtil.Info('🔍 TrendLogModal: TEST 3 - Device Mapping for all input items:')
-
-      // Get the PID for filtering device searches
-      const searchPanelId = (currentItemData.value as any)?.t3Entry?.pid
-      LogUtil.Info(`📊 TrendLogModal: Using PID ${searchPanelId} for device searches`)
-
-      for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
-        const inputItem = monitorConfigData.inputItems[i]
-        const rangeValue = monitorConfigData.ranges[i] || 0
-        const deviceId = logDeviceMapping(inputItem, i, rangeValue)
-
-        LogUtil.Info(`📊 TrendLogModal: Device ID for input item ${i}:`, deviceId)
-
-        // Test if we can find this device in panelsData using data manager with PID filtering
-        try {
-          if (searchPanelId !== undefined && searchPanelId !== null) {
-            const foundDevice = await t3000DataManager.getEntryByPid(deviceId, searchPanelId)
-            LogUtil.Info(`�?TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
-              id: foundDevice.id,
-              label: foundDevice.label,
-              pid: foundDevice.pid,
-              type: foundDevice.type
-            })
-          } else {
-            LogUtil.Warn(`�?TEST 3.${i + 1} SKIPPED: No PID available for device search`)
-          }
-        } catch (error) {
-          LogUtil.Warn(`�?TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
-
-          // Fallback: Try to find device without PID filtering for comparison
-          try {
-            const foundDeviceAnyPid = await t3000DataManager.getEntry(deviceId)
-            LogUtil.Info(`🔍 TEST 3.${i + 1} FALLBACK: Device ${deviceId} found without PID filtering:`, {
-              id: foundDeviceAnyPid.id,
-              label: foundDeviceAnyPid.label,
-              pid: foundDeviceAnyPid.pid,
-              type: foundDeviceAnyPid.type,
-              note: `Found with PID ${foundDeviceAnyPid.pid} instead of expected PID ${searchPanelId}`
-            })
-          } catch (fallbackError) {
-            LogUtil.Warn(`�?TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
-          }
-        }
-      }
-
-      // Test 4: Data Client Initialization
-      LogUtil.Info('🔍 TrendLogModal: TEST 4 - Data Client Initialization:')
-      const dataClient = initializeDataClients()
-      if (dataClient) {
-        LogUtil.Info('�?TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
-        LogUtil.Info('🔧 TrendLogModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
-      } else {
-        LogUtil.Warn('�?TEST 4 FAILED: No data client available')
-      }
-
-      // Test 5: Value Processing
-      LogUtil.Info('🔍 TrendLogModal: TEST 5 - Value Processing Test:')
-      // Test digital value processing
-      const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
-      LogUtil.Info('�?TEST 5.1 Digital Value Processing:', testDigitalValue)
-
-      // Test analog value processing
-      const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
-      LogUtil.Info('�?TEST 5.2 Analog Value Processing:', testAnalogValue)
-
-      LogUtil.Info('🏁 TrendLogModal: === ENHANCED T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
-    } else {
-      LogUtil.Warn('�?TEST 2 FAILED: No Monitor Configuration Found')
-      LogUtil.Info('🔍 TrendLogModal: Debugging info:')
-      LogUtil.Info('📊 TrendLogModal: currentItemData.t3Entry:', (currentItemData.value as any)?.t3Entry)
-
-      // Try to get detailed validation information
-      try {
-        const validation = await t3000DataManager.validateData()
-        LogUtil.Info('📊 TrendLogModal: Data validation details:', validation)
-      } catch (validationError) {
-        LogUtil.Error('�?TrendLogModal: Data validation failed:', validationError)
-      }
+      // Initialize data clients
+      initializeDataClients()
     }
-
   } catch (error) {
-    LogUtil.Error('�?TrendLogModal: Enhanced data integration test failed:', error)
+    LogUtil.Error('TrendLogChart: Initialization failed:', error)
   }
 
-  // Apply default view configuration to ensure settings are properly initialized
+  // Apply default view configuration
   setView(1)
 
-  // Initialize chart since component is always visible
+  // Initialize chart
   nextTick(async () => {
-    const isStandalone = !(window as any).chrome?.webview;
-
-    console.log('= TLChart DataFlow: Initializing chart component')
-
-    // Add extra delay for standalone browsers to ensure proper DOM layout
+    // Add delay for DOM layout in standalone browsers
     if (!(window as any).chrome?.webview) {
-      console.log('= TLChart DataFlow: Adding delay for standalone browser');
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise(resolve => setTimeout(resolve, 150))
     }
 
-    // Verify canvas is ready with proper dimensions
+    // Ensure canvas is ready
     if (chartCanvas.value) {
       const canvasReady = chartCanvas.value.offsetWidth > 0 && chartCanvas.value.offsetHeight > 0
-
-      console.log('= TLChart DataFlow: Canvas readiness check:', { ready: canvasReady })
-
-      // If canvas still has no dimensions, wait longer for layout
       if (!canvasReady) {
-        console.log('= TLChart DataFlow: Canvas not ready, waiting for layout...')
         await new Promise(resolve => setTimeout(resolve, 300))
       }
     }

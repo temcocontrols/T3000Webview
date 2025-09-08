@@ -416,64 +416,18 @@ watch(
 const initializeT3000Data = async () => {
   const { sn, panel_id, trendlog_id } = urlParams.value
 
-  console.log('= TLISocketPage: INITIALIZE T3000DATA - Starting T3000_Data initialization:', {
-    sn, panel_id, trendlog_id,
-    currentT3000State: {
-      panelsDataKeys: Object.keys(T3000_Data.value.panelsData || {}),
-      panelsListLength: T3000_Data.value.panelsList?.length || 0,
-      panelsRangesKeys: Object.keys(T3000_Data.value.panelsRanges || {}),
-      loadingPanel: T3000_Data.value.loadingPanel
-    },
-    initializationContext: {
-      timestamp: new Date().toISOString(),
-      hasRequiredParams: !!sn && !!panel_id && !!trendlog_id,
-      fullT3000State: T3000_Data.value
-    },
-    dataSourceAnalysis: {
-      hasExistingData: T3000_Data.value.panelsData.length > 0 || T3000_Data.value.panelsList.length > 0,
-      possibleSources: [
-        'previous_page_navigation',
-        'background_loading',
-        'shared_global_state',
-        'early_initialization'
-      ],
-      nextAction: 'will_request_fresh_data_from_t3000_backend'
-    }
-  });
-
-  // Log complete data flow state
-  logT3000DataFlowState('BEFORE_T3000_INITIALIZATION', {
-    component: 'TrendLogIndexPageSocket',
-    params: { sn, panel_id, trendlog_id }
-  });
-
   // Check if we have the required parameters
   if (!sn || panel_id === null || trendlog_id === null) {
-    console.log('= TLISocketPage: INITIALIZE T3000DATA FAILED - Missing required parameters:', {
-      missingParamAnalysis: {
-        sn: { provided: sn, valid: !!sn },
-        panel_id: { provided: panel_id, valid: panel_id !== null },
-        trendlog_id: { provided: trendlog_id, valid: trendlog_id !== null }
-      },
-      allParameters: { sn, panel_id, trendlog_id },
-      timestamp: new Date().toISOString()
-    });
     return
   }
 
   try {
-    // Initialize T3000_Data structure if it's not already initialized
-    if (!T3000_Data.value.panelsData) {
-      T3000_Data.value.panelsData = []
-    }
-    if (!T3000_Data.value.panelsList) {
-      T3000_Data.value.panelsList = []
-    }
-    if (!T3000_Data.value.panelsRanges) {
-      T3000_Data.value.panelsRanges = []
-    }
+    // Initialize T3000_Data structure
+    if (!T3000_Data.value.panelsData) T3000_Data.value.panelsData = []
+    if (!T3000_Data.value.panelsList) T3000_Data.value.panelsList = []
+    if (!T3000_Data.value.panelsRanges) T3000_Data.value.panelsRanges = []
 
-    // Add the panel to panelsList if it doesn't exist
+    // Add panel to panelsList if it doesn't exist
     const existingPanel = T3000_Data.value.panelsList.find(panel => panel.panel_number === panel_id)
     if (!existingPanel) {
       T3000_Data.value.panelsList.push({
@@ -484,208 +438,63 @@ const initializeT3000Data = async () => {
       })
     }
 
-    // Initialize communication clients properly
     let dataLoaded = false
 
-    // Try WebView2 client first (for desktop T3000 app integration)
+    // Try WebView2 client first (desktop T3000 app)
     if (Hvac.WebClient && (window as any).chrome?.webview) {
       try {
-        // Initialize WebView2 message handler if not already initialized
         Hvac.WebClient.initMessageHandler()
         Hvac.WebClient.initQuasar($q)
-
-        // Set loading state
         T3000_Data.value.loadingPanel = panel_id
 
-        // First get the panels list
-        console.log('= TLISocketPage: CALLING GetPanelsList - From initializeT3000Data WebView2 path:', {
-          callerFunction: 'initializeT3000Data',
-          callerContext: 'WebView2_initialization_sequence',
-          targetAction: 'GetPanelsList',
-          requestedBy: 'TrendLogIndexPageSocket.vue',
-          requestReason: 'Initialize_T3000_Data_for_TrendLog',
-          timestamp: new Date().toISOString()
-        });
         Hvac.WebClient.GetPanelsList()
+        setTimeout(() => Hvac.WebClient.GetPanelData(panel_id), 500)
 
-        // Then get specific panel data after a delay
-        setTimeout(() => {
-          console.log('= TLISocketPage: CALLING GetPanelData - From initializeT3000Data WebView2 delayed execution:', {
-            callerFunction: 'initializeT3000Data->setTimeout',
-            callerContext: 'WebView2_delayed_panel_data_request',
-            targetAction: 'GetPanelData',
-            targetPanelId: panel_id,
-            requestedBy: 'TrendLogIndexPageSocket.vue',
-            requestReason: 'Get_specific_panel_data_after_panels_list',
-            delayMs: 500,
-            timestamp: new Date().toISOString()
-          });
-          Hvac.WebClient.GetPanelData(panel_id)
-        }, 500)
-
-        // Wait for data to be ready with timeout
         await t3000DataManager.waitForDataReady({
-          timeout: 15000, // 15 seconds timeout for WebView2
+          timeout: 15000,
           specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
         })
 
         dataLoaded = true
-
       } catch (error) {
         T3000_Data.value.loadingPanel = null
       }
     }
 
-    // Try WebSocket client as fallback (for web browser integration)
+    // Try WebSocket client fallback (web browser)
     if (!dataLoaded && Hvac.WsClient) {
       try {
-        // Initialize WebSocket client properly
         Hvac.WsClient.initQuasar($q)
-
-        // Set loading state
         T3000_Data.value.loadingPanel = panel_id
-
-        // Connect to WebSocket server
         Hvac.WsClient.connect()
 
-        // Wait a bit for connection to establish, then request data
         setTimeout(() => {
-          // First get the panels list (this will automatically call GetPanelData for first panel)
-          console.log('= TLISocketPage: CALLING WebSocket GetPanelsList - From initializeT3000Data WebSocket path:', {
-            callerFunction: 'initializeT3000Data->setTimeout',
-            callerContext: 'WebSocket_initialization_sequence',
-            targetAction: 'WsClient.GetPanelsList',
-            requestedBy: 'TrendLogIndexPageSocket.vue',
-            requestReason: 'Initialize_T3000_Data_via_WebSocket_fallback',
-            delayMs: 1000,
-            timestamp: new Date().toISOString()
-          });
           Hvac.WsClient.GetPanelsList()
-
-          // Also request specific panel data
-          setTimeout(() => {
-            console.log('= TLISocketPage: CALLING WebSocket GetPanelData - From initializeT3000Data WebSocket nested timeout:', {
-              callerFunction: 'initializeT3000Data->setTimeout->setTimeout',
-              callerContext: 'WebSocket_delayed_panel_data_request',
-              targetAction: 'WsClient.GetPanelData',
-              targetPanelId: panel_id,
-              requestedBy: 'TrendLogIndexPageSocket.vue',
-              requestReason: 'Get_specific_panel_data_via_WebSocket',
-              totalDelayMs: 2000,
-              timestamp: new Date().toISOString()
-            });
-            Hvac.WsClient.GetPanelData(panel_id)
-          }, 1000)
+          setTimeout(() => Hvac.WsClient.GetPanelData(panel_id), 1000)
         }, 1000)
 
-        // Wait for data to be ready with timeout
         await t3000DataManager.waitForDataReady({
-          timeout: 20000, // 20 seconds timeout for WebSocket
+          timeout: 20000,
           specificEntries: [`MON${trendlog_id}`, `TRL${trendlog_id}`]
         })
 
         dataLoaded = true
-
       } catch (error) {
         T3000_Data.value.loadingPanel = null
       }
     }
 
-    // PRODUCTION: Mock data fallback commented out - not needed for production
-    // If both communication methods failed, create fallback data
-    // if (!dataLoaded) {
-    //   LogUtil.Warn('⚠️ Both WebView2 and WebSocket unavailable, creating minimal T3000_Data structure')
-
-    //   // Create minimal data structure for the TrendLogChart
-    //   const mockEntry = {
-    //     id: `MON${trendlog_id}`,
-    //     label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-    //     description: `Trend Log ${trendlog_id} from Panel ${panel_id}`,
-    //     pid: panel_id,
-    //     type: "MON",
-    //     value: 0,
-    //     unit: "",
-    //     status: 1,
-    //     input: [],
-    //     range: [],
-    //     num_inputs: 14,
-    //     an_inputs: 12
-    //   }
-
-    //   // Add to panelsData if not already present
-    //   const existingEntry = T3000_Data.value.panelsData.find(entry =>
-    //     entry.id === mockEntry.id && entry.pid === panel_id
-    //   )
-
-    //   if (!existingEntry) {
-    //     LogUtil.Info('📝 Adding fallback entry to panelsData')
-    //     T3000_Data.value.panelsData.push(mockEntry)
-    //   }
-
-    //   T3000_Data.value.loadingPanel = null
-    //   LogUtil.Info('📝 Created minimal T3000_Data structure for standalone usage')
-    // }
-
-    // Clear loading state if no data was loaded
+    // Clear loading state if no data loaded
     if (!dataLoaded) {
       T3000_Data.value.loadingPanel = null
     }
 
-    // Set up realtime data saving for socket data (port 9104)
+    // Set up realtime data saving
     setupRealtimeDataSaving(sn, panel_id)
 
-    // Log complete T3000_Data initialization completion
-    logT3000DataFlowState('AFTER_T3000_INITIALIZATION_COMPLETE', {
-      component: 'TrendLogIndexPageSocket',
-      params: { sn, panel_id, trendlog_id },
-      success: dataLoaded,
-      finalState: {
-        panelsDataCount: T3000_Data.value.panelsData?.length || 0,
-        panelsListCount: T3000_Data.value.panelsList?.length || 0,
-        panelsRangesCount: T3000_Data.value.panelsRanges?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel,
-        communicationMethod: dataLoaded ?
-          ((window as any).chrome?.webview ? 'WebView2' : 'WebSocket') :
-          'failed'
-      }
-    });
-
-    console.log('= TLISocketPage: INITIALIZE T3000DATA - Initialization complete:', {
-      success: dataLoaded,
-      finalT3000State: {
-        panelsDataCount: T3000_Data.value.panelsData?.length || 0,
-        panelsListCount: T3000_Data.value.panelsList?.length || 0,
-        panelsRangesCount: T3000_Data.value.panelsRanges?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      },
-      communicationMethod: dataLoaded ?
-        ((window as any).chrome?.webview ? 'WebView2' : 'WebSocket') :
-        'failed',
-      timestamp: new Date().toISOString()
-    });
-
   } catch (error) {
-    // Ensure loading state is cleared on error
     T3000_Data.value.loadingPanel = null
-
-    // Log error completion
-    logT3000DataFlowState('T3000_INITIALIZATION_ERROR', {
-      component: 'TrendLogIndexPageSocket',
-      params: { sn, panel_id, trendlog_id },
-      error: error?.message || 'Unknown error',
-      finalState: {
-        panelsDataCount: T3000_Data.value.panelsData?.length || 0,
-        panelsListCount: T3000_Data.value.panelsList?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      }
-    });
-
-    console.error('= TLISocketPage: INITIALIZE T3000DATA - Error during initialization:', {
-      error: error?.message || 'Unknown error',
-      stack: error?.stack,
-      finalState: T3000_Data.value,
-      timestamp: new Date().toISOString()
-    });
+    console.error('T3000 initialization error:', error)
   }
 }
 
