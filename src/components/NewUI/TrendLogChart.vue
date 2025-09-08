@@ -1166,20 +1166,36 @@ watch(() => props.itemData, (newData, oldData) => {
 
 // Watch T3000_Data for panels data changes
 watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
-  LogUtil.Info('= TLChart: T3000_Data.panelsData changed', {
-    hasNewPanelsData: !!newPanelsData,
-    hasOldPanelsData: !!oldPanelsData,
-    newPanelsDataLength: newPanelsData?.length || 0,
-    oldPanelsDataLength: oldPanelsData?.length || 0,
-    lengthChanged: (newPanelsData?.length || 0) !== (oldPanelsData?.length || 0),
-    willTriggerRegeneration: !!newPanelsData,
-    timestamp: new Date().toISOString()
-  })
+  // Only log when there's actual new data to process
+  if (newPanelsData && newPanelsData.length > 0) {
+    console.log('GET_ENTRIES Data Flow -> T3000_Data received:', {
+      panelsCount: newPanelsData.length,
+      totalItems: newPanelsData.flat().length,
+      validItems: newPanelsData.flat().filter(item => item.value !== undefined).length,
+      sampleItems: newPanelsData.flat().slice(0, 3).map(item => ({
+        id: item.id,
+        type: item.type,
+        index: item.index,
+        value: item.value,
+        hasValue: item.value !== undefined
+      })),
+      timestamp: new Date().toISOString()
+    })
 
-  // Regenerate data series when panels data becomes available or changes
-  if (newPanelsData && currentItemData.value) {
-    LogUtil.Info('= TLChart: Triggering regeneration due to panels data change')
-    regenerateDataSeries()
+    // Regenerate data series when panels data becomes available or changes
+    if (currentItemData.value) {
+      regenerateDataSeries()
+    }
+
+    // Process new data for chart data points
+    const chartDataFormat = newPanelsData.flat()
+    console.log('GET_ENTRIES Data Flow -> Processing for Chart.js:', {
+      totalData: chartDataFormat.length,
+      currentSeries: dataSeries.value.length,
+      seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
+    })
+
+    updateChartWithNewData(chartDataFormat)
   }
 }, { deep: true })
 
@@ -2267,17 +2283,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
       return []
     }
 
-    // Fetch data for all input items
-    const allDataPromises = monitorConfigData.inputItems.map(async (inputItem, index) => {
-      return await fetchSingleItemData(dataClient, inputItem, {
-        ...monitorConfigData,
-        panelId: currentPanelId,
-        panelData: devicesArray, // Use the extracted devices array
-        itemIndex: index
-      })
+    // Fetch data for all input items using BATCH REQUEST (optimized approach)
+    const allDataResults = await fetchAllItemsDataBatch(dataClient, monitorConfigData, {
+      panelId: currentPanelId,
+      panelData: devicesArray
     })
-
-    const allDataResults = await Promise.all(allDataPromises)
 
     return allDataResults
 
@@ -2335,6 +2345,191 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       timestamp: Date.now(),
       value: 0
     }]
+  }
+}
+
+/**
+ * Fetch data for ALL items using BATCH request (optimized approach)
+ * Sends one GET_ENTRIES request for all items instead of individual requests
+ */
+const fetchAllItemsDataBatch = async (dataClient: any, monitorConfigData: any, config: any): Promise<DataPoint[][]> => {
+  try {
+    LogUtil.Info('📦 TrendLogChart: fetchAllItemsDataBatch called', {
+      inputItemsCount: monitorConfigData.inputItems?.length || 0,
+      panelId: config.panelId,
+      timestamp: new Date().toISOString()
+    })
+
+    // Build batch request data for ALL items at once
+    const batchRequestData: any[] = []
+    const itemConfigs: any[] = []
+
+    monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
+      const itemIndex = index
+      const rangeValue = monitorConfigData.ranges[itemIndex] || 0
+
+      // Find matching device in panelsData
+      const matchingDevice = findPanelDataDevice(inputItem, config.panelData)
+
+      if (matchingDevice) {
+        const deviceIndex = parseInt(matchingDevice.index) || 0
+        const deviceType = inputItem.point_type
+
+        // Add to batch request
+        batchRequestData.push({
+          panelId: config.panelId,
+          index: deviceIndex,
+          type: deviceType
+        })
+
+        // Store config for processing response
+        itemConfigs.push({
+          inputItem,
+          matchingDevice,
+          rangeValue,
+          itemIndex
+        })
+
+        LogUtil.Info(`📦 Added item ${index} to batch request`, {
+          deviceIndex,
+          deviceType,
+          panelId: config.panelId
+        })
+      } else {
+        LogUtil.Warn(`⚠️ No matching device found for item ${index}`)
+        // Add placeholder for missing device
+        itemConfigs.push(null)
+      }
+    })
+
+    if (batchRequestData.length === 0) {
+      LogUtil.Warn('⚠️ No valid items for batch request')
+      return []
+    }
+
+    // Send single batch GET_ENTRIES request for ALL items
+    LogUtil.Info('📡 Sending BATCH GET_ENTRIES request', {
+      itemCount: batchRequestData.length,
+      requestData: batchRequestData
+    })
+
+    if (dataClient && dataClient.GetEntries) {
+      try {
+        // Send one request with all items
+        dataClient.GetEntries(config.panelId, null, batchRequestData)
+
+        LogUtil.Info('�?BATCH GET_ENTRIES request sent successfully', {
+          panelId: config.panelId,
+          itemCount: batchRequestData.length
+        })
+      } catch (error) {
+        LogUtil.Error('�?Error sending batch GET_ENTRIES request:', error)
+      }
+    }
+
+    // Return initial data points for each item (real data will come via handlers)
+    const results: DataPoint[][] = []
+
+    itemConfigs.forEach((itemConfig, index) => {
+      if (itemConfig) {
+        const processedValue = processDeviceValue(itemConfig.matchingDevice, itemConfig.rangeValue)
+        results.push([{
+          timestamp: Date.now(),
+          value: processedValue.value
+        }])
+      } else {
+        // Default data point for missing items
+        results.push([{
+          timestamp: Date.now(),
+          value: 0
+        }])
+      }
+    })
+
+    return results
+
+  } catch (error) {
+    LogUtil.Error('�?Error in fetchAllItemsDataBatch:', error)
+    return []
+  }
+}
+
+/**
+ * Send batch GET_ENTRIES request for periodic real-time updates
+ * Used by interval timer to efficiently update all monitored items at once
+ */
+const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
+  try {
+    // Get current device for panelId
+    const panelsList = T3000_Data.value.panelsList || []
+    const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+
+    // Get panels data for device mapping
+    const panelsData = T3000_Data.value.panelsData || []
+    const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
+
+    if (!currentPanelData || currentPanelData.length === 0) {
+      console.log('GET_ENTRIES Batch Request -> No panel data available')
+      return
+    }
+
+    // Initialize data client
+    const dataClient = initializeDataClients()
+    if (!dataClient) {
+      console.log('GET_ENTRIES Batch Request -> No data client available')
+      return
+    }
+
+    // Build batch request for ALL monitored items
+    const batchRequestData: any[] = []
+
+    monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
+      const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
+
+      if (matchingDevice) {
+        const deviceIndex = parseInt(matchingDevice.index) || 0
+        const deviceType = inputItem.point_type
+
+        batchRequestData.push({
+          panelId: currentPanelId,
+          index: deviceIndex,
+          type: deviceType
+        })
+      }
+    })
+
+    console.log('GET_ENTRIES Batch Request -> Sending periodic batch:', {
+      itemCount: batchRequestData.length,
+      panelId: currentPanelId,
+      batchSample: batchRequestData.slice(0, 3),
+      timestamp: new Date().toISOString()
+    })
+
+    if (batchRequestData.length === 0) {
+      console.log('GET_ENTRIES Batch Request -> No valid items for batch request')
+      return
+    }
+
+    // Send single batch GET_ENTRIES request for ALL items
+    console.log('GET_ENTRIES Batch Request -> Sending batch request:', {
+      itemCount: batchRequestData.length,
+      panelId: currentPanelId,
+      nextUpdateIn: calculateT3000Interval(monitorConfigData)
+    })
+
+    if (dataClient.GetEntries) {
+      dataClient.GetEntries(currentPanelId, null, batchRequestData)
+
+      console.log('GET_ENTRIES Batch Request -> Batch request sent successfully:', {
+        itemCount: batchRequestData.length,
+        timestamp: new Date().toLocaleTimeString()
+      })
+    } else {
+      console.log('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
+    }
+
+  } catch (error) {
+    console.log('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
   }
 }
 
@@ -2720,16 +2915,16 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
       // - Your test: GetEntries(undefined, undefined, [testRequest])
       dataClient.GetEntries(panelId, null, requestData)
 
-      LogUtil.Info('✅ TrendLogChart: GetEntries request sent with CORRECT format', {
+      LogUtil.Info('�?TrendLogChart: GetEntries request sent with CORRECT format', {
         panelId,
         viewitem: null,
         requestData
       })
     } catch (error) {
-      LogUtil.Error('❌ Error calling GetEntries:', error)
+      LogUtil.Error('�?Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('❌ GetEntries method not available on data client')
+    LogUtil.Error('�?GetEntries method not available on data client')
   }
 }
 
@@ -2750,7 +2945,7 @@ const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{ pan
     // CORRECT FORMAT: GetEntries(panelId?, viewitem?, data?)
     dataClient.GetEntries(primaryPanelId, null, requests)
   } else {
-    LogUtil.Error('❌ No GetEntries method available on data client')
+    LogUtil.Error('�?No GetEntries method available on data client')
   }
 }
 
@@ -2846,22 +3041,52 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     return
   }
 
+  console.log('🔧 Setting up custom GET_ENTRIES handler...', {
+    dataClientExists: !!dataClient,
+    dataClientType: typeof dataClient,
+    hasOriginalHandler: !!(dataClient && dataClient.HandleGetEntriesRes),
+    originalHandlerType: typeof dataClient?.HandleGetEntriesRes
+  })
+
   // Store original handler if it exists
   const originalHandler = dataClient.HandleGetEntriesRes
+
+  console.log('🔧 Stored original handler:', {
+    hasOriginal: !!originalHandler,
+    originalType: typeof originalHandler
+  })
 
 
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
-    LogUtil.Info('📨 TrendLogChart: GET_ENTRIES response received', {
+    console.log('🔥 CUSTOM HANDLER CALLED: GET_ENTRIES_RES received', msgData)
+    LogUtil.Info('🔥 TrendLogChart: GET_ENTRIES response received', {
       hasData: !!msgData?.data,
       dataType: Array.isArray(msgData?.data) ? 'array' : typeof msgData?.data,
       dataLength: Array.isArray(msgData?.data) ? msgData.data.length : 0,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      msgId: msgData?.msgId
     })
+
+    // DIAGNOSTIC: Log detailed analysis of the received data structure
+    if (msgData.data && Array.isArray(msgData.data)) {
+      const dataAnalysis = {
+        totalItems: msgData.data.length,
+        itemsWithValue: msgData.data.filter(item => item && item.hasOwnProperty('value')).length,
+        itemsWithIndexOnly: msgData.data.filter(item => item && Object.keys(item).length === 1 && item.hasOwnProperty('index')).length,
+        uniqueTypes: Array.from(new Set(msgData.data.map(item => item?.type).filter(Boolean))),
+        uniqueIds: Array.from(new Set(msgData.data.map(item => item?.id).filter(Boolean))),
+        sampleWithValue: msgData.data.find(item => item && item.hasOwnProperty('value')),
+        currentSeriesCount: dataSeries.value?.length || 0,
+        seriesNames: dataSeries.value?.map(s => s.name) || []
+      }
+
+      LogUtil.Info('TrendLogChart: GET_ENTRIES data structure analysis', dataAnalysis)
+    }
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('�?TrendLogChart: Valid data array received, processing...', {
+        LogUtil.Info('TrendLogChart: Valid data array received, processing...', {
           entryCount: msgData.data.length
         })
         updateChartWithNewData(msgData.data)
@@ -2891,6 +3116,11 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
   }
 
+  console.log('🔧 Custom handler installed successfully:', {
+    newHandlerType: typeof dataClient.HandleGetEntriesRes,
+    isOurHandler: dataClient.HandleGetEntriesRes.toString().includes('🔥 CUSTOM HANDLER CALLED')
+  })
+
   LogUtil.Info('�?TrendLogModal: GET_ENTRIES response handler setup complete')
 }
 
@@ -2898,50 +3128,144 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  * Update chart with new data from GET_ENTRIES response
  */
 const updateChartWithNewData = (newData: any[]) => {
-  LogUtil.Info('📊 TrendLogChart: updateChartWithNewData called', {
-    newDataLength: newData?.length || 0,
-    currentSeriesCount: dataSeries.value?.length || 0,
-    newDataSample: newData?.slice(0, 3) || [],
-    timestamp: new Date().toISOString()
+  if (!Array.isArray(newData) || newData.length === 0) {
+    console.log('GET_ENTRIES Data Flow -> updateChartWithNewData: No valid data received')
+    return
+  }
+
+  // Filter out objects that only have index property (no value data)
+  const validDataPoints = newData.filter(dataPoint =>
+    dataPoint &&
+    typeof dataPoint === 'object' &&
+    dataPoint.hasOwnProperty('value') &&
+    dataPoint.value !== null &&
+    dataPoint.value !== undefined
+  )
+
+  console.log('GET_ENTRIES Data Flow -> Data filtering:', {
+    totalReceived: newData.length,
+    validPoints: validDataPoints.length,
+    filteredOutCount: newData.length - validDataPoints.length,
+    validSample: validDataPoints.slice(0, 3).map(p => ({
+      id: p.id,
+      type: p.type,
+      index: p.index,
+      value: p.value,
+      description: p.description?.substring(0, 20)
+    })),
+    dataStructureNote: 'GET_ENTRIES returns: {id, type, index, value, description} vs API returns: processed values directly'
   })
 
-  const currentTime = Date.now()
+  if (validDataPoints.length === 0) {
+    console.log('GET_ENTRIES Data Flow -> No valid data points with values found')
+    return
+  }
 
-  // Update each data series with new values
-  newData.forEach((dataPoint, index) => {
-    if (index < dataSeries.value.length && dataSeries.value[index]) {
+  const currentTime = Date.now()
+  let pointsAdded = 0
+
+  // Map valid data points to existing series by matching device properties
+  validDataPoints.forEach((dataPoint, dataIndex) => {
+    // Find matching series based on device properties
+    let matchingSeriesIndex = -1
+
+    // Try to match by device properties (id, type, index, etc.)
+    dataSeries.value.forEach((series, seriesIndex) => {
+      // Match by device ID (e.g., VAR1, IN2, etc.)
+      if (series.itemType && dataPoint.id && series.itemType.includes(dataPoint.id)) {
+        matchingSeriesIndex = seriesIndex
+        return
+      }
+
+      // Match by point type and index
+      if (dataPoint.type && dataPoint.index !== undefined) {
+        const pointTypeCategory = getPointTypeInfo(series.pointType || 3).category
+        if (dataPoint.type === 'VARIABLE' && pointTypeCategory === 'VAR' && series.pointNumber === dataPoint.index) {
+          matchingSeriesIndex = seriesIndex
+          return
+        }
+        if (dataPoint.type === 'INPUT' && pointTypeCategory === 'IN' && series.pointNumber === dataPoint.index) {
+          matchingSeriesIndex = seriesIndex
+          return
+        }
+        if (dataPoint.type === 'OUTPUT' && pointTypeCategory === 'OUT' && series.pointNumber === dataPoint.index) {
+          matchingSeriesIndex = seriesIndex
+          return
+        }
+      }
+
+      // Fallback: match by data array position if within bounds
+      if (matchingSeriesIndex === -1 && dataIndex < dataSeries.value.length) {
+        matchingSeriesIndex = dataIndex
+      }
+    })
+
+    if (matchingSeriesIndex >= 0 && matchingSeriesIndex < dataSeries.value.length) {
+      const series = dataSeries.value[matchingSeriesIndex]
+
       const newPoint: DataPoint = {
         timestamp: currentTime,
         value: scaleValueIfNeeded(parseFloat(dataPoint.value) || 0)
       }
 
-      LogUtil.Info(`📈 TrendLogChart: Adding data point to series ${index}`, {
-        seriesName: dataSeries.value[index].name,
-        newValue: newPoint.value,
+      console.log('GET_ENTRIES Data Flow -> Adding point to series:', {
+        seriesIndex: matchingSeriesIndex,
+        seriesName: series.name,
+        deviceId: dataPoint.id,
+        deviceType: dataPoint.type,
+        deviceIndex: dataPoint.index,
+        rawValue: dataPoint.value,
+        scaledValue: newPoint.value,
         timestamp: newPoint.timestamp,
-        seriesDataLength: dataSeries.value[index].data.length
+        previousDataLength: series.data.length
       })
 
       // Add new point to series data
-      dataSeries.value[index].data.push(newPoint)
+      series.data.push(newPoint)
 
       // Keep only recent data points (last 100 points to prevent memory issues)
       const maxDataPoints = 100
-      if (dataSeries.value[index].data.length > maxDataPoints) {
-        dataSeries.value[index].data = dataSeries.value[index].data.slice(-maxDataPoints)
+      if (series.data.length > maxDataPoints) {
+        series.data = series.data.slice(-maxDataPoints)
       }
+
+      // Update series metadata if available from device data
+      if (dataPoint.description && !series.description) {
+        series.description = dataPoint.description
+      }
+      if (dataPoint.label && series.name === series.description) {
+        series.name = dataPoint.label
+      }
+
+      pointsAdded++
+
     } else {
-      LogUtil.Warn(`⚠️ TrendLogChart: No series found for data point ${index}`, {
-        dataPointIndex: index,
+      console.log('GET_ENTRIES Data Flow -> No matching series found:', {
+        deviceId: dataPoint.id,
+        deviceType: dataPoint.type,
+        deviceIndex: dataPoint.index,
+        dataIndex,
         totalSeries: dataSeries.value.length,
-        dataPoint
+        availableSeriesTypes: dataSeries.value.map(s => s.itemType),
+        availableSeriesNames: dataSeries.value.map(s => s.name)
       })
     }
+  })
+
+  console.log('GET_ENTRIES Data Flow -> Chart.js update:', {
+    pointsAdded,
+    totalValidPoints: validDataPoints.length,
+    hasChartInstance: !!chartInstance,
+    seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+    totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
   })
 
   // Update the chart if it exists
   if (chartInstance) {
     updateChart()
+    console.log('GET_ENTRIES Data Flow -> Chart.js rendered successfully')
+  } else {
+    console.log('GET_ENTRIES Data Flow -> ERROR: No chart instance available for update')
   }
 }
 
@@ -3080,189 +3404,45 @@ const initializeData = async () => {
 }
 
 const addRealtimeDataPoint = async () => {
-  LogUtil.Info('⏱️ TrendLogChart: addRealtimeDataPoint called', {
-    isRealTimeMode: isRealTime.value,
-    dataSeriesCount: dataSeries.value?.length || 0,
-    hasMonitorConfig: !!monitorConfig.value,
-    timestamp: new Date().toISOString()
-  })
-
   // Only add data if we're in real-time mode
   if (!isRealTime.value) {
-    LogUtil.Info('⏸️ TrendLogChart: Skipping realtime update - not in real-time mode')
     return
   }
 
   // Safety check: If no data series exist, don't generate mock data
   if (dataSeries.value.length === 0) {
-    LogUtil.Warn('⚠️ TrendLogChart: No data series available for realtime update')
+    console.log('Realtime Update -> No data series available')
     return
   }
-
-  const now = new Date()
-  const callTimeString = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0')
-
-  // 🔧 Use actual timestamp for real data points (not aligned to minutes)
-  // This allows showing multiple data points per minute interval
-  const timestamp = now.getTime()
 
   // Check if we have real monitor configuration for live data
   const monitorConfigData = monitorConfig.value
 
   if (monitorConfigData && monitorConfigData.inputItems.length > 0) {
-    // Use real-time data from T3000
-    LogUtil.Info('📡 TrendLogChart: Fetching real-time monitor data', {
-      monitorConfigItemsCount: monitorConfigData.inputItems.length,
-      currentDataSeriesCount: dataSeries.value.length
+    console.log('Realtime Update -> Triggering GET_ENTRIES batch request:', {
+      monitorItems: monitorConfigData.inputItems.length,
+      currentSeries: dataSeries.value.length,
+      timestamp: new Date().toISOString()
     })
 
     try {
-      const realTimeData = await fetchRealTimeMonitorData()
-      LogUtil.Info('📊 TrendLogChart: Real-time data fetched', {
-        realTimeDataLength: realTimeData?.length || 0,
-        hasValidData: Array.isArray(realTimeData)
-      })
+      // Send batch GET_ENTRIES request for ALL items at once
+      await sendPeriodicBatchRequest(monitorConfigData)
 
-      // Get device parameters for database saving
-      const deviceParams = extractDeviceParameters()
+      // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
+      // which calls updateChartWithNewData() to update dataSeries automatically
 
-      // Prepare batch data for database saving
-      const realtimeDataForSave = []
-
-      dataSeries.value.forEach((series, index) => {
-        if (series.isEmpty || !realTimeData[index]) return
-
-        // Get the latest real data point
-        const latestData = realTimeData[index]
-        if (latestData && latestData.length > 0) {
-          const latestPoint = latestData[latestData.length - 1]
-          const newPoint = {
-            timestamp: timestamp,
-            value: latestPoint.value
-          }
-
-          series.data.push(newPoint)
-
-          // Update series unit from the matching device data if not already set
-          if (!series.unit) {
-            try {
-              // Get the monitor config to find the input item for this series
-              const monitorConfigData = monitorConfig.value
-              if (monitorConfigData?.inputItems?.[index]) {
-                const inputItem = monitorConfigData.inputItems[index]
-
-                // Get panels data for device lookup
-                const panelsData = T3000_Data.value.panelsData || []
-                const currentPanelId = T3000_Data.value.panelsList?.[0]?.panel_number || 1
-                const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
-
-                // Find matching device
-                const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
-                if (matchingDevice?.range !== undefined) {
-                  if (series.unitType === 'digital') {
-                    series.unit = '' // Digital units don't show symbols, just state names
-                  } else {
-                    // For analog, use the actual device range (T3000 unit code)
-                    series.unit = getAnalogUnit(matchingDevice.range) || ''
-                  }
-
-                  LogUtil.Info(`🔧 TrendLogChart: Updated series unit from device data`, {
-                    seriesName: series.name,
-                    unit: series.unit,
-                    deviceRange: matchingDevice.range,
-                    unitType: series.unitType
-                  })
-                }
-              }
-            } catch (error) {
-              LogUtil.Error('Failed to determine series unit from device data:', error)
-            }
-          }
-
-          LogUtil.Info(`📈 TrendLogChart: Added real-time point to series ${index}`, {
-            seriesName: series.name,
-            newValue: newPoint.value,
-            seriesDataLength: series.data.length,
-            seriesUnit: series.unit
-          })          // Prepare data for database save
-          // Get the actual point type info for consistent categorization
-          const actualPointType = series.pointType || 3 // Default to VAR if not available
-          const pointTypeInfo = getPointTypeInfo(actualPointType)
-
-          // Generate proper T3000 point ID format (e.g., IN3, OUT1, VAR5)
-          const pointNumber = (series.pointNumber || index) + 1 // T3000 uses 1-based indexing
-          const pointId = `${pointTypeInfo.category}${pointNumber}`
-
-          // Get the actual real-time update interval in seconds
-          const actualIntervalMs = monitorConfig.value?.dataIntervalMs || updateInterval.value
-          const actualIntervalSec = Math.round(actualIntervalMs / 1000)
-
-          // For database storage, use raw value (not display-processed value)
-          // The processDeviceValue function only divides by 1000 if rawValue > 1000
-          // So we need to restore it only for values that were actually divided
-          let databaseValue = newPoint.value
-          if (series.unitType === 'analog') {
-            // If the display value * 1000 would be > 1000, then it was divided for display
-            // This means the original raw value was >= 1000, so we restore it
-            if (newPoint.value * 1000 >= 1000) {
-              databaseValue = newPoint.value * 1000
-            }
-            // If newPoint.value * 1000 < 1000, then the original was < 1000 and wasn't divided
-            // so we keep the value as-is
-          }
-
-          realtimeDataForSave.push({
-            serial_number: deviceParams.sn || 0,
-            panel_id: deviceParams.panel_id || 0,
-            point_id: pointId, // Use T3000 standard format like IN3, OUT1, VAR5
-            point_index: series.pointNumber || index, // Use actual point number from series
-            point_type: pointTypeInfo.category, // Use the category from point type info (OUT, IN, VAR, etc.)
-            value: databaseValue.toString(), // Use raw value for database storage
-            range_field: (series.unitCode || 0).toString(), // Convert unitCode to string for range field
-            digital_analog: '1', // Point is in use (always 1 for real-time data being saved)
-            units: series.unit || '', // Now series.unit should be properly set from real-time processing
-            // Enhanced source tracking for FRONTEND real-time data
-            data_source: 'REALTIME',
-            sync_interval: actualIntervalSec, // Use actual real-time update interval in seconds
-            created_by: 'FRONTEND'
-          })          // Remove old points to maintain window size
-          const maxDataPoints = Math.max(100, getTimeRangeMinutes(timeBase.value) / 5)
-          if (series.data.length > maxDataPoints) {
-            series.data.shift()
-          }
-        }
-      })
-
-      // Save real-time data to database (batch operation for efficiency)
-      if (realtimeDataForSave.length > 0) {
-        try {
-          const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataForSave)
-          LogUtil.Info('💾 TrendLogChart: Real-time data saved to database', {
-            pointsSaved: realtimeDataForSave.length,
-            rowsAffected: rowsAffected,
-            deviceSerial: deviceParams.sn,
-            panelId: deviceParams.panel_id
-          })
-        } catch (error) {
-          LogUtil.Warn('⚠️ TrendLogChart: Failed to save real-time data to database', {
-            error: error.message,
-            pointsCount: realtimeDataForSave.length
-          })
-          // Don't throw error - display should continue even if database save fails
-        }
-      }
-
-      LogUtil.Info('�?TrendLogChart: Real-time data points processing completed')
-      // Update sync time only when real data is successfully processed
+      // Update sync time since batch request was sent successfully
       lastSyncTime.value = new Date().toLocaleTimeString()
 
-      // If we were in fallback mode but successfully got real data, switch back to realtime
+      // If we were in fallback mode but successfully sent request, switch back to realtime
       if (dataSource.value === 'fallback') {
-        LogUtil.Info('🔄 TrendLogChart: Auto-recovering from fallback mode - real data is now available')
+        LogUtil.Info('TrendLogChart: Auto-recovering from fallback mode - batch request sent successfully')
         dataSource.value = 'realtime'
       }
+
     } catch (error) {
-      LogUtil.Warn('⚠️ TrendLogChart: Failed to get real-time data, setting fallback mode:', error)
+      LogUtil.Warn('TrendLogChart: Failed to send batch request, setting fallback mode:', error)
       // Set fallback mode - do not generate mock data
       dataSource.value = 'fallback'
       // Clear all data when entering fallback mode
@@ -3272,7 +3452,7 @@ const addRealtimeDataPoint = async () => {
     }
   } else if (dataSource.value !== 'fallback') {
     // Only use mock data generation if not in fallback mode
-    addMockRealtimeDataPoint(timestamp)
+    addMockRealtimeDataPoint(Date.now())
   }
   // If in fallback mode, do nothing - let chart remain empty
 
@@ -3421,6 +3601,19 @@ const updateChart = () => {
   if (!chartInstance) return
 
   const visibleSeries = dataSeries.value.filter(series => series.visible && series.data.length > 0)
+
+  console.log('Chart.js Rendering Pipeline:', {
+    totalSeries: dataSeries.value.length,
+    visibleSeries: visibleSeries.length,
+    totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0),
+    visibleDataPoints: visibleSeries.reduce((sum, s) => sum + s.data.length, 0),
+    seriesDetails: visibleSeries.map(s => ({
+      name: s.name,
+      dataPoints: s.data.length,
+      latestValue: s.data[s.data.length - 1]?.value,
+      latestTimestamp: s.data[s.data.length - 1]?.timestamp ? new Date(s.data[s.data.length - 1].timestamp).toISOString() : null
+    }))
+  })
 
   chartInstance.data.datasets = visibleSeries
     .map(series => {
