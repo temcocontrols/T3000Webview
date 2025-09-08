@@ -1166,22 +1166,7 @@ watch(() => props.itemData, (newData, oldData) => {
 
 // Watch T3000_Data for panels data changes
 watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
-  // Only log when there's actual new data to process
   if (newPanelsData && newPanelsData.length > 0) {
-    console.log('GET_ENTRIES Data Flow -> T3000_Data received:', {
-      panelsCount: newPanelsData.length,
-      totalItems: newPanelsData.flat().length,
-      validItems: newPanelsData.flat().filter(item => item.value !== undefined).length,
-      sampleItems: newPanelsData.flat().slice(0, 3).map(item => ({
-        id: item.id,
-        type: item.type,
-        index: item.index,
-        value: item.value,
-        hasValue: item.value !== undefined
-      })),
-      timestamp: new Date().toISOString()
-    })
-
     // Regenerate data series when panels data becomes available or changes
     if (currentItemData.value) {
       regenerateDataSeries()
@@ -1189,12 +1174,6 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
 
     // Process new data for chart data points
     const chartDataFormat = newPanelsData.flat()
-    console.log('GET_ENTRIES Data Flow -> Processing for Chart.js:', {
-      totalData: chartDataFormat.length,
-      currentSeries: dataSeries.value.length,
-      seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
-    })
-
     updateChartWithNewData(chartDataFormat)
   }
 }, { deep: true })
@@ -3129,11 +3108,10 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  */
 const updateChartWithNewData = (newData: any[]) => {
   if (!Array.isArray(newData) || newData.length === 0) {
-    console.log('GET_ENTRIES Data Flow -> updateChartWithNewData: No valid data received')
     return
   }
 
-  // Filter out objects that only have index property (no value data)
+  // Filter valid data points
   const validDataPoints = newData.filter(dataPoint =>
     dataPoint &&
     typeof dataPoint === 'object' &&
@@ -3142,59 +3120,24 @@ const updateChartWithNewData = (newData: any[]) => {
     dataPoint.value !== undefined
   )
 
-  console.log('GET_ENTRIES Data Flow -> Data filtering:', {
-    totalReceived: newData.length,
-    validPoints: validDataPoints.length,
-    filteredOutCount: newData.length - validDataPoints.length,
-    validSample: validDataPoints.slice(0, 3).map(p => ({
-      id: p.id,
-      type: p.type,
-      index: p.index,
-      value: p.value,
-      description: p.description?.substring(0, 20)
-    })),
-    dataStructureNote: 'GET_ENTRIES returns: {id, type, index, value, description} vs API returns: processed values directly'
-  })
-
   if (validDataPoints.length === 0) {
-    console.log('GET_ENTRIES Data Flow -> No valid data points with values found')
     return
   }
 
   const currentTime = Date.now()
-  let pointsAdded = 0
 
-  // Map valid data points to existing series by matching device properties
+  // Add data points to matching series
   validDataPoints.forEach((dataPoint, dataIndex) => {
-    // Find matching series based on device properties
     let matchingSeriesIndex = -1
 
-    // Try to match by device properties (id, type, index, etc.)
+    // Find matching series by device properties
     dataSeries.value.forEach((series, seriesIndex) => {
-      // Match by device ID (e.g., VAR1, IN2, etc.)
       if (series.itemType && dataPoint.id && series.itemType.includes(dataPoint.id)) {
         matchingSeriesIndex = seriesIndex
         return
       }
 
-      // Match by point type and index
-      if (dataPoint.type && dataPoint.index !== undefined) {
-        const pointTypeCategory = getPointTypeInfo(series.pointType || 3).category
-        if (dataPoint.type === 'VARIABLE' && pointTypeCategory === 'VAR' && series.pointNumber === dataPoint.index) {
-          matchingSeriesIndex = seriesIndex
-          return
-        }
-        if (dataPoint.type === 'INPUT' && pointTypeCategory === 'IN' && series.pointNumber === dataPoint.index) {
-          matchingSeriesIndex = seriesIndex
-          return
-        }
-        if (dataPoint.type === 'OUTPUT' && pointTypeCategory === 'OUT' && series.pointNumber === dataPoint.index) {
-          matchingSeriesIndex = seriesIndex
-          return
-        }
-      }
-
-      // Fallback: match by data array position if within bounds
+      // Fallback: match by position
       if (matchingSeriesIndex === -1 && dataIndex < dataSeries.value.length) {
         matchingSeriesIndex = dataIndex
       }
@@ -3208,64 +3151,28 @@ const updateChartWithNewData = (newData: any[]) => {
         value: scaleValueIfNeeded(parseFloat(dataPoint.value) || 0)
       }
 
-      console.log('GET_ENTRIES Data Flow -> Adding point to series:', {
-        seriesIndex: matchingSeriesIndex,
-        seriesName: series.name,
-        deviceId: dataPoint.id,
-        deviceType: dataPoint.type,
-        deviceIndex: dataPoint.index,
-        rawValue: dataPoint.value,
-        scaledValue: newPoint.value,
-        timestamp: newPoint.timestamp,
-        previousDataLength: series.data.length
-      })
-
-      // Add new point to series data
+      // Add new point to series
       series.data.push(newPoint)
 
-      // Keep only recent data points (last 100 points to prevent memory issues)
+      // Keep only recent data points
       const maxDataPoints = 100
       if (series.data.length > maxDataPoints) {
         series.data = series.data.slice(-maxDataPoints)
       }
 
-      // Update series metadata if available from device data
+      // Update series metadata if available
       if (dataPoint.description && !series.description) {
         series.description = dataPoint.description
       }
       if (dataPoint.label && series.name === series.description) {
         series.name = dataPoint.label
       }
-
-      pointsAdded++
-
-    } else {
-      console.log('GET_ENTRIES Data Flow -> No matching series found:', {
-        deviceId: dataPoint.id,
-        deviceType: dataPoint.type,
-        deviceIndex: dataPoint.index,
-        dataIndex,
-        totalSeries: dataSeries.value.length,
-        availableSeriesTypes: dataSeries.value.map(s => s.itemType),
-        availableSeriesNames: dataSeries.value.map(s => s.name)
-      })
     }
   })
 
-  console.log('GET_ENTRIES Data Flow -> Chart.js update:', {
-    pointsAdded,
-    totalValidPoints: validDataPoints.length,
-    hasChartInstance: !!chartInstance,
-    seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-    totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-  })
-
-  // Update the chart if it exists
+  // Update the chart
   if (chartInstance) {
     updateChart()
-    console.log('GET_ENTRIES Data Flow -> Chart.js rendered successfully')
-  } else {
-    console.log('GET_ENTRIES Data Flow -> ERROR: No chart instance available for update')
   }
 }
 
@@ -3602,19 +3509,6 @@ const updateChart = () => {
 
   const visibleSeries = dataSeries.value.filter(series => series.visible && series.data.length > 0)
 
-  console.log('Chart.js Rendering Pipeline:', {
-    totalSeries: dataSeries.value.length,
-    visibleSeries: visibleSeries.length,
-    totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0),
-    visibleDataPoints: visibleSeries.reduce((sum, s) => sum + s.data.length, 0),
-    seriesDetails: visibleSeries.map(s => ({
-      name: s.name,
-      dataPoints: s.data.length,
-      latestValue: s.data[s.data.length - 1]?.value,
-      latestTimestamp: s.data[s.data.length - 1]?.timestamp ? new Date(s.data[s.data.length - 1].timestamp).toISOString() : null
-    }))
-  })
-
   chartInstance.data.datasets = visibleSeries
     .map(series => {
       // Ensure data points are sorted by timestamp for proper line drawing
@@ -3708,12 +3602,6 @@ const updateChart = () => {
     }
   }
 
-  LogUtil.Info('🔄 TrendLogChart: Chart updated with new config', {
-    hasChartInstance: !!chartInstance,
-    visibleSeriesCount: dataSeries.value?.filter(s => s.visible)?.length || 0,
-    totalSeriesCount: dataSeries.value?.length || 0,
-    timestamp: new Date().toISOString()
-  })
   chartInstance.update('none')
 }
 
