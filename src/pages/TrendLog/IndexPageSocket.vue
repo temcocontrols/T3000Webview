@@ -208,68 +208,23 @@ const validateTrendLogJsonStructure = (data: any): boolean => {
 const formatDataFromQueryParams = () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
-  // ===========================================
-  // JSON Parsing Parameter Debugging
-  // ===========================================
-  console.log('= TLISocketPage: ===== JSON PROCESSING DATA FLOW START =====')
-  console.log('= TLISocketPage: Raw URL Parameters:', {
-    sn: sn,
-    panel_id: panel_id,
-    trendlog_id: trendlog_id,
-    all_data_present: !!all_data,
-    all_data_length: all_data ? all_data.length : 0,
-    all_data_preview: all_data ? all_data.substring(0, 150) + '...' : null,
-    timestamp: new Date().toISOString()
-  });
-
-  // Must have required parameters (allow trendlog_id=0)
+  // Validate required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
-    console.log('= TLISocketPage: VALIDATION FAILED - Missing required parameters');
-    console.log('= TLISocketPage: Required params check:', { sn, panel_id, trendlog_id });
     return null
   }
 
   let t3EntryData = null
 
-  // If all_data is provided, try to parse it
+  // Try to parse JSON data from C++ backend
   if (all_data) {
-    console.log('= TLISocketPage: PROCESSING JSON FROM C++ BACKEND')
     const decodedData = decodeUrlEncodedJson(all_data)
-    console.log('= TLISocketPage: JSON DECODE RESULTS - Full analysis:', {
-      decodeSuccessful: !!decodedData,
-      jsonValidationStatus: jsonValidationStatus.value,
-      hasT3Entry: !!(decodedData && decodedData.t3Entry),
-      decodedKeys: decodedData ? Object.keys(decodedData) : [],
-      t3EntryKeys: decodedData?.t3Entry ? Object.keys(decodedData.t3Entry) : [],
-      fullDecodedData: decodedData, // Full data structure
-      timestamp: new Date().toISOString()
-    });
-
     if (decodedData && jsonValidationStatus.value === 'valid') {
       t3EntryData = decodedData.t3Entry || decodedData
-      console.log('= TLISocketPage: JSON DECODE SUCCESS - Using t3Entry data:', {
-        pid: t3EntryData.pid,
-        id: t3EntryData.id,
-        label: t3EntryData.label,
-        inputCount: t3EntryData.input?.length,
-        rangeCount: t3EntryData.range?.length,
-        fullT3EntryData: t3EntryData, // Complete t3Entry structure
-        inputDataSample: t3EntryData.input?.slice(0, 3) || [],
-        rangeDataSample: t3EntryData.range?.slice(0, 3) || []
-      });
-    } else {
-      console.log('= TLISocketPage: JSON DECODE FAILED - Invalid or corrupted data:', {
-        decodedData,
-        validationStatus: jsonValidationStatus.value,
-        rawDataPreview: all_data?.substring(0, 200)
-      })
     }
   }
 
-  // If no all_data or parsing failed, create basic structure
+  // Create fallback structure if no valid JSON data
   if (!t3EntryData) {
-    console.log('= TLISocketPage: CREATING FALLBACK T3ENTRY STRUCTURE')
-    console.log('= TLISocketPage: Fallback creation reason: no_valid_json_data')
     t3EntryData = {
       an_inputs: 12,
       command: `${panel_id}MON${trendlog_id}`,
@@ -299,19 +254,6 @@ const formatDataFromQueryParams = () => {
     title: t3EntryData.label || 'T3000 Trend Log Analysis',
     t3Entry: t3EntryData
   }
-
-  console.log('= TLISocketPage: JSON PROCESSING COMPLETE - Final chart data:', {
-    title: chartData.title,
-    t3Entry: {
-      pid: chartData.t3Entry.pid,
-      label: chartData.t3Entry.label,
-      inputCount: chartData.t3Entry.input?.length,
-      rangeCount: chartData.t3Entry.range?.length,
-      fullT3Entry: chartData.t3Entry, // Complete structure for debugging
-      input: chartData.t3Entry.input,
-      range: chartData.t3Entry.range
-    }
-  });
 
   // Format for scheduleItemData
   const scheduleData = {
@@ -352,59 +294,26 @@ const loadTrendLogItemData = async () => {
 
     const params = getValidatedParameters()
 
-    // ===========================================
-    // Load Function Parameter Debugging
-    // ===========================================
-    console.log('= TLISocketPage: ===== DATA LOADING FLOW START =====')
-    console.log('= TLISocketPage: Function parameters analysis:', {
-      sn: params.sn,
-      panel_id: params.panel_id,
-      trendlog_id: params.trendlog_id,
-      isValid: params.isValid,
-      hasAllData: !!params.all_data,
-      allDataSize: params.all_data?.length || 0,
-      fullParams: params, // Complete parameter object
-      timestamp: new Date().toISOString()
-    })
-
-    console.log('= TLISocketPage: Data loading strategy selection:', {
-      priority1_json: !!params.all_data,
-      priority2_api: params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null,
-      priority3_fallback: !params.all_data && !params.isValid,
-      selectedStrategy: params.all_data ? 'JSON_FROM_CPP' : (params.isValid ? 'API_HISTORICAL' : 'FALLBACK')
-    })
-
     // Priority 1: Try to load data from JSON parameters (realtime)
     if (params.all_data) {
-      console.log('= TLISocketPage: EXECUTING PRIORITY 1 - JSON Data from C++ Backend')
       dataSource.value = 'json'
       const formattedData = formatDataFromQueryParams()
       if (formattedData) {
         trendLogItemData.value = formattedData.chartData
         scheduleItemData.value = formattedData.scheduleData
         pageTitle.value = formattedData.chartData.title
-        console.log('= TLISocketPage: JSON LOADING SUCCESS - Data processed:', {
-          title: formattedData.chartData.title,
-          t3Entry_id: formattedData.scheduleData?.t3Entry?.id,
-          dataSource: dataSource.value,
-          fullChartData: formattedData.chartData, // Complete chart structure
-          fullScheduleData: formattedData.scheduleData, // Complete schedule structure
-          processingComplete: true
-        })
         return
       }
     }
 
     // Priority 2: Try to load from API (historical data)
     if (params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
-      console.log('= TLISocketPage: EXECUTING PRIORITY 2 - API Historical Data')
       dataSource.value = 'api'
 
-      // Generate time range: start_time should be 1 hour ago, end_time should be current time
+      // Generate time range: 1 hour ago to now
       const now = new Date()
       const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000))
 
-      // Format times as "YYYY-MM-DD HH:MM:SS" to match LoggingTime_Fmt format
       const formatTimeForDB = (date: Date): string => {
         const year = date.getFullYear()
         const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -419,31 +328,15 @@ const loadTrendLogItemData = async () => {
         serial_number: params.sn,
         panel_id: params.panel_id,
         trendlog_id: params.trendlog_id.toString(),
-        start_time: formatTimeForDB(oneHourAgo), // 1 hour ago
-        end_time: formatTimeForDB(now), // Current time
-        limit: 1000, // Get last 1000 data points
-        point_types: ['INPUT', 'OUTPUT', 'VARIABLE'] // All point types
+        start_time: formatTimeForDB(oneHourAgo),
+        end_time: formatTimeForDB(now),
+        limit: 1000,
+        point_types: ['INPUT', 'OUTPUT', 'VARIABLE']
       }
-
-      console.log('= TLISocketPage: API REQUEST DETAILS - Historical data query:', {
-        historyRequest,
-        requestType: 'getTrendlogHistory',
-        timestamp: new Date().toISOString()
-      })
 
       const historyData = await trendlogAPI.getTrendlogHistory(historyRequest)
 
-      console.log('= TLISocketPage: API RESPONSE RECEIVED - Full response analysis:', {
-        hasData: !!historyData,
-        dataCount: historyData?.data?.length || 0,
-        trendlogId: historyData?.trendlog_id,
-        sampleData: historyData?.data?.slice(0, 3) || [],
-        fullApiResponse: historyData, // Complete API response
-        responseTimestamp: new Date().toISOString()
-      })
-
-      if (historyData && historyData.data && historyData.data.length > 0) {
-        // Convert API data to TrendLogChart format
+      if (historyData?.data?.length > 0) {
         const apiScheduleData = {
           id: historyData.trendlog_id,
           label: `TRL${params.sn}_${params.panel_id}_${params.trendlog_id}`,
@@ -457,7 +350,6 @@ const loadTrendLogItemData = async () => {
           range: [],
           num_inputs: historyData.count,
           an_inputs: historyData.data.filter(d => d.is_analog).length,
-          // Add the historical data
           scheduleData: historyData.data.map((point, index) => ({
             time: point.time,
             value: point.value,
@@ -470,49 +362,15 @@ const loadTrendLogItemData = async () => {
         trendLogItemData.value = apiScheduleData
         scheduleItemData.value = apiScheduleData
         pageTitle.value = `Historical Trend Log ${params.trendlog_id} - Device ${params.sn}`
-        console.log('= TLISocketPage: API LOADING SUCCESS - Historical data processed:', {
-          title: pageTitle.value,
-          dataCount: historyData.data.length,
-          dataSource: dataSource.value,
-          fullApiScheduleData: apiScheduleData, // Complete processed data structure
-          processingComplete: true
-        })
         return
-      } else {
-        console.log('= TLISocketPage: API LOADING FAILED - Empty or invalid response:', {
-          hasHistoryData: !!historyData,
-          hasDataArray: !!(historyData?.data),
-          dataLength: historyData?.data?.length || 0,
-          fullResponse: historyData, // Complete response for debugging
-          failureReason: 'empty_or_invalid_data'
-        })
       }
     }
 
     // Priority 3: Fallback - no valid data available
-    console.log('= TLISocketPage: EXECUTING PRIORITY 3 - Fallback (No Data Available)')
     dataSource.value = 'fallback'
     trendLogItemData.value = null
     scheduleItemData.value = null
     pageTitle.value = 'T3000 Trend Log Analysis'
-
-    const errorDetails = {
-      hasApiError: !!trendlogAPI.error.value,
-      apiErrorMessage: trendlogAPI.error.value,
-      isValidParams: params.isValid,
-      missingParams: {
-        sn: params.sn === null,
-        panel_id: params.panel_id === null,
-        trendlog_id: params.trendlog_id === null
-      },
-      fullErrorContext: {
-        params,
-        apiError: trendlogAPI.error.value,
-        timestamp: new Date().toISOString()
-      }
-    }
-
-    console.log('= TLISocketPage: FALLBACK ERROR ANALYSIS - Complete error context:', errorDetails)
 
     if (trendlogAPI.error.value) {
       error.value = `Failed to load historical data: ${trendlogAPI.error.value}`
@@ -536,52 +394,7 @@ const loadTrendLogItemData = async () => {
 // Watch for URL parameter changes and refresh scheduleItemData
 watch(
   () => route.query,
-  (newQuery, oldQuery) => {
-    console.log('= TLISocketPage: ROUTE QUERY CHANGED - URL Parameter Debug')
-    console.log('─'.repeat(60))
-
-    const oldParams = {
-      sn: oldQuery?.sn ? Number(oldQuery.sn) : null,
-      panel_id: oldQuery?.panel_id ? Number(oldQuery.panel_id) : null,
-      trendlog_id: oldQuery?.trendlog_id ? Number(oldQuery.trendlog_id) : null,
-      all_data: oldQuery?.all_data as string || null
-    }
-
-    const newParams = urlParams.value
-
-    console.log('= TLISocketPage: Previous route parameters:', {
-      sn: oldParams.sn,
-      panel_id: oldParams.panel_id,
-      trendlog_id: oldParams.trendlog_id,
-      all_data_length: oldParams.all_data?.length || 0,
-      fullPreviousContext: oldParams
-    })
-
-    console.log('= TLISocketPage: New route parameters:', {
-      sn: newParams.sn,
-      panel_id: newParams.panel_id,
-      trendlog_id: newParams.trendlog_id,
-      all_data_length: newParams.all_data?.length || 0,
-      all_data_preview: newParams.all_data?.substring(0, 150) + (newParams.all_data?.length > 150 ? '...' : ''),
-      fullNewContext: newParams
-    })
-
-    console.log('= TLISocketPage: Route parameter changes analysis:', {
-      sn_changed: oldParams.sn !== newParams.sn,
-      panel_id_changed: oldParams.panel_id !== newParams.panel_id,
-      trendlog_id_changed: oldParams.trendlog_id !== newParams.trendlog_id,
-      all_data_changed: oldParams.all_data !== newParams.all_data,
-      validation_status: getValidatedParameters().isValid,
-      changeDetails: {
-        oldParams,
-        newParams,
-        timestamp: new Date().toISOString()
-      }
-    })
-
-    console.log('= TLISocketPage: Triggering loadTrendLogItemData due to route change')
-    console.log('─'.repeat(60))
-
+  () => {
     loadTrendLogItemData()
   },
   { immediate: false }
@@ -591,24 +404,10 @@ watch(
 watch(
   () => scheduleItemData.value,
   (newValue, oldValue) => {
-    console.log('= TLISocketPage: SCHEDULE ITEM DATA WATCHER - Data change triggered:', {
-      newValue: newValue,
-      oldValue: oldValue,
-      hasNewT3Entry: !!(newValue && (newValue as any).t3Entry),
-      newPid: (newValue as any)?.t3Entry?.pid,
-      newInputCount: (newValue as any)?.t3Entry?.input?.length,
-      newRangeCount: (newValue as any)?.t3Entry?.range?.length,
-      dataSource: dataSource.value,
-      timestamp: new Date().toISOString(),
-      fullDataAnalysis: {
-        newDataType: typeof newValue,
-        oldDataType: typeof oldValue,
-        hasChanges: newValue !== oldValue,
-        completeNewValue: newValue,
-        completeOldValue: oldValue
-      }
-    });
-    // Force reactivity update if needed
+    // Reactive data change handling for TrendLogChart updates
+    if (newValue !== oldValue) {
+      // Force reactivity update if needed
+    }
   },
   { immediate: true, deep: true }
 )
@@ -949,85 +748,17 @@ const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
 }
 
 onMounted(() => {
-  // ===========================================
-  // URL Parameter Debugging Information
-  // ===========================================
-  console.log('= TLISocketPage: URL PARAMETER DEBUG - Component mounted analysis')
-  console.log('='.repeat(80))
-
-  const rawQuery = route.query
-  const params = urlParams.value
-  const validation = getValidatedParameters()
-
-  console.log('= TLISocketPage: Raw route query parameters:', {
-    rawQuery,
-    fullRouteContext: route
-  })
-  console.log('= TLISocketPage: Parsed URL parameters analysis:', {
-    sn: params.sn,
-    panel_id: params.panel_id,
-    trendlog_id: params.trendlog_id,
-    all_data_present: !!params.all_data,
-    all_data_length: params.all_data?.length || 0,
-    all_data_preview: params.all_data?.substring(0, 200) + (params.all_data?.length > 200 ? '...' : ''),
-    completeParams: params
-  })
-
-  console.log('= TLISocketPage: Parameter validation results:', {
-    hasRequiredParams: validation.isValid,
-    sn_valid: params.sn !== null && !isNaN(params.sn),
-    panel_id_valid: params.panel_id !== null && !isNaN(params.panel_id),
-    trendlog_id_valid: params.trendlog_id !== null && !isNaN(params.trendlog_id),
-    all_data_format: params.all_data ? (params.all_data.startsWith('{') ? 'JSON' : params.all_data.includes('%7B') ? 'URL-encoded JSON' : 'Unknown') : 'None',
-    validationObject: validation
-  })
-
-  console.log('= TLISocketPage: Browser URL context:', {
-    href: window.location.href,
-    origin: window.location.origin,
-    pathname: window.location.pathname,
-    search: window.location.search,
-    hash: window.location.hash,
-    fullLocationObject: window.location
-  })
-
-  if (params.all_data) {
-    try {
-      const decoded = decodeUrlEncodedJson(params.all_data)
-      console.log('= TLISocketPage: JSON data analysis from URL parameters:', {
-        canParse: !!decoded,
-        hasT3Entry: !!(decoded && decoded.t3Entry),
-        t3Entry_id: decoded?.t3Entry?.id,
-        t3Entry_pid: decoded?.t3Entry?.pid,
-        t3Entry_label: decoded?.t3Entry?.label,
-        inputCount: decoded?.t3Entry?.input?.length || 0,
-        rangeCount: decoded?.t3Entry?.range?.length || 0,
-        fullDecodedData: decoded
-      })
-    } catch (e) {
-      console.log('= TLISocketPage: JSON parse error in URL data:', {
-        errorMessage: e.message,
-        errorStack: e.stack,
-        rawAllData: params.all_data?.substring(0, 300),
-        timestamp: new Date().toISOString()
-      })
-    }
-  }
-
-  console.log('='.repeat(80))
-  console.log('= TLISocketPage: COMPONENT INITIALIZATION START - Beginning IndexPageSocket setup')
-
-  // Initialize Quasar integration for Hvac system (lightweight)
+  // Initialize Hvac system integration
   try {
     Hvac.IdxPage.initQuasar($q)
   } catch (error) {
-    // Error initializing Quasar integration
+    console.error('Failed to initialize Hvac integration:', error)
   }
 
-  // Initialize T3000_Data with proper WebSocket and WebView2 communication
+  // Initialize T3000_Data with WebView2/WebSocket communication
   initializeT3000Data()
 
-  // Load and format data from query parameters (with API integration)
+  // Load and format data from query parameters
   loadTrendLogItemData()
 })
 </script>
