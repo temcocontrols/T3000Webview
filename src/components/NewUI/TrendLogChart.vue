@@ -552,6 +552,10 @@ const getUnitInfo = (unitCode: number) => {
 interface DataPoint {
   timestamp: number
   value: number
+  id?: string                         // NEW: Data point identifier (VAR1, IN1, etc.)
+  type?: string                       // NEW: Data point type from GET_ENTRIES response
+  digital_analog?: number             // NEW: BAC_UNITS value (0=digital, 1=analog)
+  description?: string                // NEW: Human readable description
 }
 
 interface SeriesConfig {
@@ -618,9 +622,7 @@ const getSeriesNameText = (series: SeriesConfig): string => {
   // Use the series name directly - no need to clean since we preserve original names
   const displayName = series.name || 'Unknown'
 
-  console.log('= TLChart DataFlow: Panel item name processing:', {
-    name: displayName
-  })
+  // Removed verbose logging to reduce console noise
 
   return displayName
 }
@@ -630,92 +632,42 @@ const getUnitFromPanelData = (panelId: number, pointType: number, pointNumber: n
   const panelsData = T3000_Data.value.panelsData
   const panelsRanges = T3000_Data.value.panelsRanges
 
-  LogUtil.Info('= TLChart: getUnitFromPanelData called', {
-    panelId,
-    pointType,
-    pointNumber,
-    hasPanelsData: !!panelsData,
-    panelsDataLength: panelsData?.length || 0,
-    hasPanelsRanges: !!panelsRanges,
-    panelsRangesLength: panelsRanges?.length || 0
-  })
+  if (!panelsData?.length) return ''
 
-  if (!panelsData || !Array.isArray(panelsData)) {
-    LogUtil.Info('= TLChart: getUnitFromPanelData - No panels data available')
-    return ''
-  }
-
+  // Get point type info and device ID
   const pointTypeInfo = getPointTypeInfo(pointType)
-  if (!pointTypeInfo || !pointTypeInfo.category) {
-    LogUtil.Info('= TLChart: getUnitFromPanelData - Invalid point type', { pointType })
-    return ''
-  }
+  if (!pointTypeInfo?.category) return ''
 
   const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
-  const device = panelsData.find(
-    (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
+  const device = panelsData.find((d: any) =>
+    String(d.pid) === String(panelId) && d.id === idToFind
   )
 
-  LogUtil.Info('= TLChart: getUnitFromPanelData - Device lookup', {
-    idToFind,
-    deviceFound: !!device,
-    deviceUnit: device?.unit,
-    deviceRange: device?.range
-  })
+  if (!device || device.unit === undefined) return ''
 
-  if (device && device.unit !== undefined) {
-    // First try to get unit from ranges data if available
-    if (panelsRanges && Array.isArray(panelsRanges)) {
-      const rangeData = panelsRanges.find(
-        (r: any) => String(r.pid) === String(panelId) && r.index === device.range
-      )
-      if (rangeData) {
-        LogUtil.Info('= TLChart: getUnitFromPanelData - Found range data', { rangeData })
-        // For digital ranges, return the on/off labels if meaningful
-        if (rangeData.type === 'digital' && (rangeData.on || rangeData.off)) {
-          return `${rangeData.off}/${rangeData.on}` // e.g., "Off/On", "Manual/Auto"
-        }
-        // For analog ranges, use the unit mapping below
-      }
+  // Check for custom range data first
+  if (panelsRanges?.length) {
+    const rangeData = panelsRanges.find((r: any) =>
+      String(r.pid) === String(panelId) && r.index === device.range
+    )
+    if (rangeData?.type === 'digital' && (rangeData.on || rangeData.off)) {
+      return `${rangeData.off}/${rangeData.on}`
     }
-
-    // Use the proper RangeDefinitions instead of hardcoded constants
-    const pointTypeInfo = getPointTypeInfo(pointType)
-    let ranges: any[] = []
-
-    if (pointTypeInfo.category === 'IN') {
-      ranges = rangeDefinitions.analog.input
-    } else if (pointTypeInfo.category === 'OUT') {
-      ranges = rangeDefinitions.analog.output
-    } else if (pointTypeInfo.category === 'VAR') {
-      ranges = rangeDefinitions.analog.variable
-    }
-
-    // Find the range definition by unit ID
-    const rangeInfo = ranges.find(r => r.id === device.unit)
-    if (rangeInfo && rangeInfo.unit) {
-      LogUtil.Info('= TLChart: getUnitFromPanelData - Using RangeDefinitions', {
-        pointType: pointTypeInfo.category,
-        unitId: device.unit,
-        rangeInfo
-      })
-      return rangeInfo.unit
-    }
-
-    // If not found in analog ranges, check digital ranges
-    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.unit)
-    if (digitalRange) {
-      LogUtil.Info('= TLChart: getUnitFromPanelData - Using digital RangeDefinitions', { digitalRange })
-      return `${digitalRange.off}/${digitalRange.on}`
-    }
-
-    LogUtil.Info('= TLChart: getUnitFromPanelData - No range definition found', {
-      unitId: device.unit,
-      pointType: pointTypeInfo.category
-    })
   }
 
-  LogUtil.Info('= TLChart: getUnitFromPanelData - No unit found, returning empty')
+  // Use rangeDefinitions lookup
+  let ranges: any[] = []
+  if (pointTypeInfo.category === 'IN') ranges = rangeDefinitions.analog.input
+  else if (pointTypeInfo.category === 'OUT') ranges = rangeDefinitions.analog.output
+  else if (pointTypeInfo.category === 'VAR') ranges = rangeDefinitions.analog.variable
+
+  const rangeInfo = ranges.find(r => r.id === device.unit)
+  if (rangeInfo?.unit) return rangeInfo.unit
+
+  // Check digital ranges
+  const digitalRange = rangeDefinitions.digital.find(d => d.id === device.unit)
+  if (digitalRange) return `${digitalRange.off}/${digitalRange.on}`
+
   return ''
 }
 
@@ -850,300 +802,107 @@ const expandedSeries = ref<Set<number>>(new Set())
 
 // Helper: Get device description from T3000_Data.value.panelsData
 const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
-  // INPUT: what we need to find
-  LogUtil.Info('= TLChart: getDeviceDescription INPUT', { panelId: panelId, pointType: pointType, pointNumber: pointNumber })
-
   const panelsData = T3000_Data.value.panelsData
 
-  // SOURCE: where we get data from
-  if (!panelsData || !Array.isArray(panelsData)) {
-    LogUtil.Warn('= TLChart: getDeviceDescription FAILED - No data source')
-    return ''
-  }
+  if (!panelsData?.length) return ''
 
   const pointTypeInfo = getPointTypeInfo(pointType)
-  if (!pointTypeInfo || !pointTypeInfo.category) {
-    LogUtil.Warn('= TLChart: getDeviceDescription FAILED - Invalid point type')
-    return ''
-  }
+  if (!pointTypeInfo?.category) return ''
 
-  // SEARCH: generate ID and find device, the panel data is 1 based, but the param from t3000 is 0 based
-  /* Panel data example
-  {
-    "auto_manual": 1,
-    "calibration_h": 0,
-    "calibration_l": 0,
-    "calibration_sign": 0,
-    "command": "1IN1",
-    "control": 0,
-    "decom": 32,
-    "description": "IN1-Test111",
-    "digital_analog": 1,
-    "filter": 5,
-    "id": "IN1",
-    "index": 0,
-    "label": "IN1_1111",
-    "pid": 1,
-    "range": 11,
-    "type": "INPUT",
-    "unit": 11,
-    "value": 17000
-  }
-  */
-
-  /*
-  "input": [
-      {
-          "network": 0,
-          "panel": 1,
-          "point_number": 0,
-          "point_type": 2, //IN BAC_IN+1
-          "sub_panel": 0
-      },
-      {
-          "network": 0,
-          "panel": 1,
-          "point_number": 0,
-          "point_type": 3, //VAR BAC_VAR+1
-          "sub_panel": 0
-      },
-      {
-          "network": 0,
-          "panel": 1,
-          "point_number": 0,
-          "point_type": 1,//OUT BAC_OUT+1
-          "sub_panel": 0
-      }
-   ]
-   */
-
+  // Generate search ID (panel data is 1-based, param is 0-based)
   const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
-  LogUtil.Info('= TLChart: getDeviceDescription SEARCH', {
-    pointTypeCategory: pointTypeInfo.category,
-    pointNumber: pointNumber,
-    pointNumberPlus1: pointNumber + 1,
-    idToFind: idToFind,
-    panelId: panelId
-  })
-
-  const device = panelsData.find(
-    (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
+  const device = panelsData.find((d: any) =>
+    String(d.pid) === String(panelId) && d.id === idToFind
   )
 
-  // FOUND: what data we retrieved
-  if (device) {
-    LogUtil.Info('= TLChart: getDeviceDescription FOUND', device)
+  if (!device) return ''
 
-    // use command as the 2nd priority, fullLabel as 3rd, description as 4th, id as last to match the T3000 ui behavior
-    const finalOutput = device?.label || device?.command || device?.fullLabel || device?.description || device?.id || ''
-
-    // OUTPUT: what we return
-    LogUtil.Info('= TLChart: getDeviceDescription OUTPUT', { result: finalOutput })
-    return finalOutput
-  } else {
-    LogUtil.Warn('= TLChart: getDeviceDescription NOT_FOUND', {
-      panelId: panelId,
-      searchId: idToFind,
-      availableDevicesForPanel: panelsData.filter(d => String(d.pid) === String(panelId)).map(d => ({
-        pid: d.pid,
-        id: d.id,
-        label: d.label
-      }))
-    })
-    return ''
-  }
+  // Priority order: label → command → fullLabel → description → id
+  return device.label || device.command || device.fullLabel || device.description || device.id || ''
 }
 
 // Helper: Get digital_analog field from T3000_Data.value.panelsData
 const getDigitalAnalogFromPanelData = (panelId: number, pointType: number, pointNumber: number): number => {
-  LogUtil.Info('= TLChart: getDigitalAnalogFromPanelData INPUT', { panelId, pointType, pointNumber })
-
   const panelsData = T3000_Data.value.panelsData
 
-  if (!panelsData || !Array.isArray(panelsData)) {
-    LogUtil.Warn('= TLChart: getDigitalAnalogFromPanelData FAILED - No data source')
-    return BAC_UNITS_ANALOG // Default to analog if no data
-  }
+  if (!panelsData?.length) return BAC_UNITS_ANALOG
 
   const pointTypeInfo = getPointTypeInfo(pointType)
-  if (!pointTypeInfo || !pointTypeInfo.category) {
-    LogUtil.Warn('= TLChart: getDigitalAnalogFromPanelData FAILED - Invalid point type')
-    return BAC_UNITS_ANALOG // Default to analog if invalid point type
-  }
+  if (!pointTypeInfo?.category) return BAC_UNITS_ANALOG
 
   const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
-  const device = panelsData.find(
-    (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
+  const device = panelsData.find((d: any) =>
+    String(d.pid) === String(panelId) && d.id === idToFind
   )
 
-  if (device && device.digital_analog !== undefined) {
-    LogUtil.Info('= TLChart: getDigitalAnalogFromPanelData FOUND', {
-      device: device.id,
-      digital_analog: device.digital_analog
-    })
-    return device.digital_analog
-  } else {
-    LogUtil.Warn('= TLChart: getDigitalAnalogFromPanelData NOT_FOUND', {
-      panelId, searchId: idToFind
-    })
-    return BAC_UNITS_ANALOG // Default to analog if not found
-  }
+  return device?.digital_analog ?? BAC_UNITS_ANALOG
 }
+
+// Chart series colors for the 14 monitoring points
+const SERIES_COLORS = [
+  '#FF0000', '#0000FF', '#00AA00', '#FF8000', '#AA00AA', '#00AAAA', '#CC6600',
+  '#AA0000', '#0066AA', '#AA6600', '#6600AA', '#006600', '#FF6600', '#0000AA'
+]
 
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
-  LogUtil.Info('= TLChart: generateDataSeries called for 14 panel items', {
-    hasPropsItemData: !!props.itemData,
-    hasT3Entry: !!props.itemData?.t3Entry,
-    propsItemDataId: props.itemData?.t3Entry?.id,
-    propsItemDataPid: props.itemData?.t3Entry?.pid
-  })
+  // Validate input data
+  const inputData = props.itemData?.t3Entry?.input
+  const rangeData = props.itemData?.t3Entry?.range
 
-  // Check if we have real input data from t3Entry
-  const hasInputData = props.itemData?.t3Entry?.input &&
-    Array.isArray(props.itemData.t3Entry.input) &&
-    props.itemData.t3Entry.input.length > 0
-
-  const hasRangeData = props.itemData?.t3Entry?.range &&
-    Array.isArray(props.itemData.t3Entry.range) &&
-    props.itemData.t3Entry.range.length > 0
-
-  LogUtil.Info('= TLChart: generateDataSeries data validation', {
-    hasInputData,
-    hasRangeData,
-    inputLength: props.itemData?.t3Entry?.input?.length || 0,
-    rangeLength: props.itemData?.t3Entry?.range?.length || 0,
-    inputDataSample: props.itemData?.t3Entry?.input?.slice(0, 3) || [],
-    rangeDataSample: props.itemData?.t3Entry?.range?.slice(0, 3) || [],
-    t3EntryStructure: {
-      id: props.itemData?.t3Entry?.id,
-      pid: props.itemData?.t3Entry?.pid,
-      minute_interval_time: props.itemData?.t3Entry?.minute_interval_time,
-      second_interval_time: props.itemData?.t3Entry?.second_interval_time
-    }
-  })
-
-  // If no real input data, return empty array for now
-  if (!hasInputData || !hasRangeData) {
-    LogUtil.Warn('= TLChart: No valid input/range data found', {
-      hasInputData: hasInputData,
-      hasRangeData: hasRangeData,
-      inputLength: props.itemData?.t3Entry?.input?.length || 0,
-      rangeLength: props.itemData?.t3Entry?.range?.length || 0
-    })
-
+  if (!inputData?.length || !rangeData?.length) {
     return []
   }
 
-  const inputData = props.itemData.t3Entry.input
-  const rangeData = props.itemData.t3Entry.range
   const actualItemCount = Math.min(inputData.length, rangeData.length)
+  if (actualItemCount === 0) return []
 
-  // Additional check: if actualItemCount is 0, return empty array
-  if (actualItemCount === 0) {
-    return []
-  }
-
-  const colors = [
-    '#FF0000', // Bright Red
-    '#0000FF', // Pure Blue
-    '#00AA00', // Pure Green
-    '#FF8000', // Orange
-    '#AA00AA', // Magenta
-    '#00AAAA', // Cyan
-    '#CC6600', // Dark Orange (replaces Yellow for better readability)
-    '#AA0000', // Dark Red
-    '#0066AA', // Steel Blue
-    '#AA6600', // Brown/Orange
-    '#6600AA', // Purple
-    '#006600', // Dark Green
-    '#FF6600', // Red-Orange
-    '#0000AA', // Navy Blue
-  ]
-
-  const result = Array.from({ length: actualItemCount }, (_, index) => {
+  // Generate series configuration for each item
+  return Array.from({ length: actualItemCount }, (_, index) => {
     const inputItem = inputData[index]
     const rangeValue = rangeData[index]
 
-    // Use actual data from input item, do not use || will cause error: 0 is a falsy value in JavaScript!
     const panelId = inputItem.panel
     const pointType = inputItem.point_type
     const pointNumber = inputItem.point_number
 
-    // Determine unit type based on digital_analog field from panel data
-    // BAC_UNITS_DIGITAL = 0 (digital), BAC_UNITS_ANALOG = 1 (analog)
+    // Determine digital/analog type and units
     const digitalAnalog = getDigitalAnalogFromPanelData(panelId, pointType, pointNumber)
     const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
     const unitType: 'digital' | 'analog' = isDigital ? 'digital' : 'analog'
 
-    let unit: string
-    let digitalStates: [string, string] | undefined
+    const unit = isDigital ? '' : getUnitFromPanelData(panelId, pointType, pointNumber)
+    const digitalStates: [string, string] | undefined = isDigital ? ['Low', 'High'] : undefined
 
-    if (isDigital) {
-      unit = '' // Digital units don't show unit symbols
-      digitalStates = ['Low', 'High'] // Default digital states
-    } else {
-      unit = getUnitFromPanelData(panelId, pointType, pointNumber) // Get unit from panel data
-      digitalStates = undefined
-    }
-
-    // Get point type info for prefix and description
+    // Get descriptive information
     const pointTypeInfo = getPointTypeInfo(pointType)
     const description = getDeviceDescription(panelId, pointType, pointNumber)
-
-    // Create clean description for tooltips
     const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
+    const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
 
-    // Generate item type format: panelId + itemType + pointNumber
-    const itemTypeMap: { [key: number]: string } = {
-      1: 'Output',
-      2: 'Input',
-      3: 'VAR',
-      7: 'HOL'
-    }
+    // Generate formatted item type
+    const itemTypeMap: { [key: number]: string } = { 1: 'Output', 2: 'Input', 3: 'VAR', 7: 'HOL' }
     const itemTypeName = itemTypeMap[pointType] || 'VAR'
     const formattedItemType = `${panelId}${itemTypeName}${pointNumber + 1}`
 
-    // Generate series name based on actual device data - prioritize label -> fullLabel -> description
-    const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
-
-    LogUtil.Info('= TLChart: Generating series name', {
-      index: index,
-      panelId: panelId,
-      pointType: pointType,
-      pointNumber: pointNumber,
-      deviceDataUsed: description,
-      generatedName: seriesName,
-      itemTypeName: itemTypeName,
-      formattedItemType: formattedItemType
-    })
-
     return {
       name: seriesName,
-      color: colors[index % colors.length],
+      color: SERIES_COLORS[index % SERIES_COLORS.length],
       data: [],
-      visible: true, // All real data series are visible by default
+      visible: true,
       unit: unit,
-      isEmpty: false, // Real data is never empty
+      isEmpty: false,
       unitType: unitType,
-      unitCode: rangeValue, // Store the range value (0 or 1)
+      unitCode: rangeValue,
       digitalStates: digitalStates,
       itemType: formattedItemType,
-      prefix: pointTypeInfo.category, // Add prefix from category
+      prefix: pointTypeInfo.category,
       description: cleanDescription,
-      pointType: pointType, // Add the actual point type number
-      pointNumber: pointNumber, // Add point number for reference
-      panelId: panelId // Add panel ID for reference
+      pointType: pointType,
+      pointNumber: pointNumber,
+      panelId: panelId
     }
   })
-
-  LogUtil.Info('= TLChart: 14 panel items series generation completed', {
-    generatedSeriesCount: result.length,
-    seriesNames: result.map(s => s.name),
-    actualItemCount: actualItemCount
-  })
-
-  return result
 }
 
 const dataSeries = ref<SeriesConfig[]>([])
@@ -2292,14 +2051,14 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
     const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
     if (!currentPanelData || currentPanelData.length === 0) {
-      console.log('GET_ENTRIES Batch Request -> No panel data available')
+      LogUtil.Debug('GET_ENTRIES Batch Request -> No panel data available')
       return
     }
 
     // Initialize data client
     const dataClient = initializeDataClients()
     if (!dataClient) {
-      console.log('GET_ENTRIES Batch Request -> No data client available')
+      LogUtil.Debug('GET_ENTRIES Batch Request -> No data client available')
       return
     }
 
@@ -2321,7 +2080,7 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
       }
     })
 
-    console.log('GET_ENTRIES Batch Request -> Sending periodic batch:', {
+    LogUtil.Debug('GET_ENTRIES Batch Request -> Sending periodic batch:', {
       itemCount: batchRequestData.length,
       panelId: currentPanelId,
       batchSample: batchRequestData.slice(0, 3),
@@ -2329,12 +2088,12 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
     })
 
     if (batchRequestData.length === 0) {
-      console.log('GET_ENTRIES Batch Request -> No valid items for batch request')
+      LogUtil.Debug('GET_ENTRIES Batch Request -> No valid items for batch request')
       return
     }
 
     // Send single batch GET_ENTRIES request for ALL items
-    console.log('GET_ENTRIES Batch Request -> Sending batch request:', {
+    LogUtil.Info('GET_ENTRIES Batch Request -> Sending batch request:', {
       itemCount: batchRequestData.length,
       panelId: currentPanelId,
       nextUpdateIn: calculateT3000Interval(monitorConfigData)
@@ -2343,16 +2102,16 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
     if (dataClient.GetEntries) {
       dataClient.GetEntries(currentPanelId, null, batchRequestData)
 
-      console.log('GET_ENTRIES Batch Request -> Batch request sent successfully:', {
+      LogUtil.Info('GET_ENTRIES Batch Request -> Batch request sent successfully:', {
         itemCount: batchRequestData.length,
         timestamp: new Date().toLocaleTimeString()
       })
     } else {
-      console.log('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
+      LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
     }
 
   } catch (error) {
-    console.log('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
+    LogUtil.Error('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
   }
 }
 
@@ -2870,7 +2629,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     return
   }
 
-  console.log('🔧 Setting up custom GET_ENTRIES handler...', {
+  LogUtil.Debug('🔧 Setting up custom GET_ENTRIES handler...', {
     dataClientExists: !!dataClient,
     dataClientType: typeof dataClient,
     hasOriginalHandler: !!(dataClient && dataClient.HandleGetEntriesRes),
@@ -2880,7 +2639,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
   // Store original handler if it exists
   const originalHandler = dataClient.HandleGetEntriesRes
 
-  console.log('🔧 Stored original handler:', {
+  LogUtil.Debug('🔧 Stored original handler:', {
     hasOriginal: !!originalHandler,
     originalType: typeof originalHandler
   })
@@ -2888,37 +2647,65 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
-    console.log('🔥 CUSTOM HANDLER CALLED: GET_ENTRIES_RES received', msgData)
-    LogUtil.Info('🔥 TrendLogChart: GET_ENTRIES response received', {
+    // Add timestamp for response tracking
+    const responseTime = new Date()
+    const timeString = `${responseTime.toLocaleTimeString()}.${responseTime.getMilliseconds().toString().padStart(3, '0')}`
+
+    LogUtil.Info('🎯 TrendLogChart: GET_ENTRIES_RES Processing Start', {
+      timestamp: timeString,
+      msgId: msgData?.msgId,
       hasData: !!msgData?.data,
-      dataType: Array.isArray(msgData?.data) ? 'array' : typeof msgData?.data,
-      dataLength: Array.isArray(msgData?.data) ? msgData.data.length : 0,
-      timestamp: new Date().toISOString(),
-      msgId: msgData?.msgId
+      dataLength: Array.isArray(msgData?.data) ? msgData.data.length : 0
     })
-
-    // DIAGNOSTIC: Log detailed analysis of the received data structure
-    if (msgData.data && Array.isArray(msgData.data)) {
-      const dataAnalysis = {
-        totalItems: msgData.data.length,
-        itemsWithValue: msgData.data.filter(item => item && item.hasOwnProperty('value')).length,
-        itemsWithIndexOnly: msgData.data.filter(item => item && Object.keys(item).length === 1 && item.hasOwnProperty('index')).length,
-        uniqueTypes: Array.from(new Set(msgData.data.map(item => item?.type).filter(Boolean))),
-        uniqueIds: Array.from(new Set(msgData.data.map(item => item?.id).filter(Boolean))),
-        sampleWithValue: msgData.data.find(item => item && item.hasOwnProperty('value')),
-        currentSeriesCount: dataSeries.value?.length || 0,
-        seriesNames: dataSeries.value?.map(s => s.name) || []
-      }
-
-      LogUtil.Info('TrendLogChart: GET_ENTRIES data structure analysis', dataAnalysis)
-    }
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('TrendLogChart: Valid data array received, processing...', {
-          entryCount: msgData.data.length
+        // Filter and analyze the received data
+        const validItems = msgData.data.filter(item =>
+          item &&
+          typeof item === 'object' &&
+          item.hasOwnProperty('value') &&
+          item.value !== null &&
+          item.value !== undefined &&
+          item.id
+        )
+
+        const indexOnlyItems = msgData.data.filter(item =>
+          item &&
+          typeof item === 'object' &&
+          Object.keys(item).length === 1 &&
+          item.hasOwnProperty('index')
+        )
+
+        LogUtil.Info('📊 TrendLogChart: GET_ENTRIES Data Analysis', {
+          totalReceived: msgData.data.length,
+          validDataItems: validItems.length,
+          indexOnlyItems: indexOnlyItems.length,
+          validItemDetails: validItems.map(item => ({
+            id: item.id,
+            type: item.type,
+            value: item.value,
+            digital_analog: item.digital_analog,
+            description: item.description || item.label
+          }))
         })
-        updateChartWithNewData(msgData.data)
+
+        // Process the valid data items for chart rendering
+        if (validItems.length > 0) {
+          LogUtil.Info('⚡ TrendLogChart: Processing valid data for chart rendering', {
+            validItemCount: validItems.length,
+            currentSeriesCount: dataSeries.value?.length || 0
+          })
+
+          updateChartWithNewData(validItems)
+
+          LogUtil.Info('✅ TrendLogChart: Chart data update completed', {
+            updatedSeriesCount: dataSeries.value?.length || 0,
+            timestamp: timeString
+          })
+        } else {
+          LogUtil.Warn('⚠️ TrendLogChart: No valid data items found for chart rendering')
+        }
       } else if (msgData.data) {
         LogUtil.Warn('⚠️ TrendLogChart: Data received but not an array', {
           dataType: typeof msgData.data,
@@ -2928,101 +2715,176 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
         LogUtil.Warn('⚠️ TrendLogChart: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('�?TrendLogChart: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('❌ TrendLogChart: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
     if (originalHandler && typeof originalHandler === 'function') {
-
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
-        LogUtil.Error('�?TrendLogModal: Error calling original handler:', error)
+        LogUtil.Error('❌ TrendLogModal: Error calling original handler:', error)
       }
-    } else {
-
     }
-
   }
 
-  console.log('🔧 Custom handler installed successfully:', {
+  LogUtil.Debug('🔧 Custom handler installed successfully:', {
     newHandlerType: typeof dataClient.HandleGetEntriesRes,
-    isOurHandler: dataClient.HandleGetEntriesRes.toString().includes('🔥 CUSTOM HANDLER CALLED')
+    isOurHandler: dataClient.HandleGetEntriesRes.toString().includes('🎯 TrendLogChart')
   })
 
-  LogUtil.Info('�?TrendLogModal: GET_ENTRIES response handler setup complete')
+  LogUtil.Info('✅ TrendLogModal: GET_ENTRIES response handler setup complete')
 }
 
 /**
  * Update chart with new data from GET_ENTRIES response
  */
-const updateChartWithNewData = (newData: any[]) => {
-  if (!Array.isArray(newData) || newData.length === 0) {
+const updateChartWithNewData = (validDataItems: any[]) => {
+  if (!dataSeries.value || dataSeries.value.length === 0) {
+    LogUtil.Info('📈 TrendLogChart: No data series configured for chart update')
     return
   }
 
-  // Filter valid data points
-  const validDataPoints = newData.filter(dataPoint =>
-    dataPoint &&
-    typeof dataPoint === 'object' &&
-    dataPoint.hasOwnProperty('value') &&
-    dataPoint.value !== null &&
-    dataPoint.value !== undefined
-  )
-
-  if (validDataPoints.length === 0) {
+  if (!Array.isArray(validDataItems) || validDataItems.length === 0) {
+    LogUtil.Warn('📈 TrendLogChart: No valid data items provided for update')
     return
   }
 
-  const currentTime = Date.now()
+  const timestamp = new Date()
 
-  // Add data points to matching series
-  validDataPoints.forEach((dataPoint, dataIndex) => {
-    let matchingSeriesIndex = -1
+  LogUtil.Info('🔄 TrendLogChart: Chart Update Process Starting', {
+    validDataItemCount: validDataItems.length,
+    currentSeriesCount: dataSeries.value.length,
+    seriesNames: dataSeries.value.map(s => s.name),
+    timestamp: timestamp.toISOString()
+  })
 
-    // Find matching series by device properties
-    dataSeries.value.forEach((series, seriesIndex) => {
-      if (series.itemType && dataPoint.id && series.itemType.includes(dataPoint.id)) {
-        matchingSeriesIndex = seriesIndex
-        return
+  let successfulMatches = 0
+  let unmatchedItems = 0
+
+  for (const dataItem of validDataItems) {
+    try {
+      let seriesIndex = -1
+      let targetSeries = null
+      let matchMethod = ''
+
+      // Step 1: Try to match by series itemType (preferred method)
+      for (let i = 0; i < dataSeries.value.length; i++) {
+        const series = dataSeries.value[i]
+        if (series && series.itemType && Array.isArray(series.itemType)) {
+          if (series.itemType.includes(dataItem.id)) {
+            seriesIndex = i
+            targetSeries = series
+            matchMethod = 'itemType'
+            break
+          }
+        }
       }
 
-      // Fallback: match by position
-      if (matchingSeriesIndex === -1 && dataIndex < dataSeries.value.length) {
-        matchingSeriesIndex = dataIndex
-      }
-    })
-
-    if (matchingSeriesIndex >= 0 && matchingSeriesIndex < dataSeries.value.length) {
-      const series = dataSeries.value[matchingSeriesIndex]
-
-      const newPoint: DataPoint = {
-        timestamp: currentTime,
-        value: scaleValueIfNeeded(parseFloat(dataPoint.value) || 0)
+      // Step 2: If no match by itemType, try position-based matching (fallback)
+      if (seriesIndex === -1) {
+        const itemIndex = validDataItems.indexOf(dataItem)
+        if (itemIndex < dataSeries.value.length) {
+          seriesIndex = itemIndex
+          targetSeries = dataSeries.value[seriesIndex]
+          matchMethod = 'position'
+        }
       }
 
-      // Add new point to series
-      series.data.push(newPoint)
+      if (targetSeries && seriesIndex !== -1) {
+        // Create data point with comprehensive information
+        const dataPoint: DataPoint = {
+          timestamp: timestamp.getTime(),
+          value: scaleValueIfNeeded(parseFloat(dataItem.value) || 0),
+          id: dataItem.id,
+          type: dataItem.type,
+          digital_analog: dataItem.digital_analog || BAC_UNITS_ANALOG,
+          description: dataItem.description || dataItem.label || `Point ${dataItem.id}`
+        }
 
-      // Keep only recent data points
-      const maxDataPoints = 100
-      if (series.data.length > maxDataPoints) {
-        series.data = series.data.slice(-maxDataPoints)
-      }
+        // Initialize series data array if needed
+        if (!targetSeries.data) {
+          targetSeries.data = []
+        }
 
-      // Update series metadata if available
-      if (dataPoint.description && !series.description) {
-        series.description = dataPoint.description
+        // Add new data point
+        targetSeries.data.push(dataPoint)
+
+        // Maintain data point limit for performance
+        const maxDataPoints = 100
+        if (targetSeries.data.length > maxDataPoints) {
+          const removedCount = targetSeries.data.length - maxDataPoints
+          targetSeries.data = targetSeries.data.slice(-maxDataPoints)
+        }
+
+        // Update series metadata if available
+        if (dataItem.description && !targetSeries.description) {
+          targetSeries.description = dataItem.description
+        }
+        if (dataItem.label && targetSeries.name === targetSeries.description) {
+          targetSeries.name = dataItem.label
+        }
+
+        successfulMatches++
+
+        LogUtil.Info('✅ TrendLogChart: Data Point Mapped Successfully', {
+          itemId: dataItem.id,
+          itemType: dataItem.type,
+          value: dataItem.value,
+          scaledValue: dataPoint.value,
+          digitalAnalog: dataPoint.digital_analog === BAC_UNITS_DIGITAL ? 'Digital' : 'Analog',
+          seriesName: targetSeries.name,
+          seriesIndex: seriesIndex,
+          matchMethod: matchMethod,
+          totalPointsInSeries: targetSeries.data.length,
+          description: dataPoint.description
+        })
+
+      } else {
+        unmatchedItems++
+        LogUtil.Warn('❌ TrendLogChart: No Series Match Found', {
+          itemId: dataItem.id,
+          itemType: dataItem.type,
+          value: dataItem.value,
+          availableSeriesCount: dataSeries.value.length,
+          availableSeriesNames: dataSeries.value.map(s => s.name),
+          seriesItemTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType }))
+        })
       }
-      if (dataPoint.label && series.name === series.description) {
-        series.name = dataPoint.label
-      }
+    } catch (error) {
+      unmatchedItems++
+      LogUtil.Error(`❌ TrendLogChart: Error processing data item ${dataItem.id}:`, error)
     }
+  }
+
+  // Summary of data processing
+  LogUtil.Info('📊 TrendLogChart: Data Processing Summary', {
+    totalProcessed: validDataItems.length,
+    successfulMatches,
+    unmatchedItems,
+    matchRate: `${((successfulMatches / validDataItems.length) * 100).toFixed(1)}%`,
+    seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
   })
 
   // Update the chart
   if (chartInstance) {
-    updateChart()
+    try {
+      updateChart()
+
+      const totalDataPoints = dataSeries.value.reduce((sum, series) => sum + (series.data?.length || 0), 0)
+
+      LogUtil.Info('🎯 TrendLogChart: ChartJS Update Completed', {
+        chartUpdated: true,
+        totalDataPointsInChart: totalDataPoints,
+        activeSeriesCount: dataSeries.value.filter(s => s.data && s.data.length > 0).length,
+        updateTimestamp: new Date().toLocaleTimeString()
+      })
+
+    } catch (error) {
+      LogUtil.Error('❌ TrendLogChart: ChartJS Update Error:', error)
+    }
+  } else {
+    LogUtil.Warn('⚠️ TrendLogChart: Chart instance not available for update')
   }
 }
 
@@ -3165,7 +3027,7 @@ const addRealtimeDataPoint = async () => {
 
   // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
-    console.log('Realtime Update -> No data series available')
+    LogUtil.Debug('Realtime Update -> No data series available')
     return
   }
 
