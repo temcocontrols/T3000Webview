@@ -436,6 +436,10 @@ import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
 
+// BAC Units Constants - Digital/Analog Type Indicators
+const BAC_UNITS_DIGITAL = 0
+const BAC_UNITS_ANALOG = 1
+
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {
   0: { label: 'No Units', states: ['', ''] as [string, string] },
@@ -950,6 +954,42 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
   }
 }
 
+// Helper: Get digital_analog field from T3000_Data.value.panelsData
+const getDigitalAnalogFromPanelData = (panelId: number, pointType: number, pointNumber: number): number => {
+  LogUtil.Info('= TLChart: getDigitalAnalogFromPanelData INPUT', { panelId, pointType, pointNumber })
+
+  const panelsData = T3000_Data.value.panelsData
+
+  if (!panelsData || !Array.isArray(panelsData)) {
+    LogUtil.Warn('= TLChart: getDigitalAnalogFromPanelData FAILED - No data source')
+    return BAC_UNITS_ANALOG // Default to analog if no data
+  }
+
+  const pointTypeInfo = getPointTypeInfo(pointType)
+  if (!pointTypeInfo || !pointTypeInfo.category) {
+    LogUtil.Warn('= TLChart: getDigitalAnalogFromPanelData FAILED - Invalid point type')
+    return BAC_UNITS_ANALOG // Default to analog if invalid point type
+  }
+
+  const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
+  const device = panelsData.find(
+    (d: any) => String(d.pid) === String(panelId) && d.id === idToFind
+  )
+
+  if (device && device.digital_analog !== undefined) {
+    LogUtil.Info('= TLChart: getDigitalAnalogFromPanelData FOUND', {
+      device: device.id,
+      digital_analog: device.digital_analog
+    })
+    return device.digital_analog
+  } else {
+    LogUtil.Warn('= TLChart: getDigitalAnalogFromPanelData NOT_FOUND', {
+      panelId, searchId: idToFind
+    })
+    return BAC_UNITS_ANALOG // Default to analog if not found
+  }
+}
+
 // Chart data - T3000 mixed digital/analog series (always 14 items)
 const generateDataSeries = (): SeriesConfig[] => {
   LogUtil.Info('= TLChart: generateDataSeries called for 14 panel items', {
@@ -1030,8 +1070,10 @@ const generateDataSeries = (): SeriesConfig[] => {
     const pointType = inputItem.point_type
     const pointNumber = inputItem.point_number
 
-    // Determine unit type based on range value: 0 = analog, 1 = digital
-    const isDigital = rangeValue === 1
+    // Determine unit type based on digital_analog field from panel data
+    // BAC_UNITS_DIGITAL = 0 (digital), BAC_UNITS_ANALOG = 1 (analog)
+    const digitalAnalog = getDigitalAnalogFromPanelData(panelId, pointType, pointNumber)
+    const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
     const unitType: 'digital' | 'analog' = isDigital ? 'digital' : 'analog'
 
     let unit: string
@@ -1449,6 +1491,11 @@ const allAnalogEnabled = computed(() => {
 const allDigitalEnabled = computed(() => {
   return digitalSeries.value.length > 0 && digitalSeries.value.every(series => series.visible)
 })
+
+// Helper function to get original series index from filtered series
+const getOriginalSeriesIndex = (series: SeriesConfig): number => {
+  return dataSeries.value.findIndex(s => s.name === series.name)
+}
 
 // Helper to get the data interval (in minutes) for the current time base
 const getDataPointInterval = (timeBase: string): number => {
@@ -2556,15 +2603,17 @@ const initializeRealDataSeries = async () => {
       const seriesName = desc || `${inputItem.point_number + 1} (P${inputItem.panel})`
       const cleanDescription = desc || `${inputItem.point_number + 1}`
 
-      // Determine unit type based on range value: 0 = analog, 1 = digital
-      const isDigital = rangeValue === 1
+      // Determine unit type based on digital_analog field from panel data
+      // BAC_UNITS_DIGITAL = 0 (digital), BAC_UNITS_ANALOG = 1 (analog)
+      const digitalAnalog = getDigitalAnalogFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number)
+      const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
 
-      LogUtil.Info('= TLChart: Series generation - Range analysis', {
+      LogUtil.Info('= TLChart: Series generation - Digital/Analog analysis', {
         inputItemIndex: i,
         panelId: inputItem.panel,
         pointType: inputItem.point_type,
         pointNumber: inputItem.point_number,
-        rangeValue,
+        digitalAnalog,
         isDigital
       })
 
@@ -2648,17 +2697,21 @@ const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
 }
 
 /**
- * Determine if device is analog or digital from panel data and input range
+ * Determine if device is analog or digital using the digital_analog field
  */
 const isAnalogDevice = (panelData: any, inputRangeValue: number): boolean => {
-  // Primary: Use input range value (0=analog, 1=digital)
+  // Primary: Use digital_analog field if available (BAC_UNITS_DIGITAL=0, BAC_UNITS_ANALOG=1)
+  if (panelData && panelData.digital_analog !== undefined) {
+    return panelData.digital_analog === BAC_UNITS_ANALOG
+  }
+
+  // Fallback: Use input range value (0=analog, 1=digital)
   const isAnalogByRange = inputRangeValue === 0
 
-  // Secondary: Use panel data control field (0=analog, 1=digital)
-  // Note: digital_analog field indicates if point is in use (1=used, 0=unused)
-  const isAnalogByPanelData = panelData.control === 0
+  // Secondary fallback: Use panel data control field (0=analog, 1=digital)
+  const isAnalogByPanelData = panelData && panelData.control === 0
 
-  // Use input range as primary source of truth
+  // Use input range as primary fallback source of truth
   return isAnalogByRange
 }
 
