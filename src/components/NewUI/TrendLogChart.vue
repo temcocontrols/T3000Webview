@@ -572,6 +572,7 @@ interface SeriesConfig {
   pointType?: number                  // NEW: Actual point type number from T3000
   pointNumber?: number                // NEW: Point number for reference
   panelId?: number                    // NEW: Panel ID for reference
+  id?: string                          // NEW: Full ID (e.g., IN1, OUT2, VAR3)
 }
 
 /**
