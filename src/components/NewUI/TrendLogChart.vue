@@ -813,7 +813,7 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
 
   if (!device) return ''
 
-  // Priority order: label → command → fullLabel → description → id
+  // Priority order: label �?command �?fullLabel �?description �?id
   return device.label || device.command || device.fullLabel || device.description || device.id || ''
 }
 
@@ -1077,7 +1077,6 @@ const chartContainer = ref<HTMLElement>()
 const chartCanvas = ref<HTMLCanvasElement>()
 let chartInstance: Chart | null = null
 let realtimeInterval: NodeJS.Timeout | null = null
-let fallbackRecoveryInterval: NodeJS.Timeout | null = null
 
 // Computed properties
 const chartTitle = computed(() => {
@@ -2640,14 +2639,14 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
         // Process the valid data items for chart rendering
         if (validItems.length > 0) {
-          LogUtil.Info('⚡ TrendLogChart: Processing valid data for chart rendering', {
+          LogUtil.Info('�?TrendLogChart: Processing valid data for chart rendering', {
             validItemCount: validItems.length,
             currentSeriesCount: dataSeries.value?.length || 0
           })
 
           updateChartWithNewData(validItems)
 
-          LogUtil.Info('✅ TrendLogChart: Chart data update completed', {
+          LogUtil.Info('�?TrendLogChart: Chart data update completed', {
             updatedSeriesCount: dataSeries.value?.length || 0,
             timestamp: timeString
           })
@@ -2663,7 +2662,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
         LogUtil.Warn('⚠️ TrendLogChart: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('❌ TrendLogChart: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('�?TrendLogChart: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
@@ -2671,7 +2670,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
-        LogUtil.Error('❌ TrendLogModal: Error calling original handler:', error)
+        LogUtil.Error('�?TrendLogModal: Error calling original handler:', error)
       }
     }
   }
@@ -2681,7 +2680,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     isOurHandler: dataClient.HandleGetEntriesRes.toString().includes('🎯 TrendLogChart')
   })
 
-  LogUtil.Info('✅ TrendLogModal: GET_ENTRIES response handler setup complete')
+  LogUtil.Info('�?TrendLogModal: GET_ENTRIES response handler setup complete')
 }
 
 /**
@@ -2747,7 +2746,7 @@ const updateChartWithNewData = (validDataItems: any[]) => {
 
     if (!targetSeries) {
       unmatched++
-      //LogUtil.Debug(`❌ No series match found for item ${dataItem.id}`)
+      //LogUtil.Debug(`�?No series match found for item ${dataItem.id}`)
       return
     }
 
@@ -2876,8 +2875,6 @@ const initializeData = async () => {
         // Clear all data when entering fallback mode
         dataSeries.value = []
         isLoading.value = false
-        // Start recovery attempts
-        startFallbackRecovery()
       }
     } catch (error) {
       LogUtil.Error('= TLChart: Failed to initialize real data series:', error)
@@ -2885,8 +2882,6 @@ const initializeData = async () => {
       // Clear all data when entering fallback mode
       dataSeries.value = []
       isLoading.value = false // Clear loading state on error
-      // Start recovery attempts
-      startFallbackRecovery()
     }
   } else {
     LogUtil.Info('📊 Empty State Configuration:', {
@@ -2899,14 +2894,10 @@ const initializeData = async () => {
       dataType: 'NO_DATA_AVAILABLE'
     })
     dataSource.value = 'fallback'
-    // Clear all data when entering fallback mode
-    dataSeries.value = []
-    isLoading.value = false
-    // Start recovery attempts
-    startFallbackRecovery()
-  }
-
-  // If no data series available, chart will remain empty (no mock data generation)
+        // Clear all data when entering fallback mode
+        dataSeries.value = []
+        isLoading.value = false
+      }  // If no data series available, chart will remain empty (no mock data generation)
   if (dataSeries.value.length === 0) {
     LogUtil.Info('📊 TrendLogChart: No data series available - maintaining empty state', {
       dataSeriesLength: dataSeries.value.length,
@@ -2972,8 +2963,6 @@ const addRealtimeDataPoint = async () => {
       dataSource.value = 'fallback'
       // Clear all data when entering fallback mode
       dataSeries.value = []
-      // Start recovery attempts
-      startFallbackRecovery()
     }
   } else {
     // In fallback mode or no real data - do nothing, let chart remain empty
@@ -3592,54 +3581,6 @@ const stopRealTimeUpdates = () => {
   if (realtimeInterval) {
     clearInterval(realtimeInterval)
     realtimeInterval = null
-  }
-}
-
-const startFallbackRecovery = () => {
-  // Clear any existing recovery interval
-  if (fallbackRecoveryInterval) {
-    clearInterval(fallbackRecoveryInterval)
-  }
-
-  // Try to recover from fallback mode every 10 seconds
-  fallbackRecoveryInterval = setInterval(async () => {
-    if (dataSource.value === 'fallback') {
-      LogUtil.Info('🔄 TrendLogChart: Attempting fallback recovery - checking for real-time data')
-
-      const monitorConfigData = monitorConfig.value
-      if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
-        try {
-          const realTimeData = await fetchRealTimeMonitorData()
-
-          if (realTimeData && realTimeData.length > 0) {
-            LogUtil.Info('�?TrendLogChart: Fallback recovery successful - real data is now available')
-            dataSource.value = 'realtime'
-
-            // Reinitialize data series with real data
-            await initializeRealDataSeries()
-            updateChart()
-
-            // Stop recovery attempts since we're back to realtime
-            stopFallbackRecovery()
-          }
-        } catch (error) {
-          LogUtil.Info('�?TrendLogChart: Fallback recovery attempt failed, will retry in 10 seconds')
-        }
-      }
-    } else {
-      // If we're no longer in fallback mode, stop recovery attempts
-      stopFallbackRecovery()
-    }
-  }, 10000) // Try every 10 seconds
-
-  LogUtil.Info('🔄 TrendLogChart: Started fallback recovery monitor (10 second intervals)')
-}
-
-const stopFallbackRecovery = () => {
-  if (fallbackRecoveryInterval) {
-    clearInterval(fallbackRecoveryInterval)
-    fallbackRecoveryInterval = null
-    LogUtil.Info('⏹️ TrendLogChart: Stopped fallback recovery monitor')
   }
 }
 
@@ -4437,7 +4378,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopRealTimeUpdates()
-  stopFallbackRecovery()
   if (chartInstance) {
     chartInstance.destroy()
   }
