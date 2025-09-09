@@ -73,8 +73,7 @@ class WebViewClient {
     const timestampString = `${timestamp.toLocaleTimeString()}.${timestamp.getMilliseconds().toString().padStart(3, '0')}`;
 
     this.webview.postMessage(message);
-      // LogUtil.Debug(`= Wv2 Sent message to T3 [${timestampString}], action= ${actionDetails.name} | ${message?.action}, message=`, message);
-      console.log(`= Wv2 Sent message to T3 [${timestampString}], action= ${actionDetails.name} | ${message?.action}, message=`, message);
+      LogUtil.Debug(`= Wv2 Sent message to T3 [${timestampString}], action= ${actionDetails.name} | ${message?.action}, message=`, message);
   }
 
   // Handle messages received from the native code T3 application
@@ -87,9 +86,9 @@ class WebViewClient {
 
     // Get response action details for consistent logging
     const actionDetails = this.getActionDetails(data?.action);
-      //LogUtil.Debug(`= Wv2 Received message from T3 [${timestampString}], action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
-      console.log(`= Wv2 Received message from T3 [${timestampString}], action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
-    try {
+      LogUtil.Debug(`= Wv2 Received message from T3 [${timestampString}], action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
+
+          try {
       this.processMessageData(data);
     } catch (error) {
       T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);
