@@ -2722,97 +2722,85 @@ const updateChartWithNewData = (validDataItems: any[]) => {
     return
   }
 
-  // Print complete validDataItems structure for debugging
-  LogUtil.Debug('📊 TrendLogChart: Full validDataItems received:', {
-    count: validDataItems.length,
-    items: validDataItems.map(item => ({
-      id: item.id,
-      type: item.type,
-      value: item.value,
-      digital_analog: item.digital_analog,
-      description: item.description,
-      label: item.label,
-      fullItem: item
-    })),
-    dataSeries: dataSeries?.value,
-    seriesItemTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, panelId: s.panelId, pointType: s.pointType, pointNumber: s.pointNumber }))
-  })
-
   const timestamp = new Date()
   let matched = 0
   let unmatched = 0
 
-  validDataItems.forEach((dataItem, index) => {
-    let targetSeries = null
-
-    // Method 1: Try to match by exact itemType string
-    targetSeries = dataSeries.value.find(series =>
-      series.itemType === dataItem.id
-    )
-
-    // Method 2: If dataItem.id contains panel/type/number info, try to parse and match
-    if (!targetSeries && typeof dataItem.id === 'string') {
-      // Try to match by comparing components (panelId, pointType, pointNumber)
-      targetSeries = dataSeries.value.find(series => {
-        // If dataItem has explicit panel/point info, use that
-        if (dataItem.panelId !== undefined && dataItem.pointType !== undefined && dataItem.pointNumber !== undefined) {
-          return series.panelId === dataItem.panelId &&
-            series.pointType === dataItem.pointType &&
-            series.pointNumber === dataItem.pointNumber
-        }
-        // Otherwise fall back to string comparison
-        return false
+  // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
+  dataSeries.value.forEach((series, seriesIndex) => {
+    // Skip empty series that don't have matching criteria
+    if (!series.id || !series.panelId) {
+      LogUtil.Debug(`⚠️ Series ${seriesIndex} missing id or panelId`, {
+        seriesName: series.name,
+        hasId: !!series.id,
+        hasPanelId: !!series.panelId
       })
-    }
-
-    // Method 3: Fallback to position-based matching (least reliable)
-    if (!targetSeries && index < dataSeries.value.length) {
-      targetSeries = dataSeries.value[index]
-      LogUtil.Debug(`⚠️ Using position-based matching for item ${dataItem.id} -> series ${targetSeries.name}`)
-    }
-
-    if (!targetSeries) {
       unmatched++
-      //LogUtil.Debug(`�?No series match found for item ${dataItem.id}`)
       return
     }
+
+    // Direct lookup: Find matching item by id and panelId
+    const matchedItem = validDataItems.find(item =>
+      item.id === series.id && item.pid === series.panelId
+    )
+
+    if (!matchedItem) {
+      LogUtil.Debug(`No match found for series ${series.name}`, {
+        searchingFor: { id: series.id, panelId: series.panelId },
+        seriesIndex
+      })
+      unmatched++
+      return
+    }
+
+    // 🎯 VALUE SELECTION: Use correct field based on digital_analog
+    const actualValue = (matchedItem.digital_analog === 1)
+      ? matchedItem.value    // Analog: use 'value' field
+      : matchedItem.control  // Digital: use 'control' field
 
     // Create and add data point
     const dataPoint: DataPoint = {
       timestamp: timestamp.getTime(),
-      value: scaleValueIfNeeded(parseFloat(dataItem.value) || 0),
-      id: dataItem.id,
-      type: dataItem.type,
-      digital_analog: dataItem.digital_analog || BAC_UNITS_ANALOG,
-      description: dataItem.description || dataItem.label || `Point ${dataItem.id}`
+      value: scaleValueIfNeeded(actualValue || 0),
+      id: matchedItem.id,
+      type: matchedItem.type,
+      digital_analog: matchedItem.digital_analog || BAC_UNITS_ANALOG,
+      description: matchedItem.description || matchedItem.label || `Point ${matchedItem.id}`
     }
 
-    targetSeries.data = targetSeries.data || []
-    targetSeries.data.push(dataPoint)
+    series.data = series.data || []
+    series.data.push(dataPoint)
 
     // Limit data points for performance
-    if (targetSeries.data.length > 100) {
-      targetSeries.data = targetSeries.data.slice(-100)
+    if (series.data.length > 100) {
+      series.data = series.data.slice(-100)
     }
 
-    // Update series metadata
-    if (dataItem.description && !targetSeries.description) {
-      targetSeries.description = dataItem.description
+    // Update series metadata from matched item
+    if (matchedItem.description && !series.description) {
+      series.description = matchedItem.description
     }
-    if (dataItem.label && targetSeries.name === targetSeries.description) {
-      targetSeries.name = dataItem.label
+    if (matchedItem.label && series.name === series.description) {
+      series.name = matchedItem.label
     }
 
     matched++
+
+    LogUtil.Debug(`✅ Matched series ${series.name}`, {
+      matchedItem: {
+        id: matchedItem.id,
+        pid: matchedItem.pid,
+        digital_analog: matchedItem.digital_analog,
+        rawValue: matchedItem.digital_analog === 1 ? matchedItem.value : matchedItem.control,
+        scaledValue: actualValue
+      }
+    })
   })
 
-  LogUtil.Debug('🎯 TrendLogChart: Processing complete', {
-    processed: validDataItems.length,
+  LogUtil.Debug('📊 TrendLogChart: Data processing complete', {
     matched,
     unmatched,
-    matchRate: `${((matched / validDataItems.length) * 100).toFixed(1)}%`,
-    seriesWithData: dataSeries.value.filter(s => s.data?.length).length,
-    totalDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+    seriesWithData: dataSeries.value
   })
 
   // Update chart if instance exists
