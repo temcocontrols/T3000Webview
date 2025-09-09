@@ -86,9 +86,9 @@ class WebViewClient {
 
     // Get response action details for consistent logging
     const actionDetails = this.getActionDetails(data?.action);
-      LogUtil.Debug(`= Wv2 Received message from T3 [${timestampString}], action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
+    LogUtil.Debug(`= Wv2 Received message from T3 [${timestampString}], action= ${data?.action} | ${actionDetails.name == "UNKNOWN_ACTION" ? -1 : actionDetails.name}, message=`, data);
 
-          try {
+    try {
       this.processMessageData(data);
     } catch (error) {
       T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);

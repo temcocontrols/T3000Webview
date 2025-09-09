@@ -930,6 +930,19 @@ const dataSeries = ref<SeriesConfig[]>([])
 // Regenerate data series when data source changes
 const regenerateDataSeries = () => {
   const newSeries = generateDataSeries()
+
+  // Preserve existing data when regenerating series
+  newSeries.forEach(newSeriesItem => {
+    const existingSeries = dataSeries.value.find(existing =>
+      existing.id === newSeriesItem.id && existing.panelId === newSeriesItem.panelId
+    )
+
+    // If we found matching existing series, preserve its accumulated data
+    if (existingSeries && existingSeries.data && existingSeries.data.length > 0) {
+      newSeriesItem.data = existingSeries.data
+    }
+  })
+
   dataSeries.value = newSeries
 }
 
@@ -2072,24 +2085,11 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
     }
 
     // Send single batch GET_ENTRIES request for ALL items
-    LogUtil.Info('GET_ENTRIES Batch Request -> Sending batch request:', {
-      itemCount: batchRequestData.length,
-      panelId: currentPanelId,
-      nextUpdateIn: calculateT3000Interval(monitorConfigData)
-    })
-
     if (dataClient.GetEntries) {
       dataClient.GetEntries(currentPanelId, null, batchRequestData)
-
-      LogUtil.Info('GET_ENTRIES Batch Request -> Batch request sent successfully:', {
-        itemCount: batchRequestData.length,
-        timestamp: new Date().toLocaleTimeString()
-      })
     } else {
       LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
-    }
-
-  } catch (error) {
+    }  } catch (error) {
     LogUtil.Error('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
   }
 }
@@ -2595,46 +2595,19 @@ const testCommunication = async () => {
  * Setup message handlers for GET_ENTRIES responses
  */
 const setupGetEntriesResponseHandlers = (dataClient: any) => {
-
-
-
   if (!dataClient) {
-    LogUtil.Error('�?TrendLogModal: No dataClient provided to setupGetEntriesResponseHandlers')
+    LogUtil.Error('No dataClient provided to setupGetEntriesResponseHandlers')
     return
   }
-
-  LogUtil.Debug('🔧 Setting up custom GET_ENTRIES handler...', {
-    dataClientExists: !!dataClient,
-    dataClientType: typeof dataClient,
-    hasOriginalHandler: !!(dataClient && dataClient.HandleGetEntriesRes),
-    originalHandlerType: typeof dataClient?.HandleGetEntriesRes
-  })
 
   // Store original handler if it exists
   const originalHandler = dataClient.HandleGetEntriesRes
 
-  LogUtil.Debug('🔧 Stored original handler:', {
-    hasOriginal: !!originalHandler,
-    originalType: typeof originalHandler
-  })
-
-
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
-    // Add timestamp for response tracking
-    const responseTime = new Date()
-    const timeString = `${responseTime.toLocaleTimeString()}.${responseTime.getMilliseconds().toString().padStart(3, '0')}`
-
-    LogUtil.Info('🎯 TrendLogChart: GET_ENTRIES_RES Processing Start', {
-      timestamp: timeString,
-      msgId: msgData?.msgId,
-      hasData: !!msgData?.data,
-      dataLength: Array.isArray(msgData?.data) ? msgData.data.length : 0
-    })
-
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        // Filter and analyze the received data
+        // Filter valid data items
         const validItems = msgData.data.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -2644,52 +2617,13 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
           item.id
         )
 
-        const indexOnlyItems = msgData.data.filter(item =>
-          item &&
-          typeof item === 'object' &&
-          Object.keys(item).length === 1 &&
-          item.hasOwnProperty('index')
-        )
-
-        LogUtil.Info('📊 TrendLogChart: GET_ENTRIES Data Analysis', {
-          totalReceived: msgData.data.length,
-          validDataItems: validItems.length,
-          indexOnlyItems: indexOnlyItems.length,
-          validItemDetails: validItems.map(item => ({
-            id: item.id,
-            type: item.type,
-            value: item.value,
-            digital_analog: item.digital_analog,
-            description: item.description || item.label
-          }))
-        })
-
-        // Process the valid data items for chart rendering
+        // Process valid data for chart rendering
         if (validItems.length > 0) {
-          LogUtil.Info('�?TrendLogChart: Processing valid data for chart rendering', {
-            validItemCount: validItems.length,
-            currentSeriesCount: dataSeries.value?.length || 0
-          })
-
           updateChartWithNewData(validItems)
-
-          LogUtil.Info('�?TrendLogChart: Chart data update completed', {
-            updatedSeriesCount: dataSeries.value?.length || 0,
-            timestamp: timeString
-          })
-        } else {
-          LogUtil.Warn('⚠️ TrendLogChart: No valid data items found for chart rendering')
         }
-      } else if (msgData.data) {
-        LogUtil.Warn('⚠️ TrendLogChart: Data received but not an array', {
-          dataType: typeof msgData.data,
-          data: msgData.data
-        })
-      } else {
-        LogUtil.Warn('⚠️ TrendLogChart: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('�?TrendLogChart: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
@@ -2697,17 +2631,10 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
-        LogUtil.Error('�?TrendLogModal: Error calling original handler:', error)
+        LogUtil.Error('Error calling original handler:', error)
       }
     }
   }
-
-  LogUtil.Debug('🔧 Custom handler installed successfully:', {
-    newHandlerType: typeof dataClient.HandleGetEntriesRes,
-    isOurHandler: dataClient.HandleGetEntriesRes.toString().includes('🎯 TrendLogChart')
-  })
-
-  LogUtil.Info('�?TrendLogModal: GET_ENTRIES response handler setup complete')
 }
 
 /**
@@ -2800,7 +2727,7 @@ const updateChartWithNewData = (validDataItems: any[]) => {
   LogUtil.Debug('📊 TrendLogChart: Data processing complete', {
     matched,
     unmatched,
-    seriesWithData: dataSeries.value
+    totalSeries: dataSeries.value
   })
 
   // Update chart if instance exists
@@ -2942,47 +2869,43 @@ const addRealtimeDataPoint = async () => {
 
   // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
-    LogUtil.Debug('Realtime Update -> No data series available')
     return
   }
 
   // Check if we have real monitor configuration for live data
   const monitorConfigData = monitorConfig.value
 
-  if (monitorConfigData && monitorConfigData.inputItems.length > 0) {
-    console.log('Realtime Update -> Triggering GET_ENTRIES batch request:', {
-      monitorItems: monitorConfigData.inputItems.length,
-      currentSeries: dataSeries.value.length,
-      timestamp: new Date().toISOString()
-    })
-
-    try {
-      // Send batch GET_ENTRIES request for ALL items at once
-      await sendPeriodicBatchRequest(monitorConfigData)
-
-      // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
-      // which calls updateChartWithNewData() to update dataSeries automatically
-
-      // Update sync time since batch request was sent successfully
-      lastSyncTime.value = new Date().toLocaleTimeString()
-
-      // If we were in fallback mode but successfully sent request, switch back to realtime
-      if (dataSource.value === 'fallback') {
-        LogUtil.Info('TrendLogChart: Auto-recovering from fallback mode - batch request sent successfully')
-        dataSource.value = 'realtime'
-      }
-
-    } catch (error) {
-      LogUtil.Warn('TrendLogChart: Failed to send batch request, setting fallback mode:', error)
-      // Set fallback mode - chart will remain empty
-      dataSource.value = 'fallback'
-      // Clear all data when entering fallback mode
-      dataSeries.value = []
-    }
-  } else {
-    // In fallback mode or no real data - do nothing, let chart remain empty
-    LogUtil.Info('TrendLogChart: No real data available - fallback mode, chart remains empty')
+  if (!monitorConfigData) {
+    return
   }
+
+  if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
+    return
+  }
+
+  try {
+    // Send batch GET_ENTRIES request for ALL items at once
+    await sendPeriodicBatchRequest(monitorConfigData)
+
+    // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
+    // which calls updateChartWithNewData() to update dataSeries automatically
+
+    // Update sync time since batch request was sent successfully
+    lastSyncTime.value = new Date().toLocaleTimeString()
+
+    // If we were in fallback mode but successfully sent request, switch back to realtime
+    if (dataSource.value === 'fallback') {
+      LogUtil.Info('TrendLogChart: Auto-recovering from fallback mode - batch request sent successfully')
+      dataSource.value = 'realtime'
+    }
+
+  } catch (error) {
+    LogUtil.Warn('TrendLogChart: Failed to send batch request, setting fallback mode:', error)
+    // Set fallback mode - but keep accumulated data
+    dataSource.value = 'fallback'
+    // Don't clear data - let accumulated points remain visible
+  }
+
   updateChart()
 }
 
@@ -4363,9 +4286,7 @@ onMounted(async () => {
     }
   } catch (error) {
     LogUtil.Error('TrendLogChart: Initialization failed:', error)
-  }
-
-  // Apply default view configuration
+  }  // Apply default view configuration
   setView(1)
 
   // Initialize chart
