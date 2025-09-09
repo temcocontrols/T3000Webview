@@ -1640,12 +1640,15 @@ const getCurrentTimeWindow = () => {
   // Apply time offset for navigation
   const offsetTime = new Date(currentMinute.getTime() + timeOffset.value * 60 * 1000)
 
+  // Add 1 minute to max time to provide space for current data points
+  const maxTime = new Date(offsetTime.getTime() + 60 * 1000) // +1 minute buffer
+
   const rangeMinutes = getTimeRangeMinutes(timeBase.value)
-  const startTime = new Date(offsetTime.getTime() - rangeMinutes * 60 * 1000)
+  const startTime = new Date(maxTime.getTime() - rangeMinutes * 60 * 1000)
 
   return {
     min: startTime.getTime(),
-    max: offsetTime.getTime()
+    max: maxTime.getTime()
   }
 }
 
