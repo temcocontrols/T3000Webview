@@ -856,28 +856,53 @@ const generateDataSeries = (): SeriesConfig[] => {
   // Generate series configuration for each item
   return Array.from({ length: actualItemCount }, (_, index) => {
     const inputItem = inputData[index]
-    const rangeValue = rangeData[index]
+    const { panel: panelId, point_type: pointType, point_number: pointNumber } = inputItem
 
-    const panelId = inputItem.panel
-    const pointType = inputItem.point_type
-    const pointNumber = inputItem.point_number
-
-    // Determine digital/analog type and units
+    // Get all required info in one pass
+    const pointTypeInfo = getPointTypeInfo(pointType)
     const digitalAnalog = getDigitalAnalogFromPanelData(panelId, pointType, pointNumber)
+    const unit = getUnitFromPanelData(panelId, pointType, pointNumber)
+    const description = getDeviceDescription(panelId, pointType, pointNumber)
+
+    // Determine digital/analog type
     const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
     const unitType = isDigital ? 'digital' : 'analog'
 
-    const unit = getUnitFromPanelData(panelId, pointType, pointNumber)
-    // Extract digital states from unit string if it's in "off/on" format - no longer needed as separate field
-
-    // Get descriptive information
-    const pointTypeInfo = getPointTypeInfo(pointType)
-    const description = getDeviceDescription(panelId, pointType, pointNumber)
-    const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
+    // Generate names and descriptions
     const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
-
-    // Generate formatted item type using consistent category from pointTypeInfo
+    const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
     const formattedItemType = `${panelId}${pointTypeInfo.category}${pointNumber + 1}`
+
+    /*
+    {
+        "auto_manual": 1,
+        "calibration_h": 0,
+        "calibration_l": 0,
+        "calibration_sign": 0,
+        "command": "1IN1",
+        "control": 0,
+        "decom": 32,
+        "description": "IN1-Test111",
+        "digital_analog": 1,
+        "filter": 5,
+        "id": "IN1",
+        "index": 0,
+        "label": "IN1_1111",
+        "pid": 1,
+        "range": 11,
+        "type": "INPUT",
+        "unit": 11,
+        "value": 17000
+    }
+    {
+        "network": 0,
+        "panel": 1, //
+        "point_number": 0, // 0 base index
+        "point_type": 1, // OUT 0, IN 1, VAR 2
+        "sub_panel": 0
+    }
+    */
+    const itemId = `${pointTypeInfo.category}${pointNumber + 1}`
 
     return {
       name: seriesName,
@@ -887,13 +912,14 @@ const generateDataSeries = (): SeriesConfig[] => {
       unit: unit,
       isEmpty: false,
       unitType: unitType,
-      unitCode: rangeValue,
+      unitCode: rangeData[index],
       itemType: formattedItemType,
       prefix: pointTypeInfo.category,
       description: cleanDescription,
       pointType: pointType,
       pointNumber: pointNumber,
-      panelId: panelId
+      panelId: panelId,
+      id: itemId
     }
   })
 }
@@ -2894,10 +2920,10 @@ const initializeData = async () => {
       dataType: 'NO_DATA_AVAILABLE'
     })
     dataSource.value = 'fallback'
-        // Clear all data when entering fallback mode
-        dataSeries.value = []
-        isLoading.value = false
-      }  // If no data series available, chart will remain empty (no mock data generation)
+    // Clear all data when entering fallback mode
+    dataSeries.value = []
+    isLoading.value = false
+  }  // If no data series available, chart will remain empty (no mock data generation)
   if (dataSeries.value.length === 0) {
     LogUtil.Info('📊 TrendLogChart: No data series available - maintaining empty state', {
       dataSeriesLength: dataSeries.value.length,
