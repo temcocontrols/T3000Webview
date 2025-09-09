@@ -566,7 +566,6 @@ interface SeriesConfig {
   isEmpty?: boolean
   unitType: 'digital' | 'analog'      // NEW: Type of data (digital binary or analog continuous)
   unitCode: number                    // NEW: Unit code from T3000 (1-22 digital, 31-63 analog)
-  digitalStates?: [string, string]    // NEW: State labels for digital units ['Low', 'High']
   itemType?: string                   // NEW: T3000 item type (VAR, Input, Output, HOL, etc.)
   prefix?: string                     // NEW: Category prefix (IN, OUT, VAR, etc.)
   description?: string                // NEW: Device description
@@ -661,13 +660,21 @@ const getUnitFromPanelData = (panelId: number, pointType: number, pointNumber: n
   else if (pointTypeInfo.category === 'VAR') ranges = rangeDefinitions.analog.variable
 
   const rangeInfo = ranges.find(r => r.id === device.unit)
-  if (rangeInfo?.unit) return rangeInfo.unit
+  if (rangeInfo) {
+    // If unit is empty, return the label (e.g., "Unused")
+    return rangeInfo.unit || rangeInfo.label
+  }
 
   // Check digital ranges
   const digitalRange = rangeDefinitions.digital.find(d => d.id === device.unit)
   if (digitalRange) return `${digitalRange.off}/${digitalRange.on}`
 
   return ''
+}
+
+// Helper function to extract digital states from unit string
+const getDigitalStatesFromUnit = (unit: string): [string, string] | undefined => {
+  return unit.includes('/') ? unit.split('/') as [string, string] : undefined
 }
 
 // Function to convert Unix timestamp to local time string
@@ -860,8 +867,8 @@ const generateDataSeries = (): SeriesConfig[] => {
     const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
     const unitType = isDigital ? 'digital' : 'analog'
 
-    const unit = isDigital ? '' : getUnitFromPanelData(panelId, pointType, pointNumber)
-    const digitalStates: [string, string] | undefined = isDigital ? ['Low', 'High'] : undefined
+    const unit = getUnitFromPanelData(panelId, pointType, pointNumber)
+    // Extract digital states from unit string if it's in "off/on" format - no longer needed as separate field
 
     // Get descriptive information
     const pointTypeInfo = getPointTypeInfo(pointType)
@@ -869,10 +876,8 @@ const generateDataSeries = (): SeriesConfig[] => {
     const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
     const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
 
-    // Generate formatted item type
-    const itemTypeMap: { [key: number]: string } = { 1: 'Output', 2: 'Input', 3: 'VAR', 7: 'HOL' }
-    const itemTypeName = itemTypeMap[pointType] || 'VAR'
-    const formattedItemType = `${panelId}${itemTypeName}${pointNumber + 1}`
+    // Generate formatted item type using consistent category from pointTypeInfo
+    const formattedItemType = `${panelId}${pointTypeInfo.category}${pointNumber + 1}`
 
     return {
       name: seriesName,
@@ -883,7 +888,6 @@ const generateDataSeries = (): SeriesConfig[] => {
       isEmpty: false,
       unitType: unitType,
       unitCode: rangeValue,
-      digitalStates: digitalStates,
       itemType: formattedItemType,
       prefix: pointTypeInfo.category,
       description: cleanDescription,
@@ -1358,7 +1362,8 @@ const getChartConfig = () => ({
             // 🔧 FIX #2: Different formatting for digital vs analog
             if (series.unitType === 'digital') {
               const stateIndex = context.parsed.y === 1 ? 1 : 0
-              const stateText = series.digitalStates?.[stateIndex] || (context.parsed.y === 1 ? 'High' : 'Low')
+              const digitalStates = getDigitalStatesFromUnit(series.unit || '')
+              const stateText = digitalStates?.[stateIndex] || (context.parsed.y === 1 ? 'High' : 'Low')
               // Digital outputs: show only state text, no unit symbol
               return `${cleanLabel}: ${stateText}`
             } else {
@@ -2123,22 +2128,18 @@ const initializeRealDataSeries = async () => {
 
       let unitType: 'digital' | 'analog'
       let unitSymbol: string
-      let digitalStates: [string, string] | undefined
 
       if (isDigital) {
         unitType = 'digital'
-        unitSymbol = '' // Digital units don't show unit symbols
-        digitalStates = ['Low', 'High'] // Default digital states
+        unitSymbol = getUnitFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number)
       } else {
         unitType = 'analog'
         unitSymbol = getUnitFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number) // Get unit from panel data
-        digitalStates = undefined
       }
 
       LogUtil.Info('= TLChart: Series generation - Unit determination result', {
         unitType,
-        unitSymbol,
-        digitalStates
+        unitSymbol
       })
 
       const seriesConfig: SeriesConfig = {
@@ -2150,7 +2151,6 @@ const initializeRealDataSeries = async () => {
         unit: unitSymbol,
         unitType: unitType,
         unitCode: rangeValue,
-        digitalStates: digitalStates,
         itemType: pointTypeInfo.name,
         prefix: prefix,
         description: cleanDescription
@@ -2708,6 +2708,7 @@ const updateChartWithNewData = (validDataItems: any[]) => {
       label: item.label,
       fullItem: item
     })),
+    dataSeries: dataSeries?.value,
     seriesItemTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, panelId: s.panelId, pointType: s.pointType, pointNumber: s.pointNumber }))
   })
 
@@ -4089,7 +4090,6 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
         unit: originalSeries.unit || '',
         unitType: originalSeries.unitType,
         unitCode: originalSeries.unitCode,
-        digitalStates: originalSeries.digitalStates,
         itemType: originalSeries.itemType,
         prefix: originalSeries.prefix,
         // PRESERVE ORIGINAL DESCRIPTION - no time range labels
@@ -4113,7 +4113,6 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
         unit: originalSeries.unit || '',
         unitType: originalSeries.unitType,
         unitCode: originalSeries.unitCode,
-        digitalStates: originalSeries.digitalStates,
         itemType: originalSeries.itemType,
         prefix: originalSeries.prefix,
         description: originalSeries.description,
@@ -4146,7 +4145,8 @@ const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
 
   if (series?.unitType === 'digital') {
     const stateIndex = lastValue === 1 ? 1 : 0
-    const stateText = series.digitalStates?.[stateIndex] || (lastValue === 1 ? 'High' : 'Low')
+    const digitalStates = getDigitalStatesFromUnit(series.unit || '')
+    const stateText = digitalStates?.[stateIndex] || (lastValue === 1 ? 'High' : 'Low')
     return `${stateText} (${lastValue})`
   } else {
     const unit = series?.unit || ''
@@ -4177,7 +4177,8 @@ const getMinValue = (data: DataPoint[], series?: SeriesConfig): string => {
 
   if (series?.unitType === 'digital') {
     const stateIndex = min === 1 ? 1 : 0
-    const stateText = series.digitalStates?.[stateIndex] || (min === 1 ? 'High' : 'Low')
+    const digitalStates = getDigitalStatesFromUnit(series.unit || '')
+    const stateText = digitalStates?.[stateIndex] || (min === 1 ? 'High' : 'Low')
     return `${stateText} (${min})`
   } else {
     const unit = series?.unit || ''
@@ -4192,7 +4193,8 @@ const getMaxValue = (data: DataPoint[], series?: SeriesConfig): string => {
 
   if (series?.unitType === 'digital') {
     const stateIndex = max === 1 ? 1 : 0
-    const stateText = series.digitalStates?.[stateIndex] || (max === 1 ? 'High' : 'Low')
+    const digitalStates = getDigitalStatesFromUnit(series.unit || '')
+    const stateText = digitalStates?.[stateIndex] || (max === 1 ? 'High' : 'Low')
     return `${stateText} (${max})`
   } else {
     const unit = series?.unit || ''
