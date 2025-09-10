@@ -198,8 +198,8 @@
                 <span v-else-if="dataSource === 'api'" class="source-badge historical">
                   📚 Historical ({{ timeBase }})
                 </span>
-                <span v-else class="source-badge fallback">
-                  ⚠️ Fallback
+                <span v-else-if="hasConnectionError" class="source-badge error">
+                  ❌ Connection Error
                 </span>
               </div>
             </div>
@@ -254,13 +254,13 @@
             <!-- Empty state when no data series available -->
             <div v-if="dataSeries.length === 0" class="series-empty-state">
               <div class="empty-state-content">
-                <div v-if="dataSource === 'fallback'" class="empty-state-icon">⚠️</div>
+                <div v-if="hasConnectionError" class="empty-state-icon">❌</div>
                 <div v-else class="empty-state-icon">📊</div>
 
-                <div v-if="dataSource === 'fallback'" class="empty-state-text">Data Connection Error</div>
+                <div v-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
                 <div v-else class="empty-state-text">No trend log data available</div>
 
-                <div v-if="dataSource === 'fallback'" class="empty-state-subtitle">
+                <div v-if="hasConnectionError" class="empty-state-subtitle">
                   Unable to load real-time or historical data. Check system connections.
                 </div>
                 <div v-else class="empty-state-subtitle">Configure monitor points to see data series</div>
@@ -766,17 +766,8 @@ const lastSyncTime = ref('No data synced yet')
 
 // API integration for timebase data fetching
 const trendlogAPI = useTrendlogDataAPI()
-const dataSource = ref<'realtime' | 'api' | 'fallback'>('realtime') // Track data source for timebase changes
-
-// Watch for fallback mode and clear data when entering it
-watch(dataSource, (newSource) => {
-  if (newSource === 'fallback') {
-    LogUtil.Info('= TLChart: Entering fallback mode - clearing all chart data')
-    dataSeries.value = []
-    // Update chart to show empty state
-    updateChart()
-  }
-})
+const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
+const hasConnectionError = ref(false) // Track connection errors for UI display
 
 // Route for URL parameter extraction
 const route = useRoute()
@@ -2202,9 +2193,9 @@ const initializeRealDataSeries = async () => {
 
   } catch (error) {
     LogUtil.Error('= TLChart: Error initializing real data series:', error)
-    LogUtil.Warn('= TLChart: Setting fallback mode - chart will remain empty')
-    dataSource.value = 'fallback'
-    // Clear any existing data when entering fallback mode
+    LogUtil.Warn('= TLChart: Setting connection error state - chart will remain empty')
+    hasConnectionError.value = true
+    // Clear any existing data when connection error occurs
     dataSeries.value = []
   }
 }
@@ -2815,16 +2806,16 @@ const initializeData = async () => {
 
         return
       } else {
-        LogUtil.Warn('= TLChart: No real-time data available - using fallback')
-        dataSource.value = 'fallback'
-        // Clear all data when entering fallback mode
+        LogUtil.Warn('= TLChart: No real-time data available - setting connection error')
+        hasConnectionError.value = true
+        // Clear all data when connection error occurs
         dataSeries.value = []
         isLoading.value = false
       }
     } catch (error) {
       LogUtil.Error('= TLChart: Failed to initialize real data series:', error)
-      dataSource.value = 'fallback'
-      // Clear all data when entering fallback mode
+      hasConnectionError.value = true
+      // Clear all data when connection error occurs
       dataSeries.value = []
       isLoading.value = false // Clear loading state on error
     }
@@ -2838,8 +2829,8 @@ const initializeData = async () => {
       panelsDataLength: T3000_Data.value.panelsData?.length || 0,
       dataType: 'NO_DATA_AVAILABLE'
     })
-    dataSource.value = 'fallback'
-    // Clear all data when entering fallback mode
+    hasConnectionError.value = true
+    // Clear all data when connection error occurs
     dataSeries.value = []
     isLoading.value = false
   }  // If no data series available, chart will remain empty (no mock data generation)
@@ -2851,9 +2842,9 @@ const initializeData = async () => {
     return
   }
 
-  // Skip data generation if in fallback mode - fallback should show empty chart
-  if (dataSource.value === 'fallback') {
-    LogUtil.Info('📊 TrendLogChart: Skipping data generation - in fallback mode (should show empty chart)')
+  // Skip data generation if there's a connection error - should show empty chart
+  if (hasConnectionError.value) {
+    LogUtil.Info('📊 TrendLogChart: Skipping data generation - connection error (should show empty chart)')
     return
   }
 
@@ -2896,16 +2887,16 @@ const addRealtimeDataPoint = async () => {
     // Update sync time since batch request was sent successfully
     lastSyncTime.value = new Date().toLocaleTimeString()
 
-    // If we were in fallback mode but successfully sent request, switch back to realtime
-    if (dataSource.value === 'fallback') {
-      LogUtil.Info('TrendLogChart: Auto-recovering from fallback mode - batch request sent successfully')
-      dataSource.value = 'realtime'
+    // If we had connection error but successfully sent request, clear error state
+    if (hasConnectionError.value) {
+      LogUtil.Info('TrendLogChart: Auto-recovering from connection error - batch request sent successfully')
+      hasConnectionError.value = false
     }
 
   } catch (error) {
-    LogUtil.Warn('TrendLogChart: Failed to send batch request, setting fallback mode:', error)
-    // Set fallback mode - but keep accumulated data
-    dataSource.value = 'fallback'
+    LogUtil.Warn('TrendLogChart: Failed to send batch request, setting connection error:', error)
+    // Set connection error state - but keep accumulated data
+    hasConnectionError.value = true
     // Don't clear data - let accumulated points remain visible
   }
 
@@ -3848,9 +3839,9 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
       lastSyncTime.value = dayjs().format('HH:mm:ss')
 
     } else {
-      console.log('= TLChart DataFlow: No historical data available - using fallback')
-      dataSource.value = 'fallback'
-      // Clear all data when entering fallback mode
+      console.log('= TLChart DataFlow: No historical data available - setting connection error')
+      hasConnectionError.value = true
+      // Clear all data when connection error occurs
       dataSeries.value = []
 
       // Fall back to standard initialization if API fails
@@ -3859,8 +3850,8 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
 
   } catch (error) {
     console.error('= TLChart DataFlow: API request failed:', error instanceof Error ? error.message : error)
-    dataSource.value = 'fallback'
-    // Clear all data when entering fallback mode
+    hasConnectionError.value = true
+    // Clear all data when connection error occurs
     dataSeries.value = []
 
     // Show error notification
@@ -4471,8 +4462,8 @@ onUnmounted(() => {
   background: linear-gradient(45deg, #2196F3, #1976D2);
 }
 
-.source-badge.fallback {
-  background: linear-gradient(45deg, #FF9800, #F57C00);
+.source-badge.error {
+  background: linear-gradient(45deg, #f56565, #e53e3e);
 }
 
 .header-line-2 {
