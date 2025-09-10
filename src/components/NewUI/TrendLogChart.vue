@@ -1487,22 +1487,42 @@ const getDigitalChartConfig = (series: SeriesConfig) => ({
     scales: {
       x: {
         type: 'time' as const,
-        display: false, // Hide x-axis for digital charts (shown only on analog chart)
-        grid: {
-          display: false
-        }
-      },
-      y: {
-        min: -0.1,
-        max: 1.1,
+        display: true, // Show x-axis for digital charts
         grid: {
           color: '#e0e0e0',
           display: true,
           lineWidth: 0.5
         },
         ticks: {
-          display: false, // Hide y-axis ticks for digital charts
-          stepSize: 1
+          color: '#595959',
+          font: {
+            size: 10,
+            family: 'Inter, Helvetica, Arial, sans-serif'
+          },
+          maxRotation: 0,
+          minRotation: 0
+        }
+      },
+      y: {
+        min: -0.5,
+        max: 1.5,
+        display: true, // Show y-axis for digital charts
+        grid: {
+          color: '#F0F0F0',
+          display: true,
+          lineWidth: 0.3
+        },
+        ticks: {
+          display: true, // Show y-axis ticks for digital charts
+          color: '#595959',
+          font: {
+            size: 8,
+            family: 'Inter, Helvetica, Arial, sans-serif'
+          },
+          stepSize: 1,
+          callback: function(value: any) {
+            return value > 0.5 ? 'HIGH' : 'LOW';
+          }
         }
       }
     }
@@ -3063,7 +3083,7 @@ const updateDigitalCharts = () => {
       .sort((a, b) => a.timestamp - b.timestamp)
       .map(point => ({
         x: point.timestamp,
-        y: point.value
+        y: point.value > 0.5 ? 1.2 : 0.2  // Map to HTML demo range: HIGH=1.2, LOW=0.2
       }))
 
     chart.data.datasets = [{
@@ -3079,18 +3099,45 @@ const updateDigitalCharts = () => {
       spanGaps: false
     }]
 
-    // Update x-axis for digital chart
+    // Update x-axis for digital chart - use same configuration as analog chart
     if (chart.options.scales?.x) {
       const xScale = chart.options.scales.x as any
-      const timeWindow = getCurrentTimeWindow()
-      xScale.min = timeWindow.min
-      xScale.max = timeWindow.max
+      const tickConfig = getXAxisTickConfig(timeBase.value)
+      const displayFormat = getDisplayFormat(timeBase.value)
+
+      xScale.time = {
+        unit: tickConfig.unit,
+        stepSize: tickConfig.stepMinutes,
+        displayFormats: {
+          minute: displayFormat,
+          hour: displayFormat,
+          day: 'dd/MM HH:mm'
+        },
+        minUnit: 'second'
+      }
+
+      const maxTicksConfigs = {
+        '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+        '4h': 9, '12h': 13, '1d': 13, '4d': 13
+      }
+
+      xScale.ticks = {
+        ...xScale.ticks,
+        maxTicksLimit: maxTicksConfigs[timeBase.value] || 7,
+        maxRotation: 0,
+        minRotation: 0,
+        includeBounds: true
+      }
 
       xScale.grid = {
         color: showGrid.value ? '#e0e0e0' : 'transparent',
         display: showGrid.value,
         lineWidth: 0.5
       }
+
+      const timeWindow = getCurrentTimeWindow()
+      xScale.min = timeWindow.min
+      xScale.max = timeWindow.max
     }
 
     chart.update('none')
