@@ -2675,9 +2675,16 @@ const updateChartWithNewData = (validDataItems: any[]) => {
     }
 
     // 🎯 VALUE SELECTION: Use correct field based on digital_analog
-    const actualValue = (matchedItem.digital_analog === 1)
-      ? matchedItem.value    // Analog: use 'value' field
-      : matchedItem.control  // Digital: use 'control' field
+    let actualValue;
+    if (matchedItem.digital_analog === 1) {
+      // Analog: use 'value' field
+      actualValue = matchedItem.value;
+    } else {
+      // TODO: REMOVE AFTER TESTING - Digital: use random 0/1 for testing
+      actualValue = Math.random() > 0.5 ? 1 : 0;
+      console.log(`🔧 TESTING: Generated random digital value for ${series.name}: ${actualValue}`);
+      // Original code (commented for testing): actualValue = matchedItem.control
+    }
 
     // Create and add data point
     const dataPoint: DataPoint = {
