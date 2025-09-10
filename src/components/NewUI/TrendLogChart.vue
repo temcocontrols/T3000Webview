@@ -1017,6 +1017,9 @@ watch(timeBase, (newTimeBase, oldTimeBase) => {
     willTriggerApiCall: newTimeBase !== '5m' && newTimeBase !== 'custom',
     timestamp: new Date().toISOString()
   })
+
+  // Update all charts when timeBase changes
+  updateCharts()
 }, { immediate: false })
 
 // Get internal interval value from props - combine minute and second intervals
