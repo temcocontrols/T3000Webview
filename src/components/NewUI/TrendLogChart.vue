@@ -1502,10 +1502,10 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
           drawTicks: true // Draw tick marks on axis
         },
         ticks: {
-          display: isLastChart, // Only show tick labels on bottommost chart
-          color: '#595959',
+          display: true, // Always display ticks to maintain consistent layout
+          color: isLastChart ? '#595959' : 'transparent', // Transparent labels on non-last charts
           font: {
-            size: 10,
+            size: 10, // Same font size for all to maintain consistent layout
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           maxRotation: 0,
