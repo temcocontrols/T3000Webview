@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Combined Analog + Separate Digital Oscilloscope</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <style>
+        .oscilloscope-container {
+            width: 100%;
+            background-color: #F0F0F0;
+            border: 2px solid #888;
+            padding: 10px;
+            margin: 20px 0;
+            max-height: 900px;
+            overflow-y: auto;
+        }
+        
+        .channel-chart {
+            height: 70px;
+            margin-bottom: 3px;
+            border: 1px solid #CCC;
+            background-color: #FAFAFA;
+        }
+        
+        .combined-analog-chart {
+            height: 300px;
+            margin-bottom: 10px;
+            border: 2px solid #0066CC;
+            background-color: #FAFAFA;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #0066CC;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .channel-label {
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: #333;
+            padding: 3px 5px;
+        }
+        
+        .combined-label {
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #0066CC;
+            padding: 5px;
+            background-color: #E8F4FD;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .signal-info {
+            font-size: 11px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .info-box {
+            background-color: #E8F4FD;
+            border: 1px solid #0066CC;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multi-Signal Oscilloscope - Combined Analog + Separate Digital</h1>
+    
+    <div class="info-box">
+        <strong>Implementation:</strong> <span style="color: #CC0000;">ALL analog signals combined</span> with multiple Y-axes and units, <span style="color: #009900;">digital channels separated</span>
+    </div>
+    
+    <div class="controls">
+        <button onclick="zoomAll(1.2)">Zoom In</button>
+        <button onclick="zoomAll(0.8)">Zoom Out</button>
+        <button onclick="resetAllZoom()">Reset Zoom</button>
+        <button onclick="toggleUpdate()">Pause/Resume</button>
+        <span id="status" style="margin-left: 20px; font-weight: bold; color: green;">Running</span>
+    </div>
+    
+    <div class="oscilloscope-container">
+        <!-- Combined Analog Chart with Multiple Signals -->
+        <div class="combined-label">
+            📊 COMBINED ANALOG SIGNALS - All Environmental & Electrical Data
+            <div class="signal-info">
+                <span style="color: #0066CC;">●</span> Pressure (Pa) | 
+                <span style="color: #FF6B6B;">●</span> Flow (L/min) | 
+                <span style="color: #00AA88;">●</span> Temperature (°C) | 
+                <span style="color: #FF9F43;">●</span> Humidity (%) |
+                <span style="color: #8B5CF6;">●</span> Setpoint (°C) |
+                <span style="color: #6C5CE7;">●</span> Voltage (V) | 
+                <span style="color: #FD79A8;">●</span> Current (A)
+            </div>
+        </div>
+        <div class="combined-analog-chart"><canvas id="combined-analog-chart"></canvas></div>
+        
+        <!-- Separate Digital Channels -->
+        <div class="channel-label" style="color: #FF3366;">📶 Digital CH1 - System Clock</div>
+        <div class="channel-chart"><canvas id="digital1-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #FF5577;">📶 Digital CH2 - Data Ready</div>
+        <div class="channel-chart"><canvas id="digital2-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #FF7788;">📶 Digital CH3 - Alarm Status</div>
+        <div class="channel-chart"><canvas id="digital3-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #00CC66;">📶 Digital CH4 - Pump Control</div>
+        <div class="channel-chart"><canvas id="digital4-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #22DD77;">📶 Digital CH5 - Valve Open</div>
+        <div class="channel-chart"><canvas id="digital5-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #44EE88;">📶 Digital CH6 - System Ready</div>
+        <div class="channel-chart"><canvas id="digital6-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #9966CC;">📶 Digital CH7 - Error Flag</div>
+        <div class="channel-chart"><canvas id="digital7-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #AA77DD;">📶 Digital CH8 - Communication</div>
+        <div class="channel-chart"><canvas id="digital8-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #BB88EE;">📶 Digital CH9 - Override</div>
+        <div class="channel-chart"><canvas id="digital9-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #CC9900;">📶 Digital CH10 - Manual Mode</div>
+        <div class="channel-chart"><canvas id="digital10-chart"></canvas></div>
+        
+        <div class="channel-label" style="color: #DDAA11;">📶 Digital CH11 - Maintenance (Time Axis)</div>
+        <div class="channel-chart"><canvas id="digital11-chart"></canvas></div>
+    </div>
+
+    <script>
+        let charts = {};
+        let isUpdating = true;
+        
+        // Common time axis configuration
+        const commonXAxis = {
+            type: 'linear',
+            position: 'bottom',
+            grid: {
+                display: true,
+                color: '#D0D0D0',
+                lineWidth: 0.5
+            },
+            ticks: {
+                maxTicksLimit: 10,
+                font: { size: 10 }
+            }
+        };
+        
+        // Combined analog chart with multiple Y-axes and different units
+        const combinedAnalogConfig = {
+            type: 'line',
+            data: {
+                datasets: [
+                    // Pressure (Pa)
+                    {
+                        label: 'Pressure',
+                        data: [],
+                        borderColor: '#0066CC',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'pressure'
+                    },
+                    // Flow (L/min)
+                    {
+                        label: 'Flow',
+                        data: [],
+                        borderColor: '#FF6B6B',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'flow'
+                    },
+                    // Temperature (°C)
+                    {
+                        label: 'Temperature',
+                        data: [],
+                        borderColor: '#00AA88',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'temperature'
+                    },
+                    // Humidity (%)
+                    {
+                        label: 'Humidity',
+                        data: [],
+                        borderColor: '#FF9F43',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'humidity'
+                    },
+                    // Setpoint (°C)
+                    {
+                        label: 'Setpoint',
+                        data: [],
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'temperature', // Share with temperature
+                        borderDash: [5, 5] // Dashed line for setpoint
+                    },
+                    // Voltage (V)
+                    {
+                        label: 'Voltage',
+                        data: [],
+                        borderColor: '#6C5CE7',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'voltage'
+                    },
+                    // Current (A)
+                    {
+                        label: 'Current',
+                        data: [],
+                        borderColor: '#FD79A8',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        yAxisID: 'current'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 12,
+                            font: { size: 11 }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ...commonXAxis,
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time (seconds)',
+                            font: { size: 12 }
+                        }
+                    },
+                    // Pressure Y-axis (left side, primary)
+                    pressure: {
+                        type: 'linear',
+                        position: 'left',
+                        min: 40000,
+                        max: 60000,
+                        grid: {
+                            display: true,
+                            color: '#E0E0E0',
+                            lineWidth: 0.5
+                        },
+                        ticks: {
+                            stepSize: 5000,
+                            font: { size: 9 },
+                            callback: function(value) {
+                                return (value/1000).toFixed(0) + 'kPa';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Pressure (kPa)',
+                            color: '#0066CC',
+                            font: { size: 10 }
+                        }
+                    },
+                    // Flow Y-axis (right side)
+                    flow: {
+                        type: 'linear',
+                        position: 'right',
+                        min: 0,
+                        max: 30,
+                        grid: {
+                            display: false // Don't show grid to avoid overlap
+                        },
+                        ticks: {
+                            stepSize: 5,
+                            font: { size: 9 },
+                            callback: function(value) {
+                                return value.toFixed(1) + 'L/min';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Flow (L/min)',
+                            color: '#FF6B6B',
+                            font: { size: 10 }
+                        }
+                    },
+                    // Temperature Y-axis (left side, secondary)
+                    temperature: {
+                        type: 'linear',
+                        position: 'left',
+                        min: 0,
+                        max: 50,
+                        display: false, // Hide axis but keep scale
+                        grid: { display: false }
+                    },
+                    // Humidity Y-axis (right side, secondary)
+                    humidity: {
+                        type: 'linear',
+                        position: 'right',
+                        min: 0,
+                        max: 100,
+                        display: false,
+                        grid: { display: false }
+                    },
+                    // Voltage Y-axis
+                    voltage: {
+                        type: 'linear',
+                        position: 'left',
+                        min: 0,
+                        max: 12,
+                        display: false,
+                        grid: { display: false }
+                    },
+                    // Current Y-axis
+                    current: {
+                        type: 'linear',
+                        position: 'right',
+                        min: 0,
+                        max: 5,
+                        display: false,
+                        grid: { display: false }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        };
+        
+        // Digital chart configuration
+        function createDigitalConfig(color, showXAxis = false) {
+            return {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Digital',
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0,
+                        stepped: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ...commonXAxis,
+                            display: showXAxis,
+                            title: showXAxis ? {
+                                display: true,
+                                text: 'Time (seconds)',
+                                font: { size: 11 }
+                            } : undefined
+                        },
+                        y: {
+                            min: -0.5,
+                            max: 1.5,
+                            grid: {
+                                display: true,
+                                color: '#F0F0F0',
+                                lineWidth: 0.3
+                            },
+                            ticks: {
+                                stepSize: 1,
+                                font: { size: 8 },
+                                callback: function(value) {
+                                    return value > 0.5 ? 'HIGH' : 'LOW';
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Generate sample data with different units and ranges
+        function generateSampleData() {
+            const data = {
+                // Combined analog signals
+                pressure: [], flow: [], temperature: [], humidity: [], setpoint: [], voltage: [], current: [],
+                // Digital signals
+                digital1: [], digital2: [], digital3: [], digital4: [], digital5: [],
+                digital6: [], digital7: [], digital8: [], digital9: [], digital10: [], digital11: []
+            };
+            
+            for (let i = 0; i <= 500; i++) {
+                const time = i * 0.1; // 0.1 second intervals
+                
+                // Analog signals with realistic ranges and units
+                
+                // Pressure (40-60 kPa)
+                data.pressure.push({ 
+                    x: time, 
+                    y: 50000 + 8000 * Math.sin(time * 0.02) + 1000 * Math.random() 
+                });
+                
+                // Flow (5-25 L/min)
+                data.flow.push({ 
+                    x: time, 
+                    y: 15 + 8 * Math.sin(time * 0.025 + Math.PI/4) + 2 * Math.random() 
+                });
+                
+                // Temperature (15-35°C)
+                data.temperature.push({ 
+                    x: time, 
+                    y: 25 + 8 * Math.sin(time * 0.015) + 1 * Math.random() 
+                });
+                
+                // Humidity (30-80%)
+                data.humidity.push({ 
+                    x: time, 
+                    y: 55 + 20 * Math.cos(time * 0.012) + 3 * Math.random() 
+                });
+                
+                // Setpoint (constant with small variations)
+                data.setpoint.push({ 
+                    x: time, 
+                    y: 25 + 0.5 * Math.sin(time * 0.005) 
+                });
+                
+                // Voltage (9-12V)
+                data.voltage.push({ 
+                    x: time, 
+                    y: 10.5 + 1.2 * Math.sin(time * 0.03) + 0.2 * Math.random() 
+                });
+                
+                // Current (1-4A)
+                data.current.push({ 
+                    x: time, 
+                    y: 2.5 + 1.2 * Math.cos(time * 0.028) + 0.3 * Math.random() 
+                });
+                
+                // Digital signals with various patterns
+                data.digital1.push({ x: time, y: (Math.floor(time / 2) % 2) ? 1.2 : 0.2 });    // 2s period
+                data.digital2.push({ x: time, y: (Math.floor(time / 4) % 2) ? 1.2 : 0.2 });    // 4s period
+                data.digital3.push({ x: time, y: (Math.floor(time / 6) % 2) ? 1.2 : 0.2 });    // 6s period
+                data.digital4.push({ x: time, y: (Math.floor(time / 10) % 2) ? 1.2 : 0.2 });   // 10s period
+                data.digital5.push({ x: time, y: (Math.floor(time / 1.5) % 2) ? 1.2 : 0.2 });  // 1.5s period
+                data.digital6.push({ x: time, y: (Math.floor(time / 8) % 2) ? 1.2 : 0.2 });    // 8s period
+                data.digital7.push({ x: time, y: (Math.floor(time / 12) % 2) ? 1.2 : 0.2 });   // 12s period
+                data.digital8.push({ x: time, y: (Math.floor(time / 2.5) % 2) ? 1.2 : 0.2 });  // 2.5s period
+                data.digital9.push({ x: time, y: (Math.floor(time / 3.5) % 2) ? 1.2 : 0.2 });  // 3.5s period
+                data.digital10.push({ x: time, y: (Math.floor(time / 4.5) % 2) ? 1.2 : 0.2 }); // 4.5s period
+                data.digital11.push({ x: time, y: (Math.floor(time / 3) % 2) ? 1.2 : 0.2 });   // 3s period
+            }
+            
+            return data;
+        }
+        
+        // Initialize all charts
+        function initCharts() {
+            // Create combined analog chart
+            const combinedCtx = document.getElementById('combined-analog-chart').getContext('2d');
+            charts.combined = new Chart(combinedCtx, combinedAnalogConfig);
+            
+            // Create separate digital charts
+            const digitalColors = ['#FF3366', '#FF5577', '#FF7788', '#00CC66', '#22DD77', 
+                                 '#44EE88', '#9966CC', '#AA77DD', '#BB88EE', '#CC9900', '#DDAA11'];
+            
+            for (let i = 1; i <= 11; i++) {
+                const ctx = document.getElementById(`digital${i}-chart`).getContext('2d');
+                const showXAxis = (i === 11); // Show X-axis on last chart
+                charts[`digital${i}`] = new Chart(ctx, createDigitalConfig(digitalColors[i-1], showXAxis));
+            }
+            
+            updateData();
+        }
+        
+        // Update all charts
+        function updateData() {
+            if (!isUpdating) return;
+            
+            const data = generateSampleData();
+            
+            // Update combined analog chart (7 datasets)
+            charts.combined.data.datasets[0].data = data.pressure;
+            charts.combined.data.datasets[1].data = data.flow;
+            charts.combined.data.datasets[2].data = data.temperature;
+            charts.combined.data.datasets[3].data = data.humidity;
+            charts.combined.data.datasets[4].data = data.setpoint;
+            charts.combined.data.datasets[5].data = data.voltage;
+            charts.combined.data.datasets[6].data = data.current;
+            
+            // Update digital charts
+            for (let i = 1; i <= 11; i++) {
+                charts[`digital${i}`].data.datasets[0].data = data[`digital${i}`];
+            }
+            
+            // Update all charts
+            Object.values(charts).forEach(chart => {
+                chart.update('none');
+            });
+        }
+        
+        // Control functions
+        function zoomAll(factor) {
+            Object.values(charts).forEach(chart => {
+                chart.zoom(factor);
+            });
+        }
+        
+        function resetAllZoom() {
+            Object.values(charts).forEach(chart => {
+                chart.resetZoom();
+            });
+        }
+        
+        function toggleUpdate() {
+            isUpdating = !isUpdating;
+            document.getElementById('status').textContent = isUpdating ? 'Running' : 'Paused';
+            document.getElementById('status').style.color = isUpdating ? 'green' : 'red';
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            setInterval(updateData, 150);
+        });
+    </script>
+</body>
+</html>
