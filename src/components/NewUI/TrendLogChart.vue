@@ -329,7 +329,7 @@
       <div class="right-panel">
         <div class="oscilloscope-container">
           <!-- Combined Analog Chart with Multiple Signals -->
-          <div class="combined-label">
+          <!-- <div class="combined-label">
             <div class="signal-info">
               <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
                     :style="{ color: series.color }" class="signal-legend">
@@ -337,16 +337,16 @@
                 <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
               </span>
             </div>
-          </div>
+          </div> -->
           <div class="combined-analog-chart">
             <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
           </div>
 
           <!-- Separate Digital Channels -->
           <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
-            <div class="channel-label" :style="{ color: series.color }">
+            <!-- <div class="channel-label" :style="{ color: series.color }">
               📶 {{ series.name }} - {{ getDigitalStateLabel(series) }}
-            </div>
+            </div> -->
             <div class="channel-chart">
               <canvas :ref="(el) => setDigitalChartRef(el, index)"
                       :id="`digital-${index}-chart`"></canvas>
@@ -4948,6 +4948,7 @@ onUnmounted(() => {
   border: 1px solid #e0e0e0;
 }
 
+
 .channel-chart {
   height: 70px;
   background: white;
@@ -4956,6 +4957,7 @@ onUnmounted(() => {
   margin-bottom: 6px;
   position: relative;
 }
+
 
 .channel-chart canvas {
   width: 100% !important;
