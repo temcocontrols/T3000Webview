@@ -3099,9 +3099,9 @@ const updateDigitalCharts = () => {
       label: series.name,
       data: sortedData,
       borderColor: series.color,
-      backgroundColor: series.color + '40',
+      backgroundColor: 'transparent', // No background fill
       borderWidth: 2,
-      fill: true,
+      fill: false, // Remove filled area
       stepped: 'middle' as const,
       pointRadius: 0,
       pointHoverRadius: 4,
@@ -4429,8 +4429,10 @@ onUnmounted(() => {
   flex-direction: column;
   min-width: 200px;
   /* Ensure readability */
-  overflow: hidden;
-  /* Contain content properly */
+  overflow-y: auto;
+  /* Make scrollable when content overflows */
+  overflow-x: hidden;
+  /* Hide horizontal overflow */
 }
 
 .control-section {
@@ -5560,7 +5562,9 @@ onUnmounted(() => {
     order: 2;
     flex: none !important;
     /* Don't use flex on mobile to ensure height calculation */
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    /* Allow scrolling on mobile when content overflows */
+    overflow-x: hidden !important;
   }
 
   .chart-container {
