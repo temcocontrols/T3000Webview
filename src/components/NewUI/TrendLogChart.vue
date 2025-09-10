@@ -1420,7 +1420,8 @@ const getAnalogChartConfig = () => ({
           font: {
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
-          }
+          },
+          padding: 8
         }
       }
     }
@@ -1520,6 +1521,8 @@ const getDigitalChartConfig = (series: SeriesConfig) => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           stepSize: 1,
+          padding: 5, // Add padding between tick labels and axis
+          maxTicksLimit: 2, // Limit to only HIGH and LOW
           callback: function(value: any) {
             return value > 0.5 ? 'HIGH' : 'LOW';
           }
