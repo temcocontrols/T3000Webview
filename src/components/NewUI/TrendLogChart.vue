@@ -348,8 +348,7 @@
               📶 {{ series.name }} - {{ getDigitalStateLabel(series) }}
             </div> -->
             <div class="channel-chart">
-              <canvas :ref="(el) => setDigitalChartRef(el, index)"
-                      :id="`digital-${index}-chart`"></canvas>
+              <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
             </div>
           </template>
         </div>
@@ -1394,7 +1393,7 @@ const getAnalogChartConfig = () => ({
     scales: {
       x: {
         type: 'time' as const,
-        display: false, // Hide x-axis from analog chart - only show on bottommost digital chart
+        display: true, // Show x-axis on analog chart
         grid: {
           color: '#e0e0e0',
           display: true,
@@ -1528,7 +1527,7 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
           padding: 8, // Match analog chart padding
           align: 'end', // Align text to the right for consistent visual spacing
           maxTicksLimit: 2, // Limit to only HIGH and LOW
-          callback: function(value: any) {
+          callback: function (value: any) {
             return value > 0.5 ? 'HIGH' : 'LOW';
           }
         }
@@ -2051,7 +2050,8 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
       dataClient.GetEntries(currentPanelId, null, batchRequestData)
     } else {
       LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
-    }  } catch (error) {
+    }
+  } catch (error) {
     LogUtil.Error('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
   }
 }
@@ -4942,14 +4942,14 @@ onUnmounted(() => {
 /* Oscilloscope Multi-Canvas Styling */
 .oscilloscope-container {
   flex: 1;
-  padding: 8px;
+  padding: 2px;
   position: relative;
   min-height: 320px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  /* gap: 8px; */
   background: #f8f9fa;
-  border-radius: 6px;
+  border-radius: 3px;
   border: 1px solid #e8e8e8;
 }
 
@@ -5009,8 +5009,9 @@ onUnmounted(() => {
   height: 70px;
   background: white;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 6px;
+  /* border-radius: 4px; */
+  /* margin-bottom: 6px; */
+  margin-bottom: -1px;
   position: relative;
 }
 
