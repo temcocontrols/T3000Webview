@@ -1424,7 +1424,6 @@ const getAnalogChartConfig = () => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           padding: 8,
-          align: 'end' // Align text to the right for consistent visual spacing
         }
       }
     }
@@ -1491,13 +1490,16 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
     scales: {
       x: {
         type: 'time' as const,
-        display: isLastChart, // Only show x-axis on the bottommost chart
+        display: true, // Always show x-axis to enable grid lines
         grid: {
           color: '#e0e0e0',
           display: true,
-          lineWidth: 0.5
+          lineWidth: 1, // Make vertical grid lines more visible
+          drawOnChartArea: true, // Ensure grid lines are drawn over chart area
+          drawTicks: true // Draw tick marks on axis
         },
         ticks: {
+          display: isLastChart, // Only show tick labels on bottommost chart
           color: '#595959',
           font: {
             size: 10,
@@ -1523,9 +1525,7 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
             size: 8,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          stepSize: 1,
-          padding: 8, // Match analog chart padding
-          align: 'end', // Align text to the right for consistent visual spacing
+          padding: 5, // Match analog chart padding
           maxTicksLimit: 2, // Limit to only HIGH and LOW
           callback: function (value: any) {
             return value > 0.5 ? 'HIGH' : 'LOW';
@@ -5009,10 +5009,22 @@ onUnmounted(() => {
   height: 70px;
   background: white;
   border: 1px solid #ddd;
+  border-bottom: none;
+  border-top: none;
   /* border-radius: 4px; */
   /* margin-bottom: 6px; */
   margin-bottom: -1px;
   position: relative;
+}
+
+/* Add border to first channel-chart (top) */
+.channel-chart:first-child {
+  border-top: 1px solid #ddd;
+}
+
+/* Add border to last channel-chart (bottom) */
+.channel-chart:last-child {
+  border-bottom: 1px solid #ddd;
 }
 
 
