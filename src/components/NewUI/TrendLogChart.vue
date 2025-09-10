@@ -1394,6 +1394,7 @@ const getAnalogChartConfig = () => ({
     scales: {
       x: {
         type: 'time' as const,
+        display: false, // Hide x-axis from analog chart - only show on bottommost digital chart
         grid: {
           color: '#e0e0e0',
           display: true,
@@ -1406,7 +1407,9 @@ const getAnalogChartConfig = () => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           maxRotation: 0,
-          minRotation: 0
+          minRotation: 0,
+          maxTicksLimit: 14, // Show up to 14 ticks to accommodate all data points
+          autoSkip: false // Don't skip ticks automatically
         }
       },
       y: {
@@ -1421,14 +1424,15 @@ const getAnalogChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          padding: 8
+          padding: 8,
+          align: 'end' // Align text to the right for consistent visual spacing
         }
       }
     }
   }
 })
 
-const getDigitalChartConfig = (series: SeriesConfig) => ({
+const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = false) => ({
   type: 'line' as const,
   data: {
     datasets: [] // Will be populated in updateDigitalCharts
@@ -1488,7 +1492,7 @@ const getDigitalChartConfig = (series: SeriesConfig) => ({
     scales: {
       x: {
         type: 'time' as const,
-        display: true, // Show x-axis for digital charts
+        display: isLastChart, // Only show x-axis on the bottommost chart
         grid: {
           color: '#e0e0e0',
           display: true,
@@ -1521,7 +1525,8 @@ const getDigitalChartConfig = (series: SeriesConfig) => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           stepSize: 1,
-          padding: 5, // Add padding between tick labels and axis
+          padding: 8, // Match analog chart padding
+          align: 'end', // Align text to the right for consistent visual spacing
           maxTicksLimit: 2, // Limit to only HIGH and LOW
           callback: function(value: any) {
             return value > 0.5 ? 'HIGH' : 'LOW';
@@ -2958,7 +2963,8 @@ const createDigitalCharts = () => {
     }
 
     try {
-      const config = getDigitalChartConfig(series)
+      const isLastChart = index === visibleDigitalSeries.value.length - 1
+      const config = getDigitalChartConfig(series, isLastChart)
       digitalChartInstances[index] = new Chart(ctx, config)
 
       console.log(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
