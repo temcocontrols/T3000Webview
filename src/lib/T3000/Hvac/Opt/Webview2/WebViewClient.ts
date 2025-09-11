@@ -618,6 +618,9 @@ class WebViewClient {
   }
 
   public HandleGetEntriesRes(msgData) {
+
+    LogUtil.Debug(`= Wv2 Received message from T3 [HandleGetEntriesRes], msgData=`,msgData);
+
     // action: 6, // GET_ENTRIES_RES
     // LogUtil.Debug('= Wv2: HandleGetEntriesRes START =================');
     // LogUtil.Debug('= Wv2: HandleGetEntriesRes / received data length:', msgData.data?.length || 0);

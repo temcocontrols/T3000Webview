@@ -2689,7 +2689,8 @@ const updateChartWithNewData = (validDataItems: any[]) => {
   LogUtil.Debug('📊 TrendLogChart: Data processing complete', {
     matched,
     unmatched,
-    totalSeries: dataSeries.value
+    totalSeries: dataSeries.value,
+    validDataItems: validDataItems
   })
 
   // Update charts if instances exist
