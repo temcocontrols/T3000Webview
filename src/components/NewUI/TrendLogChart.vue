@@ -700,6 +700,24 @@ const getDigitalStatesFromUnit = (unit: string): [string, string] | undefined =>
   return unit.includes('/') ? unit.split('/') as [string, string] : undefined
 }
 
+// Helper function to get digital states from T3Range based on range ID
+const getDigitalStatesFromRange = (rangeId: number): [string, string] => {
+  const digitalRange = rangeDefinitions.digital.find(range => range.id === rangeId)
+
+  if (digitalRange) {
+    // If direct is true or null, use off/on as-is
+    // If direct is false, swap the order (this matches the logic in T3Range.ts)
+    if (digitalRange.direct === false) {
+      return [digitalRange.on, digitalRange.off]
+    } else {
+      return [digitalRange.off, digitalRange.on]
+    }
+  }
+
+  // Default fallback
+  return ['LOW', 'HIGH']
+}
+
 // Function to convert Unix timestamp to local time string
 const formatTimestampToLocal = (unixTimestamp: number): string => {
   // Handle both seconds and milliseconds Unix timestamps
@@ -1433,111 +1451,115 @@ const getAnalogChartConfig = () => ({
   }
 })
 
-const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = false) => ({
-  type: 'line' as const,
-  data: {
-    datasets: [] // Will be populated in updateDigitalCharts
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false as const,
-    elements: {
-      line: {
-        borderWidth: 2,
-        skipNull: false
-      }
+const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = false) => {
+  // Get digital states from the series range
+  const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
+
+  return {
+    type: 'line' as const,
+    data: {
+      datasets: [] // Will be populated in updateDigitalCharts
     },
-    layout: {
-      padding: {
-        left: 10,
-        right: 20,
-        top: 5,
-        bottom: 5
-      }
-    },
-    interaction: {
-      intersect: false,
-      mode: 'index' as const
-    },
-    plugins: {
-      legend: {
-        display: false // Digital charts don't need legends (shown in channel label)
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false as const,
+      elements: {
+        line: {
+          borderWidth: 2,
+          skipNull: false
+        }
       },
-      tooltip: {
-        backgroundColor: '#ffffff',
-        titleColor: '#000000',
-        bodyColor: '#000000',
-        borderColor: '#d9d9d9',
-        borderWidth: 1,
-        cornerRadius: 4,
-        displayColors: true,
-        usePointStyle: true,
-        callbacks: {
-          title: (context: any) => {
-            const timestamp = context[0].parsed.x
-            if (typeof timestamp === 'number' && timestamp > 1e9) {
-              return formatTimestampToLocal(timestamp)
+      layout: {
+        padding: {
+          left: 10,
+          right: 20,
+          top: 5,
+          bottom: 5
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index' as const
+      },
+      plugins: {
+        legend: {
+          display: false // Digital charts don't need legends (shown in channel label)
+        },
+        tooltip: {
+          backgroundColor: '#ffffff',
+          titleColor: '#000000',
+          bodyColor: '#000000',
+          borderColor: '#d9d9d9',
+          borderWidth: 1,
+          cornerRadius: 4,
+          displayColors: true,
+          usePointStyle: true,
+          callbacks: {
+            title: (context: any) => {
+              const timestamp = context[0].parsed.x
+              if (typeof timestamp === 'number' && timestamp > 1e9) {
+                return formatTimestampToLocal(timestamp)
+              }
+              return new Date(timestamp).toLocaleString()
+            },
+            label: (context: any) => {
+              const stateIndex = context.parsed.y === 1 ? 1 : 0
+              const stateText = digitalStates[stateIndex]
+              return `${series.name}: ${stateText}`
             }
-            return new Date(timestamp).toLocaleString()
-          },
-          label: (context: any) => {
-            const stateIndex = context.parsed.y === 1 ? 1 : 0
-            const digitalStates = getDigitalStatesFromUnit(series.unit || '')
-            const stateText = digitalStates?.[stateIndex] || (context.parsed.y === 1 ? 'High' : 'Low')
-            return `${series.name}: ${stateText}`
           }
         }
-      }
-    },
-    scales: {
-      x: {
-        type: 'time' as const,
-        display: true, // Always show x-axis to enable grid lines
-        grid: {
-          color: '#e0e0e0',
-          display: true,
-          lineWidth: 1, // Make vertical grid lines more visible
-          drawOnChartArea: true, // Ensure grid lines are drawn over chart area
-          drawTicks: true // Draw tick marks on axis
-        },
-        ticks: {
-          display: true, // Always display ticks to maintain consistent layout
-          color: isLastChart ? '#595959' : 'transparent', // Transparent labels on non-last charts
-          font: {
-            size: 10, // Same font size for all to maintain consistent layout
-            family: 'Inter, Helvetica, Arial, sans-serif'
-          },
-          maxRotation: 0,
-          minRotation: 0
-        }
       },
-      y: {
-        min: -0.5,
-        max: 1.5,
-        display: true, // Show y-axis for digital charts
-        grid: {
-          color: '#F0F0F0',
-          display: true,
-          lineWidth: 0.3
-        },
-        ticks: {
-          display: true, // Show y-axis ticks for digital charts
-          color: '#595959',
-          font: {
-            size: 8,
-            family: 'Inter, Helvetica, Arial, sans-serif'
+      scales: {
+        x: {
+          type: 'time' as const,
+          display: true, // Always show x-axis to enable grid lines
+          grid: {
+            color: '#e0e0e0',
+            display: true,
+            lineWidth: 1, // Make vertical grid lines more visible
+            drawOnChartArea: true, // Ensure grid lines are drawn over chart area
+            drawTicks: true // Draw tick marks on axis
           },
-          padding: 5, // Match analog chart padding
-          maxTicksLimit: 2, // Limit to only HIGH and LOW
-          callback: function (value: any) {
-            return value > 0.5 ? 'HIGH' : 'LOW';
+          ticks: {
+            display: true, // Always display ticks to maintain consistent layout
+            color: isLastChart ? '#595959' : 'transparent', // Transparent labels on non-last charts
+            font: {
+              size: 10, // Same font size for all to maintain consistent layout
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            maxRotation: 0,
+            minRotation: 0
+          }
+        },
+        y: {
+          min: -0.5,
+          max: 1.5,
+          display: true, // Show y-axis for digital charts
+          grid: {
+            color: '#F0F0F0',
+            display: true,
+            lineWidth: 0.3
+          },
+          ticks: {
+            display: true, // Show y-axis ticks for digital charts
+            color: '#595959',
+            font: {
+              size: 8,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 5, // Match analog chart padding
+            maxTicksLimit: 2, // Limit to only the two states
+            callback: function (value: any) {
+              return value > 0.5 ? digitalStates[1] : digitalStates[0];
+            }
           }
         }
       }
     }
   }
-})
+}
 
 // Value mapping for two-zone Y-axis layout
 const mapValueToYAxis = (value: number, unitType: 'analog' | 'digital'): number => {
@@ -2300,38 +2322,6 @@ const getAnalogUnit = (range: number): string => {
 }
 
 /**
- * Get digital unit labels based on range value
- */
-const getDigitalUnit = (range: number): { low: string; high: string } => {
-  const digitalUnits: { [key: number]: { low: string; high: string } } = {
-    1: { low: 'Off', high: 'On' },
-    2: { low: 'Close', high: 'Open' },
-    3: { low: 'Stop', high: 'Start' },
-    4: { low: 'Disable', high: 'Enable' },
-    5: { low: 'Normal', high: 'Alarm' },
-    6: { low: 'Normal', high: 'High' },
-    7: { low: 'Normal', high: 'Low' },
-    8: { low: 'No', high: 'Yes' },
-    9: { low: 'Cool', high: 'Heat' },
-    10: { low: 'Unoccupy', high: 'Occupy' },
-    11: { low: 'Low', high: 'High' },
-    12: { low: 'On', high: 'Off' },
-    13: { low: 'Open', high: 'Close' },
-    14: { low: 'Start', high: 'Stop' },
-    15: { low: 'Enable', high: 'Disable' },
-    16: { low: 'Alarm', high: 'Normal' },
-    17: { low: 'High', high: 'Normal' },
-    18: { low: 'Low', high: 'Normal' },
-    19: { low: 'Yes', high: 'No' },
-    20: { low: 'Heat', high: 'Cool' },
-    21: { low: 'Occupy', high: 'Unoccupy' },
-    22: { low: 'High', high: 'Low' }
-  }
-
-  return digitalUnits[range] || { low: 'Low', high: 'High' }
-}
-
-/**
  * Generate device ID from inputItem (point_type + point_number)
  */
 const generateDeviceId = (pointType: number, pointNumber: number): string => {
@@ -2404,8 +2394,8 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
     }
   } else {
     // Digital processing: use control value as-is with state labels
-    const digitalStates = getDigitalUnit(panelData.range)
-    const displayValue = rawValue > 0 ? `1 (${digitalStates.high})` : `0 (${digitalStates.low})`
+    const digitalStates = getDigitalStatesFromRange(panelData.range)
+    const displayValue = rawValue > 0 ? `1 (${digitalStates[1]})` : `0 (${digitalStates[0]})`
 
     return {
       value: rawValue,
@@ -4093,8 +4083,8 @@ const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
 
   if (series?.unitType === 'digital') {
     const stateIndex = lastValue === 1 ? 1 : 0
-    const digitalStates = getDigitalStatesFromUnit(series.unit || '')
-    const stateText = digitalStates?.[stateIndex] || (lastValue === 1 ? 'High' : 'Low')
+    const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
+    const stateText = digitalStates[stateIndex]
     return `${stateText} (${lastValue})`
   } else {
     const unit = series?.unit || ''
@@ -4125,8 +4115,8 @@ const getMinValue = (data: DataPoint[], series?: SeriesConfig): string => {
 
   if (series?.unitType === 'digital') {
     const stateIndex = min === 1 ? 1 : 0
-    const digitalStates = getDigitalStatesFromUnit(series.unit || '')
-    const stateText = digitalStates?.[stateIndex] || (min === 1 ? 'High' : 'Low')
+    const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
+    const stateText = digitalStates[stateIndex]
     return `${stateText} (${min})`
   } else {
     const unit = series?.unit || ''
@@ -4141,8 +4131,8 @@ const getMaxValue = (data: DataPoint[], series?: SeriesConfig): string => {
 
   if (series?.unitType === 'digital') {
     const stateIndex = max === 1 ? 1 : 0
-    const digitalStates = getDigitalStatesFromUnit(series.unit || '')
-    const stateText = digitalStates?.[stateIndex] || (max === 1 ? 'High' : 'Low')
+    const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
+    const stateText = digitalStates[stateIndex]
     return `${stateText} (${max})`
   } else {
     const unit = series?.unit || ''
