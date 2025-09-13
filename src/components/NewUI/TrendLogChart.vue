@@ -2497,56 +2497,6 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
 }
 
 /**
- * Debug function to test socket/webview communication manually
- */
-const testCommunication = async () => {
-
-
-  // Test 1: Data Client Creation
-  const dataClient = initializeDataClients()
-
-
-  if (!dataClient) {
-    LogUtil.Error('�?TrendLogModal: Cannot proceed - no data client available')
-    return
-  }
-
-  // Test 2: Setup Response Handler
-  setupGetEntriesResponseHandlers(dataClient)
-  LogUtil.Info('�?TrendLogModal: Test 2 - Response handler setup complete')
-
-  // Test 3: Send Simple GET_ENTRIES Request
-  try {
-    const testPanelId = T3000_Data.value.panelsList?.[0]?.panel_number || 1
-    const testRequest = {
-      panelId: testPanelId,
-      index: 1,
-      type: 'IN'
-    }
-
-
-
-    if (dataClient.GetEntries) {
-      const result = (dataClient as any).GetEntries(undefined, undefined, [testRequest])
-
-    }
-
-    // Wait a bit to see if response comes back
-    setTimeout(() => {
-      LogUtil.Info('�?TrendLogModal: Test 3 - Timeout check (5 seconds elapsed)')
-    }, 5000)
-
-  } catch (error) {
-    LogUtil.Error('�?TrendLogModal: Test 3 - Error sending request:', error)
-  }
-
-
-}
-
-  // Add testCommunication to global scope for manual testing
-  ; (window as any).testTimeSeriesCommunication = testCommunication
-
-/**
  * Setup message handlers for GET_ENTRIES responses
  */
 const setupGetEntriesResponseHandlers = (dataClient: any) => {
