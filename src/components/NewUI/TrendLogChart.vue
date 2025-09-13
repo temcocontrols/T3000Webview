@@ -2015,6 +2015,19 @@ const fetchAllItemsDataBatch = async (dataClient: any, monitorConfigData: any, c
 }
 
 /**
+ * Adjust TrendLog point type (1-based) to sensor's point type (0-based) for GET_ENTRIES
+ * T3000 uses 1-based point types for TrendLog, but GET_ENTRIES expects 0-based sensor types
+ * #define BAC_OUT 0
+ * #define BAC_IN  1
+ * #define BAC_VAR 2
+ * @param Trendlog related inputs point type (1-based)
+ * @returns Adjusted sensor's point type (0-based) for GET_ENTRIES
+ */
+const TransferTdlPointType = (pointType) => {
+  return pointType - 1;
+}
+
+/**
  * Send batch GET_ENTRIES request for periodic real-time updates
  * Used by interval timer to efficiently update all monitored items at once
  */
@@ -2047,13 +2060,10 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
       const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
 
       if (matchingDevice) {
-        const deviceIndex = parseInt(matchingDevice.index) || 0
-        const deviceType = inputItem.point_type
-
         batchRequestData.push({
           panelId: currentPanelId,
-          index: deviceIndex,
-          type: deviceType
+          index: parseInt(matchingDevice.index) || 0,
+          type: TransferTdlPointType(inputItem.point_type) // Adjusted for TrendLog
         })
       }
     })
@@ -2062,7 +2072,8 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
       itemCount: batchRequestData.length,
       panelId: currentPanelId,
       batchSample: batchRequestData.slice(0, 3),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      monitorConfigData: monitorConfigData
     })
 
     if (batchRequestData.length === 0) {
