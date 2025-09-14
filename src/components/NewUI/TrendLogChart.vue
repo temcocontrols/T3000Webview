@@ -1023,21 +1023,36 @@ watch(scheduleItemData, (newData, oldData) => {
   })
 }, { deep: true })
 
-// Watch timeBase for changes and API data fetching
-watch(timeBase, (newTimeBase, oldTimeBase) => {
-  LogUtil.Info('= TLChart: timeBase changed - API Data Fetch Analysis', {
+// Watch timeBase for changes and hybrid data loading
+watch(timeBase, async (newTimeBase, oldTimeBase) => {
+  LogUtil.Info('= TLChart: timeBase changed - Hybrid Data Loading', {
     oldTimeBase: oldTimeBase,
     newTimeBase: newTimeBase,
-    is5Minutes: newTimeBase === '5m',
-    isCustom: newTimeBase === 'custom',
-    needsApiData: newTimeBase !== '5m' && newTimeBase !== 'custom',
-    currentDataSource: dataSource.value,
-    willTriggerApiCall: newTimeBase !== '5m' && newTimeBase !== 'custom',
     timestamp: new Date().toISOString()
   })
 
-  // Update all charts when timeBase changes
-  updateCharts()
+  // Load historical data for new timebase immediately
+  try {
+    isLoading.value = true
+
+    // Clear existing data first
+    dataSeries.value.forEach(series => {
+      series.data = []
+    })
+
+    // Load historical data from database for new timebase
+    await loadHistoricalDataFromDatabase()
+
+    // Update charts with new historical data
+    updateCharts()
+
+  } catch (error) {
+    LogUtil.Error('Error loading data for new timebase:', error)
+  } finally {
+    isLoading.value = false
+  }
+
+  // Real-time data will continue to be added on top of historical data
 }, { immediate: false })
 
 // Get internal interval value from props - combine minute and second intervals
@@ -2177,7 +2192,11 @@ const initializeRealDataSeries = async () => {
         unitCode: rangeValue,
         itemType: pointTypeInfo.name,
         prefix: prefix,
-        description: cleanDescription
+        description: cleanDescription,
+        pointType: inputItem.point_type,
+        pointNumber: inputItem.point_number,
+        panelId: inputItem.panel,
+        id: generateDeviceId(inputItem.point_type, inputItem.point_number)
       }
 
       newDataSeries.push(seriesConfig)
@@ -2373,6 +2392,36 @@ const mapPointTypeToString = (pointType: number): string => {
 }
 
 /**
+ * Map point type number to string for database storage
+ * Uses standardized names for API compatibility
+ */
+const mapPointTypeFromNumber = (pointType: number): string => {
+  const bacDefine = pointType - 1; // Convert T3000 1-based to BAC 0-based
+
+  switch (bacDefine) {
+    case 0: return 'OUTPUT'    // BAC_OUT = 0
+    case 1: return 'INPUT'     // BAC_IN = 1
+    case 2: return 'VARIABLE'  // BAC_VAR = 2
+    case 3: return 'PID'       // BAC_PID = 3
+    case 4: return 'SCHEDULE'  // BAC_SCH = 4
+    case 5: return 'HOLIDAY'   // BAC_HOL = 5
+    case 6: return 'PROGRAM'   // BAC_PRG = 6
+    case 7: return 'TABLE'     // BAC_TBL = 7
+    case 8: return 'DMON'      // BAC_DMON = 8
+    case 9: return 'AMON'      // BAC_AMON = 9
+    case 10: return 'GROUP'    // BAC_GRP = 10
+    case 11: return 'ARRAY'    // BAC_AY = 11
+    case 12: return 'ALARMM'   // BAC_ALARMM = 12
+    case 13: return 'UNIT'     // BAC_UNIT = 13
+    case 14: return 'USER_NAME' // BAC_USER_NAME = 14
+    case 15: return 'ALARMS'   // BAC_ALARMS = 15
+    case 16: return 'WR_TIME'  // BAC_WR_TIME = 16
+    case 17: return 'AR_Y'     // BAC_AR_Y = 17
+    default: return 'UNKNOWN'
+  }
+}
+
+/**
  * Get point type info for debugging (using existing function)
  */
 
@@ -2535,7 +2584,23 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
         // Process valid data for chart rendering
         if (validItems.length > 0) {
+          LogUtil.Info('🎯 GET_ENTRIES: Processing valid items', {
+            validItemsCount: validItems.length,
+            totalReceivedItems: data?.length || 0,
+            sampleValidItem: validItems[0],
+            timestamp: new Date().toISOString()
+          })
+
           updateChartWithNewData(validItems)
+
+          // Store real-time data to database for historical usage
+          LogUtil.Info('💾 GET_ENTRIES: About to call storeRealtimeDataToDatabase')
+          storeRealtimeDataToDatabase(validItems)
+        } else {
+          LogUtil.Warn('⚠️ GET_ENTRIES: No valid items to process', {
+            totalReceivedItems: data?.length || 0,
+            allItems: data?.slice(0, 3) || [] // Show first 3 for debugging
+          })
         }
       }
     } catch (error) {
@@ -2550,6 +2615,187 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
         LogUtil.Error('Error calling original handler:', error)
       }
     }
+  }
+}
+
+/**
+ * Load historical data from database based on current timebase
+ */
+const loadHistoricalDataFromDatabase = async () => {
+  try {
+    // Get current device info
+    const panelsList = T3000_Data.value.panelsList || []
+    const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+    const currentSN = panelsList.length > 0 ? panelsList[0].sn : 0
+
+    if (!currentSN) {
+      LogUtil.Debug('No serial number available for historical data loading')
+      return
+    }
+
+    // Get monitor config for point filtering
+    const monitorConfigData = monitorConfig.value
+    if (!monitorConfigData?.inputItems?.length) {
+      LogUtil.Debug('No monitor configuration available for historical data loading')
+      return
+    }
+
+    // Calculate time range based on current timebase
+    const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
+    const endTime = new Date()
+    const startTime = new Date(endTime.getTime() - timeRangeMinutes * 60 * 1000)
+
+    // Format timestamps for API (SQLite format)
+    const formattedStartTime = startTime.toISOString().replace('T', ' ').slice(0, 19)
+    const formattedEndTime = endTime.toISOString().replace('T', ' ').slice(0, 19)
+
+    // Build specific points filter from monitor configuration
+    const specificPoints = monitorConfigData.inputItems.map((item: any, index: number) => ({
+      point_id: generateDeviceId(item.point_type, item.point_number),
+      point_type: mapPointTypeFromNumber(item.point_type),
+      point_index: item.point_number
+    }))
+
+    // Prepare historical data request
+    const historyRequest = {
+      serial_number: currentSN,
+      panel_id: currentPanelId,
+      trendlog_id: monitorConfigData.id?.toString() || '1',
+      start_time: formattedStartTime,
+      end_time: formattedEndTime,
+      specific_points: specificPoints,
+      limit: 1000 // Reasonable limit for UI performance
+    }
+
+    LogUtil.Debug('🔍 Requesting historical data:', {
+      timeRange: `${formattedStartTime} to ${formattedEndTime}`,
+      pointsCount: specificPoints.length,
+      timebaseMinutes: timeRangeMinutes
+    })
+
+    // Fetch historical data
+    const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
+
+    if (historyResponse?.data?.length > 0) {
+      LogUtil.Info('📚 Historical data loaded:', {
+        dataPointsCount: historyResponse.data.length,
+        timeRange: `${timeRangeMinutes} minutes`
+      })
+
+      // Convert historical data to chart format and populate data series
+      populateDataSeriesWithHistoricalData(historyResponse.data)
+    } else {
+      LogUtil.Debug('📭 No historical data found for current timebase')
+    }
+
+  } catch (error) {
+    LogUtil.Error('Failed to load historical data from database:', error)
+  }
+}
+
+/**
+ * Populate data series with historical data from database
+ */
+const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
+  try {
+    // Group historical data by point_id and point_type
+    const dataByPoint = new Map<string, any[]>()
+
+    historicalData.forEach(item => {
+      const key = `${item.point_id}_${item.point_type}`
+      if (!dataByPoint.has(key)) {
+        dataByPoint.set(key, [])
+      }
+      dataByPoint.get(key)!.push(item)
+    })
+
+    // Populate existing data series with historical data
+    dataSeries.value.forEach(series => {
+      const seriesKey = `${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
+      const seriesHistoricalData = dataByPoint.get(seriesKey) || []
+
+      if (seriesHistoricalData.length > 0) {
+        // Convert to data points and sort by timestamp
+        const dataPoints = seriesHistoricalData.map(item => ({
+          timestamp: new Date(item.time).getTime(),
+          value: parseFloat(item.value) || 0,
+          id: item.point_id,
+          type: item.point_type,
+          digital_analog: item.digital_analog || 1,
+          description: `Historical: ${item.point_id}`
+        })).sort((a, b) => a.timestamp - b.timestamp)
+
+        // Replace series data with historical data
+        series.data = dataPoints
+
+        LogUtil.Debug(`📈 Loaded ${dataPoints.length} historical points for ${series.name}`)
+      }
+    })
+
+    LogUtil.Info('📊 Historical data population completed', {
+      seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+      totalSeries: dataSeries.value.length
+    })
+
+  } catch (error) {
+    LogUtil.Error('Error populating data series with historical data:', error)
+  }
+}
+
+/**
+ * Store real-time data to database for historical usage
+ */
+const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
+  try {
+    LogUtil.Info('🔄 storeRealtimeDataToDatabase called', {
+      itemsCount: validDataItems.length,
+      timestamp: new Date().toISOString(),
+      sampleItems: validDataItems.slice(0, 2) // Show first 2 items for debugging
+    })
+
+    // Get current device info for storage
+    const panelsList = T3000_Data.value.panelsList || []
+    const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+    const currentSN = panelsList.length > 0 ? panelsList[0].sn : 0
+
+    LogUtil.Info('📊 Device info for storage', {
+      panelsListLength: panelsList.length,
+      currentPanelId,
+      currentSN,
+      hasPanelsList: !!panelsList.length
+    })
+
+    if (!currentSN) {
+      LogUtil.Warn('❌ No serial number available for data storage', {
+        panelsList: panelsList.slice(0, 2),
+        T3000DataExists: !!T3000_Data.value
+      })
+      return
+    }
+
+    // Convert GET_ENTRIES response to storage format
+    const realtimeDataPoints = validDataItems.map(item => ({
+      serial_number: currentSN,
+      panel_id: currentPanelId,
+      point_id: item.id || 'UNKNOWN',
+      point_type: mapPointTypeFromNumber(item.point_type || 1), // Convert to string
+      point_index: item.index || 0,
+      value: item.value || 0,
+      digital_analog: item.digital_analog || 1,
+      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19) // SQLite format
+    }))
+
+    // Store batch to database
+    if (realtimeDataPoints.length > 0) {
+      const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
+      LogUtil.Debug(`📦 Stored ${rowsAffected} real-time data points to database`, {
+        pointsCount: realtimeDataPoints.length,
+        serialNumber: currentSN,
+        panelId: currentPanelId
+      })
+    }
+  } catch (error) {
+    LogUtil.Error('Failed to store real-time data to database:', error)
   }
 }
 
@@ -2602,10 +2848,8 @@ const updateChartWithNewData = (validDataItems: any[]) => {
       // Analog: use 'value' field
       actualValue = matchedItem.value;
     } else {
-      // TODO: REMOVE AFTER TESTING - Digital: use random 0/1 for testing
-      actualValue = Math.random() > 0.5 ? 1 : 0;
-      console.log(`🔧 TESTING: Generated random digital value for ${series.name}: ${actualValue}`);
-      // Original code (commented for testing): actualValue = matchedItem.control
+      // Digital: use 'control' field
+      actualValue = matchedItem.control;
     }
 
     // Create and add data point
@@ -2619,11 +2863,26 @@ const updateChartWithNewData = (validDataItems: any[]) => {
     }
 
     series.data = series.data || []
-    series.data.push(dataPoint)
 
-    // Limit data points for performance
-    if (series.data.length > 100) {
-      series.data = series.data.slice(-100)
+    // Check if this data point already exists (prevent duplicates)
+    const existingIndex = series.data.findIndex(point =>
+      Math.abs(point.timestamp - dataPoint.timestamp) < 1000 // Within 1 second
+    )
+
+    if (existingIndex >= 0) {
+      // Update existing data point
+      series.data[existingIndex] = dataPoint
+    } else {
+      // Add new data point
+      series.data.push(dataPoint)
+
+      // Sort data points by timestamp to maintain chronological order
+      series.data.sort((a, b) => a.timestamp - b.timestamp)
+    }
+
+    // Limit data points for performance (keep recent 200 points for better historical context)
+    if (series.data.length > 200) {
+      series.data = series.data.slice(-200)
     }
 
     // Update series metadata from matched item
@@ -2677,7 +2936,7 @@ const getTimeRangeMinutes = (range: string): number => {
 }
 
 const initializeData = async () => {
-  LogUtil.Info('= TLChart: Starting data initialization for 14 panel items', {
+  LogUtil.Info('= TLChart: Starting hybrid data initialization (DB + real-time)', {
     currentDataSeriesLength: dataSeries.value.length,
     hasMonitorConfig: !!monitorConfig.value,
     timeBase: timeBase.value
@@ -2686,68 +2945,34 @@ const initializeData = async () => {
   // Set data source to realtime for standard initialization
   dataSource.value = 'realtime'
 
-  // First, try to initialize with real T3000 data
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
-
-    // Quick check: if we already have recent data, skip unnecessary re-fetching
-    const hasRecentData = dataSeries.value.length > 0 &&
-      dataSeries.value.some(series => series.data.length > 0)
-
-    if (hasRecentData) {
-      console.log('= TLChart DataFlow: Recent data already available, skipping re-fetch')
-      return
-    }
-
-    LogUtil.Info('= TLChart: Real T3000 data source detected:', {
-      totalInputItems: monitorConfigData.inputItems.length,
-      monitorId: monitorConfigData.id
-    })
-
     try {
-      // Immediately indicate we're loading real data
       isLoading.value = true
 
-      console.log('= TLChart DataFlow: Fetching real-time monitor data via T3000_Data message')
-      const realTimeData = await fetchRealTimeMonitorData()
+      // Step 1: Load historical data from database first (fast)
+      LogUtil.Info('📚 Loading historical data from database for current timebase')
+      await loadHistoricalDataFromDatabase()
 
-      if (realTimeData && realTimeData.length > 0) {
-        console.log('= TLChart DataFlow: Real-time data received:', {
-          seriesCount: realTimeData.length,
-          dataType: 'REAL_T3000_DATA'
-        })
+      // Step 2: Initialize real-time data monitoring
+      LogUtil.Info('📡 Starting real-time data monitoring')
+      await initializeRealDataSeries()
 
-        await initializeRealDataSeries()
+      // Step 3: Update charts with combined data
+      updateCharts()
 
-        // Clear loading state immediately after successful initialization
-        isLoading.value = false
-
-        // Confirm realtime data source
-        dataSource.value = 'realtime'
-        LogUtil.Info('= TLChart: Real-time data initialization completed for 14 panel items')
-
-        // Update charts immediately to show data without delay
+      // Force a UI update to ensure immediate rendering
+      nextTick(() => {
         updateCharts()
+      })
 
-        // Force a UI update to ensure immediate rendering
-        nextTick(() => {
-          updateCharts()
-        })
+      isLoading.value = false
 
-        return
-      } else {
-        LogUtil.Warn('= TLChart: No real-time data available - setting connection error')
-        hasConnectionError.value = true
-        // Clear all data when connection error occurs
-        dataSeries.value = []
-        isLoading.value = false
-      }
     } catch (error) {
-      LogUtil.Error('= TLChart: Failed to initialize real data series:', error)
+      LogUtil.Error('= TLChart: Error in hybrid data initialization:', error)
       hasConnectionError.value = true
-      // Clear all data when connection error occurs
       dataSeries.value = []
-      isLoading.value = false // Clear loading state on error
+      isLoading.value = false
     }
   } else {
     LogUtil.Info('📊 Empty State Configuration:', {
@@ -2760,7 +2985,6 @@ const initializeData = async () => {
       dataType: 'NO_DATA_AVAILABLE'
     })
     hasConnectionError.value = true
-    // Clear all data when connection error occurs
     dataSeries.value = []
     isLoading.value = false
   }  // If no data series available, chart will remain empty (no mock data generation)
