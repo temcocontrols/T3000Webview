@@ -1025,25 +1025,63 @@ watch(scheduleItemData, (newData, oldData) => {
 
 // Watch timeBase for changes and hybrid data loading
 watch(timeBase, async (newTimeBase, oldTimeBase) => {
-  LogUtil.Info('= TLChart: timeBase changed - Hybrid Data Loading', {
+  LogUtil.Info('= TLChart: timeBase changed - Smart Data Loading', {
     oldTimeBase: oldTimeBase,
     newTimeBase: newTimeBase,
+    isDefault5Min: newTimeBase === '5m',
     timestamp: new Date().toISOString()
   })
 
-  // Load historical data for new timebase immediately
   try {
     isLoading.value = true
+
+    // Set isRealTime based on timebase
+    if (newTimeBase === '5m') {
+      isRealTime.value = true // Enable real-time for 5-minute timebase
+    } else {
+      isRealTime.value = false // Disable real-time for historical timebases
+    }
 
     // Clear existing data first
     dataSeries.value.forEach(series => {
       series.data = []
     })
 
-    // Load historical data from database for new timebase
-    await loadHistoricalDataFromDatabase()
+    if (newTimeBase === '5m') {
+      // Default 5-minute timebase: Use hybrid approach (historical + real-time)
+      LogUtil.Info('📊 5-minute timebase: Loading historical data + starting real-time messages')
 
-    // Update charts with new historical data
+      // Step 1: Load historical data for ≤5 minutes timeframe
+      await loadHistoricalDataFromDatabase()
+
+      // Step 2: Start/resume real-time data monitoring with GET_ENTRIES messages
+      LogUtil.Info('📡 Starting real-time data monitoring for 5-minute timebase')
+      await initializeRealDataSeries()
+
+      // Step 3: Ensure real-time updates are active for 5-minute timebase
+      if (!realtimeInterval) {
+        LogUtil.Info('🔄 Starting real-time interval for 5-minute timebase')
+        startRealTimeUpdates()
+      }
+
+    } else {
+      // Other timebases (10m, 30m, 1h, etc.): Primarily historical data
+      LogUtil.Info(`📚 ${newTimeBase} timebase: Loading historical data from database`)
+
+      // Step 1: Stop real-time updates for non-5-minute timebases
+      if (realtimeInterval) {
+        LogUtil.Info('⏹️ Stopping real-time updates for non-5-minute timebase')
+        stopRealTimeUpdates()
+      }
+
+      // Step 2: Load historical data
+      await loadHistoricalDataFromDatabase()
+
+      // Note: We've stopped periodic GET_ENTRIES for efficiency, but the handler
+      // is still available if any messages happen to come through
+    }
+
+    // Update charts with loaded data
     updateCharts()
 
   } catch (error) {
@@ -1052,8 +1090,54 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     isLoading.value = false
   }
 
-  // Real-time data will continue to be added on top of historical data
+  LogUtil.Info('✅ Timebase change completed', {
+    newTimeBase,
+    dataSeriesCount: dataSeries.value.length,
+    totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
+  })
 }, { immediate: false })
+
+// Watch for device/serial number changes to reload historical data
+watch(() => T3000_Data.value?.panelsList, async (newPanelsList, oldPanelsList) => {
+  const newSN = newPanelsList && newPanelsList.length > 0 ? newPanelsList[0].sn : null
+  const oldSN = oldPanelsList && oldPanelsList.length > 0 ? oldPanelsList[0].sn : null
+  const newPanelId = newPanelsList && newPanelsList.length > 0 ? newPanelsList[0].panel_number : null
+  const oldPanelId = oldPanelsList && oldPanelsList.length > 0 ? oldPanelsList[0].panel_number : null
+
+  const deviceChanged = (newSN && oldSN && newSN !== oldSN) || (newPanelId && oldPanelId && newPanelId !== oldPanelId)
+
+  if (deviceChanged) {
+    LogUtil.Info('🔄 Device changed - Reloading historical data', {
+      oldSN: oldSN,
+      newSN: newSN,
+      oldPanelId: oldPanelId,
+      newPanelId: newPanelId,
+      serialChanged: newSN !== oldSN,
+      panelChanged: newPanelId !== oldPanelId,
+      timestamp: new Date().toISOString()
+    })
+
+    try {
+      isLoading.value = true
+
+      // Clear existing data first
+      dataSeries.value.forEach(series => {
+        series.data = []
+      })
+
+      // Load historical data from database for new device
+      await loadHistoricalDataFromDatabase()
+
+      // Update charts with new historical data
+      updateCharts()
+
+    } catch (error) {
+      LogUtil.Error('Error loading historical data for new device:', error)
+    } finally {
+      isLoading.value = false
+    }
+  }
+}, { deep: true, immediate: false })
 
 // Get internal interval value from props - combine minute and second intervals
 const getInternalIntervalSeconds = (): number => {
