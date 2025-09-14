@@ -1199,6 +1199,26 @@ const getDisplayFormat = (timeBase: string): string => {
   return 'dd/MM HH:mm'
 }
 
+// Custom tick formatter: full date/time for first tick, only time for others
+const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
+  const date = new Date(value)
+
+  if (index === 0) {
+    // First tick: show full date and time (dd/MM/yy HH:mm)
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear().toString().slice(-2)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  } else {
+    // Subsequent ticks: show only time (HH:mm)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
+}
+
 // Handle custom timebase case - divide into 12 ticks with better distribution
 const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
   const totalMinutes = Math.floor((customEndDate.getTime() - customStartDate.getTime()) / (1000 * 60))
@@ -1528,7 +1548,8 @@ const getAnalogChartConfig = () => ({
           maxRotation: 0,
           minRotation: 0,
           maxTicksLimit: 14, // Show up to 14 ticks to accommodate all data points
-          autoSkip: false // Don't skip ticks automatically
+          autoSkip: false, // Don't skip ticks automatically
+          callback: formatXAxisTick
         }
       },
       y: {
@@ -1629,7 +1650,8 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             maxRotation: 0,
-            minRotation: 0
+            minRotation: 0,
+            callback: formatXAxisTick
           }
         },
         y: {
@@ -3318,6 +3340,7 @@ const updateAnalogChart = () => {
       maxTicksLimit: maxTicksConfigs[timeBase.value] || 7,
       maxRotation: 0,
       minRotation: 0,
+      callback: formatXAxisTick,
       includeBounds: true
     }
 
@@ -3398,6 +3421,7 @@ const updateDigitalCharts = () => {
         maxTicksLimit: maxTicksConfigs[timeBase.value] || 7,
         maxRotation: 0,
         minRotation: 0,
+        callback: formatXAxisTick,
         includeBounds: true
       }
 
