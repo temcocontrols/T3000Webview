@@ -469,123 +469,114 @@ import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac
 const BAC_UNITS_DIGITAL = 0
 const BAC_UNITS_ANALOG = 1
 
-// Unit mapping utilities - Bridge between T3Range.ts and T3000 unit codes
+// Direct T3000 unit code to T3Range mapping - eliminates need for hardcoded mappings
 
 /**
- * Central unit code to symbol mapping
- * This is needed because T3000 uses specific unit codes (31=°C, 32=°F)
- * while T3Range.ts uses sequential IDs (0,1,2...) within each type
+ * Map T3000 unit codes directly to T3Range entries
+ * This bridges the gap between T3000's specific unit codes (31=°C, 32=°F)
+ * and T3Range's organized structure by type and sequential ID
  */
-const getUnitSymbolFromCode = (unitCode: number): string => {
-  const unitMap: { [key: number]: string } = {
-    0: '',           // Unused/default
-    31: '°C',        // deg.Celsius
-    32: '°F',        // deg.Fahrenheit
-    33: 'ft/min',    // Feet per Min
-    34: 'Pa',        // Pascals
-    35: 'kPa',       // KPascals
-    36: 'psi',       // lbs/sqr.inch
-    37: 'inWC',      // inches of WC
-    38: 'W',         // Watts
-    39: 'kW',        // KWatts
-    40: 'kWh',       // KWH
-    41: 'V',         // Volts
-    42: 'kV',        // KV
-    43: 'A',         // Amps
-    44: 'mA',        // ma
-    45: 'CFM',       // CFM
-    46: 's',         // Seconds
-    47: 'min',       // Minutes
-    48: 'h',         // Hours
-    49: 'days',      // Days
-    50: 'time',      // Time
-    51: 'Ω',         // Ohms
-    52: '%',         // %
-    53: '%RH',       // %RH
-    54: 'p/min',     // p/min
-    55: 'counts',    // Counts
-    56: '%Open',     // %Open
-    57: 'kg',        // Kg
-    58: 'L/h',       // L/Hour
-    59: 'GPH',       // GPH
-    60: 'gal',       // GAL
-    61: 'ft³',       // CF
-    62: 'BTU',       // BTU
-    63: 'm³/h',      // CMH
-    // Extended units for input-specific ranges
-    100: 'V',        // 0-5V
-    101: 'A',        // 0-100A
-    102: 'mA',       // 4-20mA
-    103: 'psi',      // 0-20psi
-    104: 'pulses',   // Pulse(1Hz)
-    105: '%',        // 0-100%(0-10V)
-    106: '%',        // 0-100%(0-5V)
-    107: '%',        // 0-100%(4-20mA)
-    108: 'V',        // 0-10V
-    109: '',         // Table1
-    110: '',         // Table2
-    111: '',         // Table3
-    112: '',         // Table4
-    113: '',         // Table5
-    114: 'pulses',   // Pulse(100Hz)
-    115: 'Hz',       // Hz
-    116: '%RH',      // Humidity%
-    117: 'ppm',      // CO2 PPM
-    118: 'rpm',      // RPM
-    119: 'ppb',      // TVOC PPB
-    120: 'μg/m³',    // ug/m3
-    121: '#/cm³',    // #/cm3
-    122: 'dB',       // dB
-    123: 'lx'        // Lux
+const getT3RangeFromUnitCode = (unitCode: number): { type: 'digital' | 'analog', category?: string, id?: number, range?: any } => {
+  // Digital units (0-22) map directly to T3Range digital IDs
+  if (unitCode >= 0 && unitCode <= 22) {
+    const digitalRange = rangeDefinitions.digital.find(range => range.id === unitCode)
+    return {
+      type: 'digital',
+      id: unitCode,
+      range: digitalRange
+    }
   }
-  return unitMap[unitCode] || ''
+
+  // Analog unit code to T3Range mapping
+  const analogMappings: { [unitCode: number]: { category: string, id: number } } = {
+    // Temperature units - map to various T3Range temperature entries
+    31: { category: 'variable', id: 1 },  // °C -> Variable Deg.C
+    32: { category: 'variable', id: 2 },  // °F -> Variable Deg.F
+
+    // Pressure units
+    34: { category: 'variable', id: 4 },  // Pa -> Variable Pa
+    35: { category: 'variable', id: 5 },  // kPa -> Variable KPa
+    36: { category: 'variable', id: 6 },  // psi -> Variable PSI
+    37: { category: 'variable', id: 7 },  // inWC -> Variable inWC
+
+    // Power units
+    38: { category: 'variable', id: 8 },  // W -> Variable W
+    39: { category: 'variable', id: 9 },  // kW -> Variable kW
+    40: { category: 'variable', id: 10 }, // kWh -> Variable KWH
+
+    // Electrical units
+    41: { category: 'variable', id: 11 }, // V -> Variable V
+    42: { category: 'variable', id: 12 }, // kV -> Variable KV
+    43: { category: 'variable', id: 13 }, // A -> Variable Amps
+    44: { category: 'variable', id: 14 }, // mA -> Variable ma
+
+    // Flow/volume units
+    45: { category: 'variable', id: 15 }, // CFM -> Variable CFM
+    33: { category: 'variable', id: 3 },  // ft/min -> Variable FPM
+
+    // Time units
+    46: { category: 'variable', id: 16 }, // s -> Variable Seconds
+    47: { category: 'variable', id: 17 }, // min -> Variable Minutes
+    48: { category: 'variable', id: 18 }, // h -> Variable Hours
+    49: { category: 'variable', id: 19 }, // days -> Variable Days
+    50: { category: 'variable', id: 20 }, // time -> Variable Time
+
+    // Other units
+    51: { category: 'variable', id: 21 }, // Ω -> Variable Ohms
+    52: { category: 'variable', id: 22 }, // % -> Variable %
+    53: { category: 'variable', id: 23 }, // %RH -> Variable %RH
+    54: { category: 'variable', id: 24 }, // p/min -> Variable p/min
+    55: { category: 'variable', id: 25 }, // counts -> Variable Counts
+    56: { category: 'variable', id: 26 }, // %Open -> Variable %Open
+    57: { category: 'variable', id: 27 }, // kg -> Variable Kg
+    58: { category: 'variable', id: 28 }, // L/h -> Variable L/Hour
+    59: { category: 'variable', id: 29 }, // GPH -> Variable GPH
+    60: { category: 'variable', id: 30 }, // gal -> Variable GAL
+    61: { category: 'variable', id: 31 }, // ft³ -> Variable CF
+    62: { category: 'variable', id: 32 }, // BTU -> Variable BTU
+    63: { category: 'variable', id: 33 }, // m³/h -> Variable CMH
+  }
+
+  const mapping = analogMappings[unitCode]
+  if (mapping) {
+    const analogRange = rangeDefinitions.analog[mapping.category as keyof typeof rangeDefinitions.analog]?.find(range => range.id === mapping.id)
+    return {
+      type: 'analog',
+      category: mapping.category,
+      id: mapping.id,
+      range: analogRange
+    }
+  }
+
+  return { type: 'analog' } // No mapping found
 }
 
 /**
- * Get unit label from unit code (for backward compatibility)
+ * Get unit symbol directly from T3Range using unit code
  */
-const getUnitLabelFromCode = (unitCode: number): string => {
-  const labelMap: { [key: number]: string } = {
-    0: 'Unused',
-    31: 'deg.Celsius',
-    32: 'deg.Fahrenheit',
-    33: 'Feet per Min',
-    34: 'Pascals',
-    35: 'KPascals',
-    36: 'lbs/sqr.inch',
-    37: 'inches of WC',
-    38: 'Watts',
-    39: 'KWatts',
-    40: 'KWH',
-    41: 'Volts',
-    42: 'KV',
-    43: 'Amps',
-    44: 'ma',
-    45: 'CFM',
-    46: 'Seconds',
-    47: 'Minutes',
-    48: 'Hours',
-    49: 'Days',
-    50: 'Time',
-    51: 'Ohms',
-    52: '%',
-    53: '%RH',
-    54: 'p/min',
-    55: 'Counts',
-    56: '%Open',
-    57: 'Kg',
-    58: 'L/Hour',
-    59: 'GPH',
-    60: 'GAL',
-    61: 'CF',
-    62: 'BTU',
-    63: 'CMH',
-    // Add more as needed
+const getUnitSymbolFromT3Range = (unitCode: number): string => {
+  const t3Range = getT3RangeFromUnitCode(unitCode)
+
+  if (t3Range.range) {
+    if (t3Range.type === 'digital') {
+      // For digital, return state labels or just label
+      return t3Range.range.label || ''
+    } else {
+      // For analog, return the unit symbol
+      return t3Range.range.unit || ''
+    }
   }
-  return labelMap[unitCode] || ''
+
+  return ''
 }
 
-// Helper function to get unit info using T3Range.ts ranges
+/**
+ * Get unit label directly from T3Range using unit code
+ */
+const getUnitLabelFromT3Range = (unitCode: number): string => {
+  const t3Range = getT3RangeFromUnitCode(unitCode)
+  return t3Range.range?.label || ''
+}// Helper function to get unit info using T3Range.ts ranges
 const getUnitInfo = (unitCode: number, pointType?: string, rangeId?: number, isDigital?: boolean) => {
   // For digital units, use T3Range digital ranges
   if (isDigital || unitCode <= 22) {
@@ -620,18 +611,16 @@ const getUnitInfo = (unitCode: number, pointType?: string, rangeId?: number, isD
     }
   }
 
-  // Fallback to unit code mappings if T3Range lookup fails
-  const symbol = getUnitSymbolFromCode(unitCode)
-  const label = getUnitLabelFromCode(unitCode)
+  // Fallback to T3Range-based unit code mapping
+  const symbol = getUnitSymbolFromT3Range(unitCode)
+  const label = getUnitLabelFromT3Range(unitCode)
 
   if (symbol || label) {
     return {
       type: 'analog' as const,
       info: { label, symbol }
     }
-  }
-
-  // Final fallback for unknown units
+  }  // Final fallback for unknown units
   return {
     type: 'analog' as const,
     info: { label: '', symbol: '' }
@@ -2660,8 +2649,8 @@ const getAnalogUnit = (range: number, deviceType?: string): string => {
     }
   }
 
-  // Fallback to centralized unit code mapping
-  return getUnitSymbolFromCode(range)
+  // Fallback to T3Range-based unit code mapping
+  return getUnitSymbolFromT3Range(range)
 }
 
 /**
