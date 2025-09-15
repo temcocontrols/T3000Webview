@@ -1005,6 +1005,30 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
     // Process new data for chart data points
     const chartDataFormat = newPanelsData.flat()
     updateChartWithNewData(chartDataFormat)
+
+    // Store real-time data to database if in real-time mode
+    if (isRealTime.value && chartDataFormat.length > 0) {
+      LogUtil.Info('💾 T3000_Data watcher: Storing real-time data to database', {
+        isRealTime: isRealTime.value,
+        dataItemsCount: chartDataFormat.length,
+        sampleItem: chartDataFormat[0],
+        timestamp: new Date().toISOString()
+      })
+
+      // Filter valid data items for storage
+      const validItems = chartDataFormat.filter(item =>
+        item &&
+        typeof item === 'object' &&
+        item.hasOwnProperty('value') &&
+        item.value !== null &&
+        item.value !== undefined &&
+        item.id
+      )
+
+      if (validItems.length > 0) {
+        storeRealtimeDataToDatabase(validItems)
+      }
+    }
   }
 }, { deep: true })
 
@@ -1940,8 +1964,8 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
       return []
     }
 
-    // Setup message handlers for GET_ENTRIES responses
-    setupGetEntriesResponseHandlers(dataClient)
+    // Note: Database storage is handled by T3000_Data watcher instead of custom handlers
+    // setupGetEntriesResponseHandlers(dataClient) // Removed - doesn't work with bound methods
 
     // Get current device for panelId - use the first available panel as fallback
     const panelsList = T3000_Data.value.panelsList || []
@@ -2153,6 +2177,12 @@ const TransferTdlPointType = (pointType) => {
  * Used by interval timer to efficiently update all monitored items at once
  */
 const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
+  LogUtil.Info('🚀 sendPeriodicBatchRequest CALLED', {
+    hasMonitorConfig: !!monitorConfigData,
+    inputItemsCount: monitorConfigData?.inputItems?.length || 0,
+    timestamp: new Date().toISOString()
+  })
+
   try {
     // Get current device for panelId
     const panelsList = T3000_Data.value.panelsList || []
@@ -2204,6 +2234,11 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
 
     // Send single batch GET_ENTRIES request for ALL items
     if (dataClient.GetEntries) {
+      LogUtil.Info('📡 Sending GET_ENTRIES request', {
+        panelId: currentPanelId,
+        itemCount: batchRequestData.length,
+        timestamp: new Date().toISOString()
+      })
       dataClient.GetEntries(currentPanelId, null, batchRequestData)
     } else {
       LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
@@ -2664,8 +2699,17 @@ const logDeviceMapping = (inputItem: any, index: number, rangeValue: number) => 
 
 /**
  * Setup message handlers for GET_ENTRIES responses
+ *
+ * IMPORTANT: This function doesn't work as intended!
+ * The WebViewClient uses bound method references (this.HandleGetEntriesRes.bind(this))
+ * that are created at instantiation time. Runtime method replacement doesn't affect
+ * the already-bound references used by the message handlers.
+ *
+ * Real-time database storage is handled by the T3000_Data watcher instead.
  */
 const setupGetEntriesResponseHandlers = (dataClient: any) => {
+  LogUtil.Warn('⚠️ setupGetEntriesResponseHandlers called - this function does not work due to WebViewClient bound method references')
+
   if (!dataClient) {
     LogUtil.Error('No dataClient provided to setupGetEntriesResponseHandlers')
     return
@@ -2676,6 +2720,13 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
   // Create our custom handler
   dataClient.HandleGetEntriesRes = (msgData: any) => {
+    LogUtil.Info('📨 HandleGetEntriesRes CALLED', {
+      hasData: !!(msgData?.data),
+      dataIsArray: Array.isArray(msgData?.data),
+      dataLength: msgData?.data?.length || 0,
+      timestamp: new Date().toISOString()
+    })
+
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
         // Filter valid data items
@@ -2692,7 +2743,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
         if (validItems.length > 0) {
           LogUtil.Info('🎯 GET_ENTRIES: Processing valid items', {
             validItemsCount: validItems.length,
-            totalReceivedItems: data?.length || 0,
+            totalReceivedItems: msgData.data?.length || 0,
             sampleValidItem: validItems[0],
             timestamp: new Date().toISOString()
           })
@@ -2704,8 +2755,8 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
           storeRealtimeDataToDatabase(validItems)
         } else {
           LogUtil.Warn('⚠️ GET_ENTRIES: No valid items to process', {
-            totalReceivedItems: data?.length || 0,
-            allItems: data?.slice(0, 3) || [] // Show first 3 for debugging
+            totalReceivedItems: msgData.data?.length || 0,
+            allItems: msgData.data?.slice(0, 3) || [] // Show first 3 for debugging
           })
         }
       }
@@ -2722,6 +2773,12 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
       }
     }
   }
+
+  LogUtil.Info('✅ Custom HandleGetEntriesRes handler setup complete', {
+    handlerOverridden: typeof dataClient.HandleGetEntriesRes === 'function',
+    hasOriginalHandler: typeof originalHandler === 'function',
+    timestamp: new Date().toISOString()
+  })
 }
 
 /**
@@ -3116,13 +3173,22 @@ const initializeData = async () => {
 }
 
 const addRealtimeDataPoint = async () => {
+  LogUtil.Info('🔄 addRealtimeDataPoint CALLED', {
+    isRealTime: isRealTime.value,
+    dataSeriesLength: dataSeries.value.length,
+    hasMonitorConfig: !!monitorConfig.value,
+    timestamp: new Date().toISOString()
+  })
+
   // Only add data if we're in real-time mode
   if (!isRealTime.value) {
+    LogUtil.Warn('❌ addRealtimeDataPoint: Not in real-time mode')
     return
   }
 
   // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
+    LogUtil.Warn('❌ addRealtimeDataPoint: No data series exist')
     return
   }
 
@@ -3130,14 +3196,17 @@ const addRealtimeDataPoint = async () => {
   const monitorConfigData = monitorConfig.value
 
   if (!monitorConfigData) {
+    LogUtil.Warn('❌ addRealtimeDataPoint: No monitor config data')
     return
   }
 
   if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
+    LogUtil.Warn('❌ addRealtimeDataPoint: No input items in monitor config')
     return
   }
 
   try {
+    LogUtil.Info('📡 addRealtimeDataPoint: About to send batch request')
     // Send batch GET_ENTRIES request for ALL items at once
     await sendPeriodicBatchRequest(monitorConfigData)
 
@@ -3832,6 +3901,13 @@ const toggleSeriesExpansion = (index: number, event?: Event) => {
 }
 
 const startRealTimeUpdates = () => {
+  LogUtil.Info('🔄 startRealTimeUpdates CALLED', {
+    hasExistingInterval: !!realtimeInterval,
+    isRealTime: isRealTime.value,
+    hasMonitorConfig: !!monitorConfig.value,
+    timestamp: new Date().toISOString()
+  })
+
   if (realtimeInterval) {
     clearInterval(realtimeInterval)
   }

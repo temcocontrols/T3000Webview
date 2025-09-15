@@ -513,8 +513,7 @@ const initializeT3000Data = async () => {
       T3000_Data.value.loadingPanel = null
     }
 
-    // Set up realtime data saving
-    setupRealtimeDataSaving(sn, panel_id)
+    // Real-time data storage is handled automatically by TrendLogChart component
 
   } catch (error) {
     T3000_Data.value.loadingPanel = null
@@ -522,63 +521,9 @@ const initializeT3000Data = async () => {
   }
 }
 
-// Set up realtime data saving for socket port 9104
-const setupRealtimeDataSaving = (serialNumber: number, panelId: number) => {
-  // Set up a watcher on T3000_Data.panelsData to detect realtime updates
-  watch(
-    () => T3000_Data.value.panelsData,
-    async (newPanelsData, oldPanelsData) => {
-      // Only process if we have valid data and this is a realtime update
-      if (!newPanelsData || newPanelsData.length === 0) return
-
-      try {
-        // Find the panel data for our device
-        const panelData = newPanelsData.find(panel => panel.pid === panelId)
-        if (!panelData) return
-
-        // Check if this is a new update (different from old data)
-        const oldPanelData = oldPanelsData?.find(panel => panel.pid === panelId)
-        if (oldPanelData && JSON.stringify(panelData) === JSON.stringify(oldPanelData)) {
-          return // No change, skip saving
-        }
-
-        // Convert panel data to database format
-        const dataPoints = []
-
-        // Process the panel data based on its structure
-        if (panelData.input && Array.isArray(panelData.input)) {
-          panelData.input.forEach((point, index) => {
-            if (point && typeof point === 'object' && point.value !== undefined) {
-              dataPoints.push({
-                serial_number: serialNumber,
-                panel_id: panelId,
-                point_id: point.id || `IN${index + 1}`,
-                point_index: index + 1,
-                point_type: 'INPUT',
-                value: point.value.toString(),
-                range_field: point.range?.toString(),
-                digital_analog: point.digital_analog?.toString(),
-                units: point.units
-              })
-            }
-          })
-        }
-
-        // Add similar processing for other point types if available
-        // (output, variable points would be processed similarly)
-
-        if (dataPoints.length > 0) {
-          // Save batch data to database
-          const savedCount = await trendlogAPI.saveRealtimeBatch(dataPoints)
-        }
-
-      } catch (error) {
-        // Error processing realtime data for database saving
-      }
-    },
-    { deep: true } // Deep watch to detect changes in nested objects
-  )
-}
+// REMOVED: Real-time data storage logic moved to TrendLogChart.vue component
+// The TrendLogChart component handles real-time data storage automatically
+// through its T3000_Data.panelsData watcher at line 998-1030
 
 onMounted(() => {
   // Initialize Hvac system integration
