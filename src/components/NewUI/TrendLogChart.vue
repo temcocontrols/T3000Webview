@@ -2943,10 +2943,12 @@ const loadHistoricalDataFromDatabase = async () => {
     const formattedEndTime = endTime.toISOString().replace('T', ' ').slice(0, 19)
 
     // Build specific points filter from monitor configuration
+    // NOTE: Server API requires panel_id field in specific_points array
     const specificPoints = monitorConfigData.inputItems.map((item: any, index: number) => ({
       point_id: generateDeviceId(item.point_type, item.point_number),
       point_type: mapPointTypeFromNumber(item.point_type),
-      point_index: item.point_number
+      point_index: item.point_number,
+      panel_id: item.panel || currentPanelId // Fixed: Add missing panel_id field required by server
     }))
 
     // Prepare historical data request
@@ -2963,7 +2965,15 @@ const loadHistoricalDataFromDatabase = async () => {
     LogUtil.Debug('🔍 Requesting historical data:', {
       timeRange: `${formattedStartTime} to ${formattedEndTime}`,
       pointsCount: specificPoints.length,
-      timebaseMinutes: timeRangeMinutes
+      timebaseMinutes: timeRangeMinutes,
+      specificPointsStructure: specificPoints.map(p => ({
+        point_id: p.point_id,
+        point_type: p.point_type,
+        point_index: p.point_index,
+        panel_id: p.panel_id,
+        hasPanelId: p.panel_id !== undefined
+      })),
+      fullRequest: historyRequest
     })
 
     // Fetch historical data

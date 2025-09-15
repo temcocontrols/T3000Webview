@@ -19,6 +19,7 @@ export interface TrendlogHistoryRequest {
     point_id: string
     point_type: string
     point_index: number
+    panel_id: number // Add missing panel_id field expected by server
   }[]
 }
 
@@ -31,6 +32,7 @@ export interface SmartTrendlogRequest {
     point_id: string
     point_type: string
     point_index: number
+    panel_id: number // Add missing panel_id field expected by server
   }[]
   consolidate_duplicates: boolean
   max_points?: number
