@@ -192,7 +192,10 @@
               <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
               <!-- Data Source Indicator -->
               <div class="data-source-indicator">
-                <span v-if="dataSource === 'realtime'" class="source-badge realtime">
+                <span v-if="shouldShowLoading" class="source-badge loading">
+                  <a-spin size="small" /> Loading...
+                </span>
+                <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
                   📡 Live
                 </span>
                 <span v-else-if="dataSource === 'api'" class="source-badge historical">
@@ -202,9 +205,7 @@
                   ❌ Connection Error
                 </span>
               </div>
-            </div>
-
-            <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+            </div>            <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
             <div class="header-line-2">
               <div class="left-controls">
                 <a-dropdown>
@@ -251,19 +252,26 @@
             </div>
           </div>
           <div class="series-list">
-            <!-- Empty state when no data series available -->
+            <!-- Empty state when no valid data series available -->
             <div v-if="dataSeries.length === 0" class="series-empty-state">
               <div class="empty-state-content">
-                <div v-if="hasConnectionError" class="empty-state-icon">❌</div>
+                <div v-if="shouldShowLoading" class="empty-state-icon">
+                  <a-spin size="large" />
+                </div>
+                <div v-else-if="hasConnectionError" class="empty-state-icon">❌</div>
                 <div v-else class="empty-state-icon">📊</div>
 
-                <div v-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
-                <div v-else class="empty-state-text">No trend log data available</div>
+                <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
+                <div v-else-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
+                <div v-else class="empty-state-text">No valid trend log data available</div>
 
-                <div v-if="hasConnectionError" class="empty-state-subtitle">
+                <div v-if="shouldShowLoading" class="empty-state-subtitle">
+                  Waiting for valid T3000 device data. Demo/placeholder data is automatically filtered out.
+                </div>
+                <div v-else-if="hasConnectionError" class="empty-state-subtitle">
                   Unable to load real-time or historical data. Check system connections.
                 </div>
-                <div v-else class="empty-state-subtitle">Configure monitor points to see data series</div>
+                <div v-else class="empty-state-subtitle">Configure monitor points with valid T3000 devices to see data series</div>
               </div>
             </div>
 
@@ -638,14 +646,10 @@ const getChipLabelText = (prefix: string): string => {
   return prefix
 }
 
-// Function to process series names for display in the 14 items list
+// Function to process series names for display in the list
 const getSeriesNameText = (series: SeriesConfig): string => {
-  // Use the series name directly - no need to clean since we preserve original names
-  const displayName = series.name || 'Unknown'
-
-  // Removed verbose logging to reduce console noise
-
-  return displayName
+  // Use the series name directly - all series are now valid T3000 device data
+  return series.name || 'Unknown'
 }
 
 // Helper function to get unit information from panel data
@@ -832,7 +836,10 @@ const expandedSeries = ref<Set<number>>(new Set())
 const getDeviceDescription = (panelId: number, pointType: number, pointNumber: number): string => {
   const panelsData = T3000_Data.value.panelsData
 
-  if (!panelsData?.length) return ''
+  if (!panelsData?.length) {
+    LogUtil.Debug('⚠️ TrendLogChart: No panelsData available for device description', { panelId, pointType, pointNumber })
+    return ''
+  }
 
   const pointTypeInfo = getPointTypeInfo(pointType)
   if (!pointTypeInfo?.category) return ''
@@ -843,10 +850,25 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
     String(d.pid) === String(panelId) && d.id === idToFind
   )
 
-  if (!device) return ''
+  if (!device) {
+    LogUtil.Debug('⚠️ TrendLogChart: Device not found in panelsData', {
+      panelId,
+      pointType,
+      pointNumber,
+      idToFind,
+      availableDevices: panelsData.map(d => ({ pid: d.pid, id: d.id })).slice(0, 5) // Show first 5 for debugging
+    })
+    return ''
+  }
 
-  // Priority order: label �?command �?fullLabel �?description �?id
-  return device.label || device.command || device.fullLabel || device.description || device.id || ''
+  // Priority order: label → command → fullLabel → description → id
+  const description = device.label || device.command || device.fullLabel || device.description || device.id || ''
+
+  if (!description) {
+    LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
+  }
+
+  return description
 }
 
 // Helper: Get digital_analog field from T3000_Data.value.panelsData
@@ -872,7 +894,7 @@ const SERIES_COLORS = [
   '#AA0000', '#0066AA', '#AA6600', '#6600AA', '#006600', '#FF6600', '#0000AA'
 ]
 
-// Chart data - T3000 mixed digital/analog series (always 14 items)
+// Chart data - T3000 mixed digital/analog series (filter out demo/placeholder data)
 const generateDataSeries = (): SeriesConfig[] => {
   // Validate input data
   const inputData = props.itemData?.t3Entry?.input
@@ -885,8 +907,10 @@ const generateDataSeries = (): SeriesConfig[] => {
   const actualItemCount = Math.min(inputData.length, rangeData.length)
   if (actualItemCount === 0) return []
 
-  // Generate series configuration for each item
-  return Array.from({ length: actualItemCount }, (_, index) => {
+  // Generate and filter series configuration - only include items with valid T3000 device data
+  const validSeries: SeriesConfig[] = []
+
+  for (let index = 0; index < actualItemCount; index++) {
     const inputItem = inputData[index]
     const { panel: panelId, point_type: pointType, point_number: pointNumber } = inputItem
 
@@ -896,49 +920,33 @@ const generateDataSeries = (): SeriesConfig[] => {
     const unit = getUnitFromPanelData(panelId, pointType, pointNumber)
     const description = getDeviceDescription(panelId, pointType, pointNumber)
 
-    // Determine digital/analog type
+    // FILTER OUT DEMO/PLACEHOLDER DATA
+    // Skip items that don't have valid T3000 device data
+    if (!description && panelId === 0) {
+      LogUtil.Info('🚫 TrendLogChart: Filtering out placeholder data', {
+        inputItem,
+        pointType,
+        pointNumber,
+        panelId,
+        reason: 'No device description and panel ID is 0'
+      })
+      continue; // Skip this item - don't add to validSeries
+    }
+
+    // Only include items with valid data
     const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
     const unitType = isDigital ? 'digital' : 'analog'
 
-    // Generate names and descriptions
+    // Generate clean names for valid data
     const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
     const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
     const formattedItemType = `${panelId}${pointTypeInfo.category}${pointNumber + 1}`
-
-    /*
-    {
-        "auto_manual": 1,
-        "calibration_h": 0,
-        "calibration_l": 0,
-        "calibration_sign": 0,
-        "command": "1IN1",
-        "control": 0,
-        "decom": 32,
-        "description": "IN1-Test111",
-        "digital_analog": 1,
-        "filter": 5,
-        "id": "IN1",
-        "index": 0,
-        "label": "IN1_1111",
-        "pid": 1,
-        "range": 11,
-        "type": "INPUT",
-        "unit": 11,
-        "value": 17000
-    }
-    {
-        "network": 0,
-        "panel": 1, //
-        "point_number": 0, // 0 base index
-        "point_type": 1, // OUT 0, IN 1, VAR 2
-        "sub_panel": 0
-    }
-    */
     const itemId = `${pointTypeInfo.category}${pointNumber + 1}`
 
-    return {
+    // Add valid series to the list
+    validSeries.push({
       name: seriesName,
-      color: SERIES_COLORS[index % SERIES_COLORS.length],
+      color: SERIES_COLORS[validSeries.length % SERIES_COLORS.length], // Use validSeries.length for color index
       data: [],
       visible: true,
       unit: unit,
@@ -952,8 +960,16 @@ const generateDataSeries = (): SeriesConfig[] => {
       pointNumber: pointNumber,
       panelId: panelId,
       id: itemId
-    }
+    })
+  }
+
+  LogUtil.Info('📊 TrendLogChart: Generated series with filtering', {
+    totalInputItems: actualItemCount,
+    validSeriesCount: validSeries.length,
+    filteredOut: actualItemCount - validSeries.length
   })
+
+  return validSeries
 }
 
 const dataSeries = ref<SeriesConfig[]>([])
@@ -1056,7 +1072,11 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
           id: item.id,
           panelId: item.pid,
           value: item.value,
-          digitalAnalog: item.digital_analog
+          digitalAnalog: item.digital_analog,
+          pointType: item.point_type, // ADD: Debug point_type value
+          index: item.index,           // ADD: Debug index value
+          units: item.units,           // ADD: Debug units value
+          range: item.range            // ADD: Debug range value
         }))
       })
 
@@ -1464,6 +1484,17 @@ const digitalCount = computed(() => {
   return digitalSeries.value.length
 })
 
+// Detect when we have input data but no valid series (all filtered out as demo data)
+const hasInputDataButNoValidSeries = computed(() => {
+  const inputData = props.itemData?.t3Entry?.input
+  return (inputData && inputData.length > 0) && dataSeries.value.length === 0
+})
+
+// Enhanced loading state - show loading when waiting for valid T3000 device data
+const shouldShowLoading = computed(() => {
+  return isLoading.value || hasInputDataButNoValidSeries.value
+})
+
 const allAnalogEnabled = computed(() => {
   return analogSeries.value.length > 0 && analogSeries.value.every(series => series.visible)
 })
@@ -1842,11 +1873,30 @@ const getMonitorConfigFromT3000Data = async () => {
   const monitorId = (currentItemData.value as any)?.t3Entry?.id
   const panelId = (currentItemData.value as any)?.t3Entry?.pid
 
+  LogUtil.Info('🔍 getMonitorConfigFromT3000Data: Extracting config parameters', {
+    monitorId,
+    panelId,
+    hasCurrentItemData: !!currentItemData.value,
+    currentItemDataType: typeof currentItemData.value,
+    t3EntryExists: !!(currentItemData.value as any)?.t3Entry,
+    propsItemData: !!props.itemData,
+    timestamp: new Date().toISOString()
+  })
+
   if (!monitorId) {
+    LogUtil.Warn('❌ getMonitorConfigFromT3000Data: No monitor ID available', {
+      currentItemData: currentItemData.value,
+      propsItemData: props.itemData
+    })
     return null
   }
 
   if (!panelId && panelId !== 0) {
+    LogUtil.Warn('❌ getMonitorConfigFromT3000Data: No panel ID available', {
+      monitorId,
+      panelId,
+      currentItemData: currentItemData.value
+    })
     return null
   }
 
@@ -1976,12 +2026,20 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
  */
 const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
   try {
+    LogUtil.Info('📡 fetchRealTimeMonitorData: Starting data fetch', {
+      hasMonitorConfig: !!monitorConfig.value,
+      hasPanelsData: !!(T3000_Data.value.panelsData?.length),
+      panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+      timestamp: new Date().toISOString()
+    })
+
     // Set loading state
     isLoading.value = true
 
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
+      LogUtil.Error('❌ fetchRealTimeMonitorData: No monitor config available')
       isLoading.value = false
       return []
     }
@@ -1998,6 +2056,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     }
 
     if (!panelsDataReady) {
+      LogUtil.Error('❌ fetchRealTimeMonitorData: Timeout waiting for panels data', {
+        waitTimeout: '5000ms',
+        currentPanelsDataLength: T3000_Data.value.panelsData?.length || 0,
+        T3000DataExists: !!T3000_Data.value
+      })
       isLoading.value = false
       return []
     }
@@ -2005,7 +2068,14 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Initialize data client (returns single client based on environment)
     const dataClient = initializeDataClients()
 
+    LogUtil.Info('🔌 fetchRealTimeMonitorData: Data client initialized', {
+      hasDataClient: !!dataClient,
+      clientType: dataClient?.constructor?.name || 'unknown',
+      isBuiltInBrowser: window.location.protocol === 'ms-appx-web:' || (window as any).chrome?.webview !== undefined
+    })
+
     if (!dataClient) {
+      LogUtil.Error('❌ fetchRealTimeMonitorData: Failed to initialize data client')
       return []
     }
 
@@ -2297,8 +2367,22 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
  * Initialize data series from real T3000 monitor configuration
  */
 const initializeRealDataSeries = async () => {
+  LogUtil.Info('🔧 initializeRealDataSeries: Starting initialization', {
+    hasMonitorConfig: !!monitorConfig.value,
+    monitorConfigData: monitorConfig.value,
+    hasPanelsData: !!(T3000_Data.value.panelsData?.length),
+    panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+    hasConnectionError: hasConnectionError.value,
+    timestamp: new Date().toISOString()
+  })
+
   const monitorConfigData = monitorConfig.value
   if (!monitorConfigData) {
+    LogUtil.Warn('❌ initializeRealDataSeries: No monitor config available', {
+      monitorConfig: monitorConfig.value,
+      T3000DataExists: !!T3000_Data.value,
+      propsItemData: !!props.itemData
+    })
     dataSeries.value = []
     return
   }
@@ -2402,8 +2486,9 @@ const initializeRealDataSeries = async () => {
 
   } catch (error) {
     LogUtil.Error('= TLChart: Error initializing real data series:', error)
-    LogUtil.Warn('= TLChart: Setting connection error state - chart will remain empty')
-    hasConnectionError.value = true
+    LogUtil.Warn('= TLChart: Keeping loading state - data might still be loading')
+    // Keep loading state instead of showing error immediately
+    // hasConnectionError.value = true // Removed - let it keep loading
     // Clear any existing data when connection error occurs
     dataSeries.value = []
   }
@@ -2951,6 +3036,104 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
 }
 
 /**
+ * Get correct point type from point ID (more reliable than point_type field)
+ */
+const getCorrectPointTypeFromId = (pointId: string, fallbackPointType?: number): string => {
+  // Extract type from point ID (IN1 -> INPUT, OUT1 -> OUTPUT, VAR1 -> VARIABLE)
+  if (pointId.startsWith('IN')) return 'INPUT'
+  if (pointId.startsWith('OUT')) return 'OUTPUT'
+  if (pointId.startsWith('VAR')) return 'VARIABLE'
+  if (pointId.startsWith('PID')) return 'PID'
+  if (pointId.startsWith('SCH')) return 'SCHEDULE'
+  if (pointId.startsWith('HOL')) return 'HOLIDAY'
+  if (pointId.startsWith('PRG')) return 'PROGRAM'
+  if (pointId.startsWith('TBL')) return 'TABLE'
+
+  // Fallback to mapping function if ID parsing fails
+  return fallbackPointType ? mapPointTypeFromNumber(fallbackPointType) : 'INPUT'
+}
+
+/**
+ * Get correct point index from point ID (IN1 -> 1, OUT5 -> 5)
+ */
+const getCorrectPointIndex = (pointId: string): number => {
+  const match = pointId.match(/(\d+)$/) // Extract number from end of ID
+  return match ? parseInt(match[1], 10) : 0
+}
+
+/**
+ * Get correct units - prioritize from dataSeries, fallback to item data
+ */
+const getCorrectUnits = (item: any, pointId: string): string | undefined => {
+  // First try to get units from current dataSeries that matches this point
+  const matchingSeries = dataSeries.value.find(series => series.id === pointId)
+  if (matchingSeries?.unit) {
+    return matchingSeries.unit
+  }
+
+  // Fallback to item units
+  return item.units || undefined
+}
+
+/**
+ * Get correct sync interval based on T3000 interval configuration fields
+ * Uses hour_interval_time, minute_interval_time, second_interval_time
+ */
+const getCurrentSyncInterval = (): number => {
+  // Try multiple data sources for T3000 interval configuration
+  let intervalConfig = null
+  let dataSource = 'fallback'
+
+  // Priority 1: monitorConfig.value (from T3000 system)
+  if (monitorConfig.value) {
+    intervalConfig = monitorConfig.value
+    dataSource = 'monitorConfig'
+  }
+  // Priority 2: props.itemData.t3Entry (from item configuration)
+  else if (props.itemData?.t3Entry) {
+    intervalConfig = props.itemData.t3Entry
+    dataSource = 'itemData.t3Entry'
+  }
+
+  if (intervalConfig) {
+    // Extract T3000 interval fields
+    const hourInterval = intervalConfig.hour_interval_time || 0
+    const minuteInterval = intervalConfig.minute_interval_time || 0
+    const secondInterval = intervalConfig.second_interval_time || 0
+
+    // Calculate total seconds using T3000 fields (same logic as calculateT3000Interval)
+    const totalSeconds = (hourInterval * 3600) + (minuteInterval * 60) + secondInterval
+
+    // Use calculated interval if > 0, otherwise fallback to default
+    const syncIntervalSeconds = totalSeconds > 0 ? Math.max(totalSeconds, 15) : 60
+
+    LogUtil.Debug('🕐 Calculating sync interval from T3000 config', {
+      dataSource,
+      hourInterval,
+      minuteInterval,
+      secondInterval,
+      totalSeconds,
+      syncIntervalSeconds,
+      timeBase: timeBase.value,
+      configExists: !!intervalConfig
+    })
+
+    return syncIntervalSeconds
+  }
+
+  // Fallback: Use updateInterval calculation and convert to seconds
+  const fallbackMs = updateInterval.value
+  const fallbackSeconds = Math.round(fallbackMs / 1000)
+
+  LogUtil.Debug('🕐 Using fallback sync interval calculation', {
+    dataSource: 'updateInterval computed',
+    fallbackMs,
+    fallbackSeconds,
+    timeBase: timeBase.value
+  })
+
+  return fallbackSeconds
+}/**
  * Store real-time data to database for historical usage
  */
 const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
@@ -2982,23 +3165,54 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
     }
 
     // Convert GET_ENTRIES response to RealtimeDataRequest format
-    const realtimeDataPoints: RealtimeDataRequest[] = validDataItems.map(item => ({
-      // Required fields
-      serial_number: currentSN,
-      panel_id: item.pid || currentPanelId, // Use item.pid (panel ID from data) if available
-      point_id: item.id || 'UNKNOWN',
-      point_index: item.index || 0,
-      point_type: mapPointTypeFromNumber(item.point_type || 1), // Convert to string
-      value: String(item.value || 0), // API expects string
-      // Optional fields
-      range_field: item.range ? String(item.range) : undefined,
-      digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
-      units: item.units || undefined,
-      // Enhanced source tracking
-      data_source: 'REALTIME',
-      created_by: 'FRONTEND',
-      sync_interval: 5 // Default 5-second sync interval
-    }))
+    const realtimeDataPoints: RealtimeDataRequest[] = validDataItems.map(item => {
+      // Enhanced debugging for point type determination
+      const pointId = item.id || 'UNKNOWN'
+      const pointType = getCorrectPointTypeFromId(pointId, item.point_type)
+      const pointIndex = getCorrectPointIndex(pointId)
+      const units = getCorrectUnits(item, pointId)
+
+      const syncInterval = getCurrentSyncInterval()
+
+      LogUtil.Debug('🔧 Processing item for database storage', {
+        pointId,
+        rawPointType: item.point_type,
+        mappedPointType: pointType,
+        calculatedIndex: pointIndex,
+        rawIndex: item.index,
+        rawValue: item.value,
+        rawUnits: item.units,
+        calculatedUnits: units,
+        digitalAnalog: item.digital_analog,
+        range: item.range,
+        syncInterval: syncInterval,
+        timeBase: timeBase.value,
+        // T3000 interval fields for verification
+        t3000Intervals: {
+          hour: monitorConfig.value?.hour_interval_time || props.itemData?.t3Entry?.hour_interval_time || 0,
+          minute: monitorConfig.value?.minute_interval_time || props.itemData?.t3Entry?.minute_interval_time || 0,
+          second: monitorConfig.value?.second_interval_time || props.itemData?.t3Entry?.second_interval_time || 0
+        }
+      })
+
+      return {
+        // Required fields
+        serial_number: currentSN,
+        panel_id: item.pid || currentPanelId,
+        point_id: pointId,
+        point_index: pointIndex,
+        point_type: pointType,
+        value: String(item.value || 0),
+        // Optional fields - with enhanced logic
+        range_field: item.range ? String(item.range) : undefined,
+        digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
+        units: units,
+        // Enhanced source tracking
+        data_source: 'REALTIME',
+        created_by: 'FRONTEND',
+        sync_interval: syncInterval // Use user-configured interval
+      }
+    })
 
     // Store batch to database with detailed logging
     if (realtimeDataPoints.length > 0) {
@@ -3007,11 +3221,18 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
         serialNumber: currentSN,
         apiEndpoint: 'localhost:9103/api/trendlog/realtime/batch',
         sampleDataPoint: realtimeDataPoints[0],
-        allDataPoints: realtimeDataPoints.map(p => ({
+        detailedDataPoints: realtimeDataPoints.map(p => ({
           point_id: p.point_id,
           panel_id: p.panel_id,
+          point_index: p.point_index,
+          point_type: p.point_type,
           value: p.value,
-          point_type: p.point_type
+          digital_analog: p.digital_analog,
+          units: p.units,
+          range_field: p.range_field,
+          data_source: p.data_source,
+          created_by: p.created_by,
+          sync_interval: p.sync_interval // Add sync interval to logging
         }))
       })
 
@@ -4797,16 +5018,46 @@ const diagnosticReport = () => {
 // Lifecycle
 onMounted(async () => {
   try {
+    LogUtil.Info('🚀 TrendLogChart: Starting component initialization', {
+      hasProps: !!props,
+      hasItemData: !!props.itemData,
+      itemDataId: (props.itemData as any)?.t3Entry?.id,
+      itemDataPid: (props.itemData as any)?.t3Entry?.pid,
+      currentItemDataExists: !!currentItemData.value,
+      T3000DataExists: !!T3000_Data.value,
+      hasPanelsData: !!(T3000_Data.value.panelsData?.length),
+      timestamp: new Date().toISOString()
+    })
+
     // Initialize monitor configuration
     const monitorConfigData = await getMonitorConfigFromT3000Data()
+
+    LogUtil.Info('📊 TrendLogChart: Monitor config result', {
+      hasMonitorConfig: !!monitorConfigData,
+      monitorConfigType: typeof monitorConfigData,
+      monitorConfigKeys: monitorConfigData ? Object.keys(monitorConfigData) : [],
+      inputItemsLength: monitorConfigData?.inputItems?.length || 0
+    })
+
     if (monitorConfigData) {
       monitorConfig.value = monitorConfigData
 
       // Initialize data clients
       initializeDataClients()
+
+      LogUtil.Info('✅ TrendLogChart: Initialization completed successfully')
+    } else {
+      LogUtil.Warn('⚠️ TrendLogChart: No monitor config data available - keeping loading state')
+      // Keep loading state instead of showing error - data might still be loading
+      // hasConnectionError.value = true // Removed - keep loading instead
     }
   } catch (error) {
-    LogUtil.Error('TrendLogChart: Initialization failed:', error)
+    LogUtil.Error('❌ TrendLogChart: Initialization failed:', error)
+    // Only show connection error for actual errors, not missing data during startup
+    if (error.message && !error.message.includes('timeout')) {
+      hasConnectionError.value = true
+    }
+    // Otherwise keep loading state - data might still be loading
   }
 
   // Apply default view configuration
@@ -4993,6 +5244,13 @@ onUnmounted(() => {
 
 .source-badge.error {
   background: linear-gradient(45deg, #f56565, #e53e3e);
+}
+
+.source-badge.loading {
+  background: linear-gradient(45deg, #ff9800, #f57c00);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .header-line-2 {
