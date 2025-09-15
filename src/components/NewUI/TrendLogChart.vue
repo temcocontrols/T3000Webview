@@ -969,7 +969,7 @@ const generateDataSeries = (): SeriesConfig[] => {
     const description = getDeviceDescription(panelId, pointType, pointNumber)
 
     // FILTER OUT DEMO/PLACEHOLDER DATA
-    // Skip items that don't have valid T3000 device data
+    // Only skip items that are clearly placeholder (no description AND panel ID is 0)
     if (!description && panelId === 0) {
       LogUtil.Info('🚫 TrendLogChart: Filtering out placeholder data', {
         inputItem,
@@ -1496,7 +1496,9 @@ const setTimeBase = (value: string) => {
     isRealTime.value = false // Disable Auto Scroll for historical timebases
   }
 
-  onTimeBaseChange()
+  // Don't call onTimeBaseChange() manually - let the Vue watcher handle timebase changes
+  // This prevents duplicate API calls with different trendlog IDs
+  // onTimeBaseChange()
 }
 
 // Series control computed properties
@@ -2464,16 +2466,22 @@ const initializeRealDataSeries = async () => {
       const rangeValue = monitorConfigData.ranges[i] || 0
       const itemData = realTimeData[i] || []
 
-      // Skip series that have no data
-      if (itemData.length === 0) {
-        continue
-      }
-
       // Use device description for series name
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
 
-      // Create clean name - since we only create series with data
+      // Only skip items that have no data at all
+      // Keep items that have data even if they don't have descriptions
+      if (itemData.length === 0) {
+        LogUtil.Debug('🚫 Skipping item with no data:', {
+          itemIndex: i,
+          panel: inputItem.panel,
+          point_type: inputItem.point_type,
+          point_number: inputItem.point_number,
+          hasDescription: !!desc
+        })
+        continue
+      }      // Create clean name - only for items with data or valid descriptions
       const seriesName = desc || `${inputItem.point_number + 1} (P${inputItem.panel})`
       const cleanDescription = desc || `${inputItem.point_number + 1}`
 
@@ -2964,47 +2972,135 @@ const loadHistoricalDataFromDatabase = async () => {
       return
     }
 
-    // Calculate time range based on current timebase
+    // Calculate time range based on current timebase with time offset support
     const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
-    const endTime = new Date()
-    const startTime = new Date(endTime.getTime() - timeRangeMinutes * 60 * 1000)
+    const currentTime = new Date()
 
-    // Format timestamps for API (SQLite format)
-    const formattedStartTime = startTime.toISOString().replace('T', ' ').slice(0, 19)
-    const formattedEndTime = endTime.toISOString().replace('T', ' ').slice(0, 19)
+    // Apply time offset for navigation (positive = future, negative = past)
+    const offsetEndTime = new Date(currentTime.getTime() + timeOffset.value * 60 * 1000)
+    const offsetStartTime = new Date(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000)
 
-    // Build specific points filter from monitor configuration
-    // NOTE: Server API requires panel_id field in specific_points array
-    const specificPoints = monitorConfigData.inputItems.map((item: any, index: number) => ({
-      point_id: generateDeviceId(item.point_type, item.point_number),
-      point_type: mapPointTypeFromNumber(item.point_type),
-      point_index: item.point_number,
-      panel_id: item.panel || currentPanelId // Fixed: Add missing panel_id field required by server
-    }))
+    const endTime = offsetEndTime
+    const startTime = offsetStartTime
 
-    // Prepare historical data request
+    // Format timestamps for API (SQLite format) - use local time instead of UTC
+    const formatLocalTime = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    }
+
+    const formattedStartTime = formatLocalTime(startTime)
+    const formattedEndTime = formatLocalTime(endTime)
+
+    // Create a safe specific points list - only include valid, real data items
+    let specificPoints: Array<{point_id: string, point_type: string, point_index: number, panel_id: number}> = []
+
+    // Method 1: Try to extract from current data series
+    if (dataSeries.value && dataSeries.value.length > 0) {
+      dataSeries.value.forEach((series, index) => {
+        // Only include series that have meaningful identifiers
+        if (series.id && series.id !== '1' && series.name && !series.name.includes('(P0)')) {
+          let pointType = 'VARIABLE' // Default
+          let pointIndex = index
+          let pointId = series.id
+
+          // Try to extract point info from series.id or series.name
+          if (series.id.startsWith('VAR')) {
+            pointType = 'VARIABLE'
+            const match = series.id.match(/VAR(\d+)/)
+            pointIndex = match ? parseInt(match[1]) - 1 : index
+            pointId = series.id
+          } else if (series.id.startsWith('IN')) {
+            pointType = 'INPUT'
+            const match = series.id.match(/IN(\d+)/)
+            pointIndex = match ? parseInt(match[1]) - 1 : index
+            pointId = series.id
+          } else if (series.id.startsWith('OUT')) {
+            pointType = 'OUTPUT'
+            const match = series.id.match(/OUT(\d+)/)
+            pointIndex = match ? parseInt(match[1]) - 1 : index
+            pointId = series.id
+          }
+
+          specificPoints.push({
+            point_id: pointId,
+            point_type: pointType,
+            point_index: pointIndex,
+            panel_id: currentPanelId
+          })
+        }
+      })
+    }
+
+    // Method 2: Fallback to known working points if none found
+    if (specificPoints.length === 0) {
+      LogUtil.Warn('No valid data series found, using minimal working point set')
+      specificPoints = [
+        { point_id: "VAR1", point_type: "VARIABLE", point_index: 0, panel_id: currentPanelId },
+        { point_id: "VAR3", point_type: "VARIABLE", point_index: 2, panel_id: currentPanelId }
+      ]
+    }
+
+    // Extract and map trendlog ID from monitorConfig.id (e.g., "MON5" -> "4")
+    let trendlogId = '1' // Default fallback
+    if (monitorConfigData.id && typeof monitorConfigData.id === 'string') {
+      const match = monitorConfigData.id.match(/MON(\d+)|TRL(\d+)/i)
+      if (match) {
+        const monNumber = parseInt(match[1] || match[2])
+        // MON5 maps to trendlog ID 4 (MON number - 1)
+        trendlogId = (monNumber - 1).toString()
+      }
+    }
+
+    LogUtil.Debug('🔍 Trendlog ID extraction for historical data request:', {
+      originalId: monitorConfigData.id,
+      extractedId: trendlogId,
+      willUseUrl: `/trendlogs/${trendlogId}/history`
+    })
+
+    // Prepare historical data request (matching the working API structure)
     const historyRequest = {
       serial_number: currentSN,
       panel_id: currentPanelId,
-      trendlog_id: monitorConfigData.id?.toString() || '1',
+      trendlog_id: trendlogId,
       start_time: formattedStartTime,
       end_time: formattedEndTime,
-      specific_points: specificPoints,
-      limit: 1000 // Reasonable limit for UI performance
+      limit: 80, // Use same limit as working API call
+      point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types (matching working API)
+      specific_points: specificPoints
     }
 
-    LogUtil.Debug('🔍 Requesting historical data:', {
+    LogUtil.Debug('🔍 Historical data request (with time offset support):', {
       timeRange: `${formattedStartTime} to ${formattedEndTime}`,
-      pointsCount: specificPoints.length,
+      timeOffset: timeOffset.value,
       timebaseMinutes: timeRangeMinutes,
-      specificPointsStructure: specificPoints.map(p => ({
+      pointsCount: specificPoints.length,
+      trendlogUrl: `/trendlogs/${trendlogId}/history`,
+      dataSeriesCount: dataSeries.value?.length || 0,
+      timeCalculation: {
+        currentTime: formatLocalTime(currentTime),
+        offsetEndTime: formatLocalTime(offsetEndTime),
+        offsetStartTime: formatLocalTime(offsetStartTime)
+      },
+      requestStructure: {
+        serial_number: historyRequest.serial_number,
+        panel_id: historyRequest.panel_id,
+        trendlog_id: historyRequest.trendlog_id,
+        limit: historyRequest.limit,
+        point_types: historyRequest.point_types,
+        specific_points_count: historyRequest.specific_points?.length || 0
+      },
+      allSpecificPoints: specificPoints.map(p => ({
         point_id: p.point_id,
         point_type: p.point_type,
         point_index: p.point_index,
-        panel_id: p.panel_id,
-        hasPanelId: p.panel_id !== undefined
-      })),
-      fullRequest: historyRequest
+        panel_id: p.panel_id
+      }))
     })
 
     // Fetch historical data
@@ -3942,7 +4038,8 @@ const zoomIn = () => {
       isRealTime.value = false // Disable Auto Scroll for historical timebases
     }
 
-    onTimeBaseChange()
+    // Let Vue watcher handle timebase changes to prevent duplicate API calls
+    // onTimeBaseChange()
     // message.info(`Zoomed in to ${getTimeBaseLabel()}`)
   }
 }
@@ -3960,7 +4057,8 @@ const zoomOut = () => {
       isRealTime.value = false // Disable Auto Scroll for historical timebases
     }
 
-    onTimeBaseChange()
+    // Let Vue watcher handle timebase changes to prevent duplicate API calls
+    // onTimeBaseChange()
     // message.info(`Zoomed out to ${getTimeBaseLabel()}`)
   }
 }
@@ -3969,7 +4067,8 @@ const resetToDefaultTimebase = () => {
   timeBase.value = '5m'
   timeOffset.value = 0 // Reset time navigation as well
   isRealTime.value = true // Turn Auto Scroll on when returning to 5m timebase
-  onTimeBaseChange()
+  // Let Vue watcher handle timebase changes to prevent duplicate API calls
+  // onTimeBaseChange()
   // message.info('Reset to default 5 minutes timebase')
 }
 
@@ -4442,10 +4541,14 @@ const extractDeviceParameters = () => {
       panel_id = t3Entry.pid || null
     }
 
-    // Extract trendlog_id from id (e.g., "MON1" -> 1) if not found in URL
+    // Extract and map trendlog_id from id (e.g., "MON5" -> 4) if not found in URL
     if (trendlog_id === null && t3Entry.id && typeof t3Entry.id === 'string') {
       const match = t3Entry.id.match(/MON(\d+)|TRL(\d+)/i)
-      trendlog_id = match ? parseInt(match[1] || match[2]) : null
+      if (match) {
+        const monNumber = parseInt(match[1] || match[2])
+        // MON5 maps to trendlog ID 4 (MON number - 1)
+        trendlog_id = monNumber - 1
+      }
     }
   }
 
@@ -4460,7 +4563,8 @@ const extractDeviceParameters = () => {
 
   console.log('= TLChart DataFlow: Device parameter extraction for API request:', {
     methods_used: ['URL params', 'props.itemData', 'T3000_Data'],
-    final_result: { sn, panel_id, trendlog_id }
+    final_result: { sn, panel_id, trendlog_id },
+    trendlog_mapping: trendlog_id ? `MON${trendlog_id + 1} -> ${trendlog_id}` : 'no mapping'
   })
 
   return { sn, panel_id, trendlog_id }
