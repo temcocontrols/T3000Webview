@@ -455,7 +455,7 @@ import { ranges as rangeDefinitions, T3_Types } from 'src/lib/T3000/Hvac/Data/Co
 import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
-import { useTrendlogDataAPI } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0
@@ -1007,26 +1007,71 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
     updateChartWithNewData(chartDataFormat)
 
     // Store real-time data to database if in real-time mode
-    if (isRealTime.value && chartDataFormat.length > 0) {
-      LogUtil.Info('💾 T3000_Data watcher: Storing real-time data to database', {
+    if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0) {
+      LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
         isRealTime: isRealTime.value,
-        dataItemsCount: chartDataFormat.length,
-        sampleItem: chartDataFormat[0],
+        totalDataItemsCount: chartDataFormat.length,
+        chartSeriesCount: dataSeries.value.length,
         timestamp: new Date().toISOString()
       })
 
-      // Filter valid data items for storage
-      const validItems = chartDataFormat.filter(item =>
+      // OPTION 1: Filter chartDataFormat to only include items from current chart series
+      // Get chart series identifiers for filtering
+      const chartSeriesItems = dataSeries.value.map(series => ({
+        id: series.id,
+        panelId: series.panelId,
+        pointType: series.pointType,
+        pointNumber: series.pointNumber,
+        seriesName: series.name
+      })).filter(item => item.id && item.panelId)
+
+      LogUtil.Info('🎯 Chart series identifiers for filtering', {
+        chartSeriesCount: chartSeriesItems.length,
+        chartSeries: chartSeriesItems.map(item => ({
+          id: item.id,
+          panelId: item.panelId,
+          seriesName: item.seriesName
+        }))
+      })
+
+      // Filter chartDataFormat to only include chart series items
+      const chartRelevantItems = chartDataFormat.filter(item =>
         item &&
         typeof item === 'object' &&
         item.hasOwnProperty('value') &&
         item.value !== null &&
         item.value !== undefined &&
-        item.id
+        item.id &&
+        // Only include items that match current chart series
+        chartSeriesItems.some(chartItem =>
+          item.id === chartItem.id && item.pid === chartItem.panelId
+        )
       )
 
-      if (validItems.length > 0) {
-        storeRealtimeDataToDatabase(validItems)
+      LogUtil.Info('📊 Filtered data for storage', {
+        originalItemsCount: chartDataFormat.length,
+        filteredItemsCount: chartRelevantItems.length,
+        chartSeriesCount: dataSeries.value.length,
+        filteredItems: chartRelevantItems.map(item => ({
+          id: item.id,
+          panelId: item.pid,
+          value: item.value,
+          digitalAnalog: item.digital_analog
+        }))
+      })
+
+      // Validate filtering results
+      validateFilteringResults(chartDataFormat.length, chartRelevantItems.length, dataSeries.value.length)
+
+      if (chartRelevantItems.length > 0) {
+        storeRealtimeDataToDatabase(chartRelevantItems)
+      } else {
+        LogUtil.Warn('⚠️ No chart-relevant items found for storage', {
+          totalItems: chartDataFormat.length,
+          chartSeriesCount: dataSeries.value.length,
+          sampleTotalItem: chartDataFormat[0],
+          sampleChartSeries: chartSeriesItems[0]
+        })
       }
     }
   }
@@ -2789,7 +2834,7 @@ const loadHistoricalDataFromDatabase = async () => {
     // Get current device info
     const panelsList = T3000_Data.value.panelsList || []
     const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
-    const currentSN = panelsList.length > 0 ? panelsList[0].sn : 0
+    const currentSN = panelsList.length > 0 ? panelsList[0].serial_number : 0
 
     if (!currentSN) {
       LogUtil.Debug('No serial number available for historical data loading')
@@ -2919,7 +2964,7 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
     // Get current device info for storage
     const panelsList = T3000_Data.value.panelsList || []
     const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
-    const currentSN = panelsList.length > 0 ? panelsList[0].sn : 0
+    const currentSN = panelsList.length > 0 ? panelsList[0].serial_number : 0
 
     LogUtil.Info('📊 Device info for storage', {
       panelsListLength: panelsList.length,
@@ -2936,30 +2981,76 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
       return
     }
 
-    // Convert GET_ENTRIES response to storage format
-    const realtimeDataPoints = validDataItems.map(item => ({
+    // Convert GET_ENTRIES response to RealtimeDataRequest format
+    const realtimeDataPoints: RealtimeDataRequest[] = validDataItems.map(item => ({
+      // Required fields
       serial_number: currentSN,
-      panel_id: currentPanelId,
+      panel_id: item.pid || currentPanelId, // Use item.pid (panel ID from data) if available
       point_id: item.id || 'UNKNOWN',
-      point_type: mapPointTypeFromNumber(item.point_type || 1), // Convert to string
       point_index: item.index || 0,
-      value: item.value || 0,
-      digital_analog: item.digital_analog || 1,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19) // SQLite format
+      point_type: mapPointTypeFromNumber(item.point_type || 1), // Convert to string
+      value: String(item.value || 0), // API expects string
+      // Optional fields
+      range_field: item.range ? String(item.range) : undefined,
+      digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
+      units: item.units || undefined,
+      // Enhanced source tracking
+      data_source: 'REALTIME',
+      created_by: 'FRONTEND',
+      sync_interval: 5 // Default 5-second sync interval
     }))
 
-    // Store batch to database
+    // Store batch to database with detailed logging
     if (realtimeDataPoints.length > 0) {
-      const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
-      LogUtil.Debug(`📦 Stored ${rowsAffected} real-time data points to database`, {
+      LogUtil.Info('📤 Sending real-time batch to API', {
         pointsCount: realtimeDataPoints.length,
         serialNumber: currentSN,
-        panelId: currentPanelId
+        apiEndpoint: 'localhost:9103/api/trendlog/realtime/batch',
+        sampleDataPoint: realtimeDataPoints[0],
+        allDataPoints: realtimeDataPoints.map(p => ({
+          point_id: p.point_id,
+          panel_id: p.panel_id,
+          value: p.value,
+          point_type: p.point_type
+        }))
+      })
+
+      const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
+
+      LogUtil.Info(`✅ Successfully stored ${rowsAffected} real-time data points`, {
+        pointsCount: realtimeDataPoints.length,
+        rowsAffected,
+        serialNumber: currentSN,
+        timestamp: new Date().toISOString(),
+        success: rowsAffected > 0
+      })
+    } else {
+      LogUtil.Warn('⚠️ No valid data points to store', {
+        originalItemsCount: validDataItems.length,
+        serialNumber: currentSN
       })
     }
   } catch (error) {
     LogUtil.Error('Failed to store real-time data to database:', error)
   }
+}
+
+/**
+ * Validate that filtering is working correctly by comparing data counts
+ */
+const validateFilteringResults = (originalCount: number, filteredCount: number, chartSeriesCount: number) => {
+  LogUtil.Info('🔍 Filtering validation results', {
+    originalDataCount: originalCount,
+    filteredDataCount: filteredCount,
+    chartSeriesCount: chartSeriesCount,
+    reductionRatio: filteredCount > 0 ? `${((filteredCount / originalCount) * 100).toFixed(1)}%` : '0%',
+    expectedRange: `≤ ${chartSeriesCount} items`,
+    isReasonableFilter: filteredCount > 0 && filteredCount <= chartSeriesCount && filteredCount < originalCount,
+    message: filteredCount === 0 ? 'No matches found - check filtering logic' :
+             filteredCount > chartSeriesCount ? 'More items than chart series - check filtering logic' :
+             filteredCount === originalCount ? 'No filtering occurred - check filtering logic' :
+             'Filtering working correctly'
+  })
 }
 
 /**
