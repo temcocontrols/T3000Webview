@@ -256,7 +256,7 @@
             <div v-if="dataSeries.length === 0" class="series-empty-state">
               <div class="empty-state-content">
                 <div v-if="shouldShowLoading" class="empty-state-icon">
-                  <a-spin size="large" />
+                  <a-spin size="small" />
                 </div>
                 <div v-else-if="hasConnectionError" class="empty-state-icon">❌</div>
                 <div v-else class="empty-state-icon">📊</div>
@@ -266,7 +266,7 @@
                 <div v-else class="empty-state-text">No valid trend log data available</div>
 
                 <div v-if="shouldShowLoading" class="empty-state-subtitle">
-                  Waiting for valid T3000 device data. Demo/placeholder data is automatically filtered out.
+                  Connecting to your T3000 devices to retrieve trend data...
                 </div>
                 <div v-else-if="hasConnectionError" class="empty-state-subtitle">
                   Unable to load real-time or historical data. Check system connections.
@@ -5257,10 +5257,18 @@ onUnmounted(() => {
 }
 
 .source-badge.loading {
-  background: linear-gradient(45deg, #ff9800, #f57c00);
+  background: linear-gradient(45deg, #4CAF50, #45a049);
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.source-badge.loading .ant-spin {
+  font-size: 10px !important;
+}
+
+.source-badge.loading .ant-spin-dot {
+  font-size: 10px !important;
 }
 
 .header-line-2 {
