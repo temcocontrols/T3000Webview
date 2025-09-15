@@ -469,34 +469,10 @@ import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac
 const BAC_UNITS_DIGITAL = 0
 const BAC_UNITS_ANALOG = 1
 
-// Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
-const DIGITAL_UNITS = {
-  0: { label: 'No Units', states: ['', ''] as [string, string] },
-  1: { label: 'Off/On', states: ['Off', 'On'] as [string, string] },
-  2: { label: 'Close/Open', states: ['Close', 'Open'] as [string, string] },
-  3: { label: 'Stop/Start', states: ['Stop', 'Start'] as [string, string] },
-  4: { label: 'Disable/Enable', states: ['Disable', 'Enable'] as [string, string] },
-  5: { label: 'Normal/Alarm', states: ['Normal', 'Alarm'] as [string, string] },
-  6: { label: 'Normal/High', states: ['Normal', 'High'] as [string, string] },
-  7: { label: 'Normal/Low', states: ['Normal', 'Low'] as [string, string] },
-  8: { label: 'No/Yes', states: ['No', 'Yes'] as [string, string] },
-  9: { label: 'Cool/Heat', states: ['Cool', 'Heat'] as [string, string] },
-  10: { label: 'Unoccupy/Occupy', states: ['Unoccupy', 'Occupy'] as [string, string] },
-  11: { label: 'Low/High', states: ['Low', 'High'] as [string, string] },
-  12: { label: 'On/Off', states: ['On', 'Off'] as [string, string] },
-  13: { label: 'Open/Close', states: ['Open', 'Close'] as [string, string] },
-  14: { label: 'Start/Stop', states: ['Start', 'Stop'] as [string, string] },
-  15: { label: 'Enable/Disable', states: ['Enable', 'Disable'] as [string, string] },
-  16: { label: 'Alarm/Normal', states: ['Alarm', 'Normal'] as [string, string] },
-  17: { label: 'High/Normal', states: ['High', 'Normal'] as [string, string] },
-  18: { label: 'Low/Normal', states: ['Low', 'Normal'] as [string, string] },
-  19: { label: 'Yes/No', states: ['Yes', 'No'] as [string, string] },
-  20: { label: 'Heat/Cool', states: ['Heat', 'Cool'] as [string, string] },
-  21: { label: 'Occupy/Unoccupy', states: ['Occupy', 'Unoccupy'] as [string, string] },
-  22: { label: 'High/Low', states: ['High', 'Low'] as [string, string] }
-} as const
+// Unit Type Mappings - Hybrid approach using T3Range.ts for digital units and specific unit codes for analog
 
-const ANALOG_UNITS = {
+// Analog unit code mappings (T3000 system uses specific unit codes like 31=Celsius, 32=Fahrenheit)
+const ANALOG_UNIT_CODES = {
   0: { label: 'Unused', symbol: '' },
   31: { label: 'deg.Celsius', symbol: '°C' },
   32: { label: 'deg.Fahrenheit', symbol: '°F' },
@@ -531,7 +507,7 @@ const ANALOG_UNITS = {
   61: { label: 'CF', symbol: 'ft³' },
   62: { label: 'BTU', symbol: 'BTU' },
   63: { label: 'CMH', symbol: 'm³/h' },
-  // Extended units for input-specific ranges (from T3000.rc analysis)
+  // Extended units for input-specific ranges
   100: { label: '0-5V', symbol: 'V' },
   101: { label: '0-100A', symbol: 'A' },
   102: { label: '4-20mA', symbol: 'mA' },
@@ -558,26 +534,55 @@ const ANALOG_UNITS = {
   123: { label: 'Lux', symbol: 'lx' }
 } as const
 
-// Helper function to get unit info (Updated for T3000.rc compatibility)
-const getUnitInfo = (unitCode: number) => {
-  if (unitCode >= 0 && unitCode <= 22) {
-    return {
-      type: 'digital' as const,
-      info: DIGITAL_UNITS[unitCode as keyof typeof DIGITAL_UNITS]
-    }
-  } else if ((unitCode >= 31 && unitCode <= 63) || (unitCode >= 100 && unitCode <= 123)) {
-    return {
-      type: 'analog' as const,
-      info: ANALOG_UNITS[unitCode as keyof typeof ANALOG_UNITS]
+// Helper function to get unit info using T3Range.ts ranges
+const getUnitInfo = (unitCode: number, pointType?: string, rangeId?: number, isDigital?: boolean) => {
+  // For digital units, use T3Range digital ranges
+  if (isDigital || unitCode <= 22) {
+    const digitalRange = rangeDefinitions.digital.find(range => range.id === (rangeId ?? unitCode))
+    if (digitalRange) {
+      return {
+        type: 'digital' as const,
+        info: {
+          label: digitalRange.label,
+          states: digitalRange.direct === false
+            ? [digitalRange.on, digitalRange.off] as [string, string]
+            : [digitalRange.off, digitalRange.on] as [string, string]
+        }
+      }
     }
   }
+
+  // For analog units, use T3Range analog ranges based on point type
+  if (pointType && rangeId !== undefined) {
+    const typeKey = pointType.toLowerCase() as keyof typeof rangeDefinitions.analog
+    if (rangeDefinitions.analog[typeKey]) {
+      const analogRange = rangeDefinitions.analog[typeKey].find(range => range.id === rangeId)
+      if (analogRange) {
+        return {
+          type: 'analog' as const,
+          info: {
+            label: analogRange.label,
+            symbol: analogRange.unit
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback to old unit code mappings if T3Range lookup fails
+  if (ANALOG_UNIT_CODES[unitCode as keyof typeof ANALOG_UNIT_CODES]) {
+    return {
+      type: 'analog' as const,
+      info: ANALOG_UNIT_CODES[unitCode as keyof typeof ANALOG_UNIT_CODES]
+    }
+  }
+
+  // Final fallback for unknown units
   return {
     type: 'analog' as const,
     info: { label: '', symbol: '' }
   }
-}
-
-// Types
+}// Types
 interface DataPoint {
   timestamp: number
   value: number
@@ -1513,18 +1518,26 @@ const visibleDigitalSeries = computed(() => {
   return digitalSeries.value.filter(series => series.visible)
 })
 
-// Helper function to get digital state label
+// Helper function to get digital state label using T3Range
 const getDigitalStateLabel = (series: SeriesConfig): string => {
   if (series.unitType !== 'digital') return ''
 
   const unit = series.unit || ''
-  const digitalUnit = DIGITAL_UNITS[parseInt(unit)] || DIGITAL_UNITS[0]
+  const unitCode = parseInt(unit)
+  const digitalRange = rangeDefinitions.digital.find(range => range.id === unitCode)
+
+  if (!digitalRange) return 'Unknown'
 
   // Get the last value to determine current state
   const lastValue = series.data.length > 0 ? series.data[series.data.length - 1].value : 0
   const stateIndex = lastValue > 0.5 ? 1 : 0
 
-  return digitalUnit.states[stateIndex] || 'Unknown'
+  // Handle direct property for correct state ordering
+  const states = digitalRange.direct === false
+    ? [digitalRange.on, digitalRange.off]
+    : [digitalRange.off, digitalRange.on]
+
+  return states[stateIndex] || 'Unknown'
 }
 
 // Helper function to get original series index from filtered series
@@ -2579,9 +2592,21 @@ const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
 }
 
 /**
- * Get analog unit symbol based on range value
+ * Get analog unit symbol based on range value and device type using T3Range.ts
  */
-const getAnalogUnit = (range: number): string => {
+const getAnalogUnit = (range: number, deviceType?: string): string => {
+  // Try to get unit from T3Range based on device type and range
+  if (deviceType) {
+    const typeKey = deviceType.toLowerCase() as keyof typeof rangeDefinitions.analog
+    if (rangeDefinitions.analog[typeKey]) {
+      const analogRange = rangeDefinitions.analog[typeKey].find(r => r.id === range)
+      if (analogRange) {
+        return analogRange.unit
+      }
+    }
+  }
+
+  // Fallback to old unit code mappings for backward compatibility
   const analogUnits: { [key: number]: string } = {
     0: '',           // Unused/default
     31: '°C',        // deg.Celsius
@@ -2716,7 +2741,7 @@ const processDeviceValue = (panelData: any, inputRangeValue: number): { value: n
       processedValue = rawValue
     }
 
-    const unit = getAnalogUnit(panelData.range)
+    const unit = getAnalogUnit(panelData.range, panelData.type)
 
     return {
       value: processedValue,
