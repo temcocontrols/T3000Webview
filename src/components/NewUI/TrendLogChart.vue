@@ -469,70 +469,121 @@ import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac
 const BAC_UNITS_DIGITAL = 0
 const BAC_UNITS_ANALOG = 1
 
-// Unit Type Mappings - Hybrid approach using T3Range.ts for digital units and specific unit codes for analog
+// Unit mapping utilities - Bridge between T3Range.ts and T3000 unit codes
 
-// Analog unit code mappings (T3000 system uses specific unit codes like 31=Celsius, 32=Fahrenheit)
-const ANALOG_UNIT_CODES = {
-  0: { label: 'Unused', symbol: '' },
-  31: { label: 'deg.Celsius', symbol: '°C' },
-  32: { label: 'deg.Fahrenheit', symbol: '°F' },
-  33: { label: 'Feet per Min', symbol: 'ft/min' },
-  34: { label: 'Pascals', symbol: 'Pa' },
-  35: { label: 'KPascals', symbol: 'kPa' },
-  36: { label: 'lbs/sqr.inch', symbol: 'psi' },
-  37: { label: 'inches of WC', symbol: 'inWC' },
-  38: { label: 'Watts', symbol: 'W' },
-  39: { label: 'KWatts', symbol: 'kW' },
-  40: { label: 'KWH', symbol: 'kWh' },
-  41: { label: 'Volts', symbol: 'V' },
-  42: { label: 'KV', symbol: 'kV' },
-  43: { label: 'Amps', symbol: 'A' },
-  44: { label: 'ma', symbol: 'mA' },
-  45: { label: 'CFM', symbol: 'CFM' },
-  46: { label: 'Seconds', symbol: 's' },
-  47: { label: 'Minutes', symbol: 'min' },
-  48: { label: 'Hours', symbol: 'h' },
-  49: { label: 'Days', symbol: 'days' },
-  50: { label: 'Time', symbol: 'time' },
-  51: { label: 'Ohms', symbol: 'Ω' },
-  52: { label: '%', symbol: '%' },
-  53: { label: '%RH', symbol: '%RH' },
-  54: { label: 'p/min', symbol: 'p/min' },
-  55: { label: 'Counts', symbol: 'counts' },
-  56: { label: '%Open', symbol: '%Open' },
-  57: { label: 'Kg', symbol: 'kg' },
-  58: { label: 'L/Hour', symbol: 'L/h' },
-  59: { label: 'GPH', symbol: 'GPH' },
-  60: { label: 'GAL', symbol: 'gal' },
-  61: { label: 'CF', symbol: 'ft³' },
-  62: { label: 'BTU', symbol: 'BTU' },
-  63: { label: 'CMH', symbol: 'm³/h' },
-  // Extended units for input-specific ranges
-  100: { label: '0-5V', symbol: 'V' },
-  101: { label: '0-100A', symbol: 'A' },
-  102: { label: '4-20mA', symbol: 'mA' },
-  103: { label: '0-20psi', symbol: 'psi' },
-  104: { label: 'Pulse(1Hz)', symbol: 'pulses' },
-  105: { label: '0-100%(0-10V)', symbol: '%' },
-  106: { label: '0-100%(0-5V)', symbol: '%' },
-  107: { label: '0-100%(4-20mA)', symbol: '%' },
-  108: { label: '0-10V', symbol: 'V' },
-  109: { label: 'Table1', symbol: '' },
-  110: { label: 'Table2', symbol: '' },
-  111: { label: 'Table3', symbol: '' },
-  112: { label: 'Table4', symbol: '' },
-  113: { label: 'Table5', symbol: '' },
-  114: { label: 'Pulse(100Hz)', symbol: 'pulses' },
-  115: { label: 'Hz', symbol: 'Hz' },
-  116: { label: 'Humidity%', symbol: '%RH' },
-  117: { label: 'CO2 PPM', symbol: 'ppm' },
-  118: { label: 'RPM', symbol: 'rpm' },
-  119: { label: 'TVOC PPB', symbol: 'ppb' },
-  120: { label: 'ug/m3', symbol: 'μg/m³' },
-  121: { label: '#/cm3', symbol: '#/cm³' },
-  122: { label: 'dB', symbol: 'dB' },
-  123: { label: 'Lux', symbol: 'lx' }
-} as const
+/**
+ * Central unit code to symbol mapping
+ * This is needed because T3000 uses specific unit codes (31=°C, 32=°F)
+ * while T3Range.ts uses sequential IDs (0,1,2...) within each type
+ */
+const getUnitSymbolFromCode = (unitCode: number): string => {
+  const unitMap: { [key: number]: string } = {
+    0: '',           // Unused/default
+    31: '°C',        // deg.Celsius
+    32: '°F',        // deg.Fahrenheit
+    33: 'ft/min',    // Feet per Min
+    34: 'Pa',        // Pascals
+    35: 'kPa',       // KPascals
+    36: 'psi',       // lbs/sqr.inch
+    37: 'inWC',      // inches of WC
+    38: 'W',         // Watts
+    39: 'kW',        // KWatts
+    40: 'kWh',       // KWH
+    41: 'V',         // Volts
+    42: 'kV',        // KV
+    43: 'A',         // Amps
+    44: 'mA',        // ma
+    45: 'CFM',       // CFM
+    46: 's',         // Seconds
+    47: 'min',       // Minutes
+    48: 'h',         // Hours
+    49: 'days',      // Days
+    50: 'time',      // Time
+    51: 'Ω',         // Ohms
+    52: '%',         // %
+    53: '%RH',       // %RH
+    54: 'p/min',     // p/min
+    55: 'counts',    // Counts
+    56: '%Open',     // %Open
+    57: 'kg',        // Kg
+    58: 'L/h',       // L/Hour
+    59: 'GPH',       // GPH
+    60: 'gal',       // GAL
+    61: 'ft³',       // CF
+    62: 'BTU',       // BTU
+    63: 'm³/h',      // CMH
+    // Extended units for input-specific ranges
+    100: 'V',        // 0-5V
+    101: 'A',        // 0-100A
+    102: 'mA',       // 4-20mA
+    103: 'psi',      // 0-20psi
+    104: 'pulses',   // Pulse(1Hz)
+    105: '%',        // 0-100%(0-10V)
+    106: '%',        // 0-100%(0-5V)
+    107: '%',        // 0-100%(4-20mA)
+    108: 'V',        // 0-10V
+    109: '',         // Table1
+    110: '',         // Table2
+    111: '',         // Table3
+    112: '',         // Table4
+    113: '',         // Table5
+    114: 'pulses',   // Pulse(100Hz)
+    115: 'Hz',       // Hz
+    116: '%RH',      // Humidity%
+    117: 'ppm',      // CO2 PPM
+    118: 'rpm',      // RPM
+    119: 'ppb',      // TVOC PPB
+    120: 'μg/m³',    // ug/m3
+    121: '#/cm³',    // #/cm3
+    122: 'dB',       // dB
+    123: 'lx'        // Lux
+  }
+  return unitMap[unitCode] || ''
+}
+
+/**
+ * Get unit label from unit code (for backward compatibility)
+ */
+const getUnitLabelFromCode = (unitCode: number): string => {
+  const labelMap: { [key: number]: string } = {
+    0: 'Unused',
+    31: 'deg.Celsius',
+    32: 'deg.Fahrenheit',
+    33: 'Feet per Min',
+    34: 'Pascals',
+    35: 'KPascals',
+    36: 'lbs/sqr.inch',
+    37: 'inches of WC',
+    38: 'Watts',
+    39: 'KWatts',
+    40: 'KWH',
+    41: 'Volts',
+    42: 'KV',
+    43: 'Amps',
+    44: 'ma',
+    45: 'CFM',
+    46: 'Seconds',
+    47: 'Minutes',
+    48: 'Hours',
+    49: 'Days',
+    50: 'Time',
+    51: 'Ohms',
+    52: '%',
+    53: '%RH',
+    54: 'p/min',
+    55: 'Counts',
+    56: '%Open',
+    57: 'Kg',
+    58: 'L/Hour',
+    59: 'GPH',
+    60: 'GAL',
+    61: 'CF',
+    62: 'BTU',
+    63: 'CMH',
+    // Add more as needed
+  }
+  return labelMap[unitCode] || ''
+}
 
 // Helper function to get unit info using T3Range.ts ranges
 const getUnitInfo = (unitCode: number, pointType?: string, rangeId?: number, isDigital?: boolean) => {
@@ -569,11 +620,14 @@ const getUnitInfo = (unitCode: number, pointType?: string, rangeId?: number, isD
     }
   }
 
-  // Fallback to old unit code mappings if T3Range lookup fails
-  if (ANALOG_UNIT_CODES[unitCode as keyof typeof ANALOG_UNIT_CODES]) {
+  // Fallback to unit code mappings if T3Range lookup fails
+  const symbol = getUnitSymbolFromCode(unitCode)
+  const label = getUnitLabelFromCode(unitCode)
+
+  if (symbol || label) {
     return {
       type: 'analog' as const,
-      info: ANALOG_UNIT_CODES[unitCode as keyof typeof ANALOG_UNIT_CODES]
+      info: { label, symbol }
     }
   }
 
@@ -2606,45 +2660,8 @@ const getAnalogUnit = (range: number, deviceType?: string): string => {
     }
   }
 
-  // Fallback to old unit code mappings for backward compatibility
-  const analogUnits: { [key: number]: string } = {
-    0: '',           // Unused/default
-    31: '°C',        // deg.Celsius
-    32: '°F',        // deg.Fahrenheit
-    33: 'ft/min',    // Feet per Min
-    34: 'Pa',        // Pascals
-    35: 'kPa',       // KPascals
-    36: 'psi',       // lbs/sqr.inch
-    37: 'inWC',      // inches of WC
-    38: 'W',         // Watts
-    39: 'kW',        // KWatts
-    40: 'kWh',       // KWH
-    41: 'V',         // Volts
-    42: 'kV',        // KV
-    43: 'A',         // Amps
-    44: 'mA',        // ma
-    45: 'CFM',       // CFM
-    46: 's',         // Seconds
-    47: 'min',       // Minutes
-    48: 'h',         // Hours
-    49: 'days',      // Days
-    50: 'time',      // Time
-    51: 'Ω',         // Ohms
-    52: '%',         // %
-    53: '%RH',       // %RH
-    54: 'p/min',     // p/min
-    55: 'counts',    // Counts
-    56: '%Open',     // %Open
-    57: 'kg',        // Kg
-    58: 'L/h',       // L/Hour
-    59: 'GPH',       // GPH
-    60: 'gal',       // GAL
-    61: 'ft³',       // CF
-    62: 'BTU',       // BTU
-    63: 'm³/h'       // CMH
-  }
-
-  return analogUnits[range] || ''
+  // Fallback to centralized unit code mapping
+  return getUnitSymbolFromCode(range)
 }
 
 /**
