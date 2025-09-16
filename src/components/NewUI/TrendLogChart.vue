@@ -241,6 +241,18 @@
                         <BarChartOutlined />
                         {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
                       </a-menu-item>
+                      <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
+                        <ImportOutlined />
+                        {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
+                      </a-menu-item>
+                      <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
+                        <ExportOutlined />
+                        {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
+                      </a-menu-item>
+                      <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
+                        <FunctionOutlined />
+                        {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
+                      </a-menu-item>
                     </a-menu>
                   </template>
                 </a-dropdown>
@@ -445,6 +457,8 @@ import {
   DownOutlined,
   SettingOutlined,
   ExportOutlined,
+  ImportOutlined,
+  FunctionOutlined,
   FileImageOutlined,
   FileOutlined,
   FileTextOutlined,
@@ -1551,6 +1565,19 @@ const digitalSeries = computed(() => {
   return dataSeries.value.filter(series => series.unitType === 'digital')
 })
 
+// Input/Output/Variable series filters (based on T3000 point types)
+const inputSeries = computed(() => {
+  return dataSeries.value.filter(series => series.pointType === 2) // Point type 2 = Input
+})
+
+const outputSeries = computed(() => {
+  return dataSeries.value.filter(series => series.pointType === 1) // Point type 1 = Output
+})
+
+const variableSeries = computed(() => {
+  return dataSeries.value.filter(series => series.pointType === 3) // Point type 3 = Variable
+})
+
 const hasAnalogSeries = computed(() => {
   return analogSeries.value.length > 0
 })
@@ -1559,12 +1586,36 @@ const hasDigitalSeries = computed(() => {
   return digitalSeries.value.length > 0
 })
 
+const hasInputSeries = computed(() => {
+  return inputSeries.value.length > 0
+})
+
+const hasOutputSeries = computed(() => {
+  return outputSeries.value.length > 0
+})
+
+const hasVariableSeries = computed(() => {
+  return variableSeries.value.length > 0
+})
+
 const analogCount = computed(() => {
   return analogSeries.value.length
 })
 
 const digitalCount = computed(() => {
   return digitalSeries.value.length
+})
+
+const inputCount = computed(() => {
+  return inputSeries.value.length
+})
+
+const outputCount = computed(() => {
+  return outputSeries.value.length
+})
+
+const variableCount = computed(() => {
+  return variableSeries.value.length
 })
 
 // Detect when we have input data but no valid series (all filtered out as demo data)
@@ -1585,6 +1636,18 @@ const allAnalogEnabled = computed(() => {
 
 const allDigitalEnabled = computed(() => {
   return digitalSeries.value.length > 0 && digitalSeries.value.every(series => series.visible)
+})
+
+const allInputEnabled = computed(() => {
+  return inputSeries.value.length > 0 && inputSeries.value.every(series => series.visible)
+})
+
+const allOutputEnabled = computed(() => {
+  return outputSeries.value.length > 0 && outputSeries.value.every(series => series.visible)
+})
+
+const allVariableEnabled = computed(() => {
+  return variableSeries.value.length > 0 && variableSeries.value.every(series => series.visible)
 })
 
 // Computed properties for visible series (for multi-canvas)
@@ -4213,6 +4276,36 @@ const toggleDigitalSeries = () => {
   updateCharts()
 }
 
+const toggleInputSeries = () => {
+  const enableInput = !allInputEnabled.value
+  dataSeries.value.forEach(series => {
+    if (series.pointType === 2) { // Point type 2 = Input
+      series.visible = enableInput
+    }
+  })
+  updateCharts()
+}
+
+const toggleOutputSeries = () => {
+  const enableOutput = !allOutputEnabled.value
+  dataSeries.value.forEach(series => {
+    if (series.pointType === 1) { // Point type 1 = Output
+      series.visible = enableOutput
+    }
+  })
+  updateCharts()
+}
+
+const toggleVariableSeries = () => {
+  const enableVariable = !allVariableEnabled.value
+  dataSeries.value.forEach(series => {
+    if (series.pointType === 3) { // Point type 3 = Variable
+      series.visible = enableVariable
+    }
+  })
+  updateCharts()
+}
+
 
 // New control functions - Updated to use timeOffset and regenerate data
 const moveTimeLeft = async () => {
@@ -4692,6 +4785,15 @@ const handleByTypeMenu = ({ key }: { key: string }) => {
       break
     case 'toggle-digital':
       toggleDigitalSeries()
+      break
+    case 'toggle-input':
+      toggleInputSeries()
+      break
+    case 'toggle-output':
+      toggleOutputSeries()
+      break
+    case 'toggle-variable':
+      toggleVariableSeries()
       break
   }
 }
