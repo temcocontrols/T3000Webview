@@ -5102,100 +5102,421 @@ const exportChart = () => {
 }
 
 const exportData = () => {
+  // Get ALL visible series from both analog and digital charts
   const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
+
+  if (activeSeriesData.length === 0) {
+    message.warning('No visible data series to export')
+    return
+  }
+
   const csvData = []
-  const headers = ['Timestamp', ...activeSeriesData.map(s => s.name)]
+
+  // Enhanced headers with series type and unit information
+  const headers = ['Timestamp', ...activeSeriesData.map(s => `${s.name} (${s.unit || s.unitType})`)]
   csvData.push(headers.join(','))
 
-  // Find max data length
+  // Find max data length across all series
   const maxLength = Math.max(...activeSeriesData.map(s => s.data.length))
 
-  for (let i = 0; i < maxLength; i++) {
-    const row = []
-    const timestamp = activeSeriesData.find(s => s.data[i])?.data[i]?.timestamp
-    if (timestamp) {
-      // Use local time formatting instead of UTC
-      if (typeof timestamp === 'number' && timestamp > 1e9) {
-        row.push(formatTimestampToLocal(timestamp))
-      } else {
-        row.push(new Date(timestamp).toLocaleString())
+  // Create a comprehensive timestamp index from all series
+  const allTimestamps = new Set<number>()
+  activeSeriesData.forEach(series => {
+    series.data.forEach(point => {
+      if (point.timestamp) {
+        allTimestamps.add(point.timestamp)
       }
-      activeSeriesData.forEach(series => {
-        row.push(series.data[i]?.value?.toFixed(2) || '')
-      })
-      csvData.push(row.join(','))
+    })
+  })
+
+  const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b)
+
+  // Export data for each timestamp
+  sortedTimestamps.forEach(timestamp => {
+    const row = []
+
+    // Format timestamp
+    if (typeof timestamp === 'number' && timestamp > 1e9) {
+      row.push(formatTimestampToLocal(timestamp))
+    } else {
+      row.push(new Date(timestamp).toLocaleString())
     }
-  }
+
+    // Find corresponding values for each series at this timestamp
+    activeSeriesData.forEach(series => {
+      const dataPoint = series.data.find(point => point.timestamp === timestamp)
+      if (dataPoint) {
+        // Format digital values as text, analog values with 2 decimal places
+        if (series.unitType === 'digital') {
+          const digitalStates = getDigitalStatesFromUnit(series.unit || '')
+          if (digitalStates) {
+            row.push(dataPoint.value === 1 ? digitalStates[1] : digitalStates[0])
+          } else {
+            row.push(dataPoint.value === 1 ? 'HIGH' : 'LOW')
+          }
+        } else {
+          row.push(dataPoint.value.toFixed(2))
+        }
+      } else {
+        row.push('') // No data for this timestamp
+      }
+    })
+
+    csvData.push(row.join(','))
+  })
 
   const blob = new Blob([csvData.join('\n')], { type: 'text/csv' })
   const link = document.createElement('a')
-  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`
+  link.download = `${chartTitle.value}_AllSeries_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`
   link.href = URL.createObjectURL(blob)
   link.click()
 
-  // message.success('Data exported successfully')
+  message.success(`Data exported successfully (${activeSeriesData.length} series, ${sortedTimestamps.length} data points)`)
 }
 
-// Additional Export Methods
-const exportChartPNG = () => {
-  if (!analogChartInstance) return
+// Multi-Canvas Export with Background Color Support
+const exportChartPNG = async () => {
+  try {
+    // Get all visible chart instances
+    const charts = []
 
-  const link = document.createElement('a')
-  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
-  link.href = analogChartInstance.toBase64Image('image/png', 1.0)
-  link.click()
+    // Add analog chart if it exists and has visible series
+    if (analogChartInstance && visibleAnalogSeries.value.length > 0) {
+      charts.push({
+        instance: analogChartInstance,
+        canvas: analogChartCanvas.value,
+        type: 'analog',
+        height: analogChartCanvas.value?.offsetHeight || 400
+      })
+    }
 
-  // message.success('Chart exported as PNG successfully')
+    // Add digital charts if they exist and have visible series
+    visibleDigitalSeries.value.forEach((series, index) => {
+      const digitalChart = digitalChartInstances[index]
+      const digitalCanvas = digitalChartRefs.value[index]
+      if (digitalChart && digitalCanvas) {
+        charts.push({
+          instance: digitalChart,
+          canvas: digitalCanvas,
+          type: 'digital',
+          height: digitalCanvas.offsetHeight || 100,
+          seriesName: series.name
+        })
+      }
+    })
+
+    if (charts.length === 0) {
+      message.warning('No charts available to export')
+      return
+    }
+
+    // Create composite canvas
+    const compositeCanvas = document.createElement('canvas')
+    const ctx = compositeCanvas.getContext('2d')
+    if (!ctx) return
+
+    // Calculate dimensions
+    const canvasWidth = Math.max(...charts.map(c => c.canvas?.offsetWidth || 800))
+    const totalHeight = charts.reduce((sum, chart) => sum + chart.height + 20, 40) // Add padding
+
+    compositeCanvas.width = canvasWidth
+    compositeCanvas.height = totalHeight
+
+    // Set white background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvasWidth, totalHeight)
+
+    // Get time range from data
+    const timeBounds = getDataSeriesTimeBounds()
+    let timeRangeText = ''
+    if (timeBounds.min && timeBounds.max) {
+      const startTime = formatTimestampToLocal(timeBounds.min).split(' ')[1] // Get time part
+      const endTime = formatTimestampToLocal(timeBounds.max).split(' ')[1] // Get time part
+      const startDate = formatTimestampToLocal(timeBounds.min).split(' ')[0] // Get date part
+      const endDate = formatTimestampToLocal(timeBounds.max).split(' ')[0] // Get date part
+
+      if (startDate === endDate) {
+        // Same day: show date with time range
+        timeRangeText = ` (${startDate} ${startTime} - ${endTime})`
+      } else {
+        // Different days: show full date-time range
+        timeRangeText = ` (${startDate} ${startTime} - ${endDate} ${endTime})`
+      }
+    } else {
+      // Fallback to timebase if no data
+      timeRangeText = ` (${timeBase.value})`
+    }
+
+    // Add title with time range
+    ctx.fillStyle = '#000000'
+    ctx.font = 'bold 16px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText(`${chartTitle.value}${timeRangeText}`, canvasWidth / 2, 25)
+
+    let currentY = 50
+
+    // Draw each chart
+    for (const chart of charts) {
+      // Create temporary canvas with white background for this chart
+      const tempCanvas = document.createElement('canvas')
+      const tempCtx = tempCanvas.getContext('2d')
+      if (!tempCtx || !chart.canvas) continue
+
+      tempCanvas.width = chart.canvas.width
+      tempCanvas.height = chart.canvas.height
+
+      // Set white background
+      tempCtx.fillStyle = '#ffffff'
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+
+      // Get chart image and draw on temp canvas
+      const chartImageData = chart.instance.toBase64Image('image/png', 1.0)
+      const img = new Image()
+
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          tempCtx.drawImage(img, 0, 0)
+          resolve()
+        }
+        img.src = chartImageData
+      })
+
+      // Add chart label for digital charts BEFORE drawing the chart
+      if (chart.type === 'digital' && chart.seriesName) {
+        ctx.fillStyle = '#333333'
+        ctx.font = 'bold 12px Arial'
+        ctx.textAlign = 'left'
+        ctx.fillText(`${chart.seriesName}`, 10, currentY - 5) // Position above the chart
+        currentY += 15 // Add space for the label
+      }
+
+      // Draw temp canvas to composite
+      const scaledWidth = canvasWidth
+      const scaledHeight = (chart.canvas.height * canvasWidth) / chart.canvas.width
+
+      ctx.drawImage(tempCanvas, 0, currentY, scaledWidth, scaledHeight)
+
+      currentY += scaledHeight + 10 // Reduced padding between charts
+    }
+
+    // Download the composite image
+    const link = document.createElement('a')
+    link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
+    link.href = compositeCanvas.toDataURL('image/png', 1.0)
+    link.click()
+
+    message.success('Chart exported as PNG successfully')
+  } catch (error) {
+    console.error('Error exporting PNG:', error)
+    message.error('Failed to export chart as PNG')
+  }
 }
 
-const exportChartJPG = () => {
-  if (!analogChartInstance) return
+const exportChartJPG = async () => {
+  try {
+    // Use the same multi-canvas logic as PNG but save as JPG
+    const charts = []
 
-  const link = document.createElement('a')
-  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
-  link.href = analogChartInstance.toBase64Image('image/jpeg', 0.9)
-  link.click()
+    if (analogChartInstance && visibleAnalogSeries.value.length > 0) {
+      charts.push({
+        instance: analogChartInstance,
+        canvas: analogChartCanvas.value,
+        type: 'analog',
+        height: analogChartCanvas.value?.offsetHeight || 400
+      })
+    }
 
-  // message.success('Chart exported as JPG successfully')
+    visibleDigitalSeries.value.forEach((series, index) => {
+      const digitalChart = digitalChartInstances[index]
+      const digitalCanvas = digitalChartRefs.value[index]
+      if (digitalChart && digitalCanvas) {
+        charts.push({
+          instance: digitalChart,
+          canvas: digitalCanvas,
+          type: 'digital',
+          height: digitalCanvas.offsetHeight || 100,
+          seriesName: series.name
+        })
+      }
+    })
+
+    if (charts.length === 0) {
+      message.warning('No charts available to export')
+      return
+    }
+
+    const compositeCanvas = document.createElement('canvas')
+    const ctx = compositeCanvas.getContext('2d')
+    if (!ctx) return
+
+    const canvasWidth = Math.max(...charts.map(c => c.canvas?.offsetWidth || 800))
+    const totalHeight = charts.reduce((sum, chart) => sum + chart.height + 20, 40)
+
+    compositeCanvas.width = canvasWidth
+    compositeCanvas.height = totalHeight
+
+    // Set light gray background for JPG (better contrast)
+    ctx.fillStyle = '#f5f5f5'
+    ctx.fillRect(0, 0, canvasWidth, totalHeight)
+
+    // Get time range from data
+    const timeBounds = getDataSeriesTimeBounds()
+    let timeRangeText = ''
+    if (timeBounds.min && timeBounds.max) {
+      const startTime = formatTimestampToLocal(timeBounds.min).split(' ')[1] // Get time part
+      const endTime = formatTimestampToLocal(timeBounds.max).split(' ')[1] // Get time part
+      const startDate = formatTimestampToLocal(timeBounds.min).split(' ')[0] // Get date part
+      const endDate = formatTimestampToLocal(timeBounds.max).split(' ')[0] // Get date part
+
+      if (startDate === endDate) {
+        // Same day: show date with time range
+        timeRangeText = ` (${startDate} ${startTime} - ${endTime})`
+      } else {
+        // Different days: show full date-time range
+        timeRangeText = ` (${startDate} ${startTime} - ${endDate} ${endTime})`
+      }
+    } else {
+      // Fallback to timebase if no data
+      timeRangeText = ` (${timeBase.value})`
+    }
+
+    ctx.fillStyle = '#000000'
+    ctx.font = 'bold 16px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText(`${chartTitle.value}${timeRangeText}`, canvasWidth / 2, 25)
+
+    let currentY = 50
+
+    for (const chart of charts) {
+      const tempCanvas = document.createElement('canvas')
+      const tempCtx = tempCanvas.getContext('2d')
+      if (!tempCtx || !chart.canvas) continue
+
+      tempCanvas.width = chart.canvas.width
+      tempCanvas.height = chart.canvas.height
+
+      tempCtx.fillStyle = '#f5f5f5'
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+
+      const chartImageData = chart.instance.toBase64Image('image/png', 1.0)
+      const img = new Image()
+
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          tempCtx.drawImage(img, 0, 0)
+          resolve()
+        }
+        img.src = chartImageData
+      })
+
+      // Add chart label for digital charts BEFORE drawing the chart
+      if (chart.type === 'digital' && chart.seriesName) {
+        ctx.fillStyle = '#222222'
+        ctx.font = 'bold 12px Arial'
+        ctx.textAlign = 'left'
+        ctx.fillText(`${chart.seriesName}`, 10, currentY - 5) // Position above the chart
+        currentY += 15 // Add space for the label
+      }
+
+      const scaledWidth = canvasWidth
+      const scaledHeight = (chart.canvas.height * canvasWidth) / chart.canvas.width
+
+      ctx.drawImage(tempCanvas, 0, currentY, scaledWidth, scaledHeight)
+
+      currentY += scaledHeight + 10 // Reduced padding between charts
+    }
+
+    const link = document.createElement('a')
+    link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
+    link.href = compositeCanvas.toDataURL('image/jpeg', 0.9)
+    link.click()
+
+    message.success('Chart exported as JPG successfully')
+  } catch (error) {
+    console.error('Error exporting JPG:', error)
+    message.error('Failed to export chart as JPG')
+  }
 }
 
 const exportChartSVG = () => {
-  if (!analogChartInstance) return
-
   // Note: Chart.js doesn't natively support SVG export
   // This would require additional library like chart.js-to-svg
-  // message.info('SVG export requires additional implementation')
+  message.info('SVG export requires additional implementation')
 }
 
 const exportDataJSON = () => {
+  // Get ALL visible series from both analog and digital charts
   const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
+
+  if (activeSeriesData.length === 0) {
+    message.warning('No visible data series to export')
+    return
+  }
+
+  // Calculate comprehensive time range across all series
+  const allTimestamps = activeSeriesData.flatMap(s => s.data.map(d => d.timestamp)).filter(t => t)
+  const timeRange = {
+    start: allTimestamps.length > 0 ? Math.min(...allTimestamps) : null,
+    end: allTimestamps.length > 0 ? Math.max(...allTimestamps) : null,
+    startFormatted: allTimestamps.length > 0 ? formatTimestampToLocal(Math.min(...allTimestamps)) : null,
+    endFormatted: allTimestamps.length > 0 ? formatTimestampToLocal(Math.max(...allTimestamps)) : null
+  }
 
   const jsonData = {
     title: chartTitle.value,
     exportedAt: new Date().toISOString(),
-    timeRange: {
-      start: activeSeriesData[0]?.data[0]?.timestamp,
-      end: activeSeriesData[0]?.data[activeSeriesData[0]?.data.length - 1]?.timestamp
+    exportType: 'multi-canvas-chart',
+    timeBase: timeBase.value,
+    totalDataPoints: allTimestamps.length,
+    timeRange,
+    chartTypes: {
+      analog: {
+        count: activeSeriesData.filter(s => s.unitType === 'analog').length,
+        series: activeSeriesData.filter(s => s.unitType === 'analog').map(s => s.name)
+      },
+      digital: {
+        count: activeSeriesData.filter(s => s.unitType === 'digital').length,
+        series: activeSeriesData.filter(s => s.unitType === 'digital').map(s => s.name)
+      }
     },
     series: activeSeriesData.map(series => ({
       name: series.name,
+      id: series.id,
       unit: series.unit,
       type: series.unitType,
       color: series.color,
+      panelId: series.panelId,
+      pointType: series.pointType,
+      pointNumber: series.pointNumber,
+      prefix: series.prefix,
+      description: series.description,
+      itemType: series.itemType,
+      dataPoints: series.data.length,
       data: series.data.map(point => ({
         timestamp: point.timestamp,
-        value: point.value
+        timestampFormatted: formatTimestampToLocal(point.timestamp),
+        value: point.value,
+        // Add formatted value for digital series
+        ...(series.unitType === 'digital' && {
+          digitalState: (() => {
+            const digitalStates = getDigitalStatesFromUnit(series.unit || '')
+            if (digitalStates) {
+              return point.value === 1 ? digitalStates[1] : digitalStates[0]
+            }
+            return point.value === 1 ? 'HIGH' : 'LOW'
+          })()
+        })
       }))
     }))
   }
 
   const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' })
   const link = document.createElement('a')
-  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.json`
+  link.download = `${chartTitle.value}_AllSeries_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.json`
   link.href = URL.createObjectURL(blob)
   link.click()
 
-  // message.success('Data exported as JSON successfully')
+  message.success(`Data exported as JSON successfully (${activeSeriesData.length} series, ${allTimestamps.length} total data points)`)
 }
 
 // Chart Options Methods
