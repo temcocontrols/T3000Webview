@@ -162,10 +162,10 @@
                   <FileImageOutlined />
                   Export as PNG
                 </a-menu-item>
-                <a-menu-item key="jpg">
+                <!-- <a-menu-item key="jpg">
                   <FileImageOutlined />
                   Export as JPG
-                </a-menu-item>
+                </a-menu-item> -->
                 <a-menu-divider />
                 <a-menu-item key="csv">
                   <FileExcelOutlined />
@@ -4525,9 +4525,23 @@ const handleZoomMenu = ({ key }: { key: string }) => {
 const handleChartOptionsMenu = ({ key }: { key: string }) => {
   switch (key) {
     case 'grid':
-
-    case 'json':
-      exportDataJSON()
+      // Grid toggle is handled by v-model:checked="showGrid" in template
+      // Chart will automatically update via reactive watcher
+      break
+    case 'legend':
+      // Legend toggle is handled by v-model:checked="showLegend" in template
+      // Chart will automatically update via reactive watcher
+      break
+    case 'smooth':
+      // Smooth lines toggle is handled by v-model:checked="smoothLines" in template
+      // Chart will automatically update via reactive watcher
+      break
+    case 'points':
+      // Show points toggle is handled by v-model:checked="showPoints" in template
+      // Chart will automatically update via reactive watcher
+      break
+    case 'reset':
+      resetChartOptions()
       break
   }
 }
@@ -5195,11 +5209,14 @@ const onChartOptionChange = () => {
 
 const resetChartOptions = () => {
   showGrid.value = true
-  showLegend.value = true
+  showLegend.value = false  // Hide legend by default to give more space to chart
   smoothLines.value = false
   showPoints.value = false
 
-  // message.success('Chart options reset to default')
+  // Update charts to reflect the reset options
+  updateCharts()
+
+  message.success('Chart options reset to default')
 }
 
 // Toggle methods for chart options
