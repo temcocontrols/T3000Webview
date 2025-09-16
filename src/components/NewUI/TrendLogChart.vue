@@ -1661,22 +1661,100 @@ const yAxisUnitsPlugin = {
     const ctx = chart.ctx
     ctx.save()
 
-    // Demo text for testing
-    const unitsText = '°C | %RH | psi'
+    // Get unit groups with colors from visible analog series (preserve original sequence)
+    const unitGroups = new Map()
+    const visibleAnalog = visibleAnalogSeries.value
 
-    // Set font for units text
+    // Loop through series in original order to find first occurrence of each unit
+    visibleAnalog.forEach(series => {
+      if (series.unit && !unitGroups.has(series.unit)) {
+        unitGroups.set(series.unit, {
+          color: series.color,
+          count: 0
+        })
+      }
+      if (series.unit && unitGroups.has(series.unit)) {
+        unitGroups.get(series.unit).count++
+      }
+    })
+
+    if (unitGroups.size === 0) {
+      ctx.restore()
+      return
+    }
+
+    // Build display text based on unit count
+    const units = Array.from(unitGroups.keys())
+    let displayText = ''
+    let xOffset = yScale.left
+    const chartArea = chart.chartArea
+    const y = chartArea.top - 15
+
+    // Set font
     ctx.font = '11px Inter, Helvetica, Arial, sans-serif'
-    ctx.fillStyle = '#595959'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
 
-    // Position in the legend area, aligned with y-axis
-    const chartArea = chart.chartArea
-    const x = yScale.left  // Start at y-axis position
-    const y = chartArea.top - 15  // In the legend area, above chart area
+    if (units.length === 1) {
+      // Single unit: "°C" or "°C (14 sensors)" if all same
+      const unit = units[0]
+      const group = unitGroups.get(unit)
+      const totalSensors = visibleAnalog.length
 
-    // Draw the units text
-    ctx.fillText(unitsText, x, y)
+      ctx.fillStyle = group.color
+      if (group.count === totalSensors && totalSensors > 1) {
+        displayText = `${unit} (${totalSensors} sensors)`
+      } else {
+        displayText = unit
+      }
+      ctx.fillText(displayText, xOffset, y)
+
+    } else if (units.length <= 3) {
+      // 2-3 units: "°C | Pa | CFM" (each colored)
+      units.forEach((unit, index) => {
+        const group = unitGroups.get(unit)
+        ctx.fillStyle = group.color
+        ctx.fillText(unit, xOffset, y)
+
+        // Measure text width for next position
+        const textWidth = ctx.measureText(unit).width
+        xOffset += textWidth
+
+        // Add separator if not last
+        if (index < units.length - 1) {
+          ctx.fillStyle = '#666666'
+          ctx.fillText(' | ', xOffset, y)
+          xOffset += ctx.measureText(' | ').width
+        }
+      })
+
+    } else {
+      // 4+ units: "°C | Pa ... +X more"
+      // Show first 2 units
+      for (let i = 0; i < 2; i++) {
+        const unit = units[i]
+        const group = unitGroups.get(unit)
+        ctx.fillStyle = group.color
+        ctx.fillText(unit, xOffset, y)
+
+        const textWidth = ctx.measureText(unit).width
+        xOffset += textWidth
+
+        if (i < 1) {
+          ctx.fillStyle = '#666666'
+          ctx.fillText(' | ', xOffset, y)
+          xOffset += ctx.measureText(' | ').width
+        }
+      }
+
+      // Add "... +X more"
+      const moreCount = units.length - 2
+      ctx.fillStyle = '#999999'
+      ctx.fillText(` ... +${moreCount} more`, xOffset, y)
+
+      // Store full unit info for tooltip (could be used later)
+      chart.fullUnitInfo = unitGroups
+    }
 
     ctx.restore()
   }
