@@ -1340,27 +1340,52 @@ const getXAxisTickConfig = (timeBase: string) => {
 
 // Get proper display format based on time range
 const getDisplayFormat = (timeBase: string): string => {
-  // Always show date + time for all timebases
-  return 'dd/MM HH:mm'
+  // Always return date+time format since formatXAxisTick handles the conditional display logic
+  return 'yyyy-MM-dd HH:mm'
 }
 
-// Custom tick formatter: full date/time for first tick, only time for others
+// Custom tick formatter:
+// - For ranges > 1 day ('1d', '4d'): show date+time for first and last ticks, time only for middle ticks
+// - For ranges ≤ 1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
 const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
   const date = new Date(value)
+  const currentRangeMinutes = getTimeRangeMinutes(timeBase.value)
+  const isLargeRange = currentRangeMinutes > 1440 // Larger than 1 day (1440 minutes)
 
-  if (index === 0) {
-    // First tick: show full date and time (dd/MM/yy HH:mm)
-    const day = date.getDate().toString().padStart(2, '0')
+  // Helper function to format date+time
+  const formatDateTime = () => {
+    const year = date.getFullYear()
     const month = (date.getMonth() + 1).toString().padStart(2, '0')
-    const year = date.getFullYear().toString().slice(-2)
+    const day = date.getDate().toString().padStart(2, '0')
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
-  } else {
-    // Subsequent ticks: show only time (HH:mm)
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  }
+
+  // Helper function to format time only
+  const formatTimeOnly = () => {
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
     return `${hours}:${minutes}`
+  }
+
+  const isFirstTick = index === 0
+  const isLastTick = index === ticks.length - 1
+
+  if (isLargeRange) {
+    // For ranges > 1 day: show date+time for first and last ticks, time only for middle ticks
+    if (isFirstTick || isLastTick) {
+      return formatDateTime() // Show date+time for first and last
+    } else {
+      return formatTimeOnly() // Show time only for middle ticks
+    }
+  } else {
+    // For ranges ≤ 1 day: show date+time for first tick, time only for the rest
+    if (isFirstTick) {
+      return formatDateTime() // Show date+time for first tick
+    } else {
+      return formatTimeOnly() // Show time only for other ticks
+    }
   }
 }
 
@@ -1380,11 +1405,11 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
   if (tickIntervalMinutes < 60) {
     unit = 'minute'
     stepSize = tickIntervalMinutes
-    displayFormat = 'dd/MM HH:mm'
+    displayFormat = 'yyyy-MM-dd HH:mm' // Always use date+time format, formatXAxisTick handles conditional display
   } else {
     unit = 'hour'
     stepSize = Math.ceil(tickIntervalMinutes / 60)
-    displayFormat = 'dd/MM HH:mm' // Always show date + time
+    displayFormat = 'yyyy-MM-dd HH:mm' // Always use date+time format, formatXAxisTick handles conditional display
   }
 
   return { unit, stepSize, displayFormat, maxTicks }
@@ -3927,7 +3952,7 @@ const updateAnalogChart = () => {
       displayFormats: {
         minute: displayFormat,
         hour: displayFormat,
-        day: 'dd/MM HH:mm'
+        day: 'yyyy-MM-dd HH:mm'
       },
       minUnit: 'second'
     }
@@ -4008,7 +4033,7 @@ const updateDigitalCharts = () => {
         displayFormats: {
           minute: displayFormat,
           hour: displayFormat,
-          day: 'dd/MM HH:mm'
+          day: 'yyyy-MM-dd HH:mm'
         },
         minUnit: 'second'
       }
