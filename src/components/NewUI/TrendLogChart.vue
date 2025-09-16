@@ -5782,7 +5782,31 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
   }
 })
 
-// Remove modal visibility watcher since this is now always visible as a component
+// Watch for changes in visible digital series to recreate charts when visibility toggles
+watch(visibleDigitalSeries, async (newSeries, oldSeries) => {
+  // Only recreate digital charts if the number of visible series changed
+  // or if we had charts before but now have no visible series (or vice versa)
+  const hadCharts = Object.keys(digitalChartInstances).length > 0
+  const shouldHaveCharts = newSeries.length > 0
+
+  if (newSeries.length !== oldSeries?.length || hadCharts !== shouldHaveCharts) {
+    // Wait for DOM updates (canvas elements to be added/removed)
+    await nextTick()
+
+    // Recreate digital charts to match the new visible series
+    createDigitalCharts()
+
+    // IMPORTANT: Populate the newly created charts with data
+    updateDigitalCharts()
+
+    console.log(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
+      oldCount: oldSeries?.length || 0,
+      newCount: newSeries.length,
+      chartInstancesCount: Object.keys(digitalChartInstances).length,
+      seriesWithData: newSeries.filter(s => s.data.length > 0).length
+    })
+  }
+}, { deep: true })// Remove modal visibility watcher since this is now always visible as a component
 
 // Debug function to diagnose chart data issues
 const diagnosticReport = () => {
