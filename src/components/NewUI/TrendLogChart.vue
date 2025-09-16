@@ -1651,12 +1651,44 @@ const getDataSeriesTimeBounds = () => {
   }
 }
 
+// Custom plugin for y-axis units
+const yAxisUnitsPlugin = {
+  id: 'yAxisUnits',
+  afterDraw: (chart: any) => {
+    const yScale = chart.scales.y
+    if (!yScale) return
+
+    const ctx = chart.ctx
+    ctx.save()
+
+    // Demo text for testing
+    const unitsText = '°C | %RH | psi'
+
+    // Set font for units text
+    ctx.font = '11px Inter, Helvetica, Arial, sans-serif'
+    ctx.fillStyle = '#595959'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+
+    // Position in the legend area, aligned with y-axis
+    const chartArea = chart.chartArea
+    const x = yScale.left  // Start at y-axis position
+    const y = chartArea.top - 15  // In the legend area, above chart area
+
+    // Draw the units text
+    ctx.fillText(unitsText, x, y)
+
+    ctx.restore()
+  }
+}
+
 // Multi-canvas chart configuration functions
 const getAnalogChartConfig = () => ({
   type: 'line' as const,
   data: {
     datasets: [] // Will be populated in updateAnalogChart
   },
+  plugins: [yAxisUnitsPlugin],
   options: {
     responsive: true,
     maintainAspectRatio: false,
