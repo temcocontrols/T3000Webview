@@ -113,7 +113,7 @@
         </a-flex>
 
         <!-- Chart Options -->
-        <a-flex align="center" class="control-group chart-options">
+        <!-- <a-flex align="center" class="control-group chart-options">
           <a-dropdown placement="bottomRight">
             <a-button size="small" style="display: flex; align-items: center;">
               <SettingOutlined style="margin-right: 4px;" />
@@ -146,7 +146,7 @@
               </a-menu>
             </template>
           </a-dropdown>
-        </a-flex>
+        </a-flex> -->
 
         <!-- Export Options -->
         <a-flex align="center" class="control-group export-options">
