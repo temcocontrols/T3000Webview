@@ -1172,11 +1172,11 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
   try {
     isLoading.value = true
 
-    // Set isRealTime based on timebase
+    // Set isRealTime based on timebase - 5m enables navigation controls, others disable them
     if (newTimeBase === '5m') {
-      isRealTime.value = true // Enable real-time for 5-minute timebase
+      isRealTime.value = true // Enable real-time UI mode for 5-minute timebase (shows current time, disables nav buttons)
     } else {
-      isRealTime.value = false // Disable real-time for historical timebases
+      isRealTime.value = false // Enable historical UI mode (allows time navigation with arrow buttons)
     }
 
     // Clear existing data first
@@ -1184,42 +1184,50 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
       series.data = []
     })
 
-    if (newTimeBase === '5m') {
-      // Default 5-minute timebase: Use hybrid approach (historical + real-time)
-      LogUtil.Info('📊 5-minute timebase: Loading historical data + starting real-time messages')
+    // NEW DESIGN: Always load both historical + real-time data for ALL timebases
+    // This ensures we show any existing data even when refreshing the page
+    LogUtil.Info(`📊 ${newTimeBase} timebase: Loading historical data + maintaining real-time updates`)
 
-      // Step 1: Load historical data for ≤5 minutes timeframe
-      await loadHistoricalDataFromDatabase()
+    // Step 1: Always initialize real-time data series structure first
+    LogUtil.Info(`🏗️ Initializing real-time data series structure for ${newTimeBase} timebase`)
+    await initializeRealDataSeries()
 
-      // Step 2: Start/resume real-time data monitoring with GET_ENTRIES messages
-      LogUtil.Info('📡 Starting real-time data monitoring for 5-minute timebase')
-      await initializeRealDataSeries()
-
-      // Step 3: Ensure real-time updates are active for 5-minute timebase
-      if (!realtimeInterval) {
-        LogUtil.Info('🔄 Starting real-time interval for 5-minute timebase')
-        startRealTimeUpdates()
-      }
-
+    // Step 2: Load historical data to populate the initialized series
+    LogUtil.Info(`📚 Loading historical data for ${newTimeBase} timebase to fill any gaps`)
+    await loadHistoricalDataFromDatabase()    // Step 3: Always ensure real-time updates are active for continuous data collection
+    // This ensures new data continues to flow in regardless of timebase
+    if (!realtimeInterval) {
+      LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
+      startRealTimeUpdates()
     } else {
-      // Other timebases (10m, 30m, 1h, etc.): Primarily historical data
-      LogUtil.Info(`📚 ${newTimeBase} timebase: Loading historical data from database`)
-
-      // Step 1: Stop real-time updates for non-5-minute timebases
-      if (realtimeInterval) {
-        LogUtil.Info('⏹️ Stopping real-time updates for non-5-minute timebase')
-        stopRealTimeUpdates()
-      }
-
-      // Step 2: Load historical data
-      await loadHistoricalDataFromDatabase()
-
-      // Note: We've stopped periodic GET_ENTRIES for efficiency, but the handler
-      // is still available if any messages happen to come through
+      LogUtil.Info(`✅ Real-time updates already active for ${newTimeBase} timebase`)
     }
 
-    // Update charts with loaded data
-    updateCharts()
+    // Note: Real-time data will continue to be collected and stored to database
+    // even for longer timebases, so historical data is always available
+
+    // Update charts with loaded data (with small delay to ensure charts are ready)
+    LogUtil.Info('🎨 Updating charts with loaded data', {
+      totalSeries: dataSeries.value.length,
+      seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+      dataPointsSummary: dataSeries.value.map(s => ({
+        name: s.name,
+        id: s.id,
+        dataCount: s.data.length,
+        visible: s.visible
+      }))
+    })
+
+    // Force Vue reactivity update and ensure charts are properly initialized
+    await nextTick()
+
+    // Force Vue to recognize the dataSeries change by creating a new reference
+    dataSeries.value = [...dataSeries.value]
+
+    setTimeout(() => {
+      LogUtil.Info('🎨 Executing delayed chart update after historical data load')
+      updateCharts()
+    }, 100)
 
   } catch (error) {
     LogUtil.Error('Error loading data for new timebase:', error)
@@ -1489,11 +1497,11 @@ const setTimeBase = (value: string) => {
 
   timeBase.value = value
 
-  // Update Auto Scroll state based on timebase
+  // Update UI mode based on timebase (affects navigation controls and display)
   if (value === '5m') {
-    isRealTime.value = true // Enable Auto Scroll for 5m (real-time)
+    isRealTime.value = true // Enable real-time UI mode (current time view, nav buttons disabled)
   } else {
-    isRealTime.value = false // Disable Auto Scroll for historical timebases
+    isRealTime.value = false // Enable historical UI mode (allows time navigation with arrow buttons)
   }
 
   // Don't call onTimeBaseChange() manually - let the Vue watcher handle timebase changes
@@ -2536,13 +2544,39 @@ const initializeRealDataSeries = async () => {
       newDataSeries.push(seriesConfig)
     }
 
-    // Update the reactive data series
+    // Update the reactive data series - preserve existing historical data
     LogUtil.Info('= TLChart: initializeRealDataSeries updating dataSeries', {
       previousSeriesCount: dataSeries.value.length,
       newSeriesCount: newDataSeries.length,
       newSeriesNames: newDataSeries.map(s => s.name),
       timestamp: new Date().toISOString()
     })
+
+    // CRITICAL FIX: Preserve existing historical data when initializing real-time series structure
+    if (dataSeries.value.length > 0) {
+      // If we already have data series (with historical data), preserve the historical data
+      LogUtil.Info('🔄 Preserving existing historical data while updating series structure', {
+        existingSeriesCount: dataSeries.value.length,
+        existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+      })
+
+      // Update each existing series with new configuration but keep historical data
+      newDataSeries.forEach(newSeries => {
+        const existingSeries = dataSeries.value.find(existing => existing.id === newSeries.id)
+        if (existingSeries && existingSeries.data && existingSeries.data.length > 0) {
+          // Preserve historical data and update configuration
+          newSeries.data = existingSeries.data
+          LogUtil.Info(`📈 Preserved ${existingSeries.data.length} historical data points for ${newSeries.name}`, {
+            seriesId: newSeries.id,
+            timeRange: existingSeries.data.length > 0 ? {
+              first: new Date(existingSeries.data[0].timestamp).toISOString(),
+              last: new Date(existingSeries.data[existingSeries.data.length - 1].timestamp).toISOString()
+            } : null
+          })
+        }
+      })
+    }
+
     dataSeries.value = newDataSeries
 
     // Update sync time since we successfully loaded real data
@@ -3139,10 +3173,26 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
       dataByPoint.get(key)!.push(item)
     })
 
+    LogUtil.Info('🔍 Starting historical data population', {
+      totalHistoricalItems: historicalData.length,
+      availableDataSeries: dataSeries.value.length,
+      seriesIds: dataSeries.value.map(s => s.id),
+      dataGroupKeys: Array.from(dataByPoint.keys())
+    })
+
     // Populate existing data series with historical data
-    dataSeries.value.forEach(series => {
+    dataSeries.value.forEach((series, seriesIndex) => {
       const seriesKey = `${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
       const seriesHistoricalData = dataByPoint.get(seriesKey) || []
+
+      LogUtil.Debug(`📊 Processing series ${seriesIndex}: ${series.name}`, {
+        seriesId: series.id,
+        seriesKey: seriesKey,
+        pointType: series.pointType,
+        mappedPointType: mapPointTypeFromNumber(series.pointType || 1),
+        historicalDataCount: seriesHistoricalData.length,
+        currentDataCount: series.data?.length || 0
+      })
 
       if (seriesHistoricalData.length > 0) {
         // Convert to data points and sort by timestamp
@@ -3158,7 +3208,18 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
         // Replace series data with historical data
         series.data = dataPoints
 
-        LogUtil.Debug(`📈 Loaded ${dataPoints.length} historical points for ${series.name}`)
+        LogUtil.Info(`📈 Successfully loaded ${dataPoints.length} historical points for ${series.name}`, {
+          seriesIndex,
+          timeRange: dataPoints.length > 0 ? {
+            first: new Date(dataPoints[0].timestamp).toISOString(),
+            last: new Date(dataPoints[dataPoints.length - 1].timestamp).toISOString()
+          } : null
+        })
+      } else {
+        LogUtil.Warn(`📭 No historical data found for series: ${series.name}`, {
+          seriesKey,
+          availableKeys: Array.from(dataByPoint.keys())
+        })
       }
     })
 
@@ -3792,17 +3853,40 @@ const destroyAllCharts = () => {
 }
 
 const updateCharts = () => {
+  LogUtil.Info('🎨 updateCharts: Starting chart updates', {
+    hasAnalogChart: !!analogChartInstance,
+    digitalChartsCount: Object.keys(digitalChartInstances).length,
+    totalDataSeries: dataSeries.value.length,
+    seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
+  })
+
   // Update analog chart
   updateAnalogChart()
 
   // Update digital charts
   updateDigitalCharts()
+
+  LogUtil.Info('🎨 updateCharts: Chart updates completed')
 }
 
 const updateAnalogChart = () => {
-  if (!analogChartInstance) return
+  if (!analogChartInstance) {
+    LogUtil.Debug('📊 updateAnalogChart: No analog chart instance available')
+    return
+  }
 
   const visibleAnalog = visibleAnalogSeries.value.filter(series => series.data.length > 0)
+
+  LogUtil.Info('📊 updateAnalogChart: Processing analog series', {
+    totalVisibleSeries: visibleAnalogSeries.value.length,
+    seriesWithData: visibleAnalog.length,
+    seriesDetails: visibleAnalogSeries.value.map(s => ({
+      name: s.name,
+      id: s.id,
+      dataCount: s.data.length,
+      visible: s.visible
+    }))
+  })
 
   analogChartInstance.data.datasets = visibleAnalog.map(series => {
     const sortedData = series.data
