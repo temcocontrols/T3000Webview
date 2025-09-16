@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Axis Y-Axis Color Demo</title>
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            font-family: Arial, sans-serif;
+        }
+
+        .demo-section {
+            margin: 30px 0;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .chart-mockup {
+            display: flex;
+            height: 400px;
+            border: 2px solid #333;
+            margin: 20px 0;
+        }
+
+        .left-panel {
+            width: 200px;
+            background: #f5f5f5;
+            padding: 10px;
+            border-right: 1px solid #ccc;
+        }
+
+        .sensor-item {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            margin: 2px 0;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .chart-area {
+            flex: 1;
+            position: relative;
+            background: white;
+        }
+
+        .y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 60px;
+            height: 100%;
+            border-right: 2px solid;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 5px;
+            font-size: 11px;
+        }
+
+        .y-axis-right {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 60px;
+            height: 100%;
+            border-left: 2px solid;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 5px;
+            font-size: 11px;
+            text-align: right;
+        }
+
+        .unit-label {
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .data-lines {
+            position: absolute;
+            left: 60px;
+            right: 60px;
+            top: 50px;
+            bottom: 50px;
+        }
+
+        .line {
+            position: absolute;
+            height: 2px;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform-origin: left center;
+        }
+
+        .explanation {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .highlight {
+            background: yellow;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Multi-Axis Y-Axis Color Coding Demo</h1>
+
+        <div class="demo-section">
+            <h2>Current Understanding: Customer's Requirement</h2>
+            <div class="explanation">
+                <p><strong>Customer says:</strong> "Each one can be showing in a different color to match the first item of that range"</p>
+                <p><strong>Example:</strong> "If the first temp sensor is red, the units and range for DegC will be red"</p>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Scenario A: Multiple Y-Axes (Different Unit Types)</h2>
+            <div class="explanation">
+                <p>When we have different measurement types that need different scales:</p>
+                <ul>
+                    <li>Temperature: 0-50°C (left axis)</li>
+                    <li>Pressure: 0-3000Pa (right axis)</li>
+                    <li>Flow: 0-100CFM (could be 3rd axis)</li>
+                </ul>
+            </div>
+
+            <div class="chart-mockup">
+                <div class="left-panel">
+                    <h4>14 Items (Order matters):</h4>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: red;"></div>
+                        <span>1. Temp Sensor A</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: pink;"></div>
+                        <span>2. Temp Sensor B</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: blue;"></div>
+                        <span>3. Pressure Sensor C</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: lightblue;"></div>
+                        <span>4. Pressure Sensor D</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: green;"></div>
+                        <span>5. Flow Sensor E</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: lightgreen;"></div>
+                        <span>6. Flow Sensor F</span>
+                    </div>
+                    <div style="color: #666; font-size: 10px; margin-top: 10px;">
+                        ... 8 more items
+                    </div>
+                </div>
+
+                <div class="chart-area">
+                    <!-- Left Y-axis (Temperature) -->
+                    <div class="y-axis" style="border-color: red; color: red;">
+                        <div class="unit-label">°C</div>
+                        <div>50</div>
+                        <div>40</div>
+                        <div>30</div>
+                        <div>20</div>
+                        <div>10</div>
+                        <div>0</div>
+                    </div>
+
+                    <!-- Right Y-axis (Pressure) -->
+                    <div class="y-axis-right" style="border-color: blue; color: blue;">
+                        <div class="unit-label">Pa</div>
+                        <div>3000</div>
+                        <div>2500</div>
+                        <div>2000</div>
+                        <div>1500</div>
+                        <div>1000</div>
+                        <div>0</div>
+                    </div>
+
+                    <!-- Data lines -->
+                    <div class="data-lines">
+                        <div class="line" style="background: red; top: 20%;"></div>
+                        <div class="line" style="background: pink; top: 30%;"></div>
+                        <div class="line" style="background: blue; top: 60%;"></div>
+                        <div class="line" style="background: lightblue; top: 70%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <p><strong>Color Logic:</strong></p>
+                <ul>
+                    <li><span class="highlight">First temperature sensor (Item #1) is RED</span> → Left Y-axis (°C) is RED</li>
+                    <li><span class="highlight">First pressure sensor (Item #3) is BLUE</span> → Right Y-axis (Pa) is BLUE</li>
+                    <li>Flow sensors would get a 3rd axis colored by first flow sensor (GREEN)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Scenario B: Single Y-Axis (Mixed Units)</h2>
+            <div class="explanation">
+                <p>If using single Y-axis but wanting color-coded unit display:</p>
+            </div>
+
+            <div class="chart-mockup">
+                <div class="left-panel">
+                    <h4>Same 14 Items:</h4>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: red;"></div>
+                        <span>1. Temp Sensor A</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: pink;"></div>
+                        <span>2. Temp Sensor B</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: blue;"></div>
+                        <span>3. Pressure Sensor C</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: lightblue;"></div>
+                        <span>4. Pressure Sensor D</span>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="color-dot" style="background: green;"></div>
+                        <span>5. Flow Sensor E</span>
+                    </div>
+                    <div style="color: #666; font-size: 10px; margin-top: 10px;">
+                        ... 9 more items
+                    </div>
+                </div>
+
+                <div class="chart-area">
+                    <!-- Single Y-axis -->
+                    <div class="y-axis" style="border-color: #333; color: #333;">
+                        <div style="display: flex; gap: 10px; font-size: 10px;">
+                            <span style="color: red; font-weight: bold;">°C</span>
+                            <span style="color: blue; font-weight: bold;">Pa</span>
+                            <span style="color: green; font-weight: bold;">CFM</span>
+                        </div>
+                        <div>3000</div>
+                        <div>2500</div>
+                        <div>2000</div>
+                        <div>1500</div>
+                        <div>1000</div>
+                        <div>500</div>
+                        <div>0</div>
+                    </div>
+
+                    <!-- Data lines -->
+                    <div class="data-lines">
+                        <div class="line" style="background: red; top: 90%;"></div>
+                        <div class="line" style="background: pink; top: 85%;"></div>
+                        <div class="line" style="background: blue; top: 40%;"></div>
+                        <div class="line" style="background: lightblue; top: 30%;"></div>
+                        <div class="line" style="background: green; top: 80%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <p><strong>Color Logic:</strong></p>
+                <ul>
+                    <li>Unit labels show: <span style="color: red;">°C</span> | <span style="color: blue;">Pa</span> | <span style="color: green;">CFM</span></li>
+                    <li>Each unit color matches the first sensor of that type from the left panel</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>✅ CONFIRMED REQUIREMENTS:</h2>
+            <div class="explanation">
+                <ol>
+                    <li><strong>Approach:</strong> ✅ Single Y-axis with colored unit text</li>
+                    <li><strong>What gets colored:</strong> ✅ Just the unit text (not axis lines/ticks/gridlines)</li>
+                    <li><strong>Maximum unit types:</strong> ✅ Up to 14 different units at once</li>
+                    <li><strong>Scale handling:</strong> ✅ All values normalized/divided by 1000, shared Y-axis scale</li>
+                    <li><strong>Similar units:</strong> ✅ "Deg.C" vs "Deg.F" treated as different units</li>
+                    <li><strong>Space constraint:</strong> ✅ Show 1-2 units, tooltip on hover for all</li>
+                    <li><strong>Same units case:</strong> ✅ If all 14 items same unit, show colors based on sensor colors</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Technical Implementation Notes:</h2>
+            <div class="explanation">
+                <h4>For Multiple Y-Axes:</h4>
+                <ul>
+                    <li>Group sensors by unit category (temperature, pressure, flow, etc.)</li>
+                    <li>Create separate Y-axes for each category</li>
+                    <li>Color each Y-axis based on first sensor of that category</li>
+                    <li>Handle scale differences automatically</li>
+                </ul>
+
+                <h4>✅ FINAL APPROACH - Single Y-Axis:</h4>
+                <ul>
+                    <li>✅ Show 1-2 unit labels with colors at Y-axis top</li>
+                    <li>✅ Tooltip on hover shows all units with colors</li>
+                    <li>✅ Each unit color = first sensor color of that unit type</li>
+                    <li>✅ Handle same-unit case with individual sensor colors in tooltip</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🎯 RECOMMENDED IMPLEMENTATION</h2>
+            <div class="explanation">
+                <h4>Display Logic:</h4>
+                <ul>
+                    <li><strong>1 unit type:</strong> "°C" (colored by first sensor)</li>
+                    <li><strong>2-3 unit types:</strong> "°C | Pa | CFM" (each colored by first sensor of that type)</li>
+                    <li><strong>4+ unit types:</strong> "°C | Pa ... +4 more" (hover for tooltip)</li>
+                </ul>
+
+                <h4>Special Cases:</h4>
+                <ul>
+                    <li><strong>All same units:</strong> "°C (14 sensors)" - tooltip shows individual sensor colors</li>
+                    <li><strong>Similar units:</strong> "Deg.C" vs "Deg.F" treated separately</li>
+                    <li><strong>Empty units:</strong> Skip sensors with no unit</li>
+                </ul>
+
+                <h4>✅ CORRECTED Implementation Steps:</h4>
+                <ol>
+                    <li><strong>Loop through left panel 14 items in order</strong>
+                        <br>➡️ <span style="color: red;">IMPORTANT: Do NOT modify the left panel 14 items sequence</span>
+                        <br>➡️ Preserve user's input sequence exactly as shown
+                    </li>
+                    <li><strong>Group by exact unit string match</strong>
+                        <br>➡️ Create internal grouping for color logic ONLY
+                        <br>➡️ <span style="color: red;">Do NOT update/reorder the left panel display</span>
+                        <br>➡️ Groups are for color assignment, not visual reorganization
+                    </li>
+                    <li><strong>Record first sensor color for each unit group</strong>
+                        <br>➡️ Find first occurrence of each unit in the original sequence
+                        <br>➡️ Use that sensor's color for the unit color
+                    </li>
+                    <li><strong>Display based on total unit count</strong></li>
+                    <li><strong>Create hover tooltip with complete unit list</strong></li>
+                </ol>
+
+                <h4>🚨 Key Constraints:</h4>
+                <ul style="background: #fff3cd; padding: 10px; border: 1px solid #ffeaa7;">
+                    <li><strong>Left Panel Sequence:</strong> NEVER modify user's input order</li>
+                    <li><strong>Grouping Purpose:</strong> Internal logic only, not for display reordering</li>
+                    <li><strong>Color Priority:</strong> First occurrence in original sequence determines unit color</li>
+                </ul>
+
+                <h4>Example Process:</h4>
+                <div style="background: #f8f9fa; padding: 10px; font-family: monospace; font-size: 11px;">
+<strong>Original Left Panel (user's sequence):</strong>
+1. SensorA (°C) - RED
+2. SensorB (Pa) - BLUE
+3. SensorC (°C) - GREEN
+4. SensorD (CFM) - ORANGE
+5. SensorE (°C) - PURPLE
+...
+
+<strong>Internal Grouping (for color logic only):</strong>
+"°C" → First occurrence: SensorA (RED) → Unit color: RED
+"Pa" → First occurrence: SensorB (BLUE) → Unit color: BLUE
+"CFM" → First occurrence: SensorD (ORANGE) → Unit color: ORANGE
+
+<strong>Y-axis Display:</strong>
+°C | Pa | CFM
+(red)(blue)(orange)
+
+<strong>Left Panel Display:</strong>
+UNCHANGED - Still shows 1,2,3,4,5... in user's original order
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
