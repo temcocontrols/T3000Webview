@@ -1689,8 +1689,9 @@ const getAnalogChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          usePointStyle: true,
-          pointStyle: 'line'
+          usePointStyle: false,
+          boxWidth: 2,
+          boxHeight: 12
         }
       },
       tooltip: {
