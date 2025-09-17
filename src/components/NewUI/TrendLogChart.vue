@@ -308,7 +308,9 @@
                       <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
                           {{ series.itemType }}
                         </a-tag> -->
-                      <span class="unit-info">{{ series.unit }}</span>
+                      <span class="unit-info" :style="{ color: series.color }">
+                        {{ getDisplayUnit(series) }}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -784,6 +786,55 @@ const getDigitalStatesFromRange = (rangeId: number): [string, string] => {
   return ['LOW', 'HIGH']
 }
 
+// Helper function to get display unit for left panel (handles both digital and analog)
+const getDisplayUnit = (series: SeriesConfig): string => {
+  // For analog series, just return the unit
+  if (series.unitType !== 'digital') {
+    return series.unit || ''
+  }
+
+  // For digital series, use the unitCode field (not unit field which is empty)
+  const unitCode = series.unitCode
+
+  // Debug logging to see what we're working with
+  console.log(`= TLChart getDisplayUnit: Digital series="${series.name}", unitCode=${unitCode}`, {
+    unitCodeType: typeof unitCode,
+    availableRangeIds: rangeDefinitions.digital.map(r => r.id).slice(0, 5)
+  })
+
+  if (typeof unitCode !== 'number' || unitCode < 0) {
+    console.log(`= TLChart getDisplayUnit: Invalid unitCode, returning empty string`)
+    return ''
+  }
+
+  // Handle unitCode 0 as a special case - might be default for "Off/On"
+  let searchId = unitCode
+  if (unitCode === 0) {
+    searchId = 1 // Map unitCode 0 to range ID 1 (Off/On)
+    console.log(`= TLChart getDisplayUnit: Mapping unitCode 0 to range ID 1`)
+  }
+
+  const digitalRange = rangeDefinitions.digital.find(range => range.id === searchId)
+
+  if (!digitalRange) {
+    console.log(`= TLChart getDisplayUnit: No range found for searchId ${searchId} (original unitCode: ${unitCode}), returning empty string`)
+    return '' // Return empty string when no range found
+  }
+
+  console.log(`= TLChart getDisplayUnit: Found range - label: "${digitalRange.label}"`)
+  return digitalRange.label
+}// Debug function to inspect series data
+const debugSeries = (series: SeriesConfig) => {
+  console.log('= TLChart Debug Series:', {
+    name: series.name,
+    unitType: series.unitType,
+    unit: series.unit,
+    unitCode: series.unitCode,
+    pointType: series.pointType,
+    displayUnit: getDisplayUnit(series)
+  })
+}
+
 // Function to convert Unix timestamp to local time string
 const formatTimestampToLocal = (unixTimestamp: number): string => {
   // Handle both seconds and milliseconds Unix timestamps
@@ -1006,14 +1057,14 @@ const generateDataSeries = (): SeriesConfig[] => {
     const itemId = `${pointTypeInfo.category}${pointNumber + 1}`
 
     // Add valid series to the list
-    validSeries.push({
+    const newSeries: SeriesConfig = {
       name: seriesName,
       color: SERIES_COLORS[validSeries.length % SERIES_COLORS.length], // Use validSeries.length for color index
       data: [],
       visible: true,
       unit: unit,
       isEmpty: false,
-      unitType: unitType,
+      unitType: unitType as 'digital' | 'analog',
       unitCode: rangeData[index],
       itemType: formattedItemType,
       prefix: pointTypeInfo.category,
@@ -1022,7 +1073,20 @@ const generateDataSeries = (): SeriesConfig[] => {
       pointNumber: pointNumber,
       panelId: panelId,
       id: itemId
-    })
+    }
+
+    // Debug logging for series creation
+    if (unitType === 'digital') {
+      console.log(`= TLChart Series Created (Digital):`, {
+        name: seriesName,
+        unit: unit,
+        unitType: unitType,
+        unitCode: rangeData[index],
+        digitalAnalog: digitalAnalog
+      })
+    }
+
+    validSeries.push(newSeries)
   }
 
   LogUtil.Info('📊 TrendLogChart: Generated series with filtering', {
