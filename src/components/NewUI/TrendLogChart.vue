@@ -1139,26 +1139,135 @@ const dataSeries = ref<SeriesConfig[]>([])
 // Regenerate data series when data source changes
 const regenerateDataSeries = () => {
   const newSeries = generateDataSeries()
+  const existingSeriesMap = new Map()
 
-  // Preserve existing data when regenerating series
-  newSeries.forEach(newSeriesItem => {
-    const existingSeries = dataSeries.value.find(existing =>
-      existing.id === newSeriesItem.id && existing.panelId === newSeriesItem.panelId
-    )
+  // Create a map of existing series for efficient lookup
+  dataSeries.value.forEach(existing => {
+    const key = `${existing.id}_${existing.panelId}`
+    existingSeriesMap.set(key, existing)
+  })
 
-    // If we found matching existing series, preserve its accumulated data
-    if (existingSeries && existingSeries.data && existingSeries.data.length > 0) {
-      newSeriesItem.data = existingSeries.data
+  /*
+  LogUtil.Debug('🔄 regenerateDataSeries: Starting intelligent merge', {
+    newSeriesCount: newSeries.length,
+    existingSeriesCount: dataSeries.value.length,
+    existingKeys: Array.from(existingSeriesMap.keys())
+  })
+  */
+
+  // INTELLIGENT MERGE STRATEGY:
+  // 1. For unchanged items: preserve ALL user settings (visible, data, etc.)
+  // 2. For updated items: use latest config but preserve user preferences where possible
+  // 3. For new items: use default settings
+  // 4. Deleted items: automatically removed (not in newSeries)
+
+  const mergedSeries = newSeries.map(newSeriesItem => {
+    const key = `${newSeriesItem.id}_${newSeriesItem.panelId}`
+    const existingSeries = existingSeriesMap.get(key)
+
+    if (existingSeries) {
+      // ITEM EXISTS - determine if it's unchanged or updated
+      const isConfigurationChanged = (
+        existingSeries.name !== newSeriesItem.name ||
+        existingSeries.unitType !== newSeriesItem.unitType ||
+        existingSeries.unitCode !== newSeriesItem.unitCode ||
+        existingSeries.pointType !== newSeriesItem.pointType ||
+        existingSeries.description !== newSeriesItem.description
+      )
+
+      if (isConfigurationChanged) {
+
+        /*
+        // UPDATED ITEM: Use latest config but preserve user preferences
+        LogUtil.Debug(`📝 Item updated: ${newSeriesItem.name}`, {
+          changes: {
+            name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} → ${newSeriesItem.name}` : 'unchanged',
+            unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} → ${newSeriesItem.unitType}` : 'unchanged',
+            description: existingSeries.description !== newSeriesItem.description ? 'changed' : 'unchanged'
+          }
+        })
+        */
+
+        return {
+          ...newSeriesItem,  // Use latest configuration
+          data: existingSeries.data || [],  // Preserve accumulated data
+          visible: existingSeries.visible,  // Preserve user visibility choice
+          // Keep other user preferences that make sense
+          color: existingSeries.color || newSeriesItem.color
+        }
+      } else {
+        // UNCHANGED ITEM: Preserve everything from existing series
+        // LogUtil.Debug(`✅ Item unchanged: ${existingSeries.name}`)
+
+        return {
+          ...existingSeries,  // Keep existing series as-is
+          // Only update fields that should always reflect latest state
+          color: existingSeries.color || newSeriesItem.color  // Fallback color if missing
+        }
+      }
+    } else {
+      // NEW ITEM: Use default settings
+      // LogUtil.Debug(`➕ New item added: ${newSeriesItem.name}`)
+
+      return {
+        ...newSeriesItem,  // Use new configuration with defaults
+        data: [],  // Start with empty data
+        visible: true  // New items are visible by default
+      }
     }
   })
 
-  dataSeries.value = newSeries
+  // Log the merge results
+  const addedCount = newSeries.length - dataSeries.value.filter(existing =>
+    newSeries.some(newItem => newItem.id === existing.id && newItem.panelId === existing.panelId)
+  ).length
+  const removedCount = dataSeries.value.length - newSeries.filter(newItem =>
+    dataSeries.value.some(existing => existing.id === newItem.id && existing.panelId === newItem.panelId)
+  ).length
+
+  /*
+  LogUtil.Info('🔄 regenerateDataSeries: Merge completed', {
+    totalItems: mergedSeries.length,
+    addedItems: addedCount,
+    removedItems: removedCount,
+    preservedVisibilityStates: mergedSeries.filter(s => !s.visible).length
+  })
+  */
+
+  dataSeries.value = mergedSeries
 }
+
+/*
+// Debug function to analyze data series state changes
+const debugDataSeriesFlow = (context: string) => {
+  const seriesSnapshot = dataSeries.value.map(series => ({
+    id: series.id,
+    name: series.name,
+    visible: series.visible,
+    unitType: series.unitType,
+    dataPoints: series.data?.length || 0,
+    panelId: series.panelId
+  }))
+
+  LogUtil.Debug(`📊 DataSeries Flow [${context}]:`, {
+    totalSeries: seriesSnapshot.length,
+    visibleSeries: seriesSnapshot.filter(s => s.visible).length,
+    hiddenSeries: seriesSnapshot.filter(s => !s.visible).length,
+    analogSeries: seriesSnapshot.filter(s => s.unitType === 'analog').length,
+    digitalSeries: seriesSnapshot.filter(s => s.unitType === 'digital').length,
+    seriesDetails: seriesSnapshot
+  })
+
+  return seriesSnapshot
+}
+*/
 
 // Watch currentItemData and regenerate series when it changes
 watch(currentItemData, (newData) => {
   if (newData) {
+    // debugDataSeriesFlow('Before currentItemData regeneration')
     regenerateDataSeries()
+    // debugDataSeriesFlow('After currentItemData regeneration')
   }
 }, { immediate: true, deep: true })
 
@@ -1177,7 +1286,9 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
   if (newPanelsData && newPanelsData.length > 0) {
     // Regenerate data series when panels data becomes available or changes
     if (currentItemData.value) {
+      // debugDataSeriesFlow('Before T3000_Data regeneration')
       regenerateDataSeries()
+      // debugDataSeriesFlow('After T3000_Data regeneration')
     }
 
     // Process new data for chart data points
@@ -1186,12 +1297,15 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
 
     // Store real-time data to database if in real-time mode
     if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0) {
+
+      /*
       LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
         isRealTime: isRealTime.value,
         totalDataItemsCount: chartDataFormat.length,
         chartSeriesCount: dataSeries.value.length,
         timestamp: new Date().toISOString()
       })
+      */
 
       // OPTION 1: Filter chartDataFormat to only include items from current chart series
       // Get chart series identifiers for filtering
@@ -1203,6 +1317,7 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
         seriesName: series.name
       })).filter(item => item.id && item.panelId)
 
+      /*
       LogUtil.Info('🎯 Chart series identifiers for filtering', {
         chartSeriesCount: chartSeriesItems.length,
         chartSeries: chartSeriesItems.map(item => ({
@@ -1211,6 +1326,7 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
           seriesName: item.seriesName
         }))
       })
+      */
 
       // Filter chartDataFormat to only include chart series items
       const chartRelevantItems = chartDataFormat.filter(item =>
@@ -1226,6 +1342,7 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
         )
       )
 
+      /*
       LogUtil.Info('📊 Filtered data for storage', {
         originalItemsCount: chartDataFormat.length,
         filteredItemsCount: chartRelevantItems.length,
@@ -1241,6 +1358,7 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
           range: item.range            // ADD: Debug range value
         }))
       })
+      */
 
       // Validate filtering results
       validateFilteringResults(chartDataFormat.length, chartRelevantItems.length, dataSeries.value.length)
@@ -1261,6 +1379,8 @@ watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
 
 // Watch scheduleItemData for changes
 watch(scheduleItemData, (newData, oldData) => {
+
+  /*
   LogUtil.Info('= TLChart: scheduleItemData changed', {
     hasNewData: !!newData,
     hasOldData: !!oldData,
@@ -1272,6 +1392,7 @@ watch(scheduleItemData, (newData, oldData) => {
     pidsChanged: (newData as any)?.t3Entry?.pid !== (oldData as any)?.t3Entry?.pid,
     timestamp: new Date().toISOString()
   })
+  */
 }, { deep: true })
 
 // Watch timeBase for changes and hybrid data loading
@@ -4345,11 +4466,15 @@ const disableAllSeries = () => {
 
 const toggleAnalogSeries = () => {
   const enableAnalog = !allAnalogEnabled.value
+  debugDataSeriesFlow(`Before toggle analog (enabling: ${enableAnalog})`)
+
   dataSeries.value.forEach(series => {
     if (series.unitType === 'analog') {
       series.visible = enableAnalog
     }
   })
+
+  debugDataSeriesFlow(`After toggle analog (enabled: ${enableAnalog})`)
   updateCharts()
 }
 
