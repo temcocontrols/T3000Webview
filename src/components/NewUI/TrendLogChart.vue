@@ -1038,7 +1038,8 @@ const generateDataSeries = (): SeriesConfig[] => {
     // 1. No description AND panel ID is 0 (original filter)
     // 2. No description at all (prevents generic names like "1 (P0)")
     // 3. Names that contain "(P0)" pattern (explicit demo data check)
-    const potentialSeriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
+    // 4. Only allow items with valid device descriptions
+    const potentialSeriesName = description // No fallback - description is required
 
     if (!description && panelId === 0) {
       LogUtil.Info('🚫 TrendLogChart: Filtering out placeholder data (no description + panel 0)', {
@@ -1063,7 +1064,7 @@ const generateDataSeries = (): SeriesConfig[] => {
       continue; // Skip this item
     }
 
-    if (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/)) {
+    if (potentialSeriesName && (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/))) {
       LogUtil.Info('🚫 TrendLogChart: Filtering out explicit demo data (demo pattern)', {
         inputItem,
         potentialSeriesName,
@@ -1079,6 +1080,15 @@ const generateDataSeries = (): SeriesConfig[] => {
     // Generate clean names for valid data (description is guaranteed to exist after filtering)
     const seriesName = description
     const cleanDescription = `${pointTypeInfo.category} - ${description}`
+
+    // Log successful inclusion of real data
+    LogUtil.Debug(`✅ TrendLogChart: Including real T3000 data series: "${seriesName}"`, {
+      panelId,
+      pointType,
+      pointNumber,
+      unitType,
+      hasDescription: !!description
+    })
     const formattedItemType = `${panelId}${pointTypeInfo.category}${pointNumber + 1}`
     const itemId = `${pointTypeInfo.category}${pointNumber + 1}`
 
@@ -3326,8 +3336,11 @@ const loadHistoricalDataFromDatabase = async () => {
     // Method 1: Try to extract from current data series
     if (dataSeries.value && dataSeries.value.length > 0) {
       dataSeries.value.forEach((series, index) => {
-        // Only include series that have meaningful identifiers
-        if (series.id && series.id !== '1' && series.name && !series.name.includes('(P0)')) {
+        // Only include series that have meaningful identifiers and are not demo/test data
+        if (series.id && series.id !== '1' && series.name &&
+            !series.name.includes('(P0)') &&
+            !series.name.match(/^\d+\s*\([P]\d+\)$/) &&
+            series.description) {
           let pointType = 'VARIABLE' // Default
           let pointIndex = index
           let pointId = series.id
@@ -4031,23 +4044,7 @@ const addRealtimeDataPoint = async () => {
   updateCharts()
 }
 
-const generateDemoDataPoints = async () => {
-  LogUtil.Info('📊 TrendLogChart: Generating demo data points for empty series')
-
-  const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
-
-  dataSeries.value.forEach((series, index) => {
-    if (series.data.length === 0) {
-      LogUtil.Info(`📈 Generating demo data for series: ${series.name}`)
-
-      // Demo data generation removed
-      const demoData = []  // Mock data generation removed
-      series.data = demoData
-
-      LogUtil.Info(`Mock data generation disabled for ${series.name}`)
-    }
-  })
-}
+// Demo data generation function completely removed - only real T3000 data allowed
 
 // Multi-canvas chart creation functions
 const createCharts = () => {
