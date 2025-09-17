@@ -1034,25 +1034,51 @@ const generateDataSeries = (): SeriesConfig[] => {
     const description = getDeviceDescription(panelId, pointType, pointNumber)
 
     // FILTER OUT DEMO/PLACEHOLDER DATA
-    // Only skip items that are clearly placeholder (no description AND panel ID is 0)
+    // Enhanced filtering to remove all types of demo/test data:
+    // 1. No description AND panel ID is 0 (original filter)
+    // 2. No description at all (prevents generic names like "1 (P0)")
+    // 3. Names that contain "(P0)" pattern (explicit demo data check)
+    const potentialSeriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
+
     if (!description && panelId === 0) {
-      LogUtil.Info('🚫 TrendLogChart: Filtering out placeholder data', {
+      LogUtil.Info('🚫 TrendLogChart: Filtering out placeholder data (no description + panel 0)', {
         inputItem,
         pointType,
         pointNumber,
         panelId,
-        reason: 'No device description and panel ID is 0'
+        potentialSeriesName
       })
-      continue; // Skip this item - don't add to validSeries
+      continue; // Skip this item
+    }
+
+    if (!description) {
+      LogUtil.Info('🚫 TrendLogChart: Filtering out undescribed data (prevents demo names)', {
+        inputItem,
+        pointType,
+        pointNumber,
+        panelId,
+        potentialSeriesName,
+        reason: 'No device description - likely demo/test data'
+      })
+      continue; // Skip this item
+    }
+
+    if (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/)) {
+      LogUtil.Info('🚫 TrendLogChart: Filtering out explicit demo data (demo pattern)', {
+        inputItem,
+        potentialSeriesName,
+        reason: 'Series name matches demo data pattern like "1 (P0)" or contains (P0)'
+      })
+      continue; // Skip this item
     }
 
     // Only include items with valid data
     const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
     const unitType = isDigital ? 'digital' : 'analog'
 
-    // Generate clean names for valid data
-    const seriesName = description || `${pointTypeInfo.category}${pointNumber + 1} (P${panelId})`
-    const cleanDescription = description ? `${pointTypeInfo.category} - ${description}` : `${pointTypeInfo.category}${pointNumber + 1}`
+    // Generate clean names for valid data (description is guaranteed to exist after filtering)
+    const seriesName = description
+    const cleanDescription = `${pointTypeInfo.category} - ${description}`
     const formattedItemType = `${panelId}${pointTypeInfo.category}${pointNumber + 1}`
     const itemId = `${pointTypeInfo.category}${pointNumber + 1}`
 
