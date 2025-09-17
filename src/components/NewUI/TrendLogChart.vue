@@ -2098,7 +2098,7 @@ const getAnalogChartConfig = () => ({
 
             const cleanLabel = series.description || series.prefix || context.dataset.label
             const unit = series.unit || ''
-            return `${cleanLabel}: ${context.parsed.y.toFixed(2)}${unit}`
+            return `${cleanLabel}: ${context.parsed.y.toFixed(2)} ${unit}`
           }
         }
       }
