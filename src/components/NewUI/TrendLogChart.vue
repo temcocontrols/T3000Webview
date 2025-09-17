@@ -2138,6 +2138,41 @@ const getAnalogChartConfig = () => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           padding: 8,
+          // Improve precision for small value ranges
+          callback: function(value: any) {
+            return Number(value).toFixed(2)
+          }
+        },
+        // Dynamic Y-axis scaling to better show small variations
+        afterDataLimits: function(scale: any) {
+          const data = scale.chart.data.datasets
+          if (data.length === 0) return
+
+          // Get all data values
+          const allValues: number[] = []
+          data.forEach((dataset: any) => {
+            if (dataset.data && dataset.data.length > 0) {
+              dataset.data.forEach((point: any) => {
+                if (point && typeof point.y === 'number') {
+                  allValues.push(point.y)
+                }
+              })
+            }
+          })
+
+          if (allValues.length === 0) return
+
+          const min = Math.min(...allValues)
+          const max = Math.max(...allValues)
+          const range = max - min
+
+          // If range is very small (like 0.1-0.3), expand the Y-axis for better visibility
+          if (range > 0 && range < 2) {
+            const center = (min + max) / 2
+            const expandedRange = Math.max(range * 2, 1) // At least 1 unit range
+            scale.min = center - expandedRange / 2
+            scale.max = center + expandedRange / 2
+          }
         }
       }
     }
@@ -3050,6 +3085,30 @@ const scaleValueIfNeeded = (rawValue: number): number => {
 }
 
 /**
+ * 🔍 DIAGNOSTIC: Analyze value scaling impact on chart visibility
+ * This helps identify why similar values appear as straight lines
+ */
+const analyzeValueScaling = (values: number[], seriesName: string) => {
+  if (values.length < 2) return
+
+  const rawValues = [...values]
+  const scaledValues = values.map(v => scaleValueIfNeeded(v))
+
+  const rawRange = Math.max(...rawValues) - Math.min(...rawValues)
+  const scaledRange = Math.max(...scaledValues) - Math.min(...scaledValues)
+
+  LogUtil.Info(`📊 Value Scaling Analysis: ${seriesName}`, {
+    rawValues: rawValues.slice(0, 5), // Show first 5 values
+    scaledValues: scaledValues.slice(0, 5),
+    rawRange,
+    scaledRange,
+    scalingRatio: rawRange / scaledRange,
+    visibilityIssue: scaledRange < 1 ? 'YES - Range too small for chart visibility' : 'NO - Range adequate',
+    recommendation: scaledRange < 1 ? 'Consider preserving original scale or adjusting Y-axis bounds' : 'Scaling is appropriate'
+  })
+}
+
+/**
  * Get the correct value from panel data based on device type
  */
 const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
@@ -3507,6 +3566,12 @@ const loadHistoricalDataFromDatabase = async () => {
       willUseUrl: `/trendlogs/${trendlogId}/history`
     })
 
+    // Calculate dynamic limit to avoid truncation (was fixed at 80)
+    const timeRangeHours = timeRangeMinutes / 60
+    const estimatedPointsPerHour = 12 // Assuming 5-minute intervals
+    const estimatedTotalPoints = Math.ceil(timeRangeHours * estimatedPointsPerHour * specificPoints.length)
+    const recommendedLimit = Math.max(200, estimatedTotalPoints * 1.5) // 50% buffer
+
     // Prepare historical data request (matching the working API structure)
     const historyRequest = {
       serial_number: currentSN,
@@ -3514,37 +3579,17 @@ const loadHistoricalDataFromDatabase = async () => {
       trendlog_id: trendlogId,
       start_time: formattedStartTime,
       end_time: formattedEndTime,
-      limit: 80, // Use same limit as working API call
+      limit: recommendedLimit, // Dynamic limit based on expected data volume
       point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types (matching working API)
       specific_points: specificPoints
     }
 
-    LogUtil.Debug('🔍 Historical data request (with time offset support):', {
+    LogUtil.Debug('🔍 Historical data request:', {
       timeRange: `${formattedStartTime} to ${formattedEndTime}`,
-      timeOffset: timeOffset.value,
-      timebaseMinutes: timeRangeMinutes,
+      timeRangeMinutes: timeRangeMinutes,
       pointsCount: specificPoints.length,
-      trendlogUrl: `/trendlogs/${trendlogId}/history`,
-      dataSeriesCount: dataSeries.value?.length || 0,
-      timeCalculation: {
-        currentTime: formatLocalTime(currentTime),
-        offsetEndTime: formatLocalTime(offsetEndTime),
-        offsetStartTime: formatLocalTime(offsetStartTime)
-      },
-      requestStructure: {
-        serial_number: historyRequest.serial_number,
-        panel_id: historyRequest.panel_id,
-        trendlog_id: historyRequest.trendlog_id,
-        limit: historyRequest.limit,
-        point_types: historyRequest.point_types,
-        specific_points_count: historyRequest.specific_points?.length || 0
-      },
-      allSpecificPoints: specificPoints.map(p => ({
-        point_id: p.point_id,
-        point_type: p.point_type,
-        point_index: p.point_index,
-        panel_id: p.panel_id
-      }))
+      limit: historyRequest.limit,
+      trendlogId: trendlogId
     })
 
     // Fetch historical data
@@ -3935,10 +3980,24 @@ const updateChartWithNewData = (validDataItems: any[]) => {
       actualValue = matchedItem.control;
     }
 
+    const rawValue = actualValue || 0
+    const scaledValue = scaleValueIfNeeded(rawValue)
+
+    // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
+    if (rawValue >= 1000) {
+      LogUtil.Info(`🔍 Value Scaling Analysis for ${series.name}`, {
+        rawValue,
+        scaledValue,
+        precisionLoss: rawValue - (scaledValue * 1000),
+        seriesName: series.name,
+        note: 'Large values scaled down - check for precision loss'
+      })
+    }
+
     // Create and add data point
     const dataPoint: DataPoint = {
       timestamp: timestamp.getTime(),
-      value: scaleValueIfNeeded(actualValue || 0),
+      value: scaledValue,
       id: matchedItem.id,
       type: matchedItem.type,
       digital_analog: matchedItem.digital_analog || BAC_UNITS_ANALOG,
