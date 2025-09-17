@@ -193,7 +193,7 @@
               <!-- Data Source Indicator -->
               <div class="data-source-indicator">
                 <span v-if="shouldShowLoading" class="source-badge loading">
-                  <a-spin size="small" /> Loading...
+                   Loading...
                 </span>
                 <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
                   📡 Live
