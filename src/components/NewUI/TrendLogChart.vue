@@ -1397,70 +1397,56 @@ watch(scheduleItemData, (newData, oldData) => {
 
 // Watch timeBase for changes and hybrid data loading
 watch(timeBase, async (newTimeBase, oldTimeBase) => {
-  LogUtil.Info('= TLChart: timeBase changed - Smart Data Loading', {
+  LogUtil.Info('= TLChart: timeBase changed - Data Loading with Auto Scroll State Preserved', {
     oldTimeBase: oldTimeBase,
     newTimeBase: newTimeBase,
-    isDefault5Min: newTimeBase === '5m',
+    autoScrollState: isRealTime.value,
     timestamp: new Date().toISOString()
   })
 
   try {
     isLoading.value = true
 
-    // Set isRealTime based on timebase - 5m enables navigation controls, others disable them
-    if (newTimeBase === '5m') {
-      isRealTime.value = true // Enable real-time UI mode for 5-minute timebase (shows current time, disables nav buttons)
-    } else {
-      isRealTime.value = false // Enable historical UI mode (allows time navigation with arrow buttons)
-    }
-
     // Clear existing data first
     dataSeries.value.forEach(series => {
       series.data = []
     })
 
-    // NEW DESIGN: Always load both historical + real-time data for ALL timebases
-    // This ensures we show any existing data even when refreshing the page
-    LogUtil.Info(`📊 ${newTimeBase} timebase: Loading historical data + maintaining real-time updates`)
+    // Load data based on current Auto Scroll state (preserve user's choice)
+    if (isRealTime.value) {
+      // Auto Scroll ON: Load real-time + historical data
+      LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
 
-    // Step 1: Always initialize real-time data series structure first
-    LogUtil.Info(`🏗️ Initializing real-time data series structure for ${newTimeBase} timebase`)
-    await initializeRealDataSeries()
+      // Step 1: Initialize real-time data series structure
+      await initializeRealDataSeries()
 
-    // Step 2: Load historical data to populate the initialized series
-    LogUtil.Info(`📚 Loading historical data for ${newTimeBase} timebase to fill any gaps`)
-    await loadHistoricalDataFromDatabase()    // Step 3: Always ensure real-time updates are active for continuous data collection
-    // This ensures new data continues to flow in regardless of timebase
-    if (!realtimeInterval) {
-      LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
-      startRealTimeUpdates()
+      // Step 2: Load historical data to populate the series
+      await loadHistoricalDataFromDatabase()
+
+      // Step 3: Ensure real-time updates are active
+      if (!realtimeInterval) {
+        LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
+        startRealTimeUpdates()
+      }
     } else {
-      LogUtil.Info(`✅ Real-time updates already active for ${newTimeBase} timebase`)
+      // Auto Scroll OFF: Load historical data only
+      LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
+      await loadHistoricalDataFromDatabase()
     }
 
-    // Note: Real-time data will continue to be collected and stored to database
-    // even for longer timebases, so historical data is always available
-
-    // Update charts with loaded data (with small delay to ensure charts are ready)
+    // Update charts with loaded data
     LogUtil.Info('🎨 Updating charts with loaded data', {
       totalSeries: dataSeries.value.length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-      dataPointsSummary: dataSeries.value.map(s => ({
-        name: s.name,
-        id: s.id,
-        dataCount: s.data.length,
-        visible: s.visible
-      }))
+      autoScrollEnabled: isRealTime.value
     })
 
-    // Force Vue reactivity update and ensure charts are properly initialized
+    // Force Vue reactivity update
     await nextTick()
-
-    // Force Vue to recognize the dataSeries change by creating a new reference
     dataSeries.value = [...dataSeries.value]
 
     setTimeout(() => {
-      LogUtil.Info('🎨 Executing delayed chart update after historical data load')
+      LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
       updateCharts()
     }, 100)
 
@@ -1472,6 +1458,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
 
   LogUtil.Info('✅ Timebase change completed', {
     newTimeBase,
+    autoScrollState: isRealTime.value,
     dataSeriesCount: dataSeries.value.length,
     totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
   })
@@ -4556,16 +4543,19 @@ const zoomIn = () => {
     const newTimebase = timebaseProgression[currentIndex - 1]
     timeBase.value = newTimebase
 
-    // Update Auto Scroll state based on timebase
-    if (newTimebase === '5m') {
-      isRealTime.value = true // Enable Auto Scroll for 5m (real-time)
-    } else {
-      isRealTime.value = false // Disable Auto Scroll for historical timebases
-    }
+    LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
+      autoScrollState: isRealTime.value,
+      note: 'Auto Scroll state unchanged by zoom operation'
+    })
 
-    // Let Vue watcher handle timebase changes to prevent duplicate API calls
-    // onTimeBaseChange()
-    // message.info(`Zoomed in to ${getTimeBaseLabel()}`)
+    // Refresh data with new timebase, preserving Auto Scroll state
+    if (isRealTime.value) {
+      // If Auto Scroll is ON, reload with real-time + historical
+      initializeData()
+    } else {
+      // If Auto Scroll is OFF, reload with historical only
+      initializeHistoricalData()
+    }
   }
 }
 
@@ -4575,26 +4565,39 @@ const zoomOut = () => {
     const newTimebase = timebaseProgression[currentIndex + 1]
     timeBase.value = newTimebase
 
-    // Update Auto Scroll state based on timebase
-    if (newTimebase === '5m') {
-      isRealTime.value = true // Enable Auto Scroll for 5m (real-time)
-    } else {
-      isRealTime.value = false // Disable Auto Scroll for historical timebases
-    }
+    LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
+      autoScrollState: isRealTime.value,
+      note: 'Auto Scroll state unchanged by zoom operation'
+    })
 
-    // Let Vue watcher handle timebase changes to prevent duplicate API calls
-    // onTimeBaseChange()
-    // message.info(`Zoomed out to ${getTimeBaseLabel()}`)
+    // Refresh data with new timebase, preserving Auto Scroll state
+    if (isRealTime.value) {
+      // If Auto Scroll is ON, reload with real-time + historical
+      initializeData()
+    } else {
+      // If Auto Scroll is OFF, reload with historical only
+      initializeHistoricalData()
+    }
   }
 }
 
 const resetToDefaultTimebase = () => {
   timeBase.value = '5m'
   timeOffset.value = 0 // Reset time navigation as well
-  isRealTime.value = true // Turn Auto Scroll on when returning to 5m timebase
-  // Let Vue watcher handle timebase changes to prevent duplicate API calls
-  // onTimeBaseChange()
-  // message.info('Reset to default 5 minutes timebase')
+
+  LogUtil.Info('🔄 Reset to default timebase (5m)', {
+    autoScrollState: isRealTime.value,
+    note: 'Auto Scroll state preserved during reset'
+  })
+
+  // Refresh data with default timebase, preserving Auto Scroll state
+  if (isRealTime.value) {
+    // If Auto Scroll is ON, reload with real-time + historical
+    initializeData()
+  } else {
+    // If Auto Scroll is OFF, reload with historical only
+    initializeHistoricalData()
+  }
 }
 
 const setView = (viewNumber: number) => {
@@ -4831,17 +4834,57 @@ const onRealTimeToggle = (checked: boolean) => {
   })
 
   if (checked) {
-    // Reset time offset when switching to real-time
+    // AUTO SCROLL ON: Show real-time + historical data
     timeOffset.value = 0
-    // Regenerate data for current time
     initializeData()
     startRealTimeUpdates()
   } else {
+    // AUTO SCROLL OFF: Show historical data only (stop real-time updates)
     stopRealTimeUpdates()
-    // Clear any stale monitor config and data series to ensure clean state
-    LogUtil.Info('🧹 TrendLogModal: Clearing monitor config and data series on Auto Scroll OFF')
-    monitorConfig.value = null
+    LogUtil.Info('📊 TrendLogModal: Auto Scroll OFF - switching to historical data only')
+    // Keep existing data and configuration, just stop real-time polling
+    // Historical data will remain visible
+    initializeHistoricalData()
+  }
+}
+
+const initializeHistoricalData = async () => {
+  LogUtil.Info('📚 TLChart: Loading historical data only (Auto Scroll disabled)', {
+    currentDataSeriesLength: dataSeries.value.length,
+    hasMonitorConfig: !!monitorConfig.value,
+    timeBase: timeBase.value
+  })
+
+  const monitorConfigData = monitorConfig.value
+  if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
+    try {
+      isLoading.value = true
+
+      // Load historical data from database only
+      LogUtil.Info('📚 Loading historical data from database for current timebase')
+      await loadHistoricalDataFromDatabase()
+
+      // Update charts with historical data
+      updateCharts()
+
+      // Force a UI update to ensure immediate rendering
+      nextTick(() => {
+        updateCharts()
+      })
+
+      isLoading.value = false
+
+    } catch (error) {
+      LogUtil.Error('= TLChart: Error in historical data initialization:', error)
+      hasConnectionError.value = true
+      dataSeries.value = []
+      isLoading.value = false
+    }
+  } else {
+    LogUtil.Info('📊 No monitor configuration available for historical data')
+    hasConnectionError.value = true
     dataSeries.value = []
+    isLoading.value = false
   }
 }
 
