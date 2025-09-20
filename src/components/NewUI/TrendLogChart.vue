@@ -2050,7 +2050,7 @@ const getAnalogChartConfig = () => ({
     },
     layout: {
       padding: {
-        left: 10,
+        left: 2,
         right: 20,
         top: 10,
         bottom: 10
@@ -2137,7 +2137,7 @@ const getAnalogChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          padding: 8,
+          padding: 2,
           // Improve precision for small value ranges
           callback: function(value: any) {
             return Number(value).toFixed(2)
@@ -2200,7 +2200,7 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
       },
       layout: {
         padding: {
-          left: 10,
+          left: 5,
           right: 20,
           top: 5,
           bottom: 5
@@ -2278,7 +2278,7 @@ const getDigitalChartConfig = (series: SeriesConfig, isLastChart: boolean = fals
               size: 8,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 5, // Match analog chart padding
+            padding: 5, // Match analog chart padding for alignment
             maxTicksLimit: 2, // Limit to only the two states
             callback: function (value: any) {
               return value > 0.5 ? digitalStates[1] : digitalStates[0];
@@ -6845,7 +6845,7 @@ onUnmounted(() => {
 }
 
 .combined-analog-chart {
-  height: 300px;
+  height: 400px;
   background: white;
   border: 1px solid #ddd;
   border-radius: 4px;
