@@ -7855,9 +7855,18 @@ onUnmounted(() => {
 }
 
 /* Right Drawer for Item Selection */
-.item-selector-drawer .ant-drawer-title {
-  padding: 16px 24px !important;
+.item-selector-drawer .ant-drawer-header {
+  padding: 8px 16px !important;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.item-selector-drawer .ant-drawer-header-title {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.item-selector-drawer .ant-drawer-body {
+  padding: 0 !important;
 }
 
 .drawer-title {
@@ -7865,23 +7874,25 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .drawer-content {
   padding: 0;
-  height: calc(100vh - 120px);
-  overflow-y: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .drawer-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 12px 16px;
   border-top: 1px solid #f0f0f0;
   background: #fafafa;
+  flex-shrink: 0;
 }
 
 .clear-btn {
@@ -7902,22 +7913,23 @@ onUnmounted(() => {
 
 /* Compact item list with detailed info */
 .items-compact-list {
-  padding: 12px 16px;
-  height: 100%;
+  padding: 8px 12px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .item-row {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid #f0f0f0;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
   background: white;
-  margin-bottom: 6px;
-  min-height: 44px;
+  margin-bottom: 4px;
+  min-height: 38px;
 }
 
 .item-row:hover {
@@ -7942,14 +7954,14 @@ onUnmounted(() => {
 .item-selection {
   display: flex;
   align-items: center;
-  margin-right: 12px;
+  margin-right: 8px;
 }
 
 .item-color-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  margin-left: 8px;
+  margin-left: 6px;
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
@@ -7961,8 +7973,8 @@ onUnmounted(() => {
 .item-main-info {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 3px;
+  gap: 4px;
+  margin-bottom: 2px;
 }
 
 .item-name {
@@ -7982,7 +7994,7 @@ onUnmounted(() => {
 .item-meta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-size: 10px;
   color: #8c8c8c;
 }
