@@ -2268,8 +2268,8 @@ const getAnalogChartConfig = () => ({
         type: 'time' as const,
         display: true, // Show x-axis on analog chart
         grid: {
-          color: '#e0e0e0',
-          display: true,
+          color: showGrid.value ? '#e0e0e0' : 'transparent',
+          display: showGrid.value,
           lineWidth: 1
         },
         ticks: {
@@ -2287,8 +2287,8 @@ const getAnalogChartConfig = () => ({
       },
       y: {
         grid: {
-          color: '#e0e0e0',
-          display: true,
+          color: showGrid.value ? '#e0e0e0' : 'transparent',
+          display: showGrid.value,
           lineWidth: 1
         },
         ticks: {
@@ -4473,6 +4473,12 @@ const updateCharts = () => {
     seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
   })
 
+  // Ensure analog chart exists if we have visible analog series
+  if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
+    console.log('🔄 updateCharts: Analog chart missing but we have visible series, recreating...')
+    createAnalogChart()
+  }
+
   // Update analog chart
   updateAnalogChart()
 
@@ -4834,6 +4840,17 @@ const setView = (viewNumber: number) => {
     dataSeries.value.forEach(series => {
       series.visible = trackedItems.includes(series.name)
     })
+
+    // Debug logging for view switching
+    console.log(`🔄 setView(${viewNumber}) - Tracked items:`, trackedItems)
+    console.log(`🔄 setView(${viewNumber}) - Analog series visibility:`,
+      dataSeries.value
+        .filter(s => s.unitType === 'analog')
+        .map(s => ({ name: s.name, visible: s.visible, hasData: s.data.length > 0 }))
+    )
+    console.log(`🔄 setView(${viewNumber}) - Total visible analog series:`,
+      dataSeries.value.filter(s => s.unitType === 'analog' && s.visible).length
+    )
   }
 
   // Different view configurations
@@ -4847,7 +4864,7 @@ const setView = (viewNumber: number) => {
       description: 'Show all 14 items for comprehensive analysis'
     },
     2: {
-      showGrid: false,
+      showGrid: true,
       showLegend: false,
       smoothLines: true,
       showPoints: false,
@@ -4871,8 +4888,10 @@ const setView = (viewNumber: number) => {
     smoothLines.value = config.smoothLines
     showPoints.value = config.showPoints
 
-    // Update charts with new visibility settings
-    updateCharts()
+    // Update charts with new visibility settings - use nextTick to ensure DOM updates
+    nextTick(() => {
+      updateCharts()
+    })
 
     /*
     // Show alert with view details
@@ -4892,14 +4911,23 @@ const setView = (viewNumber: number) => {
 // Item tracking functions for View 2 & 3
 const toggleItemTracking = (seriesName: string) => {
   const currentTracked = viewTrackedSeries.value[currentView.value] || []
+  const wasTracked = currentTracked.includes(seriesName)
 
-  if (currentTracked.includes(seriesName)) {
+  if (wasTracked) {
     // Remove from tracking
     viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
   } else {
     // Add to tracking
     viewTrackedSeries.value[currentView.value] = [...currentTracked, seriesName]
   }
+
+  console.log(`🎯 toggleItemTracking: ${seriesName}`, {
+    action: wasTracked ? 'removed' : 'added',
+    currentView: currentView.value,
+    beforeTracking: currentTracked,
+    afterTracking: viewTrackedSeries.value[currentView.value],
+    seriesUnitType: dataSeries.value.find(s => s.name === seriesName)?.unitType
+  })
 
   // Save to database
   saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
@@ -6353,6 +6381,59 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
     createCharts()
   }
 })
+
+// Watch for changes in visible analog series to ensure proper chart updates
+watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
+  console.log(`📊 visibleAnalogSeries watcher triggered`, {
+    oldCount: oldSeries?.length || 0,
+    newCount: newSeries.length,
+    oldSeries: oldSeries?.map(s => s.name) || [],
+    newSeries: newSeries.map(s => s.name),
+    hasChartInstance: !!analogChartInstance,
+    currentView: currentView.value
+  })
+
+  // Check if we need to update the analog chart
+  const hadVisibleSeries = oldSeries?.length > 0
+  const hasVisibleSeries = newSeries.length > 0
+
+  if (hadVisibleSeries !== hasVisibleSeries || newSeries.length !== oldSeries?.length) {
+    console.log(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
+      hadVisibleSeries,
+      hasVisibleSeries,
+      needsUpdate: true
+    })
+
+    // Wait for DOM updates
+    await nextTick()
+
+    // RECREATE the analog chart completely (like digital charts do)
+    if (analogChartInstance) {
+      analogChartInstance.destroy()
+      analogChartInstance = null
+      console.log(`📊 Destroyed existing analog chart instance`)
+    }
+
+    if (hasVisibleSeries) {
+      // Create fresh analog chart for visible series
+      console.log(`📊 Creating fresh analog chart for visible series`)
+      createAnalogChart()
+      await nextTick()
+      updateAnalogChart()
+
+      console.log(`📊 Analog chart recreated and updated with data`, {
+        oldCount: oldSeries?.length || 0,
+        newCount: newSeries.length,
+        hasChartInstance: !!analogChartInstance,
+        seriesWithData: newSeries.filter(s => s.data.length > 0).length
+      })
+    } else {
+      console.log(`📊 No visible analog series - chart destroyed`)
+    }
+  } else {
+    console.log(`📊 No significant change in analog series visibility - skipping update`)
+  }
+}, { deep: true })
 
 // Watch for changes in visible digital series to recreate charts when visibility toggles
 watch(visibleDigitalSeries, async (newSeries, oldSeries) => {
