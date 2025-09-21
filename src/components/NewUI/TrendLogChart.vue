@@ -316,6 +316,20 @@
               'series-disabled': !series.visible
             }">
               <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
+                <!-- Delete button for View 2 & 3 tracked items - at very front -->
+                <a-button
+                  v-if="currentView !== 1"
+                  size="small"
+                  type="text"
+                  class="delete-series-btn delete-first"
+                  @click="(e) => removeFromTracking(series.name, e)"
+                  title="Remove from tracking"
+                >
+                  <template #icon>
+                    <CloseOutlined class="delete-icon" />
+                  </template>
+                </a-button>
+
                 <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                   :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                   <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
@@ -339,20 +353,6 @@
                   </div>
                 </div>
                 <div class="series-controls">
-                  <!-- Delete button for View 2 & 3 tracked items -->
-                  <a-button
-                    v-if="currentView !== 1"
-                    size="small"
-                    type="text"
-                    class="delete-series-btn"
-                    @click="(e) => removeFromTracking(series.name, e)"
-                    title="Remove from tracking"
-                  >
-                    <template #icon>
-                      <CloseOutlined class="delete-icon" />
-                    </template>
-                  </a-button>
-
                   <a-button size="small" type="text" class="expand-toggle"
                     @click="(e) => toggleSeriesExpansion(index, e)">
                     <template #icon>
@@ -481,7 +481,7 @@
       v-model:visible="showItemSelector"
       title="Select Items to Track"
       placement="right"
-      width="480"
+      width="400"
       :closable="true"
       :mask-closable="true"
       class="item-selector-drawer"
@@ -542,8 +542,12 @@
 
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="clearAllTracking" v-if="viewTrackedSeries[currentView]?.length > 0" class="clear-btn">
-            Clear All
+          <a-button
+            @click="toggleSelectAll"
+            :type="isAllSelected ? 'default' : 'primary'"
+            class="select-toggle-btn"
+          >
+            {{ isAllSelected ? 'Unselect All' : 'Select All' }}
           </a-button>
           <div class="footer-actions">
             <a-button @click="showItemSelector = false">
@@ -590,7 +594,8 @@ import {
   BarChartOutlined,
   ClockCircleOutlined,
   WifiOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  CloseOutlined
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
@@ -1822,6 +1827,17 @@ const visibleSeriesCount = computed(() => {
 const hasTrackedItems = computed(() => {
   if (currentView.value === 1) return true
   return (viewTrackedSeries.value[currentView.value] || []).length > 0
+})
+
+// Computed properties for Select All / Unselect All functionality
+const isAllSelected = computed(() => {
+  const currentTracked = viewTrackedSeries.value[currentView.value] || []
+  return currentTracked.length === dataSeries.value.length && dataSeries.value.length > 0
+})
+
+const isNoneSelected = computed(() => {
+  const currentTracked = viewTrackedSeries.value[currentView.value] || []
+  return currentTracked.length === 0
 })
 
 const displayedSeries = computed(() => {
@@ -4898,6 +4914,25 @@ const clearAllTracking = () => {
   setView(currentView.value)
 }
 
+const selectAllItems = () => {
+  const allSeriesNames = dataSeries.value.map(series => series.name)
+  viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
+  saveViewTracking(currentView.value, allSeriesNames)
+  setView(currentView.value)
+}
+
+const unselectAllItems = () => {
+  clearAllTracking()
+}
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    unselectAllItems()
+  } else {
+    selectAllItems()
+  }
+}
+
 const applyAndCloseDrawer = () => {
   showItemSelector.value = false
   saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
@@ -6880,8 +6915,8 @@ onUnmounted(() => {
 .series-controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 4px;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -7911,6 +7946,10 @@ onUnmounted(() => {
   gap: 8px;
 }
 
+.select-toggle-btn {
+  min-width: 90px;
+}
+
 /* Compact item list with detailed info */
 .items-compact-list {
   padding: 8px 12px;
@@ -8079,7 +8118,10 @@ onUnmounted(() => {
 
 .delete-series-btn {
   color: #ff4d4f;
-  padding: 0 4px !important;
+  padding: 0 2px !important;
+  min-width: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .delete-series-btn:hover {
@@ -8087,8 +8129,13 @@ onUnmounted(() => {
   background-color: #ff4d4f;
 }
 
+.delete-series-btn.delete-first {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
 .delete-icon {
-  font-size: 12px;
+  font-size: 10px;
 }
 
 /* Empty state for View 2 & 3 */
