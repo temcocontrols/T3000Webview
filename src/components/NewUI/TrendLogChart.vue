@@ -182,14 +182,27 @@
       </a-flex>
     </div>
 
-    <div class="timeseries-container"> <!-- Left Panel: Data Series and Options -->
+    <!-- Empty state for View 2 & 3 with no tracked items -->
+    <div v-if="currentView !== 1 && !hasTrackedItems" class="empty-tracking-state">
+      <div class="empty-content">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">{{ currentView === 2 ? 'Custom View 2' : 'Custom View 3' }}</div>
+        <div class="empty-description">
+          Select items to track to start monitoring specific data points.
+        </div>
+        <a-button type="primary" @click="showItemSelector = true" size="large" class="select-items-btn">
+          Select Items to Track
+        </a-button>
+      </div>
+    </div>    <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
+    <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
       <div class="left-panel">
         <!-- Data Series -->
         <div class="control-section">
           <div class="data-series-header">
             <!-- Single line: Title, count, and status -->
             <div class="header-line-1">
-              <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ dataSeries.length }})</h7>
+              <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})</h7>
               <!-- Data Source Indicator -->
               <div class="data-source-indicator">
                 <span v-if="shouldShowLoading" class="source-badge loading">
@@ -288,7 +301,7 @@
             </div>
 
             <!-- Regular series list when data is available -->
-            <div v-for="(series, index) in dataSeries" :key="series.name" class="series-item" :class="{
+            <div v-for="(series, index) in displayedSeries" :key="series.name" class="series-item" :class="{
               'series-disabled': !series.visible
             }">
               <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
@@ -437,6 +450,88 @@
         </div>
       </div>
     </a-modal>
+
+    <!-- Right Drawer for Item Selection -->
+    <a-drawer
+      v-model:visible="showItemSelector"
+      title="Select Items to Track"
+      placement="right"
+      width="480"
+      :closable="true"
+      :mask-closable="true"
+      class="item-selector-drawer"
+    >
+      <template #title>
+        <div class="drawer-title">
+          <span>📊 Select Items for {{ currentView === 2 ? 'View 2' : 'View 3' }}</span>
+          <a-tag color="blue">{{ viewTrackedSeries[currentView]?.length || 0 }}/{{ dataSeries.length }} selected</a-tag>
+        </div>
+      </template>
+
+      <div class="drawer-content">
+        <div class="items-compact-list">
+          <div
+            v-for="series in dataSeries"
+            :key="series.name"
+            class="item-row"
+            :class="{
+              'selected': viewTrackedSeries[currentView]?.includes(series.name),
+              'analog': series.unitType === 'analog',
+              'digital': series.unitType === 'digital'
+            }"
+            @click="toggleItemTracking(series.name)"
+          >
+            <!-- Checkbox and color indicator -->
+            <div class="item-selection">
+              <a-checkbox
+                :checked="viewTrackedSeries[currentView]?.includes(series.name)"
+                @change="() => toggleItemTracking(series.name)"
+              />
+              <div class="item-color-dot" :style="{ backgroundColor: series.color }"></div>
+            </div>
+
+            <!-- Item details (same as left panel) -->
+            <div class="item-details">
+              <div class="item-main-info">
+                <span class="item-name">{{ series.name }}</span>
+                <span class="item-unit" v-if="series.unit">{{ series.unit }}</span>
+              </div>
+              <div class="item-meta">
+                <span class="item-type-badge" :class="series.unitType">{{ series.unitType }}</span>
+                <span class="item-description" v-if="series.description">{{ series.description }}</span>
+                <span class="item-range" v-if="series.data.length > 0">
+                  {{ getMinValue(series.data, series) }} - {{ getMaxValue(series.data, series) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Status indicators -->
+            <div class="item-status">
+              <span v-if="series.isEmpty" class="status-badge empty">No Data</span>
+              <span v-else-if="!series.visible" class="status-badge hidden">Hidden</span>
+              <span v-else class="status-badge active">{{ series.data.length }} pts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="drawer-footer">
+          <a-button @click="clearAllTracking" v-if="viewTrackedSeries[currentView]?.length > 0" class="clear-btn">
+            Clear All
+          </a-button>
+          <div class="footer-actions">
+            <a-button @click="showItemSelector = false">
+              Cancel
+            </a-button>
+            <a-button type="primary" @click="applyAndCloseDrawer">
+              Apply Selection
+            </a-button>
+          </div>
+        </div>
+      </template>
+    </a-drawer>
+
   </a-config-provider>
 </template>
 
@@ -883,6 +978,15 @@ const customStartTime = ref<Dayjs | null>(null)
 const customEndTime = ref<Dayjs | null>(null)
 const customDateModalVisible = ref(false)
 const isRealTime = ref(true)
+
+// View-specific series tracking for View 2 & 3
+const viewTrackedSeries = ref({
+  2: [] as string[], // View 2: user-selected series for tracking
+  3: [] as string[]  // View 3: user-selected series for tracking
+})
+
+// Item selection panel state for View 2 & 3
+const showItemSelector = ref(false)
 
 // Dynamic interval calculation based on T3000 monitorConfig
 const calculateT3000Interval = (monitorConfig: any): number => {
@@ -1688,6 +1792,21 @@ const totalDataPoints = computed(() => {
 
 const visibleSeriesCount = computed(() => {
   return dataSeries.value.filter(series => series.visible).length
+})
+
+const hasTrackedItems = computed(() => {
+  if (currentView.value === 1) return true
+  return (viewTrackedSeries.value[currentView.value] || []).length > 0
+})
+
+const displayedSeries = computed(() => {
+  if (currentView.value === 1) {
+    return dataSeries.value // View 1: show all series
+  } else {
+    // View 2 & 3: show only tracked series
+    const trackedItems = viewTrackedSeries.value[currentView.value] || []
+    return dataSeries.value.filter(series => trackedItems.includes(series.name))
+  }
 })
 
 const timeBaseLabel = computed(() => {
@@ -4512,7 +4631,7 @@ const disableAllSeries = () => {
 
 const toggleAnalogSeries = () => {
   const enableAnalog = !allAnalogEnabled.value
-  debugDataSeriesFlow(`Before toggle analog (enabling: ${enableAnalog})`)
+  // debugDataSeriesFlow(`Before toggle analog (enabling: ${enableAnalog})`)
 
   dataSeries.value.forEach(series => {
     if (series.unitType === 'analog') {
@@ -4520,7 +4639,7 @@ const toggleAnalogSeries = () => {
     }
   })
 
-  debugDataSeriesFlow(`After toggle analog (enabled: ${enableAnalog})`)
+  // debugDataSeriesFlow(`After toggle analog (enabled: ${enableAnalog})`)
   updateCharts()
 }
 
@@ -4662,6 +4781,20 @@ const resetToDefaultTimebase = () => {
 const setView = (viewNumber: number) => {
   currentView.value = viewNumber
 
+  // Apply series visibility based on view
+  if (viewNumber === 1) {
+    // View 1: Show all items (keep current behavior)
+    dataSeries.value.forEach(series => {
+      series.visible = true
+    })
+  } else {
+    // View 2 & 3: Show only tracked items
+    const trackedItems = viewTrackedSeries.value[viewNumber] || []
+    dataSeries.value.forEach(series => {
+      series.visible = trackedItems.includes(series.name)
+    })
+  }
+
   // Different view configurations
   const viewConfigs = {
     1: {
@@ -4669,24 +4802,24 @@ const setView = (viewNumber: number) => {
       showLegend: false,
       smoothLines: false,
       showPoints: false,
-      title: 'Standard View',
-      description: 'Grid lines enabled for comprehensive data analysis'
+      title: 'All Items View',
+      description: 'Show all 14 items for comprehensive analysis'
     },
     2: {
       showGrid: false,
       showLegend: false,
       smoothLines: true,
       showPoints: false,
-      title: 'Clean View',
-      description: 'Minimalist display with smooth lines for focused viewing'
+      title: 'Custom Tracking View 2',
+      description: 'User-selected items for focused tracking'
     },
     3: {
       showGrid: true,
       showLegend: false,
       smoothLines: true,
       showPoints: false,
-      title: 'Detailed View',
-      description: 'All features enabled for maximum data visualization detail'
+      title: 'Custom Tracking View 3',
+      description: 'User-selected items with detailed visualization'
     }
   }
 
@@ -4697,10 +4830,8 @@ const setView = (viewNumber: number) => {
     smoothLines.value = config.smoothLines
     showPoints.value = config.showPoints
 
-    if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
-      destroyAllCharts()
-      createCharts()
-    }
+    // Update charts with new visibility settings
+    updateCharts()
 
     /*
     // Show alert with view details
@@ -4714,6 +4845,58 @@ const setView = (viewNumber: number) => {
       viewAlert.value.visible = false
     }, 4000)
     */
+  }
+}
+
+// Item tracking functions for View 2 & 3
+const toggleItemTracking = (seriesName: string) => {
+  const currentTracked = viewTrackedSeries.value[currentView.value] || []
+
+  if (currentTracked.includes(seriesName)) {
+    // Remove from tracking
+    viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
+  } else {
+    // Add to tracking
+    viewTrackedSeries.value[currentView.value] = [...currentTracked, seriesName]
+  }
+
+  // Save to database
+  saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
+
+  // Apply visibility immediately
+  setView(currentView.value)
+}
+
+const clearAllTracking = () => {
+  viewTrackedSeries.value[currentView.value] = []
+  saveViewTracking(currentView.value, [])
+  setView(currentView.value)
+}
+
+const applyAndCloseDrawer = () => {
+  showItemSelector.value = false
+  saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
+  setView(currentView.value)
+}
+
+const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => {
+  try {
+    // TODO: Implement API call to save view tracking to database
+    console.log(`Saving view ${viewNumber} tracking:`, trackedSeries)
+    // await api.saveViewTracking(viewNumber, trackedSeries)
+  } catch (error) {
+    console.error('Failed to save view tracking:', error)
+  }
+}
+
+const loadViewTracking = async () => {
+  try {
+    // TODO: Implement API call to load view tracking from database
+    console.log('Loading view tracking from database')
+    // const tracking = await api.getViewTracking()
+    // viewTrackedSeries.value = tracking
+  } catch (error) {
+    console.error('Failed to load view tracking:', error)
   }
 }
 
@@ -6203,6 +6386,9 @@ onMounted(async () => {
     // Otherwise keep loading state - data might still be loading
   }
 
+  // Load saved view tracking data
+  await loadViewTracking()
+
   // Apply default view configuration
   setView(1)
 
@@ -7626,5 +7812,249 @@ onUnmounted(() => {
 
 .ant-modal-content {
   padding: 10px 14px !important;
+}
+
+/* Right Drawer for Item Selection */
+.item-selector-drawer .ant-drawer-title {
+  padding: 16px 24px !important;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.drawer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawer-content {
+  padding: 0;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.clear-btn {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.clear-btn:hover {
+  color: #fff;
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Compact item list with detailed info */
+.items-compact-list {
+  padding: 16px 24px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  margin-bottom: 8px;
+  min-height: 52px;
+}
+
+.item-row:hover {
+  border-color: #d9d9d9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.item-row.selected {
+  border-color: #1890ff;
+  background: #f6ffed;
+  box-shadow: 0 2px 6px rgba(24, 144, 255, 0.15);
+}
+
+.item-row.analog {
+  border-left: 3px solid #1890ff;
+}
+
+.item-row.digital {
+  border-left: 3px solid #52c41a;
+}
+
+.item-selection {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.item-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-main-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.item-name {
+  font-weight: 500;
+  font-size: 12px;
+  color: #262626;
+}
+
+.item-unit {
+  font-size: 11px;
+  color: #8c8c8c;
+  background: #f5f5f5;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #8c8c8c;
+}
+
+.item-type-badge {
+  text-transform: uppercase;
+  font-weight: 500;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.item-type-badge.analog {
+  background: #e6f4ff;
+  color: #1890ff;
+}
+
+.item-type-badge.digital {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.item-description {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-range {
+  font-family: monospace;
+  font-size: 9px;
+}
+
+.item-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 60px;
+}
+
+.status-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.status-badge.empty {
+  background: #fff2e8;
+  color: #fa8c16;
+}
+
+.status-badge.hidden {
+  background: #f5f5f5;
+  color: #8c8c8c;
+}
+
+.selector-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Empty state for View 2 & 3 */
+.empty-tracking-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: #fafafa;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.empty-content {
+  text-align: center;
+  max-width: 400px;
+  padding: 40px 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 8px;
+}
+
+.empty-description {
+  font-size: 14px;
+  color: #8c8c8c;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.select-items-btn {
+  height: 40px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 500;
 }
 </style>
