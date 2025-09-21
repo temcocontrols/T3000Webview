@@ -315,21 +315,21 @@
             <div v-for="(series, index) in displayedSeries" :key="series.name" class="series-item" :class="{
               'series-disabled': !series.visible
             }">
-              <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
-                <!-- Delete button for View 2 & 3 tracked items - at very front -->
-                <a-button
-                  v-if="currentView !== 1"
-                  size="small"
-                  type="text"
-                  class="delete-series-btn delete-first"
-                  @click="(e) => removeFromTracking(series.name, e)"
-                  title="Remove from tracking"
-                >
-                  <template #icon>
-                    <CloseOutlined class="delete-icon" />
-                  </template>
-                </a-button>
+              <!-- Delete button overlay for View 2 & 3 tracked items -->
+              <a-button
+                v-if="currentView !== 1"
+                size="small"
+                type="text"
+                class="delete-series-btn delete-overlay"
+                @click="(e) => removeFromTracking(series.name, e)"
+                title="Remove from tracking"
+              >
+                <template #icon>
+                  <CloseOutlined class="delete-icon" />
+                </template>
+              </a-button>
 
+              <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
                 <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                   :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                   <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
@@ -6753,10 +6753,14 @@ onUnmounted(() => {
   border: 1px solid #e8e8e8;
   border-radius: 4px;
   background: #ffffff;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   position: relative;
+}
+
+.series-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* Clean and simple design for series items */
@@ -8107,13 +8111,6 @@ onUnmounted(() => {
 /* Reconfigure and Delete Button Styles */
 .reconfigure-btn {
   margin-left: 8px;
-  color: #1890ff;
-  border-color: #1890ff;
-}
-
-.reconfigure-btn:hover {
-  color: #40a9ff;
-  border-color: #40a9ff;
 }
 
 .delete-series-btn {
@@ -8125,17 +8122,35 @@ onUnmounted(() => {
 }
 
 .delete-series-btn:hover {
-  color: #fff;
-  background-color: #ff4d4f;
+  color: #ff7875;
+  background-color: transparent;
 }
 
-.delete-series-btn.delete-first {
-  margin-right: 4px;
-  flex-shrink: 0;
+.delete-series-btn.delete-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+  width: 12px !important;
+  height: 12px !important;
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 0 4px 0 12px;
+  opacity: 1;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-series-btn.delete-overlay:hover {
+  background: #ff7875;
+  color: white;
 }
 
 .delete-icon {
-  font-size: 10px;
+  font-size: 8px;
 }
 
 /* Empty state for View 2 & 3 */
