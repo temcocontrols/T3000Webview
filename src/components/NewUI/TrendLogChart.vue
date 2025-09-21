@@ -90,6 +90,17 @@
               View 3
             </a-button>
           </a-button-group>
+
+          <!-- Reconfigure button for View 2 & 3 -->
+          <a-button
+            v-if="currentView !== 1 && hasTrackedItems"
+            size="small"
+            @click="showItemSelector = true"
+            class="reconfigure-btn"
+            title="Reconfigure tracked items"
+          >
+            <SettingOutlined />
+          </a-button>
         </a-flex>
 
         <!-- Status Tags -->
@@ -328,6 +339,20 @@
                   </div>
                 </div>
                 <div class="series-controls">
+                  <!-- Delete button for View 2 & 3 tracked items -->
+                  <a-button
+                    v-if="currentView !== 1"
+                    size="small"
+                    type="text"
+                    class="delete-series-btn"
+                    @click="(e) => removeFromTracking(series.name, e)"
+                    title="Remove from tracking"
+                  >
+                    <template #icon>
+                      <CloseOutlined class="delete-icon" />
+                    </template>
+                  </a-button>
+
                   <a-button size="small" type="text" class="expand-toggle"
                     @click="(e) => toggleSeriesExpansion(index, e)">
                     <template #icon>
@@ -482,7 +507,7 @@
             @click="toggleItemTracking(series.name)"
           >
             <!-- Checkbox and color indicator -->
-            <div class="item-selection">
+            <div class="item-selection" @click.stop>
               <a-checkbox
                 :checked="viewTrackedSeries[currentView]?.includes(series.name)"
                 @change="() => toggleItemTracking(series.name)"
@@ -4879,6 +4904,21 @@ const applyAndCloseDrawer = () => {
   setView(currentView.value)
 }
 
+const removeFromTracking = (seriesName: string, event?: Event) => {
+  if (event) {
+    event.stopPropagation()
+  }
+
+  const currentTracked = viewTrackedSeries.value[currentView.value] || []
+  viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
+
+  // Save to database
+  saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
+
+  // Apply visibility immediately
+  setView(currentView.value)
+}
+
 const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => {
   try {
     // TODO: Implement API call to save view tracking to database
@@ -7862,7 +7902,7 @@ onUnmounted(() => {
 
 /* Compact item list with detailed info */
 .items-compact-list {
-  padding: 16px 24px;
+  padding: 12px 16px;
   height: 100%;
   overflow-y: auto;
 }
@@ -7870,14 +7910,14 @@ onUnmounted(() => {
 .item-row {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: 1px solid #f0f0f0;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
   background: white;
-  margin-bottom: 8px;
-  min-height: 52px;
+  margin-bottom: 6px;
+  min-height: 44px;
 }
 
 .item-row:hover {
@@ -7921,28 +7961,28 @@ onUnmounted(() => {
 .item-main-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
+  gap: 6px;
+  margin-bottom: 3px;
 }
 
 .item-name {
   font-weight: 500;
-  font-size: 12px;
+  font-size: 13px;
   color: #262626;
 }
 
 .item-unit {
-  font-size: 11px;
+  font-size: 10px;
   color: #8c8c8c;
   background: #f5f5f5;
-  padding: 1px 4px;
+  padding: 1px 3px;
   border-radius: 2px;
 }
 
 .item-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 10px;
   color: #8c8c8c;
 }
@@ -8011,6 +8051,32 @@ onUnmounted(() => {
   gap: 8px;
   padding-top: 8px;
   border-top: 1px solid #f0f0f0;
+}
+
+/* Reconfigure and Delete Button Styles */
+.reconfigure-btn {
+  margin-left: 8px;
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.reconfigure-btn:hover {
+  color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.delete-series-btn {
+  color: #ff4d4f;
+  padding: 0 4px !important;
+}
+
+.delete-series-btn:hover {
+  color: #fff;
+  background-color: #ff4d4f;
+}
+
+.delete-icon {
+  font-size: 12px;
 }
 
 /* Empty state for View 2 & 3 */
