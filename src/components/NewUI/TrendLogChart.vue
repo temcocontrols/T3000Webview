@@ -1018,6 +1018,17 @@ const viewTrackedSeries = ref({
 // Item selection panel state for View 2 & 3
 const showItemSelector = ref(false)
 
+// FFI Integration - Enhanced TrendLog system
+const ffiSyncStatus = ref({
+  syncing: false,
+  completed: false,
+  error: null as string | null,
+  lastSync: null as string | null
+})
+
+const viewSelections = ref(new Map<number, any[]>())  // Store View 2/3 selections
+const ffiTrendlogInfo = ref(null as any)  // Complete TrendLog info from FFI
+
 // Dynamic interval calculation based on T3000 monitorConfig
 const calculateT3000Interval = (monitorConfig: any): number => {
   if (!monitorConfig) {
@@ -4830,27 +4841,40 @@ const setView = (viewNumber: number) => {
 
   // Apply series visibility based on view
   if (viewNumber === 1) {
-    // View 1: Show all items (keep current behavior)
+    // View 1: Show all items (UNCHANGED LOGIC) ✅
     dataSeries.value.forEach(series => {
       series.visible = true
     })
+
+    LogUtil.Info(`✅ View 1: Showing all items`, {
+      totalSeries: dataSeries.value.length
+    })
   } else {
-    // View 2 & 3: Show only tracked items
+    // View 2 & 3: Show only user selected items with FFI persistence ✅
     const trackedItems = viewTrackedSeries.value[viewNumber] || []
+
+    // Apply FFI-persisted selections
+    const ffiSelections = viewSelections.value.get(viewNumber) || []
+    const ffiTrackedNames = ffiSelections
+      .filter(s => s.is_selected)
+      .map(s => `${s.point_type}_${s.point_index}`)
+
+    // Use FFI selections if available, otherwise fall back to existing logic
+    const activeTrackedItems = ffiTrackedNames.length > 0 ? ffiTrackedNames : trackedItems
+
     dataSeries.value.forEach(series => {
-      series.visible = trackedItems.includes(series.name)
+      series.visible = activeTrackedItems.includes(series.name)
     })
 
-    // Debug logging for view switching
-    console.log(`🔄 setView(${viewNumber}) - Tracked items:`, trackedItems)
-    console.log(`🔄 setView(${viewNumber}) - Analog series visibility:`,
-      dataSeries.value
-        .filter(s => s.unitType === 'analog')
-        .map(s => ({ name: s.name, visible: s.visible, hasData: s.data.length > 0 }))
-    )
-    console.log(`🔄 setView(${viewNumber}) - Total visible analog series:`,
-      dataSeries.value.filter(s => s.unitType === 'analog' && s.visible).length
-    )
+    // Enhanced logging for FFI-enabled views
+    LogUtil.Info(`✅ View ${viewNumber}: Applied selections`, {
+      ffiSelectionsCount: ffiSelections.length,
+      ffiTrackedNames,
+      fallbackTrackedItems: trackedItems,
+      activeTrackedItems,
+      visibleSeries: dataSeries.value.filter(s => s.visible).length,
+      totalSeries: dataSeries.value.length
+    })
   }
 
   // Different view configurations
@@ -4984,22 +5008,29 @@ const removeFromTracking = (seriesName: string, event?: Event) => {
 
 const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => {
   try {
-    // TODO: Implement API call to save view tracking to database
-    console.log(`Saving view ${viewNumber} tracking:`, trackedSeries)
-    // await api.saveViewTracking(viewNumber, trackedSeries)
+    if (viewNumber >= 2 && viewNumber <= 3) {
+      // 🆕 FFI Integration: Save to database for Views 2/3
+      await saveFFIViewSelections(viewNumber)
+      LogUtil.Info(`✅ View ${viewNumber}: Selections saved to database`, {
+        trackedSeries,
+        count: trackedSeries.length
+      })
+    } else {
+      // View 1: No persistence needed (always shows all items)
+      LogUtil.Info(`📋 View ${viewNumber}: No persistence needed (shows all items)`)
+    }
   } catch (error) {
-    console.error('Failed to save view tracking:', error)
+    LogUtil.Error(`❌ Failed to save view ${viewNumber} tracking:`, error)
   }
 }
 
 const loadViewTracking = async () => {
   try {
-    // TODO: Implement API call to load view tracking from database
-    console.log('Loading view tracking from database')
-    // const tracking = await api.getViewTracking()
-    // viewTrackedSeries.value = tracking
+    // 🆕 FFI Integration: Load from database happens in initializeWithCompleteFFI()
+    // This function is kept for compatibility but the real loading happens in FFI init
+    LogUtil.Info('📋 View tracking loaded via FFI integration during initialization')
   } catch (error) {
-    console.error('Failed to load view tracking:', error)
+    LogUtil.Error('❌ Failed to load view tracking:', error)
   }
 }
 
@@ -5838,6 +5869,159 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
   return series
 }
 
+// ===================================
+// FFI Integration Functions - Enhanced TrendLog System
+// ===================================
+
+/**
+ * Initialize TrendLog with complete FFI information
+ * Gets complete TrendLog info from T3000 and persists to database
+ */
+const initializeWithCompleteFFI = async () => {
+  const { sn, panel_id, trendlog_id } = extractQueryParams()
+
+  if (!sn || !trendlog_id) {
+    LogUtil.Warn('❌ FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
+    return
+  }
+
+  try {
+    ffiSyncStatus.value.syncing = true
+    ffiSyncStatus.value.error = null
+
+    LogUtil.Info('🔄 FFI: Starting complete TrendLog sync', {
+      device_id: sn,
+      trendlog_id: `MONITOR${trendlog_id}`
+    })
+
+    // 1. Sync TrendLog with T3000 FFI (gets complete info + saves to DB)
+    const response = await fetch(`/api/t3_device/trendlogs/MONITOR${trendlog_id}/sync-ffi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: sn })
+    })
+
+    const syncResult = await response.json()
+
+    if (syncResult.success) {
+      ffiTrendlogInfo.value = syncResult.trendlog_info
+      ffiSyncStatus.value.completed = true
+      ffiSyncStatus.value.lastSync = new Date().toISOString()
+
+      LogUtil.Info('✅ FFI: TrendLog sync completed successfully', {
+        info: syncResult.trendlog_info,
+        num_points: syncResult.trendlog_info?.related_points?.length || 0
+      })
+
+      // 2. Load view selections for Views 2/3
+      await loadFFIViewSelections(`MONITOR${trendlog_id}`)
+
+      return syncResult.trendlog_info
+    } else {
+      throw new Error(syncResult.message)
+    }
+
+  } catch (error) {
+    LogUtil.Error('❌ FFI: Sync failed', error)
+    ffiSyncStatus.value.error = error.message
+
+    // Continue with existing logic as fallback
+    LogUtil.Info('🔄 FFI: Falling back to existing logic')
+    return null
+  } finally {
+    ffiSyncStatus.value.syncing = false
+  }
+}
+
+/**
+ * Load persistent view selections for Views 2/3
+ */
+const loadFFIViewSelections = async (trendlogId: string) => {
+  try {
+    for (let viewNum = 2; viewNum <= 3; viewNum++) {
+      const response = await fetch(`/api/t3_device/trendlogs/${trendlogId}/views/${viewNum}/selections`)
+
+      if (response.ok) {
+        const selections = await response.json()
+        viewSelections.value.set(viewNum, selections)
+
+        // Update the existing viewTrackedSeries for compatibility
+        const trackedNames = selections
+          .filter(s => s.is_selected)
+          .map(s => `${s.point_type}_${s.point_index}`)
+
+        viewTrackedSeries.value[viewNum] = trackedNames
+
+        LogUtil.Info(`✅ FFI: Loaded View ${viewNum} selections`, {
+          count: selections.length,
+          trackedNames
+        })
+      } else {
+        LogUtil.Info(`📋 FFI: No existing selections for View ${viewNum}`)
+      }
+    }
+  } catch (error) {
+    LogUtil.Error('❌ FFI: Failed to load view selections', error)
+  }
+}
+
+/**
+ * Save persistent view selections for Views 2/3
+ */
+const saveFFIViewSelections = async (viewNumber: number) => {
+  if (viewNumber < 2 || viewNumber > 3) return
+
+  try {
+    const { trendlog_id } = extractQueryParams()
+    if (!trendlog_id) return
+
+    const trendlogId = `MONITOR${trendlog_id}`
+    const trackedNames = viewTrackedSeries.value[viewNumber] || []
+
+    // Convert tracked names to API format
+    const selections = trackedNames.map(name => {
+      const [pointType, pointIndex] = name.split('_')
+      return {
+        point_type: pointType,
+        point_index: pointIndex,
+        point_label: name,
+        is_selected: true
+      }
+    })
+
+    const response = await fetch(`/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selections })
+    })
+
+    if (response.ok) {
+      viewSelections.value.set(viewNumber, selections)
+      LogUtil.Info(`✅ FFI: Saved View ${viewNumber} selections`, {
+        count: selections.length,
+        selections
+      })
+    } else {
+      throw new Error('Failed to save view selections')
+    }
+  } catch (error) {
+    LogUtil.Error(`❌ FFI: Failed to save View ${viewNumber} selections`, error)
+  }
+}
+
+/**
+ * Extract query parameters for FFI operations
+ */
+const extractQueryParams = () => {
+  let sn = 0, panel_id = 0, trendlog_id = 0
+
+  if (route.query.sn) sn = parseInt(route.query.sn as string)
+  if (route.query.panel_id) panel_id = parseInt(route.query.panel_id as string)
+  if (route.query.trendlog_id) trendlog_id = parseInt(route.query.trendlog_id as string)
+
+  return { sn, panel_id, trendlog_id }
+}
+
 // Utility functions
 const getLastValue = (data: DataPoint[], series?: SeriesConfig): string => {
   if (data.length === 0) return 'N/A'
@@ -6523,6 +6707,17 @@ onMounted(async () => {
 
     if (monitorConfigData) {
       monitorConfig.value = monitorConfigData
+
+      // 🆕 FFI Integration: Get complete TrendLog info from T3000 and save view selections
+      LogUtil.Info('🔄 TrendLogChart: Starting FFI integration for complete TrendLog info')
+      const ffiInfo = await initializeWithCompleteFFI()
+
+      if (ffiInfo) {
+        LogUtil.Info('✅ TrendLogChart: FFI integration completed', {
+          ffiInfo,
+          hasViewSelections: viewSelections.value.size > 0
+        })
+      }
 
       // Initialize data clients
       initializeDataClients()
