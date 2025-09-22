@@ -11,5 +11,6 @@ pub mod programs;
 pub mod schedules;
 pub mod trendlog_data;
 pub mod trendlog_inputs;
+pub mod trendlog_views;
 pub mod trendlogs;
 pub mod variable_points;
