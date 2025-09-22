@@ -240,6 +240,7 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
 -- TRENDLOGS table (Main trendlog configuration - T3000 style naming)
 -- Following T3000 naming pattern: uppercase table name, descriptive fields
 -- Optimized schema - removed unused BinaryArray field
+-- Enhanced for FFI integration and webview functionality
 CREATE TABLE IF NOT EXISTS TRENDLOGS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Trendlog_ID TEXT,                          -- C++ Trendlog_ID (following T3000 ID pattern)
@@ -247,21 +248,47 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
     Trendlog_Label TEXT,                       -- C++ Trendlog_Label (following T3000 label pattern)
     Interval_Minutes INTEGER,                  -- C++ Interval_Minutes
     Buffer_Size INTEGER,                       -- C++ Buffer_Size
-    Data_Size_KB INTEGER,                      -- C++ Data_Size_KB
+    Data_Size_KB TEXT,                         -- C++ Data_Size_KB (changed to TEXT for flexibility)
     Auto_Manual TEXT,                          -- C++ Auto_Manual (following T3000 pattern)
-    Status TEXT                                -- C++ Status (following T3000 pattern)
+    Status TEXT,                               -- C++ Status (following T3000 pattern)
+    ffi_synced INTEGER DEFAULT 0,              -- FFI sync status (0=not synced, 1=synced)
+    last_ffi_sync TEXT,                        -- Last FFI sync timestamp
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
 );
 
 -- TRENDLOG_INPUTS table (Trendlog input configuration - T3000 style naming)
 -- Links trendlogs to specific input/output/variable points
 -- Optimized schema - removed unused BinaryArray field
+-- Enhanced with view management columns for persistent user selections
 CREATE TABLE IF NOT EXISTS TRENDLOG_INPUTS (
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
     Point_Type TEXT NOT NULL,                  -- C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
     Point_Index TEXT NOT NULL,                 -- C++ Point_Index (references point index)
     Point_Panel TEXT,                          -- C++ Point_Panel
     Point_Label TEXT,                          -- C++ Point_Label
-    Status TEXT                                -- C++ Status
+    Status TEXT,                               -- C++ Status
+    view_type TEXT DEFAULT 'MAIN',             -- View type: 'MAIN' (from FFI) or 'VIEW' (user selection)
+    view_number INTEGER DEFAULT NULL,          -- View number: NULL for MAIN, 2-3 for user views
+    is_selected INTEGER DEFAULT 1,            -- Selection status: 1=selected, 0=not selected
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
+);
+
+-- TRENDLOG_VIEWS table (View configurations and metadata - T3000 style naming)
+-- Stores user-defined view configurations for TrendLog Views 2 and 3
+-- Separate from TRENDLOG_INPUTS to maintain clean separation of concerns
+CREATE TABLE IF NOT EXISTS TRENDLOG_VIEWS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,      -- Auto-incrementing primary key
+    trendlog_id TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
+    view_number INTEGER NOT NULL,              -- View number: 2, 3 (View 1 is always "all data")
+    view_name TEXT DEFAULT NULL,               -- User-defined view name (optional)
+    view_description TEXT DEFAULT NULL,        -- User-defined view description (optional)
+    view_config TEXT DEFAULT NULL,             -- JSON configuration for the view (chart settings, etc.)
+    is_active INTEGER DEFAULT 1,              -- Active status: 1=active, 0=inactive
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record update time
+    UNIQUE(trendlog_id, view_number)           -- One configuration per trendlog per view number
 );
 
 -- TRENDLOG_DATA table (Actual trendlog data storage - T3000 style naming)
@@ -291,6 +318,12 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
 CREATE INDEX IF NOT EXISTS IDX_DEVICES_SERIAL ON DEVICES(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_INPUTS_SERIAL ON INPUTS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_OUTPUTS_SERIAL ON OUTPUTS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOGS_SERIAL ON TRENDLOGS(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOGS_ID ON TRENDLOGS(Trendlog_ID);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_INPUTS_ID ON TRENDLOG_INPUTS(Trendlog_ID);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_INPUTS_VIEW ON TRENDLOG_INPUTS(Trendlog_ID, view_type, view_number);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_VIEWS_ID ON TRENDLOG_VIEWS(trendlog_id);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_VIEWS_UNIQUE ON TRENDLOG_VIEWS(trendlog_id, view_number);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_SOURCE_TIME ON TRENDLOG_DATA(SerialNumber, PanelId, DataSource, LoggingTime_Fmt);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_RECENT_QUERY ON TRENDLOG_DATA(SerialNumber, PanelId, LoggingTime_Fmt DESC);
 CREATE INDEX IF NOT EXISTS IDX_VARIABLES_SERIAL ON VARIABLES(SerialNumber);
