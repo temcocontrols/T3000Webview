@@ -4,6 +4,8 @@ pub mod points_service;         // ✅ NEW - T3000 Points Management Service (in
 pub mod schedules_service;      // ✅ NEW - T3000 Schedules Management Service
 pub mod programs_service;       // ✅ NEW - T3000 Programs Management Service
 pub mod trendlogs_service;      // ✅ NEW - T3000 Trendlogs Management Service
+pub mod trendlog_ffi_service;   // ✅ NEW - T3000 TrendLog FFI Service for complete info retrieval
+pub mod trendlog_enhanced_routes; // ✅ NEW - T3000 TrendLog Enhanced API Routes for FFI and view management
 pub mod trendlog_data_service;  // ✅ NEW - T3000 TrendLog Historical Data Service (TRENDLOG_DATA table)
 pub mod t3000_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sync integration service (collects ALL data)
 pub mod t3_ffi_api_service;     // ✅ NEW - T3000 FFI API Service - HTTP API endpoints with FFI integration (same JSON as WebSocket)

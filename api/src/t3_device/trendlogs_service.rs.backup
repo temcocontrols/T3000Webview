@@ -138,7 +138,7 @@ impl T3TrendlogService {
     /// Get trendlogs with configuration (simple working version)
     pub async fn get_trendlogs_with_config(db: &DatabaseConnection, device_id: i32) -> Result<serde_json::Value, AppError> {
         let trendlogs_list = Self::get_trendlogs_by_device(db, device_id).await?;
-
+        
         let trendlogs_with_config: Vec<serde_json::Value> = trendlogs_list.iter().map(|trendlog| {
             serde_json::json!({
                 "trendlog_id": trendlog.trendlog_id,
@@ -151,7 +151,7 @@ impl T3TrendlogService {
                 "note": "Enhanced schema - legacy signal_type field not available"
             })
         }).collect();
-
+        
         Ok(serde_json::json!({
             "device_id": device_id,
             "trendlogs": trendlogs_with_config
@@ -172,7 +172,7 @@ impl T3TrendlogService {
     /// Get trendlog stats for a device (simplified version)
     pub async fn get_trendlog_stats_by_device(db: &DatabaseConnection, device_id: i32) -> Result<serde_json::Value, AppError> {
         let trendlogs_list = Self::get_trendlogs_by_device(db, device_id).await?;
-
+        
         Ok(serde_json::json!({
             "device_id": device_id,
             "total_trendlogs": trendlogs_list.len(),
@@ -181,4 +181,138 @@ impl T3TrendlogService {
             "message": "Stats generated from enhanced schema - signal_type field not available"
         }))
     }
+
 }
+
+    }
+
+    /// Get trendlogs with configuration (simplified version)
+    pub async fn get_trendlogs_with_config(db: &DatabaseConnection, device_id: i32) -> Result<serde_json::Value, AppError> {
+        let trendlogs_list = Self::get_trendlogs_by_device(db, device_id).await?;
+        
+        let mut trendlogs_with_config = Vec::new();
+        for trendlog in trendlogs_list {
+            trendlogs_with_config.push(serde_json::json!({
+                "trendlog_id": trendlog.trendlog_id,
+                "trendlog_label": trendlog.trendlog_label,
+                "status": trendlog.status,
+                "interval_minutes": trendlog.interval_minutes,
+                "buffer_size": trendlog.buffer_size,
+                "data_size_kb": trendlog.data_size_kb,
+                "auto_manual": trendlog.auto_manual,
+                "config_note": "Enhanced schema - some legacy fields not available"
+            }));
+        }
+        
+        Ok(serde_json::json!({
+            "device_id": device_id,
+            "trendlogs": trendlogs_with_config
+        }))
+    }
+}
+
+/* TEMPORARILY COMMENTED OUT - signal_type field issues
+    // TEMPORARY: Disabled due to signal_type field not existing in current schema  
+    #[allow(dead_code)]
+    pub async fn get_trendlog_stats_by_device_disabled(db: &DatabaseConnection, device_id: i32) -> Result<serde_json::Value, AppError> {
+        let trendlogs_list = Self::get_trendlogs_by_device(db, device_id).await?;
+
+        let active_count = trendlogs_list.iter()
+            .filter(|t| t.auto_manual.as_ref() == Some(&"AUTO".to_string()))
+            .count();
+
+        let manual_count = trendlogs_list.iter()
+            .filter(|t| t.auto_manual.as_ref() == Some(&"MANUAL".to_string()))
+            .count();
+
+        let enabled_count = trendlogs_list.iter()
+            .filter(|t| t.status.as_ref() == Some(&"Enabled".to_string()) || t.status.as_ref() == Some(&"ENABLED".to_string()))
+            .count();
+
+        let disabled_count = trendlogs_list.iter()
+            .filter(|t| t.status.as_ref() == Some(&"Disabled".to_string()) || t.status.as_ref() == Some(&"DISABLED".to_string()))
+            .count();
+
+        // Count by signal types
+        let analog_count = trendlogs_list.iter()
+            .filter(|t| t.signal_type.as_ref() == Some(&"Analog".to_string()) || t.signal_type.as_ref() == Some(&"1".to_string()))
+            .count();
+
+        let digital_count = trendlogs_list.iter()
+            .filter(|t| t.signal_type.as_ref() == Some(&"Digital".to_string()) || t.signal_type.as_ref() == Some(&"0".to_string()))
+            .count();
+
+        Ok(serde_json::json!({
+            "device_id": device_id,
+            "total_trendlogs": trendlogs_list.len(),
+            "active_trendlogs": active_count,
+            "manual_trendlogs": manual_count,
+            "enabled_trendlogs": enabled_count,
+            "disabled_trendlogs": disabled_count,
+            "analog_trendlogs": analog_count,
+            "digital_trendlogs": digital_count,
+            "trendlogs": trendlogs_list
+        }))
+    }
+
+    /// Get trendlogs with their configuration status
+    /// Get trendlogs with configuration (simplified version)
+    pub async fn get_trendlogs_with_config(db: &DatabaseConnection, device_id: i32) -> Result<serde_json::Value, AppError> {
+        let trendlogs_list = Self::get_trendlogs_by_device(db, device_id).await?;
+        
+        let mut trendlogs_with_config = Vec::new();
+        for trendlog in trendlogs_list {
+            trendlogs_with_config.push(serde_json::json!({
+                "trendlog_id": trendlog.trendlog_id,
+                "trendlog_label": trendlog.trendlog_label,
+                "status": trendlog.status,
+                "interval_minutes": trendlog.interval_minutes,
+                "buffer_size": trendlog.buffer_size,
+                "data_size_kb": trendlog.data_size_kb,
+                "auto_manual": trendlog.auto_manual,
+                "config_note": "Enhanced schema - some legacy fields not available"
+            }));
+        }
+        
+        Ok(serde_json::json!({
+            "device_id": device_id,
+            "trendlogs": trendlogs_with_config
+        }))
+    }
+
+    // TEMPORARY: Disabled due to signal_type field not existing in current schema  
+    #[allow(dead_code)]
+    pub async fn get_trendlogs_with_config_disabled(db: &DatabaseConnection, device_id: i32) -> Result<serde_json::Value, AppError> {
+        let trendlogs_list = Self::get_trendlogs_by_device(db, device_id).await?;
+
+        let trendlogs_with_config: Vec<serde_json::Value> = trendlogs_list.iter().map(|trendlog| {
+            let is_enabled = trendlog.status.as_ref()
+                .map(|status| status == "Enabled" || status == "ENABLED")
+                .unwrap_or(false);
+
+            let is_auto = trendlog.auto_manual.as_ref()
+                .map(|mode| mode == "AUTO")
+                .unwrap_or(false);
+
+            let is_analog = trendlog.signal_type.as_ref()
+                .map(|sig_type| sig_type == "Analog" || sig_type == "1")
+                .unwrap_or(false);
+
+            serde_json::json!({
+                "trendlog": trendlog,
+                "is_enabled": is_enabled,
+                "is_auto": is_auto,
+                "is_analog": is_analog,
+                "configuration_status": trendlog.status.as_ref().unwrap_or(&"Unknown".to_string()),
+                "control_mode": trendlog.auto_manual.as_ref().unwrap_or(&"Unknown".to_string()),
+                "signal_type_name": if is_analog { "Analog" } else { "Digital" }
+            })
+        }).collect();
+
+        Ok(serde_json::json!({
+            "device_id": device_id,
+            "trendlogs": trendlogs_with_config,
+            "count": trendlogs_list.len()
+        }))
+    }
+    */ // End of commented out section with signal_type issues
