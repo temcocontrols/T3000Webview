@@ -145,6 +145,9 @@ pub async fn sync_trendlog_frontend_pattern(
     Path(trendlog_id): Path<String>,
     Json(request): Json<FrontendFFISyncRequest>,
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
+    // Add request logging to check if route is being called
+    println!("🔥 FRONTEND FFI ROUTE CALLED: trendlog_id={}, device_id={}", trendlog_id, request.device_id);
+
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::sync_complete_trendlog_info(request.device_id as u32, &trendlog_id, &*db).await {

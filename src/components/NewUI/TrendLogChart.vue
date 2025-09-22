@@ -5880,10 +5880,16 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
 const initializeWithCompleteFFI = async () => {
   const { sn, panel_id, trendlog_id } = extractQueryParams()
 
-  if (!sn || !trendlog_id) {
+  // 🔥 DEBUG: Log extracted parameters
+  console.log('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
+
+  if (!sn || trendlog_id === null || trendlog_id === undefined) {
     LogUtil.Warn('❌ FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
+    console.log('🔥 FFI DEBUG: Early return due to missing parameters')
     return
   }
+
+  console.log('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
 
   try {
     ffiSyncStatus.value.syncing = true
@@ -5895,10 +5901,22 @@ const initializeWithCompleteFFI = async () => {
     })
 
     // 1. Sync TrendLog with T3000 FFI (gets complete info + saves to DB)
+    console.log('🔥 FFI DEBUG: About to make API call', {
+      url: `/api/t3_device/trendlogs/MONITOR${trendlog_id}/sync-ffi`,
+      device_id: sn,
+      trendlog_id
+    })
+
     const response = await fetch(`/api/t3_device/trendlogs/MONITOR${trendlog_id}/sync-ffi`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ device_id: sn })
+    })
+
+    console.log('🔥 FFI DEBUG: API response received', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
     })
 
     const syncResult = await response.json()
