@@ -321,8 +321,23 @@ impl TrendLogFFIService {
                     ..Default::default()
                 };
 
-                // Insert new view selection record (allows multiple combinations)
+                // Use upsert to handle existing records properly
                 trendlog_inputs::Entity::insert(view_record)
+                    .on_conflict(
+                        OnConflict::columns([
+                            trendlog_inputs::Column::TrendlogId,
+                            trendlog_inputs::Column::PointType,
+                            trendlog_inputs::Column::PointIndex,
+                            trendlog_inputs::Column::ViewType,
+                            trendlog_inputs::Column::ViewNumber
+                        ])
+                        .update_columns([
+                            trendlog_inputs::Column::PointLabel,
+                            trendlog_inputs::Column::IsSelected,
+                            trendlog_inputs::Column::UpdatedAt,
+                        ])
+                        .to_owned()
+                    )
                     .exec(db)
                     .await?;
             }

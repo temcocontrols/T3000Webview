@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
 CREATE TABLE IF NOT EXISTS TRENDLOGS (
     id INTEGER PRIMARY KEY AUTOINCREMENT,     -- Auto-increment primary key
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
+    PanelId INTEGER NOT NULL,                  -- C++ PanelId (panel identification)
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (following T3000 ID pattern)
     Switch_Node TEXT,                          -- C++ Switch_Node (following T3000 pattern)
     Trendlog_Label TEXT,                       -- C++ Trendlog_Label (following T3000 label pattern)
@@ -263,7 +264,9 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
 -- Optimized schema - removed unused BinaryArray field
 -- Enhanced with view management columns for persistent user selections
 CREATE TABLE IF NOT EXISTS TRENDLOG_INPUTS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,     -- Auto-incrementing primary key for multiple combinations
+    id INTEGER PRIMARY KEY AUTOINCREMENT,     -- Auto-incrementing primary key
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
+    PanelId INTEGER NOT NULL,                  -- C++ PanelId (panel identification)
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
     Point_Type TEXT NOT NULL,                  -- C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
     Point_Index TEXT NOT NULL,                 -- C++ Point_Index (references point index)
@@ -274,22 +277,27 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_INPUTS (
     view_number INTEGER DEFAULT NULL,          -- View number: NULL for MAIN, 2-3 for user views
     is_selected INTEGER DEFAULT 1,            -- Selection status: 1=selected, 0=not selected
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record update time
+    UNIQUE(SerialNumber, PanelId, Trendlog_ID, Point_Type, Point_Index, view_type, view_number) -- One record per point per view per device
 );
 
 -- TRENDLOG_VIEWS table (View configurations and metadata - T3000 style naming)
 -- Stores user-defined view configurations for TrendLog Views 2 and 3
 -- Separate from TRENDLOG_INPUTS to maintain clean separation of concerns
 CREATE TABLE IF NOT EXISTS TRENDLOG_VIEWS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,      -- Auto-incrementing primary key
-    trendlog_id TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
-    view_number INTEGER NOT NULL,              -- View number: 2, 3 (View 1 is always "all data")
-    view_name TEXT DEFAULT NULL,               -- User-defined view name (optional)
-    view_description TEXT DEFAULT NULL,        -- User-defined view description (optional)
-    view_config TEXT DEFAULT NULL,             -- JSON configuration for the view (chart settings, etc.)
-    is_active INTEGER DEFAULT 1,              -- Active status: 1=active, 0=inactive
+    id INTEGER PRIMARY KEY AUTOINCREMENT,     -- Auto-incrementing primary key
+    SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
+    PanelId INTEGER NOT NULL,                  -- C++ PanelId (panel identification)
+    Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
+    View_Number INTEGER NOT NULL,              -- View number: 2 or 3 (user-created views)
+    Point_Type TEXT NOT NULL,                  -- C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
+    Point_Index TEXT NOT NULL,                 -- C++ Point_Index (references point index)
+    Point_Panel TEXT,                          -- C++ Point_Panel
+    Point_Label TEXT,                          -- C++ Point_Label
+    is_selected INTEGER DEFAULT 1,            -- Selection status: 1=selected, 0=not selected
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record update time
+    UNIQUE(SerialNumber, PanelId, Trendlog_ID, View_Number, Point_Type, Point_Index) -- One record per point per view per device
 );
 
 -- TRENDLOG_DATA table (Actual trendlog data storage - T3000 style naming)
