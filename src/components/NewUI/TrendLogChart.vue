@@ -6353,7 +6353,7 @@ const saveFFIViewSelections = async (viewNumber: number) => {
 
       const selection = {
         point_type: series.prefix || 'UNKNOWN',        // e.g., "INPUT", "OUTPUT", "VAR"
-        point_index: series.pointNumber || 0,          // e.g., 0, 1, 2 (0-based)
+        point_index: String(series.pointNumber || 0),  // e.g., "0", "1", "2" (0-based, as string)
         point_label: seriesName,                       // e.g., "Room Temperature"
         point_id: series.id || `${series.prefix}${(series.pointNumber || 0) + 1}`, // e.g., "INPUT1"
         is_selected: true

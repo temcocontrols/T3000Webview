@@ -358,13 +358,38 @@ export function useTrendlogDataAPI() {
    */
   const saveViewSelections = async (trendlogId: string, viewNumber: number, selections: any[]): Promise<boolean> => {
     try {
+      const requestBody = { selections }
+
+      console.log('🔧 TrendlogAPI: Making save request', {
+        url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`,
+        requestBody,
+        selectionsCount: selections.length
+      })
+
       const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ selections })
+        body: JSON.stringify(requestBody)
       })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read error response')
+        console.error('🚫 TrendlogAPI: Save failed', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+          url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`
+        })
+      } else {
+        console.log('✅ TrendlogAPI: Save successful', {
+          status: response.status,
+          trendlogId,
+          viewNumber,
+          selectionsCount: selections.length
+        })
+      }
 
       return response.ok
     } catch (err) {
