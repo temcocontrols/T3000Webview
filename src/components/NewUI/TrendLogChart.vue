@@ -4837,7 +4837,15 @@ const resetToDefaultTimebase = () => {
 }
 
 const setView = (viewNumber: number) => {
+  const previousView = currentView.value
   currentView.value = viewNumber
+
+  LogUtil.Info(`🔄 Set View: Switching to View ${viewNumber}`, {
+    previousView,
+    newView: viewNumber,
+    viewType: viewNumber === 1 ? 'SHOW_ALL' : 'USER_SELECTED',
+    timestamp: new Date().toISOString()
+  })
 
   // Apply series visibility based on view
   if (viewNumber === 1) {
@@ -4846,12 +4854,21 @@ const setView = (viewNumber: number) => {
       series.visible = true
     })
 
-    LogUtil.Info(`✅ View 1: Showing all items`, {
-      totalSeries: dataSeries.value.length
+    LogUtil.Info(`✅ Set View: View 1 activated - showing all items`, {
+      totalSeries: dataSeries.value.length,
+      visibleSeries: dataSeries.value.length,
+      behavior: 'AUTO_SHOW_ALL'
     })
   } else {
     // View 2 & 3: Show only user selected items with FFI persistence ✅
     const trackedItems = viewTrackedSeries.value[viewNumber] || []
+
+    LogUtil.Info(`🔍 Set View: Processing View ${viewNumber} selections`, {
+      viewNumber,
+      localTrackedCount: trackedItems.length,
+      localTrackedItems: trackedItems,
+      hasFFISelections: viewSelections.value.has(viewNumber)
+    })
 
     // Apply FFI-persisted selections
     const ffiSelections = viewSelections.value.get(viewNumber) || []
@@ -4859,21 +4876,54 @@ const setView = (viewNumber: number) => {
       .filter(s => s.is_selected)
       .map(s => `${s.point_type}_${s.point_index}`)
 
+    LogUtil.Debug(`🔍 Set View: FFI selections processing`, {
+      viewNumber,
+      ffiSelectionsTotal: ffiSelections.length,
+      ffiSelectedCount: ffiSelections.filter(s => s.is_selected).length,
+      ffiTrackedNames,
+      ffiSelections: ffiSelections.map(s => ({
+        type: s.point_type,
+        index: s.point_index,
+        label: s.point_label,
+        selected: s.is_selected
+      }))
+    })
+
     // Use FFI selections if available, otherwise fall back to existing logic
     const activeTrackedItems = ffiTrackedNames.length > 0 ? ffiTrackedNames : trackedItems
 
-    dataSeries.value.forEach(series => {
-      series.visible = activeTrackedItems.includes(series.name)
+    LogUtil.Info(`📋 Set View: Using ${ffiTrackedNames.length > 0 ? 'FFI' : 'local'} selections for View ${viewNumber}`, {
+      dataSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
+      activeTrackedItems,
+      itemCount: activeTrackedItems.length
     })
 
-    // Enhanced logging for FFI-enabled views
-    LogUtil.Info(`✅ View ${viewNumber}: Applied selections`, {
+    dataSeries.value.forEach(series => {
+      const wasVisible = series.visible
+      series.visible = activeTrackedItems.includes(series.name)
+
+      if (wasVisible !== series.visible) {
+        LogUtil.Debug(`👁️ Set View: Series visibility changed`, {
+          seriesName: series.name,
+          from: wasVisible,
+          to: series.visible,
+          reason: series.visible ? 'INCLUDED_IN_SELECTIONS' : 'NOT_IN_SELECTIONS'
+        })
+      }
+    })
+
+    const finalVisibleSeries = dataSeries.value.filter(s => s.visible)
+
+    LogUtil.Info(`✅ Set View: View ${viewNumber} applied successfully`, {
+      viewNumber,
+      selectionSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
       ffiSelectionsCount: ffiSelections.length,
-      ffiTrackedNames,
-      fallbackTrackedItems: trackedItems,
-      activeTrackedItems,
-      visibleSeries: dataSeries.value.filter(s => s.visible).length,
-      totalSeries: dataSeries.value.length
+      localTrackedCount: trackedItems.length,
+      activeTrackedCount: activeTrackedItems.length,
+      visibleSeriesCount: finalVisibleSeries.length,
+      totalSeriesCount: dataSeries.value.length,
+      visibleSeries: finalVisibleSeries.map(s => s.name),
+      hiddenSeriesCount: dataSeries.value.length - finalVisibleSeries.length
     })
   }
 
@@ -4936,6 +4986,23 @@ const setView = (viewNumber: number) => {
 const toggleItemTracking = (seriesName: string) => {
   const currentTracked = viewTrackedSeries.value[currentView.value] || []
   const wasTracked = currentTracked.includes(seriesName)
+  const series = dataSeries.value.find(s => s.name === seriesName)
+
+  LogUtil.Info(`🎯 Toggle Item Tracking: Starting for "${seriesName}"`, {
+    seriesName,
+    currentView: currentView.value,
+    wasTracked,
+    action: wasTracked ? 'REMOVE' : 'ADD',
+    beforeTrackingCount: currentTracked.length,
+    beforeTracking: currentTracked,
+    seriesInfo: series ? {
+      prefix: series.prefix,
+      pointNumber: series.pointNumber,
+      unitType: series.unitType,
+      id: series.id
+    } : 'SERIES_NOT_FOUND',
+    timestamp: new Date().toISOString()
+  })
 
   if (wasTracked) {
     // Remove from tracking
@@ -4945,12 +5012,15 @@ const toggleItemTracking = (seriesName: string) => {
     viewTrackedSeries.value[currentView.value] = [...currentTracked, seriesName]
   }
 
-  console.log(`🎯 toggleItemTracking: ${seriesName}`, {
-    action: wasTracked ? 'removed' : 'added',
+  const afterTracked = viewTrackedSeries.value[currentView.value]
+
+  LogUtil.Info(`✅ Toggle Item Tracking: Updated tracking state`, {
+    seriesName,
     currentView: currentView.value,
-    beforeTracking: currentTracked,
-    afterTracking: viewTrackedSeries.value[currentView.value],
-    seriesUnitType: dataSeries.value.find(s => s.name === seriesName)?.unitType
+    action: wasTracked ? 'removed' : 'added',
+    afterTrackingCount: afterTracked.length,
+    afterTracking: afterTracked,
+    changeDelta: wasTracked ? -1 : +1
   })
 
   // Save to database
@@ -4958,19 +5028,59 @@ const toggleItemTracking = (seriesName: string) => {
 
   // Apply visibility immediately
   setView(currentView.value)
+
+  LogUtil.Info(`🔄 Toggle Item Tracking: Complete for "${seriesName}"`, {
+    finalState: {
+      viewNumber: currentView.value,
+      totalTracked: afterTracked.length,
+      trackedItems: afterTracked
+    }
+  })
 }
 
 const clearAllTracking = () => {
+  const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
+
+  LogUtil.Info(`🗑️ Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
+    currentView: currentView.value,
+    beforeCount,
+    action: 'CLEAR_ALL',
+    timestamp: new Date().toISOString()
+  })
+
   viewTrackedSeries.value[currentView.value] = []
   saveViewTracking(currentView.value, [])
   setView(currentView.value)
+
+  LogUtil.Info(`✅ Clear All Tracking: All selections cleared`, {
+    currentView: currentView.value,
+    clearedCount: beforeCount,
+    finalState: []
+  })
 }
 
 const selectAllItems = () => {
   const allSeriesNames = dataSeries.value.map(series => series.name)
+  const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
+
+  LogUtil.Info(`📋 Select All Items: Selecting all available items for View ${currentView.value}`, {
+    currentView: currentView.value,
+    beforeCount,
+    afterCount: allSeriesNames.length,
+    action: 'SELECT_ALL',
+    allSeriesNames,
+    timestamp: new Date().toISOString()
+  })
+
   viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
   saveViewTracking(currentView.value, allSeriesNames)
   setView(currentView.value)
+
+  LogUtil.Info(`✅ Select All Items: All items selected`, {
+    currentView: currentView.value,
+    selectedCount: allSeriesNames.length,
+    finalState: allSeriesNames
+  })
 }
 
 const unselectAllItems = () => {
@@ -4986,9 +5096,23 @@ const toggleSelectAll = () => {
 }
 
 const applyAndCloseDrawer = () => {
+  const selectedItems = viewTrackedSeries.value[currentView.value] || []
+
+  LogUtil.Info(`🎯 Apply Selection: View ${currentView.value} drawer closing`, {
+    currentView: currentView.value,
+    selectedItemsCount: selectedItems.length,
+    selectedItems: selectedItems,
+    action: 'APPLY_AND_CLOSE_DRAWER',
+    timestamp: new Date().toISOString()
+  })
+
   showItemSelector.value = false
   saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
   setView(currentView.value)
+
+  LogUtil.Info(`✅ Apply Selection: View ${currentView.value} changes applied successfully`, {
+    finalSelectedCount: selectedItems.length
+  })
 }
 
 const removeFromTracking = (seriesName: string, event?: Event) => {
@@ -4997,7 +5121,28 @@ const removeFromTracking = (seriesName: string, event?: Event) => {
   }
 
   const currentTracked = viewTrackedSeries.value[currentView.value] || []
+  const wasTracked = currentTracked.includes(seriesName)
+
+  LogUtil.Info(`🗑️ Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
+    seriesName,
+    currentView: currentView.value,
+    wasTracked,
+    beforeCount: currentTracked.length,
+    beforeTracking: currentTracked,
+    action: 'REMOVE_SPECIFIC',
+    timestamp: new Date().toISOString()
+  })
+
   viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
+  const afterTracked = viewTrackedSeries.value[currentView.value]
+
+  LogUtil.Info(`✅ Remove From Tracking: Item removed successfully`, {
+    seriesName,
+    currentView: currentView.value,
+    afterCount: afterTracked.length,
+    afterTracking: afterTracked,
+    removedSuccessfully: wasTracked
+  })
 
   // Save to database
   saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
@@ -5007,20 +5152,49 @@ const removeFromTracking = (seriesName: string, event?: Event) => {
 }
 
 const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => {
+  const saveStartTime = Date.now()
+
+  LogUtil.Info(`💾 Save View Tracking: Starting save process`, {
+    viewNumber,
+    trackedSeriesCount: trackedSeries.length,
+    trackedSeries,
+    trigger: 'USER_INTERACTION',
+    timestamp: new Date().toISOString()
+  })
+
   try {
     if (viewNumber >= 2 && viewNumber <= 3) {
       // 🆕 FFI Integration: Save to database for Views 2/3
+      LogUtil.Info(`🔄 Save View Tracking: Delegating to FFI save for View ${viewNumber}`)
+
       await saveFFIViewSelections(viewNumber)
-      LogUtil.Info(`✅ View ${viewNumber}: Selections saved to database`, {
+
+      const saveTime = Date.now() - saveStartTime
+      LogUtil.Info(`✅ Save View Tracking: View ${viewNumber} selections saved successfully`, {
+        viewNumber,
         trackedSeries,
-        count: trackedSeries.length
+        count: trackedSeries.length,
+        saveTime: `${saveTime}ms`,
+        savedViaFFI: true
       })
     } else {
       // View 1: No persistence needed (always shows all items)
-      LogUtil.Info(`📋 View ${viewNumber}: No persistence needed (shows all items)`)
+      LogUtil.Info(`📋 Save View Tracking: View ${viewNumber} skipped (no persistence needed)`, {
+        viewNumber,
+        reason: 'VIEW_1_SHOWS_ALL_ITEMS',
+        trackedSeriesIgnored: trackedSeries.length
+      })
     }
   } catch (error) {
-    LogUtil.Error(`❌ Failed to save view ${viewNumber} tracking:`, error)
+    const saveTime = Date.now() - saveStartTime
+    LogUtil.Error(`❌ Save View Tracking: Failed to save view ${viewNumber} tracking`, {
+      viewNumber,
+      trackedSeries,
+      error: error.message,
+      errorType: error.constructor.name,
+      saveTime: `${saveTime}ms`,
+      stack: error.stack
+    })
   }
 }
 
@@ -5926,7 +6100,8 @@ const initializeWithCompleteFFI = async () => {
       })
 
       // 2. Load view selections for Views 2/3
-      await loadFFIViewSelections(`MONITOR${trendlog_id}`)
+      const actualTrendlogId = props.itemData?.t3Entry?.id || `MONITOR${trendlog_id}`
+      await loadFFIViewSelections(actualTrendlogId)
 
       return ffiTrendlogInfo.value
     } else {
@@ -5949,31 +6124,143 @@ const initializeWithCompleteFFI = async () => {
  * Load persistent view selections for Views 2/3
  */
 const loadFFIViewSelections = async (trendlogId: string) => {
+  const loadStartTime = Date.now()
+
+  LogUtil.Info(`🔄 FFI Load API: Starting to load selections for Views 2/3`, {
+    trendlogId,
+    timestamp: new Date().toISOString()
+  })
+
   try {
     for (let viewNum = 2; viewNum <= 3; viewNum++) {
-      const response = await fetch(`/api/t3_device/trendlogs/${trendlogId}/views/${viewNum}/selections`)
+      const viewStartTime = Date.now()
+      const apiUrl = `/api/t3_device/trendlogs/${trendlogId}/views/${viewNum}/selections`
 
-      if (response.ok) {
-        const selections = await response.json()
+      LogUtil.Info(`📡 FFI Load API: Making GET request for View ${viewNum}`, {
+        url: apiUrl,
+        method: 'GET',
+        viewNumber: viewNum,
+        usingTrendlogAPI: true
+      })
+
+      // Use trendlogAPI instead of direct fetch - this handles the correct port (9103)
+      const selections = await trendlogAPI.loadViewSelections(trendlogId, viewNum)
+      const responseTime = Date.now() - viewStartTime
+
+      LogUtil.Info(`📈 FFI Load API: Response received for View ${viewNum}`, {
+        success: !!selections,
+        selectionsCount: selections?.length || 0,
+        responseTime: `${responseTime}ms`,
+        usedTrendlogAPI: true
+      })
+
+      if (selections) {
         viewSelections.value.set(viewNum, selections)
 
-        // Update the existing viewTrackedSeries for compatibility
+        LogUtil.Info(`📋 FFI Load API: Selections data received for View ${viewNum}`, {
+          selectionsCount: selections.length,
+          rawSelections: selections,
+          responseTime: `${responseTime}ms`
+        })
+
+        // Map database selections back to actual series names
         const trackedNames = selections
           .filter(s => s.is_selected)
-          .map(s => `${s.point_type}_${s.point_index}`)
+          .map(selection => {
+            LogUtil.Debug(`🔍 FFI Load: Processing selection`, {
+              selection,
+              lookingFor: {
+                point_type: selection.point_type,
+                point_index: selection.point_index,
+                point_label: selection.point_label
+              }
+            })
+
+            // Find series by matching point type and number
+            const matchingSeries = dataSeries.value.find(series =>
+              series.prefix === selection.point_type &&
+              series.pointNumber === selection.point_index
+            )
+
+            if (matchingSeries) {
+              LogUtil.Debug(`✅ FFI Load: Found matching series by type/index`, {
+                selection,
+                matchedSeries: {
+                  name: matchingSeries.name,
+                  prefix: matchingSeries.prefix,
+                  pointNumber: matchingSeries.pointNumber
+                }
+              })
+              return matchingSeries.name  // Return actual series name like "Room Temperature"
+            } else {
+              // Fallback: try to find by point_label if direct matching fails
+              const labelMatch = dataSeries.value.find(series => series.name === selection.point_label)
+              if (labelMatch) {
+                LogUtil.Info(`🔄 FFI Load: Found matching series by label fallback`, {
+                  selection,
+                  matchedSeries: labelMatch.name
+                })
+                return labelMatch.name
+              }
+
+              LogUtil.Warn(`⚠️ FFI Load: No series found for selection`, {
+                point_type: selection.point_type,
+                point_index: selection.point_index,
+                point_label: selection.point_label,
+                availableSeries: dataSeries.value.map(s => ({
+                  name: s.name,
+                  prefix: s.prefix,
+                  pointNumber: s.pointNumber
+                })).slice(0, 5) // Show first 5 for debug
+              })
+              return null
+            }
+          })
+          .filter(Boolean) // Remove null entries
 
         viewTrackedSeries.value[viewNum] = trackedNames
 
-        LogUtil.Info(`✅ FFI: Loaded View ${viewNum} selections`, {
-          count: selections.length,
-          trackedNames
+        LogUtil.Info(`✅ FFI Load API: View ${viewNum} selections processed successfully`, {
+          totalSelections: selections.length,
+          selectedCount: selections.filter(s => s.is_selected).length,
+          mappedNamesCount: trackedNames.length,
+          dbSelections: selections.map(s => ({
+            type: s.point_type,
+            index: s.point_index,
+            label: s.point_label,
+            selected: s.is_selected
+          })),
+          trackedNames: trackedNames,
+          responseTime: `${responseTime}ms`
         })
       } else {
-        LogUtil.Info(`📋 FFI: No existing selections for View ${viewNum}`)
+        LogUtil.Info(`📋 FFI Load API: No existing selections for View ${viewNum} (expected for new views)`, {
+          responseTime: `${responseTime}ms`,
+          trendlogId: trendlogId,
+          viewNumber: viewNum
+        })
       }
     }
+
+    const totalLoadTime = Date.now() - loadStartTime
+    LogUtil.Info(`✅ FFI Load API: Completed loading all view selections`, {
+      totalTime: `${totalLoadTime}ms`,
+      viewsProcessed: [2, 3],
+      finalState: {
+        view2Count: viewTrackedSeries.value[2]?.length || 0,
+        view3Count: viewTrackedSeries.value[3]?.length || 0
+      }
+    })
+
   } catch (error) {
-    LogUtil.Error('❌ FFI: Failed to load view selections', error)
+    const totalLoadTime = Date.now() - loadStartTime
+    LogUtil.Error(`❌ FFI Load API: Failed to load view selections`, {
+      error: error.message,
+      errorType: error.constructor.name,
+      totalTime: `${totalLoadTime}ms`,
+      trendlogId,
+      stack: error.stack
+    })
   }
 }
 
@@ -5981,43 +6268,174 @@ const loadFFIViewSelections = async (trendlogId: string) => {
  * Save persistent view selections for Views 2/3
  */
 const saveFFIViewSelections = async (viewNumber: number) => {
-  if (viewNumber < 2 || viewNumber > 3) return
+  LogUtil.Info(`🔧 FFI Save DEBUG: Function called`, {
+    viewNumber,
+    isValidView: viewNumber >= 2 && viewNumber <= 3,
+    timestamp: new Date().toISOString()
+  })
+
+  if (viewNumber < 2 || viewNumber > 3) {
+    LogUtil.Debug(`🚫 FFI Save: Skipping View ${viewNumber} (only Views 2/3 supported)`)
+    return
+  }
+
+  const startTime = Date.now()
 
   try {
-    const { trendlog_id } = extractQueryParams()
-    if (!trendlog_id) return
+    const extractedParams = extractQueryParams()
+    LogUtil.Info(`🔧 FFI Save DEBUG: Extracted params`, {
+      extractedParams,
+      hasTrendlogId: !!extractedParams.trendlog_id,
+      routeQuery: route.query
+    })
 
-    const trendlogId = `MONITOR${trendlog_id}`
+    const { trendlog_id } = extractedParams
+
+    // Get the actual trendlog ID from T3000 data (prefer actual ID over numeric)
+    let trendlogId = null
+    if (props.itemData?.t3Entry?.id) {
+      // Use actual T3000 ID (e.g., "MON1", "TRL2")
+      trendlogId = props.itemData.t3Entry.id
+    } else if (trendlog_id || trendlog_id === 0) {
+      // Fallback to constructed format if no T3000 ID available
+      trendlogId = `MONITOR${trendlog_id}`
+    }
+
+    if (!trendlogId) {
+      LogUtil.Warn(`⚠️ FFI Save: No trendlog_id found for View ${viewNumber} - cannot save selections`, {
+        extractedParams,
+        routeQuery: route.query,
+        propsItemData: props.itemData?.t3Entry || 'not available',
+        suggestion: 'Add trendlog_id to URL or ensure props.itemData contains MON/TRL id'
+      })
+      return
+    }
     const trackedNames = viewTrackedSeries.value[viewNumber] || []
 
-    // Convert tracked names to API format
-    const selections = trackedNames.map(name => {
-      const [pointType, pointIndex] = name.split('_')
-      return {
-        point_type: pointType,
-        point_index: pointIndex,
-        point_label: name,
+    LogUtil.Info(`🔄 FFI Save API: Starting View ${viewNumber} save process`, {
+      viewNumber,
+      trendlogId,
+      trackedNamesCount: trackedNames.length,
+      trackedNames,
+      apiEndpoint: `/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`,
+      timestamp: new Date().toISOString()
+    })
+
+    // 🔧 DEBUG: Check available series vs tracked names
+    LogUtil.Info(`🔧 FFI Save DEBUG: Series analysis`, {
+      trackedNames,
+      totalDataSeries: dataSeries.value.length,
+      availableSeriesNames: dataSeries.value.map(s => s.name),
+      seriesWithMetadata: dataSeries.value.map(s => ({
+        name: s.name,
+        prefix: s.prefix,
+        pointNumber: s.pointNumber,
+        id: s.id
+      }))
+    })
+
+    // Convert tracked series names to API format using actual series data
+    const selections = trackedNames.map(seriesName => {
+      LogUtil.Info(`🔧 FFI Save DEBUG: Processing series "${seriesName}"`)
+
+      // Find the actual series to get correct point type and number
+      const series = dataSeries.value.find(s => s.name === seriesName)
+
+      if (!series) {
+        LogUtil.Warn(`⚠️ FFI Save: Series not found for name: ${seriesName}`, {
+          seriesName,
+          totalAvailableSeries: dataSeries.value.length,
+          availableSeriesNames: dataSeries.value.map(s => s.name),
+          searchAttempted: 'exact name match'
+        })
+        return null
+      }
+
+      const selection = {
+        point_type: series.prefix || 'UNKNOWN',        // e.g., "INPUT", "OUTPUT", "VAR"
+        point_index: series.pointNumber || 0,          // e.g., 0, 1, 2 (0-based)
+        point_label: seriesName,                       // e.g., "Room Temperature"
+        point_id: series.id || `${series.prefix}${(series.pointNumber || 0) + 1}`, // e.g., "INPUT1"
         is_selected: true
       }
-    })
 
-    const response = await fetch(`/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
+      LogUtil.Debug(`📝 FFI Save: Mapped series to selection`, {
+        seriesName,
+        selection,
+        originalSeries: {
+          prefix: series.prefix,
+          pointNumber: series.pointNumber,
+          id: series.id
+        }
+      })
+
+      return selection
+    }).filter(Boolean) // Remove null entries
+
+    const requestBody = { selections }
+    const apiUrl = `/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`
+
+    LogUtil.Info(`📡 FFI Save API: Making POST request`, {
+      url: apiUrl,
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selections })
+      selectionsCount: selections.length,
+      requestBodySize: JSON.stringify(requestBody).length,
+      selections: selections.map(s => ({
+        type: s.point_type,
+        index: s.point_index,
+        label: s.point_label,
+        id: s.point_id
+      }))
     })
 
-    if (response.ok) {
+    LogUtil.Info(`🚀 FFI Save DEBUG: About to make API request via trendlogAPI`, {
+      trendlogId,
+      viewNumber,
+      selectionsCount: selections.length,
+      aboutToMakeRequest: true
+    })
+
+    // Use trendlogAPI instead of direct fetch - this handles the correct port (9103)
+    const success = await trendlogAPI.saveViewSelections(trendlogId, viewNumber, selections)
+
+    LogUtil.Info(`🚀 FFI Save DEBUG: API request completed`, {
+      requestCompleted: true,
+      success: success
+    })
+
+    const responseTime = Date.now() - startTime
+
+    LogUtil.Info(`📈 FFI Save API: Response received`, {
+      success: success,
+      responseTime: `${responseTime}ms`,
+      usedTrendlogAPI: true
+    })
+
+    if (success) {
       viewSelections.value.set(viewNumber, selections)
-      LogUtil.Info(`✅ FFI: Saved View ${viewNumber} selections`, {
+      LogUtil.Info(`✅ FFI Save API: View ${viewNumber} selections saved successfully`, {
         count: selections.length,
-        selections
+        responseTime: `${responseTime}ms`,
+        savedSelections: selections.map(s => ({
+          label: s.point_label,
+          type: s.point_type,
+          index: s.point_index,
+          id: s.point_id
+        })),
+        cacheUpdated: true
       })
     } else {
-      throw new Error('Failed to save view selections')
+      throw new Error(`API Error: Failed to save view selections using trendlogAPI`)
     }
   } catch (error) {
-    LogUtil.Error(`❌ FFI: Failed to save View ${viewNumber} selections`, error)
+    const responseTime = Date.now() - startTime
+    LogUtil.Error(`❌ FFI Save API: Failed to save View ${viewNumber} selections`, {
+      error: error.message,
+      errorType: error.constructor.name,
+      responseTime: `${responseTime}ms`,
+      viewNumber,
+      stack: error.stack
+    })
   }
 }
 
@@ -6027,9 +6445,41 @@ const saveFFIViewSelections = async (viewNumber: number) => {
 const extractQueryParams = () => {
   let sn = 0, panel_id = 0, trendlog_id = 0
 
+  // Method 1: Try from URL parameters (route)
   if (route.query.sn) sn = parseInt(route.query.sn as string)
   if (route.query.panel_id) panel_id = parseInt(route.query.panel_id as string)
   if (route.query.trendlog_id) trendlog_id = parseInt(route.query.trendlog_id as string)
+
+  // Method 2: Extract trendlog_id from props.itemData if available
+  if (!trendlog_id && props.itemData?.t3Entry) {
+    const t3Entry = props.itemData.t3Entry
+    // Extract and map trendlog_id from id (e.g., "MON5" -> 4)
+    if (t3Entry.id && typeof t3Entry.id === 'string') {
+      const match = t3Entry.id.match(/MON(\d+)|TRL(\d+)/i)
+      if (match) {
+        const monNumber = parseInt(match[1] || match[2])
+        // MON5 maps to trendlog ID 4 (MON number - 1)
+        trendlog_id = monNumber - 1
+      }
+    }
+  }
+
+  // Method 3: Fallback - use a default trendlog_id if we have panel data
+  if (!trendlog_id && T3000_Data.value.panelsList && T3000_Data.value.panelsList.length > 0) {
+    // Default to trendlog 0 (MONITOR1) if we have panel data but no specific trendlog_id
+    trendlog_id = 0
+  }
+
+  LogUtil.Info(`🔧 FFI Params: Extracted query parameters`, {
+    sn,
+    panel_id,
+    trendlog_id,
+    routeQuery: route.query,
+    propsItemData: props.itemData?.t3Entry?.id || 'not available',
+    extractionMethod: trendlog_id > 0 ?
+      (route.query.trendlog_id ? 'URL_PARAMS' :
+       props.itemData?.t3Entry?.id ? 'PROPS_ITEM_DATA' : 'DEFAULT_FALLBACK') : 'NOT_FOUND'
+  })
 
   return { sn, panel_id, trendlog_id }
 }

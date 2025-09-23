@@ -334,19 +334,12 @@ export function useTrendlogDataAPI() {
   }
 
   /**
-   * Convert socket data from port 9104 to format suitable for database saving
-   * Used when processing realtime data from WebSocket connection
+   * Format socket data for batch save operation
+   * Converts T3000 socket data structure to API format
    */
-  const formatSocketDataForSave = (
-    socketData: any,
-    serialNumber: number,
-    panelId: number
-  ): RealtimeDataRequest[] => {
-    if (!socketData || !Array.isArray(socketData.data)) {
-      return []
-    }
-
-    return socketData.data.map((point: any) => ({
+  const formatSocketDataForSave = (socketData: any[], serialNumber: number, panelId: number): RealtimeDataRequest[] => {
+    return socketData.map(point => ({
+      timestamp: new Date().toISOString(),
       serial_number: serialNumber,
       panel_id: panelId,
       point_id: point.id || `${point.type || 'UNK'}${point.index || 0}`,
@@ -357,6 +350,51 @@ export function useTrendlogDataAPI() {
       digital_analog: point.digital_analog?.toString(),
       units: point.units
     }))
+  }
+
+  /**
+   * Save view selections for View 2 or 3
+   * POST /api/t3_device/trendlogs/{trendlog_id}/views/{view_number}/selections
+   */
+  const saveViewSelections = async (trendlogId: string, viewNumber: number, selections: any[]): Promise<boolean> => {
+    try {
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ selections })
+      })
+
+      return response.ok
+    } catch (err) {
+      console.error('Failed to save view selections:', err)
+      return false
+    }
+  }
+
+  /**
+   * Load view selections for View 2 or 3
+   * GET /api/t3_device/trendlogs/{trendlog_id}/views/{view_number}/selections
+   */
+  const loadViewSelections = async (trendlogId: string, viewNumber: number): Promise<any[] | null> => {
+    try {
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        return null
+      }
+
+      return await response.json()
+    } catch (err) {
+      console.error('Failed to load view selections:', err)
+      return null
+    }
   }
 
   return {
@@ -376,6 +414,10 @@ export function useTrendlogDataAPI() {
     createInitialTrendlog,
     syncTrendlogWithFFI,
     initializeCompleteFFI,
+
+    // View Selection Methods
+    saveViewSelections,
+    loadViewSelections,
 
     // Utility Methods
     formatSocketDataForSave
