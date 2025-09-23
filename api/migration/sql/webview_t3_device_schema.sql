@@ -242,8 +242,9 @@ CREATE TABLE IF NOT EXISTS MONITORDATA (
 -- Optimized schema - removed unused BinaryArray field
 -- Enhanced for FFI integration and webview functionality
 CREATE TABLE IF NOT EXISTS TRENDLOGS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,     -- Auto-increment primary key
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
-    Trendlog_ID TEXT,                          -- C++ Trendlog_ID (following T3000 ID pattern)
+    Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (following T3000 ID pattern)
     Switch_Node TEXT,                          -- C++ Switch_Node (following T3000 pattern)
     Trendlog_Label TEXT,                       -- C++ Trendlog_Label (following T3000 label pattern)
     Interval_Minutes INTEGER,                  -- C++ Interval_Minutes
@@ -254,7 +255,8 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
     ffi_synced INTEGER DEFAULT 0,              -- FFI sync status (0=not synced, 1=synced)
     last_ffi_sync TEXT,                        -- Last FFI sync timestamp
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record update time
+    UNIQUE(SerialNumber, Trendlog_ID)          -- Composite unique constraint for proper upsert
 );
 
 -- TRENDLOG_INPUTS table (Trendlog input configuration - T3000 style naming)

@@ -6,11 +6,14 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "TRENDLOGS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
+    #[sea_orm(primary_key, auto_increment = true, column_name = "id")]
+    pub id: i32,                                // Auto-increment primary key
+
+    #[sea_orm(column_name = "SerialNumber")]
     pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
     #[sea_orm(column_name = "Trendlog_ID")]
-    pub trendlog_id: Option<String>,            // C++ Trendlog_ID (following T3000 ID pattern)
+    pub trendlog_id: String,                    // C++ Trendlog_ID (following T3000 ID pattern)
     #[sea_orm(column_name = "Switch_Node")]
     pub switch_node: Option<String>,            // C++ Switch_Node (following T3000 pattern)
     #[sea_orm(column_name = "Trendlog_Label")]

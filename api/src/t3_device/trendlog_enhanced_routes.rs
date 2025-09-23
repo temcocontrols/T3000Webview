@@ -49,6 +49,7 @@ pub fn create_trendlog_enhanced_routes() -> Router<T3AppState> {
         .route("/init/:serial_number/:trendlog_id", post(create_initial_trendlog))
         .route("/sync-detailed/:serial_number/:trendlog_id", post(sync_detailed_trendlog))
         // Frontend-expected route pattern (what TrendLogChart.vue is calling)
+        .route("/trendlogs/:trendlog_id/init", post(create_initial_trendlog_frontend_pattern))
         .route("/trendlogs/:trendlog_id/sync-ffi", post(sync_trendlog_frontend_pattern))
         // Legacy FFI sync endpoint (for backward compatibility)
         .route("/sync-ffi/:serial_number/:trendlog_id", post(sync_trendlog_with_ffi))
@@ -70,6 +71,32 @@ pub async fn create_initial_trendlog(
     let db = get_t3_device_conn!(app_state);
 
     match TrendLogFFIService::create_initial_trendlog_info(serial_number as u32, &trendlog_id, &*db).await {
+        Ok(trendlog_info) => {
+            Ok(Json(TrendLogFFIResponse {
+                success: true,
+                message: "Initial TrendLog info created successfully".to_string(),
+                trendlog_info: Some(trendlog_info),
+            }))
+        }
+        Err(e) => {
+            Ok(Json(TrendLogFFIResponse {
+                success: false,
+                message: format!("Initial creation failed: {}", e),
+                trendlog_info: None,
+            }))
+        }
+    }
+}
+
+// NEW: Create initial TrendLog info (frontend pattern - consistent with sync-ffi)
+pub async fn create_initial_trendlog_frontend_pattern(
+    State(app_state): State<T3AppState>,
+    Path(trendlog_id): Path<String>,
+    Json(request): Json<FrontendFFISyncRequest>,
+) -> Result<Json<TrendLogFFIResponse>, AppError> {
+    let db = get_t3_device_conn!(app_state);
+
+    match TrendLogFFIService::create_initial_trendlog_info(request.device_id as u32, &trendlog_id, &*db).await {
         Ok(trendlog_info) => {
             Ok(Json(TrendLogFFIResponse {
                 success: true,

@@ -5897,46 +5897,40 @@ const initializeWithCompleteFFI = async () => {
 
     LogUtil.Info('🔄 FFI: Starting complete TrendLog sync', {
       device_id: sn,
-      trendlog_id: `MONITOR${trendlog_id}`
+      trendlog_id: trendlog_id
     })
 
-    // 1. Sync TrendLog with T3000 FFI (gets complete info + saves to DB)
-    console.log('🔥 FFI DEBUG: About to make API call', {
-      url: `/api/t3_device/trendlogs/MONITOR${trendlog_id}/sync-ffi`,
+    // Two-step FFI approach: 1) Create initial record (fast), 2) FFI sync (slower)
+    console.log('🔥 FFI DEBUG: Starting two-step FFI initialization', {
       device_id: sn,
-      trendlog_id
+      trendlog_id: trendlog_id,
+      trendlog_id_string: trendlog_id.toString()
     })
 
-    const response = await fetch(`/api/t3_device/trendlogs/MONITOR${trendlog_id}/sync-ffi`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device_id: sn })
+    const completeResult = await trendlogAPI.initializeCompleteFFI(sn, trendlog_id.toString())
+
+    console.log('🔥 FFI DEBUG: Complete FFI result received', {
+      completeResult
     })
 
-    console.log('🔥 FFI DEBUG: API response received', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    })
-
-    const syncResult = await response.json()
-
-    if (syncResult.success) {
-      ffiTrendlogInfo.value = syncResult.trendlog_info
+    if (completeResult.success) {
+      // Use FFI result for complete info, fallback to initial if needed
+      ffiTrendlogInfo.value = completeResult.ffi?.trendlog_info || completeResult.initial?.trendlog_info
       ffiSyncStatus.value.completed = true
       ffiSyncStatus.value.lastSync = new Date().toISOString()
 
-      LogUtil.Info('✅ FFI: TrendLog sync completed successfully', {
-        info: syncResult.trendlog_info,
-        num_points: syncResult.trendlog_info?.related_points?.length || 0
+      LogUtil.Info('✅ FFI: Complete TrendLog initialization successful', {
+        initial_info: completeResult.initial?.trendlog_info,
+        ffi_info: completeResult.ffi?.trendlog_info,
+        num_points: ffiTrendlogInfo.value?.related_points?.length || 0
       })
 
       // 2. Load view selections for Views 2/3
       await loadFFIViewSelections(`MONITOR${trendlog_id}`)
 
-      return syncResult.trendlog_info
+      return ffiTrendlogInfo.value
     } else {
-      throw new Error(syncResult.message)
+      throw new Error(completeResult.ffi?.message || completeResult.initial?.message || 'FFI initialization failed')
     }
 
   } catch (error) {

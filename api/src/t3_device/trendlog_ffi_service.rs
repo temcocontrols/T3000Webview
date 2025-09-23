@@ -8,6 +8,7 @@ use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar};
 use sea_orm::*;
 use sea_orm::prelude::Expr;
+use sea_orm::ActiveValue::NotSet;
 use migration::OnConflict;
 use serde::{Serialize, Deserialize};
 use chrono::Utc;
@@ -247,8 +248,9 @@ impl TrendLogFFIService {
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("💾 Saving basic TrendLog to database: {}", info.trendlog_id), LogLevel::Info);
 
         let trendlog_record = trendlogs::ActiveModel {
+            id: NotSet, // Auto-increment
             serial_number: Set(info.serial_number),
-            trendlog_id: Set(Some(info.trendlog_id.clone())),
+            trendlog_id: Set(info.trendlog_id.clone()),
             switch_node: Set(None),
             trendlog_label: Set(Some(info.trendlog_label.clone())),
             interval_minutes: Set(Some(info.interval_minutes)),
@@ -263,7 +265,7 @@ impl TrendLogFFIService {
             ..Default::default()
         };
 
-        // Upsert the basic record
+        // Use proper upsert with the composite unique constraint
         trendlogs::Entity::insert(trendlog_record)
             .on_conflict(
                 OnConflict::columns([trendlogs::Column::SerialNumber, trendlogs::Column::TrendlogId])
@@ -558,8 +560,9 @@ impl TrendLogFFIService {
 
         // Save main TrendLog record
         let trendlog_record = trendlogs::ActiveModel {
+            id: NotSet, // Auto-increment
             serial_number: Set(info.serial_number),
-            trendlog_id: Set(Some(info.trendlog_id.clone())),
+            trendlog_id: Set(info.trendlog_id.clone()),
             switch_node: Set(None),
             trendlog_label: Set(Some(info.trendlog_label.clone())),
             interval_minutes: Set(Some(info.interval_minutes)),
