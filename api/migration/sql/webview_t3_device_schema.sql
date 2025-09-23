@@ -255,8 +255,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
     ffi_synced INTEGER DEFAULT 0,              -- FFI sync status (0=not synced, 1=synced)
     last_ffi_sync TEXT,                        -- Last FFI sync timestamp
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record update time
-    UNIQUE(SerialNumber, Trendlog_ID)          -- Composite unique constraint for proper upsert
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
 );
 
 -- TRENDLOG_INPUTS table (Trendlog input configuration - T3000 style naming)
@@ -264,6 +263,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
 -- Optimized schema - removed unused BinaryArray field
 -- Enhanced with view management columns for persistent user selections
 CREATE TABLE IF NOT EXISTS TRENDLOG_INPUTS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,     -- Auto-incrementing primary key for multiple combinations
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
     Point_Type TEXT NOT NULL,                  -- C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
     Point_Index TEXT NOT NULL,                 -- C++ Point_Index (references point index)
@@ -289,8 +289,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_VIEWS (
     view_config TEXT DEFAULT NULL,             -- JSON configuration for the view (chart settings, etc.)
     is_active INTEGER DEFAULT 1,              -- Active status: 1=active, 0=inactive
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record creation time
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Record update time
-    UNIQUE(trendlog_id, view_number)           -- One configuration per trendlog per view number
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- Record update time
 );
 
 -- TRENDLOG_DATA table (Actual trendlog data storage - T3000 style naming)

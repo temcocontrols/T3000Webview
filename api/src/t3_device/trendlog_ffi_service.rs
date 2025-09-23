@@ -265,16 +265,8 @@ impl TrendLogFFIService {
             ..Default::default()
         };
 
-        // Use proper upsert with the composite unique constraint
+        // Insert new trendlog record (allows multiple combinations)
         trendlogs::Entity::insert(trendlog_record)
-            .on_conflict(
-                OnConflict::columns([trendlogs::Column::SerialNumber, trendlogs::Column::TrendlogId])
-                    .update_columns([
-                        trendlogs::Column::TrendlogLabel,
-                        trendlogs::Column::UpdatedAt,
-                    ])
-                    .to_owned()
-            )
             .exec(db)
             .await?;
 
@@ -329,22 +321,8 @@ impl TrendLogFFIService {
                     ..Default::default()
                 };
 
-                // Use upsert to handle existing records
+                // Insert new view selection record (allows multiple combinations)
                 trendlog_inputs::Entity::insert(view_record)
-                    .on_conflict(
-                        OnConflict::columns([
-                            trendlog_inputs::Column::TrendlogId,
-                            trendlog_inputs::Column::PointType,
-                            trendlog_inputs::Column::PointIndex
-                        ])
-                        .update_columns([
-                            trendlog_inputs::Column::ViewType,
-                            trendlog_inputs::Column::ViewNumber,
-                            trendlog_inputs::Column::IsSelected,
-                            trendlog_inputs::Column::UpdatedAt,
-                        ])
-                        .to_owned()
-                    )
                     .exec(db)
                     .await?;
             }
@@ -576,22 +554,8 @@ impl TrendLogFFIService {
             updated_at: Set(Some(Utc::now().to_rfc3339())),
         };
 
-        // Use upsert to handle existing records
+        // Insert new trendlog record (allows multiple combinations)
         trendlogs::Entity::insert(trendlog_record)
-            .on_conflict(
-                OnConflict::columns([trendlogs::Column::SerialNumber, trendlogs::Column::TrendlogId])
-                    .update_columns([
-                        trendlogs::Column::TrendlogLabel,
-                        trendlogs::Column::IntervalMinutes,
-                        trendlogs::Column::BufferSize,
-                        trendlogs::Column::DataSizeKb,
-                        trendlogs::Column::Status,
-                        trendlogs::Column::FfiSynced,
-                        trendlogs::Column::LastFfiSync,
-                        trendlogs::Column::UpdatedAt,
-                    ])
-                    .to_owned()
-            )
             .exec(db)
             .await?;
 
