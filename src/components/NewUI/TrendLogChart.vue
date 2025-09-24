@@ -3823,22 +3823,57 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  * Load historical data from database based on current timebase
  */
 const loadHistoricalDataFromDatabase = async () => {
+  LogUtil.Info('🔍 loadHistoricalDataFromDatabase CALLED', {
+    hasMonitorConfig: !!monitorConfig.value,
+    monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
+    dataSeriesLength: dataSeries.value.length,
+    timestamp: new Date().toISOString()
+  })
+
   try {
-    // Get current device info
-    const panelsList = T3000_Data.value.panelsList || []
-    const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
-    const currentSN = panelsList.length > 0 ? panelsList[0].serial_number : 0
+    // 🆕 FIX: Use extractDeviceParameters for reliable device info from query params
+    const deviceParams = extractDeviceParameters()
+    const { sn: currentSN, panel_id: currentPanelId, trendlog_id } = deviceParams
+
+    LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Device parameters extraction', {
+      currentSN,
+      currentPanelId,
+      trendlog_id,
+      source: 'extractDeviceParameters'
+    })
 
     if (!currentSN) {
-      LogUtil.Debug('No serial number available for historical data loading')
+      LogUtil.Warn('❌ loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+        queryParams: route.query,
+        panelsList: T3000_Data.value.panelsList?.length || 0
+      })
       return
     }
 
-    // Get monitor config for point filtering
-    const monitorConfigData = monitorConfig.value
-    if (!monitorConfigData?.inputItems?.length) {
-      LogUtil.Debug('No monitor configuration available for historical data loading')
+    if (!currentPanelId) {
+      LogUtil.Warn('❌ loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+        queryParams: route.query,
+        panelsList: T3000_Data.value.panelsList?.length || 0
+      })
       return
+    }
+
+    // 🆕 FIX: Don't require monitorConfig - use dataseries as fallback
+    const monitorConfigData = monitorConfig.value
+    let shouldUseDataSeriesForPoints = false
+
+    if (!monitorConfigData?.inputItems?.length) {
+      LogUtil.Info('🔄 loadHistoricalDataFromDatabase: No monitor config - will use existing dataseries for point info', {
+        dataSeriesLength: dataSeries.value.length,
+        hasDataSeries: dataSeries.value.length > 0
+      })
+      shouldUseDataSeriesForPoints = true
+
+      // If no dataseries either, we can't determine what to load
+      if (dataSeries.value.length === 0) {
+        LogUtil.Warn('❌ loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
+        return
+      }
     }
 
     // Calculate time range based on current timebase with time offset support
@@ -3866,20 +3901,68 @@ const loadHistoricalDataFromDatabase = async () => {
     const formattedStartTime = formatLocalTime(startTime)
     const formattedEndTime = formatLocalTime(endTime)
 
-    // Create a safe specific points list - only include valid, real data items
+    // 🆕 FIX: Create specific points list from available data sources
     let specificPoints: Array<{point_id: string, point_type: string, point_index: number, panel_id: number}> = []
 
-    // Method 1: Try to extract from current data series
-    if (dataSeries.value && dataSeries.value.length > 0) {
+    if (shouldUseDataSeriesForPoints) {
+      // Method 1: Extract from existing data series (fallback when no monitorConfig)
+      LogUtil.Info('🔄 loadHistoricalDataFromDatabase: Extracting points from existing dataseries')
+
       dataSeries.value.forEach((series, index) => {
-        // Only include series that have meaningful identifiers and are not demo/test data
-        if (series.id && series.id !== '1' && series.name &&
-            !series.name.includes('(P0)') &&
-            !series.name.match(/^\d+\s*\([P]\d+\)$/) &&
-            series.description) {
-          let pointType = 'VARIABLE' // Default
-          let pointIndex = index
-          let pointId = series.id
+        if (series.pointType !== undefined && series.pointNumber !== undefined) {
+          const pointTypeString = mapPointTypeFromNumber(series.pointType)
+          const pointId = generateDeviceId(series.pointType, series.pointNumber)
+
+          specificPoints.push({
+            point_id: pointId,
+            point_type: pointTypeString,
+            point_index: series.pointNumber,
+            panel_id: currentPanelId
+          })
+        }
+      })
+
+      LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Points from dataseries', {
+        pointsExtracted: specificPoints.length,
+        samplePoints: specificPoints.slice(0, 3)
+      })
+    } else {
+      // Method 2: Extract from monitor config (preferred when available)
+      LogUtil.Info('🔄 loadHistoricalDataFromDatabase: Extracting points from monitor config')
+
+      monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
+        const pointTypeString = mapPointTypeFromNumber(inputItem.point_type)
+        const pointId = generateDeviceId(inputItem.point_type, inputItem.point_number)
+
+        specificPoints.push({
+          point_id: pointId,
+          point_type: pointTypeString,
+          point_index: inputItem.point_number,
+          panel_id: currentPanelId
+        })
+      })
+
+      LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Points from monitor config', {
+        pointsExtracted: specificPoints.length,
+        samplePoints: specificPoints.slice(0, 3)
+      })
+    }
+
+    // Fallback method: Use generic points if still no specific points found
+    if (specificPoints.length === 0) {
+      LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: No points from dataseries or monitorConfig - using fallback points')
+
+      // Try to extract from legacy dataseries format for backward compatibility
+      if (dataSeries.value && dataSeries.value.length > 0) {
+        dataSeries.value.forEach((series, index) => {
+          // Only include series that have meaningful identifiers and are not demo/test data
+          if (series.id && series.id !== '1' && series.name &&
+              !series.name.includes('(P0)') &&
+              !series.name.match(/^\d+\s*\([P]\d+\)$/) &&
+              series.description) {
+            let pointType = 'VARIABLE' // Default
+            let pointIndex = index
+            let pointId = series.id
 
           // Try to extract point info from series.id or series.name
           if (series.id.startsWith('VAR')) {
@@ -3909,18 +3992,21 @@ const loadHistoricalDataFromDatabase = async () => {
       })
     }
 
-    // Method 2: Fallback to known working points if none found
-    if (specificPoints.length === 0) {
-      LogUtil.Warn('No valid data series found, using minimal working point set')
-      specificPoints = [
-        { point_id: "VAR1", point_type: "VARIABLE", point_index: 0, panel_id: currentPanelId },
-        { point_id: "VAR3", point_type: "VARIABLE", point_index: 2, panel_id: currentPanelId }
-      ]
+      // Final fallback: Use known working points if still nothing found
+      if (specificPoints.length === 0) {
+        LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: Using minimal fallback points')
+        specificPoints = [
+          { point_id: "VAR1", point_type: "VARIABLE", point_index: 0, panel_id: currentPanelId },
+          { point_id: "VAR3", point_type: "VARIABLE", point_index: 2, panel_id: currentPanelId }
+        ]
+      }
     }
 
-    // Extract and map trendlog ID from monitorConfig.id (e.g., "MON5" -> "4")
-    let trendlogId = '1' // Default fallback
-    if (monitorConfigData.id && typeof monitorConfigData.id === 'string') {
+    // 🆕 FIX: Extract trendlog ID from multiple sources
+    let trendlogId = deviceParams.trendlog_id?.toString() || '1' // Use from extractDeviceParameters first
+
+    if (!deviceParams.trendlog_id && monitorConfigData?.id && typeof monitorConfigData.id === 'string') {
+      // Fallback: Extract from monitorConfig.id (e.g., "MON5" -> "4")
       const match = monitorConfigData.id.match(/MON(\d+)|TRL(\d+)/i)
       if (match) {
         const monNumber = parseInt(match[1] || match[2])
@@ -3930,8 +4016,9 @@ const loadHistoricalDataFromDatabase = async () => {
     }
 
     LogUtil.Debug('🔍 Trendlog ID extraction for historical data request:', {
-      originalId: monitorConfigData.id,
-      extractedId: trendlogId,
+      fromExtractDeviceParams: deviceParams.trendlog_id,
+      fromMonitorConfig: monitorConfigData?.id,
+      finalTrendlogId: trendlogId,
       willUseUrl: `/trendlogs/${trendlogId}/history`
     })
 
