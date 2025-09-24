@@ -12,6 +12,9 @@ pub struct Model {
     #[sea_orm(column_name = "SerialNumber")]
     pub serial_number: i32,                     // C++ SerialNumber (FK to DEVICES.SerialNumber)
 
+    #[sea_orm(column_name = "PanelId")]
+    pub panel_id: i32,                          // C++ PanelId (panel identification)
+
     #[sea_orm(column_name = "Trendlog_ID")]
     pub trendlog_id: String,                    // C++ Trendlog_ID (following T3000 ID pattern)
     #[sea_orm(column_name = "Switch_Node")]

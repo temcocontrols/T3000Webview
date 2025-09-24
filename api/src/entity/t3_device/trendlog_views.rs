@@ -9,18 +9,26 @@ pub struct Model {
     #[sea_orm(primary_key, column_name = "id")]
     pub id: i32,                                // Auto-incrementing primary key
 
-    #[sea_orm(column_name = "trendlog_id")]
+    #[sea_orm(column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (references DEVICES.SerialNumber)
+
+    #[sea_orm(column_name = "PanelId")]
+    pub panel_id: i32,                          // C++ PanelId (panel identification)
+
+    #[sea_orm(column_name = "Trendlog_ID")]
     pub trendlog_id: String,                    // C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
-    #[sea_orm(column_name = "view_number")]
-    pub view_number: i32,                       // View number: 2, 3 (View 1 is always "all data")
-    #[sea_orm(column_name = "view_name")]
-    pub view_name: Option<String>,              // User-defined view name (optional)
-    #[sea_orm(column_name = "view_description")]
-    pub view_description: Option<String>,       // User-defined view description (optional)
-    #[sea_orm(column_name = "view_config")]
-    pub view_config: Option<String>,            // JSON configuration for the view (chart settings, etc.)
-    #[sea_orm(column_name = "is_active")]
-    pub is_active: Option<i32>,                 // Active status: 1=active, 0=inactive
+    #[sea_orm(column_name = "View_Number")]
+    pub view_number: i32,                       // View number: 2 or 3 (user-created views)
+    #[sea_orm(column_name = "Point_Type")]
+    pub point_type: String,                     // C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
+    #[sea_orm(column_name = "Point_Index")]
+    pub point_index: String,                    // C++ Point_Index (references point index)
+    #[sea_orm(column_name = "Point_Panel")]
+    pub point_panel: Option<String>,            // C++ Point_Panel
+    #[sea_orm(column_name = "Point_Label")]
+    pub point_label: Option<String>,            // C++ Point_Label
+    #[sea_orm(column_name = "is_selected")]
+    pub is_selected: Option<i32>,               // Selection status: 1=selected, 0=not selected
     #[sea_orm(column_name = "created_at")]
     pub created_at: Option<String>,             // Record creation time
     #[sea_orm(column_name = "updated_at")]

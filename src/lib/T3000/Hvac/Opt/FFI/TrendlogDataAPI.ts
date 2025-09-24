@@ -355,15 +355,21 @@ export function useTrendlogDataAPI() {
   /**
    * Save view selections for View 2 or 3
    * POST /api/t3_device/trendlogs/{trendlog_id}/views/{view_number}/selections
+   * Enhanced to pass SerialNumber and PanelId for multi-device support
    */
-  const saveViewSelections = async (trendlogId: string, viewNumber: number, selections: any[]): Promise<boolean> => {
+  const saveViewSelections = async (trendlogId: string, viewNumber: number, selections: any[], serialNumber?: number, panelId?: number): Promise<boolean> => {
     try {
-      const requestBody = { selections }
+      const requestBody = {
+        selections,
+        serial_number: serialNumber,
+        panel_id: panelId
+      }
 
-      console.log('🔧 TrendlogAPI: Making save request', {
+      console.log('🔧 TrendlogAPI: Making save request with device context', {
         url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`,
         requestBody,
-        selectionsCount: selections.length
+        selectionsCount: selections.length,
+        deviceContext: { serialNumber, panelId }
       })
 
       const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
@@ -401,10 +407,24 @@ export function useTrendlogDataAPI() {
   /**
    * Load view selections for View 2 or 3
    * GET /api/t3_device/trendlogs/{trendlog_id}/views/{view_number}/selections
+   * Enhanced to include device context for multi-device support
    */
-  const loadViewSelections = async (trendlogId: string, viewNumber: number): Promise<any[] | null> => {
+  const loadViewSelections = async (trendlogId: string, viewNumber: number, serialNumber?: number, panelId?: number): Promise<any[] | null> => {
     try {
-      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`, {
+      // Build URL with query parameters for device context if provided
+      const params = new URLSearchParams()
+      if (serialNumber !== undefined) params.append('serial_number', serialNumber.toString())
+      if (panelId !== undefined) params.append('panel_id', panelId.toString())
+
+      const queryString = params.toString()
+      const url = `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections${queryString ? `?${queryString}` : ''}`
+
+      console.log('🔧 TrendlogAPI: Loading view selections with device context', {
+        url,
+        deviceContext: { serialNumber, panelId }
+      })
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

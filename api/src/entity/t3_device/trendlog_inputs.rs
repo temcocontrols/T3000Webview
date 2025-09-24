@@ -6,12 +6,21 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "TRENDLOG_INPUTS")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false, column_name = "Trendlog_ID")]
+    #[sea_orm(primary_key, auto_increment = true, column_name = "id")]
+    pub id: i32,                                // Auto-incrementing primary key
+
+    #[sea_orm(column_name = "SerialNumber")]
+    pub serial_number: i32,                     // C++ SerialNumber (references DEVICES.SerialNumber)
+
+    #[sea_orm(column_name = "PanelId")]
+    pub panel_id: i32,                          // C++ PanelId (panel identification)
+
+    #[sea_orm(column_name = "Trendlog_ID")]
     pub trendlog_id: String,                    // C++ Trendlog_ID (FK to TRENDLOGS.Trendlog_ID)
 
-    #[sea_orm(primary_key, auto_increment = false, column_name = "Point_Type")]
+    #[sea_orm(column_name = "Point_Type")]
     pub point_type: String,                     // C++ Point_Type ('INPUT', 'OUTPUT', 'VARIABLE')
-    #[sea_orm(primary_key, auto_increment = false, column_name = "Point_Index")]
+    #[sea_orm(column_name = "Point_Index")]
     pub point_index: String,                    // C++ Point_Index (references point index)
     #[sea_orm(column_name = "Point_Panel")]
     pub point_panel: Option<String>,            // C++ Point_Panel

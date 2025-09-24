@@ -294,12 +294,17 @@ impl TrendLogFFIService {
         selected_points: Vec<ViewSelection>,
         db: &DatabaseConnection
     ) -> Result<(), AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Adding {} points to View{} for TrendLog: {} (device {})",
-            selected_points.len(), view_number, trendlog_id, device_id), LogLevel::Info);
+        // Default panel_id to 1 for backward compatibility
+        let panel_id = 1u32;
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Adding {} points to View{} for TrendLog: {} (device {}, panel {})",
+            selected_points.len(), view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
 
         // First, clear existing selections for this view by updating is_selected to 0
         trendlog_inputs::Entity::update_many()
             .col_expr(trendlog_inputs::Column::IsSelected, Expr::value(0))
+            .filter(trendlog_inputs::Column::SerialNumber.eq(device_id as i32))
+            .filter(trendlog_inputs::Column::PanelId.eq(panel_id as i32))
             .filter(trendlog_inputs::Column::TrendlogId.eq(trendlog_id))
             .filter(trendlog_inputs::Column::ViewNumber.eq(view_number))
             .exec(db)
@@ -309,22 +314,28 @@ impl TrendLogFFIService {
         for point in selected_points {
             if point.is_selected {
                 let view_record = trendlog_inputs::ActiveModel {
+                    id: NotSet,
+                    serial_number: Set(device_id as i32),
+                    panel_id: Set(panel_id as i32),
                     trendlog_id: Set(trendlog_id.to_string()),
                     point_type: Set(point.point_type),
                     point_index: Set(point.point_index),
+                    point_panel: Set(None),
                     point_label: Set(Some(point.point_label)),
+                    status: Set(None),
                     view_type: Set(Some("VIEW".to_string())), // User view selection
                     view_number: Set(Some(view_number)),
                     is_selected: Set(Some(1)), // Selected
                     created_at: Set(Some(Utc::now().to_rfc3339())),
                     updated_at: Set(Some(Utc::now().to_rfc3339())),
-                    ..Default::default()
                 };
 
                 // Use upsert to handle existing records properly
                 trendlog_inputs::Entity::insert(view_record)
                     .on_conflict(
                         OnConflict::columns([
+                            trendlog_inputs::Column::SerialNumber,
+                            trendlog_inputs::Column::PanelId,
                             trendlog_inputs::Column::TrendlogId,
                             trendlog_inputs::Column::PointType,
                             trendlog_inputs::Column::PointIndex,
@@ -354,10 +365,15 @@ impl TrendLogFFIService {
         view_number: i32,
         db: &DatabaseConnection
     ) -> Result<Vec<ViewSelection>, AppError> {
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📋 Getting View{} selections for TrendLog: {} (device {})",
-            view_number, trendlog_id, device_id), LogLevel::Info);
+        // Default panel_id to 1 for backward compatibility
+        let panel_id = 1u32;
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📋 Getting View{} selections for TrendLog: {} (device {}, panel {})",
+            view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
 
         let selections = trendlog_inputs::Entity::find()
+            .filter(trendlog_inputs::Column::SerialNumber.eq(device_id as i32))
+            .filter(trendlog_inputs::Column::PanelId.eq(panel_id as i32))
             .filter(trendlog_inputs::Column::TrendlogId.eq(trendlog_id))
             .filter(trendlog_inputs::Column::ViewNumber.eq(view_number))
             .filter(trendlog_inputs::Column::IsSelected.eq(1))
@@ -555,6 +571,7 @@ impl TrendLogFFIService {
         let trendlog_record = trendlogs::ActiveModel {
             id: NotSet, // Auto-increment
             serial_number: Set(info.serial_number),
+            panel_id: Set(1), // Default panel ID
             trendlog_id: Set(info.trendlog_id.clone()),
             switch_node: Set(None),
             trendlog_label: Set(Some(info.trendlog_label.clone())),
@@ -576,6 +593,8 @@ impl TrendLogFFIService {
 
         // Clear existing MAIN inputs for this TrendLog
         trendlog_inputs::Entity::delete_many()
+            .filter(trendlog_inputs::Column::SerialNumber.eq(info.serial_number))
+            .filter(trendlog_inputs::Column::PanelId.eq(1))
             .filter(trendlog_inputs::Column::TrendlogId.eq(&info.trendlog_id))
             .filter(trendlog_inputs::Column::ViewType.eq("MAIN"))
             .exec(db)
@@ -584,6 +603,9 @@ impl TrendLogFFIService {
         // Save related points as MAIN inputs
         for point in &info.related_points {
             let input_record = trendlog_inputs::ActiveModel {
+                id: NotSet,
+                serial_number: Set(info.serial_number),
+                panel_id: Set(1), // Default panel ID
                 trendlog_id: Set(info.trendlog_id.clone()),
                 point_type: Set(point.point_type.clone()),
                 point_index: Set(point.point_index.clone()),

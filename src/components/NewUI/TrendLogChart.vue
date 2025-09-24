@@ -6101,7 +6101,7 @@ const initializeWithCompleteFFI = async () => {
 
       // 2. Load view selections for Views 2/3
       const actualTrendlogId = props.itemData?.t3Entry?.id || `MONITOR${trendlog_id}`
-      await loadFFIViewSelections(actualTrendlogId)
+      await loadFFIViewSelections(actualTrendlogId, sn, panel_id)
 
       return ffiTrendlogInfo.value
     } else {
@@ -6122,8 +6122,9 @@ const initializeWithCompleteFFI = async () => {
 
 /**
  * Load persistent view selections for Views 2/3
+ * Enhanced with device context for multi-device support
  */
-const loadFFIViewSelections = async (trendlogId: string) => {
+const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, panelId?: number) => {
   const loadStartTime = Date.now()
 
   LogUtil.Info(`🔄 FFI Load API: Starting to load selections for Views 2/3`, {
@@ -6143,8 +6144,8 @@ const loadFFIViewSelections = async (trendlogId: string) => {
         usingTrendlogAPI: true
       })
 
-      // Use trendlogAPI instead of direct fetch - this handles the correct port (9103)
-      const selections = await trendlogAPI.loadViewSelections(trendlogId, viewNum)
+      // Use trendlogAPI with device context - this handles the correct port (9103) and multi-device support
+      const selections = await trendlogAPI.loadViewSelections(trendlogId, viewNum, serialNumber, panelId)
       const responseTime = Date.now() - viewStartTime
 
       LogUtil.Info(`📈 FFI Load API: Response received for View ${viewNum}`, {
@@ -6392,11 +6393,12 @@ const saveFFIViewSelections = async (viewNumber: number) => {
       trendlogId,
       viewNumber,
       selectionsCount: selections.length,
+      deviceContext: { sn: extractedParams.sn, panel_id: extractedParams.panel_id },
       aboutToMakeRequest: true
     })
 
-    // Use trendlogAPI instead of direct fetch - this handles the correct port (9103)
-    const success = await trendlogAPI.saveViewSelections(trendlogId, viewNumber, selections)
+    // Use trendlogAPI with device context - this handles the correct port (9103) and multi-device support
+    const success = await trendlogAPI.saveViewSelections(trendlogId, viewNumber, selections, extractedParams.sn, extractedParams.panel_id)
 
     LogUtil.Info(`🚀 FFI Save DEBUG: API request completed`, {
       requestCompleted: true,
