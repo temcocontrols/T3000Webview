@@ -1458,6 +1458,24 @@ watch(dataSeries, (newSeries, oldSeries) => {
   // Series updated, reactive changes handled automatically
 }, { deep: true })
 
+// 🆕 FIX: Watch monitorConfig and ensure dataseries consistency
+watch(monitorConfig, (newMonitorConfig, oldMonitorConfig) => {
+  if (newMonitorConfig && !oldMonitorConfig) {
+    LogUtil.Info('🔧 monitorConfig watcher: Monitor config became available, checking dataseries consistency', {
+      hasMonitorConfig: !!newMonitorConfig,
+      dataSeriesCount: dataSeries.value.length,
+      monitorInputItemsCount: newMonitorConfig.inputItems?.length || 0,
+      monitorConfigPid: newMonitorConfig.pid
+    })
+
+    // If we have monitor config but no dataseries, try to regenerate
+    if (dataSeries.value.length === 0 && newMonitorConfig.inputItems?.length > 0) {
+      LogUtil.Info('🔧 monitorConfig watcher: Regenerating dataseries since monitor config is now ready')
+      regenerateDataSeries()
+    }
+  }
+}, { immediate: false })
+
 // Watch props.itemData for changes
 watch(() => props.itemData, (newData, oldData) => {
   // Props data changed, handled by currentItemData watcher
@@ -3030,6 +3048,91 @@ const TransferTdlPointType = (pointType) => {
 }
 
 /**
+ * Send GET_ENTITIES using existing dataseries information (fallback when no monitorConfig)
+ * This ensures we keep sending GET_ENTITIES messages even when monitorConfig is empty/loading
+ */
+const sendGetEntitiesForDataSeries = async (): Promise<void> => {
+  LogUtil.Info('🚀 sendGetEntitiesForDataSeries CALLED - Fallback mode using dataseries', {
+    dataSeriesLength: dataSeries.value.length,
+    timestamp: new Date().toISOString()
+  })
+
+  try {
+    // Get panelId from query parameters (most reliable)
+    const currentPanelId = getPanelIdFromQuery()
+    if (!currentPanelId) {
+      LogUtil.Error('❌ sendGetEntitiesForDataSeries: No panelId from query parameters')
+      return
+    }
+
+    // Get panels data for device mapping
+    const panelsData = T3000_Data.value.panelsData || []
+    const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
+
+    if (!currentPanelData || currentPanelData.length === 0) {
+      LogUtil.Debug('❌ sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
+      return
+    }
+
+    // Initialize data client
+    const dataClient = initializeDataClients()
+    if (!dataClient) {
+      LogUtil.Debug('❌ sendGetEntitiesForDataSeries: No data client available')
+      return
+    }
+
+    // Build batch request based on existing dataseries
+    const batchRequestData: any[] = []
+
+    dataSeries.value.forEach((series) => {
+      // Extract point info from existing dataseries
+      const pointType = series.pointType
+      const pointNumber = series.pointNumber
+
+      if (pointType !== undefined && pointNumber !== undefined) {
+        // Find matching device using the same logic as monitorConfig mode
+        const inputItem = { point_type: pointType, point_number: pointNumber }
+        const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
+
+        if (matchingDevice) {
+          batchRequestData.push({
+            panelId: currentPanelId,
+            index: parseInt(matchingDevice.index) || 0,
+            type: TransferTdlPointType(pointType) // Adjusted for TrendLog
+          })
+        }
+      }
+    })
+
+    LogUtil.Debug('📡 sendGetEntitiesForDataSeries: Sending GET_ENTITIES based on dataseries', {
+      itemCount: batchRequestData.length,
+      panelId: currentPanelId,
+      batchSample: batchRequestData.slice(0, 3),
+      timestamp: new Date().toISOString()
+    })
+
+    if (batchRequestData.length === 0) {
+      LogUtil.Warn('❌ sendGetEntitiesForDataSeries: No valid items for batch request')
+      return
+    }
+
+    // Send GET_ENTITIES request
+    if (dataClient.GetEntries) {
+      LogUtil.Info('📡 sendGetEntitiesForDataSeries: Sending GET_ENTITIES request (dataseries fallback)', {
+        panelId: currentPanelId,
+        itemCount: batchRequestData.length,
+        timestamp: new Date().toISOString()
+      })
+      dataClient.GetEntries(currentPanelId, null, batchRequestData)
+    } else {
+      LogUtil.Error('❌ sendGetEntitiesForDataSeries: GetEntries method not available')
+    }
+  } catch (error) {
+    LogUtil.Error('❌ sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
+  }
+}
+
+/**
  * Send batch GET_ENTRIES request for periodic real-time updates
  * Used by interval timer to efficiently update all monitored items at once
  */
@@ -3041,13 +3144,45 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
   })
 
   try {
-    // Get current device for panelId
-    const panelsList = T3000_Data.value.panelsList || []
-    const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+    // 🆕 FIX: Use query parameters as PRIMARY source for panelId (most reliable)
+    let currentPanelId: number | null = null
 
-    // Get panels data for device mapping
+    // FIRST PRIORITY: Query parameters from URL (most reliable - user specified)
+    currentPanelId = getPanelIdFromQuery()
+    if (currentPanelId !== null) {
+      LogUtil.Debug('🔧 sendPeriodicBatchRequest: Using panelId from query parameters (RELIABLE)', {
+        queryPanelId: currentPanelId,
+        source: 'route.query.panel_id'
+      })
+    } else {
+      // SECOND PRIORITY: Monitor config pid (if available)
+      if (monitorConfigData.pid !== undefined && monitorConfigData.pid !== null) {
+        currentPanelId = monitorConfigData.pid
+        LogUtil.Debug('🔧 sendPeriodicBatchRequest: Using panelId from monitor config', {
+          monitorConfigPid: monitorConfigData.pid,
+          isTemporary: monitorConfigData.isTemporary || false
+        })
+      } else {
+        // CRITICAL ERROR: No panelId available from reliable sources
+        LogUtil.Error('❌ sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
+          queryPanelId: route.query.panel_id,
+          monitorConfigPid: monitorConfigData.pid,
+          hasMonitorConfig: !!monitorConfigData
+        })
+        return // Don't fallback to unreliable sources
+      }
+    }
+
+    // Get panels data for device mapping using the determined panelId
     const panelsData = T3000_Data.value.panelsData || []
     const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
+
+    LogUtil.Debug('🔧 sendPeriodicBatchRequest: PanelId determination result', {
+      finalPanelId: currentPanelId,
+      panelsDataCount: panelsData.length,
+      matchingPanelDataCount: currentPanelData.length,
+      monitorConfigHasPid: monitorConfigData.pid !== undefined
+    })
 
     if (!currentPanelData || currentPanelData.length === 0) {
       LogUtil.Debug('GET_ENTRIES Batch Request -> No panel data available')
@@ -4385,6 +4520,60 @@ const initializeData = async () => {
   updateCharts()
 }
 
+/**
+ * 🆕 FIX: Create temporary monitor config from props when monitorConfig is not ready yet
+ * This prevents race conditions where dataseries exists but monitorConfig is still loading
+ */
+const createTempMonitorConfigFromProps = () => {
+  try {
+    const inputData = props.itemData?.t3Entry?.input
+    const rangeData = props.itemData?.t3Entry?.range
+    const monitorId = props.itemData?.t3Entry?.id
+    const panelId = props.itemData?.t3Entry?.pid
+
+    if (!inputData?.length || !rangeData?.length || !monitorId) {
+      LogUtil.Warn('🔧 createTempMonitorConfigFromProps: Missing required props data', {
+        hasInputData: !!inputData?.length,
+        hasRangeData: !!rangeData?.length,
+        hasMonitorId: !!monitorId,
+        hasPanelId: panelId !== undefined
+      })
+      return null
+    }
+
+    // Create temporary monitor config structure compatible with sendPeriodicBatchRequest
+    const tempConfig = {
+      id: monitorId,
+      pid: panelId || 1, // Use pid from props or default to 1
+      label: `Temp Monitor ${monitorId}`,
+      inputItems: inputData.map((inputItem: any, index: number) => ({
+        panel: inputItem.panel,
+        point_number: inputItem.point_number,
+        point_type: inputItem.point_type,
+        network: inputItem.network || 0,
+        sub_panel: inputItem.sub_panel || 0,
+        index: index
+      })),
+      ranges: rangeData || [],
+      numInputs: inputData.length,
+      dataIntervalMs: 5000, // Default 5 second interval
+      isTemporary: true // Flag to indicate this is temporary
+    }
+
+    LogUtil.Info('🔧 createTempMonitorConfigFromProps: Created temporary config', {
+      tempConfigId: tempConfig.id,
+      tempConfigPid: tempConfig.pid,
+      inputItemsCount: tempConfig.inputItems.length,
+      rangesCount: tempConfig.ranges.length
+    })
+
+    return tempConfig
+  } catch (error) {
+    LogUtil.Error('🔧 createTempMonitorConfigFromProps: Failed to create temp config', error)
+    return null
+  }
+}
+
 const addRealtimeDataPoint = async () => {
   LogUtil.Info('🔄 addRealtimeDataPoint CALLED', {
     isRealTime: isRealTime.value,
@@ -4401,15 +4590,36 @@ const addRealtimeDataPoint = async () => {
 
   // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
-    LogUtil.Warn('❌ addRealtimeDataPoint: No data series exist')
-    return
+    LogUtil.Warn('❌ addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
+
+    // 🆕 FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
+    if (props.itemData?.t3Entry?.input?.length > 0) {
+      LogUtil.Info('🔄 addRealtimeDataPoint: Attempting to regenerate dataSeries from props.itemData')
+      regenerateDataSeries()
+
+      // If still no data series after regeneration, exit
+      if (dataSeries.value.length === 0) {
+        LogUtil.Warn('❌ addRealtimeDataPoint: No data series exist after regeneration attempt')
+        return
+      }
+    } else {
+      LogUtil.Warn('❌ addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
+      return
+    }
   }
 
   // Check if we have real monitor configuration for live data
   const monitorConfigData = monitorConfig.value
 
   if (!monitorConfigData) {
-    LogUtil.Warn('❌ addRealtimeDataPoint: No monitor config data')
+    LogUtil.Info('🔄 addRealtimeDataPoint: No monitor config - sending GET_ENTITIES based on existing dataseries', {
+      dataSeriesLength: dataSeries.value.length,
+      hasPropsItemData: !!props.itemData?.t3Entry,
+      propsInputItemsLength: props.itemData?.t3Entry?.input?.length || 0
+    })
+
+    // 🆕 FIX: Send GET_ENTITIES using existing dataseries info (keep data flowing even without monitorConfig)
+    await sendGetEntitiesForDataSeries()
     return
   }
 
@@ -5987,13 +6197,29 @@ const calculateTimeRangeForTimebase = (timeBase: string) => {
   }
 }
 
+// Helper function to get panelId from query parameters (most reliable source)
+const getPanelIdFromQuery = (): number | null => {
+  try {
+    if (route.query.panel_id) {
+      const panelId = parseInt(route.query.panel_id as string)
+      return !isNaN(panelId) ? panelId : null
+    }
+  } catch (error) {
+    LogUtil.Warn('❌ getPanelIdFromQuery: Failed to parse panel_id from route', {
+      error,
+      queryPanelId: route.query.panel_id
+    })
+  }
+  return null
+}
+
 const extractDeviceParameters = () => {
   // Try to extract device parameters from various sources
   let sn: number | null = null
   let panel_id: number | null = null
   let trendlog_id: number | null = null
 
-  // Method 1: Try from URL parameters (route)
+  // Method 1: Try from URL parameters (route) - MOST RELIABLE
   try {
     if (route.query.sn) sn = parseInt(route.query.sn as string)
     if (route.query.panel_id) panel_id = parseInt(route.query.panel_id as string)
@@ -7500,7 +7726,17 @@ onMounted(async () => {
     })
 
     if (monitorConfigData) {
+      // 🆕 FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
       monitorConfig.value = monitorConfigData
+
+      LogUtil.Info('✅ TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
+        hasMonitorConfig: !!monitorConfig.value,
+        monitorConfigPid: monitorConfig.value?.pid,
+        inputItemsCount: monitorConfig.value?.inputItems?.length || 0
+      })
+
+      // Regenerate dataseries now that we have monitor config for consistency
+      regenerateDataSeries()
 
       // 🆕 FFI Integration: Get complete TrendLog info from T3000 and save view selections
       LogUtil.Info('🔄 TrendLogChart: Starting FFI integration for complete TrendLog info')
@@ -7516,7 +7752,11 @@ onMounted(async () => {
       // Initialize data clients
       initializeDataClients()
 
-      LogUtil.Info('✅ TrendLogChart: Initialization completed successfully')
+      LogUtil.Info('✅ TrendLogChart: Initialization completed successfully', {
+        finalDataSeriesCount: dataSeries.value.length,
+        finalMonitorConfigReady: !!monitorConfig.value,
+        finalPanelId: monitorConfig.value?.pid
+      })
     } else {
       LogUtil.Warn('⚠️ TrendLogChart: No monitor config data available - keeping loading state')
       // Keep loading state instead of showing error - data might still be loading
