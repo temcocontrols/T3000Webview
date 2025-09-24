@@ -490,6 +490,8 @@
         <div class="drawer-title">
           <span>📊 Select Items for {{ currentView === 2 ? 'View 2' : 'View 3' }}</span>
           <a-tag color="blue">{{ viewTrackedSeries[currentView]?.length || 0 }}/{{ dataSeries.length }} selected</a-tag>
+          <a-spin v-if="isSavingSelections" :spinning="true" size="small" />
+          <a-tag v-if="isSavingSelections" color="orange">Saving...</a-tag>
         </div>
       </template>
 
@@ -1017,6 +1019,9 @@ const viewTrackedSeries = ref({
 
 // Item selection panel state for View 2 & 3
 const showItemSelector = ref(false)
+
+// Loading state for database operations
+const isSavingSelections = ref(false)
 
 // FFI Integration - Enhanced TrendLog system
 const ffiSyncStatus = ref({
@@ -4872,15 +4877,43 @@ const setView = (viewNumber: number) => {
 
     // Apply FFI-persisted selections
     const ffiSelections = viewSelections.value.get(viewNumber) || []
+
+    // 🐛 BUG FIX: Map FFI selections to actual series names, not type_index format
     const ffiTrackedNames = ffiSelections
       .filter(s => s.is_selected)
-      .map(s => `${s.point_type}_${s.point_index}`)
+      .map(selection => {
+        // Find series by matching point type and number to get the actual display name
+        const matchingSeries = dataSeries.value.find(series =>
+          series.prefix === selection.point_type &&
+          series.pointNumber === selection.point_index
+        )
 
-    LogUtil.Debug(`🔍 Set View: FFI selections processing`, {
+        if (matchingSeries) {
+          return matchingSeries.name  // Return actual name like "Room Temperature"
+        } else {
+          // Fallback: try to find by point_label if direct matching fails
+          const labelMatch = dataSeries.value.find(series => series.name === selection.point_label)
+          if (labelMatch) {
+            return labelMatch.name
+          }
+
+          // Last resort: return the type_index format (old behavior)
+          LogUtil.Warn(`⚠️ Set View: No series found for FFI selection`, {
+            selection,
+            viewNumber,
+            fallbackToTypeIndex: `${selection.point_type}_${selection.point_index}`
+          })
+          return `${selection.point_type}_${selection.point_index}`
+        }
+      })
+      .filter(Boolean) // Remove null/undefined entries
+
+    LogUtil.Debug(`🔍 Set View: FFI selections processing (FIXED)`, {
       viewNumber,
       ffiSelectionsTotal: ffiSelections.length,
       ffiSelectedCount: ffiSelections.filter(s => s.is_selected).length,
       ffiTrackedNames,
+      mappingFixed: true,
       ffiSelections: ffiSelections.map(s => ({
         type: s.point_type,
         index: s.point_index,
@@ -4897,6 +4930,16 @@ const setView = (viewNumber: number) => {
       activeTrackedItems,
       itemCount: activeTrackedItems.length
     })
+
+    // 🐛 BUG FIX: Synchronize viewTrackedSeries with corrected FFI names to keep UI state consistent
+    if (ffiTrackedNames.length > 0) {
+      viewTrackedSeries.value[viewNumber] = [...ffiTrackedNames]
+      LogUtil.Debug(`🔄 Set View: Synchronized viewTrackedSeries with corrected FFI names`, {
+        viewNumber,
+        synchronizedNames: ffiTrackedNames,
+        previousLocalNames: trackedItems
+      })
+    }
 
     dataSeries.value.forEach(series => {
       const wasVisible = series.visible
@@ -4982,8 +5025,13 @@ const setView = (viewNumber: number) => {
   }
 }
 
-// Item tracking functions for View 2 & 3
-const toggleItemTracking = (seriesName: string) => {
+// Item tracking functions for View 2 & 3 - 🐛 FIXED: Made async to prevent race conditions
+const toggleItemTracking = async (seriesName: string) => {
+  if (isSavingSelections.value) {
+    LogUtil.Info(`⏳ Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
+    return
+  }
+
   const currentTracked = viewTrackedSeries.value[currentView.value] || []
   const wasTracked = currentTracked.includes(seriesName)
   const series = dataSeries.value.find(s => s.name === seriesName)
@@ -5004,30 +5052,61 @@ const toggleItemTracking = (seriesName: string) => {
     timestamp: new Date().toISOString()
   })
 
-  if (wasTracked) {
-    // Remove from tracking
-    viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
-  } else {
-    // Add to tracking
-    viewTrackedSeries.value[currentView.value] = [...currentTracked, seriesName]
+  // Set loading state
+  isSavingSelections.value = true
+
+  try {
+    if (wasTracked) {
+      // Remove from tracking
+      viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
+    } else {
+      // Add to tracking
+      viewTrackedSeries.value[currentView.value] = [...currentTracked, seriesName]
+    }
+
+    const afterTracked = viewTrackedSeries.value[currentView.value]
+
+    LogUtil.Info(`✅ Toggle Item Tracking: Updated tracking state`, {
+      seriesName,
+      currentView: currentView.value,
+      action: wasTracked ? 'removed' : 'added',
+      afterTrackingCount: afterTracked.length,
+      afterTracking: afterTracked,
+      changeDelta: wasTracked ? -1 : +1
+    })
+
+    // 🐛 FIXED: Wait for database save to complete before updating view
+    LogUtil.Info(`💾 Toggle Item Tracking: Saving to database first...`, {
+      seriesName,
+      currentView: currentView.value,
+      waitingForDbSave: true
+    })
+
+    await saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
+
+    LogUtil.Info(`✅ Toggle Item Tracking: Database save completed`, {
+      seriesName,
+      currentView: currentView.value,
+      dbSaveSuccessful: true
+    })
+
+    // Apply visibility after database save completes
+    setView(currentView.value)
+
+  } catch (error) {
+    LogUtil.Error(`❌ Toggle Item Tracking: Database save failed`, {
+      seriesName,
+      currentView: currentView.value,
+      error: error.message,
+      continuingWithLocalState: true
+    })
+
+    // Still apply visibility even if save failed (local state)
+    setView(currentView.value)
+  } finally {
+    // Clear loading state
+    isSavingSelections.value = false
   }
-
-  const afterTracked = viewTrackedSeries.value[currentView.value]
-
-  LogUtil.Info(`✅ Toggle Item Tracking: Updated tracking state`, {
-    seriesName,
-    currentView: currentView.value,
-    action: wasTracked ? 'removed' : 'added',
-    afterTrackingCount: afterTracked.length,
-    afterTracking: afterTracked,
-    changeDelta: wasTracked ? -1 : +1
-  })
-
-  // Save to database
-  saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
-
-  // Apply visibility immediately
-  setView(currentView.value)
 
   LogUtil.Info(`🔄 Toggle Item Tracking: Complete for "${seriesName}"`, {
     finalState: {
@@ -5038,7 +5117,9 @@ const toggleItemTracking = (seriesName: string) => {
   })
 }
 
-const clearAllTracking = () => {
+const clearAllTracking = async () => {
+  if (isSavingSelections.value) return
+
   const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
   LogUtil.Info(`🗑️ Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
@@ -5048,18 +5129,40 @@ const clearAllTracking = () => {
     timestamp: new Date().toISOString()
   })
 
-  viewTrackedSeries.value[currentView.value] = []
-  saveViewTracking(currentView.value, [])
-  setView(currentView.value)
+  isSavingSelections.value = true
 
-  LogUtil.Info(`✅ Clear All Tracking: All selections cleared`, {
-    currentView: currentView.value,
-    clearedCount: beforeCount,
-    finalState: []
-  })
+  try {
+    viewTrackedSeries.value[currentView.value] = []
+
+    await saveViewTracking(currentView.value, [])
+    LogUtil.Info(`✅ Clear All Tracking: Database cleared successfully`, {
+      currentView: currentView.value,
+      dbClearSuccessful: true
+    })
+
+    setView(currentView.value)
+
+    LogUtil.Info(`✅ Clear All Tracking: All selections cleared`, {
+      currentView: currentView.value,
+      clearedCount: beforeCount,
+      finalState: []
+    })
+  } catch (error) {
+    LogUtil.Error(`❌ Clear All Tracking: Database clear failed`, {
+      currentView: currentView.value,
+      error: error.message
+    })
+
+    // Still apply local change
+    setView(currentView.value)
+  } finally {
+    isSavingSelections.value = false
+  }
 }
 
-const selectAllItems = () => {
+const selectAllItems = async () => {
+  if (isSavingSelections.value) return
+
   const allSeriesNames = dataSeries.value.map(series => series.name)
   const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
@@ -5072,26 +5175,46 @@ const selectAllItems = () => {
     timestamp: new Date().toISOString()
   })
 
-  viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
-  saveViewTracking(currentView.value, allSeriesNames)
-  setView(currentView.value)
+  isSavingSelections.value = true
 
-  LogUtil.Info(`✅ Select All Items: All items selected`, {
-    currentView: currentView.value,
-    selectedCount: allSeriesNames.length,
-    finalState: allSeriesNames
-  })
+  try {
+    viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
+
+    await saveViewTracking(currentView.value, allSeriesNames)
+    LogUtil.Info(`✅ Select All Items: Database save successful`, {
+      currentView: currentView.value,
+      dbSaveSuccessful: true
+    })
+
+    setView(currentView.value)
+
+    LogUtil.Info(`✅ Select All Items: All items selected`, {
+      currentView: currentView.value,
+      selectedCount: allSeriesNames.length,
+      finalState: allSeriesNames
+    })
+  } catch (error) {
+    LogUtil.Error(`❌ Select All Items: Database save failed`, {
+      currentView: currentView.value,
+      error: error.message
+    })
+
+    // Still apply local change
+    setView(currentView.value)
+  } finally {
+    isSavingSelections.value = false
+  }
 }
 
-const unselectAllItems = () => {
-  clearAllTracking()
+const unselectAllItems = async () => {
+  await clearAllTracking()
 }
 
-const toggleSelectAll = () => {
+const toggleSelectAll = async () => {
   if (isAllSelected.value) {
-    unselectAllItems()
+    await unselectAllItems()
   } else {
-    selectAllItems()
+    await selectAllItems()
   }
 }
 
