@@ -38,10 +38,12 @@ pub struct TrendLogFFIResponse {
     pub trendlog_info: Option<TrendLogInfo>,
 }
 
-// Request structure for frontend FFI sync call (device_id in body)
+// Request structure for frontend FFI sync call (device_id, panel_id, and chart_title in body)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FrontendFFISyncRequest {
     pub device_id: i32,
+    pub panel_id: i32,
+    pub chart_title: Option<String>,
 }
 
 // Enhanced TrendLog routes with FFI integration - IMPROVED FLOW
@@ -98,7 +100,7 @@ pub async fn create_initial_trendlog_frontend_pattern(
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
     let db = get_t3_device_conn!(app_state);
 
-    match TrendLogFFIService::create_initial_trendlog_info(request.device_id as u32, &trendlog_id, &*db).await {
+    match TrendLogFFIService::create_initial_trendlog_info_with_panel_and_title(request.device_id as u32, request.panel_id, &trendlog_id, request.chart_title.as_deref(), &*db).await {
         Ok(trendlog_info) => {
             Ok(Json(TrendLogFFIResponse {
                 success: true,

@@ -6411,7 +6411,7 @@ const initializeWithCompleteFFI = async () => {
       trendlog_id_string: trendlog_id.toString()
     })
 
-    const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString())
+    const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value)
 
     console.log('🔥 FFI DEBUG: Complete FFI result received', {
       completeResult
