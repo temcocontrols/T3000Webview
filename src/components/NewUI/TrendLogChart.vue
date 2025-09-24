@@ -1069,7 +1069,7 @@ const ffiTrendlogInfo = ref(null as any)  // Complete TrendLog info from FFI
 // Dynamic interval calculation based on T3000 monitorConfig
 const calculateT3000Interval = (monitorConfig: any): number => {
   if (!monitorConfig) {
-    return 60000 // Default fallback: 1 minute
+    return 15000 // Default fallback: 1 minute
   }
 
   const {
@@ -1086,7 +1086,7 @@ const calculateT3000Interval = (monitorConfig: any): number => {
   // If no intervals specified at all, default to 1 minute, otherwise use calculated value
   const intervalMs = totalSeconds > 0
     ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
-    : 60000  // Default 1 minute if all intervals are 0
+    : 15000  // Default 1 minute if all intervals are 0
 
   return intervalMs
 }
