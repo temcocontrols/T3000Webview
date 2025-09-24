@@ -175,12 +175,22 @@ export function useTrendlogDataAPI() {
    * @param trendlog_id - TrendLog identifier (string like "MONITOR0" or "0")
    * @returns Promise with initial TrendLog info
    */
-  const createInitialTrendlog = async (serial_number: number, trendlog_id: string): Promise<any> => {
+  /**
+   * Step 1: Create initial TrendLog record in database (fast)
+   * @param serial_number - Serial number of the T3000 device
+   * @param panel_id - Panel ID for multi-device support
+   * @param trendlog_id - TrendLog identifier (string like "MONITOR0" or "0")
+   * @returns Promise with initial TrendLog info
+   */
+  const createInitialTrendlog = async (serial_number: number, panel_id: number, trendlog_id: string): Promise<any> => {
     try {
       const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlog_id}/init`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: serial_number })
+        body: JSON.stringify({
+          device_id: serial_number,
+          panel_id: panel_id
+        })
       })
 
       if (!response.ok) {
@@ -222,13 +232,14 @@ export function useTrendlogDataAPI() {
   /**
    * Complete TrendLog initialization: Create initial record + FFI sync
    * @param serial_number - Serial number of the T3000 device
+   * @param panel_id - Panel ID for multi-device support
    * @param trendlog_id - TrendLog identifier (string like "MONITOR0" or "0")
    * @returns Promise with complete TrendLog info
    */
-  const initializeCompleteFFI = async (serial_number: number, trendlog_id: string): Promise<any> => {
+  const initializeCompleteFFI = async (serial_number: number, panel_id: number, trendlog_id: string): Promise<any> => {
     try {
       // Step 1: Create initial record (fast)
-      const initialResult = await createInitialTrendlog(serial_number, trendlog_id)
+      const initialResult = await createInitialTrendlog(serial_number, panel_id, trendlog_id)
 
       // Step 2: Sync with FFI for complete info (slower)
       // Convert trendlog_id to numeric for FFI sync

@@ -6077,11 +6077,12 @@ const initializeWithCompleteFFI = async () => {
     // Two-step FFI approach: 1) Create initial record (fast), 2) FFI sync (slower)
     console.log('🔥 FFI DEBUG: Starting two-step FFI initialization', {
       device_id: sn,
+      panel_id: panel_id,
       trendlog_id: trendlog_id,
       trendlog_id_string: trendlog_id.toString()
     })
 
-    const completeResult = await trendlogAPI.initializeCompleteFFI(sn, trendlog_id.toString())
+    const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString())
 
     console.log('🔥 FFI DEBUG: Complete FFI result received', {
       completeResult

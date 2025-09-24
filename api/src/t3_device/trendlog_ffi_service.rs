@@ -358,6 +358,113 @@ impl TrendLogFFIService {
         Ok(())
     }
 
+    /// Add points to View 2 or View 3 selection for a TrendLog with explicit panel_id support
+    pub async fn add_points_to_view_selection_with_panel(
+        device_id: u32,
+        panel_id: u32,
+        trendlog_id: &str,
+        view_number: i32, // 2 or 3
+        selected_points: Vec<ViewSelection>,
+        db: &DatabaseConnection
+    ) -> Result<(), AppError> {
+        println!("🔥 DEBUG: add_points_to_view_selection_with_panel called with:");
+        println!("  device_id: {}", device_id);
+        println!("  panel_id: {}", panel_id);
+        println!("  trendlog_id: {}", trendlog_id);
+        println!("  view_number: {}", view_number);
+        println!("  selected_points count: {}", selected_points.len());
+        for (i, point) in selected_points.iter().enumerate() {
+            println!("    Point {}: type={}, index={}, label={}, selected={}",
+                i, point.point_type, point.point_index, point.point_label, point.is_selected);
+        }
+
+        use std::io::{self, Write};
+        io::stdout().flush().unwrap(); // Force flush stdout
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Adding {} points to View{} for TrendLog: {} (device {}, panel {})",
+            selected_points.len(), view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
+
+        // First, clear existing selections for this view by updating is_selected to 0
+        println!("🔥 DEBUG: Clearing existing selections...");
+        let clear_result = trendlog_inputs::Entity::update_many()
+            .col_expr(trendlog_inputs::Column::IsSelected, Expr::value(0))
+            .filter(trendlog_inputs::Column::SerialNumber.eq(device_id as i32))
+            .filter(trendlog_inputs::Column::PanelId.eq(panel_id as i32))
+            .filter(trendlog_inputs::Column::TrendlogId.eq(trendlog_id))
+            .filter(trendlog_inputs::Column::ViewNumber.eq(view_number))
+            .exec(db)
+            .await;
+
+        match clear_result {
+            Ok(result) => println!("🔥 DEBUG: Clear result: {:?}", result),
+            Err(e) => {
+                println!("🔥 DEBUG: Clear failed with error: {:?}", e);
+                return Err(e.into());
+            }
+        }
+
+        // Add new selections by updating or inserting records
+        println!("🔥 DEBUG: Adding new selections...");
+        for (i, point) in selected_points.into_iter().enumerate() {
+            if point.is_selected {
+                println!("🔥 DEBUG: Processing point {}: {} ({})", i, point.point_label, point.point_type);
+                let view_record = trendlog_inputs::ActiveModel {
+                    id: NotSet,
+                    serial_number: Set(device_id as i32),
+                    panel_id: Set(panel_id as i32),
+                    trendlog_id: Set(trendlog_id.to_string()),
+                    point_type: Set(point.point_type.clone()),
+                    point_index: Set(point.point_index.clone()),
+                    point_panel: Set(None),
+                    point_label: Set(Some(point.point_label.clone())),
+                    status: Set(None),
+                    view_type: Set(Some("VIEW".to_string())), // User view selection
+                    view_number: Set(Some(view_number)),
+                    is_selected: Set(Some(1)), // Selected
+                    created_at: Set(Some(Utc::now().to_rfc3339())),
+                    updated_at: Set(Some(Utc::now().to_rfc3339())),
+                };
+
+                // Use upsert to handle existing records properly
+                println!("🔥 DEBUG: Attempting upsert for point: {}", point.point_label);
+                let insert_result = trendlog_inputs::Entity::insert(view_record)
+                    .on_conflict(
+                        OnConflict::columns([
+                            trendlog_inputs::Column::SerialNumber,
+                            trendlog_inputs::Column::PanelId,
+                            trendlog_inputs::Column::TrendlogId,
+                            trendlog_inputs::Column::PointType,
+                            trendlog_inputs::Column::PointIndex,
+                            trendlog_inputs::Column::ViewType,
+                            trendlog_inputs::Column::ViewNumber
+                        ])
+                        .update_columns([
+                            trendlog_inputs::Column::PointLabel,
+                            trendlog_inputs::Column::IsSelected,
+                            trendlog_inputs::Column::UpdatedAt,
+                        ])
+                        .to_owned()
+                    )
+                    .exec(db)
+                    .await;
+
+                match insert_result {
+                    Ok(result) => println!("🔥 DEBUG: Insert/update success for {}: {:?}", point.point_label, result),
+                    Err(e) => {
+                        println!("🔥 DEBUG: Insert/update failed for {}: {:?}", point.point_label, e);
+                        return Err(e.into());
+                    }
+                }
+            } else {
+                println!("🔥 DEBUG: Skipping unselected point {}: {}", i, point.point_label);
+            }
+        }
+
+        println!("🔥 DEBUG: Function completed successfully");
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ View{} selections saved with panel_id {}", view_number, panel_id), LogLevel::Info);
+        Ok(())
+    }
+
     /// Get View 2 or View 3 selections for a TrendLog
     pub async fn get_view_selections(
         device_id: u32,
@@ -391,6 +498,40 @@ impl TrendLogFFIService {
             .collect();
 
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Found {} selected points for View{}", view_selections.len(), view_number), LogLevel::Info);
+        Ok(view_selections)
+    }
+
+    /// Get View 2 or View 3 selections for a TrendLog with explicit panel_id support
+    pub async fn get_view_selections_with_panel(
+        device_id: u32,
+        panel_id: u32,
+        trendlog_id: &str,
+        view_number: i32,
+        db: &DatabaseConnection
+    ) -> Result<Vec<ViewSelection>, AppError> {
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🔍 Fetching View{} selections for TrendLog: {} (device {}, panel {})",
+            view_number, trendlog_id, device_id, panel_id), LogLevel::Info);
+
+        let view_records = trendlog_inputs::Entity::find()
+            .filter(trendlog_inputs::Column::SerialNumber.eq(device_id as i32))
+            .filter(trendlog_inputs::Column::PanelId.eq(panel_id as i32))
+            .filter(trendlog_inputs::Column::TrendlogId.eq(trendlog_id))
+            .filter(trendlog_inputs::Column::ViewNumber.eq(view_number))
+            .filter(trendlog_inputs::Column::IsSelected.eq(1)) // Only selected items
+            .all(db)
+            .await?;
+
+        let view_selections: Vec<ViewSelection> = view_records
+            .into_iter()
+            .map(|record| ViewSelection {
+                point_type: record.point_type.clone(),
+                point_index: record.point_index.clone(),
+                point_label: record.point_label.clone().unwrap_or_default(),
+                is_selected: record.is_selected.unwrap_or(0) == 1,
+            })
+            .collect();
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("📊 Found {} selected points for View{} (panel_id {})", view_selections.len(), view_number, panel_id), LogLevel::Info);
         Ok(view_selections)
     }
 

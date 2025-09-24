@@ -121,14 +121,14 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)", LogLevel::Info);
 
-    // Start WebSocket service in background
-    let websocket_handle = tokio::spawn(async move {
-        if let Err(e) = crate::t3_socket::start_websocket_service().await {
-            // Log WebSocket errors to structured log
-            let error_msg = format!("WebSocket service failed: {}", e);
-            let _ = write_structured_log_with_level("T3_Webview_Socket", &error_msg, LogLevel::Error);
-        }
-    });
+    // Start WebSocket service in background (TEMPORARILY DISABLED FOR DEBUGGING)
+    // let websocket_handle = tokio::spawn(async move {
+    //     if let Err(e) = crate::t3_socket::start_websocket_service().await {
+    //         // Log WebSocket errors to structured log
+    //         let error_msg = format!("WebSocket service failed: {}", e);
+    //         let _ = write_structured_log_with_level("T3_Webview_Socket", &error_msg, LogLevel::Error);
+    //     }
+    // });
 
     // Give WebSocket a moment to start
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -137,7 +137,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     let http_result = server::server_start().await;
 
     // If HTTP server stops, we should stop background services too
-    websocket_handle.abort();
+    // websocket_handle.abort(); // TEMPORARILY DISABLED FOR DEBUGGING
     main_service_handle.abort();
 
     http_result

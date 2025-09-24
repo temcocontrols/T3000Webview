@@ -1,6 +1,6 @@
 // T3000 TrendLog Enhanced API Routes - FFI Integration and View Management
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::Json,
     routing::{get, post},
     Router,
@@ -27,6 +27,8 @@ macro_rules! get_t3_device_conn {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SaveSelectionsRequest {
     pub selections: Vec<ViewSelection>,
+    pub serial_number: Option<i32>, // Optional for backward compatibility
+    pub panel_id: Option<i32>,      // Optional for backward compatibility
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -245,11 +247,12 @@ pub async fn get_trendlog_info(
 }
 
 // FRONTEND: Get view selections (frontend pattern)
-// Route: GET /api/t3_device/trendlogs/MONITOR1/views/2/selections
-// Note: No device_id in URL, so we'll need to derive it from trendlog context or use a default
+// Route: GET /api/t3_device/trendlogs/MONITOR1/views/2/selections?serial_number=237219&panel_id=1
+// Note: Device context now provided via query parameters for multi-device support
 pub async fn get_view_selections_frontend(
     State(app_state): State<T3AppState>,
     Path((trendlog_id, view_number)): Path<(String, i32)>,
+    Query(query_params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<ViewSelection>>, AppError> {
     let db = get_t3_device_conn!(app_state);
 
@@ -257,15 +260,32 @@ pub async fn get_view_selections_frontend(
         return Err(AppError::ValidationError("View number must be 2 or 3".to_string()));
     }
 
-    // Since frontend doesn't provide device_id in this pattern, we'll use 0 as a placeholder
-    // This works because the view selections are indexed by trendlog_id which should be unique
-    let selections = TrendLogFFIService::get_view_selections(0, &trendlog_id, view_number, &*db).await?;
+    // Parse device context from query parameters
+    let serial_number = query_params.get("serial_number")
+        .and_then(|s| s.parse::<i32>().ok())
+        .unwrap_or(0); // Fallback to 0 for backward compatibility
+
+    let panel_id = query_params.get("panel_id")
+        .and_then(|s| s.parse::<i32>().ok())
+        .unwrap_or(1); // Fallback to 1 for backward compatibility
+
+    println!("🔧 API: Loading view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
+             serial_number, panel_id, trendlog_id, view_number);
+
+    let selections = TrendLogFFIService::get_view_selections_with_panel(
+        serial_number as u32,
+        panel_id as u32,
+        &trendlog_id,
+        view_number,
+        &*db
+    ).await?;
+
     Ok(Json(selections))
 }
 
 // FRONTEND: Save view selections (frontend pattern)
 // Route: POST /api/t3_device/trendlogs/MONITOR1/views/2/selections
-// Body: { "selections": [...] }
+// Body: { "selections": [...], "serial_number": 237219, "panel_id": 1 }
 pub async fn save_view_selections_frontend(
     State(app_state): State<T3AppState>,
     Path((trendlog_id, view_number)): Path<(String, i32)>,
@@ -277,10 +297,23 @@ pub async fn save_view_selections_frontend(
         return Err(AppError::ValidationError("View number must be 2 or 3".to_string()));
     }
 
-    // Since frontend doesn't provide device_id in this pattern, we'll use 0 as a placeholder
-    // This works because the view selections are indexed by trendlog_id which should be unique
-    TrendLogFFIService::add_points_to_view_selection(
-        0, // placeholder device_id since frontend doesn't provide it in this URL pattern
+    // Use device parameters from request body for proper multi-device support
+    // Fallback to 0 for backward compatibility if not provided
+    let serial_number = request.serial_number.unwrap_or(0);
+    let panel_id = request.panel_id.unwrap_or(1); // Default to 1 for backward compatibility
+
+    println!("🔧 API: Saving view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
+             serial_number, panel_id, trendlog_id, view_number);
+    println!("🔧 API: Request body received: selections count = {}", request.selections.len());
+
+    use std::io::{self, Write};
+    io::stdout().flush().unwrap(); // Force flush stdout
+
+    // For now, store the panel_id in a separate call - we need to update the FFI service to accept both parameters
+    // TODO: Update add_points_to_view_selection to accept panel_id directly
+    TrendLogFFIService::add_points_to_view_selection_with_panel(
+        serial_number as u32,
+        panel_id as u32,
         &trendlog_id,
         view_number,
         request.selections,
