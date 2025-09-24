@@ -121,6 +121,19 @@
 
           <!-- Range Info -->
           <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
+
+          <!-- ⌨️ Keyboard Navigation Status -->
+          <a-tag
+            :color="keyboardEnabled ? 'green' : 'default'"
+            size="small"
+            class="keyboard-status-tag"
+            :title="keyboardEnabled ? 'Keyboard shortcuts: 1-9, A-E to toggle items | + - zoom | ← → scroll | ESC to disable' : 'Keyboard shortcuts disabled (ESC to enable)'"
+          >
+            <template #icon>
+              <span class="keyboard-icon">⌨️</span>
+            </template>
+            {{ keyboardEnabled ? 'KB Active' : 'KB Off' }}
+          </a-tag>
         </a-flex>
 
         <!-- Chart Options -->
@@ -213,7 +226,12 @@
           <div class="data-series-header">
             <!-- Single line: Title, count, and status -->
             <div class="header-line-1">
-              <h7>{{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})</h7>
+              <h7
+                :title="devVersion"
+                class="chart-title-with-version"
+              >
+                {{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})
+              </h7>
               <!-- Data Source Indicator -->
               <div class="data-source-indicator">
                 <span v-if="shouldShowLoading" class="source-badge loading">
@@ -333,6 +351,15 @@
                 <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                   :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                   <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
+                  <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                  <div
+                    v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                    class="keyboard-shortcut-badge left-panel-badge"
+                    :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
+                    :title="`Press ${getKeyboardShortcut(series.name)} to toggle`"
+                  >
+                    {{ getKeyboardShortcut(series.name) }}
+                  </div>
                 </div>
                 <div class="series-info">
                   <div class="series-name-line">
@@ -551,6 +578,7 @@
           >
             {{ isAllSelected ? 'Unselect All' : 'Select All' }}
           </a-button>
+
           <div class="footer-actions">
             <a-button @click="showItemSelector = false">
               Cancel
@@ -601,7 +629,7 @@ import {
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
-import { T3000_Data } from 'src/lib/T3000/Hvac/Data/T3Data'
+import { T3000_Data, devVersion } from 'src/lib/T3000/Hvac/Data/T3Data'
 import { ranges as rangeDefinitions, T3_Types } from 'src/lib/T3000/Hvac/Data/Constant/T3Range'
 import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
@@ -1022,6 +1050,10 @@ const showItemSelector = ref(false)
 
 // Loading state for database operations
 const isSavingSelections = ref(false)
+
+// ⌨️ Keyboard Navigation System
+const keyboardEnabled = ref(true)
+const lastKeyboardAction = ref<string | null>(null)
 
 // FFI Integration - Enhanced TrendLog system
 const ffiSyncStatus = ref({
@@ -1908,6 +1940,32 @@ const canZoomIn = computed(() => {
 const canZoomOut = computed(() => {
   const currentIndex = timebaseProgression.indexOf(timeBase.value)
   return currentIndex >= 0 && currentIndex < timebaseProgression.length - 1 // Can zoom out if not at longest timebase
+})
+
+// ⌨️ Keyboard Navigation: Item mappings (1-9, A-E) - Based on left panel displayed series
+const keyboardItemMappings = computed(() => {
+  const mappings: { [key: string]: { item: string, display: string, index: number } } = {}
+
+  displayedSeries.value.forEach((series, index) => {
+    if (index < 9) {
+      // Map 1-9 for first 9 items
+      mappings[`Digit${index + 1}`] = {
+        item: series.name,
+        display: `${index + 1}`,
+        index
+      }
+    } else if (index < 14) {
+      // Map A-E for items 10-14
+      const letter = String.fromCharCode(65 + (index - 9)) // A, B, C, D, E
+      mappings[`Key${letter}`] = {
+        item: series.name,
+        display: letter,
+        index
+      }
+    }
+  })
+
+  return mappings
 })
 
 // Function to set time base from dropdown
@@ -5238,6 +5296,154 @@ const applyAndCloseDrawer = () => {
   })
 }
 
+// ⌨️ Keyboard Navigation Handler
+const handleKeydown = async (event: KeyboardEvent) => {
+  if (!keyboardEnabled.value) return
+
+  // List of keys we handle - prevent default behavior for these
+  const handledKeys = [
+    // Item selection keys (1-9)
+    'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5',
+    'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    // Item selection keys (A-E)
+    'KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE',
+    // Zoom keys
+    'Equal', 'Minus',
+    // Scroll keys
+    'ArrowLeft', 'ArrowRight',
+    // Control key
+    'Escape'
+  ]
+
+  if (handledKeys.includes(event.code)) {
+    event.preventDefault()
+    lastKeyboardAction.value = event.code
+
+    // Clear the highlight after a short delay
+    setTimeout(() => {
+      lastKeyboardAction.value = null
+    }, 500)
+  }
+
+  LogUtil.Debug(`⌨️ Keyboard: Key pressed`, {
+    code: event.code,
+    key: event.key,
+    keyboardEnabled: keyboardEnabled.value,
+    willHandle: handledKeys.includes(event.code)
+  })
+
+  switch (event.code) {
+    case 'Escape':
+      keyboardEnabled.value = !keyboardEnabled.value
+      LogUtil.Info(`⌨️ Keyboard: ${keyboardEnabled.value ? 'Enabled' : 'Disabled'}`, {
+        state: keyboardEnabled.value ? 'ENABLED' : 'DISABLED'
+      })
+      break
+
+    case 'Equal': // + key (zoom in)
+      if (canZoomIn.value) {
+        zoomIn()
+        LogUtil.Info(`⌨️ Keyboard: Zoom In`, {
+          newTimebase: timeBase.value,
+          canZoomInMore: canZoomIn.value
+        })
+      } else {
+        LogUtil.Info(`⌨️ Keyboard: Zoom In blocked (already at minimum timebase)`, {
+          currentTimebase: timeBase.value
+        })
+      }
+      break
+
+    case 'Minus': // - key (zoom out)
+      if (canZoomOut.value) {
+        zoomOut()
+        LogUtil.Info(`⌨️ Keyboard: Zoom Out`, {
+          newTimebase: timeBase.value,
+          canZoomOutMore: canZoomOut.value
+        })
+      } else {
+        LogUtil.Info(`⌨️ Keyboard: Zoom Out blocked (already at maximum timebase)`, {
+          currentTimebase: timeBase.value
+        })
+      }
+      break
+
+    case 'ArrowLeft': // Scroll left
+      if (!isRealTime.value) {
+        await moveTimeLeft()
+        LogUtil.Info(`⌨️ Keyboard: Scroll Left`, {
+          timeOffset: timeOffset.value,
+          realTimeMode: false
+        })
+      } else {
+        LogUtil.Info(`⌨️ Keyboard: Scroll Left blocked (real-time mode active)`, {
+          realTimeMode: true
+        })
+      }
+      break
+
+    case 'ArrowRight': // Scroll right
+      if (!isRealTime.value) {
+        await moveTimeRight()
+        LogUtil.Info(`⌨️ Keyboard: Scroll Right`, {
+          timeOffset: timeOffset.value,
+          realTimeMode: false
+        })
+      } else {
+        LogUtil.Info(`⌨️ Keyboard: Scroll Right blocked (real-time mode active)`, {
+          realTimeMode: true
+        })
+      }
+      break
+
+    default:
+      // Handle item selection keys (1-9, A-E) - for left panel series
+      if (keyboardItemMappings.value[event.code]) {
+        const mapping = keyboardItemMappings.value[event.code]
+
+        // Find the series index in displayedSeries
+        const seriesIndex = displayedSeries.value.findIndex(s => s.name === mapping.item)
+
+        if (seriesIndex >= 0) {
+          // Toggle series visibility (left panel functionality)
+          toggleSeriesVisibility(seriesIndex, null)
+
+          // Clear the keyboard action highlight after a short delay
+          setTimeout(() => {
+            lastKeyboardAction.value = null
+          }, 300)
+
+          LogUtil.Info(`⌨️ Keyboard: Toggled series visibility "${mapping.display}"`, {
+            key: mapping.display,
+            itemName: mapping.item,
+            itemIndex: mapping.index,
+            seriesIndex,
+            currentView: currentView.value,
+            nowVisible: displayedSeries.value[seriesIndex]?.visible
+          })
+        } else {
+          LogUtil.Warn(`⌨️ Keyboard: Series not found for key "${mapping.display}"`, {
+            key: mapping.display,
+            itemName: mapping.item,
+            availableSeries: displayedSeries.value.map(s => s.name)
+          })
+        }
+      }
+      break
+  }
+}
+
+// ⌨️ Helper functions for keyboard shortcuts display
+const getKeyboardShortcut = (seriesName: string): string | null => {
+  const mapping = Object.values(keyboardItemMappings.value).find(m => m.item === seriesName)
+  return mapping?.display || null
+}
+
+const getKeyboardShortcutCode = (seriesName: string): string | null => {
+  const entry = Object.entries(keyboardItemMappings.value).find(([code, mapping]) => mapping.item === seriesName)
+  return entry?.[0] || null
+}
+
 const removeFromTracking = (seriesName: string, event?: Event) => {
   if (event) {
     event.stopPropagation()
@@ -7351,12 +7557,27 @@ onMounted(async () => {
     if (isRealTime.value) {
       startRealTimeUpdates()
     }
+
+    // ⌨️ Setup keyboard navigation
+    document.addEventListener('keydown', handleKeydown)
+    LogUtil.Info('⌨️ Keyboard: Navigation system initialized', {
+      keyboardEnabled: keyboardEnabled.value,
+      totalMappings: Object.keys(keyboardItemMappings.value).length,
+      itemMappings: Object.entries(keyboardItemMappings.value).map(([code, mapping]) => ({
+        key: mapping.display,
+        item: mapping.item
+      }))
+    })
   })
 })
 
 onUnmounted(() => {
   stopRealTimeUpdates()
   destroyAllCharts()
+
+  // ⌨️ Cleanup keyboard navigation
+  document.removeEventListener('keydown', handleKeydown)
+  LogUtil.Info('⌨️ Keyboard: Navigation system cleanup completed')
 })
 </script>
 
@@ -9060,5 +9281,124 @@ onUnmounted(() => {
   padding: 0 24px;
   font-size: 14px;
   font-weight: 500;
+}
+
+/* ⌨️ Keyboard Navigation Styles */
+.keyboard-shortcut-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #1890ff;
+  color: white;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 4px;
+  border-radius: 3px;
+  min-width: 12px;
+  text-align: center;
+  z-index: 10;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+/* Left panel specific keyboard badges */
+.keyboard-shortcut-badge.left-panel-badge {
+  top: -3px;
+  right: -3px;
+  background: #52c41a;
+  font-size: 8px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  min-width: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.keyboard-shortcut-badge.left-panel-badge.active {
+  background: #ff4d4f;
+  transform: scale(1.15);
+  box-shadow: 0 0 6px rgba(255, 77, 79, 0.6);
+}
+
+.keyboard-shortcut-badge.active {
+  background: #52c41a;
+  transform: scale(1.1);
+  opacity: 1;
+  box-shadow: 0 0 4px rgba(82, 196, 26, 0.6);
+}
+
+.item-selection {
+  position: relative; /* Needed for absolute positioning of badge */
+}
+
+.keyboard-status-tag {
+  cursor: pointer;
+}
+
+.keyboard-status-tag .keyboard-icon {
+  font-size: 12px;
+  margin-right: 2px;
+}
+
+/* Keyboard shortcut tooltips */
+.keyboard-shortcut-badge:hover::after {
+  content: 'Press ' attr(data-key) ' to toggle';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 100;
+}
+
+/* Highlight effect for keyboard-activated items */
+.item-row.keyboard-active {
+  animation: keyboardHighlight 0.3s ease;
+}
+
+@keyframes keyboardHighlight {
+  0% {
+    background-color: #e6f7ff;
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+/* Improved visibility when keyboard is active */
+.keyboard-shortcut-badge {
+  display: block;
+}
+
+/* Hide shortcuts when keyboard is disabled */
+.keyboard-status-tag[aria-disabled="true"] ~ * .keyboard-shortcut-badge {
+  display: none;
+}
+
+.drawer-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chart-title-with-version {
+  cursor: help;
+  position: relative;
+}
+
+.chart-title-with-version:hover {
+  color: #1890ff;
+  text-decoration: underline dotted;
 }
 </style>
