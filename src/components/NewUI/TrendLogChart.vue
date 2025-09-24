@@ -1101,7 +1101,7 @@ const showGrid = ref(true)
 const showLegend = ref(false)  // Hide legend by default to give more space to chart
 const smoothLines = ref(false)
 const showPoints = ref(false)
-const lastSyncTime = ref('No data synced yet')
+const lastSyncTime = ref('Not synced')
 
 // API integration for timebase data fetching
 const trendlogAPI = useTrendlogDataAPI()
@@ -9303,9 +9303,9 @@ onUnmounted(() => {
 
 /* Left panel specific keyboard badges */
 .keyboard-shortcut-badge.left-panel-badge {
-  top: -3px;
-  right: -3px;
-  background: #52c41a;
+  top: -10px;
+  right: 20px;
+  background: #888e86;
   font-size: 8px;
   padding: 1px 3px;
   border-radius: 2px;
@@ -9341,7 +9341,7 @@ onUnmounted(() => {
 
 /* Keyboard shortcut tooltips */
 .keyboard-shortcut-badge:hover::after {
-  content: 'Press ' attr(data-key) ' to toggle';
+  /* content: 'Press ' attr(data-key) ' to toggle';
   position: absolute;
   bottom: 100%;
   left: 50%;
@@ -9352,7 +9352,7 @@ onUnmounted(() => {
   border-radius: 3px;
   font-size: 10px;
   white-space: nowrap;
-  z-index: 100;
+  z-index: 100; */
 }
 
 /* Highlight effect for keyboard-activated items */
