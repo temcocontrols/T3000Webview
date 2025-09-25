@@ -340,7 +340,7 @@
                 type="text"
                 class="delete-series-btn delete-overlay"
                 @click="(e) => removeFromTracking(series.name, e)"
-                title="Remove from tracking"
+                :title="'Remove from tracking'"
               >
                 <template #icon>
                   <CloseOutlined class="delete-icon" />
@@ -5741,7 +5741,7 @@ const getKeyboardShortcutCode = (seriesName: string): string | null => {
   return entry?.[0] || null
 }
 
-const removeFromTracking = (seriesName: string, event?: Event) => {
+const removeFromTracking = async (seriesName: string, event?: Event) => {
   if (event) {
     event.stopPropagation()
   }
@@ -5759,22 +5759,34 @@ const removeFromTracking = (seriesName: string, event?: Event) => {
     timestamp: new Date().toISOString()
   })
 
-  viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
-  const afterTracked = viewTrackedSeries.value[currentView.value]
+  if (wasTracked) {
+    // Remove from tracked series immediately
+    viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
+    const afterTracked = viewTrackedSeries.value[currentView.value]
 
-  LogUtil.Info(`✅ Remove From Tracking: Item removed successfully`, {
-    seriesName,
-    currentView: currentView.value,
-    afterCount: afterTracked.length,
-    afterTracking: afterTracked,
-    removedSuccessfully: wasTracked
-  })
+    LogUtil.Info(`✅ Remove From Tracking: Item removed successfully`, {
+      seriesName,
+      currentView: currentView.value,
+      afterCount: afterTracked.length,
+      afterTracking: afterTracked
+    })
 
-  // Save to database
-  saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
+    try {
+      // Save to database
+      await saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
 
-  // Apply visibility immediately
-  setView(currentView.value)
+      // Apply visibility after save
+      setView(currentView.value)
+    } catch (error) {
+      LogUtil.Error(`❌ Remove From Tracking: Failed to save changes`, {
+        seriesName,
+        currentView: currentView.value,
+        error: error.message
+      })
+    }
+  } else {
+    LogUtil.Info(`ℹ️ Remove From Tracking: Item "${seriesName}" was not being tracked`)
+  }
 }
 
 const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => {
@@ -9561,6 +9573,8 @@ onUnmounted(() => {
   color: white;
 }
 
+
+
 .delete-icon {
   font-size: 8px;
 }
@@ -9668,7 +9682,7 @@ onUnmounted(() => {
 
 /* Keyboard shortcut tooltips */
 .keyboard-shortcut-badge:hover::after {
-  /* content: 'Press ' attr(data-key) ' to toggle';
+  content: 'Press ' attr(data-key) ' to toggle';
   position: absolute;
   bottom: 100%;
   left: 50%;
@@ -9679,7 +9693,7 @@ onUnmounted(() => {
   border-radius: 3px;
   font-size: 10px;
   white-space: nowrap;
-  z-index: 100; */
+  z-index: 100;
 }
 
 /* Highlight effect for keyboard-activated items */
