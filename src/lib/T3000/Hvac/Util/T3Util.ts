@@ -11,7 +11,6 @@ class T3Util {
    * @param additionalParams - Optional additional parameters to log
    */
   static Log(message, ...additionalParams) {
-    return;
     if (HvConstant.Default.Environment.toLowerCase() !== "prd") {
       if (additionalParams == null || additionalParams.length === 0) {
         console.log.apply(console, [message]);
@@ -23,7 +22,6 @@ class T3Util {
 
   //@param forcePrint - If true, forces the message to be logged regardless of environment
   static Debug(message: any, ...additionalParams: any[]): void {
-    return;
     if (HvConstant.Default.Environment.toLowerCase() !== "prd") {
       if (additionalParams == null || additionalParams.length === 0) {
         console.log.apply(console, [message]);
