@@ -951,14 +951,7 @@ const getDisplayUnit = (series: SeriesConfig): string => {
   // For digital series, use the unitCode field (not unit field which is empty)
   const unitCode = series.unitCode
 
-  // Debug logging to see what we're working with
-  console.log(`= TLChart getDisplayUnit: Digital series="${series.name}", unitCode=${unitCode}`, {
-    unitCodeType: typeof unitCode,
-    availableRangeIds: rangeDefinitions.digital.map(r => r.id).slice(0, 5)
-  })
-
   if (typeof unitCode !== 'number' || unitCode < 0) {
-    console.log(`= TLChart getDisplayUnit: Invalid unitCode, returning empty string`)
     return ''
   }
 
@@ -966,28 +959,15 @@ const getDisplayUnit = (series: SeriesConfig): string => {
   let searchId = unitCode
   if (unitCode === 0) {
     searchId = 1 // Map unitCode 0 to range ID 1 (Off/On)
-    console.log(`= TLChart getDisplayUnit: Mapping unitCode 0 to range ID 1`)
   }
 
   const digitalRange = rangeDefinitions.digital.find(range => range.id === searchId)
 
   if (!digitalRange) {
-    console.log(`= TLChart getDisplayUnit: No range found for searchId ${searchId} (original unitCode: ${unitCode}), returning empty string`)
     return '' // Return empty string when no range found
   }
 
-  console.log(`= TLChart getDisplayUnit: Found range - label: "${digitalRange.label}"`)
   return digitalRange.label
-}// Debug function to inspect series data
-const debugSeries = (series: SeriesConfig) => {
-  console.log('= TLChart Debug Series:', {
-    name: series.name,
-    unitType: series.unitType,
-    unit: series.unit,
-    unitCode: series.unitCode,
-    pointType: series.pointType,
-    displayUnit: getDisplayUnit(series)
-  })
 }
 
 // Function to convert Unix timestamp to local time string
@@ -996,8 +976,7 @@ const formatTimestampToLocal = (unixTimestamp: number): string => {
   const timestamp = unixTimestamp > 1e10 ? unixTimestamp : unixTimestamp * 1000
   const date = new Date(timestamp)
 
-  // Clean simple logging for data flow tracking
-  // console.log('= TLChart DataFlow: Timestamp conversion for chart data point')
+
 
   // Return local time in YYYY-MM-DD HH:mm:ss format
   return date.toLocaleString('en-CA', {
