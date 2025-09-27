@@ -1179,6 +1179,7 @@ const generateDataSeries = (): SeriesConfig[] => {
   }
 
   const actualItemCount = Math.min(inputData.length, rangeData.length)
+
   if (actualItemCount === 0) return []
 
   // Generate and filter series configuration - only include items with valid T3000 device data
@@ -1289,7 +1290,9 @@ const generateDataSeries = (): SeriesConfig[] => {
   LogUtil.Info('📊 TrendLogChart: Generated series with filtering', {
     totalInputItems: actualItemCount,
     validSeriesCount: validSeries.length,
-    filteredOut: actualItemCount - validSeries.length
+    filteredOut: actualItemCount - validSeries.length,
+    seriesNames: validSeries.map(s => s.name),
+    expectedSingleSeries: actualItemCount === 1 ? 'Should be 1 series' : `Should be ${actualItemCount} series`
   })
 
   return validSeries
@@ -1853,9 +1856,18 @@ const setDigitalChartRef = (el: Element | ComponentPublicInstance | null, index:
 
 // Computed properties
 const chartTitle = computed(() => {
+  // For trend log data, prioritize label over description to avoid "1 (P0)" fallback patterns
+  const description = props.itemData?.t3Entry?.description
+  const label = props.itemData?.t3Entry?.label
+
+  // Filter out description if it matches demo/fallback patterns like "1 (P0)"
+  const isValidDescription = description &&
+    !description.includes('(P0)') &&
+    !description.match(/^\d+\s*\([P]\d+\)$/)
+
   return props.title ||
-    props.itemData?.t3Entry?.description ||
-    props.itemData?.t3Entry?.label ||
+    label ||  // Prioritize label first for trend logs
+    (isValidDescription ? description : null) ||  // Only use description if it's not a fallback pattern
     props.itemData?.title ||
     'Trend Log Chart'
 })
@@ -2666,22 +2678,62 @@ const getMonitorConfigFromT3000Data = async () => {
 
     // Parse input items based on actual monitor configuration structure
     // monitorConfig has 'input' array with objects and 'range' array
-    if (monitorConfig.input && Array.isArray(monitorConfig.input)) {
-      for (let i = 0; i < monitorConfig.input.length; i++) {
-        const inputItem = monitorConfig.input[i]
-        if (inputItem && inputItem.panel !== undefined && inputItem.point_number !== undefined) {
-          inputItems.push({
-            panel: inputItem.panel,
-            point_number: inputItem.point_number,
-            index: i,
-            point_type: inputItem.point_type,
-            network: inputItem.network,
-            sub_panel: inputItem.sub_panel
-          })
 
-          // Get corresponding range value
-          const rangeValue = (monitorConfig.range && monitorConfig.range[i]) ? monitorConfig.range[i] : 0
-          ranges.push(rangeValue)
+    // 🔧 FIX: Filter to only include items specified in URL parameters to prevent 14-item generation
+    const urlInputItems = props.itemData?.t3Entry?.input || []
+    const urlRangeItems = props.itemData?.t3Entry?.range || []
+
+    if (monitorConfig.input && Array.isArray(monitorConfig.input)) {
+      // If URL specifies specific items, filter to only those items
+      if (urlInputItems.length > 0) {
+        for (let urlIndex = 0; urlIndex < urlInputItems.length; urlIndex++) {
+          const urlInputItem = urlInputItems[urlIndex]
+
+          // Find matching item in monitor config
+          const matchingItem = monitorConfig.input.find((configItem: any) =>
+            configItem.panel === urlInputItem.panel &&
+            configItem.point_number === urlInputItem.point_number &&
+            configItem.point_type === urlInputItem.point_type
+          )
+
+          if (matchingItem) {
+            inputItems.push({
+              panel: matchingItem.panel,
+              point_number: matchingItem.point_number,
+              index: urlIndex, // Use URL index for consistency
+              point_type: matchingItem.point_type,
+              network: matchingItem.network,
+              sub_panel: matchingItem.sub_panel
+            })
+
+            // Get corresponding range value from URL
+            const rangeValue = urlRangeItems[urlIndex] || 0
+            ranges.push(rangeValue)
+          } else {
+            LogUtil.Warn('⚠️ URL item not found in monitor config', {
+              urlItem: urlInputItem,
+              availableItems: monitorConfig.input.slice(0, 3) // Show first 3 for debugging
+            })
+          }
+        }
+      } else {
+        // Fallback: use all monitor config items (original behavior)
+        for (let i = 0; i < monitorConfig.input.length; i++) {
+          const inputItem = monitorConfig.input[i]
+          if (inputItem && inputItem.panel !== undefined && inputItem.point_number !== undefined) {
+            inputItems.push({
+              panel: inputItem.panel,
+              point_number: inputItem.point_number,
+              index: i,
+              point_type: inputItem.point_type,
+              network: inputItem.network,
+              sub_panel: inputItem.sub_panel
+            })
+
+            // Get corresponding range value
+            const rangeValue = (monitorConfig.range && monitorConfig.range[i]) ? monitorConfig.range[i] : 0
+            ranges.push(rangeValue)
+          }
         }
       }
     }
