@@ -312,20 +312,33 @@
                 <div v-if="shouldShowLoading" class="empty-state-icon">
                   <a-spin size="small" />
                 </div>
+                <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏰</div>
                 <div v-else-if="hasConnectionError" class="empty-state-icon">❌</div>
                 <div v-else class="empty-state-icon">📊</div>
 
                 <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
+                <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
                 <div v-else-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
                 <div v-else class="empty-state-text">No valid trend log data available</div>
 
                 <div v-if="shouldShowLoading" class="empty-state-subtitle">
                   Connecting to your T3000 devices to retrieve trend data...
                 </div>
+                <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
+                  Loading took too long (>30s). The system may be busy or experiencing connection issues.
+                </div>
                 <div v-else-if="hasConnectionError" class="empty-state-subtitle">
                   Unable to load real-time or historical data. Check system connections.
                 </div>
                 <div v-else class="empty-state-subtitle">Configure monitor points with valid T3000 devices to see data series</div>
+
+                <!-- Refresh button for timeout and error states -->
+                <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions" style="margin-top: 16px;">
+                  <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small">
+                    <template #icon><ReloadOutlined /></template>
+                    Refresh Data
+                  </a-button>
+                </div>
               </div>
             </div>
 
@@ -1082,6 +1095,11 @@ const smoothLines = ref(false)
 const showPoints = ref(false)
 const lastSyncTime = ref('Not synced')
 
+// Loading timeout management
+const loadingTimeout = ref<NodeJS.Timeout | null>(null)
+const loadingTimeoutDuration = 30000 // 30 seconds timeout
+const showLoadingTimeout = ref(false)
+
 // API integration for timebase data fetching
 const trendlogAPI = useTrendlogDataAPI()
 const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
@@ -1588,6 +1606,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
 
   try {
     isLoading.value = true
+    startLoadingTimeout() // Start timeout when loading begins
 
     // Clear existing data first
     dataSeries.value.forEach(series => {
@@ -1634,7 +1653,10 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
 
   } catch (error) {
     LogUtil.Error('Error loading data for new timebase:', error)
+    clearLoadingTimeout() // Clear timeout on error
+    hasConnectionError.value = true
   } finally {
+    clearLoadingTimeout() // Always clear timeout when done
     isLoading.value = false
   }
 
@@ -2077,7 +2099,7 @@ const hasInputDataButNoValidSeries = computed(() => {
 
 // Enhanced loading state - show loading when waiting for valid T3000 device data
 const shouldShowLoading = computed(() => {
-  return isLoading.value || hasInputDataButNoValidSeries.value
+  return (isLoading.value || hasInputDataButNoValidSeries.value) && !showLoadingTimeout.value
 })
 
 const allAnalogEnabled = computed(() => {
@@ -2135,6 +2157,69 @@ const getDigitalStateLabel = (series: SeriesConfig): string => {
 // Helper function to get original series index from filtered series
 const getOriginalSeriesIndex = (series: SeriesConfig): number => {
   return dataSeries.value.findIndex(s => s.name === series.name)
+}
+
+// Loading timeout management functions
+const startLoadingTimeout = () => {
+  clearLoadingTimeout()
+  loadingTimeout.value = setTimeout(() => {
+    showLoadingTimeout.value = true
+    isLoading.value = false
+    LogUtil.Warn('⏰ Loading timeout reached after 30 seconds')
+  }, loadingTimeoutDuration)
+}
+
+const clearLoadingTimeout = () => {
+  if (loadingTimeout.value) {
+    clearTimeout(loadingTimeout.value)
+    loadingTimeout.value = null
+  }
+  showLoadingTimeout.value = false
+}
+
+// Manual refresh function
+const manualRefresh = async () => {
+  LogUtil.Info('🔄 Manual refresh initiated by user')
+
+  // Reset all states
+  clearLoadingTimeout()
+  showLoadingTimeout.value = false
+  hasConnectionError.value = false
+  isLoading.value = true
+
+  // Clear existing data
+  dataSeries.value.forEach(series => {
+    series.data = []
+  })
+
+  try {
+    // Start timeout for this refresh attempt
+    startLoadingTimeout()
+
+    // Regenerate data series and reload data
+    regenerateDataSeries()
+
+    // Reload data based on current mode
+    if (isRealTime.value) {
+      await initializeRealDataSeries()
+      await loadHistoricalDataFromDatabase()
+      if (!realtimeInterval) {
+        startRealTimeUpdates()
+      }
+    } else {
+      await loadHistoricalDataFromDatabase()
+    }
+
+    // Success - clear timeout
+    clearLoadingTimeout()
+    isLoading.value = false
+
+  } catch (error) {
+    LogUtil.Error('❌ Manual refresh failed:', error)
+    clearLoadingTimeout()
+    hasConnectionError.value = true
+    isLoading.value = false
+  }
 }
 
 // Helper to get the data interval (in minutes) for the current time base
