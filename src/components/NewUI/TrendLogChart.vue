@@ -127,7 +127,7 @@
             :color="keyboardEnabled ? 'green' : 'default'"
             size="small"
             class="keyboard-status-tag clickable"
-            :title="keyboardEnabled ? 'Keyboard shortcuts: 1-9, A-E to toggle items | ← → timebase | ↑ ↓ navigate + Enter toggle | ESC to disable' : 'Keyboard shortcuts disabled (ESC to enable or close popups)'"
+            :title="keyboardEnabled ? 'Keyboard shortcuts:\n• 1-9, A-E: Toggle items (also removes navigation border)\n• ← →: Change timebase\n• ↑ ↓: Navigate items + Enter to toggle\n• ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
             @click="toggleKeyboard"
           >
             <template #icon>
@@ -3359,7 +3359,7 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
         itemCount: batchRequestData.length,
         timestamp: new Date().toISOString()
       })
-      dataClient.GetEntries(currentPanelId, null, batchRequestData)
+      dataClient.GetEntries(null, null, batchRequestData)
     } else {
       LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
     }
@@ -5883,6 +5883,9 @@ const handleKeydown = async (event: KeyboardEvent) => {
 
       if (keyboardItemMappings.value[event.code]) {
         const mapping = keyboardItemMappings.value[event.code]
+
+        // Clear up/down navigation selection when using direct keys (1-9, A-E)
+        selectedItemIndex.value = -1
 
         // Find the series index in the master dataSeries array (not displayedSeries)
         const masterSeriesIndex = dataSeries.value.findIndex(s => s.name === mapping.item)
