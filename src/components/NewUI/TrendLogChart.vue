@@ -127,7 +127,7 @@
             :color="keyboardEnabled ? 'green' : 'default'"
             size="small"
             class="keyboard-status-tag clickable"
-            :title="keyboardEnabled ? 'Keyboard shortcuts: 1-9, A-E to toggle items | + - zoom | ← → scroll | ESC to disable' : 'Keyboard shortcuts disabled (click or ESC to enable)'"
+            :title="keyboardEnabled ? 'Keyboard shortcuts: 1-9, A-E to toggle items | ← → timebase | ↑ ↓ navigate + Enter toggle | ESC to disable' : 'Keyboard shortcuts disabled (ESC to enable or close popups)'"
             @click="toggleKeyboard"
           >
             <template #icon>
@@ -345,7 +345,8 @@
 
             <!-- Regular series list when data is available -->
             <div v-for="(series, index) in displayedSeries" :key="series.name" class="series-item" :class="{
-              'series-disabled': !series.visible
+              'series-disabled': !series.visible,
+              'keyboard-selected': selectedItemIndex === index && keyboardEnabled
             }">
               <!-- Delete button overlay for View 2 & 3 tracked items -->
               <a-button
@@ -1049,6 +1050,7 @@ const isSavingSelections = ref(false)
 // ⌨️ Keyboard Navigation System
 const keyboardEnabled = ref(true)
 const lastKeyboardAction = ref<string | null>(null)
+const selectedItemIndex = ref<number>(-1) // For up/down navigation (-1 = no selection)
 
 // FFI Integration - Enhanced TrendLog system
 const ffiSyncStatus = ref({
@@ -1997,6 +1999,13 @@ const keyboardItemMappings = computed(() => {
         index
       }
     }
+  })
+
+  LogUtil.Debug(`⌨️ Keyboard: Generated mappings`, {
+    displayedSeriesCount: displayedSeries.value.length,
+    currentView: currentView.value,
+    mappingKeys: Object.keys(mappings),
+    mappings: mappings
   })
 
   return mappings
@@ -5734,10 +5743,10 @@ const handleKeydown = async (event: KeyboardEvent) => {
     'Digit6', 'Digit7', 'Digit8', 'Digit9',
     // Item selection keys (A-E)
     'KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE',
-    // Zoom keys
-    'Equal', 'Minus',
-    // Scroll keys
-    'ArrowLeft', 'ArrowRight',
+    // Navigation keys
+    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+    // Toggle key
+    'Enter',
     // Control key
     'Escape'
   ]
@@ -5761,70 +5770,117 @@ const handleKeydown = async (event: KeyboardEvent) => {
 
   switch (event.code) {
     case 'Escape':
-      keyboardEnabled.value = !keyboardEnabled.value
-      LogUtil.Info(`⌨️ Keyboard: ${keyboardEnabled.value ? 'Enabled' : 'Disabled'}`, {
-        state: keyboardEnabled.value ? 'ENABLED' : 'DISABLED'
-      })
+      // Priority order for ESC key when keyboard shortcuts are ENABLED:
+      // 1. If keyboard shortcuts are enabled, disable them first
+      if (keyboardEnabled.value) {
+        keyboardEnabled.value = false
+        selectedItemIndex.value = -1 // Also clear any selection
+        lastKeyboardAction.value = null
+        LogUtil.Info('⌨️ Keyboard: Disabled via ESC', {
+          action: 'DISABLE_KEYBOARD'
+        })
+      }
+      // 2. If keyboard disabled, check for open popups to close
+      else if (customDateModalVisible.value) {
+        customDateModalVisible.value = false
+        LogUtil.Info('⌨️ Keyboard: Custom Date Modal closed via ESC', {
+          action: 'CLOSE_DATE_MODAL'
+        })
+      }
+      else if (showItemSelector.value) {
+        showItemSelector.value = false
+        LogUtil.Info('⌨️ Keyboard: Item Selection Drawer closed via ESC', {
+          action: 'CLOSE_ITEM_DRAWER'
+        })
+      }
+      // 3. If no popups open and keyboard disabled, enable keyboard shortcuts
+      else {
+        keyboardEnabled.value = true
+        LogUtil.Info('⌨️ Keyboard: Enabled via ESC', {
+          action: 'ENABLE_KEYBOARD'
+        })
+      }
       break
 
-    case 'Equal': // + key (zoom in)
+    case 'ArrowLeft': // Change timebase (zoom in to shorter timebase)
       if (canZoomIn.value) {
         zoomIn()
-        LogUtil.Info(`⌨️ Keyboard: Zoom In`, {
+        LogUtil.Info(`⌨️ Keyboard: Timebase Left (Zoom In)`, {
           newTimebase: timeBase.value,
           canZoomInMore: canZoomIn.value
         })
       } else {
-        LogUtil.Info(`⌨️ Keyboard: Zoom In blocked (already at minimum timebase)`, {
+        LogUtil.Info(`⌨️ Keyboard: Timebase Left blocked (already at minimum timebase)`, {
           currentTimebase: timeBase.value
         })
       }
       break
 
-    case 'Minus': // - key (zoom out)
+    case 'ArrowRight': // Change timebase (zoom out to longer timebase)
       if (canZoomOut.value) {
         zoomOut()
-        LogUtil.Info(`⌨️ Keyboard: Zoom Out`, {
+        LogUtil.Info(`⌨️ Keyboard: Timebase Right (Zoom Out)`, {
           newTimebase: timeBase.value,
           canZoomOutMore: canZoomOut.value
         })
       } else {
-        LogUtil.Info(`⌨️ Keyboard: Zoom Out blocked (already at maximum timebase)`, {
+        LogUtil.Info(`⌨️ Keyboard: Timebase Right blocked (already at maximum timebase)`, {
           currentTimebase: timeBase.value
         })
       }
       break
 
-    case 'ArrowLeft': // Scroll left
-      if (!isRealTime.value) {
-        await moveTimeLeft()
-        LogUtil.Info(`⌨️ Keyboard: Scroll Left`, {
-          timeOffset: timeOffset.value,
-          realTimeMode: false
-        })
-      } else {
-        LogUtil.Info(`⌨️ Keyboard: Scroll Left blocked (real-time mode active)`, {
-          realTimeMode: true
+    case 'ArrowUp': // Navigate up through items
+      if (displayedSeries.value.length > 0) {
+        selectedItemIndex.value = selectedItemIndex.value <= 0
+          ? displayedSeries.value.length - 1
+          : selectedItemIndex.value - 1
+
+        LogUtil.Info(`⌨️ Keyboard: Navigate Up`, {
+          selectedIndex: selectedItemIndex.value,
+          selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
         })
       }
       break
 
-    case 'ArrowRight': // Scroll right
-      if (!isRealTime.value) {
-        await moveTimeRight()
-        LogUtil.Info(`⌨️ Keyboard: Scroll Right`, {
-          timeOffset: timeOffset.value,
-          realTimeMode: false
+    case 'ArrowDown': // Navigate down through items
+      if (displayedSeries.value.length > 0) {
+        selectedItemIndex.value = selectedItemIndex.value >= displayedSeries.value.length - 1
+          ? 0
+          : selectedItemIndex.value + 1
+
+        LogUtil.Info(`⌨️ Keyboard: Navigate Down`, {
+          selectedIndex: selectedItemIndex.value,
+          selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
         })
-      } else {
-        LogUtil.Info(`⌨️ Keyboard: Scroll Right blocked (real-time mode active)`, {
-          realTimeMode: true
-        })
+      }
+      break
+
+    case 'Enter': // Toggle selected item
+      if (selectedItemIndex.value >= 0 && selectedItemIndex.value < displayedSeries.value.length) {
+        const selectedSeries = displayedSeries.value[selectedItemIndex.value]
+        const masterSeriesIndex = dataSeries.value.findIndex(s => s.name === selectedSeries.name)
+
+        if (masterSeriesIndex >= 0) {
+          toggleSeriesVisibility(masterSeriesIndex, null)
+          LogUtil.Info(`⌨️ Keyboard: Enter Toggle`, {
+            selectedIndex: selectedItemIndex.value,
+            selectedItem: selectedSeries.name,
+            nowVisible: dataSeries.value[masterSeriesIndex]?.visible
+          })
+        }
       }
       break
 
     default:
       // Handle item selection keys (1-9, A-E) - for left panel series
+      LogUtil.Debug(`⌨️ Keyboard: Checking default case for key "${event.code}"`, {
+        eventCode: event.code,
+        hasMapping: !!keyboardItemMappings.value[event.code],
+        allMappings: Object.keys(keyboardItemMappings.value),
+        displayedSeriesCount: displayedSeries.value.length
+      })
+
       if (keyboardItemMappings.value[event.code]) {
         const mapping = keyboardItemMappings.value[event.code]
 
@@ -5855,6 +5911,11 @@ const handleKeydown = async (event: KeyboardEvent) => {
             availableSeries: dataSeries.value.map(s => s.name)
           })
         }
+      } else {
+        LogUtil.Debug(`⌨️ Keyboard: No mapping found for key "${event.code}"`, {
+          eventCode: event.code,
+          availableMappings: Object.keys(keyboardItemMappings.value)
+        })
       }
       break
   }
@@ -9901,5 +9962,16 @@ onUnmounted(() => {
 
 .ant-message .ant-message-notice-content span {
   font-size: 12px !important;
+}
+
+/* Keyboard navigation selected item highlighting */
+.series-item.keyboard-selected {
+  border: 2px solid #666 !important;
+  border-radius: 4px;
+  background-color: rgba(102, 102, 102, 0.1);
+}
+
+.series-item.keyboard-selected .series-header {
+  background-color: rgba(102, 102, 102, 0.05);
 }
 </style>
