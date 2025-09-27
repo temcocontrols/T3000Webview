@@ -13,6 +13,9 @@ pub mod server;
 pub mod user;
 pub mod utils;
 
+// Database management modules
+pub mod database_management;
+
 // T3000 device modules
 pub mod t3_device;
 pub mod t3_socket;

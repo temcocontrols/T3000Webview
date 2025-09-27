@@ -11,6 +11,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     NotFound,
     DbError(String),
+    DatabaseError(String),
     Unauthorized,
     PermissionDenied,
     BadRequest(String),
@@ -27,6 +28,13 @@ impl core::fmt::Display for Error {
 // Implement the standard Error trait for the Error enum.
 impl std::error::Error for Error {}
 
+// Implement From trait for sea_orm::DbErr
+impl From<sea_orm::DbErr> for Error {
+    fn from(err: sea_orm::DbErr) -> Self {
+        Error::DbError(err.to_string())
+    }
+}
+
 // Implement the IntoResponse trait for the Error enum to convert it into an HTTP response.
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
@@ -39,6 +47,10 @@ impl IntoResponse for Error {
             Self::DbError(err) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Db Error: {}", err),
+            ),
+            Self::DatabaseError(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database Error: {}", err),
             ),
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
             Self::PermissionDenied => (StatusCode::FORBIDDEN, "Permission Denied".to_string()),

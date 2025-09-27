@@ -354,6 +354,89 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME ON TRENDLOG_DATA(LoggingTime);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME_FMT ON TRENDLOG_DATA(LoggingTime_Fmt);
 
 -- =================================================================
+-- DATABASE MANAGEMENT TABLES (Settings & Partitioning)
+-- =================================================================
+
+-- Application Settings table for centralized configuration storage
+-- Replaces localStorage with database-backed settings management
+CREATE TABLE IF NOT EXISTS APPLICATION_SETTINGS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Setting identification
+    category TEXT NOT NULL,                    -- Setting category (e.g., "modbusRegisterGridState", "localSettings")
+    setting_key TEXT NOT NULL,                 -- Setting key within category
+    setting_value TEXT NOT NULL,               -- JSON value storage
+
+    -- Context information
+    user_id INTEGER,                           -- User-specific settings (null for global)
+    device_serial INTEGER,                     -- Device-specific settings (null for global)
+    panel_id INTEGER,                          -- Panel-specific settings (null for global)
+
+    -- Metadata
+    description TEXT,                          -- Human-readable description
+    data_type TEXT NOT NULL DEFAULT 'object', -- Data type for validation
+    is_readonly INTEGER NOT NULL DEFAULT 0,   -- Read-only flag
+    expires_at TEXT,                          -- Expiration timestamp (ISO format)
+
+    -- Timestamps
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by TEXT NOT NULL DEFAULT 'FRONTEND',
+
+    -- Ensure unique settings per context
+    UNIQUE(category, setting_key, user_id, device_serial, panel_id)
+);
+
+-- Database Partitions table for partition management and cleanup
+-- Supports automated database size management with retention policies
+CREATE TABLE IF NOT EXISTS DATABASE_PARTITIONS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Partition identification
+    table_name TEXT NOT NULL,                  -- Table being partitioned
+    partition_type TEXT NOT NULL,              -- "DAILY", "WEEKLY", "MONTHLY"
+    partition_identifier TEXT NOT NULL,        -- Partition name (e.g., "2025-01-25")
+
+    -- Time range
+    partition_start_date TEXT NOT NULL,        -- Start date (ISO format)
+    partition_end_date TEXT NOT NULL,          -- End date (ISO format)
+
+    -- Statistics
+    record_count INTEGER NOT NULL DEFAULT 0,  -- Current record count
+    size_bytes INTEGER NOT NULL DEFAULT 0,    -- Estimated size in bytes
+
+    -- Status flags
+    is_active INTEGER NOT NULL DEFAULT 1,     -- Active for new inserts
+    is_archived INTEGER NOT NULL DEFAULT 0,   -- Archived (read-only)
+
+    -- Cleanup configuration
+    retention_days INTEGER,                    -- Retention policy (null = permanent)
+    auto_cleanup_enabled INTEGER NOT NULL DEFAULT 1,
+    last_cleanup_at TEXT,                     -- Last cleanup timestamp
+
+    -- Timestamps
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Ensure unique partitions per table and time range
+    UNIQUE(table_name, partition_type, partition_identifier)
+);
+
+-- Application Settings indexes
+CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_CATEGORY ON APPLICATION_SETTINGS(category);
+CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_KEY ON APPLICATION_SETTINGS(category, setting_key);
+CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_USER ON APPLICATION_SETTINGS(user_id);
+CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_DEVICE ON APPLICATION_SETTINGS(device_serial, panel_id);
+CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_EXPIRES ON APPLICATION_SETTINGS(expires_at);
+
+-- Database Partitions indexes
+CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_TABLE ON DATABASE_PARTITIONS(table_name);
+CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_TYPE ON DATABASE_PARTITIONS(partition_type);
+CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_ACTIVE ON DATABASE_PARTITIONS(is_active);
+CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_CLEANUP ON DATABASE_PARTITIONS(auto_cleanup_enabled, retention_days);
+CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_DATE_range ON DATABASE_PARTITIONS(partition_start_date, partition_end_date);
+
+-- =================================================================
 -- SAMPLE DATA (for testing - T3000 style data)
 -- =================================================================
 
