@@ -1000,9 +1000,9 @@ const props = withDefaults(defineProps<Props>(), {
   title: 'Trend Log Chart'
 })
 
-// Computed property to get the current item data - prioritizes props over global state
+// Computed property to get the current item data - require itemData prop
 const currentItemData = computed(() => {
-  return props.itemData || scheduleItemData.value
+  return props.itemData
 })
 
 // Remove modal-specific emits since this is now just a chart component

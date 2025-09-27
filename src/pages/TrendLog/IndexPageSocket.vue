@@ -26,15 +26,6 @@
 -->
 <template>
   <div class="trend-log-page">
-    <!-- Loading State -->
-    <div v-if="isLoading" class="loading-wrapper">
-      <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <p>Loading trend log data...</p>
-      </div>
-    </div>
-
-
     <!-- Panel ID Error State (T3000 integration, Ant Design style) -->
     <a-alert
       v-if="panelIdError"
@@ -45,29 +36,26 @@
       style="margin: 32px 0;"
     />
 
-    <!-- Error State -->
-    <div v-else-if="error" class="error-wrapper">
-      <div class="error-content">
-        <h3>Error Loading Data</h3>
-        <p>{{ error }}</p>
-        <button @click="loadTrendLogItemData" class="retry-button">Retry</button>
+    <!-- Error State (Ant Design info alert) -->
+    <a-alert
+      v-else-if="error"
+      type="info"
+      show-icon
+      message="Error Loading Data"
+      :description="error"
+      style="margin: 32px 0;"
+    />
+
+    <!-- Loading State: Only show if loading, no error, no panelIdError, and valid parameters -->
+    <div v-else-if="isLoading && hasValidParameters" class="loading-wrapper">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p>Loading trend log data...</p>
       </div>
     </div>
 
     <!-- Chart Content -->
     <div v-else-if="hasScheduleItemData" class="chart-wrapper">
-      <!-- Data Source Indicator -->
-      <div class="data-source-indicator">
-        <span v-if="dataSource === 'json'" class="source-badge realtime">
-          📡 Real-time Data
-        </span>
-        <span v-else-if="dataSource === 'api'" class="source-badge historical">
-          📚 Historical Data
-        </span>
-        <span v-else class="source-badge fallback">
-          ⚠️ No Data Available
-        </span>
-      </div>
 
       <TrendLogChart
         :itemData="scheduleItemData"
@@ -272,24 +260,9 @@ const formatDataFromQueryParams = () => {
     }
   }
 
-  // Create fallback structure if no valid JSON data
+  // If no valid data, return null (do not create fallback)
   if (!t3EntryData) {
-    t3EntryData = {
-      an_inputs: 12,
-      command: `${panel_id}MON${trendlog_id}`,
-      hour_interval_time: 0,
-      id: `MON${trendlog_id}`,
-      index: 0,
-      input: [],
-      label: `TRL${sn}_${panel_id}_${trendlog_id}`,
-      minute_interval_time: 0,
-      num_inputs: 14,
-      pid: panel_id,
-      range: [],
-      second_interval_time: 15,
-      status: 1,
-      type: "MON"
-    }
+    return null
   }
 
   // Ensure required fields are set
@@ -343,7 +316,8 @@ const loadTrendLogItemData = async () => {
 
     const params = getValidatedParameters()
 
-    // Priority 1: Try to load data from JSON parameters (realtime)
+
+    // Only use all_data from query parameter; otherwise, show error
     if (params.all_data) {
       dataSource.value = 'json'
       const formattedData = formatDataFromQueryParams()
@@ -352,81 +326,20 @@ const loadTrendLogItemData = async () => {
         scheduleItemData.value = formattedData.scheduleData
         pageTitle.value = formattedData.chartData.title
         return
-      }
-    }
-
-    // Priority 2: Try to load from API (historical data)
-    if (params.isValid && params.sn && params.panel_id !== null && params.trendlog_id !== null) {
-      dataSource.value = 'api'
-
-      // Generate time range: 1 hour ago to now
-      const now = new Date()
-      const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000))
-
-      const formatTimeForDB = (date: Date): string => {
-        const year = date.getFullYear()
-        const month = (date.getMonth() + 1).toString().padStart(2, '0')
-        const day = date.getDate().toString().padStart(2, '0')
-        const hours = date.getHours().toString().padStart(2, '0')
-        const minutes = date.getMinutes().toString().padStart(2, '0')
-        const seconds = date.getSeconds().toString().padStart(2, '0')
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-      }
-
-      const historyRequest = {
-        serial_number: params.sn,
-        panel_id: params.panel_id,
-        trendlog_id: params.trendlog_id.toString(),
-        start_time: formatTimeForDB(oneHourAgo),
-        end_time: formatTimeForDB(now),
-        limit: 1000,
-        point_types: ['INPUT', 'OUTPUT', 'VARIABLE']
-      }
-
-      const historyData = await trendlogAPI.getTrendlogHistory(historyRequest)
-
-      if (historyData?.data?.length > 0) {
-        const apiScheduleData = {
-          id: historyData.trendlog_id,
-          label: `TRL${params.sn}_${params.panel_id}_${params.trendlog_id}`,
-          description: `Historical Trend Log ${params.trendlog_id} from Panel ${params.panel_id}`,
-          pid: params.panel_id,
-          type: "MON",
-          value: historyData.data[0]?.value || 0,
-          unit: historyData.data[0]?.units || "",
-          status: 1,
-          input: [],
-          range: [],
-          num_inputs: historyData.count,
-          an_inputs: historyData.data.filter(d => d.is_analog).length,
-          scheduleData: historyData.data.map((point, index) => ({
-            time: point.time,
-            value: point.value,
-            index: index,
-            units: point.units,
-            point_type: point.point_type
-          }))
-        }
-
-        trendLogItemData.value = apiScheduleData
-        scheduleItemData.value = apiScheduleData
-        pageTitle.value = `Historical Trend Log ${params.trendlog_id} - Device ${params.sn}`
+      } else {
+        error.value = 'Error: The trend log data in the URL parameter (all_data) is missing or invalid. Please check the data source or try again.'
+        trendLogItemData.value = null
+        scheduleItemData.value = null
+        dataSource.value = 'fallback'
         return
       }
-    }
-
-    // Priority 3: Fallback - no valid data available
-    dataSource.value = 'fallback'
-    trendLogItemData.value = null
-    scheduleItemData.value = null
-    pageTitle.value = 'T3000 Trend Log Analysis'
-
-    if (trendlogAPI.error.value) {
-      error.value = `Failed to load historical data: ${trendlogAPI.error.value}`
-    } else if (!params.isValid) {
-      error.value = 'Missing required parameters: sn, panel_id, and trendlog_id'
     } else {
-      error.value = 'No trend log data available'
+      dataSource.value = 'fallback'
+      trendLogItemData.value = null
+      scheduleItemData.value = null
+      pageTitle.value = 'T3000 Trend Log Analysis'
+      error.value = 'Missing required parameters: sn, panel_id, trendlog_id, or all_data.'
+      return
     }
 
   } catch (err) {
