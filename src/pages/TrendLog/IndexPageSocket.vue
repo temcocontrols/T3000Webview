@@ -1,3 +1,4 @@
+
 <!--
   TrendLog IndexPage - Standalone page for displaying T3000 trend logs
 
@@ -32,6 +33,17 @@
         <p>Loading trend log data...</p>
       </div>
     </div>
+
+
+    <!-- Panel ID Error State (T3000 integration, Ant Design style) -->
+    <a-alert
+      v-if="panelIdError"
+      type="info"
+      show-icon
+      message="Panel ID Error"
+      :description="panelIdErrorMsg"
+      style="margin: 32px 0;"
+    />
 
     <!-- Error State -->
     <div v-else-if="error" class="error-wrapper">
@@ -76,6 +88,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
+import { Alert as AAlert } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import TrendLogChart from 'src/components/NewUI/TrendLogChart.vue'
@@ -90,6 +103,18 @@ import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 defineOptions({
   name: 'TrendLogIndexPage'
 })
+
+// import { ref, computed, onMounted, defineOptions } from 'vue'
+// import { useRoute } from 'vue-router'
+// import { useQuasar } from 'quasar'
+
+// Panel ID check for T3000 integration (computed)
+const panelIdError = computed(() => {
+  const pid = route.query.panel_id;
+  return pid !== undefined && Number(pid) === 0;
+});
+const panelIdErrorMsg = 'Error: Panel ID is 0. Please launch this page from T3000 with a valid panel.';
+defineExpose({ panelIdError, panelIdErrorMsg })
 
 // Route and URL parameters
 const route = useRoute()
