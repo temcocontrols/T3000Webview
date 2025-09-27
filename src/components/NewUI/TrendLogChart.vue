@@ -429,16 +429,17 @@
       <div class="right-panel">
         <div class="oscilloscope-container">
           <!-- Combined Analog Chart with Multiple Signals -->
-          <!-- <div class="combined-label">
-            <div class="signal-info">
-              <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
-                    :style="{ color: series.color }" class="signal-legend">
-                ● {{ series.name }} ({{ series.unit }})
-                <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
-              </span>
-            </div>
-          </div> -->
-          <div class="combined-analog-chart">
+          <!-- Only show analog chart if there are visible analog series -->
+          <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
+            <!-- <div class="combined-label">
+              <div class="signal-info">
+                <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
+                      :style="{ color: series.color }" class="signal-legend">
+                  ● {{ series.name }} ({{ series.unit }})
+                  <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
+                </span>
+              </div>
+            </div> -->
             <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
           </div>
 
