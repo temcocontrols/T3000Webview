@@ -7551,10 +7551,10 @@ const exportChartPNG = async () => {
     link.href = compositeCanvas.toDataURL('image/png', 1.0)
     link.click()
 
-    message.success('Chart exported as PNG successfully')
+    message.success('PNG exported')
   } catch (error) {
     console.error('Error exporting PNG:', error)
-    message.error('Failed to export chart as PNG')
+    message.error('PNG export failed')
   }
 }
 
@@ -7677,10 +7677,10 @@ const exportChartJPG = async () => {
     link.href = compositeCanvas.toDataURL('image/jpeg', 0.9)
     link.click()
 
-    message.success('Chart exported as JPG successfully')
+    message.success('JPG exported')
   } catch (error) {
     console.error('Error exporting JPG:', error)
-    message.error('Failed to export chart as JPG')
+    message.error('JPG export failed')
   }
 }
 
@@ -9885,5 +9885,21 @@ onUnmounted(() => {
 .chart-title-with-version:hover {
   color: #1890ff;
   text-decoration: underline dotted;
+}
+
+</style>
+
+<style>
+/* Global message component font size override - unscoped for global effect */
+.ant-message .ant-message-notice-content {
+  font-size: 12px !important;
+}
+
+.ant-message .ant-message-custom-content {
+  font-size: 12px !important;
+}
+
+.ant-message .ant-message-notice-content span {
+  font-size: 12px !important;
 }
 </style>
