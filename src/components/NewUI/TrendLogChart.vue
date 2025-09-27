@@ -126,13 +126,14 @@
           <a-tag
             :color="keyboardEnabled ? 'green' : 'default'"
             size="small"
-            class="keyboard-status-tag"
-            :title="keyboardEnabled ? 'Keyboard shortcuts: 1-9, A-E to toggle items | + - zoom | ← → scroll | ESC to disable' : 'Keyboard shortcuts disabled (ESC to enable)'"
+            class="keyboard-status-tag clickable"
+            :title="keyboardEnabled ? 'Keyboard shortcuts: 1-9, A-E to toggle items | + - zoom | ← → scroll | ESC to disable' : 'Keyboard shortcuts disabled (click or ESC to enable)'"
+            @click="toggleKeyboard"
           >
             <template #icon>
               <span class="keyboard-icon">⌨️</span>
             </template>
-            {{ keyboardEnabled ? 'KB Active' : 'KB Off' }}
+            {{ keyboardEnabled ? 'KB On' : 'KB Off' }}
           </a-tag>
         </a-flex>
 
@@ -5528,6 +5529,8 @@ const toggleItemTracking = async (seriesName: string) => {
   // Set loading state
   isSavingSelections.value = true
 
+  let afterTracked: string[] = []
+
   try {
     if (wasTracked) {
       // Remove from tracking
@@ -5537,7 +5540,7 @@ const toggleItemTracking = async (seriesName: string) => {
       viewTrackedSeries.value[currentView.value] = [...currentTracked, seriesName]
     }
 
-    const afterTracked = viewTrackedSeries.value[currentView.value]
+    afterTracked = viewTrackedSeries.value[currentView.value]
 
     LogUtil.Info(`✅ Toggle Item Tracking: Updated tracking state`, {
       seriesName,
@@ -5708,6 +5711,15 @@ const applyAndCloseDrawer = () => {
 
   LogUtil.Info(`✅ Apply Selection: View ${currentView.value} changes applied successfully`, {
     finalSelectedCount: selectedItems.length
+  })
+}
+
+// ⌨️ Toggle keyboard shortcuts on/off
+const toggleKeyboard = () => {
+  keyboardEnabled.value = !keyboardEnabled.value
+  LogUtil.Info(`⌨️ Keyboard shortcuts ${keyboardEnabled.value ? 'enabled' : 'disabled'}`, {
+    keyboardEnabled: keyboardEnabled.value,
+    method: 'CLICK_TOGGLE'
   })
 }
 
@@ -9791,6 +9803,11 @@ onUnmounted(() => {
 
 .keyboard-status-tag {
   cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.keyboard-status-tag:hover {
+  opacity: 0.8;
 }
 
 .keyboard-status-tag .keyboard-icon {
