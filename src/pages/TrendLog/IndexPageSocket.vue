@@ -9,7 +9,7 @@
   - all_data: Monitor point data in URL-encoded JSON format (from C++ backend)
 
   Example URLs:
-  - Demo mode: http://localhost:3003/#/trend-log
+
   - Real data: http://localhost:3003/#/trend-log?sn=123&panel_id=3&trendlog_id=1
   - With JSON data: http://localhost:3003/#/trend-log?sn=123&panel_id=3&trendlog_id=1&all_data=<URL-encoded-JSON>
 
@@ -18,11 +18,11 @@
   2. JSON is URL-encoded and passed as alldata parameter
   3. IndexPage decodes and parses JSON to display trend log data
   4. Falls back to API endpoints if JSON parsing fails
-  5. Shows error state if no valid data source is available (no mock data in production)
+  5. Shows error state if no valid data source is available.
 
   API Endpoints Attempted (if JSON parsing fails):
   1. Primary: /api/data/device/{panelid}/trend_logs/{trendlogid}
-  2. Fallback: /api/modbus-registers/{trendlogid}
+
 -->
 <template>
   <div class="trend-log-page">
@@ -117,7 +117,7 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 const trendLogItemData = ref<any>(null)
 const jsonValidationStatus = ref<'pending' | 'valid' | 'invalid' | 'error' | null>(null)
-const dataSource = ref<'json' | 'api' | 'fallback'>('json') // Track data source
+
 
 // URL Parameters with enhanced JSON handling
 const urlParams = computed(() => ({
@@ -260,7 +260,7 @@ const formatDataFromQueryParams = () => {
     }
   }
 
-  // If no valid data, return null (do not create fallback)
+  // If no valid data, return null
   if (!t3EntryData) {
     return null
   }
@@ -319,7 +319,7 @@ const loadTrendLogItemData = async () => {
 
     // Only use all_data from query parameter; otherwise, show error
     if (params.all_data) {
-      dataSource.value = 'json'
+
       const formattedData = formatDataFromQueryParams()
       if (formattedData) {
         trendLogItemData.value = formattedData.chartData
@@ -330,11 +330,11 @@ const loadTrendLogItemData = async () => {
         error.value = 'Error: The trend log data in the URL parameter (all_data) is missing or invalid. Please check the data source or try again.'
         trendLogItemData.value = null
         scheduleItemData.value = null
-        dataSource.value = 'fallback'
+
         return
       }
     } else {
-      dataSource.value = 'fallback'
+
       trendLogItemData.value = null
       scheduleItemData.value = null
       pageTitle.value = 'T3000 Trend Log Analysis'
@@ -347,7 +347,7 @@ const loadTrendLogItemData = async () => {
     error.value = err instanceof Error ? err.message : 'Failed to load trend log data'
     trendLogItemData.value = null
     scheduleItemData.value = null
-    dataSource.value = 'fallback'
+
   } finally {
     isLoading.value = false
   }
@@ -423,7 +423,7 @@ const initializeT3000Data = async () => {
       }
     }
 
-    // Try WebSocket client fallback (web browser)
+  // Try WebSocket client (web browser)
     if (!dataLoaded && Hvac.WsClient) {
       try {
         Hvac.WsClient.initQuasar($q)
@@ -650,9 +650,7 @@ onMounted(() => {
   background: linear-gradient(45deg, #2196F3, #1976D2);
 }
 
-.source-badge.fallback {
-  background: linear-gradient(45deg, #FF9800, #F57C00);
-}
+
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
