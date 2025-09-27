@@ -369,6 +369,7 @@
                     v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
                     class="keyboard-shortcut-badge left-panel-badge"
                     :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
+                    :data-key="getKeyboardShortcut(series.name)"
                     :title="`Press ${getKeyboardShortcut(series.name)} to toggle`"
                   >
                     {{ getKeyboardShortcut(series.name) }}
@@ -9810,7 +9811,16 @@ onUnmounted(() => {
   border-radius: 3px;
   font-size: 10px;
   white-space: nowrap;
-  z-index: 100;
+  z-index: 1100; /* Higher than badge z-index */
+  margin-bottom: 2px;
+}
+
+/* Specific positioning for left panel badges */
+.keyboard-shortcut-badge.left-panel-badge:hover::after {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
 }
 
 /* Highlight effect for keyboard-activated items */
