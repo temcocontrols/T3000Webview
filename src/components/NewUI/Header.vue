@@ -91,6 +91,11 @@ const menuItems = [
     key: "holidays",
     title: "Holidays",
     route: "/new/holidays"
+  },
+  {
+    key: "database",
+    title: "Database",
+    route: "/database"
   }
 ];
 

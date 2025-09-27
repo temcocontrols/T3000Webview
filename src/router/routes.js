@@ -246,6 +246,37 @@ const routes = [
       },
     ],
   },
+  {
+    path: "/database",
+    component: createOptimizedComponent(() => import("layouts/MainLayout2.vue"), "DatabaseLayout", { category: 'normal' }),
+    children: [
+      {
+        path: "",
+        name: "database",
+        component: createOptimizedComponent(() => import("src/components/Database/DatabaseManagementPage.vue"), "DatabaseManagementPage", { category: 'normal' }),
+      },
+      {
+        path: "settings",
+        name: "database-settings",
+        component: createOptimizedComponent(() => import("src/components/Database/ApplicationSettingsPanel.vue"), "ApplicationSettingsPanel", { category: 'normal' }),
+      },
+      {
+        path: "partitions",
+        name: "database-partitions",
+        component: createOptimizedComponent(() => import("src/components/Database/DatabasePartitionsPanel.vue"), "DatabasePartitionsPanel", { category: 'normal' }),
+      },
+      {
+        path: "monitoring",
+        name: "database-monitoring",
+        component: createOptimizedComponent(() => import("src/components/Database/MonitoringStatsPanel.vue"), "MonitoringStatsPanel", { category: 'normal' }),
+      },
+      {
+        path: "tools",
+        name: "database-tools",
+        component: createOptimizedComponent(() => import("src/components/Database/ManagementToolsPanel.vue"), "ManagementToolsPanel", { category: 'normal' }),
+      },
+    ],
+  },
   // Diagnostic page for testing
   {
     path: "/diagnostic",
