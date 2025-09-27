@@ -233,8 +233,6 @@ export default {
   name: 'ApplicationSettingsPanel',
   setup() {
     const $q = useQuasar()
-  import { ref, computed, onMounted } from 'vue'
-  import { useQuasar } from 'quasar'
 
     const settings = ref([])
     const loading = ref(false)

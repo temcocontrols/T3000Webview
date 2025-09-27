@@ -173,6 +173,15 @@
           </a-dropdown>
         </a-flex> -->
 
+        <!-- Database Configuration -->
+        <a-flex align="center" class="control-group">
+          <a-button @click="showDatabaseConfig = true" size="small" title="Database Configuration"
+            style="display: flex; align-items: center; gap: 2px;">
+            <DatabaseOutlined />
+            <span>Database</span>
+          </a-button>
+        </a-flex>
+
         <!-- Export Options -->
         <a-flex align="center" class="control-group export-options">
           <a-dropdown placement="bottomRight">
@@ -520,6 +529,235 @@
       </div>
     </a-modal>
 
+    <!-- Database Configuration Modal -->
+    <a-modal
+      v-model:visible="showDatabaseConfig"
+      title="Database Setting"
+      :width="600"
+      class="database-modal-compact"
+    >
+      <a-space direction="vertical" size="small" style="width: 100%">
+        <!-- Database Status Card -->
+        <a-card size="small" class="status-card">
+          <template #title>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span class="card-title">
+                <DatabaseOutlined style="margin-right: 6px; color: #1890ff;" />
+                Database Status
+              </span>
+              <span class="info-value path-text" style="font-size: 9px;">{{ databaseInfo.location }}</span>
+            </div>
+          </template>
+
+          <a-row :gutter="8" style="margin-bottom: 8px;">
+            <a-col :span="6">
+              <a-statistic title="Name" :value="databaseInfo.name" :value-style="{ fontSize: '11px' }" />
+            </a-col>
+            <a-col :span="6">
+              <a-statistic title="Size" :value="databaseInfo.size" :value-style="{ fontSize: '11px' }" />
+            </a-col>
+            <a-col :span="6">
+              <a-statistic title="Records" :value="databaseInfo.totalRecords" :value-style="{ fontSize: '11px' }" />
+            </a-col>
+            <a-col :span="6">
+              <div class="status-info">
+                <div class="status-label">Status</div>
+                <div :style="{ color: databaseInfo.status === 'healthy' ? '#52c41a' : '#faad14', fontSize: '11px', fontWeight: '600' }">
+                  {{ databaseInfo.status.toUpperCase() }}
+                </div>
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
+
+        <!-- Data Splitting Strategy Card -->
+        <a-card size="small" class="config-card">
+          <template #title>
+            <span class="card-title">
+              <SettingOutlined style="margin-right: 6px; color: #fa8c16;" />
+              Data Splitting Strategy
+            </span>
+          </template>
+
+          <div class="form-item-compact" style="margin-bottom: 8px;">
+            <label>Split new data by:</label>
+            <a-radio-group
+              v-model:value="databaseConfig.partitioning.strategy"
+              size="small"
+              @change="onPartitionStrategyChange"
+              style="display: flex; flex-wrap: wrap; gap: 4px;"
+            >
+              <a-radio value="daily">Daily</a-radio>
+              <a-radio value="weekly">Weekly</a-radio>
+              <a-radio value="monthly">Monthly</a-radio>
+              <a-radio value="quarterly">Quarterly</a-radio>
+              <a-radio value="custom">Custom Days</a-radio>
+              <a-radio value="custom-months">Custom Months</a-radio>
+            </a-radio-group>
+          </div>
+
+          <!-- Custom Days Input -->
+          <div
+            v-if="databaseConfig.partitioning.strategy === 'custom'"
+            class="form-item-compact"
+            style="margin-bottom: 8px; margin-left: 16px;"
+          >
+            <label style="font-size: 10px; color: #666;">Every:</label>
+            <a-input-number
+              v-model:value="databaseConfig.partitioning.customDays"
+              :min="1"
+              :max="365"
+              size="small"
+              style="width: 60px; margin: 0 4px;"
+            />
+            <span style="font-size: 10px; color: #666;">days</span>
+          </div>
+
+          <!-- Custom Months Input -->
+          <div
+            v-if="databaseConfig.partitioning.strategy === 'custom-months'"
+            class="form-item-compact"
+            style="margin-bottom: 8px; margin-left: 16px;"
+          >
+            <label style="font-size: 10px; color: #666;">Every:</label>
+            <a-input-number
+              v-model:value="databaseConfig.partitioning.customMonths"
+              :min="1"
+              :max="12"
+              size="small"
+              style="width: 60px; margin: 0 4px;"
+            />
+            <span style="font-size: 10px; color: #666;">months</span>
+          </div>
+
+          <div class="info-row" style="font-size: 10px; color: #666; margin-top: 4px;">
+            Current: {{
+              databaseConfig.partitioning.strategy === 'daily' ? 'One file per day' :
+              databaseConfig.partitioning.strategy === 'weekly' ? 'One file per week' :
+              databaseConfig.partitioning.strategy === 'monthly' ? 'One file per month' :
+              databaseConfig.partitioning.strategy === 'quarterly' ? 'One file per quarter (3 months)' :
+              databaseConfig.partitioning.strategy === 'custom-months' ? `One file every ${databaseConfig.partitioning.customMonths} months` :
+              `One file every ${databaseConfig.partitioning.customDays} days`
+            }}
+          </div>
+        </a-card>
+
+        <!-- Existing Database Files Card -->
+        <a-card size="small" class="config-card">
+          <template #title>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span class="card-title">
+                <DatabaseOutlined style="margin-right: 6px; color: #1890ff;" />
+                Database Files ({{ mockDatabaseFiles.length }})
+              </span>
+              <a-button
+                size="small"
+                type="primary"
+                @click="cleanupAllFiles"
+                :loading="isCleaningUp"
+                style="font-size: 10px; height: 22px; padding: 0 8px;"
+              >
+                <template #icon><DeleteOutlined style="font-size: 10px;" /></template>
+                Clean All
+              </a-button>
+            </div>
+          </template>
+
+          <div class="db-files-list" style="max-height: 120px; overflow-y: auto;">
+            <div
+              v-for="file in mockDatabaseFiles"
+              :key="file.name"
+              class="db-file-item"
+              style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;"
+            >
+              <div class="file-info" style="flex: 1;">
+                <div style="font-size: 11px; font-weight: 500;">{{ file.name }}</div>
+                <div style="font-size: 9px; color: #666;">{{ file.size }} • {{ file.records }} records</div>
+              </div>
+              <a-button
+                size="small"
+                type="text"
+                danger
+                @click="deleteDbFile(file.name)"
+                style="padding: 2px 6px;"
+              >
+                <template #icon><DeleteOutlined style="font-size: 10px;" /></template>
+              </a-button>
+            </div>
+          </div>
+        </a-card>
+
+        <!-- Cleanup Management Card -->
+        <a-card size="small" class="config-card">
+          <template #title>
+            <span class="card-title">
+              <DeleteOutlined style="margin-right: 6px; color: #ff4d4f;" />
+              Cleanup Management
+            </span>
+          </template>
+
+          <div class="form-item-compact" style="margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-size: 11px; color: #666; white-space: nowrap; min-width: 90px;">Auto cleanup files older than:</span>
+              <a-input-number
+                v-model:value="databaseConfig.partitioning.retentionValue"
+                :min="1"
+                :max="365"
+                size="small"
+                style="width: 60px;"
+              />
+              <a-select
+                v-model:value="databaseConfig.partitioning.retentionUnit"
+                size="small"
+                style="width: 100px;"
+              >
+                <a-select-option value="days">Days</a-select-option>
+                <a-select-option value="weeks">Weeks</a-select-option>
+                <a-select-option value="months">Months</a-select-option>
+              </a-select>
+              <a-button
+                size="small"
+                type="primary"
+                @click="cleanupOldFiles"
+                :loading="isCleaningUp"
+                style="width: 120px;"
+              >
+                <template #icon><DeleteOutlined /></template>
+                Clean up now
+              </a-button>
+              <a-button
+                size="small"
+                @click="compactDatabase"
+                :loading="isOptimizing"
+                style="width: 90px;"
+              >
+                <template #icon><ThunderboltOutlined /></template>
+                Optimize
+              </a-button>
+            </div>
+          </div>
+        </a-card>
+      </a-space>
+
+      <template #footer>
+        <div style="text-align: right;">
+          <a-space size="small">
+            <a-button @click="showDatabaseConfig = false" size="small">
+              Cancel
+            </a-button>
+            <a-button
+              type="primary"
+              size="small"
+              @click="saveDatabaseConfig"
+              :loading="isSaving"
+            >
+              Save Changes
+            </a-button>
+          </a-space>
+        </div>
+      </template>
+    </a-modal>
+
     <!-- Right Drawer for Item Selection -->
     <a-drawer
       v-model:visible="showItemSelector"
@@ -642,7 +880,11 @@ import {
   ClockCircleOutlined,
   WifiOutlined,
   LoadingOutlined,
-  CloseOutlined
+  CloseOutlined,
+  DatabaseOutlined,
+  SaveOutlined,
+  ThunderboltOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil'
 import { scheduleItemData } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant'
@@ -1046,6 +1288,50 @@ const showItemSelector = ref(false)
 
 // Loading state for database operations
 const isSavingSelections = ref(false)
+
+// Database configuration modal state
+const showDatabaseConfig = ref(false)
+const isBackingUp = ref(false)
+const isOptimizing = ref(false)
+const isSaving = ref(false)
+const isCleaningUp = ref(false)
+
+// Mock database files data (replace with real API call)
+const mockDatabaseFiles = ref([
+  { name: 'trendlog_2025-09-28.db', size: '15.2 MB', records: '145,830' },
+  { name: 'trendlog_2025-09-27.db', size: '18.1 MB', records: '162,451' },
+  { name: 'trendlog_2025-09-26.db', size: '16.8 MB', records: '158,392' },
+  { name: 'trendlog_2025-09-25.db', size: '17.3 MB', records: '159,847' },
+  { name: 'trendlog_2025-09-24.db', size: '19.2 MB', records: '168,291' }
+])
+
+// Database information
+const databaseInfo = ref({
+  name: 'trendlog.db',
+  size: '125.4 MB',
+  totalRecords: '2,847,293',
+  lastBackup: '2025-09-28 14:30:00',
+  status: 'healthy',
+  location: 'D:\\T3000\\Database\\trendlog.db'
+})
+
+// Database configuration settings
+const databaseConfig = ref({
+  autoBackup: {
+    enabled: true,
+    frequency: 'daily', // daily, weekly, monthly
+    time: dayjs('02:00', 'HH:mm'),
+    keepCount: 7
+  },
+  partitioning: {
+    strategy: 'monthly', // none, daily, weekly, monthly, quarterly, custom, custom-months
+    customDays: 30, // for custom days strategy
+    customMonths: 2, // for custom months strategy
+    autoCleanup: true,
+    retentionValue: 30,
+    retentionUnit: 'days' // days, weeks, months, years
+  }
+})
 
 // ⌨️ Keyboard Navigation System
 const keyboardEnabled = ref(true)
@@ -8104,6 +8390,191 @@ onMounted(async () => {
   })
 })
 
+// Database configuration methods
+const onAutoBackupToggle = (enabled: boolean) => {
+  LogUtil.Info('Database auto backup toggled', { enabled })
+  // Add logic to enable/disable auto backup
+}
+
+const onBackupFrequencyChange = (frequency: string) => {
+  LogUtil.Info('Backup frequency changed', { frequency })
+  // Add logic for backup frequency change
+}
+
+const onPartitionStrategyChange = (strategy: string) => {
+  LogUtil.Info('Partition strategy changed', { strategy })
+  // Add logic for partition strategy change
+}
+
+const performManualBackup = async () => {
+  isBackingUp.value = true
+  try {
+    LogUtil.Info('Starting manual database backup...')
+    // Simulate backup process
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    // Update last backup time
+    databaseInfo.value.lastBackup = new Date().toLocaleString('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/(\d{4})-(\d{2})-(\d{2}), (\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3 $4:$5:$6')
+
+    message.success('Database backup completed successfully')
+    LogUtil.Info('Manual database backup completed')
+  } catch (error) {
+    message.error('Failed to create database backup')
+    LogUtil.Error('Manual database backup failed', error)
+  } finally {
+    isBackingUp.value = false
+  }
+}
+
+const optimizeDatabase = async () => {
+  isOptimizing.value = true
+  try {
+    LogUtil.Info('Starting database optimization...')
+    // Simulate optimization process
+    await new Promise(resolve => setTimeout(resolve, 3000))
+
+    message.success('Database optimization completed')
+    LogUtil.Info('Database optimization completed')
+  } catch (error) {
+    message.error('Failed to optimize database')
+    LogUtil.Error('Database optimization failed', error)
+  } finally {
+    isOptimizing.value = false
+  }
+}
+
+const showCleanupConfirm = () => {
+  // Show confirmation dialog for cleanup
+  notification.warning({
+    message: 'Cleanup Old Data',
+    description: 'This will permanently delete old data based on your retention settings. This action cannot be undone.',
+    btn: [
+      {
+        text: 'Cancel',
+        props: { size: 'small' }
+      },
+      {
+        text: 'Confirm Cleanup',
+        props: {
+          type: 'primary',
+          danger: true,
+          size: 'small',
+          onClick: performDataCleanup
+        }
+      }
+    ],
+    key: 'cleanup-confirm',
+    duration: 0
+  })
+}
+
+const performDataCleanup = async () => {
+  try {
+    LogUtil.Info('Starting data cleanup based on retention policy...')
+    // Add cleanup logic based on retention settings
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    message.success('Old data cleanup completed')
+    LogUtil.Info('Data cleanup completed')
+
+    // Close the notification
+    notification.close('cleanup-confirm')
+  } catch (error) {
+    message.error('Failed to cleanup old data')
+    LogUtil.Error('Data cleanup failed', error)
+  }
+}
+
+const saveDatabaseConfig = async () => {
+  isSaving.value = true
+  try {
+    LogUtil.Info('Saving database configuration...', databaseConfig.value)
+
+    // Simulate saving configuration
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    message.success('Database configuration saved successfully')
+    showDatabaseConfig.value = false
+    LogUtil.Info('Database configuration saved')
+  } catch (error) {
+    message.error('Failed to save database configuration')
+    LogUtil.Error('Failed to save database configuration', error)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+// Delete specific database file
+const deleteDbFile = async (fileName: string) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    mockDatabaseFiles.value = mockDatabaseFiles.value.filter(file => file.name !== fileName)
+    message.success(`Deleted ${fileName}`)
+    LogUtil.Info('Database file deleted', { fileName })
+  } catch (error) {
+    message.error('Failed to delete database file')
+    LogUtil.Error('Failed to delete database file', error)
+  }
+}
+
+// Cleanup old database files
+const cleanupOldFiles = async () => {
+  isCleaningUp.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    const oldCount = mockDatabaseFiles.value.length
+    mockDatabaseFiles.value = mockDatabaseFiles.value.slice(0, 3) // Keep only 3 most recent
+    const removedCount = oldCount - mockDatabaseFiles.value.length
+    message.success(`Cleaned up ${removedCount} old database files`)
+    LogUtil.Info('Database cleanup completed', { removedCount })
+  } catch (error) {
+    message.error('Failed to cleanup database files')
+    LogUtil.Error('Failed to cleanup database files', error)
+  } finally {
+    isCleaningUp.value = false
+  }
+}
+
+// Compact database
+const compactDatabase = async () => {
+  isOptimizing.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    message.success('Database compacted successfully')
+    LogUtil.Info('Database compacted')
+  } catch (error) {
+    message.error('Failed to compact database')
+    LogUtil.Error('Failed to compact database', error)
+  } finally {
+    isOptimizing.value = false
+  }
+}
+
+// Cleanup all database files
+const cleanupAllFiles = async () => {
+  isCleaningUp.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    const fileCount = mockDatabaseFiles.value.length
+    mockDatabaseFiles.value = []
+    message.success(`Cleaned up all ${fileCount} database files`)
+    LogUtil.Info('All database files cleaned up', { fileCount })
+  } catch (error) {
+    message.error('Failed to cleanup all database files')
+    LogUtil.Error('Failed to cleanup all database files', error)
+  } finally {
+    isCleaningUp.value = false
+  }
+}
+
 onUnmounted(() => {
   stopRealTimeUpdates()
   destroyAllCharts()
@@ -9976,5 +10447,555 @@ onUnmounted(() => {
 
 .series-item.keyboard-selected .series-header {
   background-color: rgba(102, 102, 102, 0.05);
+}
+
+/* Database Configuration Modal Styles */
+.database-config-modal {
+  /* Status Card Styling */
+  .database-status-card {
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    .status-info {
+      text-align: center;
+
+      .status-label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+      }
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 12px;
+
+      .info-label {
+        color: #666;
+        font-weight: 500;
+      }
+
+      .info-value {
+        color: #333;
+        font-weight: 600;
+
+        &.path-text {
+          font-family: monospace;
+          font-size: 10px;
+          color: #1890ff;
+          max-width: 220px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  /* Configuration Cards Styling */
+  .config-card, .actions-card {
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-item-compact {
+      margin-bottom: 8px;
+
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        color: #666;
+        margin-bottom: 4px;
+      }
+
+      .input-suffix {
+        font-size: 11px;
+        color: #999;
+      }
+    }
+
+    .disabled-message {
+      color: #999;
+      font-size: 12px;
+      font-style: italic;
+      text-align: center;
+      padding: 8px;
+      background: #fafafa;
+      border-radius: 4px;
+    }
+  }
+
+  /* Override Ant Design card styling for compact design */
+  .ant-card-small .ant-card-body {
+    padding: 10px;
+  }
+
+  .ant-card-small .ant-card-head {
+    min-height: 32px;
+    padding: 0 10px;
+
+    .ant-card-head-title {
+      padding: 6px 0;
+      font-size: 12px;
+    }
+  }
+
+  /* Statistics component styling */
+  .ant-statistic-title {
+    font-size: 11px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 12px !important;
+  }  /* Compact radio button group */
+  .ant-radio-group-small .ant-radio-button-wrapper {
+    font-size: 11px;
+    height: 24px;
+    line-height: 22px;
+    padding: 0 8px;
+  }
+
+  /* Compact input group */
+  .ant-input-group-compact .ant-input,
+  .ant-input-group-compact .ant-select-selector {
+    font-size: 11px;
+  }
+
+  /* Small button styling */
+  .ant-btn-sm {
+    font-size: 11px;
+    height: 24px;
+    padding: 0 8px;
+  }
+}
+
+/* Database Modal Custom Styles */
+.database-modal-custom {
+  .ant-modal-content {
+    padding: 0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .db-modal-container {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+
+  .db-modal-header {
+    background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%);
+    color: white;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .db-header-title {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+
+      .db-icon {
+        margin-right: 8px;
+        font-size: 16px;
+      }
+    }
+
+    .db-close-btn {
+      color: white;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+      }
+    }
+  }
+
+  .db-modal-content {
+    max-height: 480px;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .db-section {
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .db-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #262626;
+      padding: 12px 16px 8px;
+      display: flex;
+      align-items: center;
+      background: #fafafa;
+
+      .db-section-icon {
+        margin-right: 6px;
+        color: #1890ff;
+      }
+    }
+
+    .db-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px 8px;
+      background: #fafafa;
+
+      .db-section-title {
+        padding: 0;
+        background: none;
+        margin: 0;
+      }
+    }
+
+    .db-section-content {
+      padding: 8px 16px 12px;
+    }
+  }
+
+  .db-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+
+    .db-stat-item {
+      text-align: center;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 6px;
+
+      .db-stat-label {
+        font-size: 11px;
+        color: #8c8c8c;
+        margin-bottom: 2px;
+      }
+
+      .db-stat-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #262626;
+
+        .db-status-badge {
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 9px;
+          font-weight: 500;
+          text-transform: uppercase;
+
+          &.healthy {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+          }
+
+          &.warning {
+            background: #fffbe6;
+            color: #faad14;
+            border: 1px solid #ffe58f;
+          }
+
+          &.error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffb3b3;
+          }
+        }
+      }
+    }
+  }
+
+  .db-info-list {
+    .db-info-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+
+      .db-info-label {
+        color: #8c8c8c;
+        font-weight: 500;
+      }
+
+      .db-info-value {
+        color: #262626;
+        font-weight: 400;
+
+        &.db-path {
+          font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+          font-size: 10px;
+          color: #1890ff;
+          max-width: 200px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  .form-item-compact {
+    margin-bottom: 8px;
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #595959;
+      margin-bottom: 4px;
+    }
+
+    .input-suffix {
+      font-size: 10px;
+      color: #8c8c8c;
+    }
+  }
+
+  .disabled-message {
+    color: #8c8c8c;
+    font-size: 11px;
+    font-style: italic;
+    text-align: center;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+
+  /* Compact component overrides */
+  .ant-radio-group-small .ant-radio-button-wrapper {
+    font-size: 10px;
+    height: 22px;
+    line-height: 20px;
+    padding: 0 6px;
+  }
+
+  .ant-input-group-compact {
+    .ant-input,
+    .ant-select-selector,
+    .ant-input-number-input {
+      font-size: 11px;
+      height: 24px;
+    }
+
+    .ant-select-selection-item {
+      font-size: 11px;
+      line-height: 22px;
+    }
+  }
+
+  .ant-btn-sm {
+    font-size: 11px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 4px;
+  }
+
+  .ant-switch-small {
+    min-width: 28px;
+    height: 16px;
+    line-height: 16px;
+  }
+
+  .ant-time-picker-small {
+    .ant-picker-input input {
+      font-size: 11px;
+    }
+  }
+
+  .ant-input-number-sm {
+    font-size: 11px;
+
+    .ant-input-number-input {
+      height: 22px;
+      font-size: 11px;
+    }
+  }
+
+  .ant-select-sm {
+    font-size: 11px;
+
+    .ant-select-selector {
+      height: 24px;
+    }
+
+    .ant-select-selection-item {
+      line-height: 22px;
+    }
+  }
+
+  .db-modal-footer {
+    padding: 12px 16px;
+    text-align: right;
+    border-top: 1px solid #f0f0f0;
+    background: #fafafa;
+  }
+}
+
+/* Database Configuration Modal Compact Styles */
+.database-modal-compact {
+  margin-top: -60px;
+  .ant-modal-header{
+    margin-bottom: 0px;
+  }
+  /* Status Card Styling */
+  .status-card {
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    .status-info {
+      text-align: center;
+
+      .status-label {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 2px;
+      }
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 11px;
+
+      .info-label {
+        color: #666;
+        font-weight: 500;
+      }
+
+      .info-value {
+        color: #333;
+        font-weight: 600;
+
+        &.path-text {
+          font-family: monospace;
+          font-size: 9px;
+          color: #1890ff;
+          max-width: 180px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  /* Configuration Cards Styling */
+  .config-card, .actions-card {
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-item-compact {
+      margin-bottom: 6px;
+
+      label {
+        display: block;
+        font-size: 11px;
+        font-weight: 500;
+        color: #666;
+        margin-bottom: 3px;
+      }
+
+      .input-suffix {
+        font-size: 10px;
+        color: #999;
+      }
+    }
+
+    .disabled-message {
+      color: #999;
+      font-size: 11px;
+      font-style: italic;
+      text-align: center;
+      padding: 6px;
+      background: #fafafa;
+      border-radius: 4px;
+    }
+  }
+
+  /* Override Ant Design card styling for compact design */
+  .ant-card-small .ant-card-body {
+    padding: 8px;
+  }
+
+  .ant-card-small .ant-card-head {
+    min-height: 28px;
+    padding: 0 8px;
+
+    .ant-card-head-title {
+      padding: 4px 0;
+      font-size: 11px;
+    }
+  }
+
+  /* Statistics component styling */
+  .ant-statistic-title {
+    font-size: 10px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 11px !important;
+  }
+
+  /* Compact radio button group */
+  .ant-radio-group-small .ant-radio-button-wrapper {
+    font-size: 10px;
+    height: 22px;
+    line-height: 20px;
+    padding: 0 6px;
+  }
+
+  /* Compact input group */
+  .ant-input-group-compact .ant-input,
+  .ant-input-group-compact .ant-select-selector {
+    font-size: 10px;
+  }
+
+  /* Small button styling */
+  .ant-btn-sm {
+    font-size: 10px;
+    height: 22px;
+    padding: 0 6px;
+  }
+
+  /* Modal footer compact styling */
+  .ant-modal-footer {
+    padding: 8px 12px;
+    text-align: right;
+  }
 }
 </style>
