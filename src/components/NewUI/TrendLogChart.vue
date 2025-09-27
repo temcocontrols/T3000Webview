@@ -5816,12 +5816,12 @@ const handleKeydown = async (event: KeyboardEvent) => {
       if (keyboardItemMappings.value[event.code]) {
         const mapping = keyboardItemMappings.value[event.code]
 
-        // Find the series index in displayedSeries
-        const seriesIndex = displayedSeries.value.findIndex(s => s.name === mapping.item)
+        // Find the series index in the master dataSeries array (not displayedSeries)
+        const masterSeriesIndex = dataSeries.value.findIndex(s => s.name === mapping.item)
 
-        if (seriesIndex >= 0) {
-          // Toggle series visibility (left panel functionality)
-          toggleSeriesVisibility(seriesIndex, null)
+        if (masterSeriesIndex >= 0) {
+          // Toggle series visibility using the correct master index
+          toggleSeriesVisibility(masterSeriesIndex, null)
 
           // Clear the keyboard action highlight after a short delay
           setTimeout(() => {
@@ -5832,15 +5832,15 @@ const handleKeydown = async (event: KeyboardEvent) => {
             key: mapping.display,
             itemName: mapping.item,
             itemIndex: mapping.index,
-            seriesIndex,
+            masterSeriesIndex,
             currentView: currentView.value,
-            nowVisible: displayedSeries.value[seriesIndex]?.visible
+            nowVisible: dataSeries.value[masterSeriesIndex]?.visible
           })
         } else {
           LogUtil.Warn(`⌨️ Keyboard: Series not found for key "${mapping.display}"`, {
             key: mapping.display,
             itemName: mapping.item,
-            availableSeries: displayedSeries.value.map(s => s.name)
+            availableSeries: dataSeries.value.map(s => s.name)
           })
         }
       }
