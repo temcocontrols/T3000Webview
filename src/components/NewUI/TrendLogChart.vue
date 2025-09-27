@@ -9703,8 +9703,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  background: #fafafa;
-  border: 1px solid #d9d9d9;
+  /* background: #fafafa;
+  border: 1px solid #d9d9d9; */
   border-radius: 6px;
   margin-bottom: 12px;
 }
