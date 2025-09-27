@@ -59,10 +59,10 @@
       <!-- Data Source Indicator -->
       <div class="data-source-indicator">
         <span v-if="dataSource === 'json'" class="source-badge realtime">
-          📡 Real-time Data (From C++ Backend)
+          📡 Real-time Data
         </span>
         <span v-else-if="dataSource === 'api'" class="source-badge historical">
-          📚 Historical Data (From Database)
+          📚 Historical Data
         </span>
         <span v-else class="source-badge fallback">
           ⚠️ No Data Available
