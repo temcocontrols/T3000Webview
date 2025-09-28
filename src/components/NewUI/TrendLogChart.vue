@@ -587,6 +587,7 @@
               @change="onPartitionStrategyChange"
               style="display: flex; flex-wrap: wrap; gap: 4px;"
             >
+              <a-radio value="5minutes">5 Minutes</a-radio>
               <a-radio value="daily">Daily</a-radio>
               <a-radio value="weekly">Weekly</a-radio>
               <a-radio value="monthly">Monthly</a-radio>
@@ -648,7 +649,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <span class="card-title">
                 <DatabaseOutlined style="margin-right: 6px; color: #1890ff;" />
-                Database Files ({{ mockDatabaseFiles.length }})
+                Database Files ({{ databaseFiles.length }})
               </span>
               <a-button
                 size="small"
@@ -665,8 +666,8 @@
 
           <div class="db-files-list" style="max-height: 120px; overflow-y: auto;">
             <div
-              v-for="file in mockDatabaseFiles"
-              :key="file.name"
+              v-for="file in databaseFiles"
+              :key="file.id || file.name"
               class="db-file-item"
               style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;"
             >
@@ -678,7 +679,7 @@
                 size="small"
                 type="text"
                 danger
-                @click="deleteDbFile(file.name)"
+                @click="deleteDbFile(file.id, file.name)"
                 style="padding: 2px 6px;"
               >
                 <template #icon><DeleteOutlined style="font-size: 10px;" /></template>
@@ -894,6 +895,7 @@ import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import { databaseService, DatabaseUtils } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0
@@ -1296,23 +1298,53 @@ const isOptimizing = ref(false)
 const isSaving = ref(false)
 const isCleaningUp = ref(false)
 
-// Mock database files data (replace with real API call)
-const mockDatabaseFiles = ref([
-  { name: 'trendlog_2025-09-28.db', size: '15.2 MB', records: '145,830' },
-  { name: 'trendlog_2025-09-27.db', size: '18.1 MB', records: '162,451' },
-  { name: 'trendlog_2025-09-26.db', size: '16.8 MB', records: '158,392' },
-  { name: 'trendlog_2025-09-25.db', size: '17.3 MB', records: '159,847' },
-  { name: 'trendlog_2025-09-24.db', size: '19.2 MB', records: '168,291' }
-])
+// Database files data (loaded from API)
+const databaseFiles = ref([])
+const databaseStats = ref(null)
+const isLoadingDatabase = ref(false)
+
+// Load database files from API
+const loadDatabaseFiles = async () => {
+  isLoadingDatabase.value = true
+  try {
+    const files = await databaseService.files.getFiles()
+    databaseFiles.value = files
+    LogUtil.Info('Database files loaded', { count: files.length })
+  } catch (error) {
+    LogUtil.Error('Failed to load database files', error)
+    // Use mock data as fallback
+    databaseFiles.value = [
+      { id: 1, name: 'trendlog_2025-09-28.db', size: '15.2 MB', records: 145830 },
+      { id: 2, name: 'trendlog_2025-09-27.db', size: '18.1 MB', records: 162451 },
+      { id: 3, name: 'trendlog_2025-09-26.db', size: '16.8 MB', records: 158392 },
+      { id: 4, name: 'trendlog_2025-09-25.db', size: '17.3 MB', records: 159847 },
+      { id: 5, name: 'trendlog_2025-09-24.db', size: '19.2 MB', records: 168291 }
+    ]
+  } finally {
+    isLoadingDatabase.value = false
+  }
+}
+
+// Load database configuration from API
+const loadDatabaseConfig = async () => {
+  try {
+    const config = await databaseService.config.getConfig()
+    databaseConfig.value = config
+    LogUtil.Info('Database config loaded', config)
+  } catch (error) {
+    LogUtil.Error('Failed to load database config', error)
+    // Keep default config if API fails
+  }
+}
 
 // Database information
 const databaseInfo = ref({
-  name: 'trendlog.db',
+  name: 'webview_t3_device.db',
   size: '125.4 MB',
   totalRecords: '2,847,293',
   lastBackup: '2025-09-28 14:30:00',
   status: 'healthy',
-  location: 'D:\\T3000\\Database\\trendlog.db'
+  location: '\\Database\\webview_t3_device.db'
 })
 
 // Database configuration settings
@@ -8353,6 +8385,15 @@ onMounted(async () => {
   // Load saved view tracking data
   await loadViewTracking()
 
+  // Initialize database management
+  try {
+    await loadDatabaseConfig()
+    await loadDatabaseFiles()
+    LogUtil.Info('Database management initialized successfully')
+  } catch (error) {
+    LogUtil.Error('Failed to initialize database management', error)
+  }
+
   // Apply default view configuration
   setView(1)
 
@@ -8496,7 +8537,18 @@ const performDataCleanup = async () => {
 const saveDatabaseConfig = async () => {
   isSaving.value = true
   try {
+    // Validate configuration before saving
+    const validation = DatabaseUtils.validateConfig(databaseConfig.value)
+    if (!validation.success) {
+      message.error(validation.error)
+      return
+    }
+
     LogUtil.Info('Saving database configuration...', databaseConfig.value)
+
+    // Save configuration via API
+    const savedConfig = await databaseService.config.updateConfig(databaseConfig.value)
+    databaseConfig.value = savedConfig
 
     // Simulate saving configuration
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -8529,12 +8581,20 @@ const deleteDbFile = async (fileName: string) => {
 const cleanupOldFiles = async () => {
   isCleaningUp.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    const oldCount = mockDatabaseFiles.value.length
-    mockDatabaseFiles.value = mockDatabaseFiles.value.slice(0, 3) // Keep only 3 most recent
-    const removedCount = oldCount - mockDatabaseFiles.value.length
-    message.success(`Cleaned up ${removedCount} old database files`)
-    LogUtil.Info('Database cleanup completed', { removedCount })
+    // Calculate retention days from value and unit
+    let retentionDays = databaseConfig.value.partitioning.retentionValue
+    const unit = databaseConfig.value.partitioning.retentionUnit
+
+    if (unit === 'weeks') {
+      retentionDays = retentionDays * 7
+    } else if (unit === 'months') {
+      retentionDays = retentionDays * 30
+    }
+
+    const result = await databaseService.files.cleanupOldFiles(retentionDays)
+    await loadDatabaseFiles() // Reload files list
+    message.success(`Cleaned up ${result.partitions_cleaned} old database files`)
+    LogUtil.Info('Database cleanup completed', result)
   } catch (error) {
     message.error('Failed to cleanup database files')
     LogUtil.Error('Failed to cleanup database files', error)
@@ -8562,11 +8622,10 @@ const compactDatabase = async () => {
 const cleanupAllFiles = async () => {
   isCleaningUp.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    const fileCount = mockDatabaseFiles.value.length
-    mockDatabaseFiles.value = []
-    message.success(`Cleaned up all ${fileCount} database files`)
-    LogUtil.Info('All database files cleaned up', { fileCount })
+    const result = await databaseService.files.cleanupAllFiles()
+    await loadDatabaseFiles() // Reload files list
+    message.success(`Cleaned up all ${result.partitions_cleaned} database files`)
+    LogUtil.Info('All database files cleaned up', result)
   } catch (error) {
     message.error('Failed to cleanup all database files')
     LogUtil.Error('Failed to cleanup all database files', error)

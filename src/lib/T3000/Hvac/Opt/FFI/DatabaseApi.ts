@@ -1,0 +1,839 @@
+/**
+ * T3000 Database Management API Service
+ *
+ * Provides comprehensive database configuration and file management APIs
+ * for the T3000 WebView application's database partitioning system.
+ *
+ * TypeScript implementation with full type safety and enhanced error handling.
+ */
+
+import { ref } from 'vue'
+
+// API Configuration - Port 9103 for T3000 HTTP API (same as TrendlogDataAPI)
+const DATABASE_API_BASE_URL = 'http://localhost:9103'// =====================================
+// TYPE DEFINITIONS
+// =====================================
+
+/**
+ * Database partition strategy types
+ */
+export type PartitionStrategy = '5minutes' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'custom' | 'custom-months'
+
+/**
+ * Retention time units
+ */
+export type RetentionUnit = 'days' | 'weeks' | 'months'
+
+/**
+ * Database partition configuration interface
+ */
+export interface DatabasePartitionConfig {
+  strategy: PartitionStrategy
+  customDays?: number
+  customMonths?: number
+  retentionValue: number
+  retentionUnit: RetentionUnit
+  autoCleanup: boolean
+}
+
+/**
+ * Complete database configuration interface
+ */
+export interface DatabaseConfig {
+  partitioning: DatabasePartitionConfig
+  id?: number
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * Database file information interface
+ */
+export interface DatabaseFileInfo {
+  id: number
+  fileName: string
+  filePath: string
+  size: string
+  sizeBytes: number
+  records: number
+  startDate?: string
+  endDate?: string
+  isActive: boolean
+  isArchived: boolean
+  partitionIdentifier?: string
+  ageDays: number
+  createdAt: string
+  updatedAt: string
+  lastAccessedAt?: string
+}
+
+/**
+ * Database statistics interface
+ */
+export interface DatabaseStatistics {
+  totalFiles: number
+  totalSize: string
+  totalSizeBytes: number
+  totalRecords: number
+  activeFiles: number
+  archivedFiles: number
+  oldestFile?: string
+  newestFile?: string
+  averageFileSize: string
+}
+
+/**
+ * API operation result interface
+ */
+export interface ApiResult<T = any> {
+  success: boolean
+  data?: T
+  message?: string
+  error?: string
+}
+
+/**
+ * Cleanup operation result interface
+ */
+export interface CleanupResult {
+  filesDeleted: number
+  spaceSaved: string
+  spaceSavedBytes: number
+  deletedFiles: string[]
+  message: string
+}
+
+/**
+ * Validation result interface
+ */
+export interface ValidationResult {
+  success: boolean
+  error?: string
+}
+
+/**
+ * Progress callback function type
+ */
+export type ProgressCallback = (message: string) => void
+
+/**
+ * Cleanup options interface
+ */
+export interface CleanupOptions {
+  type?: 'old' | 'all'
+  retentionDays?: number
+  onProgress?: ProgressCallback
+}
+
+// =====================================
+// DATABASE CONFIGURATION API
+// =====================================
+
+/**
+ * Database configuration management class
+ */
+export class DatabaseConfigAPI {
+  /**
+   * Get current database configuration
+   * @returns Promise resolving to current database configuration
+   * @throws Error if configuration cannot be loaded
+   */
+  static async getConfig(): Promise<DatabaseConfig> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/config`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: DatabaseConfig = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to get database config:', error)
+      throw new Error('Failed to load database configuration')
+    }
+  }
+
+  /**
+   * Update database configuration
+   * @param config Database configuration object to update
+   * @returns Promise resolving to updated configuration
+   * @throws Error if configuration cannot be saved
+   */
+  static async updateConfig(config: DatabaseConfig): Promise<DatabaseConfig> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/config`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config)
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: DatabaseConfig = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to update database config:', error)
+      throw new Error('Failed to save database configuration')
+    }
+  }
+
+  /**
+   * Apply partitioning strategy
+   * @returns Promise resolving to operation result with file list
+   * @throws Error if partitioning strategy cannot be applied
+   */
+  static async applyPartitioningStrategy(): Promise<ApiResult<DatabaseFileInfo[]>> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/partition/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: ApiResult<DatabaseFileInfo[]> = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to apply partitioning strategy:', error)
+      throw new Error('Failed to apply partitioning strategy')
+    }
+  }
+}
+
+// =====================================
+// DATABASE FILES API
+// =====================================
+
+/**
+ * Database files management class
+ */
+export class DatabaseFilesAPI {
+  /**
+   * Get list of all database files
+   * @returns Promise resolving to array of database file information
+   * @throws Error if files cannot be loaded
+   */
+  static async getFiles(): Promise<DatabaseFileInfo[]> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/files`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: DatabaseFileInfo[] = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to get database files:', error)
+      throw new Error('Failed to load database files')
+    }
+  }
+
+  /**
+   * Delete specific database file
+   * @param fileId ID of the file to delete
+   * @returns Promise resolving to operation result
+   * @throws Error if file cannot be deleted
+   */
+  static async deleteFile(fileId: number): Promise<ApiResult> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/files/${fileId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: ApiResult = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to delete database file:', error)
+      throw new Error('Failed to delete database file')
+    }
+  }
+
+  /**
+   * Cleanup old database files based on retention policy
+   * @param retentionDays Number of days to retain files (default: 30)
+   * @returns Promise resolving to cleanup result with statistics
+   * @throws Error if cleanup operation fails
+   */
+  static async cleanupOldFiles(retentionDays: number = 30): Promise<CleanupResult> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/cleanup/old?retention_days=${retentionDays}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: CleanupResult = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to cleanup old files:', error)
+      throw new Error('Failed to cleanup old database files')
+    }
+  }
+
+  /**
+   * Cleanup all database files (except active ones)
+   * @returns Promise resolving to cleanup result with statistics
+   * @throws Error if cleanup operation fails
+   */
+  static async cleanupAllFiles(): Promise<CleanupResult> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/cleanup/all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: CleanupResult = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to cleanup all files:', error)
+      throw new Error('Failed to cleanup all database files')
+    }
+  }
+
+  /**
+   * Optimize/compact database files
+   * @returns Promise resolving to operation result
+   * @throws Error if optimization fails
+   */
+  static async optimizeDatabase(): Promise<ApiResult> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/optimize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: ApiResult = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to optimize database:', error)
+      throw new Error('Failed to optimize database')
+    }
+  }
+
+  /**
+   * Get database file statistics
+   * @returns Promise resolving to database statistics
+   * @throws Error if statistics cannot be loaded
+   */
+  static async getStatistics(): Promise<DatabaseStatistics> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: DatabaseStatistics = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to get database statistics:', error)
+      throw new Error('Failed to load database statistics')
+    }
+  }
+}
+
+// =====================================
+// DATABASE UTILITIES
+// =====================================
+
+/**
+ * Utility functions for database management
+ */
+export class DatabaseUtils {
+  /**
+   * Format file size in human-readable format
+   * @param bytes File size in bytes
+   * @returns Formatted file size string
+   */
+  static formatFileSize(bytes: number): string {
+    const units: string[] = ['B', 'KB', 'MB', 'GB', 'TB']
+
+    if (bytes === 0) return '0 B'
+
+    const unitIndex = Math.floor(Math.log10(bytes) / Math.log10(1024))
+    const clampedIndex = Math.min(unitIndex, units.length - 1)
+    const size = bytes / Math.pow(1024, clampedIndex)
+
+    if (size >= 100) {
+      return `${size.toFixed(0)} ${units[clampedIndex]}`
+    } else if (size >= 10) {
+      return `${size.toFixed(1)} ${units[clampedIndex]}`
+    } else {
+      return `${size.toFixed(2)} ${units[clampedIndex]}`
+    }
+  }
+
+  /**
+   * Calculate retention date based on value and unit
+   * @param value Retention value
+   * @param unit Retention unit ('days', 'weeks', 'months')
+   * @returns Calculated retention date
+   */
+  static calculateRetentionDate(value: number, unit: RetentionUnit): Date {
+    const now = new Date()
+    let days = 0
+
+    switch (unit) {
+      case 'days':
+        days = value
+        break
+      case 'weeks':
+        days = value * 7
+        break
+      case 'months':
+        days = value * 30 // Approximate month
+        break
+      default:
+        days = value
+    }
+
+    return new Date(now.getTime() - (days * 24 * 60 * 60 * 1000))
+  }
+
+  /**
+   * Generate partition identifier based on strategy and date
+   * @param strategy Partition strategy
+   * @param customDays Custom days (for custom strategy)
+   * @param customMonths Custom months (for custom-months strategy)
+   * @param date Date to generate identifier for (default: current date)
+   * @returns Partition identifier string
+   */
+  static generatePartitionIdentifier(
+    strategy: PartitionStrategy,
+    customDays?: number,
+    customMonths?: number,
+    date: Date = new Date()
+  ): string {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    switch (strategy) {
+      case '5minutes':
+        const hour = String(date.getHours()).padStart(2, '0')
+        const minute = String(Math.floor(date.getMinutes() / 5) * 5).padStart(2, '0')
+        return `${year}-${month}-${day}-${hour}${minute}`
+      case 'daily':
+        return `${year}-${month}-${day}`
+      case 'weekly':
+        const weekNumber = Math.ceil(date.getDate() / 7)
+        return `${year}-W${String(weekNumber).padStart(2, '0')}`
+      case 'monthly':
+        return `${year}-${month}`
+      case 'quarterly':
+        const quarter = Math.ceil((date.getMonth() + 1) / 3)
+        return `${year}-Q${quarter}`
+      case 'custom':
+        return `custom-${year}-${month}-${day}-${customDays || 30}`
+      case 'custom-months':
+        return `custom-${year}-${month}-${customMonths || 2}m`
+      default:
+        return `${year}-${month}`
+    }
+  }
+
+  /**
+   * Get description for partition strategy
+   * @param strategy Partition strategy
+   * @param customDays Custom days (for custom strategy)
+   * @param customMonths Custom months (for custom-months strategy)
+   * @returns Strategy description string
+   */
+  static getStrategyDescription(
+    strategy: PartitionStrategy,
+    customDays?: number,
+    customMonths?: number
+  ): string {
+    switch (strategy) {
+      case '5minutes':
+        return 'One file every 5 minutes (for testing)'
+      case 'daily':
+        return 'One file per day'
+      case 'weekly':
+        return 'One file per week'
+      case 'monthly':
+        return 'One file per month'
+      case 'quarterly':
+        return 'One file per quarter (3 months)'
+      case 'custom':
+        return `One file every ${customDays || 30} days`
+      case 'custom-months':
+        return `One file every ${customMonths || 2} months`
+      default:
+        return 'Unknown strategy'
+    }
+  }
+
+  /**
+   * Validate database configuration
+   * @param config Configuration object to validate
+   * @returns Validation result with success flag and error message
+   */
+  static validateConfig(config: DatabaseConfig | DatabasePartitionConfig): ValidationResult {
+    const partitioning = 'partitioning' in config ? config.partitioning : config
+    const { strategy, customDays, customMonths, retentionValue, retentionUnit } = partitioning
+
+    // Validate strategy-specific parameters
+    if (strategy === 'custom' && (!customDays || customDays < 1 || customDays > 365)) {
+      return {
+        success: false,
+        error: 'Custom days must be between 1 and 365'
+      }
+    }
+
+    if (strategy === 'custom-months' && (!customMonths || customMonths < 1 || customMonths > 12)) {
+      return {
+        success: false,
+        error: 'Custom months must be between 1 and 12'
+      }
+    }
+
+    // Validate retention values
+    if (!retentionValue || retentionValue < 1) {
+      return {
+        success: false,
+        error: 'Retention value must be at least 1'
+      }
+    }
+
+    const maxRetention: Record<RetentionUnit, number> = {
+      days: 3650,   // 10 years
+      weeks: 520,   // 10 years
+      months: 120   // 10 years
+    }
+
+    if (retentionValue > maxRetention[retentionUnit]) {
+      return {
+        success: false,
+        error: `Retention ${retentionUnit} cannot exceed ${maxRetention[retentionUnit]}`
+      }
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * Check if a strategy requires custom days parameter
+   * @param strategy Partition strategy to check
+   * @returns True if custom days parameter is required
+   */
+  static requiresCustomDays(strategy: PartitionStrategy): boolean {
+    return strategy === 'custom'
+  }
+
+  /**
+   * Check if a strategy requires custom months parameter
+   * @param strategy Partition strategy to check
+   * @returns True if custom months parameter is required
+   */
+  static requiresCustomMonths(strategy: PartitionStrategy): boolean {
+    return strategy === 'custom-months'
+  }
+
+  /**
+   * Get all available partition strategies
+   * @returns Array of all partition strategy options
+   */
+  static getAllStrategies(): PartitionStrategy[] {
+    return ['5minutes', 'daily', 'weekly', 'monthly', 'quarterly', 'custom', 'custom-months']
+  }
+
+  /**
+   * Get all available retention units
+   * @returns Array of all retention unit options
+   */
+  static getAllRetentionUnits(): RetentionUnit[] {
+    return ['days', 'weeks', 'months']
+  }
+}
+
+// =====================================
+// MAIN DATABASE MANAGEMENT SERVICE
+// =====================================
+
+/**
+ * Complete database management service combining all APIs
+ */
+export class DatabaseManagementService {
+  public readonly config: typeof DatabaseConfigAPI
+  public readonly files: typeof DatabaseFilesAPI
+  public readonly utils: typeof DatabaseUtils
+
+  constructor() {
+    this.config = DatabaseConfigAPI
+    this.files = DatabaseFilesAPI
+    this.utils = DatabaseUtils
+  }
+
+  /**
+   * Initialize database management with current configuration
+   * @returns Promise resolving to initial state with config, files, and stats
+   */
+  async initialize(): Promise<{
+    config: DatabaseConfig
+    files: DatabaseFileInfo[]
+    stats: DatabaseStatistics | null
+    initialized: boolean
+    error?: string
+  }> {
+    try {
+      const [config, files, stats] = await Promise.all([
+        this.config.getConfig(),
+        this.files.getFiles(),
+        this.files.getStatistics()
+      ])
+
+      return {
+        config,
+        files,
+        stats,
+        initialized: true
+      }
+    } catch (error) {
+      console.error('Failed to initialize database management:', error)
+      return {
+        config: this.getDefaultConfig(),
+        files: [],
+        stats: null,
+        initialized: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  /**
+   * Get default configuration
+   * @returns Default database configuration object
+   */
+  getDefaultConfig(): DatabaseConfig {
+    return {
+      partitioning: {
+        strategy: 'monthly',
+        customDays: 30,
+        customMonths: 2,
+        autoCleanup: true,
+        retentionValue: 30,
+        retentionUnit: 'days'
+      }
+    }
+  }
+
+  /**
+   * Complete cleanup workflow with progress tracking
+   * @param options Cleanup options including type and progress callback
+   * @returns Promise resolving to cleanup results
+   */
+  async performCleanup(options: CleanupOptions = {}): Promise<CleanupResult> {
+    const { type = 'old', retentionDays = 30, onProgress } = options
+
+    try {
+      onProgress?.('Starting cleanup...')
+
+      let result: CleanupResult
+      if (type === 'all') {
+        result = await this.files.cleanupAllFiles()
+      } else {
+        result = await this.files.cleanupOldFiles(retentionDays)
+      }
+
+      onProgress?.('Cleanup completed successfully')
+      return result
+    } catch (error) {
+      onProgress?.(`Cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw error
+    }
+  }
+
+  /**
+   * Validate and save configuration
+   * @param config Configuration to validate and save
+   * @returns Promise resolving to saved configuration
+   * @throws Error if configuration is invalid or cannot be saved
+   */
+  async validateAndSaveConfig(config: DatabaseConfig): Promise<DatabaseConfig> {
+    const validation = this.utils.validateConfig(config)
+    if (!validation.success) {
+      throw new Error(validation.error || 'Configuration validation failed')
+    }
+
+    return await this.config.updateConfig(config)
+  }
+
+  /**
+   * Get comprehensive system status
+   * @returns Promise resolving to complete system status
+   */
+  async getSystemStatus(): Promise<{
+    config: DatabaseConfig
+    stats: DatabaseStatistics
+    health: 'good' | 'warning' | 'critical'
+    issues: string[]
+  }> {
+    try {
+      const [config, stats] = await Promise.all([
+        this.config.getConfig(),
+        this.files.getStatistics()
+      ])
+
+      const issues: string[] = []
+      let health: 'good' | 'warning' | 'critical' = 'good'
+
+      // Check for potential issues
+      if (stats.totalFiles > 1000) {
+        issues.push('High number of database files detected')
+        health = 'warning'
+      }
+
+      if (stats.totalSizeBytes > 10 * 1024 * 1024 * 1024) { // > 10GB
+        issues.push('Database size is very large')
+        health = 'warning'
+      }
+
+      if (stats.archivedFiles > stats.activeFiles * 2) {
+        issues.push('Many archived files - consider cleanup')
+        health = 'warning'
+      }
+
+      return {
+        config,
+        stats,
+        health,
+        issues
+      }
+    } catch (error) {
+      return {
+        config: this.getDefaultConfig(),
+        stats: {
+          totalFiles: 0,
+          totalSize: '0 B',
+          totalSizeBytes: 0,
+          totalRecords: 0,
+          activeFiles: 0,
+          archivedFiles: 0,
+          averageFileSize: '0 B'
+        },
+        health: 'critical',
+        issues: ['Failed to load system status']
+      }
+    }
+  }
+}
+
+// =====================================
+// EXPORTS
+// =====================================
+
+// Export singleton instance
+export const databaseService = new DatabaseManagementService()
+
+// =====================================
+// COMPOSABLE FUNCTION (Vue 3 Pattern)
+// =====================================
+
+/**
+ * Vue 3 composable for database management API
+ * Following the pattern of TrendlogDataAPI
+ */
+export function useDatabaseAPI() {
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
+
+  // Expose all the static API classes
+  const configAPI = DatabaseConfigAPI
+  const filesAPI = DatabaseFilesAPI
+  const utils = DatabaseUtils
+  const service = databaseService
+
+  return {
+    // Reactive state
+    isLoading,
+    error,
+
+    // API classes
+    configAPI,
+    filesAPI,
+    utils,
+    service,
+
+    // Convenience methods
+    async getConfig() {
+      isLoading.value = true
+      error.value = null
+      try {
+        const result = await configAPI.getConfig()
+        return result
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to get config'
+        throw err
+      } finally {
+        isLoading.value = false
+      }
+    },
+
+    async getFiles() {
+      isLoading.value = true
+      error.value = null
+      try {
+        const result = await filesAPI.getFiles()
+        return result
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to get files'
+        throw err
+      } finally {
+        isLoading.value = false
+      }
+    }
+  }
+}
+
+// All types and classes are already exported at their definitions above
