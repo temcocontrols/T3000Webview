@@ -7,11 +7,12 @@
 //! - Automated maintenance tasks
 
 use sea_orm::*;
+use sea_orm::prelude::Expr;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc, Duration};
 
-use crate::entity::{application_settings, database_partitions};
+use crate::entity::{application_settings, database_partitions, database_partition_config, database_files};
 use crate::error::Result;
 
 pub mod endpoints;
@@ -358,4 +359,273 @@ pub struct PartitionRequest {
     pub partition_type: String, // "DAILY", "WEEKLY", "MONTHLY"
     pub start_date: String,     // ISO 8601 format
     pub end_date: String,       // ISO 8601 format
+}
+
+/// Database Configuration Service
+///
+/// Manages database partitioning configuration and file management
+pub struct DatabaseConfigService;
+
+impl DatabaseConfigService {
+    /// Get current database configuration
+    pub async fn get_config(db: &DatabaseConnection) -> Result<database_partition_config::DatabasePartitionConfig> {
+        let config = database_partition_config::Entity::find()
+            .filter(database_partition_config::Column::IsActive.eq(true))
+            .one(db)
+            .await?;
+
+        match config {
+            Some(model) => Ok(database_partition_config::DatabasePartitionConfig {
+                id: Some(model.id),
+                strategy: database_partition_config::PartitionStrategy::from(model.strategy),
+                custom_days: model.custom_days,
+                custom_months: model.custom_months,
+                auto_cleanup_enabled: model.auto_cleanup_enabled,
+                retention_value: model.retention_value,
+                retention_unit: database_partition_config::RetentionUnit::from(model.retention_unit),
+                is_active: model.is_active,
+            }),
+            None => {
+                // Create default configuration if none exists
+                let default_config = database_partition_config::DatabasePartitionConfig::new();
+                Self::save_config(db, &default_config).await?;
+                Ok(default_config)
+            }
+        }
+    }
+
+    /// Save database configuration
+    pub async fn save_config(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig
+    ) -> Result<database_partition_config::DatabasePartitionConfig> {
+        // Validate configuration
+        config.validate().map_err(|e| crate::error::Error::ValidationError(e))?;
+
+        // Deactivate all existing configurations
+        database_partition_config::Entity::update_many()
+            .col_expr(database_partition_config::Column::IsActive, Expr::value(false))
+            .exec(db)
+            .await?;
+
+        // Create new configuration
+        let new_config = database_partition_config::ActiveModel {
+            strategy: Set(config.strategy.as_str().to_string()),
+            custom_days: Set(config.custom_days),
+            custom_months: Set(config.custom_months),
+            auto_cleanup_enabled: Set(config.auto_cleanup_enabled),
+            retention_value: Set(config.retention_value),
+            retention_unit: Set(config.retention_unit.as_str().to_string()),
+            is_active: Set(true),
+            created_at: Set(Utc::now().naive_utc()),
+            updated_at: Set(Utc::now().naive_utc()),
+            ..Default::default()
+        };
+
+        let saved_config = new_config.insert(db).await?;
+
+        Ok(database_partition_config::DatabasePartitionConfig {
+            id: Some(saved_config.id),
+            strategy: database_partition_config::PartitionStrategy::from(saved_config.strategy),
+            custom_days: saved_config.custom_days,
+            custom_months: saved_config.custom_months,
+            auto_cleanup_enabled: saved_config.auto_cleanup_enabled,
+            retention_value: saved_config.retention_value,
+            retention_unit: database_partition_config::RetentionUnit::from(saved_config.retention_unit),
+            is_active: saved_config.is_active,
+        })
+    }
+
+    /// Apply partitioning strategy to create new database files
+    pub async fn apply_partitioning_strategy(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig
+    ) -> Result<Vec<database_files::DatabaseFileInfo>> {
+        // This would implement the actual partitioning logic
+        // For now, we'll create mock partitions based on the strategy
+
+        let now = Utc::now().naive_utc();
+        let partition_id = config.generate_partition_identifier(&now);
+
+        // Create new database file entry
+        let new_file = database_files::ActiveModel {
+            file_name: Set(format!("trendlog_{}.db", partition_id)),
+            file_path: Set(format!("./Database/trendlog_{}.db", partition_id)),
+            partition_identifier: Set(Some(partition_id)),
+            file_size_bytes: Set(0),
+            record_count: Set(0),
+            start_date: Set(Some(now)),
+            end_date: Set(None), // Open-ended for new active file
+            is_active: Set(true),
+            is_archived: Set(false),
+            created_at: Set(now),
+            last_accessed_at: Set(now),
+            ..Default::default()
+        };
+
+        // Deactivate previous active files
+        database_files::Entity::update_many()
+            .col_expr(database_files::Column::IsActive, Expr::value(false))
+            .exec(db)
+            .await?;
+
+        // Insert new active file
+        let saved_file = new_file.insert(db).await?;
+
+        // Return updated file list
+        Self::get_database_files(db).await
+    }
+}
+
+/// Database Files Service
+///
+/// Manages database file operations and metadata
+pub struct DatabaseFilesService;
+
+impl DatabaseFilesService {
+    /// Get list of all database files
+    pub async fn get_files(db: &DatabaseConnection) -> Result<Vec<database_files::DatabaseFileInfo>> {
+        let files = database_files::Entity::find()
+            .order_by_desc(database_files::Column::CreatedAt)
+            .all(db)
+            .await?;
+
+        Ok(files.into_iter()
+            .map(database_files::DatabaseFileInfo::from_model)
+            .collect())
+    }
+
+    /// Delete specific database file
+    pub async fn delete_file(db: &DatabaseConnection, file_id: i32) -> Result<bool> {
+        let file = database_files::Entity::find_by_id(file_id)
+            .one(db)
+            .await?;
+
+        match file {
+            Some(file_model) => {
+                // Don't delete active files
+                if file_model.is_active {
+                    return Err(crate::error::Error::ValidationError(
+                        "Cannot delete active database file".to_string()
+                    ));
+                }
+
+                // Delete file record
+                database_files::Entity::delete_by_id(file_id).exec(db).await?;
+
+                // Here you would also delete the actual file from filesystem
+                // std::fs::remove_file(&file_model.file_path)?;
+
+                Ok(true)
+            }
+            None => Ok(false)
+        }
+    }
+
+    /// Cleanup old database files based on retention policy
+    pub async fn cleanup_old_files(
+        db: &DatabaseConnection,
+        retention_days: i32
+    ) -> Result<CleanupResult> {
+        let cutoff_date = Utc::now() - Duration::days(retention_days as i64);
+
+        let old_files = database_files::Entity::find()
+            .filter(database_files::Column::CreatedAt.lt(cutoff_date.naive_utc()))
+            .filter(database_files::Column::IsActive.eq(false))
+            .all(db)
+            .await?;
+
+        let mut partitions_cleaned = 0;
+        let mut records_removed = 0;
+        let mut bytes_freed = 0;
+
+        for file in old_files {
+            records_removed += file.record_count;
+            bytes_freed += file.file_size_bytes;
+            partitions_cleaned += 1;
+
+            // Delete file record
+            database_files::Entity::delete_by_id(file.id).exec(db).await?;
+
+            // Here you would also delete the actual file from filesystem
+            // std::fs::remove_file(&file.file_path)?;
+        }
+
+        Ok(CleanupResult {
+            partitions_cleaned,
+            records_removed,
+            bytes_freed,
+        })
+    }
+
+    /// Cleanup all database files (except active ones)
+    pub async fn cleanup_all_files(db: &DatabaseConnection) -> Result<CleanupResult> {
+        let files_to_delete = database_files::Entity::find()
+            .filter(database_files::Column::IsActive.eq(false))
+            .all(db)
+            .await?;
+
+        let mut partitions_cleaned = 0;
+        let mut records_removed = 0;
+        let mut bytes_freed = 0;
+
+        for file in files_to_delete {
+            records_removed += file.record_count;
+            bytes_freed += file.file_size_bytes;
+            partitions_cleaned += 1;
+
+            // Delete file record
+            database_files::Entity::delete_by_id(file.id).exec(db).await?;
+
+            // Here you would also delete the actual file from filesystem
+            // std::fs::remove_file(&file.file_path)?;
+        }
+
+        Ok(CleanupResult {
+            partitions_cleaned,
+            records_removed,
+            bytes_freed,
+        })
+    }
+
+    /// Optimize/compact database files
+    pub async fn optimize_database(db: &DatabaseConnection) -> Result<bool> {
+        // Execute VACUUM command to compact SQLite database
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "VACUUM".to_string()
+        )).await?;
+
+        // Update file statistics after optimization
+        Self::update_file_statistics(db).await?;
+
+        Ok(true)
+    }
+
+    /// Update file statistics (size, record counts)
+    pub async fn update_file_statistics(db: &DatabaseConnection) -> Result<()> {
+        // This would implement actual file size calculation
+        // For now, we'll just update the last_accessed_at timestamp
+
+        database_files::Entity::update_many()
+            .col_expr(database_files::Column::LastAccessedAt, Expr::value(Utc::now().naive_utc()))
+            .exec(db)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Get database statistics
+    pub async fn get_statistics(db: &DatabaseConnection) -> Result<database_files::DatabaseStats> {
+        let files = Self::get_files(db).await?;
+        Ok(database_files::DatabaseStats::from_files(&files))
+    }
+}
+
+// Update the existing DatabaseConfigService methods to use the new structure
+impl DatabaseConfigService {
+    /// Get database files using the files service
+    pub async fn get_database_files(db: &DatabaseConnection) -> Result<Vec<database_files::DatabaseFileInfo>> {
+        DatabaseFilesService::get_files(db).await
+    }
 }

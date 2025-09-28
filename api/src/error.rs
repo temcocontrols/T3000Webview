@@ -16,6 +16,7 @@ pub enum Error {
     PermissionDenied,
     BadRequest(String),
     ServerError(String),
+    ValidationError(String),
 }
 
 // Implement the Display trait for the Error enum to enable formatted output.
@@ -58,6 +59,10 @@ impl IntoResponse for Error {
             Self::ServerError(err) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Server Error: {}", err),
+            ),
+            Self::ValidationError(err) => (
+                StatusCode::BAD_REQUEST,
+                format!("Validation Error: {}", err),
             ),
         };
 

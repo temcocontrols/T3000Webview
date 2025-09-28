@@ -15,9 +15,10 @@ use chrono::{DateTime, Utc};
 
 use crate::app_state::T3AppState;
 use crate::error::Result;
-use crate::entity::database_partitions;
+use crate::entity::{database_partitions, database_partition_config, database_files};
 use super::{
     ApplicationSettingsService, DatabasePartitionService, DatabaseSizeService,
+    DatabaseConfigService, DatabaseFilesService, CleanupResult,
     LocalStorageMigrationRequest, SettingRequest, PartitionRequest,
 };pub fn database_management_routes() -> Router<T3AppState> {
     Router::new()
@@ -29,6 +30,19 @@ use super::{
         .route("/db_management/settings/:category/:key", put(update_setting))
         .route("/db_management/settings/:category/:key", delete(delete_setting))
         .route("/db_management/settings/migrate", post(migrate_localstorage))
+
+        // Database Configuration endpoints (NEW)
+        .route("/api/database/config", get(get_database_config))
+        .route("/api/database/config", put(update_database_config))
+        .route("/api/database/partition/apply", post(apply_partitioning_strategy))
+
+        // Database Files Management endpoints (NEW)
+        .route("/api/database/files", get(get_database_files))
+        .route("/api/database/files/:id", delete(delete_database_file))
+        .route("/api/database/cleanup/old", post(cleanup_old_files))
+        .route("/api/database/cleanup/all", post(cleanup_all_files))
+        .route("/api/database/optimize", post(optimize_database))
+        .route("/api/database/stats", get(get_database_file_stats))
 
         // Database Partition endpoints
         .route("/db_management/partitions", post(create_partition))
@@ -458,4 +472,125 @@ async fn backup_database(
         "success": false,
         "message": "Backup functionality not yet implemented - would copy database file"
     })))
+}
+
+// ============================================================================
+// NEW DATABASE CONFIGURATION ENDPOINTS
+// ============================================================================
+
+/// Get current database configuration
+async fn get_database_config(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
+    let db = &*app_state.conn.lock().await;
+    let config = DatabaseConfigService::get_config(db).await?;
+    Ok(Json(config))
+}
+
+/// Update database configuration
+async fn update_database_config(
+    State(app_state): State<T3AppState>,
+    Json(config): Json<database_partition_config::DatabasePartitionConfig>,
+) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
+    let db = &*app_state.conn.lock().await;
+    let updated_config = DatabaseConfigService::save_config(db, &config).await?;
+    Ok(Json(updated_config))
+}
+
+/// Apply partitioning strategy
+async fn apply_partitioning_strategy(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = &*app_state.conn.lock().await;
+    let config = DatabaseConfigService::get_config(db).await?;
+    let files = DatabaseConfigService::apply_partitioning_strategy(db, &config).await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Partitioning strategy applied successfully",
+        "files": files
+    })))
+}
+
+/// Get list of database files
+async fn get_database_files(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<Vec<database_files::DatabaseFileInfo>>> {
+    let db = &*app_state.conn.lock().await;
+
+    // For now, return mock data until database is fully implemented
+    let files = database_files::DatabaseFileInfo::generate_mock_files();
+    Ok(Json(files))
+
+    // Uncomment when database is ready:
+    // let files = DatabaseFilesService::get_files(db).await?;
+    // Ok(Json(files))
+}
+
+/// Delete specific database file
+async fn delete_database_file(
+    State(app_state): State<T3AppState>,
+    Path(file_id): Path<i32>,
+) -> Result<Json<serde_json::Value>> {
+    let db = &*app_state.conn.lock().await;
+    let deleted = DatabaseFilesService::delete_file(db, file_id).await?;
+
+    if deleted {
+        Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "Database file deleted successfully"
+        })))
+    } else {
+        Ok(Json(serde_json::json!({
+            "success": false,
+            "message": "Database file not found"
+        })))
+    }
+}
+
+#[derive(Deserialize)]
+struct CleanupQuery {
+    retention_days: Option<i32>,
+}
+
+/// Cleanup old database files
+async fn cleanup_old_files(
+    State(app_state): State<T3AppState>,
+    Query(params): Query<CleanupQuery>,
+) -> Result<Json<CleanupResult>> {
+    let db = &*app_state.conn.lock().await;
+    let retention_days = params.retention_days.unwrap_or(30);
+    let result = DatabaseFilesService::cleanup_old_files(db, retention_days).await?;
+    Ok(Json(result))
+}
+
+/// Cleanup all database files
+async fn cleanup_all_files(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<CleanupResult>> {
+    let db = &*app_state.conn.lock().await;
+    let result = DatabaseFilesService::cleanup_all_files(db).await?;
+    Ok(Json(result))
+}
+
+/// Optimize/compact database
+async fn optimize_database(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = &*app_state.conn.lock().await;
+    let success = DatabaseFilesService::optimize_database(db).await?;
+
+    Ok(Json(serde_json::json!({
+        "success": success,
+        "message": if success { "Database optimized successfully" } else { "Database optimization failed" }
+    })))
+}
+
+/// Get database file statistics
+async fn get_database_file_stats(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<database_files::DatabaseStats>> {
+    let db = &*app_state.conn.lock().await;
+    let stats = DatabaseFilesService::get_statistics(db).await?;
+    Ok(Json(stats))
 }

@@ -6,3 +6,9 @@ pub use super::modbus_register_devices::Entity as ModbusRegisterDevices;
 pub use super::modbus_register_product_device_mapping::Entity as ModbusRegisterProductDeviceMapping;
 pub use super::modbus_register_settings::Entity as ModbusRegisterSettings;
 pub use super::user::Entity as User;
+
+// Database management entities
+pub use super::application_settings::Entity as ApplicationSettings;
+pub use super::database_partitions::Entity as DatabasePartitions;
+pub use super::database_partition_config::Entity as DatabasePartitionConfig;
+pub use super::database_files::Entity as DatabaseFiles;
