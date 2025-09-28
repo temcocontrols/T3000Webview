@@ -357,84 +357,7 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TIME_FMT ON TRENDLOG_DATA(LoggingTi
 -- DATABASE MANAGEMENT TABLES (Settings & Partitioning)
 -- =================================================================
 
--- Application Settings table for centralized configuration storage
--- Replaces localStorage with database-backed settings management
-CREATE TABLE IF NOT EXISTS APPLICATION_SETTINGS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    -- Setting identification
-    category TEXT NOT NULL,                    -- Setting category (e.g., "modbusRegisterGridState", "localSettings")
-    setting_key TEXT NOT NULL,                 -- Setting key within category
-    setting_value TEXT NOT NULL,               -- JSON value storage
-
-    -- Context information
-    user_id INTEGER,                           -- User-specific settings (null for global)
-    device_serial INTEGER,                     -- Device-specific settings (null for global)
-    panel_id INTEGER,                          -- Panel-specific settings (null for global)
-
-    -- Metadata
-    description TEXT,                          -- Human-readable description
-    data_type TEXT NOT NULL DEFAULT 'object', -- Data type for validation
-    is_readonly INTEGER NOT NULL DEFAULT 0,   -- Read-only flag
-    expires_at TEXT,                          -- Expiration timestamp (ISO format)
-
-    -- Timestamps
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT NOT NULL DEFAULT 'FRONTEND',
-
-    -- Ensure unique settings per context
-    UNIQUE(category, setting_key, user_id, device_serial, panel_id)
-);
-
--- Database Partitions table for partition management and cleanup
--- Supports automated database size management with retention policies
-CREATE TABLE IF NOT EXISTS DATABASE_PARTITIONS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    -- Partition identification
-    table_name TEXT NOT NULL,                  -- Table being partitioned
-    partition_type TEXT NOT NULL,              -- "DAILY", "WEEKLY", "MONTHLY"
-    partition_identifier TEXT NOT NULL,        -- Partition name (e.g., "2025-01-25")
-
-    -- Time range
-    partition_start_date TEXT NOT NULL,        -- Start date (ISO format)
-    partition_end_date TEXT NOT NULL,          -- End date (ISO format)
-
-    -- Statistics
-    record_count INTEGER NOT NULL DEFAULT 0,  -- Current record count
-    size_bytes INTEGER NOT NULL DEFAULT 0,    -- Estimated size in bytes
-
-    -- Status flags
-    is_active INTEGER NOT NULL DEFAULT 1,     -- Active for new inserts
-    is_archived INTEGER NOT NULL DEFAULT 0,   -- Archived (read-only)
-
-    -- Cleanup configuration
-    retention_days INTEGER,                    -- Retention policy (null = permanent)
-    auto_cleanup_enabled INTEGER NOT NULL DEFAULT 1,
-    last_cleanup_at TEXT,                     -- Last cleanup timestamp
-
-    -- Timestamps
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    -- Ensure unique partitions per table and time range
-    UNIQUE(table_name, partition_type, partition_identifier)
-);
-
--- Application Settings indexes
-CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_CATEGORY ON APPLICATION_SETTINGS(category);
-CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_KEY ON APPLICATION_SETTINGS(category, setting_key);
-CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_USER ON APPLICATION_SETTINGS(user_id);
-CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_DEVICE ON APPLICATION_SETTINGS(device_serial, panel_id);
-CREATE INDEX IF NOT EXISTS IDX_APP_SETTINGS_EXPIRES ON APPLICATION_SETTINGS(expires_at);
-
--- Database Partitions indexes
-CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_TABLE ON DATABASE_PARTITIONS(table_name);
-CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_TYPE ON DATABASE_PARTITIONS(partition_type);
-CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_ACTIVE ON DATABASE_PARTITIONS(is_active);
-CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_CLEANUP ON DATABASE_PARTITIONS(auto_cleanup_enabled, retention_days);
-CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_DATE_range ON DATABASE_PARTITIONS(partition_start_date, partition_end_date);
+-- Old APPLICATION_SETTINGS table removed - using new database management tables below
 
 -- =================================================================
 -- SAMPLE DATA (for testing - T3000 style data)
@@ -491,4 +414,156 @@ CREATE INDEX IF NOT EXISTS IDX_PARTITIONS_DATE_range ON DATABASE_PARTITIONS(part
 -- ('1', 'INPUT', '1', 'Room Temperature', 'Active'),
 -- ('1', 'INPUT', '2', 'Humidity Level', 'Active');
 
--- Database ready for T3000 WebView development (no foreign key constraints)
+-- =================================================================
+-- DATABASE MANAGEMENT TABLES (Added September 28, 2025)
+-- =================================================================
+
+-- Database Partition Configuration Table
+-- Stores partitioning strategy settings and retention policies
+CREATE TABLE IF NOT EXISTS database_partition_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy TEXT NOT NULL DEFAULT 'monthly' CHECK (strategy IN ('5minutes', 'daily', 'weekly', 'monthly', 'quarterly', 'custom', 'custom-months')),
+    custom_days INTEGER CHECK (custom_days IS NULL OR (custom_days >= 1 AND custom_days <= 365)),
+    custom_months INTEGER CHECK (custom_months IS NULL OR (custom_months >= 1 AND custom_months <= 12)),
+    retention_value INTEGER NOT NULL DEFAULT 30 CHECK (retention_value > 0),
+    retention_unit TEXT NOT NULL DEFAULT 'days' CHECK (retention_unit IN ('days', 'weeks', 'months')),
+    auto_cleanup_enabled BOOLEAN NOT NULL DEFAULT 1,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Database Files Table
+-- Tracks database file metadata and statistics
+CREATE TABLE IF NOT EXISTS database_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name TEXT NOT NULL UNIQUE,
+    file_path TEXT NOT NULL,
+    file_size_bytes INTEGER NOT NULL DEFAULT 0,
+    record_count INTEGER NOT NULL DEFAULT 0,
+    partition_identifier TEXT,
+    start_date DATE,
+    end_date DATE,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    is_archived BOOLEAN NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_accessed_at DATETIME
+);
+
+-- Application Settings Table
+-- Stores key-value configuration settings (localStorage replacement)
+CREATE TABLE IF NOT EXISTS application_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key_name TEXT NOT NULL UNIQUE,
+    value_data TEXT,
+    setting_type TEXT NOT NULL DEFAULT 'string' CHECK (setting_type IN ('string', 'number', 'boolean', 'json')),
+    description TEXT,
+    is_system BOOLEAN NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Database Partitions Table
+-- Tracks active database partitions and their status
+CREATE TABLE IF NOT EXISTS database_partitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    partition_name TEXT NOT NULL UNIQUE,
+    partition_identifier TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    table_prefix TEXT NOT NULL,
+    record_count INTEGER NOT NULL DEFAULT 0,
+    file_size_bytes INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    is_current BOOLEAN NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =================================================================
+-- DATABASE MANAGEMENT INDEXES (Performance Optimization)
+-- =================================================================
+
+-- Indexes for database_partition_config
+CREATE INDEX IF NOT EXISTS idx_database_partition_config_strategy ON database_partition_config(strategy);
+CREATE INDEX IF NOT EXISTS idx_database_partition_config_active ON database_partition_config(is_active);
+CREATE INDEX IF NOT EXISTS idx_database_partition_config_created ON database_partition_config(created_at);
+
+-- Indexes for database_files
+CREATE INDEX IF NOT EXISTS idx_database_files_name ON database_files(file_name);
+CREATE INDEX IF NOT EXISTS idx_database_files_active ON database_files(is_active);
+CREATE INDEX IF NOT EXISTS idx_database_files_archived ON database_files(is_archived);
+CREATE INDEX IF NOT EXISTS idx_database_files_partition ON database_files(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_database_files_created ON database_files(created_at);
+CREATE INDEX IF NOT EXISTS idx_database_files_accessed ON database_files(last_accessed_at);
+
+-- Indexes for application_settings
+CREATE INDEX IF NOT EXISTS idx_application_settings_key ON application_settings(key_name);
+CREATE INDEX IF NOT EXISTS idx_application_settings_type ON application_settings(setting_type);
+CREATE INDEX IF NOT EXISTS idx_application_settings_system ON application_settings(is_system);
+
+-- Indexes for database_partitions
+CREATE INDEX IF NOT EXISTS idx_database_partitions_name ON database_partitions(partition_name);
+CREATE INDEX IF NOT EXISTS idx_database_partitions_identifier ON database_partitions(partition_identifier);
+CREATE INDEX IF NOT EXISTS idx_database_partitions_active ON database_partitions(is_active);
+CREATE INDEX IF NOT EXISTS idx_database_partitions_current ON database_partitions(is_current);
+CREATE INDEX IF NOT EXISTS idx_database_partitions_dates ON database_partitions(start_date, end_date);
+
+-- =================================================================
+-- DATABASE MANAGEMENT DEFAULT DATA
+-- =================================================================
+
+-- Insert default partition configuration
+INSERT OR IGNORE INTO database_partition_config (
+    id, strategy, retention_value, retention_unit, auto_cleanup_enabled
+) VALUES (
+    1, 'monthly', 30, 'days', 1
+);
+
+-- Insert default application settings
+INSERT OR IGNORE INTO application_settings (key_name, value_data, setting_type, description, is_system) VALUES
+('database.max_file_size', '100', 'number', 'Maximum database file size in MB', 1),
+('database.backup_enabled', 'true', 'boolean', 'Enable automatic database backups', 1),
+('database.compression_enabled', 'false', 'boolean', 'Enable database compression', 1),
+('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1),
+('ui.theme', 'light', 'string', 'Application theme preference', 0),
+('ui.language', 'en', 'string', 'Application language', 0);
+
+-- =================================================================
+-- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
+-- =================================================================
+
+-- Trigger to update updated_at timestamp for database_partition_config
+CREATE TRIGGER IF NOT EXISTS trigger_database_partition_config_updated_at
+AFTER UPDATE ON database_partition_config
+FOR EACH ROW
+BEGIN
+    UPDATE database_partition_config SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Trigger to update updated_at timestamp for database_files
+CREATE TRIGGER IF NOT EXISTS trigger_database_files_updated_at
+AFTER UPDATE ON database_files
+FOR EACH ROW
+BEGIN
+    UPDATE database_files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Trigger to update updated_at timestamp for application_settings
+CREATE TRIGGER IF NOT EXISTS trigger_application_settings_updated_at
+AFTER UPDATE ON application_settings
+FOR EACH ROW
+BEGIN
+    UPDATE application_settings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Trigger to update updated_at timestamp for database_partitions
+CREATE TRIGGER IF NOT EXISTS trigger_database_partitions_updated_at
+AFTER UPDATE ON database_partitions
+FOR EACH ROW
+BEGIN
+    UPDATE database_partitions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Database ready for T3000 WebView development with Database Management System (no foreign key constraints)
