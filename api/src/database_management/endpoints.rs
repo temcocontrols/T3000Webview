@@ -482,7 +482,10 @@ async fn backup_database(
 async fn get_database_config(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let config = DatabaseConfigService::get_config(db).await?;
     Ok(Json(config))
 }
@@ -492,7 +495,10 @@ async fn update_database_config(
     State(app_state): State<T3AppState>,
     Json(config): Json<database_partition_config::DatabasePartitionConfig>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let updated_config = DatabaseConfigService::save_config(db, &config).await?;
     Ok(Json(updated_config))
 }
@@ -501,7 +507,10 @@ async fn update_database_config(
 async fn apply_partitioning_strategy(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let config = DatabaseConfigService::get_config(db).await?;
     let files = DatabaseConfigService::apply_partitioning_strategy(db, &config).await?;
 

@@ -15,9 +15,9 @@ const DATABASE_API_BASE_URL = 'http://localhost:9103'// ========================
 // =====================================
 
 /**
- * Database partition strategy types
+ * Database partition strategy types (matching Rust enum variants)
  */
-export type PartitionStrategy = '5minutes' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'custom' | 'custom-months'
+export type PartitionStrategy = 'FiveMinutes' | 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Custom' | 'CustomMonths'
 
 /**
  * Retention time units
@@ -25,27 +25,23 @@ export type PartitionStrategy = '5minutes' | 'daily' | 'weekly' | 'monthly' | 'q
 export type RetentionUnit = 'days' | 'weeks' | 'months'
 
 /**
- * Database partition configuration interface
+ * Database partition configuration interface (matching Rust DatabasePartitionConfig)
  */
 export interface DatabasePartitionConfig {
+  id?: number
   strategy: PartitionStrategy
-  customDays?: number
-  customMonths?: number
-  retentionValue: number
-  retentionUnit: RetentionUnit
-  autoCleanup: boolean
+  custom_days?: number
+  custom_months?: number
+  auto_cleanup_enabled: boolean
+  retention_value: number
+  retention_unit: RetentionUnit
+  is_active: boolean
 }
 
 /**
- * Complete database configuration interface
+ * Complete database configuration interface (same as DatabasePartitionConfig)
  */
-export interface DatabaseConfig {
-  partitioning: DatabasePartitionConfig
-  id?: number
-  isActive?: boolean
-  createdAt?: string
-  updatedAt?: string
-}
+export type DatabaseConfig = DatabasePartitionConfig
 
 /**
  * Database file information interface
@@ -459,23 +455,23 @@ export class DatabaseUtils {
     const day = String(date.getDate()).padStart(2, '0')
 
     switch (strategy) {
-      case '5minutes':
+      case 'FiveMinutes':
         const hour = String(date.getHours()).padStart(2, '0')
         const minute = String(Math.floor(date.getMinutes() / 5) * 5).padStart(2, '0')
         return `${year}-${month}-${day}-${hour}${minute}`
-      case 'daily':
+      case 'Daily':
         return `${year}-${month}-${day}`
-      case 'weekly':
+      case 'Weekly':
         const weekNumber = Math.ceil(date.getDate() / 7)
         return `${year}-W${String(weekNumber).padStart(2, '0')}`
-      case 'monthly':
+      case 'Monthly':
         return `${year}-${month}`
-      case 'quarterly':
+      case 'Quarterly':
         const quarter = Math.ceil((date.getMonth() + 1) / 3)
         return `${year}-Q${quarter}`
-      case 'custom':
+      case 'Custom':
         return `custom-${year}-${month}-${day}-${customDays || 30}`
-      case 'custom-months':
+      case 'CustomMonths':
         return `custom-${year}-${month}-${customMonths || 2}m`
       default:
         return `${year}-${month}`
@@ -495,19 +491,19 @@ export class DatabaseUtils {
     customMonths?: number
   ): string {
     switch (strategy) {
-      case '5minutes':
+      case 'FiveMinutes':
         return 'One file every 5 minutes (for testing)'
-      case 'daily':
+      case 'Daily':
         return 'One file per day'
-      case 'weekly':
+      case 'Weekly':
         return 'One file per week'
-      case 'monthly':
+      case 'Monthly':
         return 'One file per month'
-      case 'quarterly':
+      case 'Quarterly':
         return 'One file per quarter (3 months)'
-      case 'custom':
+      case 'Custom':
         return `One file every ${customDays || 30} days`
-      case 'custom-months':
+      case 'CustomMonths':
         return `One file every ${customMonths || 2} months`
       default:
         return 'Unknown strategy'
@@ -519,19 +515,18 @@ export class DatabaseUtils {
    * @param config Configuration object to validate
    * @returns Validation result with success flag and error message
    */
-  static validateConfig(config: DatabaseConfig | DatabasePartitionConfig): ValidationResult {
-    const partitioning = 'partitioning' in config ? config.partitioning : config
-    const { strategy, customDays, customMonths, retentionValue, retentionUnit } = partitioning
+  static validateConfig(config: DatabaseConfig): ValidationResult {
+    const { strategy, custom_days, custom_months, retention_value, retention_unit } = config
 
     // Validate strategy-specific parameters
-    if (strategy === 'custom' && (!customDays || customDays < 1 || customDays > 365)) {
+    if (strategy === 'Custom' && (!custom_days || custom_days < 1 || custom_days > 365)) {
       return {
         success: false,
         error: 'Custom days must be between 1 and 365'
       }
     }
 
-    if (strategy === 'custom-months' && (!customMonths || customMonths < 1 || customMonths > 12)) {
+    if (strategy === 'CustomMonths' && (!custom_months || custom_months < 1 || custom_months > 12)) {
       return {
         success: false,
         error: 'Custom months must be between 1 and 12'
@@ -539,7 +534,7 @@ export class DatabaseUtils {
     }
 
     // Validate retention values
-    if (!retentionValue || retentionValue < 1) {
+    if (!retention_value || retention_value < 1) {
       return {
         success: false,
         error: 'Retention value must be at least 1'
@@ -552,10 +547,10 @@ export class DatabaseUtils {
       months: 120   // 10 years
     }
 
-    if (retentionValue > maxRetention[retentionUnit]) {
+    if (retention_value > maxRetention[retention_unit]) {
       return {
         success: false,
-        error: `Retention ${retentionUnit} cannot exceed ${maxRetention[retentionUnit]}`
+        error: `Retention ${retention_unit} cannot exceed ${maxRetention[retention_unit]}`
       }
     }
 
@@ -568,7 +563,7 @@ export class DatabaseUtils {
    * @returns True if custom days parameter is required
    */
   static requiresCustomDays(strategy: PartitionStrategy): boolean {
-    return strategy === 'custom'
+    return strategy === 'Custom'
   }
 
   /**
@@ -577,7 +572,7 @@ export class DatabaseUtils {
    * @returns True if custom months parameter is required
    */
   static requiresCustomMonths(strategy: PartitionStrategy): boolean {
-    return strategy === 'custom-months'
+    return strategy === 'CustomMonths'
   }
 
   /**
@@ -585,7 +580,7 @@ export class DatabaseUtils {
    * @returns Array of all partition strategy options
    */
   static getAllStrategies(): PartitionStrategy[] {
-    return ['5minutes', 'daily', 'weekly', 'monthly', 'quarterly', 'custom', 'custom-months']
+    return ['FiveMinutes', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Custom', 'CustomMonths']
   }
 
   /**
@@ -657,14 +652,13 @@ export class DatabaseManagementService {
    */
   getDefaultConfig(): DatabaseConfig {
     return {
-      partitioning: {
-        strategy: 'monthly',
-        customDays: 30,
-        customMonths: 2,
-        autoCleanup: true,
-        retentionValue: 30,
-        retentionUnit: 'days'
-      }
+      strategy: 'Monthly',
+      custom_days: 30,
+      custom_months: 2,
+      auto_cleanup_enabled: true,
+      retention_value: 30,
+      retention_unit: 'days',
+      is_active: true
     }
   }
 

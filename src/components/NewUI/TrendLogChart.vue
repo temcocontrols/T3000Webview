@@ -582,30 +582,30 @@
           <div class="form-item-compact" style="margin-bottom: 8px;">
             <label>Split new data by:</label>
             <a-radio-group
-              v-model:value="databaseConfig.partitioning.strategy"
+              v-model:value="databaseConfig.strategy"
               size="small"
               @change="onPartitionStrategyChange"
               style="display: flex; flex-wrap: wrap; gap: 4px;"
             >
-              <a-radio value="5minutes">5 Minutes</a-radio>
-              <a-radio value="daily">Daily</a-radio>
-              <a-radio value="weekly">Weekly</a-radio>
-              <a-radio value="monthly">Monthly</a-radio>
-              <a-radio value="quarterly">Quarterly</a-radio>
-              <a-radio value="custom">Custom Days</a-radio>
-              <a-radio value="custom-months">Custom Months</a-radio>
+              <a-radio value="FiveMinutes">5 Minutes</a-radio>
+              <a-radio value="Daily">Daily</a-radio>
+              <a-radio value="Weekly">Weekly</a-radio>
+              <a-radio value="Monthly">Monthly</a-radio>
+              <a-radio value="Quarterly">Quarterly</a-radio>
+              <a-radio value="Custom">Custom Days</a-radio>
+              <a-radio value="CustomMonths">Custom Months</a-radio>
             </a-radio-group>
           </div>
 
           <!-- Custom Days Input -->
           <div
-            v-if="databaseConfig.partitioning.strategy === 'custom'"
+            v-if="databaseConfig.strategy === 'Custom'"
             class="form-item-compact"
             style="margin-bottom: 8px; margin-left: 16px;"
           >
             <label style="font-size: 10px; color: #666;">Every:</label>
             <a-input-number
-              v-model:value="databaseConfig.partitioning.customDays"
+              v-model:value="databaseConfig.custom_days"
               :min="1"
               :max="365"
               size="small"
@@ -616,13 +616,13 @@
 
           <!-- Custom Months Input -->
           <div
-            v-if="databaseConfig.partitioning.strategy === 'custom-months'"
+            v-if="databaseConfig.strategy === 'CustomMonths'"
             class="form-item-compact"
             style="margin-bottom: 8px; margin-left: 16px;"
           >
             <label style="font-size: 10px; color: #666;">Every:</label>
             <a-input-number
-              v-model:value="databaseConfig.partitioning.customMonths"
+              v-model:value="databaseConfig.custom_months"
               :min="1"
               :max="12"
               size="small"
@@ -633,12 +633,13 @@
 
           <div class="info-row" style="font-size: 10px; color: #666; margin-top: 4px;">
             Current: {{
-              databaseConfig.partitioning.strategy === 'daily' ? 'One file per day' :
-              databaseConfig.partitioning.strategy === 'weekly' ? 'One file per week' :
-              databaseConfig.partitioning.strategy === 'monthly' ? 'One file per month' :
-              databaseConfig.partitioning.strategy === 'quarterly' ? 'One file per quarter (3 months)' :
-              databaseConfig.partitioning.strategy === 'custom-months' ? `One file every ${databaseConfig.partitioning.customMonths} months` :
-              `One file every ${databaseConfig.partitioning.customDays} days`
+              databaseConfig.strategy === 'FiveMinutes' ? 'One file every 5 minutes (for testing)' :
+              databaseConfig.strategy === 'Daily' ? 'One file per day' :
+              databaseConfig.strategy === 'Weekly' ? 'One file per week' :
+              databaseConfig.strategy === 'Monthly' ? 'One file per month' :
+              databaseConfig.strategy === 'Quarterly' ? 'One file per quarter (3 months)' :
+              databaseConfig.strategy === 'CustomMonths' ? `One file every ${databaseConfig.custom_months} months` :
+              `One file every ${databaseConfig.custom_days} days`
             }}
           </div>
         </a-card>
@@ -701,14 +702,14 @@
             <div style="display: flex; align-items: center; gap: 4px;">
               <span style="font-size: 11px; color: #666; white-space: nowrap; min-width: 90px;">Auto cleanup files older than:</span>
               <a-input-number
-                v-model:value="databaseConfig.partitioning.retentionValue"
+                v-model:value="databaseConfig.retention_value"
                 :min="1"
                 :max="365"
                 size="small"
                 style="width: 60px;"
               />
               <a-select
-                v-model:value="databaseConfig.partitioning.retentionUnit"
+                v-model:value="databaseConfig.retention_unit"
                 size="small"
                 style="width: 100px;"
               >
@@ -895,7 +896,7 @@ import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
-import { databaseService, DatabaseUtils } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
+import { databaseService, DatabaseUtils, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0
@@ -1347,22 +1348,15 @@ const databaseInfo = ref({
   location: '\\Database\\webview_t3_device.db'
 })
 
-// Database configuration settings
-const databaseConfig = ref({
-  autoBackup: {
-    enabled: true,
-    frequency: 'daily', // daily, weekly, monthly
-    time: dayjs('02:00', 'HH:mm'),
-    keepCount: 7
-  },
-  partitioning: {
-    strategy: 'monthly', // none, daily, weekly, monthly, quarterly, custom, custom-months
-    customDays: 30, // for custom days strategy
-    customMonths: 2, // for custom months strategy
-    autoCleanup: true,
-    retentionValue: 30,
-    retentionUnit: 'days' // days, weeks, months, years
-  }
+// Database configuration settings (flat structure matching Rust API)
+const databaseConfig = ref<DatabaseConfig>({
+  strategy: 'Monthly', // FiveMinutes, Daily, Weekly, Monthly, Quarterly, Custom, CustomMonths
+  custom_days: 30, // for Custom strategy
+  custom_months: 2, // for CustomMonths strategy
+  auto_cleanup_enabled: true,
+  retention_value: 30,
+  retention_unit: 'days', // days, weeks, months
+  is_active: true
 })
 
 // ⌨️ Keyboard Navigation System
@@ -8582,8 +8576,8 @@ const cleanupOldFiles = async () => {
   isCleaningUp.value = true
   try {
     // Calculate retention days from value and unit
-    let retentionDays = databaseConfig.value.partitioning.retentionValue
-    const unit = databaseConfig.value.partitioning.retentionUnit
+    let retentionDays = databaseConfig.value.retention_value
+    const unit = databaseConfig.value.retention_unit
 
     if (unit === 'weeks') {
       retentionDays = retentionDays * 7
@@ -8593,7 +8587,7 @@ const cleanupOldFiles = async () => {
 
     const result = await databaseService.files.cleanupOldFiles(retentionDays)
     await loadDatabaseFiles() // Reload files list
-    message.success(`Cleaned up ${result.partitions_cleaned} old database files`)
+    message.success(`Cleaned up ${result.filesDeleted} old database files`)
     LogUtil.Info('Database cleanup completed', result)
   } catch (error) {
     message.error('Failed to cleanup database files')
@@ -8624,7 +8618,7 @@ const cleanupAllFiles = async () => {
   try {
     const result = await databaseService.files.cleanupAllFiles()
     await loadDatabaseFiles() // Reload files list
-    message.success(`Cleaned up all ${result.partitions_cleaned} database files`)
+    message.success(`Cleaned up all ${result.filesDeleted} database files`)
     LogUtil.Info('All database files cleaned up', result)
   } catch (error) {
     message.error('Failed to cleanup all database files')
