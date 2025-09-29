@@ -110,7 +110,7 @@
             <template #icon>
               <SyncOutlined :spin="true" />
             </template>
-            Live - {{ lastSyncTime }}
+            Live-{{ lastSyncTime }}
           </a-tag>
           <a-tag color="blue" v-else size="small">
             <template #icon>
@@ -549,7 +549,8 @@
             </div>
           </template>
 
-          <a-row :gutter="8" style="margin-bottom: 8px;">
+          <!-- Demo data commented out until real API is implemented -->
+          <!-- <a-row :gutter="8" style="margin-bottom: 8px;">
             <a-col :span="6">
               <a-statistic title="Name" :value="databaseInfo.name" :value-style="{ fontSize: '11px' }" />
             </a-col>
@@ -567,7 +568,7 @@
                 </div>
               </div>
             </a-col>
-          </a-row>
+          </a-row> -->
         </a-card>
 
         <!-- Data Splitting Strategy Card -->
@@ -674,7 +675,7 @@
             >
               <div class="file-info" style="flex: 1;">
                 <div style="font-size: 11px; font-weight: 500;">{{ file.name }}</div>
-                <div style="font-size: 9px; color: #666;">{{ file.size }} • {{ file.records }} records</div>
+                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} • {{ file.records }} records</div> -->
               </div>
               <a-button
                 size="small"
@@ -1313,14 +1314,8 @@ const loadDatabaseFiles = async () => {
     LogUtil.Info('Database files loaded', { count: files.length })
   } catch (error) {
     LogUtil.Error('Failed to load database files', error)
-    // Use mock data as fallback
-    databaseFiles.value = [
-      { id: 1, name: 'trendlog_2025-09-28.db', size: '15.2 MB', records: 145830 },
-      { id: 2, name: 'trendlog_2025-09-27.db', size: '18.1 MB', records: 162451 },
-      { id: 3, name: 'trendlog_2025-09-26.db', size: '16.8 MB', records: 158392 },
-      { id: 4, name: 'trendlog_2025-09-25.db', size: '17.3 MB', records: 159847 },
-      { id: 5, name: 'trendlog_2025-09-24.db', size: '19.2 MB', records: 168291 }
-    ]
+    // Set empty array if API fails - no mock data to avoid confusion
+    databaseFiles.value = []
   } finally {
     isLoadingDatabase.value = false
   }
