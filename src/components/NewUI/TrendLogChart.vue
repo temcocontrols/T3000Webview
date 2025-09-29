@@ -1441,7 +1441,7 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
   const panelsData = T3000_Data.value.panelsData
 
   if (!panelsData?.length) {
-    LogUtil.Debug('⚠️ TrendLogChart: No panelsData available for device description', { panelId, pointType, pointNumber })
+    // No panelsData available for device description
     return ''
   }
 
@@ -1534,34 +1534,23 @@ const generateDataSeries = (): SeriesConfig[] => {
     const potentialSeriesName = description // No fallback - description is required
 
     if (!description && panelId === 0) {
-      LogUtil.Info('🚫 TrendLogChart: Filtering out placeholder data (no description + panel 0)', {
-        inputItem,
-        pointType,
-        pointNumber,
-        panelId,
-        potentialSeriesName
-      })
+      // Filtering out placeholder data (no description + panel 0)
       continue; // Skip this item
     }
 
     if (!description) {
-      LogUtil.Info('🚫 TrendLogChart: Filtering out undescribed data (prevents demo names)', {
-        inputItem,
-        pointType,
-        pointNumber,
-        panelId,
-        potentialSeriesName,
-        reason: 'No device description - likely demo/test data'
-      })
+      // Filtering out undescribed data (prevents demo names)
+      continue; // Skip this item
+    }
+
+    // Check for demo/test patterns in the description
+    if (/demo|test|sample/i.test(description)) {
+      // Filtering out explicit demo data (demo pattern)
       continue; // Skip this item
     }
 
     if (potentialSeriesName && (potentialSeriesName.includes('(P0)') || potentialSeriesName.match(/^\d+\s*\([P]\d+\)$/))) {
-      LogUtil.Info('🚫 TrendLogChart: Filtering out explicit demo data (demo pattern)', {
-        inputItem,
-        potentialSeriesName,
-        reason: 'Series name matches demo data pattern like "1 (P0)" or contains (P0)'
-      })
+      // Filtering out explicit demo data (demo pattern)
       continue; // Skip this item
     }
 
@@ -1574,13 +1563,7 @@ const generateDataSeries = (): SeriesConfig[] => {
     const cleanDescription = `${pointTypeInfo.category} - ${description}`
 
     // Log successful inclusion of real data
-    LogUtil.Debug(`✅ TrendLogChart: Including real T3000 data series: "${seriesName}"`, {
-      panelId,
-      pointType,
-      pointNumber,
-      unitType,
-      hasDescription: !!description
-    })
+    // Including real T3000 data series
     const formattedItemType = `${panelId}${pointTypeInfo.category}${pointNumber + 1}`
     const itemId = `${pointTypeInfo.category}${pointNumber + 1}`
 
@@ -1928,7 +1911,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     // Load data based on current Auto Scroll state (preserve user's choice)
     if (isRealTime.value) {
       // Auto Scroll ON: Load real-time + historical data
-      LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
+      // LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
 
       // Step 1: Initialize real-time data series structure
       await initializeRealDataSeries()
@@ -1938,12 +1921,12 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
 
       // Step 3: Ensure real-time updates are active
       if (!realtimeInterval) {
-        LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
+        // LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
         startRealTimeUpdates()
       }
     } else {
       // Auto Scroll OFF: Load historical data only
-      LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
+      // LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
       await loadHistoricalDataFromDatabase()
     }
 
@@ -1959,7 +1942,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     dataSeries.value = [...dataSeries.value]
 
     setTimeout(() => {
-      LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
+      // LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
       updateCharts()
     }, 100)
 
@@ -2498,7 +2481,7 @@ const clearLoadingTimeout = () => {
 
 // Manual refresh function
 const manualRefresh = async () => {
-  LogUtil.Info('🔄 Manual refresh initiated by user')
+  LogUtil.Info('🔄 Manual refresh initiated')
 
   // Reset all states
   clearLoadingTimeout()
