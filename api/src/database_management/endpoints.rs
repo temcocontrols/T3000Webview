@@ -525,15 +525,13 @@ async fn apply_partitioning_strategy(
 async fn get_database_files(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<Vec<database_files::DatabaseFileInfo>>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
 
-    // For now, return mock data until database is fully implemented
-    let files = database_files::DatabaseFileInfo::generate_mock_files();
+    let files = DatabaseFilesService::get_files(db).await?;
     Ok(Json(files))
-
-    // Uncomment when database is ready:
-    // let files = DatabaseFilesService::get_files(db).await?;
-    // Ok(Json(files))
 }
 
 /// Delete specific database file
@@ -541,7 +539,10 @@ async fn delete_database_file(
     State(app_state): State<T3AppState>,
     Path(file_id): Path<i32>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let deleted = DatabaseFilesService::delete_file(db, file_id).await?;
 
     if deleted {
@@ -567,7 +568,10 @@ async fn cleanup_old_files(
     State(app_state): State<T3AppState>,
     Query(params): Query<CleanupQuery>,
 ) -> Result<Json<CleanupResult>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let retention_days = params.retention_days.unwrap_or(30);
     let result = DatabaseFilesService::cleanup_old_files(db, retention_days).await?;
     Ok(Json(result))
@@ -577,7 +581,10 @@ async fn cleanup_old_files(
 async fn cleanup_all_files(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<CleanupResult>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let result = DatabaseFilesService::cleanup_all_files(db).await?;
     Ok(Json(result))
 }
@@ -586,7 +593,10 @@ async fn cleanup_all_files(
 async fn optimize_database(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let success = DatabaseFilesService::optimize_database(db).await?;
 
     Ok(Json(serde_json::json!({
@@ -599,7 +609,10 @@ async fn optimize_database(
 async fn get_database_file_stats(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<database_files::DatabaseStats>> {
-    let db = &*app_state.conn.lock().await;
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
     let stats = DatabaseFilesService::get_statistics(db).await?;
     Ok(Json(stats))
 }
