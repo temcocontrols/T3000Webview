@@ -388,20 +388,24 @@
                 </div>
                 <div class="series-info">
                   <div class="series-name-line">
-                    <div class="series-name-container">
+                    <!-- Column 1: Series Name -->
+                    <div class="series-name-col">
                       <span class="series-name">{{ getSeriesNameText(series) }}</span>
-                      <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
-                        text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
-                      <!-- Series name processed with dedicated function, chip placed after -->
                     </div>
-                    <span class="series-inline-tags">
-                      <!-- <a-tag size="small" :color="series.unitType === 'digital' ? 'blue' : 'green'">
-                          {{ series.itemType }}
-                        </a-tag> -->
-                      <span class="unit-info" :style="{ color: series.color }">
-                        {{ getDisplayUnit(series) }}
-                      </span>
-                    </span>
+                    <!-- Column 2: Chip + Tags/Unit grouped together -->
+                    <div class="series-right-col">
+                      <div class="series-chip-col">
+                        <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
+                          text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
+                      </div>
+                      <div class="series-tags-col">
+                        <span class="series-inline-tags">
+                          <span class="unit-info" :style="{ color: series.color }">
+                            {{ getDisplayUnit(series) }}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="series-controls">
@@ -8926,10 +8930,43 @@ onUnmounted(() => {
 }
 
 .series-name-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 24px;
+}
+
+.series-name-col {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.series-right-col {
+  display: grid;
+  grid-template-columns: 40px 40px;
+  align-items: center;
+  /* gap: 8px; */
+  white-space: nowrap;
+}
+
+.series-chip-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  white-space: nowrap;
+}
+
+.series-tags-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  white-space: nowrap;
 }
 
 .series-name-container {
@@ -8958,14 +8995,20 @@ onUnmounted(() => {
   font-weight: 600;
   color: #262626;
   line-height: 1.3;
-  flex-shrink: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .series-inline-tags {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 4px;
   flex-wrap: nowrap;
+  text-align: left;
 }
 
 .series-inline-tags .ant-tag {
