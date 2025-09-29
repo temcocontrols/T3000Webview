@@ -178,7 +178,7 @@
           <a-button @click="showDatabaseConfig = true" size="small" title="Database Configuration"
             style="display: flex; align-items: center; gap: 2px;">
             <DatabaseOutlined />
-            <span>Database</span>
+            <span>Data</span>
           </a-button>
         </a-flex>
 
@@ -8486,48 +8486,6 @@ const optimizeDatabase = async () => {
   }
 }
 
-const showCleanupConfirm = () => {
-  // Show confirmation dialog for cleanup
-  notification.warning({
-    message: 'Cleanup Old Data',
-    description: 'This will permanently delete old data based on your retention settings. This action cannot be undone.',
-    btn: [
-      {
-        text: 'Cancel',
-        props: { size: 'small' }
-      },
-      {
-        text: 'Confirm Cleanup',
-        props: {
-          type: 'primary',
-          danger: true,
-          size: 'small',
-          onClick: performDataCleanup
-        }
-      }
-    ],
-    key: 'cleanup-confirm',
-    duration: 0
-  })
-}
-
-const performDataCleanup = async () => {
-  try {
-    LogUtil.Info('Starting data cleanup based on retention policy...')
-    // Add cleanup logic based on retention settings
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    message.success('Old data cleanup completed')
-    LogUtil.Info('Data cleanup completed')
-
-    // Close the notification
-    notification.close('cleanup-confirm')
-  } catch (error) {
-    message.error('Failed to cleanup old data')
-    LogUtil.Error('Data cleanup failed', error)
-  }
-}
-
 const saveDatabaseConfig = async () => {
   isSaving.value = true
   try {
@@ -8559,12 +8517,12 @@ const saveDatabaseConfig = async () => {
 }
 
 // Delete specific database file
-const deleteDbFile = async (fileName: string) => {
+const deleteDbFile = async (fileId: number, fileName: string) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    mockDatabaseFiles.value = mockDatabaseFiles.value.filter(file => file.name !== fileName)
+    await databaseService.files.deleteFile(fileId)
+    await loadDatabaseFiles() // Reload files list
     message.success(`Deleted ${fileName}`)
-    LogUtil.Info('Database file deleted', { fileName })
+    LogUtil.Info('Database file deleted', { fileId, fileName })
   } catch (error) {
     message.error('Failed to delete database file')
     LogUtil.Error('Failed to delete database file', error)
