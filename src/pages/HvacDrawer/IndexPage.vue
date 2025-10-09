@@ -500,7 +500,7 @@
                     <object-type ref="objectsRef" v-if="(item?.type ?? '') !== 'Int_Ext_Wall'" :item="item"
                       :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                      @object-double-clicked="objectDoubleClicked(item)" @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)"
                       @click-right="ObjectRightClicked(item, $event)" />
 
@@ -739,13 +739,13 @@ import { VueMoveable, getElementInfo } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import KeyController from "keycon";
 import { cloneDeep } from "lodash";
-import ObjectType from "../../components/ObjectType.vue";
-import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
-import FileUpload from "../../components/FileUpload.vue";
-import TopToolbar from "../../components/TopToolbar.vue";
-import ToolsSidebar from "../../components/ToolsSidebar.vue";
-import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, demoDeviceData } from "../../lib/common";
+//import ObjectType from "../../components/ObjectType.vue";
+//import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
+//import FileUpload from "../../components/FileUpload.vue";
+//import TopToolbar from "../../components/TopToolbar.vue";
+//import ToolsSidebar from "../../components/ToolsSidebar.vue";
+//import ObjectConfig from "../../components/ObjectConfig.vue";
+//import { tools, demoDeviceData } from "../../lib/common";
 // import panzoom from "panzoom";
 import ObjectType from "../../components/hvac/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/hvac/GaugeSettingsDialog.vue";
@@ -758,9 +758,9 @@ import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/hvac/CanvasType.vue";
 import CanvasShape from "src/components/hvac/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
-import HRuler from "src/components/HRuler.vue";
-import VRuler from "src/components/VRuler.vue";
-import HVGrid from "src/components/HVGrid.vue";
+//import HRuler from "src/components/HRuler.vue";
+//import VRuler from "src/components/VRuler.vue";
+//import HVGrid from "src/components/HVGrid.vue";
 import { startsWith } from "lodash";
 import HRuler from "src/components/hvac/HRuler.vue";
 import VRuler from "src/components/hvac/VRuler.vue";
@@ -2614,9 +2614,7 @@ const scheduleColumns = [
 
 // Handle double-click events on objects
 function objectDoubleClicked(item) {
-  LogUtil.Debug('= idx: objectDoubleClicked /', item.t3Entry);
-
-  // Check if the item has a t3Entry and it's of type SCHEDULE
+  LogUtil.Debug('= idx: objectDoubleClicked /', item.t3Entry);  // Check if the item has a t3Entry and it's of type SCHEDULE
   if (item.t3Entry?.type === "SCH") {
     /*
     // Show a popup for schedule items
@@ -2679,7 +2677,6 @@ function objectDoubleClicked(item) {
  * @param {Object} option - The entry option object
  * @returns {String} - Formatted label string
  */
-// Create a label for an entry with optional prefix
 function entryLabel(option) {
   //LogUtil.Debug("= Idx: entryLabel option:", option);
 
@@ -2697,12 +2694,6 @@ function entryLabel(option) {
   }
 
   // Return prefix followed by description or label (if available)
-  let prefix =
-    (option.description && option.id !== option.description) ||
-      (!option.description && option.id !== option.label)
-      ? option.id + " - "
-      : "";
-  prefix = !option.description && !option.label ? option.id : prefix;
   return prefix + (option.description || option.label || "");
 }
 
@@ -2730,7 +2721,8 @@ function lockToggle() {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
-  if (!locked.value) return;
+  console.log('= Idx objectClicked /', item, item.t3Entry);
+  // if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
 
     const message = {

@@ -30,6 +30,7 @@
     <div class="shape-container flex justify-center object-container relative"
       :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }"
       @click="$emit('objectClicked')"
+      @dblclick="$emit('objectDoubleClicked')"
       @click.right="handleTitleRightClick">
 
       <fan v-if="(item?.type ?? '') === 'Fan'" class="fan" v-bind="item.settings" />
@@ -95,7 +96,7 @@
        v-if="item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none')"
        @click.right="handleTitleRightClick">
     <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
-      v-if="item.settings.title" @click="$emit('objectClicked')">
+      v-if="item.settings.title" @click="$emit('objectClicked')" @dblclick="$emit('objectDoubleClicked')">
       {{ item.settings.title }}
     </div>
     <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
@@ -123,7 +124,7 @@
               </q-icon>
             </span>
 
-            <div @click="$emit('objectClicked')" class="text-display">
+            <div @click="$emit('objectClicked')" @dblclick="$emit('objectDoubleClicked')" class="text-display">
               <span v-if="displayDescription" class="description-text">{{ displayDescription }}</span>
               <span v-if="displayValueText" class="value-text">{{ displayValueText }}</span>
               <span v-if="!displayDescription && !displayValueText">{{ item.t3Entry.id }}</span>
@@ -143,41 +144,41 @@
 import { defineComponent, computed, ref } from "vue";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
-import DuctEl from "./ObjectTypes/Duct.vue";
-import FanEl from "./ObjectTypes/Fan.vue";
-import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
-import HeatingCoil from "./ObjectTypes/HeatingCoil.vue";
-import FilterEl from "./ObjectTypes/Filter.vue";
-import HumidifierEl from "./ObjectTypes/Humidifier.vue";
-import Damper from "./ObjectTypes/Damper.vue";
-import TextEl from "./ObjectTypes/Text.vue";
-import BoxEl from "./ObjectTypes/Box.vue";
-import IconBasic from "./ObjectTypes/IconBasic.vue";
-import IconValue from "./ObjectTypes/IconValue.vue";
-import IconSwitch from "./ObjectTypes/IconSwitch.vue";
-import ValueEl from "./ObjectTypes/Value.vue";
-import Temperature from "./ObjectTypes/Temperature.vue";
-import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
-import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
-import LedEl from "./ObjectTypes/Led.vue";
-import Boiler from "./ObjectTypes/Boiler.vue";
-import Enthalpy from "./ObjectTypes/Enthalpy.vue";
-import Flow from "./ObjectTypes/Flow.vue";
-import Heatpump from "./ObjectTypes/Heatpump.vue";
-import Pump from "./ObjectTypes/Pump.vue";
-import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
-import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
-import Humidity from "./ObjectTypes/Humidity.vue";
-import Pressure from "./ObjectTypes/Pressure.vue";
-import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
-import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
-import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
-import Wall from "./ObjectTypes/Wall.vue";
-import Weld from "./ObjectTypes/Weld.vue";
+import DuctEl from "../ObjectTypes/Duct.vue";
+import FanEl from "../ObjectTypes/Fan.vue";
+import CoolingCoil from "../ObjectTypes/CoolingCoil.vue";
+import HeatingCoil from "../ObjectTypes/HeatingCoil.vue";
+import FilterEl from "../ObjectTypes/Filter.vue";
+import HumidifierEl from "../ObjectTypes/Humidifier.vue";
+import Damper from "../ObjectTypes/Damper.vue";
+import TextEl from "../ObjectTypes/Text.vue";
+import BoxEl from "../ObjectTypes/Box.vue";
+import IconBasic from "../ObjectTypes/IconBasic.vue";
+import IconValue from "../ObjectTypes/IconValue.vue";
+import IconSwitch from "../ObjectTypes/IconSwitch.vue";
+import ValueEl from "../ObjectTypes/Value.vue";
+import Temperature from "../ObjectTypes/Temperature.vue";
+import GaugeChart from "../ObjectTypes/EchartsGauge.vue";
+import AnyChartDial from "../ObjectTypes/AnyChartDial.vue";
+import LedEl from "../ObjectTypes/Led.vue";
+import Boiler from "../ObjectTypes/Boiler.vue";
+import Enthalpy from "../ObjectTypes/Enthalpy.vue";
+import Flow from "../ObjectTypes/Flow.vue";
+import Heatpump from "../ObjectTypes/Heatpump.vue";
+import Pump from "../ObjectTypes/Pump.vue";
+import ValveThreeWay from "../ObjectTypes/ValveThreeWay.vue";
+import ValveTwoWay from "../ObjectTypes/ValveTwoWay.vue";
+import Humidity from "../ObjectTypes/Humidity.vue";
+import Pressure from "../ObjectTypes/Pressure.vue";
+import ThermalWheel from "../ObjectTypes/ThermalWheel.vue";
+import RoomHumidity from "../ObjectTypes/RoomHumidity.vue";
+import RoomTemperature from "../ObjectTypes/RoomTemperature.vue";
+import Wall from "../ObjectTypes/Wall.vue";
+import Weld from "../ObjectTypes/Weld.vue";
 
-import CircleEl from "./Basic/Circle.vue";
-import RectangleEl from "./Basic/Rectangle.vue";
-import StepEl from "./Basic/Step.vue";
+import CircleEl from "../Basic/Circle.vue";
+import RectangleEl from "../Basic/Rectangle.vue";
+import StepEl from "../Basic/Step.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -230,6 +231,7 @@ export default defineComponent({
   emits: [
     "autoManualToggle",
     "objectClicked",
+    "objectDoubleClicked",
     "changeValue",
     "updateWeldModel",
     "click-right",
