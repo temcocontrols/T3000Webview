@@ -137,7 +137,7 @@
         <q-separator color="grey" style="margin-top: 2px;margin-bottom: 2px;" />
 
         <q-tree :nodes="dvList" :noNodesLabel="noNodesLabel" node-key="label" v-model:selected="selected"
-          v-model:ticked="ticked" v-model:expanded="expanded" :filter="filter" :accordion=true
+          v-model:ticked="ticked" v-model:expanded="expanded" :filter="filter" :filter-method="myFilterMethod" :accordion=true
           style="max-height: 326px;overflow-y: auto;" selected-color="primary" @update:selected="treeSelected" />
 
       </div>
@@ -247,8 +247,11 @@ export default defineComponent({
     const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
-      const filt = filter.toLowerCase()
-      return node.label && node.label.toLowerCase().indexOf(filt) > -1 && node.label.toLowerCase().indexOf('(*)') > -1
+      if (!filter) return true;
+      const filt = filter.toLowerCase();
+      const nodeLabel = node.label;
+      if (!nodeLabel || typeof nodeLabel !== 'string') return false;
+      return nodeLabel.toLowerCase().indexOf(filt) > -1;
     }
 
     const resetFilter = () => {

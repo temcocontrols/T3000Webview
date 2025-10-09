@@ -11,12 +11,11 @@
 }
 
 .side-bar {
-  background-color: #f4f4f4;
+  /* background-color: #f4f4f4; */
   width: 106px;
 }
 
 .work-area {
-
   top: 0px;
   bottom: 0px;
   left: 0px;
@@ -29,7 +28,7 @@
 
 .document-area {
   position: relative;
-  background-color: #ebeced;
+  /* background-color: #ebeced; */
   height: 100%;
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
   height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
@@ -38,7 +37,7 @@
 .c-ruler {
   width: 20px;
   height: 20px;
-  background-color: #ebeced;
+  /* background-color: #ebeced; */
   position: absolute;
   overflow: hidden;
   left: 1px;
@@ -48,18 +47,17 @@
 .h-ruler {
   position: absolute;
   overflow: hidden;
-  background-color: #ebeced;
+  /* background-color: #ebeced; */
   top: 1px;
   left: 22px;
   height: 20px;
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-
 }
 
 .v-ruler {
   position: absolute;
   overflow: hidden;
-  background-color: #ebeced;
+  /* background-color: #ebeced; */
   width: 20px;
   left: 1px;
   top: 22px;
@@ -68,7 +66,7 @@
 
 .hv-grid {
   position: absolute;
-  background-color: #ebeced;
+  /* background-color: #ebeced; */
   inset: 22px 0px 0px 22px;
   width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
   height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
@@ -94,453 +92,309 @@
   width: 100%;
   height: 100%;
 }
+
+.main-panel {
+  margin-left: 0px;
+  position: absolute;
+  width: 100%;
+}
+
+#main-toolbar {
+  position: fixed;
+  left: 0;
+  padding-top: 0;
+  padding-left: 0px;
+  z-index: 1;
+  width: 100%;
+  max-height: none;
+  height: 93px;
+}
+
+.left-panel {
+  position: fixed;
+  top: 90px;
+  z-index: 1;
+  bottom: 0;
+  left: 0px;
+  right: 0;
+  overflow: hidden;
+  width: 105px;
+  /* border-right: 1px solid #ddd; */
+  z-index: 4;
+}
+
+.main-panel {
+  margin-left: 0px;
+}
+
+#work-area {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: none;
+  padding-left: 105px;
+  margin-top: 93px;
+  width: auto;
+}
+
+#document-area {
+  position: relative;
+  height: 100%;
+}
+
+.document-ruler-corner {
+  width: 20px;
+  height: 20px;
+  user-select: none;
+  left: 99px;
+  top: 0px;
+  overflow: hidden;
+  position: absolute;
+}
+
+.document-ruler-top {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 119px;
+  top: 0px;
+  width: 100%;
+  height: 20px;
+}
+
+.document-ruler-left {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 99px;
+  top: 20px;
+  width: 20px;
+  height: auto;
+}
+
+#svg-area {
+  scrollbar-width: thin;
+  position: absolute;
+  left: 119px;
+  top: 20px;
+  width: 100%;
+  height: auto;
+  overflow: hidden scroll;
+  user-select: none;
+  background-color: #ffffff;
+}
+
+.doc-toolbar {
+  background-color: transparent;
+  bottom: 10px;
+  right: 10px;
+  padding-left: 187px;
+  padding-right: 10px;
+  border: none;
+  display: flex;
+  align-items: flex-end;
+  height: auto;
+  width: auto;
+  position: absolute;
+  left: 0;
+}
 </style>
 
 <template>
-  <q-page style="background-color: #ebeced;">
-    <div class="full-area">
+  <q-page>
 
-      <div class="top-area">
-        <!-- Top Toolbar -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
-          :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge && !locked" />
+    <div id="_crossTabClipboardDiv"
+      style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
+      <div id="_IEclipboardDiv" contenteditable="true"></div>
+      <input id="_clipboardInput" type="text" value=" ">
+    </div>
 
-        <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
+
+    <div id="main-app">
+      <div id="main-panel" class="main-panel">
+        <NewTopToolBar2 :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices"
-          v-if="!isBuiltInEdge && !locked && topNavVisible">
-        </NewTopToolBar>
-      </div>
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+        </NewTopToolBar2>
+        <div class="main-area">
+          <div id="left-panel" class="left-panel">
+            <ToolsSidebar2 v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+              :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+              @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+              @tool-dropped="toolDropped" />
+          </div>
 
-      <div class="main-area">
-        <div class="side-bar" v-if="!locked && leftNavVisible">
-          <!-- Tools Sidebar -->
-          <ToolsSidebar v-if="!locked && leftNavVisible" :selected-tool="selectedTool" :images="library.images"
-            :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
-            @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" :isBuiltInEdge="isBuiltInEdge" />
-        </div>
-        <div class="work-area">
-          <div class="document-area">
-            <div class="c-ruler" v-if="!locked && rulersGridVisible"></div>
-            <div class="h-ruler" v-if="!locked && rulersGridVisible">
-              <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
+          <div id="work-area" class="main-panel">
+            <div style="padding-bottom: 5px;margin-left: 5px;margin-right: 5px;">
+              <T3Message></T3Message>
             </div>
-            <div class="v-ruler" v-if="!locked && rulersGridVisible">
-              <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
+            <div id="document-area">
+              <div id="c-ruler" class="document-ruler-corner">
+              </div>
+              <div id="h-ruler" class="document-ruler-top">
+              </div>
+              <div id="v-ruler" class="document-ruler-left">
+              </div>
+              <div id="svg-area" class="svg-area">
+              </div>
             </div>
-            <div class="hv-grid" v-if="!locked && rulersGridVisible">
-              <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
-            </div>
-            <div class="viewport-wrapper" @scroll="handleScroll">
-              <!-- Navigation Buttons -->
-              <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
-                <!-- Go Back Button -->
-                <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
-                  color="primary" @click="navGoBack">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong>Go back</strong>
-                  </q-tooltip>
-                </q-btn>
-                <!-- Lock/Unlock Button -->
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-                  :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="isBuiltInEdge">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong v-if="!locked">Lock</strong>
-                    <strong v-else>Unlock</strong>
-                  </q-tooltip>
-                </q-btn>
-              </div>
-              <div>
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-                  :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="!isBuiltInEdge && locked">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong v-if="!locked">Lock</strong>
-                    <strong v-else>Unlock</strong>
-                  </q-tooltip>
-                </q-btn>
-              </div>
-              <!-- Viewport Area -->
-              <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @mouseleave="resetCursor" @click.left="viewportLeftClick" @dragover="($event) => {
-                  $event.preventDefault();
-                }
-                ">
-                <!-- Cursor Icon -->
-                <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
-                  ? selectedTool.icon
-                  : selectedTool.type === 'libItem'
-                    ? 'space_dashboard'
-                    : 'photo'
-                  " size="sm" :style="{
-                    left: cursorIconPos.x + 0 + 'px',
-                    top: cursorIconPos.y + 'px',
-                  }" />
-                <!-- Vue Selecto for Selectable Items -->
-                <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []"
-                  :hitRate="20" :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']"
-                  :ratio="0" :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
-                  @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
-                </vue-selecto>
-                <!-- Moveable Component for Draggable/Resizable Items -->
-                <div ref="viewport">
-
-                  <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
-                    :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
-                    :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
-                      top: true,
-                      right: true,
-                      bottom: true,
-                      left: true,
-                    }" :elementSnapDirections="{
-                      top: true,
-                      right: true,
-                      bottom: true,
-                      left: true,
-                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true"
-                    :throttleResize="0" :throttleRotate="0" rotationPosition="top" :originDraggable="true"
-                    :originRelative="true" :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
-                    :padding="{ left: 0, top: 0, right: 0, bottom: 0 }" @clickGroup="onClickGroup"
-                    @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd" @dragGroupStart="onDragGroupStart"
-                    @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd" @resizeStart="onResizeStart"
-                    @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart" @rotate="onRotate"
-                    @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
-                    @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
-                    @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd"
-                    :renderDirections='["n", "nw", "ne", "s", "se", "sw", "e", "w"]'>
-                  </vue-moveable>
-
-                  <!-- Context Menu -->
-                  <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
-                    <q-list>
-                      <!-- Copy Option -->
-                      <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Copy</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + C</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Duplicate Option -->
-                      <q-item dense clickable v-close-popup @click="duplicateSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Duplicate</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + D</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Group Option -->
-                      <q-item dense clickable v-close-popup @click="groupSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Group</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + G</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-item dense clickable v-close-popup @click="ungroupSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Ungroup</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + Shift + G</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Add to Library Option -->
-                      <q-item dense clickable v-close-popup @click="addToLibrary">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Add to Library</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + L</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Bring to Front Option -->
-                      <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section class="py-2">Bring to front</q-item-section>
-                      </q-item>
-                      <!-- Send to Back Option -->
-                      <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section class="py-2">Send to Back</q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Rotate 90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Rotate 90°</q-item-section>
-                      </q-item>
-                      <!-- Rotate -90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Rotate -90°</q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Delete Option -->
-                      <q-item dense clickable v-close-popup @click="deleteSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Delete</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Delete</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <!-- Weld Option -->
-                      <q-item dense clickable v-close-popup @click="weldSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Weld Selected</q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + B</q-chip>
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-
-                  <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
-                    :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-                    :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick"
-                    :class="`moveable-item-wrapper moveable-item-index-${index} ${locked ? 'locked' : ''} ${isItemSelected(item.id) ? 'item-selected' : ''}`">
-
-                    <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
-                      <q-list>
-
-
-                        <q-item dense v-if="topContextToggleVisible">
-                          <span style="margin-top: 8px">Mode:</span>
-                          <q-toggle :label="toggleModeValue" v-model="toggleModeValue" color="blue"
-                            @click="toggleClicked(item, 'mode', $event)" false-value="Auto" true-value="Manual" />
-                        </q-item>
-                        <q-separator />
-                        <q-item dense :disable="toggleValueDisable" v-if="toggleValueShow">
-                          <span style="margin-top: 8px">Value:</span>
-                          <q-toggle :disable="toggleValueDisable" :label="toggleValueValue" v-model="toggleValueValue"
-                            color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
-                            true-value="On" />
-                        </q-item>
-                        <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
-                          <span style="margin-top: 8px">Value:</span>
-                          <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
-                            type="number" v-model="toggleNumberValue"
-                            @click="toggleClicked(item, 'number-value', $event)" />
-                        </q-item>
-                        <q-separator />
-
-
-
-
-
-
-
-
-
-                        <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Link</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>
-                            <q-item-label>Copy</q-item-label>
-                          </q-item-section>
-                          <q-item-section side>
-                            <q-chip>Ctrl + C</q-chip>
-                          </q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="duplicateObject(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Duplicate</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="rotate90(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Rotate 90°</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="rotate90(item, true)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Rotate -90°</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="flipH(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Flip horizontal</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="flipV(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
-                              style="transform: rotate(90deg)" />
-                          </q-item-section>
-                          <q-item-section>Flip vertical</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="bringToFront(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Bring to front</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="sendToBack(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Send to Back</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable>
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="transform" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Convert to</q-item-section>
-                          <q-item-section side>
-                            <q-icon name="keyboard_arrow_right" />
-                          </q-item-section>
-                          <q-menu anchor="top end" self="top start" auto-close>
-                            <q-list>
-                              <q-item v-for="t in tools.filter(
-                                (i) =>
-                                  i.name !== (item?.type ?? '') &&
-                                  !['Duct', 'Pointer', 'Text'].includes(i.name)
-                              )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
-                                <q-item-section avatar>
-                                  <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
-                                </q-item-section>
-                                <q-item-section>{{ t.name }}</q-item-section>
-                              </q-item>
-                            </q-list>
-                          </q-menu>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="removeObject(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Remove</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-
-                    <q-menu v-if="showSettingMenu && appState.selectedTargets?.length === 0" touch-position
-                      context-menu>
-                      <q-list>
-                        <q-item dense>
-                          <span style="margin-top: 8px">Mode:</span>
-                          <q-toggle :label="toggleModeValue" v-model="toggleModeValue" color="blue"
-                            @click="toggleClicked(item, 'mode', $event)" false-value="Auto" true-value="Manual" />
-                        </q-item>
-                        <q-separator />
-                        <q-item dense :disable="toggleValueDisable" v-if="toggleValueShow">
-                          <span style="margin-top: 8px">Value:</span>
-                          <q-toggle :disable="toggleValueDisable" :label="toggleValueValue" v-model="toggleValueValue"
-                            color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
-                            true-value="On" />
-                        </q-item>
-                        <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
-                          <span style="margin-top: 8px">Value:</span>
-                          <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
-                            type="number" v-model="toggleNumberValue"
-                            @click="toggleClicked(item, 'number-value', $event)" />
-                        </q-item>
-                        <q-separator />
-                      </q-list>
-
-                    </q-menu>
-
-                    <object-type ref="objectsRef" v-if="(item?.type ?? '') !== 'Int_Ext_Wall'" :item="item"
-                      :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)"
-                      @click-right="ObjectRightClicked(item, $event)" />
-
-                    <CanvasShape v-if="
-                      (item?.type ?? '') === 'Weld_General' ||
-                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item"
-                      :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModelCanvas">
-                    </CanvasShape>
-
-                    <WallExterior v-if="(item?.type ?? '') === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
-                      :key="item.id + (item?.type ?? '') + item.index" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModelCanvas">
-                    </WallExterior>
-
-                  </div>
-                </div>
-              </div>
+            <div id="doc-toolbar" class="doc-toolbar">
             </div>
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- Object config sidebar -->
-    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
-      (appState.activeItemIndex || appState.activeItemIndex === 0) && rightNavVisible &&
+
+    <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
+      <q-list>
+        <!-- Copy Option -->
+        <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Copy</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + C</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-separator />
+        <!-- Duplicate Option -->
+        <q-item dense clickable v-close-popup @click="duplicateSelected">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Duplicate</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + D</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-separator />
+        <!-- Group Option -->
+        <q-item dense clickable v-close-popup @click="groupSelected">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Group</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + G</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-item dense clickable v-close-popup @click="ungroupSelected">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Ungroup</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + Shift + G</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-separator />
+        <!-- Add to Library Option -->
+        <q-item dense clickable v-close-popup @click="addToLibrary">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Add to Library</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + L</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-separator />
+        <!-- Bring to Front Option -->
+        <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section class="py-2">Bring to front</q-item-section>
+        </q-item>
+        <!-- Send to Back Option -->
+        <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section class="py-2">Send to Back</q-item-section>
+        </q-item>
+        <q-separator />
+        <!-- Rotate 90 Degrees Option -->
+        <q-item dense clickable v-close-popup @click="rotate90Selected()">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>Rotate 90°</q-item-section>
+        </q-item>
+        <!-- Rotate -90 Degrees Option -->
+        <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>Rotate -90°</q-item-section>
+        </q-item>
+        <q-separator />
+        <!-- Delete Option -->
+        <q-item dense clickable v-close-popup @click="deleteSelected">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Delete</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Delete</q-chip>
+          </q-item-section>
+        </q-item>
+        <!-- Weld Option -->
+        <q-item dense clickable v-close-popup @click="weldSelected">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>Weld Selected</q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + B</q-chip>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-menu>
+
+    <!-- <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
+      (appState.activeItemIndex || appState.activeItemIndex === 0) &&
       (appState.selectedTargets.length > 0)" @refresh-moveable="refreshMoveable"
       @T3UpdateEntryField="T3UpdateEntryField" @linkT3Entry="linkT3EntryDialogAction"
       @gaugeSettings="gaugeSettingsDialogAction" @mounted="addActionToHistory('Object settings opened')"
-      @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" />
+      @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" >
+    </ObjectConfig> -->
+
+    <!-- <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+      @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged">
+    </ObjectConfig2> -->
+
+
+    <!-- <ObjectConfigNew v-if="objectConfigShow" :current="currentObject" @linkT3Entry="linkT3EntryDialogActionV2">
+    </ObjectConfigNew> -->
+
+    <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]"
+      @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
+    </ObjectConfigNew>
+
   </q-page>
-  <!-- Link entry dialog -->
-  <q-dialog v-model="linkT3EntryDialog.active">
-    <q-card :style="{ minWidth: $q.platform.is.mobile ? '400px' : '650px' }">
+
+  <q-dialog v-model="linkT3EntryDialogV2.active">
+    <q-card style="min-width: 650px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Link Entry</div>
         <q-space />
@@ -557,7 +411,7 @@
             </q-tooltip>
           </q-btn>
           <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-            input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
+            input-debounce="0" v-model="linkT3EntryDialogV2.data" :options="selectPanelOptions"
             @filter="selectPanelFilterFn" label="Select Entry" class="grow">
             <template v-slot:option="scope">
               <q-item v-bind="scope.itemProps">
@@ -591,14 +445,14 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!linkT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+        <q-btn flat label="Save" :disable="!linkT3EntryDialogV2.data" color="primary" @click="linkT3EntrySaveV2" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 
   <q-dialog v-model="insertT3EntryDialog.active">
     <!-- <a>This is a test q-dialog></a> -->
-    <q-card :style="{ minWidth: $q.platform.is.mobile ? '400px' : '650px' }">
+    <q-card style="min-width: 650px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Insert Entry</div>
         <q-space />
@@ -645,6 +499,13 @@
           </q-circular-progress>
         </div>
       </q-card-section>
+
+      <!-- <q-separator />
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn flat label="Save" :disable="!insertT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+      </q-card-actions> -->
     </q-card>
   </q-dialog>
 
@@ -669,7 +530,7 @@
   </q-dialog>
 
   <q-dialog v-model="deviceModel.active">
-    <q-card :style="{ minWidth: $q.platform.is.mobile ? '700px' : '900px' }">
+    <q-card style="min-width: 900px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
         <q-space />
@@ -680,55 +541,6 @@
       </DeviceInfo>
     </q-card>
   </q-dialog>
-
-
-
-
-
-
-  <!-- Schedule Details Modal with Ant Design -->
-
-
-  <!-- <a-modal v-model:visible="scheduleModalVisible" title="Schedule Details" width="700px">
-    <template #footer>
-      <a-button key="close" @click="scheduleModalVisible = false">Close</a-button>
-    </template>
-    <div>
-      <h3>Schedule Information</h3>
-      <a-table :dataSource="scheduleTableData" :columns="scheduleColumns" :pagination="false" size="small">
-        <template #headerCell="{ column }">
-          <template v-if="column.key === 'action'">
-            <span>Actions</span>
-          </template>
-        </template>
-      </a-table>
-    </div>
-  </a-modal> -->
-
-  <ScheduleModal v-if="scheduleModalVisible" :visible="scheduleModalVisible" />
-  <ScheduleCalendar v-if="scheduleModalNVisible" :visible="scheduleModalNVisible" />
-  <ScheduleAnnual v-if="annualScheduleVisible" :visible="annualScheduleVisible" />
-  <TrendLogModal
-    v-if="trendLogVisible"
-    :visible="trendLogVisible"
-    :item-data="scheduleItemData"
-    @update:visible="(val) => trendLogVisible = val"
-  />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </template>
 
 <script setup>
@@ -736,41 +548,30 @@
 import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
-import { VueSelecto } from "vue3-selecto";
-import KeyController from "keycon";
+import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
-import ToolsSidebar from "../../components/ToolsSidebar.vue";
+import ToolsSidebar2 from "../../components/NewUI/ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, demoDeviceData } from "../../lib/common";
-// import panzoom from "panzoom";
-import ObjectType from "../../components/hvac/ObjectType.vue";
-import GaugeSettingsDialog from "../../components/hvac/GaugeSettingsDialog.vue";
-import FileUpload from "../../components/hvac/FileUpload.vue";
-import TopToolbar from "../../components/hvac/TopToolbar.vue";
-import ToolsSidebar from "../../components/hvac/ToolsSidebar.vue";
-import ObjectConfig from "../../components/hvac/ObjectConfig.vue";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data, user,*/ /*globalNav,*/ demoDeviceData } from "../../lib/common";
+import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
+import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
-import CanvasType from "src/components/hvac/CanvasType.vue";
-import CanvasShape from "src/components/hvac/CanvasShape.vue";
+import CanvasType from "src/components/CanvasType.vue";
+import CanvasShape from "src/components/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
+import { startsWith } from "lodash";
 import HRuler from "src/components/HRuler.vue";
 import VRuler from "src/components/VRuler.vue";
 import HVGrid from "src/components/HVGrid.vue";
-import { startsWith } from "lodash";
-import HRuler from "src/components/hvac/HRuler.vue";
-import VRuler from "src/components/hvac/VRuler.vue";
-import HVGrid from "src/components/hvac/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
-import NewTopBar from "src/components/hvac/NewTopBar.vue";
+import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
-import DeviceInfo from "src/components/hvac/DeviceInfo.vue";
-import NewTopToolBar from "src/components/hvac/NewTopToolBar.vue";
+import DeviceInfo from "src/components/DeviceInfo.vue";
+import NewTopToolBar2 from "src/components/NewUI/NewTopToolBar2.vue";
 
 // New import for Data
 import Data from "src/lib/T3000/Hvac/Data/Data";
@@ -778,41 +579,40 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
+import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
+import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
+
 import {
-  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, /*user,*/ library, emptyLib, isBuiltInEdge,
-  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
-  savedNotify, undoHistory, redoHistory, moveable
+  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
+  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
+  savedNotify, undoHistory, redoHistory, moveable,
+  appStateV2
 } from '../../lib/T3000/Hvac/Data/T3Data'
+import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
+// import { currentObject } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
-import {
-  scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible,
-  leftNavVisible, rightNavVisible, annualScheduleVisible, annualScheduleData, trendLogData, trendLogVisible
-} from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
-
-import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
-
-import { user } from "../../lib/T3000/Hvac/Data/T3Data";
-import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
-
-import ScheduleModal from "src/components/NewUI/ScheduleModal.vue";
-import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
-import ScheduleAnnual from "src/components/NewUI/ScheduleAnnual.vue";
-import TrendLogModal from "src/components/NewUI/TrendLogModal.vue";
-import T3UIUtil from "src/lib/T3000/Hvac/Opt/UI/T3UIUtil";
-import SelectoErrorHandler from "../../lib/performance/SelectoErrorHandler.js";
-
+import { Alert as AAlert } from 'ant-design-vue';
+import T3Message from "src/components/NewUI/T3Message.vue";
+import AntdTest from "src/components/NewUI/AntdTest.vue";
 // const isBuiltInEdge = ref(false);
-import DataOpt from "src/lib/T3000/Hvac/Opt/Data/DataOpt";
 
 // Meta information for the application
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
+
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
+// const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
+// const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
+// const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+
+// const insertT3EntryDialog = ref({ activate: false, data: {} })
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -826,7 +626,12 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
 // const savedNotify = ref(false); // Notification state for saving
-const contextMenuShow = ref(false); // State of the context menu visibility
+//const contextMenuShow = ref(false); // State of the context menu visibility
+
+
+// // Panel options for selection
+// const selectPanelOptions = ref(T3000_Data.value.panelsData);
+// let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
@@ -837,14 +642,8 @@ const loadingPanelsProgress = computed(() => {
   );
 });
 
-// Helper function to check if an item is selected
-const isItemSelected = (itemId) => {
-  return appState.value.selectedTargets.some(
-    target => target && target.id === `moveable-item-${itemId}`
-  );
-};
-
 const clipboardFull = ref(false); // State of the clipboard
+
 
 const zoom = Hvac.IdxPage.zoom;
 
@@ -858,18 +657,248 @@ if (process.env.DEV) {
   });
 }
 
+// Initialization of empty project and library structures
+// let panzoomInstance = null;
+// const emptyProject = {
+//   version: process.env.VERSION,
+//   items: [],
+//   selectedTargets: [],
+//   elementGuidelines: [],
+//   itemsCount: 0,
+//   groupCount: 0,
+//   activeItemIndex: null,
+//   viewportTransform: { x: 0, y: 0, scale: 1 },
+// };
+// const emptyLib = {
+//   version: process.env.VERSION,
+//   imagesCount: 0,
+//   objLibItemsCount: 0,
+//   images: [],
+//   objLib: [],
+// };
+
+// State references for the library and application state
+// const library = ref(cloneDeep(emptyLib));
+// const appState = ref(cloneDeep(emptyProject));
+// const undoHistory = ref([]); // History for undo actions
+// const redoHistory = ref([]); // History for redo actions
+// const locked = ref(false); // State to lock or unlock the interface
+// const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
+// const rulersGridVisible = ref(true);
+
+// const deviceModel = ref({ active: false, data: {} });
+// const deviceAppState = ref([]);
+
+// const handleScroll = (event) => {
+
+//   // Reset the h,v ruler's width for scrolling
+//   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
+//   documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
+
+//   // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
+//   // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+
+//   // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
+//   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
+//   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+// };
+
 // Lifecycle hook for component mount
 onMounted(() => {
-  Hvac.IdxPage.initQuasar($q);
-  Hvac.IdxPage.initPage();
+
+  Hvac.UI.Initialize($q); // Initialize the HVAC UI
+
+  Hvac.IdxPage2.initQuasar($q);
+
+  Hvac.IdxPage2.initPage();
+
+  // Hvac.IdxPage.initQuasar($q);
+
+  // Hvac.IdxPage.initPage();
+
+  // // Set global navigation properties
+  // globalNav.value.title = "HVAC Drawer";
+  // globalNav.value.back = null;
+  // globalNav.value.home = "/";
+
+  // isLoggedIn(); // Check if user is logged in
+
+  // // Restore app state from local storage if not in a webview
+  // if (!window.chrome?.webview?.postMessage) {
+  //   const localState = localStorage.getItem("appState");
+  //   if (localState) {
+  //     appState.value = JSON.parse(localState);
+  //     rulersGridVisible.value = appState.value.rulersGridVisible;
+  //   }
+  // }
+
+  // if (window.chrome?.webview) {
+  //   isBuiltInEdge.value = true;
+  //   documentAreaPosition.value.widthOffset = '128px';
+  //   documentAreaPosition.value.heightOffset = '68px';
+
+  //   viewportMargins.top = 56;
+  // }
+  // else {
+  //   isBuiltInEdge.value = false;
+  //   viewportMargins.top = 95 + 20 + 2;
+  // }
+
+  // // Save the state before the window is unloaded
+  // window.addEventListener("beforeunload", function (event) {
+  //   // save();
+  //   Hvac.IdxPage.clearAutoSaveInterval();
+  //   Hvac.WsClient.clearInitialDataInterval();
+  // });
+
+  // // Initialize panzoom for viewport
+  // panzoomInstance = panzoom(viewport.value, {
+  //   maxZoom: 4,
+  //   minZoom: 0.1,
+  //   zoomDoubleClickSpeed: 1,
+  //   filterKey: function (/* e, dx, dy, dz */) {
+  //     // don't let panzoom handle this event:
+  //     return true;
+  //   },
+  //   beforeMouseDown: function (e) {
+  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
+  //     var shouldIgnore = !e.altKey;
+  //     return shouldIgnore;
+  //   },
+  //   // Add the focal point for zooming to be the center of the viewport
+  //   // transformOrigin: { x: 0.5, y: 0.5 },
+  // });
+
+  // // Update the viewport transform on panzoom transform event
+  // panzoomInstance.on("transform", function (e) {
+
+  //   const pzTrs = e.getTransform();
+  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
+  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+
+  //   appState.value.viewportTransform = e.getTransform();
+  //   triggerRef(appState);
+
+  //   restDocumentAreaPosition(e.getTransform());
+  // });
+
+  //Hvac.IdxPage.initQuasar($q);
+
+  //Hvac.IdxPage.initPage();
+
+
+  // // Request initial data and panels list if in a webview
+  // window.chrome?.webview?.postMessage({
+  //   action: 1, // GET_INITIAL_DATA
+  // });
+
+  // window.chrome?.webview?.postMessage({
+  //   action: 4, // GET_PANELS_LIST
+  // });
+
+  // // Set intervals for fetching panel and entry data if in a webview
+  // if (window.chrome?.webview?.postMessage) {
+  //   getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
+  //     action: 4, // GET_PANELS_LIST
+  //   });
+
+  //   setInterval(function () {
+  //     if (getLinkedEntries().length === 0) return;
+  //     window.chrome?.webview?.postMessage({
+  //       action: 6, // GET_ENTRIES
+  //       data: getLinkedEntries().map((ii) => {
+  //         return {
+  //           panelId: ii.t3Entry.pid,
+  //           index: ii.t3Entry.index,
+  //           type: T3_Types[ii.t3Entry.type],
+  //         };
+  //       }),
+  //     });
+  //   }, 10000);
+  // }
+
+  // Refresh moveable guides after a short delay
+  // setTimeout(() => {
+  //   refreshMoveableGuides();
+  // }, 100);
+
+  // // Viewport wrapper scroll event listener
+  // const div = document.querySelector('.viewport-wrapper');
+  // div.addEventListener('scroll', handleScroll);
+
+  // // Init ruler and grid default value
+  // documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+  // documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+  // documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+
+  // If accessed from an external browser
+  // initExternalBrowserOpt();
 });
 
+// function initExternalBrowserOpt() {
+
+//   if (isBuiltInEdge.value) {
+//     return;
+//   }
+
+//   // connect to the ws://localhost:9104 websocket server
+//   Hvac.WsClient.connect();
+
+//   // check if need to show the device list dialog
+//   setTimeout(() => {
+//     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+//     if (!currentDevice) {
+//       deviceModel.value.active = true;
+//     }
+//     else {
+//       deviceModel.value.active = false;
+//       deviceModel.value.data = currentDevice;
+
+//       LogUtil.Debug('=== indexPage.currentDevice load from local storage', currentDevice);
+
+//       // load device appstate
+//       //Hvac.DeviceOpt.refreshDeviceAppState();
+//       Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
+
+//       // LogUtil.Debug('=== indexPage.currentDevice load from local storage', currentDevice);
+//       // LogUtil.Debug('=== indexPage.deviceModel changed', deviceModel.value);
+//     }
+//   }, 1000);
+
+//   setInterval(function () {
+//     if (getLinkedEntries().length === 0) return;
+
+//     const data = getLinkedEntries().map((ii) => {
+//       return {
+//         panelId: ii.t3Entry.pid,
+//         index: ii.t3Entry.index,
+//         type: T3_Types[ii.t3Entry.type],
+//       };
+//     });
+
+//     Hvac.WsClient.GetEntries(data);
+
+//     /*
+//     window.chrome?.webview?.postMessage({
+//       action: 6, // GET_ENTRIES
+//       data: getLinkedEntries().map((ii) => {
+//         return {
+//           panelId: ii.t3Entry.pid,
+//           index: ii.t3Entry.index,
+//           type: T3_Types[ii.t3Entry.type],
+//         };
+//       }),
+//     });
+//     */
+//   }, 10000);
+// }
+
 function updateDeviceModel(isActive, data) {
-  console.log('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
@@ -893,24 +922,246 @@ function showMoreDevices() {
   Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
+/*
+function refreshDeviceAppState() {
+  const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
+  // LogUtil.Debug('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
+
+  if (existAppState) {
+    // appState.value = cloneDeep(existAppState);
+    appState.value = existAppState;
+  }
+  else {
+    appState.value = cloneDeep(emptyProject);
+    appState.value.rulersGridVisible = rulersGridVisible.value;
+  }
+}
+*/
+
+// function saveDeviceAppState(clearSelected) {
+//   // LogUtil.Debug('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+
+//   if (clearSelected) {
+//     appState.value.selectedTargets = [];
+//   }
+
+//   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
+
+//   // Post a save action to T3
+//   const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+//   const panelId = currentDevice.deviceId;
+//   const graphicId = currentDevice.graphic;
+
+//   Hvac.WsClient.SaveGraphic(panelId, graphicId);
+// }
 
 onBeforeUnmount(() => {
-  // Safely cleanup selecto component using universal destroy method
-  // This handles all known selecto errors: "$_selecto is undefined", "gesto is null", etc.
-  SelectoErrorHandler.universalDestroy(selecto);
+
 })
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
+  // appState.value.selectedTargets = [];
+
+  // if (panzoomInstance?.dispose) return;
+  // panzoomInstance?.dispose();
+
   Hvac.IdxPage.clearAutoSaveInterval();
   Hvac.WsClient.clearInitialDataInterval();
   Hvac.IdxPage.clearIdx();
 });
 
+// Handle messages from the webview
+// window.chrome?.webview?.addEventListener("message", (arg) => {
+//   LogUtil.Debug("= Idx Received a message from webview", arg.data.action, arg.data);
+
+//   // Handle various actions based on message data
+//   if (!"action" in arg.data) return;
+
+/* move to WebViewClient.ts
+if (arg.data.action === "GET_PANELS_LIST_RES") {
+  if (arg.data.data?.length) {
+    T3000_Data.value.panelsList = arg.data.data;
+    T3000_Data.value.loadingPanel = 0;
+    window.chrome?.webview?.postMessage({
+      action: 0, // GET_PANEL_DATA
+      panelId: T3000_Data.value.panelsList[0].panel_number,
+    });
+  }
+}
+*/
+
+// if (arg.data.action === "UPDATE_ENTRY_RES") {
+//   // Handle update entry response
+// }
+
+/*
+if (arg.data.action === "GET_INITIAL_DATA_RES") {
+  if (arg.data.data) {
+    arg.data.data = JSON.parse(arg.data.data);
+  }
+
+  appState.value = arg.data.data;
+  rulersGridVisible.value = appState.value.rulersGridVisible;
+
+  grpNav.value = [arg.data.entry];
+  if (arg.data.library) {
+    arg.data.library = JSON.parse(arg.data.library);
+    library.value = arg.data.library;
+  }
+  setTimeout(() => {
+    IdxUtils.refreshMoveableGuides();
+  }, 100);
+}
+*/
+
+/*
+if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
+  if (arg.data.data) {
+    arg.data.data = JSON.parse(arg.data.data);
+  }
+  appState.value = arg.data.data;
+  if (grpNav.value.length > 1) {
+    const navItem = grpNav.value[grpNav.value.length - 2];
+    if (
+      navItem.index !== arg.data.entry.index ||
+      navItem.pid !== arg.data.entry.pid
+    ) {
+      grpNav.value.push(arg.data.entry);
+    } else {
+      grpNav.value.pop();
+    }
+  } else {
+    grpNav.value.push(arg.data.entry);
+  }
+
+  setTimeout(() => {
+    IdxUtils.refreshMoveableGuides();
+  }, 100);
+}
+*/
+
+// if (arg.data.action === "GET_PANEL_DATA_RES") {
+//   // if (getPanelsInterval && arg.data?.panel_id) {
+//   //   clearInterval(getPanelsInterval);
+//   // }
+
+//   if (arg.data?.panel_id) {
+//     Hvac.IdxPage.clearGetPanelsInterval();
+//   }
+
+//   if (arg.data?.panel_id) {
+
+//     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+//     if (check1) {
+//       T3000_Data.value.loadingPanel++;
+//       const index = T3000_Data.value.loadingPanel;
+//       window.chrome?.webview?.postMessage({
+//         action: 0, // GET_PANEL_DATA
+//         panelId: T3000_Data.value.panelsList[index].panel_number,
+//       });
+//     }
+
+//     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+//     if (check2) {
+//       T3000_Data.value.loadingPanel = null;
+//     }
+
+//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+//       (item) => item.pid !== arg.data.panel_id
+//     );
+
+//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+//       arg.data.data
+//     );
+
+//     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+//     selectPanelOptions.value = T3000_Data.value.panelsData;
+
+//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+//       (item) => item.pid !== arg.data.panel_id
+//     );
+
+//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+
+//     refreshLinkedEntries(arg.data.data);
+//   }
+// }
+
+// if (arg.data.action === "GET_ENTRIES_RES") {
+//   arg.data.data.forEach((item) => {
+//     const itemIndex = T3000_Data.value.panelsData.findIndex(
+//       (ii) =>
+//         ii.index === item.index &&
+//         ii.type === item.type &&
+//         ii.pid === item.pid
+//     );
+//     if (itemIndex !== -1) {
+//       T3000_Data.value.panelsData[itemIndex] = item;
+//     }
+//   });
+
+//   if (!linkT3EntryDialog.value.active) {
+//     selectPanelOptions.value = T3000_Data.value.panelsData;
+//   }
+//   refreshLinkedEntries(arg.data.data);
+// }
+
+// if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
+//   if (arg.data.data?.status === true) {
+//     if (!savedNotify.value) return;
+//     $q.notify({
+//       message: "Saved successfully.",
+//       color: "primary",
+//       icon: "check_circle",
+//       actions: [
+//         {
+//           label: "Dismiss",
+//           color: "white",
+//           handler: () => {
+//             /* ... */
+//           },
+//         },
+//       ],
+//     });
+//   } else {
+//     $q.notify({
+//       message: "Error, not saved!",
+//       color: "negative",
+//       icon: "error",
+//       actions: [
+//         {
+//           label: "Dismiss",
+//           color: "white",
+//           handler: () => {
+//             /* ... */
+//           },
+//         },
+//       ],
+//     });
+//   }
+// }
+
+// if (arg.data.action === "SAVE_IMAGE_RES") {
+//   library.value.imagesCount++;
+//   library.value.images.push({
+//     id: "IMG-" + library.value.imagesCount,
+//     name: arg.data.data.name,
+//     path: arg.data.data.path,
+//     online: false,
+//   });
+//   saveLib();
+// }
+
+// });
+
 function viewportMouseMoved(e) {
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
+
+  // LogUtil.Debug('Viewport mouse moved cursorIconPos:', "mouse",
+
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
   // process drawing ducts
@@ -936,21 +1187,24 @@ function viewportMouseMoved(e) {
     // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
+    // LogUtil.Debug('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
+
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
     appState.value.items[appState.value.activeItemIndex].width = distance;
     refreshObjects();
   }
 }
-
-// Reset cursor when mouse leaves viewport (safety cleanup)
-function resetCursor() {
-  document.body.style.cursor = 'auto';
-  const moveableItems = document.querySelectorAll('.moveable-item');
-  moveableItems.forEach(item => {
-    item.style.cursor = '';
-  });
-}
+// // Refreshes the guidelines for the moveable elements
+// function refreshMoveableGuides() {
+//   appState.value.elementGuidelines = [];
+//   const lines = document.querySelectorAll(
+//     `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
+//   );
+//   Array.from(lines).forEach(function (el) {
+//     appState.value.elementGuidelines.push(el);
+//   });
+// }
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
@@ -964,7 +1218,7 @@ function refreshObjects() {
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
   if (process.env.DEV) {
-    // console.log(title); // Log the action title in development mode
+    // LogUtil.Debug(title); // Log the action title in development mode
   }
   if (title !== "Move Object") {
     setTimeout(() => {
@@ -987,18 +1241,12 @@ function addActionToHistory(title) {
 
 // Handles click events on group elements
 function onClickGroup(e) {
-  SelectoErrorHandler.safeCall(selecto, 'clickTarget', e.inputEvent, e.inputTarget);
+  selecto.value.clickTarget(e.inputEvent, e.inputTarget);
 }
 
 // Starts dragging an element
 function onDragStart(e) {
   addActionToHistory("Move Object");
-
-  // Set cursor to indicate dragging is active
-  if (!locked.value) {
-    document.body.style.cursor = 'grabbing';
-    e.target.style.cursor = 'grabbing';
-  }
 }
 
 // Handles dragging of an element
@@ -1006,17 +1254,12 @@ function onDrag(e) {
   const item = appState.value.items.find(
     (item) => `moveable-item-${item.id}` === e.target.id
   );
+  // item.translate = e.beforeTranslate;
   e.target.style.transform = e.transform;
 }
 
 // Ends the dragging of an element
 function onDragEnd(e) {
-  // Reset cursor after dragging
-  document.body.style.cursor = 'auto';
-  if (e.target) {
-    e.target.style.cursor = '';
-  }
-
   if (!e.lastEvent) {
     undoHistory.value.shift(); // Remove the last action if dragging was not completed
   } else {
@@ -1025,6 +1268,7 @@ function onDragEnd(e) {
     );
     item.translate = e.lastEvent.beforeTranslate;
 
+    // LogUtil.Debug('= IdxPage onDragEnd:', e, item.translate);
     save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
@@ -1033,22 +1277,11 @@ function onDragEnd(e) {
 // Starts dragging a group of elements
 function onDragGroupStart(e) {
   addActionToHistory("Move Group");
-
-  // Set cursor to indicate group dragging is active
-  if (!locked.value) {
-    document.body.style.cursor = 'grabbing';
-  }
-
   e.events.forEach((ev, i) => {
     const itemIndex = appState.value.items.findIndex(
       (item) => `moveable-item-${item.id}` === ev.target.id
     );
     ev.set(appState.value.items[itemIndex].translate);
-
-    // Set cursor on each target
-    if (!locked.value && ev.target) {
-      ev.target.style.cursor = 'grabbing';
-    }
   });
 }
 
@@ -1064,16 +1297,6 @@ function onDragGroup(e) {
 
 // Ends the dragging of a group of elements
 function onDragGroupEnd(e) {
-  // Reset cursor after group dragging
-  document.body.style.cursor = 'auto';
-
-  // Reset cursor on all group targets
-  e.events?.forEach((ev) => {
-    if (ev.target) {
-      ev.target.style.cursor = '';
-    }
-  });
-
   if (!e.lastEvent) {
     undoHistory.value.shift(); // Remove the last action if dragging was not completed
   } else {
@@ -1083,6 +1306,7 @@ function onDragGroupEnd(e) {
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
+  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
   const target = e.inputEvent.target;
   if (
     moveable.value.isMoveableElement(target) ||
@@ -1096,6 +1320,7 @@ function onSelectoDragStart(e) {
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
+  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
   if (e?.selected && !e?.inputEvent?.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
@@ -1161,7 +1386,7 @@ function selectGroup(id) {
 
   appState.value.selectedTargets =
     appState.value.selectedTargets.concat(targets);
-  SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', appState.value.selectedTargets);
+  selecto.value.setSelectedTargets(appState.value.selectedTargets);
 }
 
 // Starts resizing an element
@@ -1172,12 +1397,13 @@ function onResizeStart(e) {
   );
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
-  // Change cursor to indicate resize operation
-  document.body.style.cursor = "nw-resize";
 }
 
 // Handles resizing of an element
 function onResize(e) {
+  // appState.value.items[itemIndex].width = e.width
+  // appState.value.items[itemIndex].height = e.height
+  // appState.value.items[itemIndex].translate = e.drag.beforeTranslate;
   const item = appState.value.items.find(
     (item) => `moveable-item-${item.id}` === e.target.id
   );
@@ -1191,8 +1417,6 @@ function onResizeEnd(e) {
 
   // Fix bug for when double clicking on the selected object, also clicked the resize button accidentally
   if (e.lastEvent === null || e.lastEvent === undefined) {
-    // Reset cursor even if early return
-    document.body.style.cursor = "auto";
     return;
   }
 
@@ -1207,16 +1431,11 @@ function onResizeEnd(e) {
 
   // Refresh objects after resizing
   refreshObjects();
-
-  // Reset cursor after resize operation
-  document.body.style.cursor = "auto";
 }
 
 // Starts rotating an element
 function onRotateStart(e) {
   addActionToHistory("Rotate object");
-  // Change cursor to indicate rotation operation
-  document.body.style.cursor = "grab";
 }
 
 // Handles rotating of an element
@@ -1231,22 +1450,16 @@ function onRotate(e) {
 // Refreshes objects on rotate end
 function onRotateEnd(e) {
   refreshObjects();
-  // Reset cursor after rotation operation
-  document.body.style.cursor = "auto";
 }
 
 // refreshes objects on rotate group end
 function onRotateGroupEnd(e) {
   refreshObjects();
-  // Reset cursor after group rotation operation
-  document.body.style.cursor = "auto";
 }
 
 // Maintaining aspect ratio on resize group start
 function onResizeGroupStart(e) {
   keepRatio.value = true;
-  // Change cursor to indicate group resize operation
-  document.body.style.cursor = "nw-resize";
 }
 
 // Handles resizing of a group of elements
@@ -1271,8 +1484,6 @@ function onResizeGroupEnd(e) {
   });
   refreshObjects();
   keepRatio.value = false;
-  // Reset cursor after group resize operation
-  document.body.style.cursor = "auto";
 }
 
 // Starts rotating a group of elements and adds the action to the history
@@ -1285,8 +1496,6 @@ function onRotateGroupStart(e) {
     ev.set(appState.value.items[itemIndex].rotate);
     ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
   });
-  // Change cursor to indicate group rotation operation
-  document.body.style.cursor = "grab";
 }
 
 // Handles rotating of a group of elements and updates their state
@@ -1300,37 +1509,40 @@ function onRotateGroup(e) {
   });
 }
 
-// Adds a new object to the app state and updates guidelines
-function addObject(item, group = undefined, addToHistory = true) {
-  if (addToHistory) {
-    addActionToHistory(`Add ${item?.type ?? ''}`);
-  }
-  appState.value.itemsCount++;
-  item.id = appState.value.itemsCount;
-  item.group = group;
-  if (!item.settings.titleColor) {
-    item.settings.titleColor = "inherit";
-  }
-  if (!item.settings.bgColor) {
-    item.settings.bgColor = "inherit";
-  }
-  if (!item.settings.textColor) {
-    item.settings.textColor = "inherit";
-  }
-  if (!item.settings.fontSize) {
-    item.settings.fontSize = 16;
-  }
-  appState.value.items.push(item);
-  const lines = document.querySelectorAll(".moveable-item");
-  appState.value.elementGuidelines = [];
-  Array.from(lines).forEach(function (el) {
-    appState.value.elementGuidelines.push(el);
-  });
+// // Adds a new object to the app state and updates guidelines
+// function addObject(item, group = undefined, addToHistory = true) {
+//   if (addToHistory) {
+//     addActionToHistory(`Add ${item.type}`);
+//   }
+//   appState.value.itemsCount++;
+//   item.id = appState.value.itemsCount;
+//   item.group = group;
+//   if (!item.settings.titleColor) {
+//     item.settings.titleColor = "inherit";
+//   }
+//   if (!item.settings.bgColor) {
+//     item.settings.bgColor = "inherit";
+//   }
+//   if (!item.settings.textColor) {
+//     item.settings.textColor = "inherit";
+//   }
+//   if (!item.settings.fontSize) {
+//     item.settings.fontSize = 16;
+//   }
+//   appState.value.items.push(item);
+//   const lines = document.querySelectorAll(".moveable-item");
+//   appState.value.elementGuidelines = [];
+//   Array.from(lines).forEach(function (el) {
+//     appState.value.elementGuidelines.push(el);
+//   });
+//   return item;
+// }
 
-  // Refresh element count in right-side panel after adding item
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
-  return item;
-}
+// const viewportMargins = {
+//   // top: 36,93
+//   top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
+//   left: 106 + 20 + 2,
+// };
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
@@ -1346,7 +1558,7 @@ function addLibItem(items, size, pos) {
       elements.push(el);
     });
     appState.value.selectedTargets = elements;
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
+    selecto.value.setSelectedTargets(elements);
     appState.value.activeItemIndex = null;
     const scalPercentage = 1 / appState.value.viewportTransform.scale;
     setTimeout(() => {
@@ -1373,126 +1585,151 @@ function addLibItem(items, size, pos) {
       }, 1);
     }, 10);
   }, 10);
+  /* setTimeout(() => {
+    moveable.value.request(
+      "resizable",
+      {
+        offsetWidth: e.rect.width * scalPercentage,
+        offsetHeight: e.rect.height * scalPercentage,
+      },
+      true
+    );
+    refreshMoveable();
+  }, 60); */
 }
 
 // Ends a selecto drag event and handles object drawing based on tool type
-function onSelectoDragEnd(e) {
-  const size = { width: e.rect.width, height: e.rect.height };
-  const pos = {
-    clientX: e.clientX,
-    clientY: e.clientY,
-    top: e.rect.top,
-    left: e.rect.left,
-  };
-  if (
-    (selectedTool.value.name === "Pointer" ||
-      size.width < 20 ||
-      size.height < 20) &&
-    !continuesObjectTypes.includes(selectedTool.value.name)
-  ) {
-    isDrawing.value = false;
-    return;
-  }
-  if (
-    continuesObjectTypes.includes(selectedTool.value.name) &&
-    size.height < 20
-  ) {
-    size.height = selectedTool.value.height;
-  }
+// function onSelectoDragEnd(e) {
+//   // T3000Util.HvacLog('2 onSelectoDragEnd', e);
 
-  const item = drawObject(size, pos);
-  if (item && continuesObjectTypes.includes(item?.type ?? '')) {
-    setTimeout(() => {
-      isDrawing.value = true;
-      appState.value.selectedTargets = [];
-      appState.value.items[appState.value.activeItemIndex].rotate = 0;
-      startTransform.value = cloneDeep(item.translate);
-    }, 100);
-  }
-}
+//   const size = { width: e.rect.width, height: e.rect.height };
+//   const pos = {
+//     clientX: e.clientX,
+//     clientY: e.clientY,
+//     top: e.rect.top,
+//     left: e.rect.left,
+//   };
+//   if (
+//     (selectedTool.value.name === "Pointer" ||
+//       size.width < 20 ||
+//       size.height < 20) &&
+//     !continuesObjectTypes.includes(selectedTool.value.name)
+//   ) {
+//     isDrawing.value = false;
+//     return;
+//   }
+//   if (
+//     continuesObjectTypes.includes(selectedTool.value.name) &&
+//     size.height < 20
+//   ) {
+//     size.height = selectedTool.value.height;
+//   }
 
-// Draws an object based on the provided size, position, and tool settings
-function drawObject(size, pos, tool) {
-  tool = tool || selectedTool.value;
+//   const item = drawObject(size, pos);
+//   if (item && continuesObjectTypes.includes(item.type)) {
+//     setTimeout(() => {
+//       isDrawing.value = true;
+//       appState.value.selectedTargets = [];
+//       appState.value.items[appState.value.activeItemIndex].rotate = 0;
+//       startTransform.value = cloneDeep(item.translate);
+//     }, 100);
+//   }
+// }
 
-  if (tool.type === "libItem") {
-    addLibItem(tool.items, size, pos);
-    return;
-  }
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+// // Draws an object based on the provided size, position, and tool settings
+// function drawObject(size, pos, tool) {
+//   tool = tool || selectedTool.value;
 
-  const toolSettings =
-    cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
-  const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
-    acc[key] = toolSettings[key].value;
-    return acc;
-  }, {});
+//   if (tool.type === "libItem") {
+//     addLibItem(tool.items, size, pos);
+//     return;
+//   }
+//   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
-  if (tool.name === "G_Rectangle") {
-    size.width = 100;
-  }
+//   const toolSettings =
+//     cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
+//   const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+//     acc[key] = toolSettings[key].value;
+//     return acc;
+//   }, {});
 
-  const tempItem = {
-    title: null,
-    active: false,
-    type: tool.name,
-    translate: [
-      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-      scalPercentage,
-      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage,
-    ],
-    width: size.width * scalPercentage,
-    height: size.height * scalPercentage,
-    rotate: 0,
-    scaleX: 1,
-    scaleY: 1,
-    settings: objectSettings,
-    zindex: 1,
-    t3Entry: null,
-    showDimensions: true
-  };
+//   if (tool.name === "G_Rectangle") {
+//     size.width = 100;
+//   }
 
-  if (tool.type === "Image") {
-    tempItem.image = tool;
-    tempItem.type = tool.id;
-  }
+//   const tempItem = {
+//     title: null,
+//     active: false,
+//     type: tool.name,
+//     translate: [
+//       (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+//       scalPercentage,
+//       (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+//       scalPercentage,
+//     ],
+//     width: size.width * scalPercentage,
+//     height: size.height * scalPercentage,
+//     rotate: 0,
+//     scaleX: 1,
+//     scaleY: 1,
+//     settings: objectSettings,
+//     zindex: 1,
+//     t3Entry: null,
+//     showDimensions: true
+//   };
 
-  // copy the first category from tool.cat to item.cat
-  if (tool.cat) {
-    const [first] = tool.cat;
-    tempItem.cat = first;
-  }
+//   if (tool.type === "Image") {
+//     tempItem.image = tool;
+//     tempItem.type = tool.id;
+//   }
 
-  const item = addObject(tempItem);
+//   // copy the first category from tool.cat to item.cat
+//   if (tool.cat) {
+//     const [first] = tool.cat;
+//     tempItem.cat = first;
+//   }
 
-  if (["Value", "Icon", "Switch"].includes(tool.name)) {
-    linkT3EntryDialog.value.active = true;
-  }
+//   const item = addObject(tempItem);
 
-  setTimeout(() => {
-    if (locked.value) return;
-    appState.value.activeItemIndex = appState.value.items.findIndex(
-      (i) => i.id === item.id
-    );
-  }, 10);
-  setTimeout(() => {
-    if (locked.value) return;
-    const target = document.querySelector(`#moveable-item-${item.id}`);
-    appState.value.selectedTargets = [target];
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', [target]);
-  }, 100);
-  return item;
-}
+//   if (["Value", "Icon", "Switch"].includes(tool.name)) {
+//     linkT3EntryDialog.value.active = true;
+//   }
+
+//   setTimeout(() => {
+//     if (locked.value) return;
+//     appState.value.activeItemIndex = appState.value.items.findIndex(
+//       (i) => i.id === item.id
+//     );
+//   }, 10);
+//   setTimeout(() => {
+//     if (locked.value) return;
+//     const target = document.querySelector(`#moveable-item-${item.id}`);
+//     appState.value.selectedTargets = [target];
+//     selecto.value.setSelectedTargets([target]);
+//   }, 100);
+//   return item;
+// }
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
+  LogUtil.Debug("= IdxPage selectTool", tool, type);
   selectedTool.value = tool;
   if (typeof tool === "string") {
     selectedTool.value = tools.find((item) => item.name === tool);
   }
   selectedTool.value.type = type;
+
+  T3000.Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
 }
+
+// // Refresh the moveable object's rectangle after a short delay
+// function refreshMoveable() {
+//   // const targetsCache = cloneDeep(appState.value.selectedTargets);
+//   // appState.value.selectedTargets = [];
+//   setTimeout(() => {
+//     moveable.value.updateRect();
+//   }, 1);
+// }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
@@ -1548,9 +1785,6 @@ function removeObject(item) {
   appState.value.items.splice(index, 1);
 
   appState.value.selectedTargets = [];
-
-  // Refresh element count in right-side panel after removing item
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // Duplicate an item and select the new copy
@@ -1589,11 +1823,12 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-  Hvac.IdxPage.T3UpdateEntryField(key, obj);
+  Hvac.IdxPage2.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value
 function DisplayFieldValueChanged(value) {
+  LogUtil.Debug("= IdxPage DX DisplayFieldValueChanged", value);
   save(false, true);
 }
 
@@ -1603,43 +1838,8 @@ function selectoDragCondition(e) {
 }
 
 // Save the linked T3 entry for an object and update its icon if necessary
-function linkT3EntrySave() {
-  addActionToHistory("Link object to T3000 entry");
-
-  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
-    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
-      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
-    } else {
-      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
-    }
-  }
-
-  // set the default to be divided by 1000
-  const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
-  if (checkHasValue) {
-    linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
-  }
-
-  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialog.value.data));
-
-  // Change the icon based on the linked entry type
-  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
-    let icon = "fa-solid fa-camera-retro";
-    if (linkT3EntryDialog.value.data.type === "GRP") {
-      icon = "fa-solid fa-camera-retro";
-    } else if (linkT3EntryDialog.value.data.type === "SCHEDULE") {
-      icon = "schedule";
-    } else if (linkT3EntryDialog.value.data.type === "PROGRAM") {
-      icon = "fa-solid fa-laptop-code";
-    } else if (linkT3EntryDialog.value.data.type === "HOLIDAY") {
-      icon = "calendar_month";
-    }
-    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
-  }
-
-  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
-  linkT3EntryDialog.value.data = null;
-  linkT3EntryDialog.value.active = false;
+function linkT3EntrySaveV2() {
+  QuasarUtil.LinkT3EntrySaveV2();
 }
 
 // Filter function for selecting panels in the UI
@@ -1687,6 +1887,8 @@ function insertT3EntrySelect(value) {
   insertT3EntryOnSave();
 
   insertCount.value++;
+
+  // LogUtil.Debug('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
 }
 
 function insertT3EntryOnSave() {
@@ -1723,17 +1925,22 @@ function insertT3EntryOnSave() {
 }
 
 function insertT3DefaultLoadData() {
+  // selectPanelOptions.value = T3000_Data.value.panelsData;
+  // selectPanelFilterFn('', (fn) => {
+  //   selectPanelOptions.value = T3000_Data.value.panelsData;
+  // });
+  // LogUtil.Debug('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false, saveToT3 = false) {
-  Hvac.IdxPage.save(notify, saveToT3);
+  LogUtil.Debug("= IdxPage save", notify, saveToT3);
+  Hvac.IdxPage2.save(notify, saveToT3);
 }
 
 function refreshMoveable() {
   Hvac.IdxPage.refreshMoveable();
 }
-
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject() {
@@ -1874,14 +2081,12 @@ keycon.keydown(["ctrl", "b"], (e) => {
 keycon.keydown(["insert"], (e) => {
   // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
   T3000.Hvac.KiOpt.InsertT3EntryDialog();
-  // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
+  // LogUtil.Debug('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
 // Open the dialog to link a T3 entry
-function linkT3EntryDialogAction() {
-  linkT3EntryDialog.value.active = true;
-  if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
-  linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
+function linkT3EntryDialogActionV2() {
+  QuasarUtil.LinkT3EntryDialogActionV2();
 }
 
 // Delete selected objects from the app state
@@ -1898,9 +2103,6 @@ function deleteSelected() {
     });
     appState.value.selectedTargets = [];
     appState.value.activeItemIndex = null;
-
-    // Refresh element count in right-side panel after deleting selected items
-    Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
   }
 }
 
@@ -2020,7 +2222,7 @@ function drawWeldObjectCanvas(selectedItems) {
     previous = item.zindex;
   });
 
-  const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
+  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
 
   if (isAllDuct) {
     // Get the new pos for all ducts
@@ -2048,6 +2250,9 @@ function drawWeldObjectCanvas(selectedItems) {
     translate: [newMinX, minY],
     width: newWidth,
     height: newHeight,
+    // translate: [transX, minY],
+    // width: width * scalPercentage,
+    // height: height * scalPercentage,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
@@ -2095,6 +2300,10 @@ function checkIsOverlap(selectedItems) {
   selectedItems.map((item) => {
     const { width, height, translate, rotate } = item;
 
+    // const element = document.querySelector(`#moveable-item-${item.id}`);
+    // const elRect = element.getBoundingClientRect();
+    // const elInfo = getElementInfo(element);
+
     const startEl = document.querySelector(
       `#moveable-item-${item.id} .duct-start`
     );
@@ -2123,7 +2332,7 @@ function weldSelected() {
     )
   );
 
-  if (selectedItems1.some((item) => (item?.type ?? "") === "Weld")) {
+  if (selectedItems1.some((item) => item.type === "Weld")) {
     $q.notify({
       type: "warning",
       message: "Currently not supported!",
@@ -2141,7 +2350,8 @@ function weldSelected() {
 
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
-  const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
+  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+  // LogUtil.Debug('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
   if (isAllGeneral || isAllDuct) {
     drawWeldObjectCanvas(selectedItems);
@@ -2156,9 +2366,6 @@ function weldSelected() {
     }
   });
 
-  // Refresh element count in right-side panel after welding (removing) items
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
-
   Hvac.IdxPage.refreshMoveable();
 }
 
@@ -2172,9 +2379,6 @@ function undoAction() {
   appState.value = cloneDeep(undoHistory.value[0].state);
   undoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
-
-  // Refresh element count in right-side panel after undo
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // Redo the last undone action
@@ -2187,9 +2391,6 @@ function redoAction() {
   appState.value = cloneDeep(redoHistory.value[0].state);
   redoHistory.value.shift();
   Hvac.IdxPage.refreshMoveable();
-
-  // Refresh element count in right-side panel after redo
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -2211,8 +2412,8 @@ function readFile(file) {
 async function saveLibImage(file) {
   if (user.value) {
 
-    console.log('= Idx saveLibImage file', file);
-    console.log('= Idx saveLibImage user', user.value);
+    LogUtil.Debug('= Idx saveLibImage file', file);
+    LogUtil.Debug('= Idx saveLibImage user', user.value);
 
     liveApi
       .post("hvacTools", {
@@ -2254,6 +2455,8 @@ async function saveLibImage(file) {
   else {
     Hvac.WsClient.SaveImage(message);
   }
+
+  // window.chrome?.webview?.postMessage(message);
 }
 
 const gaugeSettingsDialog = ref({
@@ -2294,6 +2497,13 @@ function exportToJsonAction() {
   a.download = "HVAC_Drawer_Project.json";
   a.click();
 }
+
+// // Get all items linked to a T3 entry
+// function getLinkedEntries() {
+//   const items = appState.value.items;
+//   if (items.length === 0) return [];
+//   return toRaw(appState.value).items.filter((i) => i.t3Entry);
+// }
 
 // Handle the addition of an imported JSON file
 async function importJsonFileAdded(file) {
@@ -2342,9 +2552,6 @@ function executeImportFromJson() {
           IdxUtils.refreshMoveableGuides();
         }, 100);
         Hvac.IdxPage.refreshMoveable();
-
-        // Refresh element count in right-side panel after import
-        Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
       })
       .onCancel(() => {
         importJsonDialog.value.active = false;
@@ -2360,10 +2567,25 @@ function executeImportFromJson() {
     IdxUtils.refreshMoveableGuides();
   }, 100);
   Hvac.IdxPage.refreshMoveable();
-
-  // Refresh element count in right-side panel after import
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
+
+// // Computed property for zoom control
+// const zoom = computed({
+//   // Getter for zoom value
+//   get() {
+//     return parseInt(appState.value.viewportTransform.scale * 100);
+//   },
+//   // Setter for zoom value
+//   set(newValue) {
+//     if (!newValue) return;
+//     appState.value.viewportTransform.scale = newValue / 100;
+//     panzoomInstance.smoothZoomAbs(
+//       appState.value.viewportTransform.x,
+//       appState.value.viewportTransform.y,
+//       newValue / 100
+//     );
+//   },
+// });
 
 // Duplicate the selected items in the app state
 function duplicateSelected() {
@@ -2396,7 +2618,7 @@ function duplicateSelected() {
   });
   setTimeout(() => {
     appState.value.selectedTargets = elements;
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
+    selecto.value.setSelectedTargets(elements);
     appState.value.activeItemIndex = null;
   }, 20);
 }
@@ -2514,7 +2736,7 @@ function handleMenuAction(action, val) {
       pasteFromClipboard();
       break;
     case "link":
-      linkT3EntryDialogAction();
+      linkT3EntryDialogActionV2();
       break;
     case "convertObjectType":
       convertObjectType(item, val);
@@ -2564,139 +2786,15 @@ function reloadPanelsData() {
 //         linkedEntry.value = newLkValue;
 //         item.t3Entry = linkedEntry;
 
-//         console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
+//         LogUtil.Debug('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
 
 //         refreshObjectStatus(item);
 //       }
 //     });
 // }
 
-
-// Table data based on selected schedule
-const scheduleTableData = computed(() => {
-  if (!selectedSchedule.value) return [];
-  return [
-    {
-      key: '1',
-      property: 'ID',
-      value: selectedSchedule.value.id
-    },
-    {
-      key: '2',
-      property: 'Description',
-      value: selectedSchedule.value.description
-    },
-    {
-      key: '3',
-      property: 'Panel',
-      value: selectedSchedule.value.panel
-    }
-  ];
-});
-
-// Table columns configuration
-const scheduleColumns = [
-  {
-    title: 'Property',
-    dataIndex: 'property',
-    key: 'property',
-    width: '30%',
-  },
-  {
-    title: 'Value',
-    dataIndex: 'value',
-    key: 'value',
-    width: '70%',
-  }
-];
-
-// Make sure to add these to the returned object from setup()
-
-// Handle double-click events on objects
-function objectDoubleClicked(item) {
-  LogUtil.Debug('= idx: objectDoubleClicked /', item.t3Entry);
-
-  // Check if the item has a t3Entry and it's of type SCHEDULE
-  if (item.t3Entry?.type === "SCH") {
-    /*
-    // Show a popup for schedule items
-    $q.dialog({
-      title: 'Schedule Details',
-      message: `You double-clicked on Schedule: ${item.t3Entry.description || item.t3Entry.label || item.title || 'Unknown'}`,
-      html: true,
-      ok: 'Close'
-    });
-    */
-
-    /*
-    // For schedule items, show an Ant Design modal
-    if (item.t3Entry?.type === "SCHEDULE") {
-      // Set schedule details in refs for the modal
-      scheduleModalVisible.value = true;
-      selectedSchedule.value = {
-        id: item.t3Entry.id,
-        description: item.t3Entry.description || item.t3Entry.label || item.title || 'Unknown',
-        panel: item.t3Entry.pid
-      };
-    }
-    */
-
-    scheduleItemData.value = item;
-    //scheduleModalVisible.value = true;
-    scheduleModalNVisible.value = true;
-  }
-
-  if (item.t3Entry?.type === "SCHEDULE") {
-    scheduleItemData.value = item;
-    scheduleModalNVisible.value = true;
-  }
-
-  if (item.t3Entry?.type === "HOL") {
-
-    scheduleItemData.value = item;
-    annualScheduleData.value = [];
-    annualScheduleVisible.value = true;
-
-    LogUtil.Debug('= idx: objectDoubleClicked HOLIDAY', annualScheduleData.value);
-  }
-
-  //TrendLog
-  if (item.t3Entry?.type === "MON") {
-    scheduleItemData.value = item;
-    trendLogData.value = [];
-    trendLogVisible.value = true;
-
-    LogUtil.Debug('= idx: objectDoubleClicked MON Trend Log',scheduleItemData.value, trendLogData.value, trendLogVisible.value);
-  }
-
-  T3UIUtil.SetNavVisiblity(false);
-
-  // Do nothing for other types
-}
-
-/**
- * Creates a formatted label for an entry with optional prefix
- * @param {Object} option - The entry option object
- * @returns {String} - Formatted label string
- */
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-  //LogUtil.Debug("= Idx: entryLabel option:", option);
-
-  let prefix = "";
-
-  // Add ID prefix if ID differs from description or label
-  if ((option.description && option.id !== option.description) ||
-    (!option.description && option.id !== option.label)) {
-    prefix = option.id + " - ";
-  }
-
-  // If no description and no label, use ID as prefix
-  if (!option.description && !option.label) {
-    prefix = option.id;
-  }
-
-  // Return prefix followed by description or label (if available)
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
@@ -2711,15 +2809,6 @@ function lockToggle() {
   appState.value.activeItemIndex = null;
   appState.value.selectedTargets = [];
   locked.value = !locked.value;
-  appState.value.locked = locked.value;
-
-  // Reset any active drag cursors when locking/unlocking
-  document.body.style.cursor = 'auto';
-  const moveableItems = document.querySelectorAll('.moveable-item');
-  moveableItems.forEach(item => {
-    item.style.cursor = '';
-  });
-
   if (locked.value) {
     selectTool("Pointer");
   }
@@ -2728,8 +2817,32 @@ function lockToggle() {
   IdxPage.restDocumentAreaPosition();
 }
 
+// function restDocumentAreaPosition(pzXY) {
+//   const div = document.querySelector('.full-area');
+//   documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
+//   documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
+//   documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
+//   documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
+//   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+//   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+//   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+//   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
+//   documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
+
+//   if (isBuiltInEdge.value) {
+//     documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
+//   }
+//   else {
+//     documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
+//   }
+// }
+
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
+
+  LogUtil.Debug("= P.IDX2 objectClicked");
+  setTheSettingContextMenuVisible();
+
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
 
@@ -2738,9 +2851,6 @@ function objectClicked(item) {
       panelId: item.t3Entry.pid,
       entryIndex: item.t3Entry.index,
     };
-
-    // Use this value for saving the swtiched grp related data
-    DataOpt.SaveGrpSwitch(message);
 
     if (isBuiltInEdge.value) {
       Hvac.WebClient.LoadGraphicEntry(message);
@@ -2789,12 +2899,11 @@ function objectClicked(item) {
     item.t3Entry.control = item.t3Entry.control === 1 ? 0 : 1;
     T3UpdateEntryField("control", item);
   }
-
-  setTheSettingContextMenuVisible();
 }
 
 // Updates an entry value
 function changeEntryValue(refItem, newVal, control) {
+  // LogUtil.Debug('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
   const key = control ? "control" : "value";
   const item = appState.value.items.find((i) => i.id === refItem.id);
   item.t3Entry[key] = newVal;
@@ -2803,7 +2912,9 @@ function changeEntryValue(refItem, newVal, control) {
 
 // Toggles the auto/manual mode of an item
 function autoManualToggle(item) {
-  if (!locked.value) return;
+  LogUtil.Debug('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
+
+  // if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
   T3UpdateEntryField("auto_manual", item);
 }
@@ -2822,10 +2933,17 @@ const toggleNumberValue = ref(0);
 
 
 function ObjectRightClicked(item, ev) {
-  // Only show context menu if object is selected AND linked to an entity
+  // ev.preventDefault();
+
+  // LogUtil.Debug('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  // LogUtil.Debug('ObjectRightClicked->ev,item', item);
+
   if (item.t3Entry !== null) {
 
     showSettingMenu.value = true;
+
+    // LogUtil.Debug('ObjectRightClicked->item.t3Entry', item.t3Entry);
+
     // Load the default auto_manual value
     if (item.t3Entry.auto_manual === 1) {
       toggleModeValue.value = "Manual";
@@ -2870,6 +2988,12 @@ function ObjectRightClicked(item, ev) {
 }
 
 function toggleClicked(item, type, ev) {
+  // ev.preventDefault();
+  // LogUtil.Debug('toggleClicked->item,type', item, type, ev);
+  // LogUtil.Debug('toggleClicked->toggleModeValue,toggleValueValue',
+  //   toggleModeValue.value, toggleValueValue.value);
+  // LogUtil.Debug('toggleClicked->before item', item.t3Entry)
+
   if (type === "mode") {
 
     // Disable the value field if the mode is set to Auto
@@ -2898,7 +3022,7 @@ function toggleClicked(item, type, ev) {
 
   save(false, true);
 
-  // console.log('toggleClicked->after item', item.t3Entry)
+  // LogUtil.Debug('toggleClicked->after item', item.t3Entry)
 }
 
 function setTheSettingContextMenuVisible() {
@@ -2945,8 +3069,6 @@ function navGoBack() {
       panelId: item.pid,
       entryIndex: item.index,
     };
-
-    DataOpt.RemoveLatestGrpSwitch();
 
     if (isBuiltInEdge.value) {
       Hvac.WebClient.LoadGraphicEntry(message);
@@ -3035,6 +3157,62 @@ async function addToLibrary() {
   IdxUtils.saveLib();
 }
 
+// add new library to t3
+async function addToNewLibrary() {
+
+  if (appState.value.selectedTargets.length < 1 || locked.value) return;
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+  let isOnline = false;
+  const libItems = cloneDeep(selectedItems);
+  library.value.objLibItemsCount++;
+  let createdItem = null;
+  if (user.value) {
+    isOnline = true;
+    liveApi
+      .post("hvacObjectLibs", {
+        json: {
+          label: "Item " + library.value.objLibItemsCount,
+          items: libItems.map((i) => {
+            delete i.id;
+            return i;
+          }),
+        },
+      })
+      .then(async (res) => {
+        createdItem = await res.json();
+        $q.notify({
+          type: "positive",
+          message: "Successfully saved to library",
+        });
+
+        library.value.objLib.push({
+          id: createdItem?.id || library.value.objLibItemsCount,
+          label: "Item " + library.value.objLibItemsCount,
+          items: createdItem.items,
+          online: isOnline,
+        });
+        IdxUtils.saveNewLib();
+      })
+      .catch((err) => {
+        $q.notify({
+          type: "negative",
+          message: err.message,
+        });
+      });
+  }
+  library.value.objLib.push({
+    id: createdItem?.id || library.value.objLibItemsCount,
+    label: "Item " + library.value.objLibItemsCount,
+    items: libItems,
+    online: isOnline,
+  });
+  IdxUtils.saveNewLib();
+}
+
 // Bring selected objects to the front by increasing their z-index
 function bringSelectedToFront() {
   addActionToHistory("Bring selected objects to front");
@@ -3108,7 +3286,7 @@ function pasteFromClipboard() {
       elements.push(el);
     });
     appState.value.selectedTargets = elements;
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
+    selecto.value.setSelectedTargets(elements);
     appState.value.activeItemIndex = null;
   }, 10);
 }
@@ -3290,23 +3468,25 @@ function toggleRulersGrid(val) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
-  drawObject(
-    //{ width: 60, height: 60 },
-    size,
-    {
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-      top: ev.clientY,
-      left: ev.clientX,
-    },
-    tool
-  );
+  // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+  // drawObject(
+  //   //{ width: 60, height: 60 },
+  //   size,
+  //   {
+  //     clientX: ev.clientX,
+  //     clientY: ev.clientY,
+  //     top: ev.clientY,
+  //     left: ev.clientX,
+  //   },
+  //   tool
+  // );
+
+  LogUtil.Debug("toolDropped->tool", ev, tool);
 }
 
 const updateWeldModel = (weldModel, itemList) => {
   appState.value.items.map((item) => {
-    if ((item?.type ?? "") === "Weld" && item.id === weldModel.id) {
+    if (item.type === "Weld" && item.id === weldModel.id) {
       item.settings.weldItems = itemList;
     }
   });
@@ -3315,7 +3495,7 @@ const updateWeldModel = (weldModel, itemList) => {
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
   appState.value.items.map((item) => {
     if (
-      ((item?.type ?? "") === "Weld_General" || (item?.type ?? "") === "Weld_Duct") &&
+      (item.type === "Weld_General" || item.type === "Weld_Duct") &&
       item.id === weldModel.id
     ) {
       // Update the weld items's new width, height, translate
@@ -3326,8 +3506,8 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
         const pathItem = pathItemList?.find(
           (itx) => itx?.item?.id === weldItem?.id
         );
-        // console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
-        // console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
+        // LogUtil.Debug('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+        // LogUtil.Debug('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
         if (pathItem) {
           weldItem.width = pathItem.newPos.width;
           weldItem.height = pathItem.newPos.height;
@@ -3340,14 +3520,14 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 };
 
 function viewportLeftClick(ev) {
-  // console.log('IndexPage.vue->viewportLeftClick->ev', ev);
+  // LogUtil.Debug('IndexPage.vue->viewportLeftClick->ev', ev);
   ev.preventDefault();
 
   const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
     && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
 
   if (check) {
-    // console.log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
+    // LogUtil.Debug('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
 
     // Manually create a shape at the mouse current position
 
@@ -3401,7 +3581,7 @@ function viewportRightClick(ev) {
 //       }
 //     })
 //     .catch((err) => {
-//       console.log(err);
+//       LogUtil.Debug(err);
 //     });
 
 //   liveApi
@@ -3420,7 +3600,7 @@ function viewportRightClick(ev) {
 //       }
 //     })
 //     .catch((err) => {
-//       console.log(err);
+//       LogUtil.Debug(err);
 //     });
 //   liveApi
 //     .get("me")
@@ -3499,168 +3679,5 @@ function addOnlineLibImage(oItem) {
 
 .viewport:hover .cursor-icon {
   display: block;
-}
-
-/* Cursor styles for moveable items - only show grab cursor when selected */
-.moveable-item-wrapper:not(.locked) .moveable-item {
-  cursor: default;
-  /* Default cursor for unselected items */
-}
-
-/* Show grab cursor only for selected items */
-.moveable-item-wrapper:not(.locked).item-selected .moveable-item {
-  cursor: grab;
-}
-
-.moveable-item-wrapper:not(.locked).item-selected .moveable-item:active {
-  cursor: grabbing;
-}
-
-/* When locked, always show default cursor */
-.locked .moveable-item {
-  cursor: default;
-}
-</style>
-
-<style scoped>
-.full-area {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.main-area {
-  display: flex;
-  flex: 1;
-}
-
-.side-bar {
-  background-color: #f4f4f4;
-  width: 106px;
-}
-
-.work-area {
-
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  width: auto;
-  /* background-color: aquamarine; */
-  /*
-   padding-left: v-bind("documentAreaPosition.workAreaPadding");
-   position: fixed;
-   margin-top: 37px;
-  */
-  flex: 1;
-  margin-top: 1px;
-  position: relative;
-}
-
-.document-area {
-  position: relative;
-  background-color: #ebeced;
-  height: 100%;
-  /* background: red; */
-
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.c-ruler {
-  width: 20px;
-  height: 20px;
-  background-color: #ebeced;
-  /* background-color: blue; */
-  position: absolute;
-  overflow: hidden;
-  left: 1px;
-  top: 1px;
-}
-
-.h-ruler {
-  position: absolute;
-  overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #416990; */
-  top: 1px;
-  left: 22px;
-  /* padding-left: 22px; */
-  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
-  height: 20px;
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-
-}
-
-.v-ruler {
-  position: absolute;
-  overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #0f77de; */
-  width: 20px;
-  left: 1px;
-  top: 22px;
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.hv-grid {
-  position: absolute;
-  background-color: #ebeced;
-  /* background-color: #b25b5b; */
-  inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px);
-  height: calc(100vh - 97px); */
-
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  overflow: hidden;
-}
-
-.viewport-wrapper {
-  position: relative;
-  background-color: transparent;
-  scrollbar-width: thin;
-  inset: 22px 0px 0px 22px;
-  /* width: calc(100vw v-bind("documentAreaPosition.wpwWOffset")); */
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  /* overflow: hidden scroll; */
-  /* overflow: scroll; */
-  /* background-color: aquamarine; */
-  overflow: hidden;
-}
-
-.viewport {
-  /* width: 100%;
-  height: calc(100vh - 36px);
-  overflow: scroll;
-  position: relative;
-  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: rgb(7, 115, 115); */
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 68px); */
-  /* width: v-bind("documentAreaPosition.wiewPortWH.width"); */
-  /* height: v-bind("documentAreaPosition.wiewPortWH.height"); */
-
-  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-
-
-  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: #e5e7eb; */
-
-  /* background-color: chartreuse; */
-}
-
-.default-svg {
-  width: 100%;
-  height: 100%;
-  /* background-color: #0d09ec; */
 }
 </style>

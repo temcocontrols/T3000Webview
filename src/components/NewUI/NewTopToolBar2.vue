@@ -189,14 +189,14 @@
                     </a>
                     <template #overlay>
                       <a-menu @click="onClick">
-                        <a-menu-item key="rotate-0" style="font-size: 12px;"> 0° </a-menu-item>
-                        <a-menu-item key="rotate-45" style="font-size: 12px;"> 45° </a-menu-item>
-                        <a-menu-item key="rotate-90" style="font-size: 12px;"> 90° </a-menu-item>
-                        <a-menu-item key="rotate-135" style="font-size: 12px;"> 135° </a-menu-item>
-                        <a-menu-item key="rotate-180" style="font-size: 12px;"> 180° </a-menu-item>
-                        <a-menu-item key="rotate-225" style="font-size: 12px;"> 225° </a-menu-item>
-                        <a-menu-item key="rotate-270" style="font-size: 12px;"> 270° </a-menu-item>
-                        <a-menu-item key="rotate-360" style="font-size: 12px;"> 360° </a-menu-item>
+                        <a-menu-item key="rotate-0" style="font-size: 12px;"> 0�� </a-menu-item>
+                        <a-menu-item key="rotate-45" style="font-size: 12px;"> 45�� </a-menu-item>
+                        <a-menu-item key="rotate-90" style="font-size: 12px;"> 90�� </a-menu-item>
+                        <a-menu-item key="rotate-135" style="font-size: 12px;"> 135�� </a-menu-item>
+                        <a-menu-item key="rotate-180" style="font-size: 12px;"> 180�� </a-menu-item>
+                        <a-menu-item key="rotate-225" style="font-size: 12px;"> 225�� </a-menu-item>
+                        <a-menu-item key="rotate-270" style="font-size: 12px;"> 270�� </a-menu-item>
+                        <a-menu-item key="rotate-360" style="font-size: 12px;"> 360�� </a-menu-item>
                         <a-menu-item key="rotate-cus" style="font-size: 12px;" disabled> Custom </a-menu-item>
                       </a-menu>
                     </template>
@@ -747,11 +747,382 @@ onMounted(() => {
   height: 53px;
   padding: 0px;
 }
+</style>
+
+<template>
+  <div class="tool-bar-container">
+    <div class="left-panel">
+      <div class="tool-title">
+        <p style="font-size: 12px;">T3000 Havc</p>
+        <span style=" margin-left:0px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 0px;">
+          {{ devVersion }}
+        </span>
+      </div>
+      <div class="tool-btns">
+        <q-btn dense flat round icon="menu" size="sm" @click="lockToggle" />
+        <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="sm"
+          :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong v-if="!locked">Lock</strong>
+            <strong v-else>Unlock</strong>
+          </q-tooltip>
+        </q-btn>
+        <q-btn v-if="grpNav?.length >= 0" icon="arrow_back" class="back-btn mr-2" dense round size="sm"
+          @click="navGoBack">
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Go back</strong>
+          </q-tooltip>
+        </q-btn>
+      </div>
+    </div>
+    <div class="right-panel">
+      <q-card class="right-panel-card">
+        <q-tabs v-model="tab" dense class="right-tab text-white" active-color="#fff" indicator-color="#fff" align="left"
+          narrow-indicator>
+          <q-tab name="home" no-caps label="Home" @click="navigateTo('/')" />
+          <q-tab name="file" no-caps label="File" @click="navigateTo('/')" />
+          <q-tab name="device" no-caps
+            :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`"
+            @click="navigateTo('/')" />
+          <q-tab name="newui" no-caps label="New UI">
+          </q-tab>
+          <!-- <q-tab name="edit" label="Edit" />
+          <q-tab name="object" label="Object" /> -->
+          <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" @click="navigateToLogin" /></div>
+        </q-tabs>
+        <q-separator />
+        <q-tab-panels v-model="tab" class="tab-panel">
+
+          <q-tab-panel name="home" class="home-panel">
+
+          </q-tab-panel>
+
+          <q-tab-panel name="file" class="file-panel">
+
+          </q-tab-panel>
+
+          <q-tab-panel name="device" class="device-panel">
+
+          </q-tab-panel>
+          <q-tab-panel name="newui" class="newui-panel">
+            <div style="display: block; margin-left: 10px; padding-top: 5px;">
+              <button id="btn_try_select">Select</button>
+
+              <!-- &nbsp;
+              <button id="btn_try_library">Library</button> -->
+
+              &nbsp;
+              <button id="btn_try_line">Line</button>
+
+              <!-- &nbsp;
+              <button id="btn_try_line1">Line1</button> -->
+
+              &nbsp;
+              <button id="btn_try_wall">Wall</button>
+
+              &nbsp;
+              <button id="btn_try_Rect">Rect </button>
+
+              &nbsp;
+              <button id="btn_try_Oval">Oval</button>
+
+              <!-- &nbsp;
+              <button id="btn_try_Image">Image</button> -->
+
+              &nbsp;
+              <button id="btn_try_Circ">Circ</button>
+
+              &nbsp;
+              <button id="btn_try_Text">Text</button>
+
+              &nbsp;
+              <button id="btn_try_ArrR">Arr R</button>
+
+              &nbsp;
+              <button id="btn_try_ArrL">Arr L</button>
+
+              &nbsp;
+              <button id="btn_try_ArrT">Arr T</button>
+
+              &nbsp;
+              <button id="btn_try_ArrB">Arr B</button>
+
+              &nbsp;
+              <button id="btn_try_Roate45">R 45
+                <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Roate90">R 90
+                <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Align_lefts">Align L
+                <q-tooltip>Align selected shapes to the left</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Align_centers">Align C
+                <q-tooltip>Align selected shapes to the center</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Align_rights">Align R
+                <q-tooltip>Align selected shapes to the right</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Align_tops">Align T
+                <q-tooltip>Align selected shapes to the top</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Align_middles">Align M
+                <q-tooltip>Align selected shapes to the middle</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Align_bottoms">Align B
+                <q-tooltip>Align selected shapes to the bottom</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Group">Group</button>
+
+              &nbsp;
+              <button id="btn_try_UnGroup">Un-group</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Horizontal">Flip H
+                <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Vertical">Flip V
+                <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Same_Height">Same H
+                <q-tooltip>Make selected shapes same height</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Same_Width">Same W
+                <q-tooltip>Make selected shapes same width</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Same_Both">Same B
+                <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_BringToFront">B To Front
+                <q-tooltip>Bring selected shape(s) to front</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_SendToBack">S To Back
+                <q-tooltip>Send selected shape(s) to back</q-tooltip>
+              </button>
+
+            </div>
+            <div style="margin-left: 8px; margin-top: 5px;">
+
+              <button id="btn_try_Paste">Paste</button>
+
+              &nbsp;
+              <button id="btn_try_Copy">Copy</button>
+
+              &nbsp;
+              <button id="btn_try_Cut">Cut</button>
+
+              &nbsp;
+              <button id="btn_try_Delete">Delete</button>
+
+              &nbsp;
+              <button id="btn_try_Undo">Undo</button>
+
+              &nbsp;
+              <button id="btn_try_Redo">Redo</button>
+
+              &nbsp;
+              <button id="btn_try_Save">Save</button>
+
+              &nbsp;
+              <button id="btn_try_Duplicate">Duplicate
+                <q-tooltip>Duplicate selected shape(s)</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Clear">Clear
+                <q-tooltip>Clear data</q-tooltip>
+              </button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SetBackgroundColor">Bk Color
+                <q-tooltip>Set background color</q-tooltip>
+              </button>
+
+              <!-- &nbsp;
+              <button id="btn_try_Lib_SetBackgroundImage">Image</button> -->
+
+              <!-- &nbsp;
+              <button id="btn_try_vue_foreignObject">Vue Cpt</button> -->
+
+              <!-- &nbsp;
+              <button id="btn_try_x">X</button>
+
+              &nbsp;
+              <button id="btn_try_y">Y</button>
+
+              &nbsp;
+              <button id="btn_try_w">W</button>
+
+              &nbsp;
+              <button id="btn_try_h">H</button> -->
+
+              &nbsp;
+              <button id="btn_try_Lib_Lock">Lock</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_UnLock">Un-Lock</button>
+
+              &nbsp;
+              <button id="btn_try_Add_To_Library">Add Lib</button>
+
+              &nbsp;
+              <button id="btn_try_Load_Library">Load Lib</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_1">Duct1</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_2">Duct2</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_3">Duct3</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_4">Duct4</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_5">Duct5</button>
+
+              <!-- &nbsp;
+              <button id="btn_try_Duct_6">D6</button> -->
+
+              &nbsp;
+              <button id="btn_try_Duct_7">Duct6</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_8">Duct7</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_9">Duct8</button>
+
+              <!-- &nbsp;
+              <button id="btn_try_Duct_10">D10</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_11">D11</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_12">D12</button> -->
+
+              &nbsp;
+              <button id="btn_try_Reset_Scale">Reset Zoom</button>
+            </div>
+          </q-tab-panel>
+        </q-tab-panels>
+      </q-card>
+    </div>
+  </div>
+</template>
+
+<script lang="ts">
+
+import { defineComponent, ref, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from "vue-router";
+import { useQuasar } from "quasar"
+import { tools/*, user*/ } from "../../lib/common";
+import { user } from "../../lib/T3000/Hvac/Data/T3Data";
+import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
+import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
+
+export default defineComponent({
+  name: 'NewTopToolBar2',
+  props: {
+    locked: {
+      type: Boolean,
+      default: false
+    },
+    grpNav: {
+      type: Array,
+      default: () => []
+    },
+    object: {
+      type: Object,
+      required: false,
+    },
+    selectedCount: {
+      type: Number,
+      required: true,
+    },
+    disableUndo: {
+      type: Boolean,
+      required: false,
+    },
+    disableRedo: {
+      type: Boolean,
+      required: false,
+    },
+    disablePaste: {
+      type: Boolean,
+      required: false,
+    },
+    zoom: {
+      type: Number,
+      required: true,
+    },
+    rulersGridVisible: {
+      type: Boolean,
+      required: false,
+    },
+    deviceModel: {
+      type: Object,
+      required: false,
+    },
+  },
+  emits: ["navGoBack", "lockToggle", "menuAction", "showMoreDevices"],
+  setup(props, { emit }) {
+
+    const currentDevice = ref(null);
+    const deviceTabTitle = ref('Device (-)');
+    const router = useRouter();
+    const route = useRoute();
+
+    const navigateTo = (routeName) => {
 
 .tool-bar-icon-prefix {
   vertical-align: 2px;
 }
 
+    const navigateToLogin = () => {
+      // Navigate to login with current route as redirect parameter
+      router.push({
+        path: '/login',
+        query: { redirect: route.path }
+      });
+    };
+
+    const $q = useQuasar();
+    function menuActionEmit(action, val = null) {
+      emit("menuAction", action, val);
+    }
 .tool-bar-button {
   color: white;
   font-size: 12px;
@@ -783,11 +1154,22 @@ onMounted(() => {
   margin-right: 8px;
 }
 
-.color-idic-0aacb4 {
-  background-color: #0AACB4;
-  width: 16px;
-  height: 16px;
-  display: inline-block;
-  margin-right: 8px;
-}
-</style>
+    return {
+      tab: ref('newui'),
+      navGoBack,
+      lockToggle,
+      menuActionEmit,
+      logout,
+      tools,
+      user,
+      showRulersGrid: showRulersGrid,
+      showMoreDevices,
+      currentDevice,
+      deviceTabTitle,
+      devVersion,
+      navigateTo,
+      navigateToLogin
+    };
+  },
+});
+</script>

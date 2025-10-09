@@ -5,7 +5,7 @@ import MessageModel from "./MessageModel"
 import IdxUtils from '../Common/IdxUtils'
 import Utils1 from "../../Util/Utils1"
 import T3Util from "../../Util/T3Util"
-import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
+import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg, locked, rulersGridVisible } from '../../Data/T3Data'
 import T3UIUtil from "../UI/T3UIUtil"
 import LogUtil from "../../Util/LogUtil"
 
@@ -409,6 +409,7 @@ class WebSocketClient {
     this.messageModel.setMessage(MessageType.LOAD_GRAPHIC_ENTRY, panelId, graphicId, null, serialNumber);
 
     this.messageModel.message.entryIndex = data.entryIndex;
+    this.messageModel.message.viewitem = data.entryIndex; // for compatibility
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
@@ -1167,6 +1168,14 @@ class WebSocketClient {
     // TODO refer to WebViewClient-> HandleLoadGraphicEntryRes, appState
     msgData.data = JSON.parse(msgData.data);
     appState.value = msgData.data;
+
+    // Restore UI state from appState
+    if (typeof appState.value.rulersGridVisible !== 'undefined') {
+      rulersGridVisible.value = appState.value.rulersGridVisible;
+    }
+    if (typeof appState.value.locked !== 'undefined') {
+      locked.value = appState.value.locked;
+    }
 
     if (grpNav.value.length > 1) {
       const navItem = grpNav.value[grpNav.value.length - 2];

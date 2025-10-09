@@ -18,65 +18,20 @@
   - The component manages the editing lifecycle by integrating with ag-Grid's API to stop editing when necessary.
 -->
 <template>
+  <!-- Main scalable container (this gets moved/scaled by IndexPage) -->
   <div class="moveable-item" :class="{
-    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes((item?.type ?? '')),
     'overflow-hidden': (item?.type ?? '') === 'Text',
     [item.type]: (item?.type ?? ''),
     'with-bg': item.settings.bgColor,
     'with-title': item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
-      v-if="item.settings.title" @click="$emit('objectClicked')">
-      {{ item.settings.title }}
-    </div>
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
-      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
-      <div class="relative">
-        <q-btn v-if="
-          showArrows &&
-          (item?.type ?? '') !== 'Switch' &&
-          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
-          icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
-          @click="changeValue('increase')" />
-        <div>
-          <span @click="$emit('objectClicked')">{{
-            dispalyText || item.t3Entry.id
-            }}</span>
 
-          <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
-            @click="$emit('autoManualToggle')">
-            <!-- <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="swipe_up">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon> -->
-            <q-icon v-if="!item.t3Entry.auto_manual">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon>
-          </span>
-        </div>
-        <q-btn v-if="
-          showArrows &&
-          (item?.type ?? '') !== 'Switch' &&
-          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="down-btn absolute" size="sm"
-          icon="keyboard_arrow_down" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
-          @click="changeValue('decrease')" />
-      </div>
-    </div>
-    <div class="flex justify-center object-container relative"
-      :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }" @click="$emit('objectClicked')">
+    <!-- Shape/Content Container (scales with parent) -->
+    <div class="shape-container flex justify-center object-container relative"
+      :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      @click="$emit('objectClicked')"
+      @click.right="handleTitleRightClick">
+
       <fan v-if="(item?.type ?? '') === 'Fan'" class="fan" v-bind="item.settings" />
       <duct v-else-if="(item?.type ?? '') === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
       <cooling-coil v-else-if="(item?.type ?? '') === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
@@ -134,45 +89,95 @@
       <StepEl v-else-if="(item?.type ?? '') === 'G_Step'" class="step" v-bind="item.settings" />
     </div>
   </div>
-</template>
 
-<script>
+  <!-- Fixed-position Title Section (positioned outside scalable area) -->
+  <div class="title-overlay"
+       v-if="item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none')"
+       @click.right="handleTitleRightClick">
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      v-if="item.settings.title" @click="$emit('objectClicked')">
+      {{ item.settings.title }}
+    </div>
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
+      <div class="relative">
+        <q-btn v-if="
+          showArrows &&
+          (item?.type ?? '') !== 'Switch' &&
+          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
+          icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('increase')" />
+        <div>
+          <div class="content-with-icon">
+            <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon-left"
+              @click="$emit('autoManualToggle')">
+              <q-icon v-if="!item.t3Entry.auto_manual">
+                <q-tooltip anchor="top middle" self="center middle">
+                  In auto mode
+                </q-tooltip>
+              </q-icon>
+              <q-icon v-else name="lock" style="font-size: large;color:#659dc5">
+                <q-tooltip anchor="top middle" self="center middle">
+                  In manual mode
+                </q-tooltip>
+              </q-icon>
+            </span>
+
+            <div @click="$emit('objectClicked')" class="text-display">
+              <span v-if="displayDescription" class="description-text">{{ displayDescription }}</span>
+              <span v-if="displayValueText" class="value-text">{{ displayValueText }}</span>
+              <span v-if="!displayDescription && !displayValueText">{{ item.t3Entry.id }}</span>
+            </div>
+          </div>
+        </div>
+        <q-btn v-if="
+          showArrows &&
+          (item?.type ?? '') !== 'Switch' &&
+          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="down-btn absolute" size="sm"
+          icon="keyboard_arrow_down" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('decrease')" />
+      </div>
+    </div>
+  </div>
+</template><script>
 import { defineComponent, computed, ref } from "vue";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
-import DuctEl from "../ObjectTypes/Duct.vue";
-import FanEl from "../ObjectTypes/Fan.vue";
-import CoolingCoil from "../ObjectTypes/CoolingCoil.vue";
-import HeatingCoil from "../ObjectTypes/HeatingCoil.vue";
-import FilterEl from "../ObjectTypes/Filter.vue";
-import HumidifierEl from "../ObjectTypes/Humidifier.vue";
-import Damper from "../ObjectTypes/Damper.vue";
-import TextEl from "../ObjectTypes/Text.vue";
-import BoxEl from "../ObjectTypes/Box.vue";
-import IconBasic from "../ObjectTypes/IconBasic.vue";
-import IconValue from "../ObjectTypes/IconValue.vue";
-import IconSwitch from "../ObjectTypes/IconSwitch.vue";
-import ValueEl from "../ObjectTypes/Value.vue";
-import Temperature from "../ObjectTypes/Temperature.vue";
-import GaugeChart from "../ObjectTypes/EchartsGauge.vue";
-import AnyChartDial from "../ObjectTypes/AnyChartDial.vue";
-import LedEl from "../ObjectTypes/Led.vue";
-import Boiler from "../ObjectTypes/Boiler.vue";
-import Enthalpy from "../ObjectTypes/Enthalpy.vue";
-import Flow from "../ObjectTypes/Flow.vue";
-import Heatpump from "../ObjectTypes/Heatpump.vue";
-import Pump from "../ObjectTypes/Pump.vue";
-import ValveThreeWay from "../ObjectTypes/ValveThreeWay.vue";
-import ValveTwoWay from "../ObjectTypes/ValveTwoWay.vue";
-import Humidity from "../ObjectTypes/Humidity.vue";
-import Pressure from "../ObjectTypes/Pressure.vue";
-import ThermalWheel from "../ObjectTypes/ThermalWheel.vue";
-import RoomHumidity from "../ObjectTypes/RoomHumidity.vue";
-import RoomTemperature from "../ObjectTypes/RoomTemperature.vue";
-import Wall from "../ObjectTypes/Wall.vue";
-import Weld from "../ObjectTypes/Weld.vue";
-import CircleEl from "../Basic/Circle.vue";
-import RectangleEl from "../Basic/Rectangle.vue";
-import StepEl from "../Basic/Step.vue";
+
+import DuctEl from "./ObjectTypes/Duct.vue";
+import FanEl from "./ObjectTypes/Fan.vue";
+import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
+import HeatingCoil from "./ObjectTypes/HeatingCoil.vue";
+import FilterEl from "./ObjectTypes/Filter.vue";
+import HumidifierEl from "./ObjectTypes/Humidifier.vue";
+import Damper from "./ObjectTypes/Damper.vue";
+import TextEl from "./ObjectTypes/Text.vue";
+import BoxEl from "./ObjectTypes/Box.vue";
+import IconBasic from "./ObjectTypes/IconBasic.vue";
+import IconValue from "./ObjectTypes/IconValue.vue";
+import IconSwitch from "./ObjectTypes/IconSwitch.vue";
+import ValueEl from "./ObjectTypes/Value.vue";
+import Temperature from "./ObjectTypes/Temperature.vue";
+import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
+import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
+import LedEl from "./ObjectTypes/Led.vue";
+import Boiler from "./ObjectTypes/Boiler.vue";
+import Enthalpy from "./ObjectTypes/Enthalpy.vue";
+import Flow from "./ObjectTypes/Flow.vue";
+import Heatpump from "./ObjectTypes/Heatpump.vue";
+import Pump from "./ObjectTypes/Pump.vue";
+import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
+import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
+import Humidity from "./ObjectTypes/Humidity.vue";
+import Pressure from "./ObjectTypes/Pressure.vue";
+import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
+import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
+import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
+import Wall from "./ObjectTypes/Wall.vue";
+import Weld from "./ObjectTypes/Weld.vue";
+
+import CircleEl from "./Basic/Circle.vue";
+import RectangleEl from "./Basic/Rectangle.vue";
+import StepEl from "./Basic/Step.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -210,7 +215,6 @@ export default defineComponent({
     Weld,
     CircleEl,
     RectangleEl,
-    // HexagonEl,
     StepEl
   },
   props: {
@@ -228,96 +232,93 @@ export default defineComponent({
     "objectClicked",
     "changeValue",
     "updateWeldModel",
+    "click-right",
   ],
   setup(props, { emit }) {
-
-    // console.log('= v.ObjectType setup', props.item);
-
     const range = computed(() => {
       return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
 
-    const dispalyText = computed(() => {
+    const displayDescription = computed(() => {
+      if (!props.item.t3Entry) {
+        return "";
+      }
 
-      // console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
-      //   props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
+      if (props.item.settings.t3EntryDisplayField === "description") {
+        return props.item.t3Entry.description || "";
+      }
 
+      if (props.item.settings.t3EntryDisplayField === "label") {
+        return props.item.t3Entry.label || "";
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
+        // For value/control mode, no separate description
+        return "";
+      }
+
+      // For other fields, return the field value as description
+      return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
+    });
+
+    const displayValueText = computed(() => {
       if (!props.item.t3Entry) {
         return "";
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
-      // console.log('= Ot range,t3e', range, props.item.t3Entry);
 
-      if (props.item.settings.t3EntryDisplayField === "description") {
-        const description = props.item.t3Entry.description || "";
-        const value = props.item.t3Entry.value || "";
-        let valueText = "";
-
+      // Helper function to get value text
+      const getValueText = () => {
         if (props.item.t3Entry.range > 100) {
           const rangeValue = range.options?.find(
             (item) => item.value === props.item.t3Entry.value
-          )
-          valueText = rangeValue?.name || "";
+          );
+          return rangeValue?.name || "";
         }
         else if (props.item.t3Entry.digital_analog === 1) {
-          valueText = (value || "") + " " + (range?.unit || "");
+          const value = props.item.t3Entry.value || "";
+          return value + " " + (range?.unit || "");
         } else if (props.item.t3Entry.digital_analog === 0) {
           if (props.item.t3Entry.control) {
-            valueText = range?.on || "";
+            return range?.on || "";
           } else {
-            valueText = range?.off || "";
+            return range?.off || "";
           }
         }
+        return "";
+      };
 
-        return description + " " + valueText;
+      if (props.item.settings.t3EntryDisplayField === "description") {
+        return getValueText();
       }
 
       if (props.item.settings.t3EntryDisplayField === "label") {
-        const description = props.item.t3Entry.label || "";
-        const value = props.item.t3Entry.value || "";
-        let valueText = "";
-
-        if (props.item.t3Entry.range > 100) {
-          const rangeValue = range.options?.find(
-            (item) => item.value === props.item.t3Entry.value
-          )
-          valueText = rangeValue?.name || "";
-        }
-        else if (props.item.t3Entry.digital_analog === 1) {
-          valueText = (value || "") + " " + (range?.unit || "");
-        } else if (props.item.t3Entry.digital_analog === 0) {
-          if (props.item.t3Entry.control) {
-            valueText = range?.on || "";
-          } else {
-            valueText = range?.off || "";
-          }
-        }
-
-        return description + " " + valueText;
+        return getValueText();
       }
 
       if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
-        if (props.item.t3Entry.value !== undefined && props.item.t3Entry.range > 100) {
-          const rangeValue = range.options?.find(
-            // (item) => item.value * 1000 === props.item.t3Entry.value
-            (item) => item.value === props.item.t3Entry.value
-          );
-          return rangeValue?.name;
-        } else if (props.item.t3Entry.value !== undefined && props.item.t3Entry.digital_analog === 1) {
-          // return props.item.t3Entry.value / 1000 + " " + range.unit;
-          return props.item.t3Entry.value + " " + range.unit;
-        } else if (props.item.t3Entry.control !== undefined && props.item.t3Entry.digital_analog === 0) {
-          if (props.item.t3Entry.control) {
-            return range.on;
-          } else {
-            return range.off;
-          }
-        }
+        return getValueText();
       }
 
-      return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
-    })
+      return "";
+    });
+
+    // Legacy computed for backward compatibility (combines both)
+    const dispalyText = computed(() => {
+      const desc = displayDescription.value;
+      const value = displayValueText.value;
+
+      if (desc && value) {
+        return desc + " " + value;
+      } else if (desc) {
+        return desc;
+      } else if (value) {
+        return value;
+      }
+
+      return "";
+    });
 
     const processedColors = computed(() => {
       const item = props.item;
@@ -346,15 +347,12 @@ export default defineComponent({
       ) {
         const rangeOptions = range.options?.filter((item) => item.status === 1);
         const rangeIndex = rangeOptions.findIndex(
-          // (item) => item.value * 1000 === props.item.t3Entry.value
           (item) => item.value === props.item.t3Entry.value
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          //newVal = rangeOptions[rangeIndex + 1].value * 1000;
           newVal = rangeOptions[rangeIndex + 1].value;
         } else if (type === "increase" && rangeIndex > 0) {
-          //newVal = rangeOptions[rangeIndex - 1].value * 1000;
           newVal = rangeOptions[rangeIndex - 1].value;
         } else {
           return;
@@ -364,10 +362,8 @@ export default defineComponent({
         props.item.t3Entry.digital_analog === 1
       ) {
         if (type === "increase") {
-          // newVal = props.item.t3Entry.value + 1000;
           newVal = props.item.t3Entry.value + 1;
         } else {
-          // newVal = props.item.t3Entry.value - 1000;
           newVal = props.item.t3Entry.value - 1;
         }
       } else if (
@@ -399,48 +395,145 @@ export default defineComponent({
       emit("updateWeldModel", weldModel, itemList);
     }
 
+    const handleTitleRightClick = (event) => {
+      emit("click-right", event);
+    }
+
     return {
       range,
+      displayDescription,
+      displayValueText,
       dispalyText,
       processedColors,
       changeValue,
       refresh,
       objectRef,
       updateWeldModel,
+      handleTitleRightClick,
     };
   },
 });
 </script>
 
 <style scoped>
-.object-title {
-  text-align: center;
-  min-width: 100%;
-  white-space: nowrap;
-  line-height: 2.5em;
-  color: v-bind("item.settings.titleColor");
-}
-
-.with-bg .object-title {
-  background-color: rgb(255 255 255 / 40%);
-}
-
+/* Base styles for moveable-item (scalable container) */
 .moveable-item {
   height: 100%;
   border-radius: 5px;
   background-color: v-bind("item.settings.bgColor");
   color: v-bind("item.settings.textColor");
   font-size: v-bind("item.settings.fontSize + 'px'");
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.moveable-item .shape-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Fixed-position title overlay (positioned outside scalable area) */
+.title-overlay {
+  position: absolute;
+  left: 100%; /* Position to the right of the shape */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000; /* High z-index to appear above everything */
+  pointer-events: auto; /* Allow interactions */
+  min-width: max-content; /* Size to content, but allow wrapping when needed */
+  max-width: 250px; /* Prevent extremely wide titles */
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* background: rgba(255, 255, 255, 0.9);  */
+  border-radius: 4px;
+  /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  */
+  font-size: 14px; /* Fixed font size for titles */
+}
+
+/* Title styles within overlay */
+.title-overlay .object-title {
+  text-align: center;
+  line-height: 1.5em;
+  color: v-bind("item.settings.titleColor");
+  word-wrap: break-word;
+  white-space: normal;
+  font-size: inherit; /* Inherit from title-overlay, not from moveable-item */
+  padding: 0 !important; /* Override any inherited padding */
+  min-width: auto !important; /* Override any inherited min-width */
+  font-weight: normal !important; /* Override any inherited font-weight */
+  display: block !important; /* Override any inherited display flex */
+  flex-grow: unset !important; /* Override any inherited flex-grow */
+}
+
+/* Override the grow class for title-overlay context */
+.title-overlay .object-title.grow {
+  flex-grow: unset !important;
+}
+
+/* Text display styling for separated description and value */
+.title-overlay .text-display {
+  display: flex;
+  flex-direction: row; /* Keep description and value on same line */
+  align-items: center;
+  gap: 8px; /* Space between description and value */
+  flex-wrap: wrap; /* Allow wrapping if content is too long */
+  width: 100%; /* Take full width for consistent layout */
+  order: 0; /* Position first (top row) */
+}
+
+/* Container for content with mode icon */
+.title-overlay .content-with-icon {
+  display: flex;
+  flex-direction: column; /* Stack vertically */
+  align-items: flex-start; /* Align to left */
+  gap: 4px; /* Space between rows */
+}
+
+/* Mode icon positioned on the second row, left-aligned */
+.title-overlay .mode-icon-left {
+  order: 1; /* Position after text content */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Align to left */
+  cursor: pointer;
+  font-size: 16px; /* Reduced from 18px to make it smaller */
+  width: 100%; /* Take full width for left alignment */
+}
+
+.title-overlay .description-text {
+  /* font-weight: 600; */
+  color: #2c3e50;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.title-overlay .value-text {
+  font-weight: 500;
+  color: #27ae60;
+  font-size: 14px;
+  background: rgba(39, 174, 96, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+.with-bg .object-title {
+  background-color: rgb(255 255 255 / 40%);
+}
+
+/* Container styles */
+.object-container {
+  width: 100%;
 }
 
 .moveable-item.Duct {
   background-color: transparent;
 }
 
-.object-container {
-  width: 100%;
-}
-
+/* Special handling for Gauge and Dial with titles */
 .moveable-item.Gauge .object-container,
 .moveable-item.Dial .object-container {
   height: 100%;
@@ -448,9 +541,10 @@ export default defineComponent({
 
 .moveable-item.Gauge.with-title .object-container,
 .moveable-item.Dial.with-title .object-container {
-  height: calc(100% - 41px);
+  height: 100%; /* Changed from calc(100% - 41px) since title is now outside */
 }
 
+/* Value, Icon, Switch specific styles for compatibility */
 .moveable-item.Value.with-title,
 .moveable-item.Icon.with-title,
 .moveable-item.Switch.with-title {
@@ -459,8 +553,7 @@ export default defineComponent({
 
 .moveable-item.Icon.with-title,
 .moveable-item.Switch.with-title {
-  display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
 }
 
 .moveable-item.Value .object-container,

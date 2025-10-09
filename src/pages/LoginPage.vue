@@ -61,7 +61,9 @@ onMounted(() => {
         });
       }
 
-      router.replace({ path: globalNav.value.home });
+      // Get redirect path from URL query or default to apps-library
+      const redirectPath = router.currentRoute.value.query.redirect || '/apps-library';
+      router.replace({ path: redirectPath });
     }
   };
 });

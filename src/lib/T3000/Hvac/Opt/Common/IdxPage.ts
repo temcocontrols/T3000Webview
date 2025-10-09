@@ -14,6 +14,7 @@ import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
 import T3Util from "../../Util/T3Util"
 import LogUtil from "../../Util/LogUtil"
+import DataOpt from "../Data/DataOpt"
 
 let panzoomInstance = null;
 
@@ -53,6 +54,7 @@ class IdxPage {
     this.initWindowListener();
     this.refreshMoveableGuides();
     this.resetPanzoom();
+    this.clearGrpSwitch();
 
     // LogUtil.Debug("= IdxPage: initPage / setDocMarginOffset,initPanzoom,initMessageClient,initScorller,initAutoSaveInterval,initWindowListener,refreshMoveableGuides,resetPanzoom");
   }
@@ -166,6 +168,9 @@ class IdxPage {
   // Initialize panzoom for viewport
   initPanzoom() {
     const beforeWheel = function (e) {
+      // Disable wheel zooming when locked
+      if (locked.value) return true;
+
       // Allow panzoom to handle the wheel event
       return false;
     }
@@ -179,6 +184,9 @@ class IdxPage {
         return true;
       },
       beforeMouseDown: function (e) {
+        // Disable panning when locked
+        if (locked.value) return true;
+
         // allow mouse-down panning only if altKey is down. Otherwise - ignore
         var shouldIgnore = !e.altKey;
         return shouldIgnore;
@@ -201,12 +209,22 @@ class IdxPage {
   }
 
   resetPanzoom() {
-    const transform = Hvac.QuasarUtil.getLocalSettings('transform');
+    // Priority 1: Use appState transform (from T3000 saved data)
+    let transform = appState.value.viewportTransform;
 
-    if (transform) {
+    // Priority 2: Fallback to localStorage if appState transform is default/empty
+    if (!transform || (transform.x === 0 && transform.y === 0 && transform.scale === 1)) {
+      transform = Hvac.QuasarUtil.getLocalSettings('transform');
+    }
+
+    if (transform && panzoomInstance) {
       panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
       panzoomInstance.moveTo(transform.x, transform.y);
     }
+  }
+
+  clearGrpSwitch(){
+    DataOpt.ClearGrpSwitch();
   }
 
   // Computed property for zoom control
@@ -226,14 +244,17 @@ class IdxPage {
         const y = appState.value.viewportTransform.y;
 
         appState.value.viewportTransform.scale = scale;
-        panzoomInstance.zoomAbs(x, y, scale);
+
+        if (panzoomInstance) {
+          panzoomInstance.zoomAbs(x, y, scale);
+        }
       },
     });
   }
 
   static restDocumentAreaPosition(pzXY) {
     const div = document.querySelector('.full-area');
-    if(!div) return;
+    if (!div) return;
 
     documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
     documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
@@ -310,7 +331,7 @@ class IdxPage {
         };
       });
 
-      Hvac.WebClient.GetEntries(null, null, etries);
+      Hvac.WebClient.GetEntries(null, etries?.index, etries);
 
     }, 10000);
   }
@@ -401,8 +422,10 @@ class IdxPage {
   clearIdx() {
     appState.value.selectedTargets = [];
 
-    if (panzoomInstance?.dispose) return;
-    panzoomInstance?.dispose();
+    if (panzoomInstance) {
+      panzoomInstance.dispose();
+      panzoomInstance = null;
+    }
   }
 
   // Checks if the user is logged in
@@ -456,9 +479,6 @@ class IdxPage {
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {
-    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState before', appState.value);
-    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
-    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState after', appState.value);
     if (!obj.t3Entry) return;
     let fieldVal = obj.t3Entry[key];
 
@@ -554,12 +574,12 @@ class IdxPage {
   }
 
   // Wrap a new function for saving data to localstorage and T3000
-  save(notify: boolean = false, saveToT3: boolean = false) {
+  save(notify: boolean = false, saveToT3: boolean = false, isAutoSave: boolean = false) {
     savedNotify.value = notify;
     this.saveToLocal();
 
     if (saveToT3) {
-      this.saveToT3000();
+      this.saveToT3000(isAutoSave);
     }
   }
 
@@ -572,6 +592,7 @@ class IdxPage {
     data.selectedTargets = [];
     data.elementGuidelines = [];
     data.rulersGridVisible = rulersGridVisible.value;
+    data.locked = locked.value;
 
     return data;
   }
@@ -584,30 +605,53 @@ class IdxPage {
     Hvac.LsOpt.saveAppState(data);
 
     if (!isBuiltInEdge.value) {
-      // Save current appState to ls deviceAppState
-      Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
+      const grpSwitch = DataOpt.LoadGrpSwitch();
+      if (!grpSwitch) {
+        Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
+      }
     }
   }
 
   // Save data to T3000
-  saveToT3000() {
-    // Prepare data
+  saveToT3000(isAutoSave = false) {
     const data = this.prepareSaveData();
+    const grpSwitch = DataOpt.LoadGrpSwitch(); // Get latest grpSwitch entry from array
+
+    LogUtil.Debug('= Idx saveToT3000 called:', { isAutoSave, hasGrpSwitch: !!grpSwitch });
+
+    // Check if we're currently loading data - if so, skip any save to avoid race condition
+    const loadingInitialData = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
+    const loadingGraphicEntry = globalMsg.value.find((msg) => msg.msgType === "load_graphic_entry");
+
+    if (loadingInitialData || loadingGraphicEntry) {
+      LogUtil.Debug('= Idx save to T3000 - currently loading data, skip save to prevent race condition');
+      return;
+    }
+
+    // If we have grpSwitch, it means navigation is pending or in progress
+    // For safety, skip both auto-save and manual save during this state
+    if (grpSwitch) {
+      if (isAutoSave) {
+        LogUtil.Debug('= Idx saveToT3000 - auto-save skipped during GRP navigation');
+      } else {
+        LogUtil.Debug('= Idx saveToT3000 - manual save skipped during GRP navigation to prevent race condition');
+        // Optionally show a message to user that save was skipped due to navigation
+      }
+      return;
+    }
 
     if (isBuiltInEdge.value) {
+      // No grpSwitch, safe to save to current device
+      LogUtil.Debug('= Idx saveToT3000 using current device (null params)');
       Hvac.WebClient.SaveGraphicData(null, null, data);
     }
     else {
-      const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
-      if (msgType) {
-        LogUtil.Debug('= Idx save to T3000 with initial data status error, cancel auto save');
-        return;
-      }
-
-      // Post a save action to T3
+      // For WebSocket: save to current device
       const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-      const panelId = currentDevice?.deviceId;
-      const graphicId = currentDevice?.graphic;
+      let panelId = currentDevice?.deviceId;
+      let graphicId = currentDevice?.graphic;
+
+      LogUtil.Debug('= Idx saveToT3000 using currentDevice:', { panelId, graphicId });
 
       if (panelId && graphicId) {
         Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
@@ -623,9 +667,9 @@ class IdxPage {
     // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
-        // LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
-        this.save(true, true);
-      }, 30000);
+        LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
+        this.save(true, true, true); // isAutoSave = true
+      }, 15000);
     }, 10000);
   }
 

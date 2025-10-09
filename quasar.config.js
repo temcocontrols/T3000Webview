@@ -68,6 +68,8 @@ module.exports = configure(function (/* ctx */) {
       analyze: process.env.ANALYZE === 'true',
       env: {
         VERSION: process.env.npm_package_version,
+        BUILD_TIME: Date.now(),
+        BUILD_HASH: require('crypto').createHash('md5').update(Date.now().toString()).digest('hex').substring(0, 8),
         ...require("dotenv").config().parsed,
       },
       // rawDefine: {}
@@ -144,6 +146,21 @@ module.exports = configure(function (/* ctx */) {
             // isCustomElement: (tag) => tag.startsWith("wokwi-"),
           },
         },
+      },
+
+      // Add cache busting for WebView deployment
+      chainWebpack(chain) {
+        // Add hash to output filenames for cache busting
+        chain.output
+          .filename('js/[name].[contenthash:8].js')
+          .chunkFilename('js/[name].[contenthash:8].js');
+
+        chain.plugin('extract-css')
+          .tap(args => {
+            args[0].filename = 'css/[name].[contenthash:8].css';
+            args[0].chunkFilename = 'css/[name].[contenthash:8].css';
+            return args;
+          });
       },
 
       // vitePlugins: [

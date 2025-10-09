@@ -338,7 +338,7 @@ class IdxPage2 {
       this.autoSaveInterval = setInterval(() => {
         // LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
-      }, 30000);
+      }, 15000);
     }, 10000);
   }
 
@@ -1136,7 +1136,6 @@ class IdxPage2 {
 
   // Create a label for an entry with optional prefix
   entryLabel(option) {
-    LogUtil.Debug('entryLabel - ', option);
     let prefix =
       (option.description && option.id !== option.description) ||
         (!option.description && option.id !== option.label)
@@ -2128,7 +2127,7 @@ class IdxPage2 {
       );
       item.translate = e.lastEvent.beforeTranslate;
 
-      LogUtil.Debug('= IdxPage onDragEnd:', e, item.translate);
+      // LogUtil.Debug('= IdxPage onDragEnd:', e, item.translate);
       this.save(false, false); // Save the state after drag end
       this.refreshObjects(); // Refresh objects
     }
@@ -2266,7 +2265,6 @@ class IdxPage2 {
     }
     if (title !== "Move Object") {
       setTimeout(() => {
-        LogUtil.Debug("= IdxPage addActionToHistory", title);
         this.save(false, false); // Save the current state
         this.refreshObjects(); // Refresh objects
       }, 200);
@@ -2350,7 +2348,6 @@ class IdxPage2 {
   }
 
   updateDeviceModel(isActive, data) {
-    LogUtil.Debug('= Idx updateDeviceModel ===', isActive, data)
     deviceModel.value.active = isActive;
     deviceModel.value.data = data;
 

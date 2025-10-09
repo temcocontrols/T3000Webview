@@ -7,7 +7,7 @@ import MessageType from "../Socket/MessageType"
 import MessageModel from "../Socket/MessageModel"
 import { useQuasar } from "quasar"
 import {
-  T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify
+  T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify, locked
 
 } from "../../Data/T3Data"
 import Utils1 from "../../Util/Utils1"
@@ -97,7 +97,7 @@ class WebViewClient {
 
   FormatMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
     this.setMessageData(action, panelId, viewitem, data);
-    this.messageData = this.message;//JSON.stringify(this.message);
+    this.messageData = this.message;
   }
 
   FormatUpdateEntryData(data: any) {
@@ -120,6 +120,7 @@ class WebViewClient {
     this.message.panelId = data.panelId;
     this.message.entryIndex = data.entryIndex;
     this.message.entryType = data.entryType;
+    this.message.viewitem = data.entryIndex;
 
     this.messageData = this.message;
   }
@@ -139,6 +140,7 @@ class WebViewClient {
     this.message.filename = data.filename;
     this.message.fileLength = data.fileLength;
     this.message.fileData = data.fileData;
+    this.message.viewitem = data.entryIndex;
 
     this.messageData = this.message;
   }
@@ -154,7 +156,9 @@ class WebViewClient {
 
     this.message = {};
     this.message.action = MessageType.LOAD_GRAPHIC_ENTRY;
+    this.message.panelId = data.panelId;
     this.message.entryIndex = data.entryIndex;
+    this.message.viewitem = data.entryIndex;
 
     this.messageData = this.message;
   }
@@ -515,6 +519,9 @@ class WebViewClient {
 
       appState.value = arg.data.data;
       rulersGridVisible.value = appState.value.rulersGridVisible;
+      if (typeof appState.value.locked !== 'undefined') {
+        locked.value = appState.value.locked;
+      }
 
       grpNav.value = [arg.data.entry];
       if (arg.data.library) {
@@ -529,7 +536,11 @@ class WebViewClient {
 
     msgData.data = JSON.parse(msgData.data);
     appState.value = msgData.data;
+
     rulersGridVisible.value = appState.value.rulersGridVisible;
+    if (typeof appState.value.locked !== 'undefined') {
+      locked.value = appState.value.locked;
+    }
 
     grpNav.value = [msgData.entry];
     if (msgData.library) {

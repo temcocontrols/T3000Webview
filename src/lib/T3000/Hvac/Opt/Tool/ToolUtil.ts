@@ -563,7 +563,7 @@ class ToolUtil {
         "command": "199IN1",
         "control": 1,
         "decom": 1,
-        "description": "Volts",
+        "description": "V",
         "digital_analog": 1,
         "filter": 5,
         "id": "IN1",

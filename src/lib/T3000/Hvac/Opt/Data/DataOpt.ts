@@ -559,6 +559,54 @@ class DataOpt {
     // Add the maximum dimensions to the result
     return maxDimensions;
   }
+
+  static readonly GRP_SWITCH_KEY: string = "t3.grpSwitch";
+
+  /**
+   * Saves grpSwitch data to localStorage
+   * @param grpSwitch - The grpSwitch data to save
+   */
+  static SaveGrpSwitch(grpSwitch: any): void {
+    // Load existing grpSwitch array from localStorage
+    let grpSwitchArr = this.LoadData(this.GRP_SWITCH_KEY) || [];
+    if (!Array.isArray(grpSwitchArr)) {
+      grpSwitchArr = [];
+    }
+    // Add the new grpSwitch to the array
+    grpSwitchArr.push(grpSwitch);
+    // Save the updated array back to localStorage
+    this.SaveData(this.GRP_SWITCH_KEY, grpSwitchArr);
+  }
+
+  /**
+   * Loads grpSwitch data from localStorage
+   * @returns The grpSwitch data or null if not found
+   */
+  static LoadGrpSwitch(): any {
+    const grpSwitchArr = this.LoadData(this.GRP_SWITCH_KEY);
+    if (Array.isArray(grpSwitchArr) && grpSwitchArr.length > 0) {
+      return grpSwitchArr[grpSwitchArr.length - 1];
+    }
+    return null;
+  }
+
+  /**
+   * Removes (pops) the latest grpSwitch entry from localStorage
+   * @returns The removed grpSwitch entry or null if none exist
+   */
+  static RemoveLatestGrpSwitch(): any {
+    let grpSwitchArr = this.LoadData(this.GRP_SWITCH_KEY) || [];
+    if (!Array.isArray(grpSwitchArr) || grpSwitchArr.length === 0) {
+      return null;
+    }
+    const removed = grpSwitchArr.pop();
+    this.SaveData(this.GRP_SWITCH_KEY, grpSwitchArr);
+    return removed;
+  }
+
+  static ClearGrpSwitch(): void {
+    localStorage.removeItem(this.GRP_SWITCH_KEY);
+  }
 }
 
 export default DataOpt
