@@ -21,7 +21,7 @@
             </a-button>
             <template #overlay>
               <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
-                <a-menu-item key="5m">5 minutes</a-menu-item>
+                <!-- <a-menu-item key="5m">5 minutes</a-menu-item> -->
                 <a-menu-item key="10m">10 minutes</a-menu-item>
                 <a-menu-item key="30m">30 minutes</a-menu-item>
                 <a-menu-item key="1h">1 hour</a-menu-item>
@@ -390,7 +390,9 @@
                   <div class="series-name-line">
                     <!-- Column 1: Series Name -->
                     <div class="series-name-col">
-                      <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                      <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
+                        <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                      </a-tooltip>
                     </div>
                     <!-- Column 2: Chip + Tags/Unit grouped together -->
                     <div class="series-right-col">
@@ -537,7 +539,7 @@
     <a-modal
       v-model:visible="showDatabaseConfig"
       title="Database Setting"
-      :width="600"
+      :width="620"
       class="database-modal-compact"
     >
       <a-space direction="vertical" size="small" style="width: 100%">
@@ -592,7 +594,7 @@
               @change="onPartitionStrategyChange"
               style="display: flex; flex-wrap: wrap; gap: 4px;"
             >
-              <a-radio value="FiveMinutes">5 Minutes</a-radio>
+              <!-- <a-radio value="FiveMinutes">5 Minutes</a-radio> -->
               <a-radio value="Daily">Daily</a-radio>
               <a-radio value="Weekly">Weekly</a-radio>
               <a-radio value="Monthly">Monthly</a-radio>
@@ -8922,6 +8924,10 @@ onUnmounted(() => {
   margin-bottom: 2px;
   color: #262626;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .series-info {
@@ -10393,7 +10399,7 @@ onUnmounted(() => {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
+  /* background: rgba(0, 0, 0, 0.8); */
   color: white;
   padding: 4px 6px;
   border-radius: 3px;
