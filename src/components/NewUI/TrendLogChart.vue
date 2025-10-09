@@ -8866,7 +8866,7 @@ onUnmounted(() => {
   align-items: center;
   padding: 6px 10px;
   cursor: pointer;
-  gap: 8px;
+  gap: 2px;
   border-radius: 6px;
   margin: 1px 0;
 }
@@ -8943,7 +8943,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 16px;
+  /* gap: 16px; */
   width: 100%;
   min-height: 24px;
 }
@@ -9846,7 +9846,7 @@ onUnmounted(() => {
 
   .series-header {
     flex-wrap: wrap !important;
-    gap: 4px !important;
+    gap: 2px !important;
   }
 
   .series-name-line {
