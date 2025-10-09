@@ -198,7 +198,11 @@ impl DatabasePartitionConfig {
                 format!("{}-{:02}{:02}", date.format("%Y-%m-%d"), date.hour(), minute_slot)
             }
             PartitionStrategy::Daily => date.format("%Y-%m-%d").to_string(),
-            PartitionStrategy::Weekly => date.format("%Y-W%U").to_string(),
+            PartitionStrategy::Weekly => {
+                // Use ISO week format %W (Monday-based) and handle week 0
+                let week_num = date.format("%W").to_string();
+                format!("{}-W{:02}", date.year(), week_num.parse::<u32>().unwrap_or(0))
+            }
             PartitionStrategy::Monthly => date.format("%Y-%m").to_string(),
             PartitionStrategy::Quarterly => {
                 let quarter = (date.month() - 1) / 3 + 1;
@@ -206,11 +210,20 @@ impl DatabasePartitionConfig {
             }
             PartitionStrategy::Custom => {
                 let days = self.custom_days.unwrap_or(30);
-                format!("custom-{}-{}", date.format("%Y-%m-%d"), days)
+                // Calculate which custom period this date falls into
+                let epoch = chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+                let current_date = date.date();
+                let days_since_epoch = current_date.signed_duration_since(epoch).num_days();
+                let period = days_since_epoch / days as i64;
+                format!("custom-{}-P{}", days, period)
             }
             PartitionStrategy::CustomMonths => {
                 let months = self.custom_months.unwrap_or(2);
-                format!("custom-{}-{}m", date.format("%Y-%m"), months)
+                // Calculate which custom month period this falls into
+                let base_year = 2025;
+                let total_months = (date.year() - base_year) * 12 + (date.month() as i32 - 1);
+                let period = total_months / months as i32;
+                format!("custom-{}m-P{}", months, period)
             }
         }
     }

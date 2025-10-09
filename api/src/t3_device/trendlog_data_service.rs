@@ -489,6 +489,16 @@ impl T3TrendlogDataService {
                     logging_time_fmt
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+
+                // Check if database partitioning is needed after successful data insertion
+                if let Err(e) = crate::database_management::DatabaseConfigService::check_and_apply_partitioning(db).await {
+                    let partition_error = format!(
+                        "⚠️ [TrendlogDataService] Partitioning check failed: {}",
+                        e
+                    );
+                    let _ = write_structured_log_with_level("T3_Webview_API", &partition_error, LogLevel::Warn);
+                }
+
                 Ok(count)
             },
             Err(error) => {
