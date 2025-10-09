@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc, Duration};
 
+use crate::constants::get_t3000_database_path;
 use crate::entity::{application_settings, database_partitions, database_partition_config, database_files};
 use crate::error::Result;
 
@@ -267,10 +268,20 @@ impl DatabasePartitionService {
             }
         }
 
+        let space_saved = CleanupResult::format_bytes(total_bytes_freed);
+        let message = if cleaned_up > 0 {
+            format!("Successfully cleaned up {} old partitions", cleaned_up)
+        } else {
+            "No old partitions found to clean up".to_string()
+        };
+
         Ok(CleanupResult {
-            partitions_cleaned: cleaned_up,
+            files_deleted: cleaned_up,
+            space_saved,
+            space_saved_bytes: total_bytes_freed,
+            deleted_files: vec![], // partitions don't have file names
+            message,
             records_removed: total_records_removed,
-            bytes_freed: total_bytes_freed,
         })
     }
 }
@@ -326,9 +337,33 @@ impl DatabaseSizeService {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CleanupResult {
-    pub partitions_cleaned: i32,
+    #[serde(rename = "filesDeleted")]
+    pub files_deleted: i32,
+    #[serde(rename = "spaceSaved")]
+    pub space_saved: String,
+    #[serde(rename = "spaceSavedBytes")]
+    pub space_saved_bytes: i64,
+    #[serde(rename = "deletedFiles")]
+    pub deleted_files: Vec<String>,
+    pub message: String,
+    #[serde(rename = "recordsRemoved")]
     pub records_removed: i64,
-    pub bytes_freed: i64,
+}
+
+impl CleanupResult {
+    fn format_bytes(bytes: i64) -> String {
+        const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
+        if bytes == 0 {
+            return "0 B".to_string();
+        }
+
+        let size = bytes as f64;
+        let i = (size.ln() / 1024_f64.ln()).floor() as usize;
+        let i = i.min(UNITS.len() - 1);
+        let formatted_size = size / 1024_f64.powi(i as i32);
+
+        format!("{:.1} {}", formatted_size, UNITS[i])
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -436,23 +471,114 @@ impl DatabaseConfigService {
         })
     }
 
+    /// Check if partitioning is needed and apply strategy if necessary
+    pub async fn check_and_apply_partitioning(
+        db: &DatabaseConnection
+    ) -> Result<Option<Vec<database_files::DatabaseFileInfo>>> {
+        let config = Self::get_config(db).await?;
+
+        // Only proceed if partitioning is active
+        if !config.is_active {
+            return Ok(None);
+        }
+
+        // Get the most recent active database file
+        let latest_file = database_files::Entity::find()
+            .filter(database_files::Column::IsActive.eq(true))
+            .order_by_desc(database_files::Column::CreatedAt)
+            .one(db)
+            .await?;
+
+        let now = Utc::now().naive_utc();
+
+        // Check if we need a new partition based on the strategy
+        let needs_new_partition = match latest_file {
+            Some(file) => {
+                let time_since_creation = now.signed_duration_since(file.created_at);
+                match config.strategy {
+                    database_partition_config::PartitionStrategy::FiveMinutes => {
+                        time_since_creation.num_minutes() >= 5
+                    },
+                    database_partition_config::PartitionStrategy::Daily => {
+                        time_since_creation.num_days() >= 1
+                    },
+                    database_partition_config::PartitionStrategy::Weekly => {
+                        time_since_creation.num_days() >= 7
+                    },
+                    database_partition_config::PartitionStrategy::Monthly => {
+                        time_since_creation.num_days() >= 30
+                    },
+                    database_partition_config::PartitionStrategy::Quarterly => {
+                        time_since_creation.num_days() >= 90
+                    },
+                    database_partition_config::PartitionStrategy::Custom => {
+                        if let Some(days) = config.custom_days {
+                            time_since_creation.num_days() >= days as i64
+                        } else {
+                            false
+                        }
+                    },
+                    database_partition_config::PartitionStrategy::CustomMonths => {
+                        if let Some(months) = config.custom_months {
+                            time_since_creation.num_days() >= (months * 30) as i64
+                        } else {
+                            false
+                        }
+                    },
+                }
+            },
+            None => true, // No files exist, create the first one
+        };
+
+        if needs_new_partition {
+            Ok(Some(Self::apply_partitioning_strategy(db, &config).await?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Apply partitioning strategy to create new database files
     pub async fn apply_partitioning_strategy(
         db: &DatabaseConnection,
         config: &database_partition_config::DatabasePartitionConfig
     ) -> Result<Vec<database_files::DatabaseFileInfo>> {
-        // This would implement the actual partitioning logic
-        // For now, we'll create mock partitions based on the strategy
-
+        // Create new database partition based on the strategy
         let now = Utc::now().naive_utc();
         let partition_id = config.generate_partition_identifier(&now);
 
-        // Create new database file entry
+        let file_name = format!("webview_t3_device_{}.db", partition_id);
+        let file_path = get_t3000_database_path().join(&file_name);
+        let file_path_str = file_path.to_string_lossy().to_string();
+
+        // Create the actual database file on disk
+        if !file_path.exists() {
+            // Create the database file using SQLite
+            use std::process::Command;
+            let create_result = Command::new("sqlite3")
+                .arg(&file_path)
+                .arg("CREATE TABLE IF NOT EXISTS init (id INTEGER PRIMARY KEY);")
+                .output();
+
+            if let Err(e) = create_result {
+                return Err(crate::error::Error::ServerError(format!("Failed to create database file: {}", e)));
+            }
+        }
+
+        // Get file size after creation
+        let file_size = if file_path.exists() {
+            std::fs::metadata(&file_path)
+                .map(|m| m.len() as i64)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
+        // Create database file entry
         let new_file = database_files::ActiveModel {
-            file_name: Set(format!("trendlog_{}.db", partition_id)),
-            file_path: Set(format!("./Database/trendlog_{}.db", partition_id)),
+            file_name: Set(file_name),
+            file_path: Set(file_path_str),
             partition_identifier: Set(Some(partition_id)),
-            file_size_bytes: Set(0),
+            file_size_bytes: Set(file_size),
             record_count: Set(0),
             start_date: Set(Some(now)),
             end_date: Set(None), // Open-ended for new active file
@@ -470,7 +596,7 @@ impl DatabaseConfigService {
             .await?;
 
         // Insert new active file
-        let saved_file = new_file.insert(db).await?;
+        let _saved_file = new_file.insert(db).await?;
 
         // Return updated file list
         Self::get_database_files(db).await
@@ -535,26 +661,45 @@ impl DatabaseFilesService {
             .all(db)
             .await?;
 
-        let mut partitions_cleaned = 0;
+        let mut files_deleted = 0;
         let mut records_removed = 0;
         let mut bytes_freed = 0;
+        let mut deleted_files = Vec::new();
 
-        for file in old_files {
+        for file in &old_files {
             records_removed += file.record_count;
             bytes_freed += file.file_size_bytes;
-            partitions_cleaned += 1;
+            files_deleted += 1;
+            deleted_files.push(file.file_name.clone());
 
             // Delete file record
             database_files::Entity::delete_by_id(file.id).exec(db).await?;
 
-            // Here you would also delete the actual file from filesystem
-            // std::fs::remove_file(&file.file_path)?;
+            // Try to delete the actual file from filesystem using the correct T3000 runtime folder
+            let runtime_db_path = get_t3000_database_path().join(&file.file_name);
+
+            if runtime_db_path.exists() {
+                if let Err(_e) = std::fs::remove_file(&runtime_db_path) {
+                    // Silently continue if file deletion fails
+                }
+            }
         }
 
+        // Format space saved in human-readable format
+        let space_saved = CleanupResult::format_bytes(bytes_freed);
+        let message = if files_deleted > 0 {
+            format!("Successfully cleaned up {} old database files", files_deleted)
+        } else {
+            "No old files found to clean up".to_string()
+        };
+
         Ok(CleanupResult {
-            partitions_cleaned,
+            files_deleted,
+            space_saved,
+            space_saved_bytes: bytes_freed,
+            deleted_files,
+            message,
             records_removed,
-            bytes_freed,
         })
     }
 
@@ -565,26 +710,45 @@ impl DatabaseFilesService {
             .all(db)
             .await?;
 
-        let mut partitions_cleaned = 0;
+        let mut files_deleted = 0;
         let mut records_removed = 0;
         let mut bytes_freed = 0;
+        let mut deleted_files = Vec::new();
 
-        for file in files_to_delete {
+        for file in &files_to_delete {
             records_removed += file.record_count;
             bytes_freed += file.file_size_bytes;
-            partitions_cleaned += 1;
+            files_deleted += 1;
+            deleted_files.push(file.file_name.clone());
 
             // Delete file record
             database_files::Entity::delete_by_id(file.id).exec(db).await?;
 
-            // Here you would also delete the actual file from filesystem
-            // std::fs::remove_file(&file.file_path)?;
+            // Try to delete the actual file from filesystem using the correct T3000 runtime folder
+            let runtime_db_path = get_t3000_database_path().join(&file.file_name);
+
+            if runtime_db_path.exists() {
+                if let Err(_e) = std::fs::remove_file(&runtime_db_path) {
+                    // Silently continue if file deletion fails
+                }
+            }
         }
 
+        // Format space saved in human-readable format
+        let space_saved = CleanupResult::format_bytes(bytes_freed);
+        let message = if files_deleted > 0 {
+            format!("Successfully cleaned up {} database files", files_deleted)
+        } else {
+            "No files found to clean up".to_string()
+        };
+
         Ok(CleanupResult {
-            partitions_cleaned,
+            files_deleted,
+            space_saved,
+            space_saved_bytes: bytes_freed,
+            deleted_files,
+            message,
             records_removed,
-            bytes_freed,
         })
     }
 

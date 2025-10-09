@@ -35,6 +35,7 @@ use super::{
         .route("/api/database/config", get(get_database_config))
         .route("/api/database/config", put(update_database_config))
         .route("/api/database/partition/apply", post(apply_partitioning_strategy))
+        .route("/api/database/partition/check", post(check_and_apply_partitioning))
 
         // Database Files Management endpoints (NEW)
         .route("/api/database/files", get(get_database_files))
@@ -360,12 +361,7 @@ async fn cleanup_partitions(
     Ok(Json(serde_json::json!({
         "success": true,
         "cleanup_result": result,
-        "message": format!(
-            "Cleaned up {} partitions, removed {} records, freed {} bytes",
-            result.partitions_cleaned,
-            result.records_removed,
-            result.bytes_freed
-        )
+        "message": result.message
     })))
 }
 
@@ -519,6 +515,32 @@ async fn apply_partitioning_strategy(
         "message": "Partitioning strategy applied successfully",
         "files": files
     })))
+}
+
+/// Check and apply partitioning strategy if needed
+async fn check_and_apply_partitioning(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let result = DatabaseConfigService::check_and_apply_partitioning(db).await?;
+
+    match result {
+        Some(files) => Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "New partition created",
+            "partitioned": true,
+            "files": files
+        }))),
+        None => Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "No partitioning needed at this time",
+            "partitioned": false
+        })))
+    }
 }
 
 /// Get list of database files
