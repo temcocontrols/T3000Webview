@@ -901,7 +901,7 @@ import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
-import { databaseService, DatabaseUtils, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
+import { databaseService, DatabaseUtils, DatabaseConfigAPI, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0
@@ -8484,10 +8484,14 @@ const saveDatabaseConfig = async () => {
     const savedConfig = await databaseService.config.updateConfig(databaseConfig.value)
     databaseConfig.value = savedConfig
 
-    // Simulate saving configuration
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Apply partitioning strategy to create actual database files
+    LogUtil.Info('Applying partitioning strategy to create database files...')
+    await DatabaseConfigAPI.applyPartitioningStrategy()
 
-    message.success('Database configuration saved successfully')
+    // Refresh database files list to show new partitioned files
+    await loadDatabaseFiles()
+
+    message.success('Database configuration saved and partitioning applied successfully')
     showDatabaseConfig.value = false
     LogUtil.Info('Database configuration saved')
   } catch (error) {
