@@ -531,6 +531,20 @@ impl DatabaseConfigService {
         };
 
         if needs_new_partition {
+            // Check if a file with the expected name already exists
+            let partition_id = config.generate_partition_identifier(&now);
+            let file_name = format!("webview_t3_device_{}.db", partition_id);
+
+            let existing_file = database_files::Entity::find()
+                .filter(database_files::Column::FileName.eq(&file_name))
+                .one(db)
+                .await?;
+
+            if existing_file.is_some() {
+                println!("Partition file '{}' already exists, no new partition needed", file_name);
+                return Ok(None);
+            }
+
             Ok(Some(Self::apply_partitioning_strategy(db, &config).await?))
         } else {
             Ok(None)
@@ -549,6 +563,18 @@ impl DatabaseConfigService {
         let file_name = format!("webview_t3_device_{}.db", partition_id);
         let file_path = get_t3000_database_path().join(&file_name);
         let file_path_str = file_path.to_string_lossy().to_string();
+
+        // Check if file already exists in database to avoid UNIQUE constraint violation
+        let existing_file = database_files::Entity::find()
+            .filter(database_files::Column::FileName.eq(&file_name))
+            .one(db)
+            .await?;
+
+        if existing_file.is_some() {
+            // File record already exists, just return current files without creating duplicate
+            println!("Database file record '{}' already exists, skipping creation", file_name);
+            return Self::get_database_files(db).await;
+        }
 
         // Create the actual database file on disk
         if !file_path.exists() {
@@ -575,7 +601,7 @@ impl DatabaseConfigService {
 
         // Create database file entry
         let new_file = database_files::ActiveModel {
-            file_name: Set(file_name),
+            file_name: Set(file_name.clone()),
             file_path: Set(file_path_str),
             partition_identifier: Set(Some(partition_id)),
             file_size_bytes: Set(file_size),
@@ -595,8 +621,21 @@ impl DatabaseConfigService {
             .exec(db)
             .await?;
 
-        // Insert new active file
-        let _saved_file = new_file.insert(db).await?;
+        // Insert new active file with error handling for UNIQUE constraint
+        match new_file.insert(db).await {
+            Ok(_saved_file) => {
+                println!("Successfully created database file record: {}", file_name);
+            },
+            Err(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx::Error::Database(db_err))))
+                if db_err.message().contains("UNIQUE constraint failed") => {
+                // Handle UNIQUE constraint error gracefully
+                println!("Database file record '{}' already exists (UNIQUE constraint), continuing...", file_name);
+            },
+            Err(e) => {
+                println!("Error creating database file record: {}", e);
+                return Err(e.into());
+            }
+        }
 
         // Return updated file list
         Self::get_database_files(db).await
