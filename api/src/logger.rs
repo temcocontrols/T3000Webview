@@ -3,6 +3,9 @@ use std::io::Write;
 use chrono::{Utc, Timelike};
 use crate::constants::get_t3000_runtime_path;
 
+/// Global flag to enable/disable T3WebLog functionality
+pub static ENABLE_T3_WEB_LOG: bool = false;
+
 /// Creates structured log file path with 4-hour bucket system: T3000_Runtime/T3WebLog/YYYY-MM/MMDD/filename_HHHH.txt
 pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io::Error> {
     let now = Utc::now();
@@ -32,6 +35,10 @@ pub fn write_structured_log(base_filename: &str, message: &str) -> Result<(), st
 
 /// Helper function to write structured logs with specific log level
 pub fn write_structured_log_with_level(base_filename: &str, message: &str, level: LogLevel) -> Result<(), std::io::Error> {
+    if !ENABLE_T3_WEB_LOG {
+        return Ok(());
+    }
+
     let log_path = create_structured_log_path(base_filename)?;
     let mut file = OpenOptions::new()
         .create(true)
@@ -46,18 +53,22 @@ pub fn write_structured_log_with_level(base_filename: &str, message: &str, level
 
 /// Centralized logging for T3000 WebView Service
 pub struct ServiceLogger {
-    log_file: std::fs::File,
+    log_file: Option<std::fs::File>,
 }
 
 impl ServiceLogger {
     pub fn new(base_filename: &str) -> Result<Self, std::io::Error> {
+        if !ENABLE_T3_WEB_LOG {
+            return Ok(ServiceLogger { log_file: None });
+        }
+
         let log_path = create_structured_log_path(base_filename)?;
         let log_file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(log_path)?;
 
-    Ok(ServiceLogger { log_file })
+        Ok(ServiceLogger { log_file: Some(log_file) })
     }
 
     /// Create a logger for FFI operations
@@ -86,12 +97,14 @@ impl ServiceLogger {
     }
 
     pub fn log(&mut self, level: LogLevel, message: &str) {
-        let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let log_entry = format!("[{}] [{}] {}\n", timestamp, level.as_str(), message);
+        if let Some(ref mut file) = self.log_file {
+            let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+            let log_entry = format!("[{}] [{}] {}\n", timestamp, level.as_str(), message);
 
-        // Write to file only (headless service)
-        let _ = self.log_file.write_all(log_entry.as_bytes());
-        let _ = self.log_file.flush();
+            // Write to file only (headless service)
+            let _ = file.write_all(log_entry.as_bytes());
+            let _ = file.flush();
+        }
     }
 
     pub fn info(&mut self, message: &str) {
@@ -108,8 +121,10 @@ impl ServiceLogger {
 
     /// Add an empty line without timestamp for visual grouping
     pub fn add_empty_line(&mut self) {
-        let _ = self.log_file.write_all(b"\n");
-        let _ = self.log_file.flush();
+        if let Some(ref mut file) = self.log_file {
+            let _ = file.write_all(b"\n");
+            let _ = file.flush();
+        }
     }
 
     /// Add a breakdown line separator for action rounds
