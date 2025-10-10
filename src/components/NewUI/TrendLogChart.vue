@@ -9756,6 +9756,25 @@ onUnmounted(() => {
   color: inherit !important;
 }
 
+/* Ant Design tooltip styling for series-name - Multiple selectors for compatibility */
+:global(.ant-tooltip .ant-tooltip-inner) {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  padding: 4px 6px !important;
+}
+
+:deep(.ant-tooltip .ant-tooltip-inner) {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  padding: 4px 6px !important;
+}
+
+.ant-tooltip .ant-tooltip-inner {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  padding: 4px 6px !important;
+}
+
 /* Mobile responsive layout - Control Group Optimized */
 @media (max-width: 768px) {
 
