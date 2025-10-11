@@ -1594,13 +1594,13 @@ const generateDataSeries = (): SeriesConfig[] => {
 
     // Debug logging for series creation
     if (unitType === 'digital') {
-      console.log(`= TLChart Series Created (Digital):`, {
-        name: seriesName,
-        unit: unit,
-        unitType: unitType,
-        unitCode: rangeData[index],
-        digitalAnalog: digitalAnalog
-      })
+      // console.log(`= TLChart Series Created (Digital):`, {
+      //   name: seriesName,
+      //   unit: unit,
+      //   unitType: unitType,
+      //   unitCode: rangeData[index],
+      //   digitalAnalog: digitalAnalog
+      // })
     }
 
     validSeries.push(newSeries)
@@ -7199,7 +7199,7 @@ const initializeWithCompleteFFI = async () => {
   const { sn, panel_id, trendlog_id } = extractQueryParams()
 
   // 🔥 DEBUG: Log extracted parameters
-  console.log('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
+  // console.log('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
   if (!sn || trendlog_id === null || trendlog_id === undefined) {
     LogUtil.Warn('❌ FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
@@ -7207,7 +7207,7 @@ const initializeWithCompleteFFI = async () => {
     return
   }
 
-  console.log('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
+  // console.log('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
 
   try {
     ffiSyncStatus.value.syncing = true
@@ -7219,18 +7219,18 @@ const initializeWithCompleteFFI = async () => {
     })
 
     // Two-step FFI approach: 1) Create initial record (fast), 2) FFI sync (slower)
-    console.log('🔥 FFI DEBUG: Starting two-step FFI initialization', {
-      device_id: sn,
-      panel_id: panel_id,
-      trendlog_id: trendlog_id,
-      trendlog_id_string: trendlog_id.toString()
-    })
+    // console.log('🔥 FFI DEBUG: Starting two-step FFI initialization', {
+    //   device_id: sn,
+    //   panel_id: panel_id,
+    //   trendlog_id: trendlog_id,
+    //   trendlog_id_string: trendlog_id.toString()
+    // })
 
     const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value)
 
-    console.log('🔥 FFI DEBUG: Complete FFI result received', {
-      completeResult
-    })
+    // console.log('🔥 FFI DEBUG: Complete FFI result received', {
+    //   completeResult
+    // })
 
     if (completeResult.success) {
       // Use FFI result for complete info, fallback to initial if needed
@@ -8177,25 +8177,25 @@ watch([showGrid, showLegend, smoothLines, showPoints], () => {
 
 // Watch for changes in visible analog series to ensure proper chart updates
 watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
-  console.log(`📊 visibleAnalogSeries watcher triggered`, {
-    oldCount: oldSeries?.length || 0,
-    newCount: newSeries.length,
-    oldSeries: oldSeries?.map(s => s.name) || [],
-    newSeries: newSeries.map(s => s.name),
-    hasChartInstance: !!analogChartInstance,
-    currentView: currentView.value
-  })
+  // console.log(`📊 visibleAnalogSeries watcher triggered`, {
+  //   oldCount: oldSeries?.length || 0,
+  //   newCount: newSeries.length,
+  //   oldSeries: oldSeries?.map(s => s.name) || [],
+  //   newSeries: newSeries.map(s => s.name),
+  //   hasChartInstance: !!analogChartInstance,
+  //   currentView: currentView.value
+  // })
 
   // Check if we need to update the analog chart
   const hadVisibleSeries = oldSeries?.length > 0
   const hasVisibleSeries = newSeries.length > 0
 
   if (hadVisibleSeries !== hasVisibleSeries || newSeries.length !== oldSeries?.length) {
-    console.log(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
-      hadVisibleSeries,
-      hasVisibleSeries,
-      needsUpdate: true
-    })
+    // console.log(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
+    //   hadVisibleSeries,
+    //   hasVisibleSeries,
+    //   needsUpdate: true
+    // })
 
     // Wait for DOM updates
     await nextTick()
@@ -8204,27 +8204,27 @@ watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
     if (analogChartInstance) {
       analogChartInstance.destroy()
       analogChartInstance = null
-      console.log(`📊 Destroyed existing analog chart instance`)
+      // console.log(`📊 Destroyed existing analog chart instance`)
     }
 
     if (hasVisibleSeries) {
       // Create fresh analog chart for visible series
-      console.log(`📊 Creating fresh analog chart for visible series`)
+      // console.log(`📊 Creating fresh analog chart for visible series`)
       createAnalogChart()
       await nextTick()
       updateAnalogChart()
 
-      console.log(`📊 Analog chart recreated and updated with data`, {
-        oldCount: oldSeries?.length || 0,
-        newCount: newSeries.length,
-        hasChartInstance: !!analogChartInstance,
-        seriesWithData: newSeries.filter(s => s.data.length > 0).length
-      })
+      // console.log(`📊 Analog chart recreated and updated with data`, {
+      //   oldCount: oldSeries?.length || 0,
+      //   newCount: newSeries.length,
+      //   hasChartInstance: !!analogChartInstance,
+      //   seriesWithData: newSeries.filter(s => s.data.length > 0).length
+      // })
     } else {
-      console.log(`📊 No visible analog series - chart destroyed`)
+      // console.log(`📊 No visible analog series - chart destroyed`)
     }
   } else {
-    console.log(`📊 No significant change in analog series visibility - skipping update`)
+    // console.log(`📊 No significant change in analog series visibility - skipping update`)
   }
 }, { deep: true })
 
@@ -8245,12 +8245,12 @@ watch(visibleDigitalSeries, async (newSeries, oldSeries) => {
     // IMPORTANT: Populate the newly created charts with data
     updateDigitalCharts()
 
-    console.log(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
-      oldCount: oldSeries?.length || 0,
-      newCount: newSeries.length,
-      chartInstancesCount: Object.keys(digitalChartInstances).length,
-      seriesWithData: newSeries.filter(s => s.data.length > 0).length
-    })
+    // console.log(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
+    //   oldCount: oldSeries?.length || 0,
+    //   newCount: newSeries.length,
+    //   chartInstancesCount: Object.keys(digitalChartInstances).length,
+    //   seriesWithData: newSeries.filter(s => s.data.length > 0).length
+    // })
   }
 }, { deep: true })// Remove modal visibility watcher since this is now always visible as a component
 

@@ -123,6 +123,32 @@ export function useTrendlogDataAPI() {
   }
 
   /**
+   * Sync TrendLog with FFI (T3000 native integration)
+   * @param device_id - Serial number of the T3000 device
+   * @param panel_id - Panel identifier
+   * @param trendlog_id - TrendLog identifier (numeric)
+   * @returns Promise with sync result
+   */
+  const syncTrendlogWithFFI = async (device_id: number, panel_id: number, trendlog_id: number): Promise<any> => {
+    try {
+      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlog_id}/sync-ffi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id, panel_id })
+      })
+
+      if (!response.ok) {
+        throw new Error(`FFI sync failed: ${response.status} ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (err) {
+      console.error('Failed to sync TrendLog with FFI:', err)
+      throw err
+    }
+  }
+
+  /**
    * Save realtime data point to database (called from socket port 9104 handler)
    * Used when realtime data is received from T3000 device via WebSocket
    */
@@ -205,30 +231,7 @@ export function useTrendlogDataAPI() {
     }
   }
 
-  /**
-   * Step 2: Sync TrendLog with T3000 FFI to get complete information (slower)
-   * @param device_id - Serial number of the T3000 device
-   * @param trendlog_id - TrendLog identifier (numeric)
-   * @returns Promise with sync result
-   */
-  const syncTrendlogWithFFI = async (device_id: number, trendlog_id: number): Promise<any> => {
-    try {
-      const response = await fetch(`${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlog_id}/sync-ffi`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id })
-      })
 
-      if (!response.ok) {
-        throw new Error(`FFI sync failed: ${response.status} ${response.statusText}`)
-      }
-
-      return await response.json()
-    } catch (err) {
-      console.error('Failed to sync TrendLog with FFI:', err)
-      throw err
-    }
-  }
 
   /**
    * Complete TrendLog initialization: Create initial record + FFI sync
@@ -245,7 +248,7 @@ export function useTrendlogDataAPI() {
       // Step 2: Sync with FFI for complete info (slower)
       // Convert trendlog_id to numeric for FFI sync
       const numericTrendlogId = parseInt(trendlog_id.replace('MONITOR', '')) || 0
-      const ffiResult = await syncTrendlogWithFFI(serial_number, numericTrendlogId)
+      const ffiResult = await syncTrendlogWithFFI(serial_number, panel_id, numericTrendlogId)
 
       return {
         initial: initialResult,
