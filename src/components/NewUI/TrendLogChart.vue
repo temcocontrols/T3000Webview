@@ -21,7 +21,7 @@
             </a-button>
             <template #overlay>
               <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
-                <!-- <a-menu-item key="5m">5 minutes</a-menu-item> -->
+                <a-menu-item key="5m">5 minutes</a-menu-item>
                 <a-menu-item key="10m">10 minutes</a-menu-item>
                 <a-menu-item key="30m">30 minutes</a-menu-item>
                 <a-menu-item key="1h">1 hour</a-menu-item>
@@ -680,15 +680,27 @@
               style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;"
             >
               <div class="file-info" style="flex: 1;">
-                <div style="font-size: 11px; font-weight: 500;">{{ file.name }}</div>
+                <div style="font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                  {{ file.name }}
+                  <a-tag
+                    v-if="file.is_active"
+                    color="green"
+                    size="small"
+                    style="font-size: 9px; padding: 1px 4px; margin: 0;"
+                  >
+                    ACTIVE
+                  </a-tag>
+                </div>
                 <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} • {{ file.records }} records</div> -->
               </div>
               <a-button
                 size="small"
                 type="text"
                 danger
+                :disabled="file.is_active"
                 @click="deleteDbFile(file.id, file.name)"
                 style="padding: 2px 6px;"
+                :title="file.is_active ? 'Cannot delete active database file' : 'Delete database file'"
               >
                 <template #icon><DeleteOutlined style="font-size: 10px;" /></template>
               </a-button>
@@ -1898,7 +1910,7 @@ watch(scheduleItemData, (newData, oldData) => {
 
 // Watch timeBase for changes and hybrid data loading
 watch(timeBase, async (newTimeBase, oldTimeBase) => {
-  LogUtil.Info('= TLChart: timeBase changed - Data Loading with Auto Scroll State Preserved', {
+  LogUtil.Info('= TLChart: timeBase changed - Smart Data Loading with Reuse Optimization', {
     oldTimeBase: oldTimeBase,
     newTimeBase: newTimeBase,
     autoScrollState: isRealTime.value,
@@ -1906,6 +1918,37 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
   })
 
   try {
+    // 🆕 OPTIMIZATION: Check if we can reuse existing data for seamless transition
+    const canReuseExistingData = await checkDataReuseOptimization(oldTimeBase, newTimeBase)
+
+    if (canReuseExistingData) {
+      LogUtil.Info('🚀 Smart timebase transition: Reusing existing data, loading only missing gap', {
+        optimization: 'INCREMENTAL_LOAD',
+        oldTimeBase,
+        newTimeBase,
+        existingDataCount: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
+      })
+
+      // Load only the missing historical data gap (no loading state needed)
+      await loadHistoricalDataGap(oldTimeBase, newTimeBase)
+
+      // Update charts immediately with extended data
+      updateCharts()
+
+      LogUtil.Info('✅ Seamless timebase transition completed', {
+        newTimeBase,
+        totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
+      })
+      return // Skip the full reload logic below
+    }
+
+    // Fallback to full reload for complex cases
+    LogUtil.Info('📚 Full timebase reload: Cannot optimize, doing complete data refresh', {
+      reason: 'COMPLEX_TRANSITION',
+      oldTimeBase,
+      newTimeBase
+    })
+
     isLoading.value = true
     startLoadingTimeout() // Start timeout when loading begins
 
@@ -4955,6 +4998,229 @@ const getTimeRangeMinutes = (range: string): number => {
     '4d': 5760      // 4 days
   }
   return ranges[range] || 60
+}
+
+// 🆕 OPTIMIZATION: Check if we can reuse existing data when changing timebase
+const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
+  // Only optimize for real-time mode (5m) or when time offset is 0 (current time view)
+  if (!isRealTime.value && timeOffset.value !== 0) {
+    LogUtil.Debug('❌ Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
+    return false
+  }
+
+  // Only optimize when going from shorter to longer timebase
+  const oldMinutes = getTimeRangeMinutes(oldTimeBase)
+  const newMinutes = getTimeRangeMinutes(newTimeBase)
+
+  if (newMinutes <= oldMinutes) {
+    LogUtil.Debug('❌ Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
+    return false
+  }
+
+  // Must have existing data to reuse
+  const hasExistingData = dataSeries.value.some(series => series.data && series.data.length > 0)
+  if (!hasExistingData) {
+    LogUtil.Debug('❌ Cannot optimize: No existing data to reuse')
+    return false
+  }
+
+  // Only optimize for simple progression (e.g., 5m→10m, 10m→30m, 30m→1h, etc.)
+  const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
+  const oldIndex = timebaseProgression.indexOf(oldTimeBase)
+  const newIndex = timebaseProgression.indexOf(newTimeBase)
+
+  if (oldIndex === -1 || newIndex === -1 || newIndex !== oldIndex + 1) {
+    LogUtil.Debug('❌ Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
+    return false
+  }
+
+  LogUtil.Info('✅ Data reuse optimization possible', {
+    oldTimeBase,
+    newTimeBase,
+    oldMinutes,
+    newMinutes,
+    gapMinutes: newMinutes - oldMinutes,
+    existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+  })
+
+  return true
+}
+
+// 🆕 OPTIMIZATION: Load only the missing historical data gap
+const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): Promise<void> => {
+  LogUtil.Info('🔍 Loading historical data gap for seamless timebase transition', {
+    oldTimeBase,
+    newTimeBase,
+    timeOffset: timeOffset.value
+  })
+
+  try {
+    // Calculate the missing time range (gap before existing data)
+    const oldMinutes = getTimeRangeMinutes(oldTimeBase)
+    const newMinutes = getTimeRangeMinutes(newTimeBase)
+    const gapMinutes = newMinutes - oldMinutes
+
+    const currentTime = new Date()
+    const offsetEndTime = new Date(currentTime.getTime() + timeOffset.value * 60 * 1000)
+
+    // Gap time range: from (current - newMinutes) to (current - oldMinutes)
+    const gapEndTime = new Date(offsetEndTime.getTime() - oldMinutes * 60 * 1000)
+    const gapStartTime = new Date(gapEndTime.getTime() - gapMinutes * 60 * 1000)
+
+    LogUtil.Debug('🔧 Gap time calculation', {
+      currentTime: currentTime.toISOString(),
+      gapStartTime: gapStartTime.toISOString(),
+      gapEndTime: gapEndTime.toISOString(),
+      gapMinutes,
+      oldMinutes,
+      newMinutes
+    })
+
+    // Use existing device parameters and points logic
+    const deviceParams = extractDeviceParameters()
+    const { sn: currentSN, panel_id: currentPanelId } = deviceParams
+
+    if (!currentSN || !currentPanelId) {
+      LogUtil.Warn('❌ loadHistoricalDataGap: Missing device parameters')
+      return
+    }
+
+    // Get points from existing data series (they're already loaded)
+    const specificPoints: Array<{point_id: string, point_type: string, point_index: number, panel_id: number}> = []
+
+    dataSeries.value.forEach((series) => {
+      if (series.pointType !== undefined && series.pointNumber !== undefined) {
+        const pointTypeString = mapPointTypeFromNumber(series.pointType)
+        const pointId = generateDeviceId(series.pointType, series.pointNumber)
+
+        specificPoints.push({
+          point_id: pointId,
+          point_type: pointTypeString,
+          point_index: series.pointNumber,
+          panel_id: currentPanelId
+        })
+      }
+    })
+
+    if (specificPoints.length === 0) {
+      LogUtil.Warn('❌ loadHistoricalDataGap: No points to load gap for')
+      return
+    }
+
+    // Format timestamps for API
+    const formatLocalTime = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    }
+
+    const formattedStartTime = formatLocalTime(gapStartTime)
+    const formattedEndTime = formatLocalTime(gapEndTime)
+
+    // Query gap data from database using existing trendlog API
+    const trendlogId = deviceParams.trendlog_id?.toString() || '1'
+
+    const gapRequest = {
+      serial_number: currentSN,
+      panel_id: currentPanelId,
+      trendlog_id: trendlogId,
+      start_time: formattedStartTime,
+      end_time: formattedEndTime,
+      limit: 10000, // Reasonable limit for gap data
+      point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
+      specific_points: specificPoints
+    }
+
+    const gapDataResponse = await trendlogAPI.getTrendlogHistory(gapRequest)
+
+    LogUtil.Debug('📊 Gap data response', {
+      dataCount: gapDataResponse?.data?.length || 0,
+      timeRange: `${formattedStartTime} to ${formattedEndTime}`
+    })
+
+    if (gapDataResponse?.data && gapDataResponse.data.length > 0) {
+      // Process and prepend gap data to existing series
+      processAndPrependGapData(gapDataResponse.data)
+
+      LogUtil.Info('✅ Gap data successfully loaded and merged', {
+        gapDataPoints: gapDataResponse.data.length,
+        totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+      })
+    } else {
+      LogUtil.Warn('⚠️ No gap data found or query failed', { response: gapDataResponse })
+    }
+
+  } catch (error) {
+    LogUtil.Error('❌ Error loading historical data gap:', error)
+    // Don't throw - fall back to showing existing data
+  }
+}
+
+// Helper function to process and prepend gap data to existing series
+const processAndPrependGapData = (gapData: any[]) => {
+  LogUtil.Debug('🔧 Processing gap data for prepending', { gapDataCount: gapData.length })
+
+  const pointDataMap = new Map<string, any[]>()
+
+  // Group gap data by point_id
+  gapData.forEach(item => {
+    const pointId = item.point_id
+    if (!pointDataMap.has(pointId)) {
+      pointDataMap.set(pointId, [])
+    }
+    pointDataMap.get(pointId)!.push(item)
+  })
+
+  // Process each series and prepend gap data
+  dataSeries.value.forEach(series => {
+    if (!series.pointType || series.pointNumber === undefined) return
+
+    const pointId = generateDeviceId(series.pointType, series.pointNumber)
+    const pointGapData = pointDataMap.get(pointId)
+
+    if (pointGapData && pointGapData.length > 0) {
+      // Convert gap data to chart format (matching series.data structure)
+      const gapChartData = pointGapData.map(item => {
+        const timestamp = new Date(item.LoggingTime_Fmt).getTime()
+        const value = item.digital_analog === 1 ?
+          (item.value !== null ? item.value : 0) :
+          (item.control !== null ? item.control : 0)
+
+        return {
+          timestamp: timestamp,
+          value: value,
+          id: item.point_id,
+          type: item.point_type,
+          digital_analog: item.digital_analog,
+          description: item.description || ''
+        }
+      }).filter(point => !isNaN(point.timestamp) && !isNaN(point.value))
+      .sort((a, b) => a.timestamp - b.timestamp) // Ensure chronological order
+
+      // Prepend gap data to existing data (gap data comes before existing data)
+      if (series.data && series.data.length > 0) {
+        series.data = [...gapChartData, ...series.data]
+
+        // Remove duplicates and sort by timestamp
+        const uniqueData = new Map()
+        series.data.forEach(point => {
+          uniqueData.set(point.timestamp, point)
+        })
+        series.data = Array.from(uniqueData.values()).sort((a, b) => a.timestamp - b.timestamp)
+
+        LogUtil.Debug(`✅ Prepended gap data to ${series.name}`, {
+          gapPoints: gapChartData.length,
+          totalPointsAfter: series.data.length,
+          firstPoint: series.data[0],
+          lastPoint: series.data[series.data.length - 1]
+        })
+      }
+    }
+  })
 }
 
 const initializeData = async () => {
@@ -8507,10 +8773,18 @@ const saveDatabaseConfig = async () => {
 // Delete specific database file
 const deleteDbFile = async (fileId: number, fileName: string) => {
   try {
-    await databaseService.files.deleteFile(fileId)
-    await loadDatabaseFiles() // Reload files list
-    message.success(`Deleted ${fileName}`)
-    LogUtil.Info('Database file deleted', { fileId, fileName })
+    const result = await databaseService.files.deleteFile(fileId)
+
+    if (result.success) {
+      await loadDatabaseFiles() // Reload files list
+      message.success(`Deleted ${fileName}`)
+      LogUtil.Info('Database file deleted', { fileId, fileName })
+    } else {
+      // Handle validation errors or other issues
+      const errorMsg = result.message || 'Failed to delete database file'
+      message.warning(errorMsg)
+      LogUtil.Warn('Database file deletion prevented', { fileId, fileName, reason: errorMsg })
+    }
   } catch (error) {
     message.error('Failed to delete database file')
     LogUtil.Error('Failed to delete database file', error)

@@ -260,11 +260,16 @@ export class DatabaseFilesAPI {
         },
       })
 
+      const data: ApiResult = await response.json()
+
       if (!response.ok) {
+        // If we got a structured error response, return it instead of throwing
+        if (data.success === false && data.message) {
+          return data
+        }
         throw new Error(`API request failed: ${response.status}`)
       }
 
-      const data: ApiResult = await response.json()
       return data
     } catch (error) {
       console.error('Failed to delete database file:', error)
