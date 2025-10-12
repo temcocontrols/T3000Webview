@@ -34,6 +34,7 @@ use super::{
         // Database Configuration endpoints (NEW)
         .route("/api/database/config", get(get_database_config))
         .route("/api/database/config", put(update_database_config))
+        .route("/api/database/initialize", post(initialize_database_partitioning))
         .route("/api/database/partition/apply", post(apply_partitioning_strategy))
         .route("/api/database/partition/check", post(check_and_apply_partitioning))
 
@@ -499,6 +500,19 @@ async fn update_database_config(
     Ok(Json(updated_config))
 }
 
+/// Initialize database partitioning system (called on T3000 startup)
+async fn initialize_database_partitioning(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<crate::entity::database_files::DatabaseInitializationResult>> {
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let result = DatabaseConfigService::initialize_database_partitioning(db).await?;
+    Ok(Json(result))
+}
+
 /// Apply partitioning strategy
 async fn apply_partitioning_strategy(
     State(app_state): State<T3AppState>,
@@ -565,18 +579,22 @@ async fn delete_database_file(
         Some(conn) => &*conn.lock().await,
         None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
     };
-    let deleted = DatabaseFilesService::delete_file(db, file_id).await?;
 
-    if deleted {
-        Ok(Json(serde_json::json!({
+    match DatabaseFilesService::delete_file(db, file_id).await {
+        Ok(true) => Ok(Json(serde_json::json!({
             "success": true,
             "message": "Database file deleted successfully"
-        })))
-    } else {
-        Ok(Json(serde_json::json!({
+        }))),
+        Ok(false) => Ok(Json(serde_json::json!({
             "success": false,
             "message": "Database file not found"
-        })))
+        }))),
+        Err(crate::error::Error::ValidationError(msg)) => Ok(Json(serde_json::json!({
+            "success": false,
+            "error": "validation_error",
+            "message": msg
+        }))),
+        Err(e) => Err(e)
     }
 }
 

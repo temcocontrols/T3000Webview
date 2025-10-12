@@ -57,6 +57,7 @@ pub struct DatabaseFileInfo {
     pub id: i32,
     pub name: String,
     pub size: String,      // Formatted size (e.g., "2.3 MB")
+    pub size_bytes: i64,   // Raw size in bytes
     pub records: i64,
     pub start_date: Option<String>,  // Formatted date
     pub end_date: Option<String>,    // Formatted date
@@ -73,6 +74,7 @@ impl DatabaseFileInfo {
             id: model.id,
             name: model.file_name,
             size: Self::format_file_size(model.file_size_bytes),
+            size_bytes: model.file_size_bytes,
             records: model.record_count,
             start_date: model.start_date.map(|d| d.format("%Y-%m-%d").to_string()),
             end_date: model.end_date.map(|d| d.format("%Y-%m-%d").to_string()),
@@ -175,4 +177,35 @@ impl DatabaseStats {
             _ => 0,
         }
     }
+}
+
+/// Result of database initialization process
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatabaseInitializationResult {
+    /// Active partition configuration
+    pub config: crate::entity::database_partition_config::DatabasePartitionConfig,
+
+    /// Whether main database exists
+    pub main_database_exists: bool,
+
+    /// Main database size in MB
+    pub main_database_size_mb: i32,
+
+    /// Number of existing partition files found
+    pub existing_partitions_found: i32,
+
+    /// Total number of database files
+    pub total_files: i32,
+
+    /// Total size of all files in MB
+    pub total_size_mb: i32,
+
+    /// Number of active files
+    pub active_files_count: i32,
+
+    /// Whether new partitioning was applied during initialization
+    pub partitioning_applied: bool,
+
+    /// List of all database files
+    pub all_files: Vec<DatabaseFileInfo>,
 }

@@ -396,6 +396,14 @@ pub struct PartitionRequest {
     pub end_date: String,       // ISO 8601 format
 }
 
+#[derive(Debug, Default)]
+pub struct ValidationResult {
+    pub orphaned_records: i32,
+    pub missing_files: i32,
+    pub fixed_records: i32,
+    pub created_files: i32,
+}
+
 /// Database Configuration Service
 ///
 /// Manages database partitioning configuration and file management
@@ -471,6 +479,270 @@ impl DatabaseConfigService {
         })
     }
 
+    /// Initialize database partitioning system on T3000 startup
+    /// 1. Check/create partition configuration (default: weekly)
+    /// 2. Verify runtime folder and main database existence
+    /// 3. Scan for existing partition files and register them
+    /// 4. Apply partitioning strategy if needed
+    pub async fn initialize_database_partitioning(
+        db: &DatabaseConnection
+    ) -> Result<database_files::DatabaseInitializationResult> {
+        println!("🚀 Initializing T3000 Database Partitioning System...");
+
+        // Step 1: Check partition configuration (default to weekly if not found)
+        let config = match Self::get_config(db).await {
+            Ok(existing_config) => {
+                println!("📋 Found existing partition configuration: {:?}", existing_config.strategy);
+                existing_config
+            },
+            Err(_) => {
+                println!("📋 No partition configuration found, creating default (Weekly)");
+                let default_config = database_partition_config::DatabasePartitionConfig {
+                    id: None,
+                    strategy: database_partition_config::PartitionStrategy::Weekly,
+                    custom_days: None,
+                    custom_months: None,
+                    auto_cleanup_enabled: true,
+                    retention_value: 30, // 30 days retention
+                    retention_unit: database_partition_config::RetentionUnit::Days,
+                    is_active: true,
+                };
+                Self::save_config(db, &default_config).await?
+            }
+        };
+
+        // Step 2: Verify runtime folder and main database
+        let runtime_path = get_t3000_database_path();
+        let main_db_path = runtime_path.join("webview_t3_device.db");
+
+        println!("📁 Checking runtime folder: {}", runtime_path.display());
+
+        if !runtime_path.exists() {
+            return Err(crate::error::Error::ServerError(
+                format!("T3000 runtime database folder not found: {}", runtime_path.display())
+            ));
+        }
+
+        let main_db_exists = main_db_path.exists();
+        let main_db_size = if main_db_exists {
+            std::fs::metadata(&main_db_path)
+                .map(|m| m.len())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
+        println!("💾 Main database: {} (Size: {} MB)",
+                 if main_db_exists { "Found" } else { "Not Found" },
+                 main_db_size / 1024 / 1024);
+
+        // Step 3: Scan runtime folder for existing partition files
+        let existing_partitions = Self::scan_and_register_existing_partitions(db, &runtime_path).await?;
+
+        println!("🔍 Found {} existing partition files", existing_partitions.len());
+
+        // Step 3.5: Validate database records against physical files
+        let validation_result = Self::validate_and_fix_partition_records(db, &runtime_path).await?;
+
+        if validation_result.orphaned_records > 0 || validation_result.missing_files > 0 {
+            println!("🔧 Validation: {} orphaned records, {} missing files",
+                     validation_result.orphaned_records, validation_result.missing_files);
+        }
+
+        // Step 4: Check if partitioning is needed
+        let partitioning_result = Self::check_and_apply_partitioning(db).await?;
+
+        // Step 5: Get final file list and statistics
+        let all_files = Self::get_database_files(db).await?;
+        let total_files = all_files.len();
+        let total_size: i64 = all_files.iter().map(|f| f.size_bytes).sum();
+        let active_files: Vec<_> = all_files.iter().filter(|f| f.is_active).collect();
+
+        println!("✅ Database initialization complete:");
+        println!("   - Strategy: {:?}", config.strategy);
+        println!("   - Total files: {}", total_files);
+        println!("   - Total size: {} MB", total_size / 1024 / 1024);
+        println!("   - Active files: {}", active_files.len());
+
+        Ok(database_files::DatabaseInitializationResult {
+            config,
+            main_database_exists: main_db_exists,
+            main_database_size_mb: (main_db_size / 1024 / 1024) as i32,
+            existing_partitions_found: existing_partitions.len() as i32,
+            total_files: total_files as i32,
+            total_size_mb: (total_size / 1024 / 1024) as i32,
+            active_files_count: active_files.len() as i32,
+            partitioning_applied: partitioning_result.is_some(),
+            all_files,
+        })
+    }
+
+    /// Scan runtime folder for existing partition files and register them in database
+    async fn scan_and_register_existing_partitions(
+        db: &DatabaseConnection,
+        runtime_path: &std::path::Path,
+    ) -> Result<Vec<database_files::DatabaseFileInfo>> {
+        let mut found_partitions = Vec::new();
+
+        // Scan for partition files matching pattern: webview_t3_device_*.db
+        if let Ok(entries) = std::fs::read_dir(runtime_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Check if it's a partition file
+                    if file_name.starts_with("webview_t3_device_") &&
+                       file_name.ends_with(".db") &&
+                       file_name != "webview_t3_device.db" {
+
+                        // Extract partition identifier from filename
+                        let partition_id = file_name
+                            .strip_prefix("webview_t3_device_")
+                            .and_then(|s| s.strip_suffix(".db"))
+                            .unwrap_or("unknown");
+
+                        // Check if this file is already registered in database
+                        let existing_record = database_files::Entity::find()
+                            .filter(database_files::Column::FileName.eq(file_name))
+                            .one(db)
+                            .await?;
+
+                        if existing_record.is_none() {
+                            // Register the existing partition file
+                            let file_size = std::fs::metadata(&path)
+                                .map(|m| m.len() as i64)
+                                .unwrap_or(0);
+
+                            let new_file = database_files::ActiveModel {
+                                file_name: Set(file_name.to_string()),
+                                file_path: Set(path.to_string_lossy().to_string()),
+                                partition_identifier: Set(Some(partition_id.to_string())),
+                                file_size_bytes: Set(file_size),
+                                record_count: Set(0), // Will be updated if needed
+                                start_date: Set(None), // Will be calculated if needed
+                                end_date: Set(None),
+                                is_active: Set(false), // Existing partitions are not active by default
+                                is_archived: Set(false),
+                                created_at: Set(Utc::now().naive_utc()),
+                                last_accessed_at: Set(Utc::now().naive_utc()),
+                                ..Default::default()
+                            };
+
+                            match new_file.insert(db).await {
+                                Ok(saved) => {
+                                    println!("📝 Registered existing partition: {}", file_name);
+                                    found_partitions.push(database_files::DatabaseFileInfo::from_model(saved));
+                                },
+                                Err(e) => {
+                                    println!("⚠️ Failed to register partition {}: {}", file_name, e);
+                                }
+                            }
+                        } else {
+                            println!("✅ Partition already registered: {}", file_name);
+                            if let Some(existing) = existing_record {
+                                found_partitions.push(database_files::DatabaseFileInfo::from_model(existing));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(found_partitions)
+    }
+
+    /// Validate database records against physical files and fix inconsistencies
+    async fn validate_and_fix_partition_records(
+        db: &DatabaseConnection,
+        runtime_path: &std::path::Path,
+    ) -> Result<ValidationResult> {
+        let mut result = ValidationResult::default();
+
+        // Get all database file records
+        let db_records = database_files::Entity::find().all(db).await?;
+
+        for record in db_records {
+            let file_path = runtime_path.join(&record.file_name);
+
+            if !file_path.exists() {
+                // File record exists but physical file is missing
+                println!("🚨 Orphaned record found: {} (physical file missing)", record.file_name);
+                result.orphaned_records += 1;
+
+                // For active files, try to create the missing file
+                if record.is_active {
+                    println!("🔨 Attempting to create missing active file: {}", record.file_name);
+
+                    // Create the missing file using the same logic as partition creation
+                    let partition_db_url = format!("sqlite://{}", file_path.display());
+
+                    match sea_orm::Database::connect(&partition_db_url).await {
+                        Ok(partition_conn) => {
+                            let init_sql = r#"
+                                CREATE TABLE IF NOT EXISTS init (id INTEGER PRIMARY KEY);
+                                PRAGMA journal_mode = WAL;
+                                PRAGMA synchronous = NORMAL;
+                                PRAGMA cache_size = 10000;
+                                PRAGMA temp_store = memory;
+                            "#;
+
+                            if let Err(e) = partition_conn.execute(sea_orm::Statement::from_string(
+                                sea_orm::DatabaseBackend::Sqlite,
+                                init_sql.to_string()
+                            )).await {
+                                println!("⚠️ Failed to create missing file {}: {}", record.file_name, e);
+                            } else {
+                                println!("✅ Created missing active file: {}", record.file_name);
+                                result.created_files += 1;
+                            }
+
+                            let _ = partition_conn.close().await;
+                        },
+                        Err(e) => {
+                            println!("❌ Failed to create missing file {}: {}", record.file_name, e);
+                        }
+                    }
+                } else {
+                    // For inactive files, deactivate the orphaned record
+                    println!("🔧 Marking orphaned inactive record as archived: {}", record.file_name);
+
+                    let file_name = record.file_name.clone();
+                    let mut active_model: database_files::ActiveModel = record.into();
+                    active_model.is_archived = Set(true);
+                    active_model.is_active = Set(false);
+
+                    if let Err(e) = active_model.update(db).await {
+                        println!("⚠️ Failed to update orphaned record {}: {}", file_name, e);
+                    } else {
+                        result.fixed_records += 1;
+                    }
+                }
+            } else {
+                // Update file size if it has changed
+                if let Ok(metadata) = std::fs::metadata(&file_path) {
+                    let current_size = metadata.len() as i64;
+
+                    if record.file_size_bytes != current_size {
+                        println!("📊 Updating file size for {}: {} -> {} bytes",
+                                record.file_name, record.file_size_bytes, current_size);
+
+                        let file_name = record.file_name.clone();
+                        let mut active_model: database_files::ActiveModel = record.into();
+                        active_model.file_size_bytes = Set(current_size);
+                        active_model.last_accessed_at = Set(Utc::now().naive_utc());
+
+                        if let Err(e) = active_model.update(db).await {
+                            println!("⚠️ Failed to update file size for {}: {}", file_name, e);
+                        } else {
+                            result.fixed_records += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
     /// Check if partitioning is needed and apply strategy if necessary
     pub async fn check_and_apply_partitioning(
         db: &DatabaseConnection
@@ -500,7 +772,10 @@ impl DatabaseConfigService {
                         time_since_creation.num_minutes() >= 5
                     },
                     database_partition_config::PartitionStrategy::Daily => {
-                        time_since_creation.num_days() >= 1
+                        // For daily partitioning, check if we're in a different day
+                        let file_date = file.created_at.date();
+                        let current_date = now.date();
+                        file_date != current_date
                     },
                     database_partition_config::PartitionStrategy::Weekly => {
                         time_since_creation.num_days() >= 7
@@ -560,9 +835,15 @@ impl DatabaseConfigService {
         let now = Utc::now().naive_utc();
         let partition_id = config.generate_partition_identifier(&now);
 
+        println!("🎯 Applying {:?} partitioning strategy", config.strategy);
+        println!("📅 Current time: {}", now.format("%Y-%m-%d %H:%M:%S"));
+        println!("🏷️ Generated partition ID: {}", partition_id);
+
         let file_name = format!("webview_t3_device_{}.db", partition_id);
         let file_path = get_t3000_database_path().join(&file_name);
         let file_path_str = file_path.to_string_lossy().to_string();
+
+        println!("📂 Target file path: {}", file_path_str);
 
         // Check if file already exists in database to avoid UNIQUE constraint violation
         let existing_file = database_files::Entity::find()
@@ -578,16 +859,44 @@ impl DatabaseConfigService {
 
         // Create the actual database file on disk
         if !file_path.exists() {
-            // Create the database file using SQLite
-            use std::process::Command;
-            let create_result = Command::new("sqlite3")
-                .arg(&file_path)
-                .arg("CREATE TABLE IF NOT EXISTS init (id INTEGER PRIMARY KEY);")
-                .output();
+            println!("🔨 Creating physical partition file: {}", file_path.display());
 
-            if let Err(e) = create_result {
-                return Err(crate::error::Error::ServerError(format!("Failed to create database file: {}", e)));
+            // Create the database file using SeaORM's SQLite connection
+            let partition_db_url = format!("sqlite://{}", file_path.display());
+
+            match sea_orm::Database::connect(&partition_db_url).await {
+                Ok(partition_conn) => {
+                    // Create basic structure to ensure the file is valid
+                    let init_sql = r#"
+                        CREATE TABLE IF NOT EXISTS init (id INTEGER PRIMARY KEY);
+                        PRAGMA journal_mode = WAL;
+                        PRAGMA synchronous = NORMAL;
+                        PRAGMA cache_size = 10000;
+                        PRAGMA temp_store = memory;
+                    "#;
+
+                    if let Err(e) = partition_conn.execute(sea_orm::Statement::from_string(
+                        sea_orm::DatabaseBackend::Sqlite,
+                        init_sql.to_string()
+                    )).await {
+                        println!("⚠️ Warning: Failed to initialize partition database: {}", e);
+                    } else {
+                        println!("✅ Partition file created successfully: {}", file_name);
+                    }
+
+                    // Close the connection
+                    if let Err(e) = partition_conn.close().await {
+                        println!("⚠️ Warning: Failed to close partition connection: {}", e);
+                    }
+                },
+                Err(e) => {
+                    return Err(crate::error::Error::ServerError(
+                        format!("Failed to create partition database file {}: {}", file_name, e)
+                    ));
+                }
             }
+        } else {
+            println!("📁 Partition file already exists: {}", file_name);
         }
 
         // Get file size after creation
@@ -603,7 +912,7 @@ impl DatabaseConfigService {
         let new_file = database_files::ActiveModel {
             file_name: Set(file_name.clone()),
             file_path: Set(file_path_str),
-            partition_identifier: Set(Some(partition_id)),
+            partition_identifier: Set(Some(partition_id.clone())),
             file_size_bytes: Set(file_size),
             record_count: Set(0),
             start_date: Set(Some(now)),
@@ -637,8 +946,211 @@ impl DatabaseConfigService {
             }
         }
 
+        // CRITICAL: Migrate historical data from main database to the new partition
+        // This is what was missing - the actual data movement!
+        if let Err(e) = Self::migrate_data_to_partition(db, config, &file_path, &partition_id).await {
+            println!("Warning: Failed to migrate data to partition {}: {}", partition_id, e);
+            // Continue even if migration fails to avoid breaking the system
+        }
+
         // Return updated file list
         Self::get_database_files(db).await
+    }
+
+    /// Migrate historical data from main database to partition based on strategy
+    async fn migrate_data_to_partition(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig,
+        partition_path: &std::path::Path,
+        partition_id: &str,
+    ) -> Result<()> {
+        println!("🔄 Starting data migration to partition: {}", partition_id);
+
+        // Calculate the date range for data to migrate based on strategy
+        let (start_date, end_date) = Self::calculate_partition_date_range(config, partition_id)?;
+
+        println!("📅 Migrating data from {} to {} for partition {}",
+                 start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"), partition_id);
+
+        // Get the main database path
+        let main_db_path = get_t3000_database_path().join("webview_t3_device.db");
+
+        // Use SQLite ATTACH to work with both databases
+        let attach_sql = format!(
+            "ATTACH DATABASE '{}' AS partition_db",
+            partition_path.to_string_lossy()
+        );
+
+        // Execute the migration using raw SQL for efficiency
+        // Attach the partition database
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            attach_sql
+        )).await?;
+
+        // Create tables in partition database to match TRENDLOG_DATA structure
+        let create_tables_sql = r#"
+            CREATE TABLE IF NOT EXISTS partition_db.TRENDLOG_DATA (
+                SerialNumber INTEGER NOT NULL,
+                PanelId INTEGER NOT NULL,
+                PointId TEXT NOT NULL,
+                PointIndex INTEGER NOT NULL,
+                PointType TEXT NOT NULL,
+                Value TEXT NOT NULL,
+                LoggingTime TEXT NOT NULL,
+                LoggingTime_Fmt TEXT NOT NULL,
+                Digital_Analog TEXT,
+                Range_Field TEXT,
+                Units TEXT,
+                DataSource TEXT DEFAULT 'REALTIME',
+                SyncInterval INTEGER DEFAULT 30,
+                CreatedBy TEXT,
+                PRIMARY KEY (SerialNumber, PanelId, PointId, PointIndex, PointType, LoggingTime)
+            );
+
+            CREATE INDEX IF NOT EXISTS partition_db.idx_trendlog_data_device_panel
+            ON TRENDLOG_DATA(SerialNumber, PanelId);
+
+            CREATE INDEX IF NOT EXISTS partition_db.idx_trendlog_data_timestamp
+            ON TRENDLOG_DATA(LoggingTime_Fmt);
+
+            CREATE INDEX IF NOT EXISTS partition_db.idx_trendlog_data_point
+            ON TRENDLOG_DATA(PointId, PointType, PointIndex);
+        "#;
+
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            create_tables_sql.to_string()
+        )).await?;
+
+        // Migrate data from main to partition for the specific date range
+        let migrate_sql = format!(
+            r#"
+            INSERT INTO partition_db.TRENDLOG_DATA
+            SELECT * FROM main.TRENDLOG_DATA
+            WHERE DATE(LoggingTime_Fmt) >= DATE('{}')
+            AND DATE(LoggingTime_Fmt) <= DATE('{}')
+            "#,
+            start_date.format("%Y-%m-%d"),
+            end_date.format("%Y-%m-%d")
+        );
+
+        let migration_result = db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            migrate_sql
+        )).await?;
+
+        let migrated_count = migration_result.rows_affected();
+        println!("📦 Migrated {} records to partition {}", migrated_count, partition_id);
+
+        // Delete migrated data from main database if migration was successful
+        if migrated_count > 0 {
+            let delete_sql = format!(
+                r#"
+                DELETE FROM main.TRENDLOG_DATA
+                WHERE DATE(LoggingTime_Fmt) >= DATE('{}')
+                AND DATE(LoggingTime_Fmt) <= DATE('{}')
+                "#,
+                start_date.format("%Y-%m-%d"),
+                end_date.format("%Y-%m-%d")
+            );
+
+            let delete_result = db.execute(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                delete_sql
+            )).await?;
+
+            println!("🗑️ Removed {} records from main database", delete_result.rows_affected());
+        }
+
+        // Update partition file metadata with actual record count and date range
+        database_files::Entity::update_many()
+            .col_expr(database_files::Column::RecordCount, Expr::value(migrated_count as i64))
+            .col_expr(database_files::Column::StartDate, Expr::value(start_date.naive_utc()))
+            .col_expr(database_files::Column::EndDate, Expr::value(end_date.naive_utc()))
+            .filter(database_files::Column::PartitionIdentifier.eq(partition_id))
+            .exec(db)
+            .await?;
+
+        // Detach the partition database
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "DETACH DATABASE partition_db".to_string()
+        )).await?;
+
+        println!("✅ Data migration completed for partition: {}", partition_id);
+        Ok(())
+    }
+
+    /// Calculate date range for partition based on strategy and partition ID
+    fn calculate_partition_date_range(
+        config: &database_partition_config::DatabasePartitionConfig,
+        partition_id: &str,
+    ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime<Utc>)> {
+        use chrono::{NaiveDate, TimeZone};
+
+        match config.strategy {
+            database_partition_config::PartitionStrategy::Daily => {
+                // partition_id format: "2025-10-11"
+                let date = NaiveDate::parse_from_str(partition_id, "%Y-%m-%d")
+                    .map_err(|e| crate::error::Error::ValidationError(format!("Invalid daily partition ID: {}", e)))?;
+
+                let start = Utc.from_utc_datetime(&date.and_hms_opt(0, 0, 0).unwrap());
+                let end = Utc.from_utc_datetime(&date.and_hms_opt(23, 59, 59).unwrap());
+                Ok((start, end))
+            },
+            database_partition_config::PartitionStrategy::Weekly => {
+                // partition_id format: "2025-W42" (year-week)
+                // For now, approximate with 7-day range from start of week
+                let parts: Vec<&str> = partition_id.split('-').collect();
+                if parts.len() != 2 || !parts[1].starts_with('W') {
+                    return Err(crate::error::Error::ValidationError("Invalid weekly partition ID".to_string()));
+                }
+
+                let year: i32 = parts[0].parse()
+                    .map_err(|_| crate::error::Error::ValidationError("Invalid year in partition ID".to_string()))?;
+                let week: u32 = parts[1][1..].parse()
+                    .map_err(|_| crate::error::Error::ValidationError("Invalid week in partition ID".to_string()))?;
+
+                // Approximate calculation - start from beginning of year + weeks
+                let start_of_year = NaiveDate::from_ymd_opt(year, 1, 1).unwrap();
+                let start_date = start_of_year + chrono::Duration::weeks(week as i64 - 1);
+                let end_date = start_date + chrono::Duration::days(6);
+
+                let start = Utc.from_utc_datetime(&start_date.and_hms_opt(0, 0, 0).unwrap());
+                let end = Utc.from_utc_datetime(&end_date.and_hms_opt(23, 59, 59).unwrap());
+                Ok((start, end))
+            },
+            database_partition_config::PartitionStrategy::Monthly => {
+                // partition_id format: "2025-10"
+                let parts: Vec<&str> = partition_id.split('-').collect();
+                if parts.len() != 2 {
+                    return Err(crate::error::Error::ValidationError("Invalid monthly partition ID".to_string()));
+                }
+
+                let year: i32 = parts[0].parse()
+                    .map_err(|_| crate::error::Error::ValidationError("Invalid year in partition ID".to_string()))?;
+                let month: u32 = parts[1].parse()
+                    .map_err(|_| crate::error::Error::ValidationError("Invalid month in partition ID".to_string()))?;
+
+                let start_date = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+                let end_date = if month == 12 {
+                    NaiveDate::from_ymd_opt(year + 1, 1, 1).unwrap() - chrono::Duration::days(1)
+                } else {
+                    NaiveDate::from_ymd_opt(year, month + 1, 1).unwrap() - chrono::Duration::days(1)
+                };
+
+                let start = Utc.from_utc_datetime(&start_date.and_hms_opt(0, 0, 0).unwrap());
+                let end = Utc.from_utc_datetime(&end_date.and_hms_opt(23, 59, 59).unwrap());
+                Ok((start, end))
+            },
+            _ => {
+                // For other strategies, migrate data older than retention period
+                let cutoff_date = Utc::now() - chrono::Duration::days(config.retention_value as i64);
+                let very_old_date = cutoff_date - chrono::Duration::days(365); // Migrate up to 1 year old data
+                Ok((very_old_date, cutoff_date))
+            }
+        }
     }
 }
 
@@ -671,16 +1183,23 @@ impl DatabaseFilesService {
                 // Don't delete active files
                 if file_model.is_active {
                     return Err(crate::error::Error::ValidationError(
-                        "Cannot delete active database file".to_string()
+                        format!("Cannot delete active database file '{}'. Only inactive files can be deleted for safety.", file_model.file_name)
                     ));
                 }
 
                 // Delete file record
                 database_files::Entity::delete_by_id(file_id).exec(db).await?;
 
-                // Here you would also delete the actual file from filesystem
-                // std::fs::remove_file(&file_model.file_path)?;
+                // Try to delete the actual file from filesystem
+                let file_path = get_t3000_database_path().join(&file_model.file_name);
+                if file_path.exists() {
+                    if let Err(e) = std::fs::remove_file(&file_path) {
+                        println!("⚠️ Warning: Failed to delete file from filesystem: {}", e);
+                        // Continue anyway since database record is deleted
+                    }
+                }
 
+                println!("🗑️ Database file deleted: {}", file_model.file_name);
                 Ok(true)
             }
             None => Ok(false)
