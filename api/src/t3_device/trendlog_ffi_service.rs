@@ -65,6 +65,27 @@ type T3000GetMonitorByIdFn = unsafe extern "C" fn(c_int, c_int, *mut StrMonitorP
 type T3000IsDeviceOnlineFn = unsafe extern "C" fn(c_int) -> c_int;
 type T3000ConnectToDeviceFn = unsafe extern "C" fn(c_int) -> c_int;
 
+/// Check if T3000.exe is running and accessible for FFI operations
+fn check_t3000_availability() -> Result<(), String> {
+    unsafe {
+        let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
+        if handle.is_null() {
+            return Err("T3000.exe is not running or not accessible. Please ensure T3000 Building Automation software is started and connected to your device.".to_string());
+        }
+
+        // Check if key functions are available
+        let device_online_func = GetProcAddress(handle, b"T3000_IsDeviceOnline\0".as_ptr());
+        let connect_func = GetProcAddress(handle, b"T3000_ConnectToDevice\0".as_ptr());
+
+        if device_online_func.is_null() || connect_func.is_null() {
+            return Err("T3000.exe is running but required FFI functions are not available. Please update T3000 software or check compatibility.".to_string());
+        }
+
+        let _ = write_structured_log_with_level("T3_FFI", "✅ T3000.exe is available and ready for FFI operations", LogLevel::Info);
+        Ok(())
+    }
+}
+
 // T3000 FFI function wrappers with dynamic loading
 unsafe fn Post_Refresh_Message(device_id: c_int, point_type: c_int, start_instance: c_int, end_instance: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
@@ -137,16 +158,17 @@ unsafe fn T3000_GetMonitorById(device_id: c_int, monitor_id: c_int, monitor_data
 unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
-        println!("T3000.exe not found - returning error");
+        let _ = write_structured_log_with_level("T3_FFI", "❌ T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
         return 0;
     }
 
     let func_ptr = GetProcAddress(handle, b"T3000_IsDeviceOnline\0".as_ptr());
     if func_ptr.is_null() {
-        println!("T3000_IsDeviceOnline function not found");
+        let _ = write_structured_log_with_level("T3_FFI", "❌ T3000_IsDeviceOnline function not found in T3000.exe", LogLevel::Error);
         return 0;
     }
 
+    let _ = write_structured_log_with_level("T3_FFI", &format!("📡 Checking device {} online status via T3000.exe", device_id), LogLevel::Info);
     let func: T3000IsDeviceOnlineFn = std::mem::transmute(func_ptr);
     func(device_id)
 }
@@ -154,7 +176,7 @@ unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
 unsafe fn T3000_ConnectToDevice(device_id: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
-        println!("T3000.exe not found - returning error");
+        let _ = write_structured_log_with_level("T3_FFI", "❌ T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
         return 0;
     }
 
@@ -226,6 +248,186 @@ impl TrendLogFFIService {
         db: &DatabaseConnection
     ) -> Result<TrendLogInfo, AppError> {
         Self::create_initial_trendlog_info_with_panel_and_title(device_id, panel_id, trendlog_id, None, db).await
+    }
+
+    /// Create fallback TrendLog info when FFI is not available
+    /// First tries WebMessage API, then falls back to database
+    async fn create_fallback_trendlog_info(
+        device_id: u32,
+        trendlog_id: &str,
+        db: &DatabaseConnection
+    ) -> Result<TrendLogInfo, AppError> {
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🔄 Creating fallback TrendLog info for {} (device {})", trendlog_id, device_id), LogLevel::Info);
+
+        // FIRST: Try WebMessage API path (T3000 may still be running, just FFI broken)
+        if let Ok(webmessage_info) = Self::try_webmessage_trendlog_info(device_id, trendlog_id).await {
+            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ Successfully retrieved TrendLog data via WebMessage API", LogLevel::Info);
+            return Ok(webmessage_info);
+        }
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "⚠️ WebMessage API also unavailable, falling back to database", LogLevel::Warn);
+
+        // SECOND: Try to get existing trendlog from database
+        match trendlogs::Entity::find()
+            .filter(trendlogs::Column::SerialNumber.eq(device_id as i32))
+            .filter(trendlogs::Column::TrendlogId.eq(trendlog_id))
+            .one(db)
+            .await?
+        {
+            Some(existing_trendlog) => {
+                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ Found existing trendlog in database, using stored configuration", LogLevel::Info);
+
+                // Get related inputs
+                let related_inputs = trendlog_inputs::Entity::find()
+                    .filter(trendlog_inputs::Column::SerialNumber.eq(device_id as i32))
+                    .filter(trendlog_inputs::Column::TrendlogId.eq(trendlog_id))
+                    .all(db)
+                    .await?;
+
+                Ok(TrendLogInfo {
+                    serial_number: existing_trendlog.serial_number,
+                    panel_id: existing_trendlog.panel_id,
+                    trendlog_id: existing_trendlog.trendlog_id,
+                    trendlog_label: existing_trendlog.trendlog_label.unwrap_or_else(|| format!("TrendLog {}", trendlog_id)),
+                    interval_minutes: existing_trendlog.interval_minutes.unwrap_or(15),
+                    status: "DATABASE".to_string(), // Indicate this is from database
+                    num_inputs: related_inputs.len() as i32,
+                    analog_inputs: related_inputs.iter().filter(|input|
+                        input.point_type.contains("INPUT")
+                    ).count() as i32,
+                    buffer_size: existing_trendlog.buffer_size,
+                    data_size_kb: existing_trendlog.data_size_kb.unwrap_or_else(|| "Unknown".to_string()),
+                    related_points: related_inputs.into_iter().map(|input| {
+                        let point_index = input.point_index.clone();
+                        RelatedPointInfo {
+                            point_type: input.point_type,
+                            point_index: point_index.clone(),
+                            point_panel: input.point_panel.unwrap_or_else(|| input.panel_id.to_string()),
+                            point_label: input.point_label.unwrap_or_else(|| format!("Point {}", point_index)),
+                            network: 1, // Default network
+                            range_value: 0, // Default range
+                        }
+                    }).collect(),
+                })
+            },
+            None => {
+                let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "📝 No existing trendlog found, creating minimal fallback info", LogLevel::Info);
+
+                // Create minimal TrendLog info with defaults
+                Self::create_initial_trendlog_info_with_panel_and_title(
+                    device_id,
+                    1, // Default panel ID
+                    trendlog_id,
+                    Some(&format!("TrendLog {} (Offline)", trendlog_id.replace("MONITOR", ""))),
+                    db
+                ).await
+            }
+        }
+    }
+
+    /// Try to get TrendLog info via WebMessage API (when FFI fails but T3000.exe is running)
+    async fn try_webmessage_trendlog_info(
+        device_id: u32,
+        trendlog_id: &str,
+    ) -> Result<TrendLogInfo, AppError> {
+        use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "🌐 Attempting TrendLog data retrieval via WebMessage API", LogLevel::Info);
+
+        // Create GET_PANEL_DATA request
+        let panel_id = 1; // Default panel for now
+        let webmessage_request = serde_json::json!({
+            "action": 1, // GET_PANEL_DATA
+            "message": {
+                "action": 1,
+                "panelId": panel_id
+            },
+            "msgId": format!("trendlog_{}", chrono::Utc::now().timestamp())
+        });
+
+        let ffi_service = T3000FfiApiService::new();
+        let response = ffi_service.call_ffi(&webmessage_request.to_string()).await
+            .map_err(|e| AppError::InternalError(format!("WebMessage API call failed: {:?}", e)))?;
+
+        // Parse response and extract TrendLog data
+        let response_json: serde_json::Value = serde_json::from_str(&response)
+            .map_err(|e| AppError::InternalError(format!("Failed to parse WebMessage response: {}", e)))?;
+
+        // Extract monitor data from the response
+        if let Some(data_array) = response_json.get("data").and_then(|d| d.as_array()) {
+            // Find the monitor entry matching our trendlog_id
+            let monitor_index = trendlog_id.replace("MONITOR", "").parse::<usize>()
+                .map_err(|_| AppError::ValidationError("Invalid TrendLog ID format".to_string()))? - 1;
+
+            for entry in data_array {
+                if entry.get("type").and_then(|t| t.as_str()) == Some("MON") &&
+                   entry.get("index").and_then(|i| i.as_u64()) == Some(monitor_index as u64) {
+
+                    let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Found TrendLog {} in WebMessage response", trendlog_id), LogLevel::Info);
+
+                    // Extract TrendLog info from WebMessage response
+                    let label = entry.get("label").and_then(|l| l.as_str()).unwrap_or("Unknown");
+                    let hour_interval = entry.get("hour_interval_time").and_then(|h| h.as_u64()).unwrap_or(0) as i32;
+                    let minute_interval = entry.get("minute_interval_time").and_then(|m| m.as_u64()).unwrap_or(15) as i32;
+                    let status = entry.get("status").and_then(|s| s.as_u64()).unwrap_or(0);
+                    let num_inputs = entry.get("num_inputs").and_then(|n| n.as_u64()).unwrap_or(0) as i32;
+                    let an_inputs = entry.get("an_inputs").and_then(|a| a.as_u64()).unwrap_or(0) as i32;
+
+                    let total_interval_minutes = hour_interval * 60 + minute_interval;
+                    let status_str = if status == 1 { "ON".to_string() } else { "OFF".to_string() };
+
+                    // Extract related points
+                    let mut related_points = Vec::new();
+                    if let Some(inputs) = entry.get("input").and_then(|i| i.as_array()) {
+                        for (idx, input_entry) in inputs.iter().enumerate().take(num_inputs as usize) {
+                            if let (Some(panel), Some(point_type), Some(point_number)) = (
+                                input_entry.get("panel").and_then(|p| p.as_u64()),
+                                input_entry.get("point_type").and_then(|t| t.as_u64()),
+                                input_entry.get("point_number").and_then(|n| n.as_u64())
+                            ) {
+                                if panel > 0 && point_type > 0 {
+                                    let point_type_str = match point_type {
+                                        1 => "INPUT",
+                                        2 => "OUTPUT",
+                                        3 => "VARIABLE",
+                                        _ => "UNKNOWN",
+                                    };
+                                    let point_label = format!("{}_{}",
+                                        match point_type { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                                        point_number
+                                    );
+
+                                    related_points.push(RelatedPointInfo {
+                                        point_type: point_type_str.to_string(),
+                                        point_index: point_number.to_string(),
+                                        point_panel: panel.to_string(),
+                                        point_label,
+                                        network: input_entry.get("network").and_then(|n| n.as_u64()).unwrap_or(1) as u8,
+                                        range_value: 0, // Would need range array from WebMessage
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    return Ok(TrendLogInfo {
+                        serial_number: device_id as i32,
+                        panel_id: panel_id,
+                        trendlog_id: trendlog_id.to_string(),
+                        trendlog_label: label.to_string(),
+                        interval_minutes: total_interval_minutes,
+                        status: format!("{} (WebMessage)", status_str), // Indicate source
+                        num_inputs,
+                        analog_inputs: an_inputs,
+                        buffer_size: Some(100), // Default
+                        data_size_kb: format!("{}KB", (num_inputs * 100 * 4) / 1024), // Estimate
+                        related_points,
+                    });
+                }
+            }
+        }
+
+        Err(AppError::InternalError("TrendLog not found in WebMessage response".to_string()))
     }
 
     /// Create initial TrendLog info with specific panel_id and custom title (before FFI sync)
@@ -653,6 +855,15 @@ impl TrendLogFFIService {
     ) -> Result<TrendLogInfo, AppError> {
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "\n🚀 === Starting TrendLog FFI Sync (T3000 Monitor Functions) ===", LogLevel::Info);
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("Device ID: {}, TrendLog ID: {}", device_id, trendlog_id), LogLevel::Info);
+
+        // 0. Check T3000.exe availability first - use fallback if not available
+        if let Err(availability_error) = check_t3000_availability() {
+            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("⚠️ T3000 FFI not available: {}", availability_error), LogLevel::Warn);
+            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "📋 Falling back to database-based TrendLog info (limited functionality)", LogLevel::Info);
+
+            // Use fallback mechanism to create basic TrendLog info from database
+            return Self::create_fallback_trendlog_info(device_id, trendlog_id, db).await;
+        }
 
         // 1. Ensure device is connected
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "🔍 Checking T3000 device connection...", LogLevel::Info);
