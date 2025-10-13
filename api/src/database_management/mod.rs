@@ -2259,18 +2259,53 @@ impl DatabaseFilesService {
         }
     }
 
+    /// Helper function to check if database file's data dates indicate it's too old for retention
+    /// Uses the actual start_date and end_date fields from the database record
+    fn is_file_data_old(file: &database_files::Model, retention_days: i32) -> bool {
+        let cutoff_date = (Utc::now() - Duration::days(retention_days as i64)).naive_utc();
+
+        // Check if the file has date information
+        if let Some(end_date) = file.end_date {
+            // If the file's end_date is older than retention period, it's eligible for cleanup
+            return end_date < cutoff_date;
+        }
+
+        if let Some(start_date) = file.start_date {
+            // If only start_date is available, use that for comparison
+            return start_date < cutoff_date;
+        }
+
+        // If no date fields are set, don't cleanup based on data dates
+        false
+    }
+
     /// Cleanup old database files based on retention policy
+    /// Uses both CreatedAt timestamp AND data date ranges from database records for accurate cleanup
     pub async fn cleanup_old_files(
         db: &DatabaseConnection,
         retention_days: i32
     ) -> Result<CleanupResult> {
         let cutoff_date = Utc::now() - Duration::days(retention_days as i64);
 
-        let old_files = database_files::Entity::find()
-            .filter(database_files::Column::CreatedAt.lt(cutoff_date.naive_utc()))
+        // Get all inactive files that are candidates for cleanup
+        let candidate_files = database_files::Entity::find()
             .filter(database_files::Column::IsActive.eq(false))
             .all(db)
             .await?;
+
+        // Filter files based on BOTH CreatedAt AND data date ranges from database records
+        let old_files: Vec<_> = candidate_files.into_iter()
+            .filter(|file| {
+                // Check CreatedAt timestamp (original logic)
+                let created_too_old = file.created_at < cutoff_date.naive_utc();
+
+                // Check data date ranges from database fields (new improved logic)
+                let data_too_old = Self::is_file_data_old(file, retention_days);
+
+                // File is eligible for cleanup if EITHER condition is true
+                created_too_old || data_too_old
+            })
+            .collect();
 
         let mut files_deleted = 0;
         let mut records_removed = 0;
