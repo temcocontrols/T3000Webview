@@ -209,6 +209,44 @@ export class DatabaseConfigAPI {
       throw new Error('Failed to apply partitioning strategy')
     }
   }
+
+  /**
+   * Ensure required partitions exist when trendlog window opens
+   * This method is called every time a user opens trendlog to automatically:
+   * 1. Check if partition configuration exists (create monthly default if not)
+   * 2. Check if required partitions exist for previous periods
+   * 3. Create missing partitions and migrate data as needed
+   * @returns Promise resolving to partition check result
+   * @throws Error if partition check cannot be performed
+   */
+  static async ensurePartitionsOnTrendlogOpen(): Promise<{
+    success: boolean;
+    config_found: boolean;
+    partitions_checked: number;
+    partitions_created: number;
+    data_migrated_mb: number;
+    has_errors: boolean;
+    errors: string[];
+  }> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/database/partition/ensure`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to ensure partitions on trendlog open:', error)
+      throw new Error('Failed to check database partitions')
+    }
+  }
 }
 
 // =====================================

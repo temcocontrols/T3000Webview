@@ -8570,6 +8570,24 @@ onMounted(async () => {
       timestamp: new Date().toISOString()
     })
 
+    // 🆕 DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
+    LogUtil.Info('🗄️ TrendLogChart: Checking database partitions...')
+    try {
+      const partitionResult = await DatabaseConfigAPI.ensurePartitionsOnTrendlogOpen()
+      LogUtil.Info('✅ TrendLogChart: Partition check completed', {
+        partitionsChecked: partitionResult.partitions_checked,
+        partitionsCreated: partitionResult.partitions_created,
+        dataMigratedMB: partitionResult.data_migrated_mb,
+        hasErrors: partitionResult.has_errors
+      })
+
+      if (partitionResult.partitions_created > 0) {
+        LogUtil.Info(`📦 Created ${partitionResult.partitions_created} new partitions and migrated ${partitionResult.data_migrated_mb} MB of data`)
+      }
+    } catch (error) {
+      LogUtil.Warn('⚠️ TrendLogChart: Partition check failed (continuing with normal initialization)', error)
+    }
+
     // Initialize monitor configuration
     const monitorConfigData = await getMonitorConfigFromT3000Data()
 
