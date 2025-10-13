@@ -479,8 +479,15 @@ pub struct ValidationResult {
 fn create_sqlite_url(file_path: &std::path::Path) -> String {
     let path_str = file_path.to_string_lossy();
     if cfg!(windows) {
-        // On Windows, convert backslashes to forward slashes and use three slashes
+        // On Windows, handle long paths and normalize separators
         let normalized_path = path_str.replace("\\", "/");
+
+        // Handle UNC paths and long paths on Windows
+        if normalized_path.len() > 260 {
+            println!("⚠️ Warning: Path length ({}) exceeds Windows MAX_PATH limit (260)", normalized_path.len());
+        }
+
+        // Use proper SQLite URI format for Windows
         format!("sqlite:///{}", normalized_path)
     } else {
         format!("sqlite://{}", path_str)
@@ -1049,6 +1056,27 @@ impl DatabaseConfigService {
         let partition_db_url = create_sqlite_url(&partition_file_path);
         println!("🔗 SQLite URL: {}", partition_db_url);
 
+        // Pre-flight checks for better error diagnostics
+        println!("🔍 Pre-flight checks:");
+        println!("  - Runtime path exists: {}", runtime_path.exists());
+        println!("  - Runtime path is dir: {}", runtime_path.is_dir());
+        println!("  - Partition file path: {}", partition_file_path.display());
+
+        // Check parent directory permissions by trying to create a test file
+        let test_file = runtime_path.join("test_permissions.tmp");
+        match std::fs::File::create(&test_file) {
+            Ok(_) => {
+                let _ = std::fs::remove_file(&test_file);
+                println!("  - Directory permissions: ✅ OK");
+            },
+            Err(perm_err) => {
+                println!("  - Directory permissions: ❌ FAILED - {}", perm_err);
+                return Err(crate::error::Error::ServerError(
+                    format!("Directory permission error in {}: {}", runtime_path.display(), perm_err)
+                ));
+            }
+        }
+
         // Create the partition database file with better error handling
         let partition_conn = match sea_orm::Database::connect(&partition_db_url).await {
             Ok(conn) => {
@@ -1058,16 +1086,46 @@ impl DatabaseConfigService {
             Err(e) => {
                 println!("❌ Failed to connect to partition database: {}", e);
 
-                // Try to create the file manually first
-                if let Err(file_err) = std::fs::File::create(&partition_file_path) {
-                    println!("❌ Failed to create partition file: {}", file_err);
-                } else {
-                    println!("📝 Created empty partition file, retrying connection...");
+                // Enhanced error diagnostics
+                println!("🔍 Detailed diagnostics:");
+                println!("  - SQLite URL: {}", partition_db_url);
+                println!("  - File path exists: {}", partition_file_path.exists());
+                println!("  - Parent dir exists: {}", partition_file_path.parent().map_or(false, |p| p.exists()));
+
+                // Check if it's a specific SQLite error
+                if e.to_string().contains("code: 14") {
+                    println!("  - SQLite Error Code 14: Unable to open database file");
+                    println!("  - Common causes: Permission denied, path too long, or invalid path");
                 }
 
-                return Err(crate::error::Error::ServerError(
-                    format!("Failed to create partition database connection for {}: {}", partition_id, e)
-                ));
+                // Try to create the file manually for additional diagnostics
+                match std::fs::File::create(&partition_file_path) {
+                    Ok(_) => {
+                        println!("  - Manual file creation: ✅ SUCCESS");
+                        println!("📝 Created empty partition file, retrying connection...");
+
+                        // Retry the connection once more
+                        match sea_orm::Database::connect(&partition_db_url).await {
+                            Ok(retry_conn) => {
+                                println!("✅ Retry connection successful!");
+                                retry_conn
+                            },
+                            Err(retry_err) => {
+                                return Err(crate::error::Error::ServerError(
+                                    format!("Failed to create partition database file {}: Initial error: {} | Retry error: {}",
+                                        partition_file_name, e, retry_err)
+                                ));
+                            }
+                        }
+                    },
+                    Err(file_err) => {
+                        println!("  - Manual file creation: ❌ FAILED - {}", file_err);
+                        return Err(crate::error::Error::ServerError(
+                            format!("Failed to create partition database file {}: Connection error: {} | File creation error: {}",
+                                partition_file_name, e, file_err)
+                        ));
+                    }
+                }
             }
         };
 
