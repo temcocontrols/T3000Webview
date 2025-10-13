@@ -209,3 +209,22 @@ pub struct DatabaseInitializationResult {
     /// List of all database files
     pub all_files: Vec<DatabaseFileInfo>,
 }
+
+/// Result of partition checking when trendlog opens
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartitionCheckResult {
+    /// Whether partition configuration was found
+    pub config_found: bool,
+
+    /// Number of partitions checked
+    pub partitions_checked: i32,
+
+    /// Number of partitions created
+    pub partitions_created: i32,
+
+    /// Amount of data migrated in MB
+    pub data_migrated_mb: i32,
+
+    /// Any errors encountered during the process
+    pub errors: Vec<String>,
+}

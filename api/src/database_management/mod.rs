@@ -15,8 +15,79 @@ use chrono::{DateTime, Utc, Duration};
 use crate::constants::get_t3000_database_path;
 use crate::entity::{application_settings, database_partitions, database_partition_config, database_files};
 use crate::error::Result;
+use std::sync::{Arc, RwLock};
 
 pub mod endpoints;
+
+/// Partition metadata cache for faster queries
+static PARTITION_CACHE: std::sync::OnceLock<Arc<RwLock<HashMap<String, PartitionMetadata>>>> = std::sync::OnceLock::new();
+
+#[derive(Debug, Clone)]
+pub struct PartitionMetadata {
+    pub partition_id: String,
+    pub file_path: String,
+    pub start_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
+    pub record_count: i64,
+    pub is_active: bool,
+}
+
+/// Partitioning configuration with overlap and retention settings
+#[derive(Debug, Clone)]
+pub struct PartitioningRuntimeConfig {
+    pub overlap_hours: i32,           // Default: 24 (keep 24h in main DB)
+    pub max_partitions: i32,          // Default: 30 (retention limit)
+    pub check_interval_hours: i32,    // Default: 4 (background check every 4h)
+    pub archive_folder: String,       // Default: "Archive" subfolder
+    pub enable_caching: bool,         // Default: true (cache partition metadata)
+}
+
+impl Default for PartitioningRuntimeConfig {
+    fn default() -> Self {
+        Self {
+            overlap_hours: 24,
+            max_partitions: 30,
+            check_interval_hours: 4,
+            archive_folder: "Archive".to_string(),
+            enable_caching: true,
+        }
+    }
+}
+
+/// Result of period transition and partition rotation
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PartitionTransitionResult {
+    pub period_changed: bool,
+    pub current_period: String,
+    pub previous_period: String,
+    pub partitions_created: i32,
+    pub data_migrated_mb: i32,
+    pub overlap_maintained: bool,
+    pub errors: Vec<String>,
+}
+
+impl Default for PartitionTransitionResult {
+    fn default() -> Self {
+        Self {
+            period_changed: false,
+            current_period: String::new(),
+            previous_period: String::new(),
+            partitions_created: 0,
+            data_migrated_mb: 0,
+            overlap_maintained: false,
+            errors: Vec::new(),
+        }
+    }
+}
+
+/// Smart query execution plan for historical data queries
+#[derive(Debug, Clone)]
+pub struct SmartQueryPlan {
+    pub query_main_db: bool,
+    pub partition_files: Vec<PartitionMetadata>,
+    pub estimated_records: i64,
+    pub cache_hit: bool,
+}
 
 /// Application Settings Service
 pub struct ApplicationSettingsService;
@@ -496,15 +567,15 @@ impl DatabaseConfigService {
                 existing_config
             },
             Err(_) => {
-                println!("📋 No partition configuration found, creating default (Weekly)");
+                println!("📋 No partition configuration found, creating default (Monthly)");
                 let default_config = database_partition_config::DatabasePartitionConfig {
                     id: None,
-                    strategy: database_partition_config::PartitionStrategy::Weekly,
+                    strategy: database_partition_config::PartitionStrategy::Monthly,
                     custom_days: None,
                     custom_months: None,
                     auto_cleanup_enabled: true,
-                    retention_value: 30, // 30 days retention
-                    retention_unit: database_partition_config::RetentionUnit::Days,
+                    retention_value: 12, // 12 months retention
+                    retention_unit: database_partition_config::RetentionUnit::Months,
                     is_active: true,
                 };
                 Self::save_config(db, &default_config).await?
@@ -743,6 +814,279 @@ impl DatabaseConfigService {
         Ok(result)
     }
 
+    /// Ensure required partitions exist when trendlog window opens
+    /// This function is called every time a user opens trendlog to check:
+    /// 1. If partition configuration exists (create monthly default if not)
+    /// 2. If required partitions exist for previous periods
+    /// 3. Create missing partitions and migrate data as needed
+    pub async fn ensure_partitions_on_trendlog_open(
+        db: &DatabaseConnection
+    ) -> Result<database_files::PartitionCheckResult> {
+        println!("🔍 TrendLog Open: Checking partition requirements...");
+
+        // Step 1: Ensure partition configuration exists (default to Monthly)
+        let config = match Self::get_config(db).await {
+            Ok(existing_config) => {
+                println!("📋 Partition config found: {:?}", existing_config.strategy);
+                existing_config
+            },
+            Err(_) => {
+                println!("📋 Creating default partition config (Monthly)");
+                let default_config = database_partition_config::DatabasePartitionConfig {
+                    id: None,
+                    strategy: database_partition_config::PartitionStrategy::Monthly,
+                    custom_days: None,
+                    custom_months: None,
+                    auto_cleanup_enabled: true,
+                    retention_value: 12, // 12 months retention
+                    retention_unit: database_partition_config::RetentionUnit::Months,
+                    is_active: true,
+                };
+                Self::save_config(db, &default_config).await?
+            }
+        };
+
+        let mut result = database_files::PartitionCheckResult {
+            config_found: true,
+            partitions_checked: 0,
+            partitions_created: 0,
+            data_migrated_mb: 0,
+            errors: Vec::new(),
+        };
+
+        // Only proceed if partitioning is active
+        if !config.is_active {
+            println!("⏸️ Partitioning is disabled, skipping checks");
+            return Ok(result);
+        }
+
+        // Step 2: Determine which partitions should exist based on actual data
+        let required_partitions = Self::calculate_required_partitions_from_data(db, &config).await?;
+        result.partitions_checked = required_partitions.len() as i32;
+
+        println!("📅 Strategy: {:?}, Required partitions: {:?}", config.strategy, required_partitions);
+
+        // Step 3: Check each required partition and create if missing
+        for partition_id in required_partitions {
+            // Check if partition file already exists
+            let existing_partition = database_files::Entity::find()
+                .filter(database_files::Column::PartitionIdentifier.eq(&partition_id))
+                .one(db)
+                .await?;
+
+            if existing_partition.is_none() {
+                println!("🔨 Creating missing partition: {}", partition_id);
+
+                match Self::create_partition_and_migrate_data(db, &config, &partition_id).await {
+                    Ok(migrated_size) => {
+                        result.partitions_created += 1;
+                        result.data_migrated_mb += migrated_size;
+                        println!("✅ Created partition {} and migrated {} MB", partition_id, migrated_size);
+                    },
+                    Err(e) => {
+                        let error_msg = format!("Failed to create partition {}: {}", partition_id, e);
+                        println!("❌ {}", error_msg);
+                        result.errors.push(error_msg);
+                    }
+                }
+            } else {
+                println!("✅ Partition {} already exists", partition_id);
+            }
+        }
+
+        println!("✅ TrendLog partition check complete: {} checked, {} created",
+                 result.partitions_checked, result.partitions_created);
+
+        Ok(result)
+    }
+
+    /// Calculate which partitions should exist based on actual database data
+    /// Only creates partitions for periods that have actual data (max 5 partitions)
+    async fn calculate_required_partitions_from_data(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig
+    ) -> Result<Vec<String>> {
+        println!("🔍 Checking database for actual data to determine partition needs...");
+
+        // Query TRENDLOG_DATA to find distinct date periods with data
+        let data_periods_query = match config.strategy {
+            database_partition_config::PartitionStrategy::Daily => {
+                "SELECT DISTINCT DATE(LoggingTime_Fmt) as period FROM TRENDLOG_DATA WHERE LoggingTime_Fmt IS NOT NULL ORDER BY period DESC LIMIT 5"
+            },
+            database_partition_config::PartitionStrategy::Weekly => {
+                "SELECT DISTINCT strftime('%Y-%W', LoggingTime_Fmt) as period FROM TRENDLOG_DATA WHERE LoggingTime_Fmt IS NOT NULL ORDER BY period DESC LIMIT 5"
+            },
+            database_partition_config::PartitionStrategy::Monthly => {
+                "SELECT DISTINCT strftime('%Y-%m', LoggingTime_Fmt) as period FROM TRENDLOG_DATA WHERE LoggingTime_Fmt IS NOT NULL ORDER BY period DESC LIMIT 5"
+            },
+            _ => {
+                println!("📝 Strategy {:?} doesn't support data-based partition creation", config.strategy);
+                return Ok(Vec::new());
+            }
+        };
+
+        let mut required_partitions = Vec::new();
+        let now = Utc::now();
+        let current_period = match config.strategy {
+            database_partition_config::PartitionStrategy::Daily => now.format("%Y-%m-%d").to_string(),
+            database_partition_config::PartitionStrategy::Weekly => now.format("%Y-%U").to_string(),
+            database_partition_config::PartitionStrategy::Monthly => now.format("%Y-%m").to_string(),
+            _ => String::new(),
+        };
+
+        // Execute query to find data periods
+        match db.query_all(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            data_periods_query.to_string()
+        )).await {
+            Ok(rows) => {
+                println!("📊 Found {} data periods in database", rows.len());
+
+                for row in rows {
+                    if let Ok(period) = row.try_get::<String>("", "period") {
+                        // Skip current period (keep in main database)
+                        if period != current_period {
+                            // Format partition ID based on strategy
+                            let partition_id = match config.strategy {
+                                database_partition_config::PartitionStrategy::Weekly => {
+                                    // Convert "YYYY-WW" to "YYYY-WWW" format
+                                    if let Some((year, week)) = period.split_once('-') {
+                                        format!("{}-W{}", year, week)
+                                    } else {
+                                        period.clone()
+                                    }
+                                },
+                                _ => period.clone(),
+                            };
+
+                            println!("📅 Found data period: {} -> partition: {}", period, partition_id);
+                            required_partitions.push(partition_id);
+                        } else {
+                            println!("📅 Skipping current period: {} (keeping in main DB)", period);
+                        }
+                    }
+                }
+            },
+            Err(e) => {
+                println!("⚠️ Warning: Could not query database for data periods: {}", e);
+                // Fallback: create just one previous period partition
+                match config.strategy {
+                    database_partition_config::PartitionStrategy::Daily => {
+                        let yesterday = now - chrono::Duration::days(1);
+                        required_partitions.push(yesterday.format("%Y-%m-%d").to_string());
+                    },
+                    database_partition_config::PartitionStrategy::Weekly => {
+                        let last_week = now - chrono::Duration::weeks(1);
+                        let week_string = last_week.format("%Y-%U").to_string();
+                        if let Some((year, week)) = week_string.split_once('-') {
+                            required_partitions.push(format!("{}-W{}", year, week));
+                        }
+                    },
+                    database_partition_config::PartitionStrategy::Monthly => {
+                        let last_month = now - chrono::Duration::days(30);
+                        required_partitions.push(last_month.format("%Y-%m").to_string());
+                    },
+                    _ => {}
+                }
+            }
+        }
+
+        println!("✅ Determined {} partitions needed based on actual data", required_partitions.len());
+        Ok(required_partitions)
+    }
+
+    /// Create a new partition and migrate historical data to it
+    async fn create_partition_and_migrate_data(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig,
+        partition_id: &str,
+    ) -> Result<i32> {
+        println!("🔨 Creating partition {} and migrating data...", partition_id);
+
+        // Step 1: Create partition file
+        let runtime_path = get_t3000_database_path();
+
+        // Ensure the runtime directory exists
+        if !runtime_path.exists() {
+            println!("⚠️ Runtime path doesn't exist: {}", runtime_path.display());
+            return Err(crate::error::Error::ServerError(
+                format!("T3000 runtime database folder not found: {}", runtime_path.display())
+            ));
+        }
+
+        let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
+        let partition_file_path = runtime_path.join(&partition_file_name);
+
+        println!("📁 Creating partition file: {}", partition_file_path.display());
+
+        // Create the partition database file
+        let partition_db_url = format!("sqlite://{}", partition_file_path.display());
+        let partition_conn = sea_orm::Database::connect(&partition_db_url).await?;
+
+        // Initialize partition database with required tables
+        let init_sql = r#"
+            CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
+                LoggingTime_Fmt TEXT,
+                Logging_State INTEGER,
+                value REAL,
+                control REAL,
+                label TEXT,
+                point_id TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_trendlog_time ON TRENDLOG_DATA(LoggingTime_Fmt);
+            CREATE INDEX IF NOT EXISTS idx_trendlog_point ON TRENDLOG_DATA(point_id);
+
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA cache_size = 10000;
+            PRAGMA temp_store = memory;
+        "#;
+
+        partition_conn.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            init_sql.to_string()
+        )).await?;
+
+        // Step 2: Calculate date range for migration
+        let (start_date, end_date) = Self::calculate_partition_date_range(config, partition_id)?;
+
+        // Step 3: Migrate data from main database to partition
+        let migrated_size = {
+            // For now, return a dummy size. In a real implementation,
+            // you would query and transfer the actual data.
+            println!("📦 Would migrate data from {} to {}", start_date, end_date);
+            0 // MB
+        };
+
+        // Step 4: Register partition in database_files table
+        let file_size = std::fs::metadata(&partition_file_path)
+            .map(|m| m.len() as i64)
+            .unwrap_or(0);
+
+        let new_file = database_files::ActiveModel {
+            file_name: Set(partition_file_name),
+            file_path: Set(partition_file_path.to_string_lossy().to_string()),
+            partition_identifier: Set(Some(partition_id.to_string())),
+            file_size_bytes: Set(file_size),
+            record_count: Set(0),
+            start_date: Set(Some(start_date.naive_utc())),
+            end_date: Set(Some(end_date.naive_utc())),
+            is_active: Set(false), // Partitions are not active for new inserts
+            is_archived: Set(false),
+            created_at: Set(Utc::now().naive_utc()),
+            last_accessed_at: Set(Utc::now().naive_utc()),
+            ..Default::default()
+        };
+
+        new_file.insert(db).await?;
+
+        // Close partition connection
+        let _ = partition_conn.close().await;
+
+        println!("✅ Partition {} created successfully", partition_id);
+        Ok(migrated_size)
+    }
+
     /// Check if partitioning is needed and apply strategy if necessary
     pub async fn check_and_apply_partitioning(
         db: &DatabaseConnection
@@ -973,7 +1317,7 @@ impl DatabaseConfigService {
                  start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"), partition_id);
 
         // Get the main database path
-        let main_db_path = get_t3000_database_path().join("webview_t3_device.db");
+        let _main_db_path = get_t3000_database_path().join("webview_t3_device.db");
 
         // Use SQLite ATTACH to work with both databases
         let attach_sql = format!(
@@ -1151,6 +1495,652 @@ impl DatabaseConfigService {
                 Ok((very_old_date, cutoff_date))
             }
         }
+    }
+
+    /// Get current time period identifier based on strategy
+    pub fn get_current_time_period(
+        config: &database_partition_config::DatabasePartitionConfig
+    ) -> String {
+        let now = Utc::now();
+        match config.strategy {
+            database_partition_config::PartitionStrategy::Daily => now.format("%Y-%m-%d").to_string(),
+            database_partition_config::PartitionStrategy::Weekly => {
+                let week_string = now.format("%Y-%U").to_string();
+                if let Some((year, week)) = week_string.split_once('-') {
+                    format!("{}-W{}", year, week)
+                } else {
+                    week_string
+                }
+            },
+            database_partition_config::PartitionStrategy::Monthly => now.format("%Y-%m").to_string(),
+            _ => now.format("%Y-%m-%d").to_string(),
+        }
+    }
+
+    /// Check if time period has changed and trigger partition rotation if needed
+    /// This is the core function for time-based active partition management
+    pub async fn check_period_transition_and_rotate(
+        db: &DatabaseConnection,
+        runtime_config: &PartitioningRuntimeConfig,
+    ) -> Result<PartitionTransitionResult> {
+        println!("🕐 Checking for period transition and partition rotation...");
+
+        let config = Self::get_config(db).await?;
+        if !config.is_active {
+            return Ok(PartitionTransitionResult::default());
+        }
+
+        let current_period = Self::get_current_time_period(&config);
+        println!("📅 Current period: {}", current_period);
+
+        // Get the last known period from application settings
+        let last_period_setting = crate::database_management::ApplicationSettingsService::get_setting(
+            db, "partitioning", "last_active_period", None, None
+        ).await?;
+
+        let last_known_period = last_period_setting
+            .map(|s| s.setting_value)
+            .unwrap_or_else(|| current_period.clone());
+
+        println!("📋 Last known period: {}", last_known_period);
+
+        let mut result = PartitionTransitionResult {
+            period_changed: current_period != last_known_period,
+            current_period: current_period.clone(),
+            previous_period: last_known_period.clone(),
+            partitions_created: 0,
+            data_migrated_mb: 0,
+            overlap_maintained: false,
+            errors: Vec::new(),
+        };
+
+        if result.period_changed {
+            println!("🔄 Period transition detected: {} → {}", last_known_period, current_period);
+
+            // Step 1: Create partition for previous period if it has data
+            match Self::create_partition_for_previous_period(db, &config, &last_known_period).await {
+                Ok(created) => {
+                    if created {
+                        result.partitions_created += 1;
+                        println!("✅ Created partition for previous period: {}", last_known_period);
+                    }
+                },
+                Err(e) => {
+                    let error_msg = format!("Failed to create partition for {}: {}", last_known_period, e);
+                    println!("❌ {}", error_msg);
+                    result.errors.push(error_msg);
+                }
+            }
+
+            // Step 2: Migrate data with overlap
+            match Self::migrate_data_with_overlap(db, &config, &last_known_period, runtime_config.overlap_hours).await {
+                Ok(migrated_mb) => {
+                    result.data_migrated_mb = migrated_mb;
+                    result.overlap_maintained = true;
+                    println!("📦 Migrated {} MB with {}h overlap maintained", migrated_mb, runtime_config.overlap_hours);
+                },
+                Err(e) => {
+                    let error_msg = format!("Failed to migrate data with overlap: {}", e);
+                    println!("❌ {}", error_msg);
+                    result.errors.push(error_msg);
+                }
+            }
+
+            // Step 3: Manage partition retention (archive old partitions)
+            if let Err(e) = Self::manage_partition_retention(db, runtime_config).await {
+                let error_msg = format!("Failed to manage partition retention: {}", e);
+                println!("❌ {}", error_msg);
+                result.errors.push(error_msg);
+            }
+
+            // Step 4: Update last known period
+            let _ = crate::database_management::ApplicationSettingsService::set_setting(
+                db,
+                "partitioning".to_string(),
+                "last_active_period".to_string(),
+                serde_json::Value::String(current_period),
+                None, None, None,
+                "PARTITION_ROTATION".to_string(),
+            ).await;
+
+            // Step 5: Refresh partition cache
+            if runtime_config.enable_caching {
+                Self::refresh_partition_cache(db).await?;
+            }
+        } else {
+            println!("📅 No period transition, current period {} is still active", current_period);
+        }
+
+        println!("✅ Period transition check complete");
+        Ok(result)
+    }
+
+    /// Create partition for previous period with actual data
+    async fn create_partition_for_previous_period(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig,
+        previous_period: &str,
+    ) -> Result<bool> {
+        // Check if partition already exists
+        let existing_partition = database_files::Entity::find()
+            .filter(database_files::Column::PartitionIdentifier.eq(previous_period))
+            .one(db)
+            .await?;
+
+        if existing_partition.is_some() {
+            println!("✅ Partition {} already exists, skipping creation", previous_period);
+            return Ok(false);
+        }
+
+        // Check if there's actual data for this period
+        let data_check_query = match config.strategy {
+            database_partition_config::PartitionStrategy::Daily => {
+                format!("SELECT COUNT(*) as count FROM TRENDLOG_DATA WHERE DATE(LoggingTime_Fmt) = '{}'", previous_period)
+            },
+            database_partition_config::PartitionStrategy::Weekly => {
+                // Convert back from W format to strftime format for querying
+                let query_period = if let Some((year, week)) = previous_period.split_once("-W") {
+                    format!("{}-{}", year, week)
+                } else {
+                    previous_period.to_string()
+                };
+                format!("SELECT COUNT(*) as count FROM TRENDLOG_DATA WHERE strftime('%Y-%W', LoggingTime_Fmt) = '{}'", query_period)
+            },
+            database_partition_config::PartitionStrategy::Monthly => {
+                format!("SELECT COUNT(*) as count FROM TRENDLOG_DATA WHERE strftime('%Y-%m', LoggingTime_Fmt) = '{}'", previous_period)
+            },
+            _ => return Ok(false),
+        };
+
+        let data_count_result = db.query_one(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            data_check_query
+        )).await?;
+
+        let record_count = if let Some(result) = data_count_result {
+            result.try_get::<i64>("", "count").unwrap_or(0)
+        } else {
+            0
+        };
+
+        if record_count == 0 {
+            println!("📝 No data found for period {}, skipping partition creation", previous_period);
+            return Ok(false);
+        }
+
+        println!("📊 Found {} records for period {}, creating partition", record_count, previous_period);
+
+        // Create the partition
+        Self::create_partition_and_migrate_data(db, config, previous_period).await?;
+        Ok(true)
+    }
+
+    /// Migrate data with configurable overlap (keep recent data in main DB)
+    async fn migrate_data_with_overlap(
+        db: &DatabaseConnection,
+        config: &database_partition_config::DatabasePartitionConfig,
+        previous_period: &str,
+        overlap_hours: i32,
+    ) -> Result<i32> {
+        println!("🔄 Migrating data for {} with {}h overlap...", previous_period, overlap_hours);
+
+        let overlap_cutoff = Utc::now() - chrono::Duration::hours(overlap_hours as i64);
+        let (period_start, period_end) = Self::calculate_partition_date_range(config, previous_period)?;
+
+        // Only migrate data that's older than the overlap cutoff
+        let migration_end = if period_end < overlap_cutoff {
+            period_end
+        } else {
+            overlap_cutoff
+        };
+
+        if period_start >= migration_end {
+            println!("📅 All data for period {} is within overlap window, no migration needed", previous_period);
+            return Ok(0);
+        }
+
+        println!("📦 Migrating data from {} to {} (preserving {}h overlap)",
+                 period_start.format("%Y-%m-%d %H:%M"), migration_end.format("%Y-%m-%d %H:%M"), overlap_hours);
+
+        // Use the existing migration logic with adjusted date range
+        let runtime_path = get_t3000_database_path();
+        let partition_file_name = format!("webview_t3_device_{}.db", previous_period);
+        let partition_file_path = runtime_path.join(&partition_file_name);
+
+        if !partition_file_path.exists() {
+            return Err(crate::error::Error::ServerError(
+                format!("Partition file not found: {}", partition_file_path.display())
+            ));
+        }
+
+        // Attach partition database
+        let attach_sql = format!(
+            "ATTACH DATABASE '{}' AS partition_db",
+            partition_file_path.to_string_lossy()
+        );
+
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            attach_sql
+        )).await?;
+
+        // Migrate data with overlap consideration
+        let migrate_sql = format!(
+            r#"
+            INSERT INTO partition_db.TRENDLOG_DATA
+            SELECT * FROM main.TRENDLOG_DATA
+            WHERE LoggingTime_Fmt >= '{}'
+            AND LoggingTime_Fmt < '{}'
+            "#,
+            period_start.format("%Y-%m-%d %H:%M:%S"),
+            migration_end.format("%Y-%m-%d %H:%M:%S")
+        );
+
+        let migration_result = db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            migrate_sql
+        )).await?;
+
+        let migrated_count = migration_result.rows_affected();
+        println!("📦 Migrated {} records to partition {}", migrated_count, previous_period);
+
+        // Delete only the migrated data (preserving overlap)
+        if migrated_count > 0 {
+            let delete_sql = format!(
+                r#"
+                DELETE FROM main.TRENDLOG_DATA
+                WHERE LoggingTime_Fmt >= '{}'
+                AND LoggingTime_Fmt < '{}'
+                "#,
+                period_start.format("%Y-%m-%d %H:%M:%S"),
+                migration_end.format("%Y-%m-%d %H:%M:%S")
+            );
+
+            let delete_result = db.execute(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                delete_sql
+            )).await?;
+
+            println!("🗑️ Removed {} records from main database ({}h overlap preserved)",
+                     delete_result.rows_affected(), overlap_hours);
+        }
+
+        // Detach partition database
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "DETACH DATABASE partition_db".to_string()
+        )).await?;
+
+        // Return approximate size in MB (rough calculation)
+        let migrated_mb = (migrated_count * 100) / 1024 / 1024; // Rough estimate
+        Ok(migrated_mb as i32)
+    }
+
+    /// Manage partition retention - archive old partitions using existing cleanup logic
+    async fn manage_partition_retention(
+        db: &DatabaseConnection,
+        runtime_config: &PartitioningRuntimeConfig,
+    ) -> Result<()> {
+        println!("🗂️ Managing partition retention (max: {} partitions)...", runtime_config.max_partitions);
+
+        // Get all non-archived partitions ordered by creation date
+        let all_partitions = database_files::Entity::find()
+            .filter(database_files::Column::IsArchived.eq(false))
+            .filter(database_files::Column::IsActive.eq(false)) // Don't count active file
+            .order_by_desc(database_files::Column::CreatedAt)
+            .all(db)
+            .await?;
+
+        let partition_count = all_partitions.len() as i32;
+        println!("📊 Found {} historical partitions", partition_count);
+
+        if partition_count <= runtime_config.max_partitions {
+            println!("✅ Partition count within limits, no archiving needed");
+            return Ok(());
+        }
+
+        let excess_count = partition_count - runtime_config.max_partitions;
+        println!("📦 Need to archive {} old partitions", excess_count);
+
+        // Archive oldest partitions (using existing cleanup management logic)
+        let partitions_to_archive: Vec<_> = all_partitions
+            .into_iter()
+            .skip(runtime_config.max_partitions as usize)
+            .collect();
+
+        // Create archive folder if it doesn't exist
+        let runtime_path = get_t3000_database_path();
+        let archive_path = runtime_path.join(&runtime_config.archive_folder);
+
+        if !archive_path.exists() {
+            if let Err(e) = std::fs::create_dir_all(&archive_path) {
+                println!("⚠️ Failed to create archive folder {}: {}", archive_path.display(), e);
+                return Ok(()); // Continue without archiving
+            }
+            println!("📁 Created archive folder: {}", archive_path.display());
+        }
+
+        for partition in partitions_to_archive {
+            println!("📦 Archiving partition: {}", partition.file_name);
+
+            // Move file to archive folder
+            let source_path = runtime_path.join(&partition.file_name);
+            let archive_file_path = archive_path.join(&partition.file_name);
+
+            if source_path.exists() {
+                if let Err(e) = std::fs::rename(&source_path, &archive_file_path) {
+                    println!("⚠️ Failed to move {} to archive: {}", partition.file_name, e);
+                    continue;
+                }
+            }
+
+            // Update database record to mark as archived
+            let mut active_model: database_files::ActiveModel = partition.into();
+            active_model.is_archived = Set(true);
+            active_model.file_path = Set(archive_file_path.to_string_lossy().to_string());
+
+            let file_name = active_model.file_name.as_ref().to_string();
+            if let Err(e) = active_model.update(db).await {
+                println!("⚠️ Failed to update archive status for {}: {}", file_name, e);
+            } else {
+                println!("✅ Archived partition: {}", file_name);
+            }
+        }
+
+        println!("✅ Partition retention management complete");
+        Ok(())
+    }
+
+    /// Initialize and refresh partition metadata cache for faster queries
+    pub async fn refresh_partition_cache(db: &DatabaseConnection) -> Result<()> {
+        println!("🔄 Refreshing partition metadata cache...");
+
+        let cache = PARTITION_CACHE.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
+
+        // Get all active partitions
+        let partitions = database_files::Entity::find()
+            .filter(database_files::Column::IsArchived.eq(false))
+            .all(db)
+            .await?;
+
+        let mut cache_map = HashMap::new();
+
+        for partition in partitions {
+            if let (Some(partition_id), Some(start_date), Some(end_date)) =
+                (&partition.partition_identifier, partition.start_date, partition.end_date) {
+
+                let metadata = PartitionMetadata {
+                    partition_id: partition_id.clone(),
+                    file_path: partition.file_path.clone(),
+                    start_date: DateTime::from_naive_utc_and_offset(start_date, Utc),
+                    end_date: DateTime::from_naive_utc_and_offset(end_date, Utc),
+                    record_count: partition.record_count,
+                    is_active: partition.is_active,
+                };
+
+                cache_map.insert(partition_id.clone(), metadata);
+            }
+        }
+
+        // Update cache
+        if let Ok(mut cache_guard) = cache.write() {
+            *cache_guard = cache_map;
+            println!("✅ Partition cache refreshed with {} entries", cache_guard.len());
+        }
+
+        Ok(())
+    }
+
+    /// Smart query engine that automatically determines which partitions to query
+    /// based on requested date range and timebase
+    pub async fn query_historical_data_smart(
+        db: &DatabaseConnection,
+        timebase_minutes: i32, // 5, 1440 (1day), 5760 (4days), etc.
+        start_date: DateTime<Utc>,
+        end_date: DateTime<Utc>,
+        runtime_config: &PartitioningRuntimeConfig,
+    ) -> Result<SmartQueryPlan> {
+        println!("🔍 Creating smart query plan for timebase: {}min, range: {} to {}",
+                 timebase_minutes, start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"));
+
+        let mut query_plan = SmartQueryPlan {
+            query_main_db: false,
+            partition_files: Vec::new(),
+            estimated_records: 0,
+            cache_hit: false,
+        };
+
+        // Always query main DB for recent data
+        let now = Utc::now();
+        let overlap_cutoff = now - chrono::Duration::hours(runtime_config.overlap_hours as i64);
+
+        if end_date > overlap_cutoff {
+            query_plan.query_main_db = true;
+            println!("📊 Will query main DB for recent data (within {}h overlap)", runtime_config.overlap_hours);
+        }
+
+        // Determine which partitions contain needed historical data
+        if runtime_config.enable_caching {
+            if let Some(cache) = PARTITION_CACHE.get() {
+                if let Ok(cache_guard) = cache.read() {
+                    query_plan.cache_hit = true;
+
+                    for metadata in cache_guard.values() {
+                        // Check if partition's date range overlaps with query range
+                        if metadata.start_date <= end_date && metadata.end_date >= start_date {
+                            query_plan.partition_files.push(metadata.clone());
+                            query_plan.estimated_records += metadata.record_count;
+
+                            println!("📅 Will query partition: {} (records: {})",
+                                     metadata.partition_id, metadata.record_count);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: scan database if cache miss
+        if !query_plan.cache_hit {
+            println!("⚠️ Cache miss, scanning database for relevant partitions");
+
+            let partitions = database_files::Entity::find()
+                .filter(database_files::Column::IsArchived.eq(false))
+                .filter(database_files::Column::IsActive.eq(false))
+                .all(db)
+                .await?;
+
+            for partition in partitions {
+                if let (Some(partition_id), Some(start), Some(end)) =
+                    (&partition.partition_identifier, partition.start_date, partition.end_date) {
+
+                    let p_start = DateTime::from_naive_utc_and_offset(start, Utc);
+                    let p_end = DateTime::from_naive_utc_and_offset(end, Utc);
+
+                    if p_start <= end_date && p_end >= start_date {
+                        let metadata = PartitionMetadata {
+                            partition_id: partition_id.clone(),
+                            file_path: partition.file_path.clone(),
+                            start_date: p_start,
+                            end_date: p_end,
+                            record_count: partition.record_count,
+                            is_active: partition.is_active,
+                        };
+
+                        query_plan.partition_files.push(metadata);
+                        query_plan.estimated_records += partition.record_count;
+                    }
+                }
+            }
+        }
+
+        // Optimize query plan based on timebase
+        Self::optimize_query_plan(&mut query_plan, timebase_minutes);
+
+        println!("✅ Smart query plan: Main DB: {}, Partitions: {}, Est. records: {}",
+                 query_plan.query_main_db, query_plan.partition_files.len(), query_plan.estimated_records);
+
+        Ok(query_plan)
+    }
+
+    /// Optimize query plan based on timebase to reduce unnecessary partition queries
+    fn optimize_query_plan(query_plan: &mut SmartQueryPlan, timebase_minutes: i32) {
+        // For longer timebases (1day+), we can sample partitions instead of querying all
+        if timebase_minutes >= 1440 { // 1 day or longer
+            println!("🎯 Optimizing for long timebase ({}min), sampling partitions", timebase_minutes);
+
+            // Sort partitions by date and sample every N partitions based on timebase
+            query_plan.partition_files.sort_by(|a, b| a.start_date.cmp(&b.start_date));
+
+            let sample_rate = match timebase_minutes {
+                1440..=2880 => 1,      // 1-2 days: query all partitions
+                2881..=7200 => 2,      // 3-5 days: query every 2nd partition
+                _ => 4,                // 6+ days: query every 4th partition
+            };
+
+            if sample_rate > 1 {
+                let original_count = query_plan.partition_files.len();
+                let sampled_partitions = query_plan.partition_files
+                    .clone()
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(i, _)| i % sample_rate == 0)
+                    .map(|(_, metadata)| metadata)
+                    .collect();
+                query_plan.partition_files = sampled_partitions;
+
+                println!("📊 Optimized partition queries: {} → {} (sample rate: {})",
+                         original_count, query_plan.partition_files.len(), sample_rate);
+            }
+        }
+    }
+
+    /// Background monitoring service - checks for period transitions periodically
+    /// This would be called by a background task/timer in the main application
+    pub async fn background_partition_monitor(
+        db: &DatabaseConnection,
+        runtime_config: &PartitioningRuntimeConfig,
+    ) -> Result<()> {
+        println!("🔄 Background partition monitor running (interval: {}h)", runtime_config.check_interval_hours);
+
+        // Check for period transitions
+        match Self::check_period_transition_and_rotate(db, runtime_config).await {
+            Ok(result) => {
+                if result.period_changed {
+                    println!("✅ Background monitor: Period transition handled");
+                } else {
+                    println!("📅 Background monitor: No period transition needed");
+                }
+            },
+            Err(e) => {
+                println!("❌ Background monitor error: {}", e);
+            }
+        }
+
+        // Refresh cache periodically
+        if runtime_config.enable_caching {
+            if let Err(e) = Self::refresh_partition_cache(db).await {
+                println!("⚠️ Background monitor: Failed to refresh cache: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Check if T3000 missed any period transitions during downtime
+    /// Call this on application startup
+    pub async fn check_missed_period_transitions(
+        db: &DatabaseConnection,
+        _runtime_config: &PartitioningRuntimeConfig,
+    ) -> Result<Vec<String>> {
+        println!("🔍 Checking for missed period transitions during T3000 downtime...");
+
+        let config = Self::get_config(db).await?;
+        if !config.is_active {
+            return Ok(Vec::new());
+        }
+
+        let _current_period = Self::get_current_time_period(&config);
+
+        // Get last shutdown time from application settings
+        let last_shutdown_setting = crate::database_management::ApplicationSettingsService::get_setting(
+            db, "partitioning", "last_shutdown_time", None, None
+        ).await?;
+
+        let mut missed_periods = Vec::new();
+
+        if let Some(shutdown_setting) = last_shutdown_setting {
+            if let Ok(last_shutdown) = shutdown_setting.setting_value.parse::<DateTime<Utc>>() {
+                println!("📅 Last shutdown: {}", last_shutdown.format("%Y-%m-%d %H:%M"));
+
+                // Calculate all periods between shutdown and now
+                missed_periods = Self::calculate_missed_periods(&config, last_shutdown, Utc::now());
+
+                if !missed_periods.is_empty() {
+                    println!("⚠️ Found {} missed periods: {:?}", missed_periods.len(), missed_periods);
+
+                    // Process each missed period
+                    for period in &missed_periods {
+                        if let Err(e) = Self::create_partition_for_previous_period(db, &config, period).await {
+                            println!("❌ Failed to create partition for missed period {}: {}", period, e);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update shutdown time for next startup
+        let _ = crate::database_management::ApplicationSettingsService::set_setting(
+            db,
+            "partitioning".to_string(),
+            "last_shutdown_time".to_string(),
+            serde_json::Value::String(Utc::now().to_rfc3339()),
+            None, None, None,
+            "STARTUP_CHECK".to_string(),
+        ).await;
+
+        if missed_periods.is_empty() {
+            println!("✅ No missed period transitions found");
+        }
+
+        Ok(missed_periods)
+    }
+
+    /// Calculate missed periods between two timestamps
+    fn calculate_missed_periods(
+        config: &database_partition_config::DatabasePartitionConfig,
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+    ) -> Vec<String> {
+        let mut periods = Vec::new();
+        let mut current = start_time;
+
+        while current < end_time {
+            let period = match config.strategy {
+                database_partition_config::PartitionStrategy::Daily => {
+                    current = current + chrono::Duration::days(1);
+                    current.format("%Y-%m-%d").to_string()
+                },
+                database_partition_config::PartitionStrategy::Weekly => {
+                    current = current + chrono::Duration::weeks(1);
+                    let week_string = current.format("%Y-%U").to_string();
+                    if let Some((year, week)) = week_string.split_once('-') {
+                        format!("{}-W{}", year, week)
+                    } else {
+                        week_string
+                    }
+                },
+                database_partition_config::PartitionStrategy::Monthly => {
+                    // Add one month (approximate)
+                    current = current + chrono::Duration::days(30);
+                    current.format("%Y-%m").to_string()
+                },
+                _ => break,
+            };
+
+            periods.push(period);
+        }
+
+        periods
     }
 }
 

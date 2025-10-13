@@ -37,6 +37,7 @@ use super::{
         .route("/api/database/initialize", post(initialize_database_partitioning))
         .route("/api/database/partition/apply", post(apply_partitioning_strategy))
         .route("/api/database/partition/check", post(check_and_apply_partitioning))
+        .route("/api/database/partition/ensure", post(ensure_partitions_on_trendlog_open))
 
         // Database Files Management endpoints (NEW)
         .route("/api/database/files", get(get_database_files))
@@ -555,6 +556,29 @@ async fn check_and_apply_partitioning(
             "partitioned": false
         })))
     }
+}
+
+/// Ensure required partitions exist when trendlog window opens
+async fn ensure_partitions_on_trendlog_open(
+    State(app_state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let db = match &app_state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let result = DatabaseConfigService::ensure_partitions_on_trendlog_open(db).await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Partition check completed",
+        "config_found": result.config_found,
+        "partitions_checked": result.partitions_checked,
+        "partitions_created": result.partitions_created,
+        "data_migrated_mb": result.data_migrated_mb,
+        "has_errors": !result.errors.is_empty(),
+        "errors": result.errors
+    })))
 }
 
 /// Get list of database files
