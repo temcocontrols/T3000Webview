@@ -475,6 +475,28 @@ pub struct ValidationResult {
     pub created_files: i32,
 }
 
+/// Helper function to create SQLite database URLs that work on both Windows and Unix
+fn create_sqlite_url(file_path: &std::path::Path) -> String {
+    let path_str = file_path.to_string_lossy();
+    if cfg!(windows) {
+        // On Windows, convert backslashes to forward slashes and use three slashes
+        let normalized_path = path_str.replace("\\", "/");
+        format!("sqlite:///{}", normalized_path)
+    } else {
+        format!("sqlite://{}", path_str)
+    }
+}
+
+/// Helper function to format paths for SQLite ATTACH statements
+fn format_path_for_attach(file_path: &std::path::Path) -> String {
+    if cfg!(windows) {
+        // On Windows, normalize the path and escape single quotes
+        file_path.to_string_lossy().replace("\\", "/").replace("'", "''")
+    } else {
+        file_path.to_string_lossy().replace("'", "''")
+    }
+}
+
 /// Database Configuration Service
 ///
 /// Manages database partitioning configuration and file management
@@ -744,7 +766,8 @@ impl DatabaseConfigService {
                     println!("🔨 Attempting to create missing active file: {}", record.file_name);
 
                     // Create the missing file using the same logic as partition creation
-                    let partition_db_url = format!("sqlite://{}", file_path.display());
+                    // Create SQLite URL using helper function
+                    let partition_db_url = create_sqlite_url(&file_path);
 
                     match sea_orm::Database::connect(&partition_db_url).await {
                         Ok(partition_conn) => {
@@ -1006,12 +1029,15 @@ impl DatabaseConfigService {
         // Step 1: Create partition file
         let runtime_path = get_t3000_database_path();
 
-        // Ensure the runtime directory exists
+        // Ensure the runtime directory exists and create it if needed
         if !runtime_path.exists() {
-            println!("⚠️ Runtime path doesn't exist: {}", runtime_path.display());
-            return Err(crate::error::Error::ServerError(
-                format!("T3000 runtime database folder not found: {}", runtime_path.display())
-            ));
+            println!("📁 Creating runtime database directory: {}", runtime_path.display());
+            if let Err(e) = std::fs::create_dir_all(&runtime_path) {
+                println!("❌ Failed to create runtime directory: {}", e);
+                return Err(crate::error::Error::ServerError(
+                    format!("Failed to create T3000 runtime database folder: {}", e)
+                ));
+            }
         }
 
         let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
@@ -1019,9 +1045,31 @@ impl DatabaseConfigService {
 
         println!("📁 Creating partition file: {}", partition_file_path.display());
 
-        // Create the partition database file
-        let partition_db_url = format!("sqlite://{}", partition_file_path.display());
-        let partition_conn = sea_orm::Database::connect(&partition_db_url).await?;
+        // Create SQLite URL using helper function for cross-platform compatibility
+        let partition_db_url = create_sqlite_url(&partition_file_path);
+        println!("🔗 SQLite URL: {}", partition_db_url);
+
+        // Create the partition database file with better error handling
+        let partition_conn = match sea_orm::Database::connect(&partition_db_url).await {
+            Ok(conn) => {
+                println!("✅ Successfully connected to partition database");
+                conn
+            },
+            Err(e) => {
+                println!("❌ Failed to connect to partition database: {}", e);
+
+                // Try to create the file manually first
+                if let Err(file_err) = std::fs::File::create(&partition_file_path) {
+                    println!("❌ Failed to create partition file: {}", file_err);
+                } else {
+                    println!("📝 Created empty partition file, retrying connection...");
+                }
+
+                return Err(crate::error::Error::ServerError(
+                    format!("Failed to create partition database connection for {}: {}", partition_id, e)
+                ));
+            }
+        };
 
         // Initialize partition database with required tables
         let init_sql = r#"
@@ -1205,8 +1253,20 @@ impl DatabaseConfigService {
         if !file_path.exists() {
             println!("🔨 Creating physical partition file: {}", file_path.display());
 
-            // Create the database file using SeaORM's SQLite connection
-            let partition_db_url = format!("sqlite://{}", file_path.display());
+            // Ensure the directory exists
+            if let Some(parent_dir) = file_path.parent() {
+                if !parent_dir.exists() {
+                    if let Err(e) = std::fs::create_dir_all(parent_dir) {
+                        return Err(crate::error::Error::ServerError(
+                            format!("Failed to create directory {}: {}", parent_dir.display(), e)
+                        ));
+                    }
+                }
+            }
+
+            // Create SQLite URL using helper function for cross-platform compatibility
+            let partition_db_url = create_sqlite_url(&file_path);
+            println!("🔗 SQLite URL: {}", partition_db_url);
 
             match sea_orm::Database::connect(&partition_db_url).await {
                 Ok(partition_conn) => {
@@ -1320,9 +1380,11 @@ impl DatabaseConfigService {
         let _main_db_path = get_t3000_database_path().join("webview_t3_device.db");
 
         // Use SQLite ATTACH to work with both databases
+        // Format path for SQLite ATTACH command using helper function
+        let partition_path_str = format_path_for_attach(partition_path);
         let attach_sql = format!(
             "ATTACH DATABASE '{}' AS partition_db",
-            partition_path.to_string_lossy()
+            partition_path_str
         );
 
         // Execute the migration using raw SQL for efficiency
@@ -1713,10 +1775,11 @@ impl DatabaseConfigService {
             ));
         }
 
-        // Attach partition database
+        // Attach partition database using helper function for cross-platform compatibility
+        let partition_path_str = format_path_for_attach(&partition_file_path);
         let attach_sql = format!(
             "ATTACH DATABASE '{}' AS partition_db",
-            partition_file_path.to_string_lossy()
+            partition_path_str
         );
 
         db.execute(sea_orm::Statement::from_string(
