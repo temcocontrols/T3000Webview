@@ -17,6 +17,7 @@ use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest,
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest, SmartTrendlogRequest};
 use crate::t3_device::trendlog_enhanced_routes::create_trendlog_enhanced_routes;
+use crate::t3_device::trendlog_webmsg_routes::create_trendlog_webmsg_routes;
 // use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
@@ -1197,6 +1198,9 @@ pub fn t3_device_routes() -> Router<T3AppState> {
 
         // 🆕 Enhanced TrendLog FFI Routes
         .merge(create_trendlog_enhanced_routes())
+
+        // 🟢 TrendLog WebMsg Routes (WORKING HandleWebViewMsg approach)
+        .merge(create_trendlog_webmsg_routes())
 }
 
 // ============================================================================
