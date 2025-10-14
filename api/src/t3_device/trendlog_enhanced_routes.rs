@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::app_state::T3AppState;
 use crate::error::AppError;
 use crate::t3_device::trendlog_ffi_service::{TrendLogFFIService, ViewSelection, TrendLogInfo};
+use serde_json::json;
 
 // Helper macro to get T3000 device database connection
 macro_rules! get_t3_device_conn {
@@ -65,6 +66,10 @@ pub fn create_trendlog_enhanced_routes() -> Router<T3AppState> {
         .route("/trendlogs/:trendlog_id/views/:view_number/selections", post(save_view_selections_frontend))
         // TrendLog info retrieval
         .route("/info/:trendlog_id", get(get_trendlog_info))
+        // FFI Testing endpoints
+        .route("/ffi/test", get(test_ffi_availability))
+        .route("/ffi/test/:device_id", get(test_device_connection))
+        .route("/ffi/enumerate", get(test_device_enumeration))
 }
 
 // NEW: Create initial TrendLog info (fast page load)
@@ -323,4 +328,62 @@ pub async fn save_view_selections_frontend(
     ).await?;
 
     Ok(Json("View selections saved successfully".to_string()))
+}
+
+// FFI Test Endpoints
+use crate::t3_device::ffi_test_helper;
+
+/// Test FFI availability - checks if T3000.exe is running and FFI functions are accessible
+pub async fn test_ffi_availability(
+    State(_app_state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    match ffi_test_helper::test_ffi_availability() {
+        Ok(result) => Ok(Json(json!({
+            "success": true,
+            "message": "FFI availability test completed",
+            "result": result
+        }))),
+        Err(e) => Ok(Json(json!({
+            "success": false,
+            "message": format!("FFI availability test failed: {}", e),
+            "result": null
+        })))
+    }
+}
+
+/// Test device connection via FFI
+pub async fn test_device_connection(
+    State(_app_state): State<T3AppState>,
+    Path(device_id): Path<u32>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    match ffi_test_helper::test_device_connection(device_id) {
+        Ok(result) => Ok(Json(json!({
+            "success": true,
+            "message": format!("Device {} connection test completed", device_id),
+            "result": result
+        }))),
+        Err(e) => Ok(Json(json!({
+            "success": false,
+            "message": format!("Device {} connection test failed: {}", device_id, e),
+            "result": null
+        })))
+    }
+}
+
+/// Test device enumeration - check multiple devices (1-10)
+pub async fn test_device_enumeration(
+    State(_app_state): State<T3AppState>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    match ffi_test_helper::test_device_enumeration() {
+        Ok(result) => Ok(Json(json!({
+            "success": true,
+            "message": "Device enumeration test completed",
+            "result": result
+        }))),
+        Err(e) => Ok(Json(json!({
+            "success": false,
+            "message": format!("Device enumeration test failed: {}", e),
+            "result": null
+        })))
+    }
 }
