@@ -1423,7 +1423,7 @@ const showGrid = ref(true)
 const showLegend = ref(false)  // Hide legend by default to give more space to chart
 const smoothLines = ref(false)
 const showPoints = ref(false)
-const lastSyncTime = ref('Not synced')
+const lastSyncTime = ref('N/A')
 
 // Loading timeout management
 const loadingTimeout = ref<NodeJS.Timeout | null>(null)
