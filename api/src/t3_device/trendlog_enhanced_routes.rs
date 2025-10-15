@@ -66,9 +66,9 @@ pub fn create_trendlog_enhanced_routes() -> Router<T3AppState> {
         .route("/trendlogs/:trendlog_id/views/:view_number/selections", post(save_view_selections_frontend))
         // TrendLog info retrieval
         .route("/info/:trendlog_id", get(get_trendlog_info))
-        // FFI Testing endpoints
-        .route("/ffi/test", get(test_ffi_availability))
-        .route("/ffi/test/:device_id", get(test_device_connection))
+        // FFI Testing endpoints - DISABLED TO PREVENT DEMO DATA
+        // .route("/ffi/test", get(test_ffi_availability))
+        // .route("/ffi/test/:device_id", get(test_device_connection))
         .route("/ffi/enumerate", get(test_device_enumeration))
 }
 

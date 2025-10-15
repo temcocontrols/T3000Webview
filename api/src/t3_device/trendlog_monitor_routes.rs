@@ -203,7 +203,7 @@ pub fn create_trendlog_monitor_routes() -> Router<T3AppState> {
         .route("/sync-all", post(sync_all_devices_handler))
 
         // GET /api/t3/trendlog-monitor/test-ffi - Test FFI connectivity
-        .route("/test-ffi", get(test_ffi_connectivity_handler))
+        // .route("/test-ffi", get(test_ffi_connectivity_handler)) // ❌ DISABLED - Test endpoint removed
 }
 
 /// Helper function to handle common errors
