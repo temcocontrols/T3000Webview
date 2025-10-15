@@ -2,6 +2,7 @@
 // Handles historical data API calls for TrendLog IndexPage.vue
 // Enhanced with specific point filtering for timebase functionality
 import { ref } from 'vue'
+import LogUtil from '../../Util/LogUtil'
 
 // API Configuration - Port 9103 for T3000 HTTP API (9104 is WebSocket only)
 const TRENDLOG_API_BASE_URL = 'http://localhost:9103'
@@ -115,7 +116,7 @@ export function useTrendlogDataAPI() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch trendlog history'
       error.value = errorMsg
-      console.error('TrendLog API Error:', errorMsg)
+      LogUtil.Error('TrendLog API Error:', errorMsg)
       return null
     } finally {
       isLoading.value = false
@@ -143,7 +144,7 @@ export function useTrendlogDataAPI() {
 
       return await response.json()
     } catch (err) {
-      console.error('Failed to sync TrendLog with FFI:', err)
+      LogUtil.Error('Failed to sync TrendLog with FFI:', err)
       throw err
     }
   }
@@ -164,7 +165,7 @@ export function useTrendlogDataAPI() {
 
       return response.ok
     } catch (err) {
-      console.error('Failed to save realtime data:', err)
+      LogUtil.Error('Failed to save realtime data:', err)
       return false
     }
   }
@@ -190,7 +191,7 @@ export function useTrendlogDataAPI() {
       const result = await response.json()
       return result.rows_affected || 0
     } catch (err) {
-      console.error('Failed to save realtime batch:', err)
+      LogUtil.Error('Failed to save realtime batch:', err)
       return 0
     }
   }
@@ -226,7 +227,7 @@ export function useTrendlogDataAPI() {
 
       return await response.json()
     } catch (err) {
-      console.error('Failed to create initial TrendLog:', err)
+      LogUtil.Error('Failed to create initial TrendLog:', err)
       throw err
     }
   }
@@ -256,7 +257,7 @@ export function useTrendlogDataAPI() {
         success: initialResult.success && ffiResult.success
       }
     } catch (err) {
-      console.error('Failed to initialize complete FFI:', err)
+      LogUtil.Error('Failed to initialize complete FFI:', err)
       throw err
     }
   }
@@ -289,7 +290,7 @@ export function useTrendlogDataAPI() {
       const result = await response.json()
       return result.data || []
     } catch (err) {
-      console.error('Failed to fetch recent data:', err)
+      LogUtil.Error('Failed to fetch recent data:', err)
       return []
     }
   }
@@ -311,7 +312,7 @@ export function useTrendlogDataAPI() {
 
       return await response.json()
     } catch (err) {
-      console.error('Failed to fetch statistics:', err)
+      LogUtil.Error('Failed to fetch statistics:', err)
       return null
     }
   }
@@ -343,7 +344,7 @@ export function useTrendlogDataAPI() {
         has_historical_data: result.has_historical_data || false
       }
     } catch (err) {
-      console.error('Failed to fetch smart trendlog data:', err)
+      LogUtil.Error('Failed to fetch smart trendlog data:', err)
       return null
     }
   }
@@ -397,7 +398,7 @@ export function useTrendlogDataAPI() {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unable to read error response')
-        console.error('🚫 TrendlogAPI: Save failed', {
+        LogUtil.Error('🚫 TrendlogAPI: Save failed', {
           status: response.status,
           statusText: response.statusText,
           errorText,
@@ -414,7 +415,7 @@ export function useTrendlogDataAPI() {
 
       return response.ok
     } catch (err) {
-      console.error('Failed to save view selections:', err)
+      LogUtil.Error('Failed to save view selections:', err)
       return false
     }
   }
@@ -452,7 +453,7 @@ export function useTrendlogDataAPI() {
 
       return await response.json()
     } catch (err) {
-      console.error('Failed to load view selections:', err)
+      LogUtil.Error('Failed to load view selections:', err)
       return null
     }
   }
