@@ -20,7 +20,7 @@ use crate::logger::{write_structured_log_with_level, LogLevel};
 
 // Dynamic loading approach to avoid linking errors
 #[cfg(target_os = "windows")]
-use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
+use winapi::um::libloaderapi::{GetProcAddress, GetModuleHandleA};
 #[cfg(target_os = "windows")]
 use winapi::shared::minwindef::HINSTANCE;
 
@@ -103,7 +103,8 @@ impl TrendlogMonitorService {
     fn try_load_ffi_functions() -> (Option<GetTrendlogListFn>, Option<GetTrendlogEntryFn>) {
         unsafe {
             // Try to get handle to current process (where T3000.exe functions should be)
-            let module = LoadLibraryA(std::ptr::null()); // Current process
+            // LoadLibraryA(NULL) does not return the current module; use GetModuleHandleA(NULL)
+            let module = GetModuleHandleA(std::ptr::null()); // Current process
             if module.is_null() {
                 return (None, None);
             }
@@ -139,8 +140,12 @@ impl TrendlogMonitorService {
 
     /// Get trendlog list for a device using new C++ export function
     pub async fn get_trendlog_list(&self, panel_id: i32) -> Result<TrendlogListResponse, AppError> {
+        use crate::logger::{write_structured_log_with_level, LogLevel};
+        let _ = write_structured_log_with_level("TrendlogMonitor", &format!("🔍 Getting trendlog list for panel_id: {}", panel_id), LogLevel::Info);
+
         // Check if FFI function is available
         if let Some(ffi_fn) = self.get_trendlog_list_fn {
+            let _ = write_structured_log_with_level("TrendlogMonitor", "✅ Using NEW C++ export function: BacnetWebView_GetTrendlogList", LogLevel::Info);
             // Prepare buffer for C++ response
             let mut buffer = vec![0u8; self.buffer_size];
 
@@ -154,20 +159,19 @@ impl TrendlogMonitorService {
             };
 
             if result > 0 {
+                let _ = write_structured_log_with_level("TrendlogMonitor", &format!("✅ C++ export function returned {} bytes", result), LogLevel::Info);
+
                 // Convert buffer to string (result contains actual length)
                 let json_str = unsafe {
                     std::str::from_utf8_unchecked(&buffer[..result as usize])
                 };
 
+                let _ = write_structured_log_with_level("TrendlogMonitor", &format!("📋 C++ Response: {}", json_str), LogLevel::Info);
+
                 // Parse JSON response from C++
                 match serde_json::from_str::<TrendlogListResponse>(json_str) {
                     Ok(response) => {
-                        // Log successful retrieval
-                        let _ = write_structured_log_with_level(
-                            "trendlog_monitor",
-                            &format!("Retrieved {} trendlogs for panel_id {}", response.trendlogs.len(), panel_id),
-                            LogLevel::Info,
-                        );
+                        let _ = write_structured_log_with_level("TrendlogMonitor", &format!("🎉 Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id), LogLevel::Info);
                         return Ok(response);
                     },
                     Err(e) => {
@@ -182,11 +186,7 @@ impl TrendlogMonitorService {
         }
 
         // Fallback: return mock/empty response when FFI is not available
-        let _ = write_structured_log_with_level(
-            "trendlog_monitor",
-            &format!("FFI not available for panel_id {}, returning fallback data", panel_id),
-            LogLevel::Warn,
-        );
+        let _ = write_structured_log_with_level("TrendlogMonitor", &format!("⚠️ NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id), LogLevel::Warn);
 
         Ok(TrendlogListResponse {
             success: true,

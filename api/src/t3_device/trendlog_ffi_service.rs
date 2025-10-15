@@ -1049,10 +1049,25 @@ impl TrendLogFFIService {
             updated_at: Set(Some(Utc::now().to_rfc3339())),
         };
 
-        // Insert new trendlog record (allows multiple combinations)
-        trendlogs::Entity::insert(trendlog_record)
-            .exec(db)
+        // Check if record already exists to prevent duplicates
+        let existing = trendlogs::Entity::find()
+            .filter(trendlogs::Column::SerialNumber.eq(info.serial_number))
+            .filter(trendlogs::Column::PanelId.eq(1))
+            .filter(trendlogs::Column::TrendlogId.eq(&info.trendlog_id))
+            .one(db)
             .await?;
+
+        if existing.is_none() {
+            // Insert new trendlog record only if it doesn't exist
+            trendlogs::Entity::insert(trendlog_record)
+                .exec(db)
+                .await?;
+            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", "✅ New TrendLog record created", LogLevel::Info);
+        } else {
+            let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
+                &format!("📝 TrendLog already exists, skipping insert: SerialNumber={}, TrendlogId={}",
+                    info.serial_number, info.trendlog_id), LogLevel::Info);
+        }
 
         // Clear existing MAIN inputs for this TrendLog
         trendlog_inputs::Entity::delete_many()
