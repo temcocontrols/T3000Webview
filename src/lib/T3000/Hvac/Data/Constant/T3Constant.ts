@@ -96,6 +96,34 @@ class T3Constant {
     GradShape: 64,
     GradRadial: 128
   }
+
+  /**
+   * Trendlog data source type identifiers
+   * @property FFI_SYNC - Data synchronized from FFI/C++ layer (value: 1)
+   * @property REALTIME - Real-time data from frontend (value: 2)
+   * @property HISTORICAL - Historical import data (value: 3, reserved)
+   * @property MANUAL - Manually entered data (value: 4, reserved)
+   */
+  static DataSource = {
+    FFI_SYNC: 1,
+    REALTIME: 2,
+    HISTORICAL: 3,
+    MANUAL: 4
+  }
+
+  /**
+   * Trendlog data creator identifiers
+   * @property FFI_SYNC_SERVICE - Created by FFI sync service (value: 1)
+   * @property FRONTEND - Created by frontend application (value: 2)
+   * @property BACKEND - Created by backend service (value: 3, reserved)
+   * @property API - Created via API endpoint (value: 4, reserved)
+   */
+  static CreatedBy = {
+    FFI_SYNC_SERVICE: 1,
+    FRONTEND: 2,
+    BACKEND: 3,
+    API: 4
+  }
 }
 
 export default T3Constant
