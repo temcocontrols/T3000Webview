@@ -100,7 +100,7 @@ Log to T3WebLog
 
 ## Key Differences
 
-| Feature | t3_ffi_api_service | t3000_ffi_sync_service |
+| Feature | t3_ffi_api_service | t3_ffi_sync_service |
 |---------|-------------------|----------------------|
 | **Size** | 183 lines | 1,954 lines |
 | **Purpose** | HTTP passthrough | Full sync service |
