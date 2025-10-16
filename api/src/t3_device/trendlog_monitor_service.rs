@@ -141,11 +141,11 @@ impl TrendlogMonitorService {
     /// Get trendlog list for a device using new C++ export function
     pub async fn get_trendlog_list(&self, panel_id: i32) -> Result<TrendlogListResponse, AppError> {
         use crate::logger::{write_structured_log_with_level, LogLevel};
-        let _ = write_structured_log_with_level("TrendlogMonitor", &format!("🔍 Getting trendlog list for panel_id: {}", panel_id), LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("🔍 Getting trendlog list for panel_id: {}", panel_id), LogLevel::Info);
 
         // Check if FFI function is available
         if let Some(ffi_fn) = self.get_trendlog_list_fn {
-            let _ = write_structured_log_with_level("TrendlogMonitor", "✅ Using NEW C++ export function: BacnetWebView_GetTrendlogList", LogLevel::Info);
+            let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", "✅ Using NEW C++ export function: BacnetWebView_GetTrendlogList", LogLevel::Info);
             // Prepare buffer for C++ response
             let mut buffer = vec![0u8; self.buffer_size];
 
@@ -159,24 +159,24 @@ impl TrendlogMonitorService {
             };
 
             if result > 0 {
-                let _ = write_structured_log_with_level("TrendlogMonitor", &format!("✅ C++ export function returned {} bytes", result), LogLevel::Info);
+                let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("✅ C++ export function returned {} bytes", result), LogLevel::Info);
 
                 // Convert buffer to string (result contains actual length)
                 let json_str = unsafe {
                     std::str::from_utf8_unchecked(&buffer[..result as usize])
                 };
 
-                let _ = write_structured_log_with_level("TrendlogMonitor", &format!("📋 C++ Response: {}", json_str), LogLevel::Info);
+                let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("📋 C++ Response: {}", json_str), LogLevel::Info);
 
                 // Parse JSON response from C++
                 match serde_json::from_str::<TrendlogListResponse>(json_str) {
                     Ok(response) => {
-                        let _ = write_structured_log_with_level("TrendlogMonitor", &format!("🎉 Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id), LogLevel::Info);
+                        let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("🎉 Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id), LogLevel::Info);
                         return Ok(response);
                     },
                     Err(e) => {
                         let _ = write_structured_log_with_level(
-                            "trendlog_monitor",
+                            "T3_Webview_Trendlog_Monitor",
                             &format!("Failed to parse C++ JSON response: {}", e),
                             LogLevel::Warn,
                         );
@@ -186,7 +186,7 @@ impl TrendlogMonitorService {
         }
 
         // Fallback: return mock/empty response when FFI is not available
-        let _ = write_structured_log_with_level("TrendlogMonitor", &format!("⚠️ NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id), LogLevel::Warn);
+        let _ = write_structured_log_with_level("T3_Webview_Trendlog_Monitor", &format!("⚠️ NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id), LogLevel::Warn);
 
         Ok(TrendlogListResponse {
             success: true,
@@ -223,7 +223,7 @@ impl TrendlogMonitorService {
                     Ok(response) => {
                         // Log successful retrieval
                         let _ = write_structured_log_with_level(
-                            "trendlog_monitor",
+                            "T3_Webview_Trendlog_Monitor",
                             &format!("Retrieved trendlog entry panel_id {} monitor {}", panel_id, monitor_index),
                             LogLevel::Info,
                         );
@@ -231,7 +231,7 @@ impl TrendlogMonitorService {
                     },
                     Err(e) => {
                         let _ = write_structured_log_with_level(
-                            "trendlog_monitor",
+                            "T3_Webview_Trendlog_Monitor",
                             &format!("Failed to parse C++ entry JSON response: {}", e),
                             LogLevel::Warn,
                         );
@@ -242,7 +242,7 @@ impl TrendlogMonitorService {
 
         // Fallback: return mock/empty response when FFI is not available
         let _ = write_structured_log_with_level(
-            "trendlog_monitor",
+            "T3_Webview_Trendlog_Monitor",
             &format!("FFI not available for panel_id {} monitor {}, returning fallback data", panel_id, monitor_index),
             LogLevel::Warn,
         );
@@ -286,14 +286,14 @@ impl TrendlogMonitorService {
                 Ok(_) => {
                     synced_count += 1;
                     let _ = write_structured_log_with_level(
-                        "trendlog_monitor",
+                        "T3_Webview_Trendlog_Monitor",
                         &format!("Saved trendlog {} '{}' to database", trendlog_data.num, trendlog_data.label),
                         LogLevel::Info,
                     );
                 },
                 Err(e) => {
                     let _ = write_structured_log_with_level(
-                        "trendlog_monitor",
+                        "T3_Webview_Trendlog_Monitor",
                         &format!("Failed to save trendlog {} to database: {}", trendlog_data.num, e),
                         LogLevel::Error,
                     );
@@ -302,7 +302,7 @@ impl TrendlogMonitorService {
         }
 
         let _ = write_structured_log_with_level(
-            "trendlog_monitor",
+            "T3_Webview_Trendlog_Monitor",
             &format!("Synced {}/{} trendlogs for panel_id {} to database",
                 synced_count, trendlog_list.trendlogs.len(), panel_id),
             LogLevel::Info,
@@ -382,7 +382,7 @@ impl TrendlogMonitorService {
                 Err(e) => {
                     // Log error but continue with other devices
                     let _ = write_structured_log_with_level(
-                        "trendlog_monitor",
+                        "T3_Webview_Trendlog_Monitor",
                         &format!("Failed to sync trendlogs for device {}: {}", device_id, e),
                         LogLevel::Warn,
                     );
@@ -391,7 +391,7 @@ impl TrendlogMonitorService {
         }
 
         let _ = write_structured_log_with_level(
-            "trendlog_monitor",
+            "T3_Webview_Trendlog_Monitor",
             &format!("Total trendlogs synced across all devices: {}", total_synced),
             LogLevel::Info,
         );
@@ -411,14 +411,14 @@ impl TrendlogMonitorService {
                 Ok(response) => {
                     if !response.trendlogs.is_empty() {
                         let _ = write_structured_log_with_level(
-                            "trendlog_monitor",
+                            "T3_Webview_Trendlog_Monitor",
                             &format!("FFI connectivity test successful - got {} trendlogs", response.trendlogs.len()),
                             LogLevel::Info,
                         );
                         Ok(true)
                     } else {
                         let _ = write_structured_log_with_level(
-                            "trendlog_monitor",
+                            "T3_Webview_Trendlog_Monitor",
                             "FFI functions loaded but returned empty data - may indicate T3000 not running or no devices configured",
                             LogLevel::Warn,
                         );
@@ -427,7 +427,7 @@ impl TrendlogMonitorService {
                 },
                 Err(_) => {
                     let _ = write_structured_log_with_level(
-                        "trendlog_monitor",
+                        "T3_Webview_Trendlog_Monitor",
                         "FFI functions loaded but call failed - T3000 may not be ready",
                         LogLevel::Warn,
                     );
@@ -436,7 +436,7 @@ impl TrendlogMonitorService {
             }
         } else {
             let _ = write_structured_log_with_level(
-                "trendlog_monitor",
+                "T3_Webview_Trendlog_Monitor",
                 &format!("FFI functions not available - list_fn: {}, entry_fn: {}", has_list_fn, has_entry_fn),
                 LogLevel::Info,
             );
@@ -461,13 +461,13 @@ pub async fn initialize_trendlog_monitor_service(
 
     if is_connected {
         let _ = write_structured_log_with_level(
-            "trendlog_monitor",
+            "T3_Webview_Trendlog_Monitor",
             "TrendLog Monitor Service initialized successfully with C++ FFI connectivity",
             LogLevel::Info,
         );
     } else {
         let _ = write_structured_log_with_level(
-            "trendlog_monitor",
+            "T3_Webview_Trendlog_Monitor",
             "TrendLog Monitor Service initialized but C++ FFI not available (fallback mode)",
             LogLevel::Warn,
         );
