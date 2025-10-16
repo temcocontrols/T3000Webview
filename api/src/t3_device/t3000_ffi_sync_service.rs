@@ -464,7 +464,7 @@ impl T3000MainService {
 
             sync_logger.info(&format!("🔄 Syncing trendlog config for device {} (panel_id: {})", serial_number, panel_id));
 
-            match trendlog_service.sync_trendlogs_to_database(panel_id).await {
+            match trendlog_service.sync_trendlogs_to_database(panel_id, serial_number).await {
                 Ok(count) => {
                     total_synced += count;
                     sync_logger.info(&format!("✅ Device {} - synced {} trendlogs", serial_number, count));

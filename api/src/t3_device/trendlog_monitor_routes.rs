@@ -11,9 +11,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use sea_orm::{EntityTrait, ColumnTrait, QueryFilter};
 
 use crate::app_state::T3AppState;
 use crate::error::AppError;
+use crate::entity::t3_device::devices;
 use crate::t3_device::trendlog_monitor_service::{TrendlogMonitorService, TrendlogListResponse, TrendlogEntryResponse};
 
 /// Query parameters for trendlog operations
@@ -53,14 +55,21 @@ pub async fn get_trendlog_list_handler(
         .ok_or_else(|| AppError::DatabaseError("T3 device database not available".to_string()))?;
 
     // Create service instance
-    let service = TrendlogMonitorService::new(db_connection);
+    let service = TrendlogMonitorService::new(db_connection.clone());
 
     // Get trendlog list from C++
     let trendlog_list = service.get_trendlog_list(panel_id).await?;
 
     // Optionally sync to database
     if query.sync_to_db.unwrap_or(false) {
-        let _ = service.sync_trendlogs_to_database(panel_id).await;
+        // Need to look up serial_number from devices table using panel_id
+        let db = db_connection.lock().await;
+        if let Ok(Some(device)) = devices::Entity::find()
+            .filter(devices::Column::PanelId.eq(panel_id))
+            .one(&*db)
+            .await {
+            let _ = service.sync_trendlogs_to_database(panel_id, device.serial_number).await;
+        }
     }
 
     Ok(Json(ApiResponse {
@@ -101,17 +110,26 @@ pub async fn sync_trendlogs_handler(
     let db_connection = app_state.t3_device_conn
         .ok_or_else(|| AppError::DatabaseError("T3 device database not available".to_string()))?;
 
-    // Create service instance
+    // Look up serial_number from devices table using panel_id
+    let db = db_connection.lock().await;
+    let device = devices::Entity::find()
+        .filter(devices::Column::PanelId.eq(panel_id))
+        .one(&*db)
+        .await?
+        .ok_or_else(|| AppError::DatabaseError(format!("Device with panel_id {} not found", panel_id)))?;
+
+    let serial_number = device.serial_number;
+    drop(db); // Release the lock    // Create service instance
     let service = TrendlogMonitorService::new(db_connection);
 
     // Sync trendlogs to database
-    let synced_count = service.sync_trendlogs_to_database(panel_id).await?;
+    let synced_count = service.sync_trendlogs_to_database(panel_id, serial_number).await?;
 
     let response = TrendlogSyncResponse {
         success: true,
         panel_id: Some(panel_id),
         synced_count,
-        message: format!("Successfully synced {} trendlogs for panel_id {}", synced_count, panel_id),
+        message: format!("Successfully synced {} trendlogs for panel_id {} (device {})", synced_count, panel_id, serial_number),
         timestamp: chrono::Utc::now().timestamp(),
     };
 

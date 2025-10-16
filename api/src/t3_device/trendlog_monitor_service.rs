@@ -270,7 +270,9 @@ impl TrendlogMonitorService {
     }
 
     /// Sync all trendlog data to database (saves to TRENDLOG table)
-    pub async fn sync_trendlogs_to_database(&self, panel_id: i32) -> Result<usize, AppError> {
+    /// panel_id: The panel ID used to call C++ function (1, 2, 3, etc.)
+    /// serial_number: The actual device serial number to save in database
+    pub async fn sync_trendlogs_to_database(&self, panel_id: i32, serial_number: i32) -> Result<usize, AppError> {
         // Get trendlog list from C++
         let trendlog_list = self.get_trendlog_list(panel_id).await?;
 
@@ -280,7 +282,7 @@ impl TrendlogMonitorService {
         // Process each trendlog
         for trendlog_data in &trendlog_list.trendlogs {
             // Create or update trendlog entry in database
-            let result = self.save_trendlog_to_database(&*db, panel_id, trendlog_data).await;
+            let result = self.save_trendlog_to_database(&*db, serial_number, trendlog_data).await;
 
             match result {
                 Ok(_) => {
@@ -369,13 +371,16 @@ impl TrendlogMonitorService {
     }
 
     /// Get all trendlog data and sync to database for all configured devices
+    /// DEPRECATED: Use sync_all_trendlog_configs in t3000_ffi_sync_service instead
     pub async fn sync_all_devices(&self) -> Result<usize, AppError> {
-        // For now, assume device IDs 1-10 (can be made configurable)
+        // This function assumes device_id == panel_id == serial_number
+        // which is not correct. Use the startup sync in t3000_ffi_sync_service instead.
         let device_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let mut total_synced = 0;
 
         for device_id in device_ids {
-            match self.sync_trendlogs_to_database(device_id).await {
+            // FIXME: This incorrectly uses device_id as both panel_id and serial_number
+            match self.sync_trendlogs_to_database(device_id, device_id).await {
                 Ok(count) => {
                     total_synced += count;
                 },
