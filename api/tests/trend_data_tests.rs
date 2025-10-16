@@ -1,26 +1,23 @@
-// NOTE: This test file is temporarily disabled because the trend_collector module
-// is currently commented out in src/t3_device/mod.rs
+// NOTE: This test file references removed modules:
+// - trendlog_api_service (removed - unused)
+// - trendlog_http_routes (removed - unused)
+// - trend_collector (never implemented)
 //
-// To re-enable these tests, uncomment the following modules in src/t3_device/mod.rs:
-// - trendlog_api_service
-// - trendlog_http_routes
+// The functionality is now provided by:
+// - trendlog_data_service (TRENDLOG_DATA table operations)
+// - t3000_ffi_sync_service (FFI sync and data collection)
+// - trendlog_webmsg_service (HandleWebViewMsg approach)
 //
-// Once those modules are enabled, you can uncomment the imports below:
-// use t3_webview_api::t3_device::trend_collector::{TrendDataPoint, PointType, DataSource};
-// use t3_webview_api::entity::t3_device::{trendlogs, trendlog_data};
-// use sea_orm::*;
-// use serde_json;
-
-// All original tests are commented out until the required modules are available
+// New tests should be written for the active modules above.
 
 // Placeholder test to prevent empty test file
 #[tokio::test]
 async fn test_placeholder() {
-    println!("📝 Trend data tests are temporarily disabled - see comments above");
-    println!("   To enable these tests:");
-    println!("   1. Uncomment trendlog_api_service in src/t3_device/mod.rs");
-    println!("   2. Uncomment trendlog_http_routes in src/t3_device/mod.rs");
-    println!("   3. Uncomment the test code in this file");
+    println!("📝 Trend data tests reference removed modules");
+    println!("   Active modules for trend data:");
+    println!("   - trendlog_data_service: TRENDLOG_DATA table operations");
+    println!("   - t3000_ffi_sync_service: FFI sync and data collection");
+    println!("   - trendlog_webmsg_service: HandleWebViewMsg approach");
     assert!(true);
 }
 
