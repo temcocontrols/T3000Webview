@@ -15,7 +15,7 @@ use tokio::sync::broadcast;
 use tracing::debug;
 
 use crate::app_state::AppState;
-use crate::t3_device::t3000_ffi_sync_service;
+use crate::t3_device::t3_ffi_sync_service;
 
 /// WebSocket upgrade handler - converts HTTP connection to WebSocket
 pub async fn websocket_handler(
@@ -105,7 +105,7 @@ async fn handle_websocket(socket: WebSocket, _state: Arc<AppState>) {
 /// Create receiver for logging data updates
 async fn create_logging_data_receiver() -> broadcast::Receiver<String> {
     // Try to get the logging service and its broadcast sender
-    if let Some(_service) = t3000_ffi_sync_service::get_logging_service() {
+    if let Some(_service) = t3_ffi_sync_service::get_logging_service() {
         // For now, create a basic receiver that gets updates via a broadcast channel
         // In a full implementation, the service would have a broadcast sender
         let (tx, rx) = broadcast::channel(100);
@@ -180,7 +180,7 @@ async fn handle_websocket_command(command: &str, _json: &serde_json::Value) -> R
     match command {
         "request_sync" => {
             // Trigger immediate sync if service is available
-            if let Some(service) = t3000_ffi_sync_service::get_logging_service() {
+            if let Some(service) = t3_ffi_sync_service::get_logging_service() {
                 tokio::spawn(async move {
                     use crate::logger::ServiceLogger;
                     let mut sync_logger = ServiceLogger::socket().unwrap_or_else(|_| ServiceLogger::new("fallback_socket").unwrap());

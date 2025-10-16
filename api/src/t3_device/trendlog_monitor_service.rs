@@ -371,10 +371,10 @@ impl TrendlogMonitorService {
     }
 
     /// Get all trendlog data and sync to database for all configured devices
-    /// DEPRECATED: Use sync_all_trendlog_configs in t3000_ffi_sync_service instead
+    /// DEPRECATED: Use sync_all_trendlog_configs in t3_ffi_sync_service instead
     pub async fn sync_all_devices(&self) -> Result<usize, AppError> {
         // This function assumes device_id == panel_id == serial_number
-        // which is not correct. Use the startup sync in t3000_ffi_sync_service instead.
+        // which is not correct. Use the startup sync in t3_ffi_sync_service instead.
         let device_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let mut total_synced = 0;
 
