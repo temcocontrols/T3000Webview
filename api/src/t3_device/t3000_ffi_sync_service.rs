@@ -356,6 +356,14 @@ impl T3000MainService {
                 task_logger.info("✅ Immediate startup sync completed successfully");
             }
 
+            // Sync trendlog configurations for all devices (ONE-TIME at startup)
+            task_logger.info("📊 Syncing trendlog configurations for all devices...");
+            if let Err(e) = Self::sync_all_trendlog_configs().await {
+                task_logger.error(&format!("❌ Trendlog config sync failed: {}", e));
+            } else {
+                task_logger.info("✅ Trendlog config sync completed successfully");
+            }
+
             // Continue with periodic sync loop
             while is_running.load(Ordering::Relaxed) {
                 // Sleep until next sync interval
@@ -413,6 +421,65 @@ impl T3000MainService {
     /// Perform one-time logging data sync (can be called independently)
     pub async fn sync_once(&self) -> Result<(), AppError> {
         Self::sync_logging_data_static(self.config.clone()).await
+    }
+
+    /// Sync trendlog configurations for all devices (ONE-TIME operation)
+    /// This calls the NEW BacnetWebView_GetTrendlogList/Entry C++ export functions
+    async fn sync_all_trendlog_configs() -> Result<(), AppError> {
+        use crate::t3_device::trendlog_monitor_service::TrendlogMonitorService;
+        use std::sync::Arc;
+        use tokio::sync::Mutex;
+
+        let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
+
+        sync_logger.info("📊 Starting one-time trendlog configuration sync for all devices...");
+
+        // Get database connection
+        let db = establish_t3_device_connection().await?;
+
+        // Get all devices from database
+        let all_devices = devices::Entity::find()
+            .all(&db)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to query devices: {}", e)))?;
+
+        sync_logger.info(&format!("📱 Found {} devices to sync trendlog configs", all_devices.len()));
+
+        // Create trendlog monitor service
+        let db_arc = Arc::new(Mutex::new(db));
+        let trendlog_service = TrendlogMonitorService::new(db_arc);
+
+        let mut total_synced = 0;
+        let mut total_failed = 0;
+
+        // Sync trendlog config for each device
+        for device in all_devices {
+            let panel_id = device.panel_id.unwrap_or(0);
+            let serial_number = device.serial_number;
+
+            if panel_id == 0 {
+                sync_logger.warn(&format!("⚠️ Skipping device {} - invalid panel_id", serial_number));
+                continue;
+            }
+
+            sync_logger.info(&format!("🔄 Syncing trendlog config for device {} (panel_id: {})", serial_number, panel_id));
+
+            match trendlog_service.sync_trendlogs_to_database(panel_id).await {
+                Ok(count) => {
+                    total_synced += count;
+                    sync_logger.info(&format!("✅ Device {} - synced {} trendlogs", serial_number, count));
+                }
+                Err(e) => {
+                    total_failed += 1;
+                    sync_logger.warn(&format!("⚠️ Device {} - trendlog sync failed: {}", serial_number, e));
+                }
+            }
+        }
+
+        sync_logger.info(&format!("🎉 Trendlog config sync complete - {} trendlogs synced, {} devices failed",
+            total_synced, total_failed));
+
+        Ok(())
     }
 
     /// Populate extended device information using additional FFI calls
