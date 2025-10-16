@@ -1,5 +1,6 @@
 pub mod routes;
 pub mod services;
+pub mod constants;              // ✅ NEW - T3000 Constants for TRENDLOG_DATA fields (DataSource, CreatedBy)
 pub mod points_service;         // ✅ NEW - T3000 Points Management Service (input, output, variable points)
 pub mod schedules_service;      // ✅ NEW - T3000 Schedules Management Service
 pub mod programs_service;       // ✅ NEW - T3000 Programs Management Service

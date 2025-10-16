@@ -2,8 +2,9 @@
 // Handles TRENDLOG_DATA table operations for historical trend data storage and retrieval
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use chrono::{Duration, NaiveDateTime, Utc};
+use chrono::{Duration, Utc};
 use crate::entity::t3_device::trendlog_data;
+use crate::t3_device::constants::{DATA_SOURCE_REALTIME, CREATED_BY_FRONTEND};
 use crate::error::AppError;
 
 // Default sync interval to match T3000MainConfig::sync_interval_secs
@@ -401,9 +402,9 @@ impl T3TrendlogDataService {
             digital_analog: Set(data_point.digital_analog),
             units: Set(data_point.units),
             // Enhanced source tracking
-            data_source: Set(Some(data_point.data_source.unwrap_or_else(|| "REALTIME".to_string()))),
+            data_source: Set(Some(DATA_SOURCE_REALTIME)),
             sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-            created_by: Set(Some(data_point.created_by.unwrap_or_else(|| "FRONTEND".to_string()))),
+            created_by: Set(Some(CREATED_BY_FRONTEND)),
         };
 
         match new_data_point.insert(db).await {
@@ -469,9 +470,9 @@ impl T3TrendlogDataService {
                 digital_analog: Set(data_point.digital_analog),
                 units: Set(data_point.units),
                 // Enhanced source tracking
-                data_source: Set(Some(data_point.data_source.unwrap_or_else(|| "REALTIME".to_string()))),
+                data_source: Set(Some(DATA_SOURCE_REALTIME)),
                 sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-                created_by: Set(Some(data_point.created_by.unwrap_or_else(|| "FRONTEND".to_string()))),
+                created_by: Set(Some(CREATED_BY_FRONTEND)),
             }
         }).collect();
 
@@ -730,7 +731,7 @@ impl T3TrendlogDataService {
                 "original_value": original_value,
                 "was_scaled": was_scaled,
                 "is_analog": data.digital_analog.as_deref() == Some("1"),
-                "data_source": data.data_source.unwrap_or_else(|| "UNKNOWN".to_string()),
+                "data_source": data.data_source.unwrap_or(0),
                 "sync_interval": data.sync_interval.unwrap_or(30)
             })
         }).collect();
@@ -778,12 +779,12 @@ impl T3TrendlogDataService {
 
         for group_points in time_groups.into_values() {
             let best_point = group_points.into_iter().min_by_key(|point| {
-                match point.data_source.as_deref() {
-                    Some("FFI_SYNC") => 1,      // Highest priority
-                    Some("REALTIME") => 2,      // Second priority
-                    Some("HISTORICAL") => 3,    // Third priority
-                    Some("MANUAL") => 4,        // Lowest priority
-                    _ => 999,                   // Unknown sources last
+                match point.data_source {
+                    Some(1) => 1,      // DATA_SOURCE_FFI_SYNC - Highest priority
+                    Some(2) => 2,      // DATA_SOURCE_REALTIME - Second priority
+                    Some(3) => 3,      // HISTORICAL - Third priority
+                    Some(4) => 4,      // MANUAL - Lowest priority
+                    _ => 999,          // Unknown sources last
                 }
             });
 
