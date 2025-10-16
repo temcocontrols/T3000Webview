@@ -18,7 +18,6 @@ use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogReque
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest, SmartTrendlogRequest};
 use crate::t3_device::trendlog_enhanced_routes::create_trendlog_enhanced_routes;
 use crate::t3_device::trendlog_webmsg_routes::create_trendlog_webmsg_routes;
-// use crate::t3_device::realtime_data_service::{RealtimeDataService}; // Available but not called
 
 // Helper function to check if T3000 device database is available
 #[allow(dead_code)]
