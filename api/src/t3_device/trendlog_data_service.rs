@@ -402,9 +402,9 @@ impl T3TrendlogDataService {
             digital_analog: Set(data_point.digital_analog),
             units: Set(data_point.units),
             // Enhanced source tracking
-            data_source: Set(Some(DATA_SOURCE_REALTIME)),
+            data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
             sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-            created_by: Set(Some(CREATED_BY_FRONTEND)),
+            created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
         };
 
         match new_data_point.insert(db).await {
@@ -470,9 +470,9 @@ impl T3TrendlogDataService {
                 digital_analog: Set(data_point.digital_analog),
                 units: Set(data_point.units),
                 // Enhanced source tracking
-                data_source: Set(Some(DATA_SOURCE_REALTIME)),
+                data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
                 sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-                created_by: Set(Some(CREATED_BY_FRONTEND)),
+                created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
             }
         }).collect();
 
@@ -731,7 +731,7 @@ impl T3TrendlogDataService {
                 "original_value": original_value,
                 "was_scaled": was_scaled,
                 "is_analog": data.digital_analog.as_deref() == Some("1"),
-                "data_source": data.data_source.unwrap_or(0),
+                "data_source": data.data_source.as_deref().unwrap_or("0"),
                 "sync_interval": data.sync_interval.unwrap_or(30)
             })
         }).collect();
@@ -779,12 +779,12 @@ impl T3TrendlogDataService {
 
         for group_points in time_groups.into_values() {
             let best_point = group_points.into_iter().min_by_key(|point| {
-                match point.data_source {
-                    Some(1) => 1,      // DATA_SOURCE_FFI_SYNC - Highest priority
-                    Some(2) => 2,      // DATA_SOURCE_REALTIME - Second priority
-                    Some(3) => 3,      // HISTORICAL - Third priority
-                    Some(4) => 4,      // MANUAL - Lowest priority
-                    _ => 999,          // Unknown sources last
+                match point.data_source.as_deref() {
+                    Some("1") => 1,      // DATA_SOURCE_FFI_SYNC - Highest priority
+                    Some("2") => 2,      // DATA_SOURCE_REALTIME - Second priority
+                    Some("3") => 3,      // HISTORICAL - Third priority
+                    Some("4") => 4,      // MANUAL - Lowest priority
+                    _ => 999,            // Unknown sources last
                 }
             });
 

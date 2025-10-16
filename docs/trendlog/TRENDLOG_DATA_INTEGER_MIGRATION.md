@@ -1,16 +1,17 @@
 # TRENDLOG_DATA Field Type Migration - TEXT to INTEGER
 
 ## Overview
-This document describes the migration of `DataSource` and `CreatedBy` fields in the `TRENDLOG_DATA` table from TEXT to INTEGER types for improved performance and space efficiency.
+This document describes the migration of `DataSource` and `CreatedBy` fields in the `TRENDLOG_DATA` table from storing TEXT values like "FFI_SYNC" to storing integer values as strings like "1", "2" for improved performance and space efficiency.
 
 ## Migration Date
 2025-01-XX (Implementation Complete)
 
 ## Motivation
-- **Space Optimization**: 1.2M+ records × 2 fields × 10-20 bytes/field = significant storage savings
-- **Performance**: Integer comparisons are faster than string comparisons in queries
-- **Type Safety**: Enum-based constants prevent invalid string values
-- **Database Size**: Reduces database size by ~20-40MB
+- **Space Optimization**: 1.2M+ records × 2 fields - storing "1" or "2" instead of "FFI_SYNC" or "REALTIME" saves 6-16 bytes per field
+- **Performance**: String comparison of "1" vs "2" is faster than comparing longer strings
+- **Type Safety**: Enum-based constants prevent invalid values
+- **Database Size**: Reduces database size by ~15-30MB
+- **No Schema Change**: Keeps TEXT field type, only changes stored values (simpler migration)
 
 ## Field Mappings
 
@@ -43,34 +44,32 @@ Results:
 
 ### Schema Changes Required
 ```sql
--- Step 1: Add new integer columns (temporary migration)
-ALTER TABLE TRENDLOG_DATA ADD COLUMN DataSource_New INTEGER;
-ALTER TABLE TRENDLOG_DATA ADD COLUMN CreatedBy_New INTEGER;
+-- Simple in-place migration (NO schema changes needed!)
+-- Just update the string values from text to integer strings
 
--- Step 2: Migrate data
-UPDATE TRENDLOG_DATA SET DataSource_New = 1 WHERE DataSource = 'FFI_SYNC';
-UPDATE TRENDLOG_DATA SET DataSource_New = 2 WHERE DataSource = 'REALTIME';
-UPDATE TRENDLOG_DATA SET CreatedBy_New = 1 WHERE CreatedBy = 'FFI_SYNC_SERVICE';
-UPDATE TRENDLOG_DATA SET CreatedBy_New = 2 WHERE CreatedBy = 'FRONTEND';
+-- Step 1: Migrate DataSource values
+UPDATE TRENDLOG_DATA SET DataSource = '1' WHERE DataSource = 'FFI_SYNC';
+UPDATE TRENDLOG_DATA SET DataSource = '2' WHERE DataSource = 'REALTIME';
 
--- Step 3: Drop old columns
-ALTER TABLE TRENDLOG_DATA DROP COLUMN DataSource;
-ALTER TABLE TRENDLOG_DATA DROP COLUMN CreatedBy;
+-- Step 2: Migrate CreatedBy values
+UPDATE TRENDLOG_DATA SET CreatedBy = '1' WHERE CreatedBy = 'FFI_SYNC_SERVICE';
+UPDATE TRENDLOG_DATA SET CreatedBy = '2' WHERE CreatedBy = 'FRONTEND';
 
--- Step 4: Rename new columns
-ALTER TABLE TRENDLOG_DATA RENAME COLUMN DataSource_New TO DataSource;
-ALTER TABLE TRENDLOG_DATA RENAME COLUMN CreatedBy_New TO CreatedBy;
+-- Step 3: Update defaults (optional, for new records)
+-- SQLite: Modify CREATE TABLE statement or handle in application
+-- Application code already sets defaults to "2" for both fields
 
--- Step 5: Add defaults
-ALTER TABLE TRENDLOG_DATA ALTER COLUMN DataSource SET DEFAULT 2;    -- REALTIME
-ALTER TABLE TRENDLOG_DATA ALTER COLUMN CreatedBy SET DEFAULT 2;     -- FRONTEND
+-- Verify migration
+SELECT DataSource, COUNT(*) FROM TRENDLOG_DATA GROUP BY DataSource;
+SELECT CreatedBy, COUNT(*) FROM TRENDLOG_DATA GROUP BY CreatedBy;
 ```
 
-**Note**: SQLite does not support ALTER COLUMN directly. You may need to:
-1. Create a new table with corrected schema
-2. Copy data with transformations
-3. Drop old table
-4. Rename new table
+**Benefits of this approach:**
+- ✅ No schema changes needed (TEXT fields remain TEXT)
+- ✅ Simple UPDATE statements (no table recreation)
+- ✅ Can be rolled back easily
+- ✅ Works with existing indexes
+- ✅ No downtime required
 
 ## Code Changes Implemented
 
@@ -115,15 +114,15 @@ static CreatedBy = {
 ```
 
 ### 3. Entity Definition
-**File**: `api/src/entity/t3_device/trendlog_data.rs` (UPDATED)
+**File**: `api/src/entity/t3_device/trendlog_data.rs` (NO CHANGE - Still uses String)
 ```rust
-// OLD:
-pub data_source: Option<String>,
-pub created_by: Option<String>,
+// Field types remain as Option<String>
+pub data_source: Option<String>,   // Stores "1", "2", "3", "4" as strings
+pub created_by: Option<String>,    // Stores "1", "2", "3", "4" as strings
 
-// NEW:
-pub data_source: Option<i32>,
-pub created_by: Option<i32>,
+// Comments updated to reflect new values:
+// data_source: (stores "1"=FFI_SYNC, "2"=REALTIME as strings)
+// created_by: (stores "1"=FFI_SYNC_SERVICE, "2"=FRONTEND as strings)
 ```
 
 ### 4. Service Updates
@@ -134,10 +133,10 @@ pub created_by: Option<i32>,
 data_source: Set(Some("FFI_SYNC".to_string())),
 created_by: Set(Some("FFI_SYNC_SERVICE".to_string())),
 
-// NEW:
+// NEW: Convert integer constants to strings
 use crate::t3_device::constants::{DATA_SOURCE_FFI_SYNC, CREATED_BY_FFI_SYNC_SERVICE};
-data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
+data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),  // Stores "1"
+created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),  // Stores "1"
 ```
 
 #### trendlog_data_service.rs (UPDATED)
@@ -146,10 +145,10 @@ created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
 data_source: Set(Some("REALTIME".to_string())),
 created_by: Set(Some("FRONTEND".to_string())),
 
-// NEW:
+// NEW: Convert integer constants to strings
 use crate::t3_device::constants::{DATA_SOURCE_REALTIME, CREATED_BY_FRONTEND};
-data_source: Set(Some(DATA_SOURCE_REALTIME)),
-created_by: Set(Some(CREATED_BY_FRONTEND)),
+data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),  // Stores "2"
+created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),    // Stores "2"
 ```
 
 **Query consolidation** (priority sorting):
@@ -161,11 +160,13 @@ match point.data_source.as_deref() {
     ...
 }
 
-// NEW:
-match point.data_source {
-    Some(1) => 1,  // DATA_SOURCE_FFI_SYNC
-    Some(2) => 2,  // DATA_SOURCE_REALTIME
-    ...
+// NEW: Compare integer strings
+match point.data_source.as_deref() {
+    Some("1") => 1,  // DATA_SOURCE_FFI_SYNC - Highest priority
+    Some("2") => 2,  // DATA_SOURCE_REALTIME - Second priority
+    Some("3") => 3,  // HISTORICAL - Third priority
+    Some("4") => 4,  // MANUAL - Lowest priority
+    _ => 999,        // Unknown sources last
 }
 ```
 
@@ -202,15 +203,17 @@ If issues arise:
 ## Performance Expectations
 
 ### Storage Savings
-- **Before**: TEXT fields ~10-20 bytes each
-- **After**: INTEGER fields 4 bytes each
-- **Savings per record**: ~12-32 bytes × 2 fields = 24-64 bytes
-- **Total savings**: 24-64 bytes × 1.2M records = **~28-76 MB**
+- **Before**: TEXT fields storing "FFI_SYNC" (8 bytes), "REALTIME" (8 bytes), "FFI_SYNC_SERVICE" (16 bytes), "FRONTEND" (8 bytes)
+- **After**: TEXT fields storing "1" or "2" (1 byte each)
+- **DataSource savings**: 7 bytes per record on average
+- **CreatedBy savings**: 7-15 bytes per record on average
+- **Total savings per record**: ~14-22 bytes × 1.2M records = **~17-26 MB**
 
 ### Query Performance
-- Integer comparisons: **~2-5x faster** than string comparisons
-- Index efficiency: Integers are more compact and faster to index
-- Memory usage: Reduced memory footprint for query results
+- String comparison "1" vs "2": Faster than comparing longer strings like "FFI_SYNC" vs "REALTIME"
+- Index efficiency: Shorter strings are more compact in indexes
+- Memory usage: Reduced memory footprint for query results (shorter strings)
+- Still uses string comparison (no native integer performance, but shorter = faster)
 
 ## API Compatibility
 
@@ -220,15 +223,18 @@ The `CreateTrendlogDataRequest` struct still accepts `Option<String>` for `data_
 Future versions can update the API contract to accept integers directly.
 
 ### Response Data
-JSON responses will now return integer values:
+JSON responses will now return string values containing integers:
 ```json
 {
-  "data_source": 1,  // was "FFI_SYNC"
-  "created_by": 1    // was "FFI_SYNC_SERVICE"
+  "data_source": "1",  // was "FFI_SYNC", now stores "1"
+  "created_by": "1"    // was "FFI_SYNC_SERVICE", now stores "1"
 }
 ```
 
-Frontend code should use `T3Constant.DataSource` and `T3Constant.CreatedBy` for comparisons.
+Frontend code should:
+1. Parse the string value: `parseInt(data.data_source)`
+2. Compare with `T3Constant.DataSource` values
+3. Example: `parseInt(data.data_source) === T3Constant.DataSource.FFI_SYNC`
 
 ## Deployment Steps
 1. ✅ Deploy code changes (constants, entity, services)

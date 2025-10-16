@@ -40,13 +40,13 @@ pub struct Model {
     pub units: Option<String>,                 // C++ Units (derived from range: C, degree, h/kh, etc.)
 
     #[sea_orm(column_name = "DataSource")]
-    pub data_source: Option<i32>,              // Data source tracking (1=FFI_SYNC, 2=REALTIME)
+    pub data_source: Option<String>,           // Data source tracking (stores "1"=FFI_SYNC, "2"=REALTIME as strings)
 
     #[sea_orm(column_name = "SyncInterval")]
     pub sync_interval: Option<i32>,            // Sync interval in seconds
 
     #[sea_orm(column_name = "CreatedBy")]
-    pub created_by: Option<i32>,               // Creator identification (1=FFI_SYNC_SERVICE, 2=FRONTEND)
+    pub created_by: Option<String>,            // Creator identification (stores "1"=FFI_SYNC_SERVICE, "2"=FRONTEND as strings)
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
