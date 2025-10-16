@@ -8,7 +8,7 @@ pub mod trendlogs_service;      // ✅ T3000 Trendlogs Management Service
 pub mod trendlog_ffi_service;   // ✅ T3000 TrendLog FFI Service for complete info retrieval
 pub mod trendlog_monitor_service; // ✅ Lightweight service for new C++ trendlog export functions
 pub mod trendlog_monitor_routes; // ✅ API routes for new C++ trendlog export functions
-pub mod ffi_test_helper;        // ✅ FFI Test Helper for verifying T3000.exe connectivity
+// pub mod ffi_test_helper;     // ⚠️  Moved to tests/ - FFI diagnostic endpoints (used by public/ffi-test.html)
 pub mod trendlog_enhanced_routes; // ✅ T3000 TrendLog Enhanced API Routes for FFI and view management
 pub mod trendlog_data_service;  // ✅ T3000 TrendLog Historical Data Service (TRENDLOG_DATA table)
 pub mod t3000_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sync integration service (collects ALL data)

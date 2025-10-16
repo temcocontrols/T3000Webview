@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::app_state::T3AppState;
 use crate::error::AppError;
 use crate::t3_device::trendlog_ffi_service::{TrendLogFFIService, ViewSelection, TrendLogInfo};
-use serde_json::json;
+// use serde_json::json;  // Unused - commented out with FFI test endpoints
 
 // Helper macro to get T3000 device database connection
 macro_rules! get_t3_device_conn {
@@ -66,10 +66,11 @@ pub fn create_trendlog_enhanced_routes() -> Router<T3AppState> {
         .route("/trendlogs/:trendlog_id/views/:view_number/selections", post(save_view_selections_frontend))
         // TrendLog info retrieval
         .route("/info/:trendlog_id", get(get_trendlog_info))
-        // FFI Testing endpoints - DISABLED TO PREVENT DEMO DATA
+        // FFI Testing endpoints - DISABLED (ffi_test_helper moved to tests/ folder)
+        // These were used by public/ffi-test.html for diagnostics
         // .route("/ffi/test", get(test_ffi_availability))
         // .route("/ffi/test/:device_id", get(test_device_connection))
-        .route("/ffi/enumerate", get(test_device_enumeration))
+        // .route("/ffi/enumerate", get(test_device_enumeration))
 }
 
 // NEW: Create initial TrendLog info (fast page load)
@@ -330,9 +331,12 @@ pub async fn save_view_selections_frontend(
     Ok(Json("View selections saved successfully".to_string()))
 }
 
-// FFI Test Endpoints
-use crate::t3_device::ffi_test_helper;
+// FFI Test Endpoints - DISABLED (ffi_test_helper moved to tests/)
+// These endpoints were used by public/ffi-test.html for diagnostics
+// If needed, they can be re-enabled by moving ffi_test_helper back to src/t3_device/
+// use crate::t3_device::ffi_test_helper;
 
+/* COMMENTED OUT - ffi_test_helper not available in src/
 /// Test FFI availability - checks if T3000.exe is running and FFI functions are accessible
 pub async fn test_ffi_availability(
     State(_app_state): State<T3AppState>,
@@ -387,3 +391,4 @@ pub async fn test_device_enumeration(
         })))
     }
 }
+*/
