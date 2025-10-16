@@ -44,7 +44,7 @@ Frontend ← HTTP Response ← JSON Response ← FFI Response ←───┘
 
 ---
 
-## t3000_ffi_sync_service.rs (Full Sync Service)
+## t3_ffi_sync_service.rs (Full Sync Service)
 
 ### Purpose
 **Primary T3000 integration service** - Complete data synchronization and management system
@@ -126,7 +126,7 @@ Log to T3WebLog
 - ✅ Testing FFI functionality
 - ✅ Alternative to WebSocket
 
-### Use `t3000_ffi_sync_service` when:
+### Use `t3_ffi_sync_service` when:
 - ✅ Need continuous background sync
 - ✅ Want historical data storage
 - ✅ Need multi-device monitoring
@@ -141,7 +141,7 @@ Log to T3WebLog
 Both services are **active and used** in different scenarios:
 
 1. **t3_ffi_api_service** - Registered in `server.rs` as HTTP routes
-2. **t3000_ffi_sync_service** - Main background service, called at startup
+2. **t3_ffi_sync_service** - Main background service, called at startup
 
 They **complement each other**, not duplicate:
 - FFI API Service = **on-demand** HTTP calls

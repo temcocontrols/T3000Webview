@@ -17,7 +17,7 @@ This document explains the automatic trendlog configuration synchronization that
 2. **TRENDLOG_DATA Table** (Time-Series Data)
    - Stores: Actual trendlog data points with timestamps
    - Source: `BacnetWebView_HandleWebViewMsg(action=15)`
-   - Service: `T3000MainService` in `t3000_ffi_sync_service.rs`
+   - Service: `T3000MainService` in `t3_ffi_sync_service.rs`
    - Sync: **CONTINUOUS** (every 30 seconds)
 
 ## Startup Sequence
@@ -60,7 +60,7 @@ When T3000 starts and the Rust API initializes:
 
 ## Implementation Details
 
-### File: `api/src/t3_device/t3000_ffi_sync_service.rs`
+### File: `api/src/t3_device/t3_ffi_sync_service.rs`
 
 #### Added Function: `sync_all_trendlog_configs()`
 
@@ -172,7 +172,7 @@ Potential improvements:
 
 ## Related Files
 
-- `api/src/t3_device/t3000_ffi_sync_service.rs` - Main service with startup sync
+- `api/src/t3_device/t3_ffi_sync_service.rs` - Main service with startup sync
 - `api/src/t3_device/trendlog_monitor_service.rs` - Trendlog FFI service
 - `api/src/t3_device/trendlog_monitor_routes.rs` - HTTP API endpoints
 - `T3000-Source/T3000/BacnetWebView_Exports.cpp` - C++ export functions

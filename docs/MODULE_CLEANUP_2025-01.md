@@ -10,18 +10,18 @@ Cleaned up unused modules from the `api/src/t3_device` directory that were comme
 ### 1. **database_bridge_service.rs** ❌ REMOVED
 - **Purpose**: T3000 C++ DB → Rust DB bridge
 - **Status**: Commented out, not called by default
-- **Reason for removal**: Functionality superseded by direct FFI integration in t3000_ffi_sync_service
+- **Reason for removal**: Functionality superseded by direct FFI integration in t3_ffi_sync_service
 
 ### 2. **t3000_ffi_service.rs** ❌ REMOVED
 - **Purpose**: T3000 FFI bindings and device discovery
 - **Status**: Commented out, not called by default
-- **Reason for removal**: Replaced by t3000_ffi_sync_service with better integration
+- **Reason for removal**: Replaced by t3_ffi_sync_service with better integration
 
 ### 3. **realtime_data_service.rs** ❌ REMOVED
 - **Purpose**: Real-time data collection with broadcast channels
 - **Status**: Commented out, not called by default
 - **Dependencies**: Used t3000_ffi.rs (also removed)
-- **Reason for removal**: Functionality integrated into t3000_ffi_sync_service
+- **Reason for removal**: Functionality integrated into t3_ffi_sync_service
 
 ### 4. **trendlog_api_service.rs** ❌ REMOVED
 - **Purpose**: T3000 TrendLog API Service (creates TrendLog records from GET_PANEL_DATA)
@@ -53,7 +53,7 @@ Cleaned up unused modules from the `api/src/t3_device` directory that were comme
 - ✅ **trendlogs_service.rs** - T3000 Trendlogs Management Service (TRENDLOG table)
 
 ### Trendlog Data Collection (Primary System)
-- ✅ **t3000_ffi_sync_service.rs** - **MAIN SERVICE** - Primary T3000 FFI & Sync integration (collects ALL data)
+- ✅ **t3_ffi_sync_service.rs** - **MAIN SERVICE** - Primary T3000 FFI & Sync integration (collects ALL data)
 - ✅ **trendlog_data_service.rs** - T3000 TrendLog Historical Data Service (TRENDLOG_DATA table)
 - ✅ **trendlog_webmsg_service.rs** - T3000 TrendLog via HandleWebViewMsg (working approach)
 - ✅ **trendlog_webmsg_routes.rs** - T3000 TrendLog WebMsg API Routes
@@ -122,7 +122,7 @@ pub mod schedules_service;
 
 If any of the removed functionality is needed in the future:
 
-1. **Database Bridge**: Use `t3000_ffi_sync_service` for FFI integration
+1. **Database Bridge**: Use `t3_ffi_sync_service` for FFI integration
 2. **Real-time Data**: Use `trendlog_webmsg_service` with HandleWebViewMsg
 3. **Trend API**: Use `trendlog_data_service` for TRENDLOG_DATA operations
 4. **HTTP Routes**: Use `trendlog_enhanced_routes` and `trendlog_webmsg_routes`
@@ -146,5 +146,5 @@ Total: **5 files** removed from `api/src/t3_device/`:
 
 - ✅ Modules cleaned up
 - ✅ Compilation verified
-- ⏳ Consider adding tests for active modules (t3000_ffi_sync_service, trendlog_data_service)
+- ⏳ Consider adding tests for active modules (t3_ffi_sync_service, trendlog_data_service)
 - ⏳ Update API documentation to reflect active endpoints only

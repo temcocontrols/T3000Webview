@@ -127,7 +127,7 @@ pub created_by: Option<String>,    // Stores "1", "2", "3", "4" as strings
 
 ### 4. Service Updates
 
-#### t3000_ffi_sync_service.rs (UPDATED)
+#### t3_ffi_sync_service.rs (UPDATED)
 ```rust
 // OLD:
 data_source: Set(Some("FFI_SYNC".to_string())),
@@ -252,6 +252,6 @@ Frontend code should:
 ## References
 - Entity: `api/src/entity/t3_device/trendlog_data.rs`
 - Constants: `api/src/t3_device/constants.rs`
-- FFI Service: `api/src/t3_device/t3000_ffi_sync_service.rs`
+- FFI Service: `api/src/t3_device/t3_ffi_sync_service.rs`
 - Data Service: `api/src/t3_device/trendlog_data_service.rs`
 - TypeScript: `src/lib/T3000/Hvac/Data/Constant/T3Constant.ts`
