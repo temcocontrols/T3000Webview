@@ -1,7 +1,7 @@
 //! Multi-device LOGGING_DATA implementation tests
 //! This test verifies that our C++ and Rust implementations work correctly together
 
-use t3_webview_api::t3_device::t3000_ffi_sync_service::T3000MainService;
+use t3_webview_api::t3_device::t3_ffi_sync_service::T3000MainService;
 
 #[test]
 fn test_basic_functionality() {

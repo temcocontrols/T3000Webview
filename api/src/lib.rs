@@ -81,7 +81,7 @@ pub extern "C" fn run_server() -> RustError {
 // ABSTRACTED FUNCTIONS - All new functionality separated from original code
 // ============================================================================
 
-use t3_device::t3000_ffi_sync_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
+use t3_device::t3_ffi_sync_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
 
 /// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {

@@ -5,7 +5,7 @@
 //
 // The functionality is now provided by:
 // - trendlog_data_service (TRENDLOG_DATA table operations)
-// - t3000_ffi_sync_service (FFI sync and data collection)
+// - t3_ffi_sync_service (FFI sync and data collection)
 // - trendlog_webmsg_service (HandleWebViewMsg approach)
 //
 // New tests should be written for the active modules above.
@@ -16,7 +16,7 @@ async fn test_placeholder() {
     println!("📝 Trend data tests reference removed modules");
     println!("   Active modules for trend data:");
     println!("   - trendlog_data_service: TRENDLOG_DATA table operations");
-    println!("   - t3000_ffi_sync_service: FFI sync and data collection");
+    println!("   - t3_ffi_sync_service: FFI sync and data collection");
     println!("   - trendlog_webmsg_service: HandleWebViewMsg approach");
     assert!(true);
 }

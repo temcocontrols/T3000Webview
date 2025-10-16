@@ -1,5 +1,5 @@
 // Simple service status checker
-use t3_webview_api::t3_device::t3000_ffi_sync_service;
+use t3_webview_api::t3_device::t3_ffi_sync_service;
 
 #[tokio::main]
 async fn main() {
@@ -7,11 +7,11 @@ async fn main() {
     println!("================================");
 
     // Check if the main FFI sync service is running
-    let is_running = t3000_ffi_sync_service::is_logging_service_running();
+    let is_running = t3_ffi_sync_service::is_logging_service_running();
     println!("FFI Sync Service Running: {}", if is_running { "✅ YES" } else { "❌ NO" });
 
     // Try to get service instance
-    if let Some(_service) = t3000_ffi_sync_service::get_logging_service() {
+    if let Some(_service) = t3_ffi_sync_service::get_logging_service() {
         println!("Service Instance: ✅ Available");
         println!("This service automatically inserts trendlog data every 30 seconds");
         println!("Data Source Marker: FFI_SYNC");

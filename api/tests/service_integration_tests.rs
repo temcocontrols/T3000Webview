@@ -1,7 +1,7 @@
 //! Integration tests for T3000 WebView API
 //! These tests verify the complete system integration
 
-use t3_webview_api::t3_device::t3000_ffi_sync_service::{T3000MainService, T3000MainConfig};
+use t3_webview_api::t3_device::t3_ffi_sync_service::{T3000MainService, T3000MainConfig};
 
 #[test]
 fn test_service_configuration() {

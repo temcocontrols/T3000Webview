@@ -2,7 +2,7 @@
 //! This module contains unit tests for the T3000 WebView API
 
 // Note: These imports are for future use when service integration is needed
-// use t3_webview_api::t3_device::t3000_ffi_sync_service::{T3000MainConfig, T3000MainService};
+// use t3_webview_api::t3_device::t3_ffi_sync_service::{T3000MainConfig, T3000MainService};
 
 /// Test the corrected T3000 unit mappings
 #[test]
