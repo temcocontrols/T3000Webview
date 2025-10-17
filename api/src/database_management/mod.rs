@@ -18,6 +18,7 @@ use crate::error::Result;
 use std::sync::{Arc, RwLock};
 
 pub mod endpoints;
+pub mod config_api;
 
 /// Partition metadata cache for faster queries
 static PARTITION_CACHE: std::sync::OnceLock<Arc<RwLock<HashMap<String, PartitionMetadata>>>> = std::sync::OnceLock::new();
@@ -89,21 +90,20 @@ pub struct SmartQueryPlan {
     pub cache_hit: bool,
 }
 
-/// Application Settings Service
-pub struct ApplicationSettingsService;
+/// Application Configuration Service
+pub struct ApplicationConfigService;
 
-impl ApplicationSettingsService {
-    /// Get setting by category and key
-    pub async fn get_setting(
+impl ApplicationConfigService {
+    /// Get configuration by key
+    pub async fn get_config(
         db: &DatabaseConnection,
-        category: &str,
         key: &str,
         user_id: Option<i32>,
-        device_serial: Option<i32>,
+        device_serial: Option<String>,
+        panel_id: Option<i32>,
     ) -> Result<Option<application_settings::Model>> {
         let mut query = application_settings::Entity::find()
-            .filter(application_settings::Column::Category.eq(category))
-            .filter(application_settings::Column::SettingKey.eq(key));
+            .filter(application_settings::Column::ConfigKey.eq(key));
 
         if let Some(uid) = user_id {
             query = query.filter(application_settings::Column::UserId.eq(uid));
@@ -117,74 +117,111 @@ impl ApplicationSettingsService {
             query = query.filter(application_settings::Column::DeviceSerial.is_null());
         }
 
+        if let Some(pid) = panel_id {
+            query = query.filter(application_settings::Column::PanelId.eq(pid));
+        } else {
+            query = query.filter(application_settings::Column::PanelId.is_null());
+        }
+
         Ok(query.one(db).await?)
     }
 
-    /// Set setting value
-    pub async fn set_setting(
+    /// Set configuration value
+    pub async fn set_config(
         db: &DatabaseConnection,
-        category: String,
         key: String,
         value: serde_json::Value,
         user_id: Option<i32>,
-        device_serial: Option<i32>,
+        device_serial: Option<String>,
         panel_id: Option<i32>,
-        created_by: String,
+        version: Option<String>,
     ) -> Result<application_settings::Model> {
-        let data_type = match &value {
+        let config_type = match &value {
             serde_json::Value::String(_) => "string".to_string(),
             serde_json::Value::Number(_) => "number".to_string(),
             serde_json::Value::Bool(_) => "boolean".to_string(),
-            serde_json::Value::Array(_) => "array".to_string(),
-            serde_json::Value::Object(_) => "object".to_string(),
-            serde_json::Value::Null => "null".to_string(),
+            _ => "json".to_string(),
         };
 
-        let existing = Self::get_setting(db, &category, &key, user_id, device_serial).await?;
+        let existing = Self::get_config(db, &key, user_id.clone(), device_serial.clone(), panel_id.clone()).await?;
 
-        if let Some(existing_setting) = existing {
-            // Update existing setting
-            let mut active_model: application_settings::ActiveModel = existing_setting.into();
-            active_model.setting_value = Set(value.to_string());
-            active_model.data_type = Set(data_type);
+        if let Some(existing_config) = existing {
+            // Update existing config
+            let mut active_model: application_settings::ActiveModel = existing_config.into();
+            active_model.config_value = Set(value.to_string());
+            active_model.config_type = Set(config_type);
+            active_model.version = Set(version);
             active_model.updated_at = Set(Utc::now().naive_utc());
             Ok(active_model.update(db).await?)
         } else {
-            // Create new setting
-            let new_setting = application_settings::ActiveModel {
-                category: Set(category),
-                setting_key: Set(key),
-                setting_value: Set(value.to_string()),
+            // Create new config
+            let new_config = application_settings::ActiveModel {
+                config_key: Set(key),
+                config_value: Set(value.to_string()),
+                config_type: Set(config_type),
                 user_id: Set(user_id),
                 device_serial: Set(device_serial),
                 panel_id: Set(panel_id),
-                data_type: Set(data_type),
-                is_readonly: Set(false),
+                version: Set(version),
+                is_system: Set(false),
                 created_at: Set(Utc::now().naive_utc()),
                 updated_at: Set(Utc::now().naive_utc()),
-                created_by: Set(created_by),
                 ..Default::default()
             };
-            Ok(new_setting.insert(db).await?)
+            Ok(new_config.insert(db).await?)
         }
     }
 
-    /// Get all settings for a category
+    /// Backward compatibility: Get setting using old category.key format
+    pub async fn get_setting(
+        db: &DatabaseConnection,
+        category: &str,
+        setting_key: &str,
+        user_id: Option<i32>,
+        device_serial: Option<String>,
+    ) -> Result<Option<application_settings::Model>> {
+        // Convert old category.key format to new unified key
+        let key = format!("{}.{}", category, setting_key);
+        Self::get_config(db, &key, user_id, device_serial, None).await
+    }
+
+    /// Backward compatibility: Set setting using old category.key format
+    pub async fn set_setting(
+        db: &DatabaseConnection,
+        category: String,
+        setting_key: String,
+        value: serde_json::Value,
+        user_id: Option<i32>,
+        device_serial: Option<String>,
+        version: Option<String>,
+    ) -> Result<application_settings::Model> {
+        // Convert old category.key format to new unified key
+        let key = format!("{}.{}", category, setting_key);
+        Self::set_config(db, key, value, user_id, device_serial, None, version).await
+    }
+
+    /// Get all settings for a category (prefix-based search)
     pub async fn get_category_settings(
         db: &DatabaseConnection,
         category: &str,
         user_id: Option<i32>,
-        device_serial: Option<i32>,
+        device_serial: Option<String>,
     ) -> Result<Vec<application_settings::Model>> {
+        // Use prefix search with the new schema
+        let prefix = format!("{}.", category);
         let mut query = application_settings::Entity::find()
-            .filter(application_settings::Column::Category.eq(category));
+            .filter(application_settings::Column::ConfigKey.like(format!("{}%", prefix)));
 
         if let Some(uid) = user_id {
             query = query.filter(application_settings::Column::UserId.eq(uid));
+        } else {
+            query = query.filter(application_settings::Column::UserId.is_null());
         }
 
         if let Some(serial) = device_serial {
             query = query.filter(application_settings::Column::DeviceSerial.eq(serial));
+        } else {
+            query = query.filter(application_settings::Column::DeviceSerial.is_null());
         }
 
         Ok(query.all(db).await?)
@@ -215,8 +252,7 @@ impl ApplicationSettingsService {
                 value,
                 None,
                 None,
-                None,
-                "LOCALSTORAGE_MIGRATION".to_string(),
+                Some("LOCALSTORAGE_MIGRATION".to_string()),
             ).await?;
 
             migrated_count += 1;
@@ -455,7 +491,7 @@ pub struct SettingRequest {
     pub key: String,
     pub value: serde_json::Value,
     pub user_id: Option<i32>,
-    pub device_serial: Option<i32>,
+    pub device_serial: Option<String>,
     pub panel_id: Option<i32>,
 }
 
@@ -658,7 +694,7 @@ impl DatabaseConfigService {
         let total_size: i64 = all_files.iter().map(|f| f.size_bytes).sum();
         let active_files: Vec<_> = all_files.iter().filter(|f| f.is_active).collect();
 
-        println!("✅ Database initialization complete:");
+        println!("�?Database initialization complete:");
         println!("   - Strategy: {:?}", config.strategy);
         println!("   - Total files: {}", total_files);
         println!("   - Total size: {} MB", total_size / 1024 / 1024);
@@ -737,7 +773,7 @@ impl DatabaseConfigService {
                                 }
                             }
                         } else {
-                            println!("✅ Partition already registered: {}", file_name);
+                            println!("�?Partition already registered: {}", file_name);
                             if let Some(existing) = existing_record {
                                 found_partitions.push(database_files::DatabaseFileInfo::from_model(existing));
                             }
@@ -792,14 +828,14 @@ impl DatabaseConfigService {
                             )).await {
                                 println!("⚠️ Failed to create missing file {}: {}", record.file_name, e);
                             } else {
-                                println!("✅ Created missing active file: {}", record.file_name);
+                                println!("�?Created missing active file: {}", record.file_name);
                                 result.created_files += 1;
                             }
 
                             let _ = partition_conn.close().await;
                         },
                         Err(e) => {
-                            println!("❌ Failed to create missing file {}: {}", record.file_name, e);
+                            println!("�?Failed to create missing file {}: {}", record.file_name, e);
                         }
                     }
                 } else {
@@ -911,20 +947,20 @@ impl DatabaseConfigService {
                     Ok(migrated_size) => {
                         result.partitions_created += 1;
                         result.data_migrated_mb += migrated_size;
-                        println!("✅ Created partition {} and migrated {} MB", partition_id, migrated_size);
+                        println!("�?Created partition {} and migrated {} MB", partition_id, migrated_size);
                     },
                     Err(e) => {
                         let error_msg = format!("Failed to create partition {}: {}", partition_id, e);
-                        println!("❌ {}", error_msg);
+                        println!("�?{}", error_msg);
                         result.errors.push(error_msg);
                     }
                 }
             } else {
-                println!("✅ Partition {} already exists", partition_id);
+                println!("�?Partition {} already exists", partition_id);
             }
         }
 
-        println!("✅ TrendLog partition check complete: {} checked, {} created",
+        println!("�?TrendLog partition check complete: {} checked, {} created",
                  result.partitions_checked, result.partitions_created);
 
         Ok(result)
@@ -1021,7 +1057,7 @@ impl DatabaseConfigService {
             }
         }
 
-        println!("✅ Determined {} partitions needed based on actual data", required_partitions.len());
+        println!("�?Determined {} partitions needed based on actual data", required_partitions.len());
         Ok(required_partitions)
     }
 
@@ -1040,7 +1076,7 @@ impl DatabaseConfigService {
         if !runtime_path.exists() {
             println!("📁 Creating runtime database directory: {}", runtime_path.display());
             if let Err(e) = std::fs::create_dir_all(&runtime_path) {
-                println!("❌ Failed to create runtime directory: {}", e);
+                println!("�?Failed to create runtime directory: {}", e);
                 return Err(crate::error::Error::ServerError(
                     format!("Failed to create T3000 runtime database folder: {}", e)
                 ));
@@ -1067,10 +1103,10 @@ impl DatabaseConfigService {
         match std::fs::File::create(&test_file) {
             Ok(_) => {
                 let _ = std::fs::remove_file(&test_file);
-                println!("  - Directory permissions: ✅ OK");
+                println!("  - Directory permissions: �?OK");
             },
             Err(perm_err) => {
-                println!("  - Directory permissions: ❌ FAILED - {}", perm_err);
+                println!("  - Directory permissions: �?FAILED - {}", perm_err);
                 return Err(crate::error::Error::ServerError(
                     format!("Directory permission error in {}: {}", runtime_path.display(), perm_err)
                 ));
@@ -1080,11 +1116,11 @@ impl DatabaseConfigService {
         // Create the partition database file with better error handling
         let partition_conn = match sea_orm::Database::connect(&partition_db_url).await {
             Ok(conn) => {
-                println!("✅ Successfully connected to partition database");
+                println!("�?Successfully connected to partition database");
                 conn
             },
             Err(e) => {
-                println!("❌ Failed to connect to partition database: {}", e);
+                println!("�?Failed to connect to partition database: {}", e);
 
                 // Enhanced error diagnostics
                 println!("🔍 Detailed diagnostics:");
@@ -1101,13 +1137,13 @@ impl DatabaseConfigService {
                 // Try to create the file manually for additional diagnostics
                 match std::fs::File::create(&partition_file_path) {
                     Ok(_) => {
-                        println!("  - Manual file creation: ✅ SUCCESS");
+                        println!("  - Manual file creation: �?SUCCESS");
                         println!("📝 Created empty partition file, retrying connection...");
 
                         // Retry the connection once more
                         match sea_orm::Database::connect(&partition_db_url).await {
                             Ok(retry_conn) => {
-                                println!("✅ Retry connection successful!");
+                                println!("�?Retry connection successful!");
                                 retry_conn
                             },
                             Err(retry_err) => {
@@ -1119,7 +1155,7 @@ impl DatabaseConfigService {
                         }
                     },
                     Err(file_err) => {
-                        println!("  - Manual file creation: ❌ FAILED - {}", file_err);
+                        println!("  - Manual file creation: �?FAILED - {}", file_err);
                         return Err(crate::error::Error::ServerError(
                             format!("Failed to create partition database file {}: Connection error: {} | File creation error: {}",
                                 partition_file_name, e, file_err)
@@ -1189,7 +1225,7 @@ impl DatabaseConfigService {
         // Close partition connection
         let _ = partition_conn.close().await;
 
-        println!("✅ Partition {} created successfully", partition_id);
+        println!("�?Partition {} created successfully", partition_id);
         Ok(migrated_size)
     }
 
@@ -1287,7 +1323,7 @@ impl DatabaseConfigService {
 
         println!("🎯 Applying {:?} partitioning strategy", config.strategy);
         println!("📅 Current time: {}", now.format("%Y-%m-%d %H:%M:%S"));
-        println!("🏷️ Generated partition ID: {}", partition_id);
+        println!("🏷�?Generated partition ID: {}", partition_id);
 
         let file_name = format!("webview_t3_device_{}.db", partition_id);
         let file_path = get_t3000_database_path().join(&file_name);
@@ -1343,7 +1379,7 @@ impl DatabaseConfigService {
                     )).await {
                         println!("⚠️ Warning: Failed to initialize partition database: {}", e);
                     } else {
-                        println!("✅ Partition file created successfully: {}", file_name);
+                        println!("�?Partition file created successfully: {}", file_name);
                     }
 
                     // Close the connection
@@ -1524,7 +1560,7 @@ impl DatabaseConfigService {
                 delete_sql
             )).await?;
 
-            println!("🗑️ Removed {} records from main database", delete_result.rows_affected());
+            println!("🗑�?Removed {} records from main database", delete_result.rows_affected());
         }
 
         // Update partition file metadata with actual record count and date range
@@ -1542,7 +1578,7 @@ impl DatabaseConfigService {
             "DETACH DATABASE partition_db".to_string()
         )).await?;
 
-        println!("✅ Data migration completed for partition: {}", partition_id);
+        println!("�?Data migration completed for partition: {}", partition_id);
         Ok(())
     }
 
@@ -1654,12 +1690,12 @@ impl DatabaseConfigService {
         println!("📅 Current period: {}", current_period);
 
         // Get the last known period from application settings
-        let last_period_setting = crate::database_management::ApplicationSettingsService::get_setting(
+        let last_period_setting = crate::database_management::ApplicationConfigService::get_setting(
             db, "partitioning", "last_active_period", None, None
         ).await?;
 
         let last_known_period = last_period_setting
-            .map(|s| s.setting_value)
+            .map(|s| s.config_value)
             .unwrap_or_else(|| current_period.clone());
 
         println!("📋 Last known period: {}", last_known_period);
@@ -1675,19 +1711,19 @@ impl DatabaseConfigService {
         };
 
         if result.period_changed {
-            println!("🔄 Period transition detected: {} → {}", last_known_period, current_period);
+            println!("🔄 Period transition detected: {} �?{}", last_known_period, current_period);
 
             // Step 1: Create partition for previous period if it has data
             match Self::create_partition_for_previous_period(db, &config, &last_known_period).await {
                 Ok(created) => {
                     if created {
                         result.partitions_created += 1;
-                        println!("✅ Created partition for previous period: {}", last_known_period);
+                        println!("�?Created partition for previous period: {}", last_known_period);
                     }
                 },
                 Err(e) => {
                     let error_msg = format!("Failed to create partition for {}: {}", last_known_period, e);
-                    println!("❌ {}", error_msg);
+                    println!("�?{}", error_msg);
                     result.errors.push(error_msg);
                 }
             }
@@ -1701,7 +1737,7 @@ impl DatabaseConfigService {
                 },
                 Err(e) => {
                     let error_msg = format!("Failed to migrate data with overlap: {}", e);
-                    println!("❌ {}", error_msg);
+                    println!("�?{}", error_msg);
                     result.errors.push(error_msg);
                 }
             }
@@ -1709,18 +1745,18 @@ impl DatabaseConfigService {
             // Step 3: Manage partition retention (archive old partitions)
             if let Err(e) = Self::manage_partition_retention(db, runtime_config).await {
                 let error_msg = format!("Failed to manage partition retention: {}", e);
-                println!("❌ {}", error_msg);
+                println!("�?{}", error_msg);
                 result.errors.push(error_msg);
             }
 
             // Step 4: Update last known period
-            let _ = crate::database_management::ApplicationSettingsService::set_setting(
+            let _ = crate::database_management::ApplicationConfigService::set_setting(
                 db,
                 "partitioning".to_string(),
                 "last_active_period".to_string(),
                 serde_json::Value::String(current_period),
-                None, None, None,
-                "PARTITION_ROTATION".to_string(),
+                None, None,
+                Some("PARTITION_ROTATION".to_string()),
             ).await;
 
             // Step 5: Refresh partition cache
@@ -1731,7 +1767,7 @@ impl DatabaseConfigService {
             println!("📅 No period transition, current period {} is still active", current_period);
         }
 
-        println!("✅ Period transition check complete");
+        println!("�?Period transition check complete");
         Ok(result)
     }
 
@@ -1748,7 +1784,7 @@ impl DatabaseConfigService {
             .await?;
 
         if existing_partition.is_some() {
-            println!("✅ Partition {} already exists, skipping creation", previous_period);
+            println!("�?Partition {} already exists, skipping creation", previous_period);
             return Ok(false);
         }
 
@@ -1882,7 +1918,7 @@ impl DatabaseConfigService {
                 delete_sql
             )).await?;
 
-            println!("🗑️ Removed {} records from main database ({}h overlap preserved)",
+            println!("🗑�?Removed {} records from main database ({}h overlap preserved)",
                      delete_result.rows_affected(), overlap_hours);
         }
 
@@ -1902,7 +1938,7 @@ impl DatabaseConfigService {
         db: &DatabaseConnection,
         runtime_config: &PartitioningRuntimeConfig,
     ) -> Result<()> {
-        println!("🗂️ Managing partition retention (max: {} partitions)...", runtime_config.max_partitions);
+        println!("🗂�?Managing partition retention (max: {} partitions)...", runtime_config.max_partitions);
 
         // Get all non-archived partitions ordered by creation date
         let all_partitions = database_files::Entity::find()
@@ -1916,7 +1952,7 @@ impl DatabaseConfigService {
         println!("📊 Found {} historical partitions", partition_count);
 
         if partition_count <= runtime_config.max_partitions {
-            println!("✅ Partition count within limits, no archiving needed");
+            println!("�?Partition count within limits, no archiving needed");
             return Ok(());
         }
 
@@ -1964,11 +2000,11 @@ impl DatabaseConfigService {
             if let Err(e) = active_model.update(db).await {
                 println!("⚠️ Failed to update archive status for {}: {}", file_name, e);
             } else {
-                println!("✅ Archived partition: {}", file_name);
+                println!("�?Archived partition: {}", file_name);
             }
         }
 
-        println!("✅ Partition retention management complete");
+        println!("�?Partition retention management complete");
         Ok(())
     }
 
@@ -2006,7 +2042,7 @@ impl DatabaseConfigService {
         // Update cache
         if let Ok(mut cache_guard) = cache.write() {
             *cache_guard = cache_map;
-            println!("✅ Partition cache refreshed with {} entries", cache_guard.len());
+            println!("�?Partition cache refreshed with {} entries", cache_guard.len());
         }
 
         Ok(())
@@ -2097,7 +2133,7 @@ impl DatabaseConfigService {
         // Optimize query plan based on timebase
         Self::optimize_query_plan(&mut query_plan, timebase_minutes);
 
-        println!("✅ Smart query plan: Main DB: {}, Partitions: {}, Est. records: {}",
+        println!("�?Smart query plan: Main DB: {}, Partitions: {}, Est. records: {}",
                  query_plan.query_main_db, query_plan.partition_files.len(), query_plan.estimated_records);
 
         Ok(query_plan)
@@ -2129,7 +2165,7 @@ impl DatabaseConfigService {
                     .collect();
                 query_plan.partition_files = sampled_partitions;
 
-                println!("📊 Optimized partition queries: {} → {} (sample rate: {})",
+                println!("📊 Optimized partition queries: {} �?{} (sample rate: {})",
                          original_count, query_plan.partition_files.len(), sample_rate);
             }
         }
@@ -2147,13 +2183,13 @@ impl DatabaseConfigService {
         match Self::check_period_transition_and_rotate(db, runtime_config).await {
             Ok(result) => {
                 if result.period_changed {
-                    println!("✅ Background monitor: Period transition handled");
+                    println!("�?Background monitor: Period transition handled");
                 } else {
                     println!("📅 Background monitor: No period transition needed");
                 }
             },
             Err(e) => {
-                println!("❌ Background monitor error: {}", e);
+                println!("�?Background monitor error: {}", e);
             }
         }
 
@@ -2183,14 +2219,14 @@ impl DatabaseConfigService {
         let _current_period = Self::get_current_time_period(&config);
 
         // Get last shutdown time from application settings
-        let last_shutdown_setting = crate::database_management::ApplicationSettingsService::get_setting(
+        let last_shutdown_setting = crate::database_management::ApplicationConfigService::get_setting(
             db, "partitioning", "last_shutdown_time", None, None
         ).await?;
 
         let mut missed_periods = Vec::new();
 
         if let Some(shutdown_setting) = last_shutdown_setting {
-            if let Ok(last_shutdown) = shutdown_setting.setting_value.parse::<DateTime<Utc>>() {
+            if let Ok(last_shutdown) = shutdown_setting.config_value.parse::<DateTime<Utc>>() {
                 println!("📅 Last shutdown: {}", last_shutdown.format("%Y-%m-%d %H:%M"));
 
                 // Calculate all periods between shutdown and now
@@ -2202,7 +2238,7 @@ impl DatabaseConfigService {
                     // Process each missed period
                     for period in &missed_periods {
                         if let Err(e) = Self::create_partition_for_previous_period(db, &config, period).await {
-                            println!("❌ Failed to create partition for missed period {}: {}", period, e);
+                            println!("�?Failed to create partition for missed period {}: {}", period, e);
                         }
                     }
                 }
@@ -2210,17 +2246,17 @@ impl DatabaseConfigService {
         }
 
         // Update shutdown time for next startup
-        let _ = crate::database_management::ApplicationSettingsService::set_setting(
+        let _ = crate::database_management::ApplicationConfigService::set_setting(
             db,
             "partitioning".to_string(),
             "last_shutdown_time".to_string(),
             serde_json::Value::String(Utc::now().to_rfc3339()),
-            None, None, None,
-            "STARTUP_CHECK".to_string(),
+            None, None,
+            Some("STARTUP_CHECK".to_string()),
         ).await;
 
         if missed_periods.is_empty() {
-            println!("✅ No missed period transitions found");
+            println!("�?No missed period transitions found");
         }
 
         Ok(missed_periods)
@@ -2310,7 +2346,7 @@ impl DatabaseFilesService {
                     }
                 }
 
-                println!("🗑️ Database file deleted: {}", file_model.file_name);
+                println!("🗑�?Database file deleted: {}", file_model.file_name);
                 Ok(true)
             }
             None => Ok(false)
@@ -2497,3 +2533,4 @@ impl DatabaseConfigService {
         DatabaseFilesService::get_files(db).await
     }
 }
+

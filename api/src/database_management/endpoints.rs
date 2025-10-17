@@ -17,7 +17,7 @@ use crate::app_state::T3AppState;
 use crate::error::Result;
 use crate::entity::{database_partitions, database_partition_config, database_files};
 use super::{
-    ApplicationSettingsService, DatabasePartitionService, DatabaseSizeService,
+    ApplicationConfigService, DatabasePartitionService, DatabaseSizeService,
     DatabaseConfigService, DatabaseFilesService, CleanupResult,
     LocalStorageMigrationRequest, SettingRequest, PartitionRequest,
 };pub fn database_management_routes() -> Router<T3AppState> {
@@ -75,15 +75,14 @@ async fn create_setting(
 ) -> Result<Json<serde_json::Value>> {
     let db = &*app_state.conn.lock().await;
 
-    let setting = ApplicationSettingsService::set_setting(
+    let setting = ApplicationConfigService::set_setting(
         db,
         request.category,
         request.key,
         request.value,
         request.user_id,
         request.device_serial,
-        request.panel_id,
-        "API_ENDPOINT".to_string(),
+        Some("API_ENDPOINT".to_string()),
     ).await?;
 
     Ok(Json(serde_json::json!({
@@ -108,11 +107,11 @@ async fn get_settings(
     let db = &*app_state.conn.lock().await;
 
     if let Some(category) = query.category {
-        let settings = ApplicationSettingsService::get_category_settings(
+        let settings = ApplicationConfigService::get_category_settings(
             db,
             &category,
             query.user_id,
-            query.device_serial,
+            query.device_serial.map(|d| d.to_string()),
         ).await?;
 
         Ok(Json(serde_json::json!({
@@ -137,11 +136,11 @@ async fn get_category_settings(
 ) -> Result<Json<serde_json::Value>> {
     let db = &*app_state.conn.lock().await;
 
-    let settings = ApplicationSettingsService::get_category_settings(
+    let settings = ApplicationConfigService::get_category_settings(
         db,
         &category,
         query.user_id,
-        query.device_serial,
+        query.device_serial.map(|d| d.to_string()),
     ).await?;
 
     Ok(Json(serde_json::json!({
@@ -159,12 +158,12 @@ async fn get_specific_setting(
 ) -> Result<Json<serde_json::Value>> {
     let db = &*app_state.conn.lock().await;
 
-    let setting = ApplicationSettingsService::get_setting(
+    let setting = ApplicationConfigService::get_setting(
         db,
         &category,
         &key,
         query.user_id,
-        query.device_serial,
+        query.device_serial.map(|d| d.to_string()),
     ).await?;
 
     if let Some(setting) = setting {
@@ -192,15 +191,14 @@ async fn update_setting(
     request.category = category;
     request.key = key;
 
-    let setting = ApplicationSettingsService::set_setting(
+    let setting = ApplicationConfigService::set_setting(
         db,
         request.category,
         request.key,
         request.value,
         request.user_id,
         request.device_serial,
-        request.panel_id,
-        "API_ENDPOINT".to_string(),
+        Some("API_ENDPOINT".to_string()),
     ).await?;
 
     Ok(Json(serde_json::json!({
@@ -219,12 +217,12 @@ async fn delete_setting(
     let db = &*app_state.conn.lock().await;
 
     // Find and delete the setting
-    if let Some(setting) = ApplicationSettingsService::get_setting(
+    if let Some(setting) = ApplicationConfigService::get_setting(
         db,
         &category,
         &key,
         query.user_id,
-        query.device_serial,
+        query.device_serial.map(|d| d.to_string()),
     ).await? {
         use crate::entity::application_settings;
         application_settings::Entity::delete_by_id(setting.id).exec(db).await?;
@@ -248,7 +246,7 @@ async fn migrate_localstorage(
 ) -> Result<Json<serde_json::Value>> {
     let db = &*app_state.conn.lock().await;
 
-    let migrated_count = ApplicationSettingsService::migrate_localstorage_data(
+    let migrated_count = ApplicationConfigService::migrate_localstorage_data(
         db,
         request.data,
     ).await?;
@@ -680,3 +678,5 @@ async fn get_database_file_stats(
     let stats = DatabaseFilesService::get_statistics(db).await?;
     Ok(Json(stats))
 }
+
+

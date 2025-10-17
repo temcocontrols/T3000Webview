@@ -83,6 +83,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::t3_device::t3_ffi_api_service::create_ffi_api_routes())
         // Database Management routes with T3AppState
         .merge(crate::database_management::endpoints::database_management_routes())
+        // Application Configuration API routes
+        .merge(crate::database_management::config_api::config_routes())
         // Real-time trend data routes - TEMPORARILY DISABLED
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)

@@ -398,17 +398,34 @@ CREATE TABLE IF NOT EXISTS database_files (
     last_accessed_at DATETIME
 );
 
--- Application Settings Table
--- Stores key-value configuration settings (localStorage replacement)
-CREATE TABLE IF NOT EXISTS application_settings (
+-- Application Configuration Table (Renamed from application_settings)
+-- Unified storage for all application configuration including:
+-- Graphics data (deviceAppState, t3.library, t3.draw, etc.)
+-- User preferences (localSettings, UI state)
+-- System settings (database config, maintenance)
+-- Device-specific configuration
+CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    key_name TEXT NOT NULL UNIQUE,
-    value_data TEXT,
-    setting_type TEXT NOT NULL DEFAULT 'string' CHECK (setting_type IN ('string', 'number', 'boolean', 'json')),
+    -- Unified configuration key (matches localStorage keys)
+    -- Examples: "deviceAppState", "localSettings", "t3.library", "t3.draw"
+    config_key TEXT NOT NULL,
+    config_value TEXT NOT NULL,
+    config_type TEXT NOT NULL DEFAULT 'json' CHECK (config_type IN ('string', 'number', 'boolean', 'json')),
     description TEXT,
+
+    -- Scoping fields for flexible configuration management
+    user_id INTEGER,                    -- NULL for global settings
+    device_serial TEXT,                 -- NULL for non-device-specific (TEXT to match frontend)
+    panel_id INTEGER,                   -- NULL for non-panel-specific
+
     is_system BOOLEAN NOT NULL DEFAULT 0,
+    version TEXT,                       -- Schema version for data migrations (e.g., "0.8.1")
+    size_bytes INTEGER,                 -- Auto-calculated size for monitoring
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Unique constraint ensuring one config per key+scope combination
+    UNIQUE(config_key, user_id, device_serial, panel_id)
 );
 
 -- Database Partitions Table
@@ -428,9 +445,7 @@ CREATE TABLE IF NOT EXISTS database_partitions (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- =================================================================
 -- DATABASE MANAGEMENT INDEXES (Performance Optimization)
--- =================================================================
 
 -- Indexes for database_partition_config
 CREATE INDEX IF NOT EXISTS idx_database_partition_config_strategy ON database_partition_config(strategy);
@@ -445,10 +460,13 @@ CREATE INDEX IF NOT EXISTS idx_database_files_partition ON database_files(partit
 CREATE INDEX IF NOT EXISTS idx_database_files_created ON database_files(created_at);
 CREATE INDEX IF NOT EXISTS idx_database_files_accessed ON database_files(last_accessed_at);
 
--- Indexes for application_settings
-CREATE INDEX IF NOT EXISTS idx_application_settings_key ON application_settings(key_name);
-CREATE INDEX IF NOT EXISTS idx_application_settings_type ON application_settings(setting_type);
-CREATE INDEX IF NOT EXISTS idx_application_settings_system ON application_settings(is_system);
+-- Indexes for APPLICATION_CONFIG
+CREATE INDEX IF NOT EXISTS idx_application_config_key ON APPLICATION_CONFIG(config_key);
+CREATE INDEX IF NOT EXISTS idx_application_config_type ON APPLICATION_CONFIG(config_type);
+CREATE INDEX IF NOT EXISTS idx_application_config_system ON APPLICATION_CONFIG(is_system);
+CREATE INDEX IF NOT EXISTS idx_application_config_user ON APPLICATION_CONFIG(user_id);
+CREATE INDEX IF NOT EXISTS idx_application_config_device ON APPLICATION_CONFIG(device_serial);
+CREATE INDEX IF NOT EXISTS idx_application_config_size ON APPLICATION_CONFIG(size_bytes);
 
 -- Indexes for database_partitions
 CREATE INDEX IF NOT EXISTS idx_database_partitions_name ON database_partitions(partition_name);
@@ -457,9 +475,7 @@ CREATE INDEX IF NOT EXISTS idx_database_partitions_active ON database_partitions
 CREATE INDEX IF NOT EXISTS idx_database_partitions_current ON database_partitions(is_current);
 CREATE INDEX IF NOT EXISTS idx_database_partitions_dates ON database_partitions(start_date, end_date);
 
--- =================================================================
 -- DATABASE MANAGEMENT DEFAULT DATA
--- =================================================================
 
 -- Insert default partition configuration
 INSERT OR IGNORE INTO database_partition_config (
@@ -468,18 +484,16 @@ INSERT OR IGNORE INTO database_partition_config (
     1, 'monthly', 30, 'days', 1
 );
 
--- Insert default application settings
-INSERT OR IGNORE INTO application_settings (key_name, value_data, setting_type, description, is_system) VALUES
-('database.max_file_size', '100', 'number', 'Maximum database file size in MB', 1),
-('database.backup_enabled', 'true', 'boolean', 'Enable automatic database backups', 1),
-('database.compression_enabled', 'false', 'boolean', 'Enable database compression', 1),
-('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1),
-('ui.theme', 'light', 'string', 'Application theme preference', 0),
-('ui.language', 'en', 'string', 'Application language', 0);
+-- Insert default application configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, user_id, device_serial, panel_id) VALUES
+('database.max_file_size', '100', 'number', 'Maximum database file size in MB', 1, NULL, NULL, NULL),
+('database.backup_enabled', 'true', 'boolean', 'Enable automatic database backups', 1, NULL, NULL, NULL),
+('database.compression_enabled', 'false', 'boolean', 'Enable database compression', 1, NULL, NULL, NULL),
+('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1, NULL, NULL, NULL),
+('ui.theme', 'light', 'string', 'Application theme preference', 0, NULL, NULL, NULL),
+('ui.language', 'en', 'string', 'Application language', 0, NULL, NULL, NULL);
 
--- =================================================================
 -- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
--- =================================================================
 
 -- Trigger to update updated_at timestamp for database_partition_config
 CREATE TRIGGER IF NOT EXISTS trigger_database_partition_config_updated_at
@@ -497,12 +511,32 @@ BEGIN
     UPDATE database_files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
--- Trigger to update updated_at timestamp for application_settings
-CREATE TRIGGER IF NOT EXISTS trigger_application_settings_updated_at
-AFTER UPDATE ON application_settings
+-- Trigger to update updated_at timestamp for APPLICATION_CONFIG
+CREATE TRIGGER IF NOT EXISTS trigger_application_config_updated_at
+AFTER UPDATE ON APPLICATION_CONFIG
 FOR EACH ROW
 BEGIN
-    UPDATE application_settings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    UPDATE APPLICATION_CONFIG SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Trigger to auto-calculate size_bytes for APPLICATION_CONFIG
+CREATE TRIGGER IF NOT EXISTS trigger_application_config_size
+AFTER INSERT ON APPLICATION_CONFIG
+FOR EACH ROW
+BEGIN
+    UPDATE APPLICATION_CONFIG
+    SET size_bytes = LENGTH(config_value)
+    WHERE id = NEW.id;
+END;
+
+-- Trigger to update size_bytes on value change
+CREATE TRIGGER IF NOT EXISTS trigger_application_config_size_update
+AFTER UPDATE OF config_value ON APPLICATION_CONFIG
+FOR EACH ROW
+BEGIN
+    UPDATE APPLICATION_CONFIG
+    SET size_bytes = LENGTH(NEW.config_value)
+    WHERE id = NEW.id;
 END;
 
 -- Trigger to update updated_at timestamp for database_partitions
