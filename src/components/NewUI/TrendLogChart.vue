@@ -7664,6 +7664,20 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
       }
     })
 
+    // Auto-switch to View 2 or View 3 if they have saved selections
+    const view2HasData = (viewTrackedSeries.value[2]?.length || 0) > 0
+    const view3HasData = (viewTrackedSeries.value[3]?.length || 0) > 0
+
+    if (view2HasData || view3HasData) {
+      // Prioritize View 2 if it has data, otherwise use View 3
+      const targetView = view2HasData ? 2 : 3
+
+      LogUtil.Info(`🔄 Auto-switching to View ${targetView} (has ${viewTrackedSeries.value[targetView]?.length} saved selections)`)
+
+      // Switch to the view with data
+      setView(targetView)
+    }
+
   } catch (error) {
     const totalLoadTime = Date.now() - loadStartTime
     LogUtil.Error(`❌ FFI Load API: Failed to load view selections`, {
