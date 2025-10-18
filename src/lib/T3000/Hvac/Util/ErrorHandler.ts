@@ -162,8 +162,7 @@ class ErrorHandler {
       const isAsyncComponentError = error.message.includes('Async component timed out') ||
                                    error.message.includes('component timed out') ||
                                    error.message.includes('timeout') ||
-                                   error.stack?.includes('defineAsyncComponent') ||
-                                   error.stack?.includes('ComponentLazyLoader');
+                                   error.stack?.includes('defineAsyncComponent');
 
       let severity = ErrorSeverity.MEDIUM;
       if (isNodeError || isAsyncComponentError) {
