@@ -26,7 +26,8 @@ use winapi::shared::minwindef::HINSTANCE;
 
 // Function pointer types for dynamic loading
 type GetTrendlogListFn = unsafe extern "C" fn(panel_id: c_int, result_buffer: *mut c_char, buffer_size: c_int) -> c_int;
-type GetTrendlogEntryFn = unsafe extern "C" fn(panel_id: c_int, monitor_index: c_int, result_buffer: *mut c_char, buffer_size: c_int) -> c_int;/// Trendlog data structure matching C++ Fresh_Monitor_List output
+type GetTrendlogEntryFn = unsafe extern "C" fn(panel_id: c_int, monitor_index: c_int, result_buffer: *mut c_char, buffer_size: c_int) -> c_int;
+type SyncMonitorDataFn = unsafe extern "C" fn(panel_id: c_int) -> c_int;/// Trendlog data structure matching C++ Fresh_Monitor_List output
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrendlogMonitorData {
     pub num: i32,                    // Monitor index (NUM column)
@@ -82,39 +83,43 @@ pub struct TrendlogMonitorService {
     // Optional function pointers loaded dynamically
     get_trendlog_list_fn: Option<GetTrendlogListFn>,
     get_trendlog_entry_fn: Option<GetTrendlogEntryFn>,
+    sync_monitor_data_fn: Option<SyncMonitorDataFn>,
 }
 
 impl TrendlogMonitorService {
     /// Create new service instance
     pub fn new(db_connection: Arc<Mutex<DatabaseConnection>>) -> Self {
         // Try to dynamically load the C++ functions
-        let (get_trendlog_list_fn, get_trendlog_entry_fn) = Self::try_load_ffi_functions();
+        let (get_trendlog_list_fn, get_trendlog_entry_fn, sync_monitor_data_fn) = Self::try_load_ffi_functions();
 
         Self {
             db_connection,
             buffer_size: 65536, // 64KB buffer for JSON responses
             get_trendlog_list_fn,
             get_trendlog_entry_fn,
+            sync_monitor_data_fn,
         }
     }
 
     /// Attempt to dynamically load T3000 FFI functions
     #[cfg(target_os = "windows")]
-    fn try_load_ffi_functions() -> (Option<GetTrendlogListFn>, Option<GetTrendlogEntryFn>) {
+    fn try_load_ffi_functions() -> (Option<GetTrendlogListFn>, Option<GetTrendlogEntryFn>, Option<SyncMonitorDataFn>) {
         unsafe {
             // Try to get handle to current process (where T3000.exe functions should be)
             // LoadLibraryA(NULL) does not return the current module; use GetModuleHandleA(NULL)
             let module = GetModuleHandleA(std::ptr::null()); // Current process
             if module.is_null() {
-                return (None, None);
+                return (None, None, None);
             }
 
             // Try to get function pointers
             let list_fn_name = CString::new("BacnetWebView_GetTrendlogList").unwrap();
             let entry_fn_name = CString::new("BacnetWebView_GetTrendlogEntry").unwrap();
+            let sync_fn_name = CString::new("BacnetWebView_SyncMonitorData").unwrap();
 
             let list_fn = GetProcAddress(module, list_fn_name.as_ptr());
             let entry_fn = GetProcAddress(module, entry_fn_name.as_ptr());
+            let sync_fn = GetProcAddress(module, sync_fn_name.as_ptr());
 
             let list_fn = if !list_fn.is_null() {
                 Some(std::mem::transmute::<_, GetTrendlogListFn>(list_fn))
@@ -128,14 +133,20 @@ impl TrendlogMonitorService {
                 None
             };
 
-            (list_fn, entry_fn)
+            let sync_fn = if !sync_fn.is_null() {
+                Some(std::mem::transmute::<_, SyncMonitorDataFn>(sync_fn))
+            } else {
+                None
+            };
+
+            (list_fn, entry_fn, sync_fn)
         }
     }
 
     /// Non-Windows platforms - no FFI available
     #[cfg(not(target_os = "windows"))]
-    fn try_load_ffi_functions() -> (Option<GetTrendlogListFn>, Option<GetTrendlogEntryFn>) {
-        (None, None)
+    fn try_load_ffi_functions() -> (Option<GetTrendlogListFn>, Option<GetTrendlogEntryFn>, Option<SyncMonitorDataFn>) {
+        (None, None, None)
     }
 
     /// Get trendlog list for a device using new C++ export function
@@ -269,10 +280,45 @@ impl TrendlogMonitorService {
         })
     }
 
+    /// Sync m_monitor_data to g_monitor_data[panel_id] to ensure data is accessible
+    /// This should be called BEFORE getting trendlog data
+    pub async fn sync_monitor_data_to_global(&self, panel_id: i32) -> Result<i32, AppError> {
+        if let Some(sync_fn) = self.sync_monitor_data_fn {
+            let result = unsafe { sync_fn(panel_id) };
+
+            if result >= 0 {
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Trendlog_Monitor",
+                    &format!("✅ Synced {} monitors to g_monitor_data[{}]", result, panel_id),
+                    LogLevel::Info,
+                );
+                Ok(result)
+            } else {
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_Trendlog_Monitor",
+                    &format!("⚠️ Failed to sync monitor data for panel_id {}: returned {}", panel_id, result),
+                    LogLevel::Warn,
+                );
+                Err(AppError::NotFound(format!("Failed to sync monitor data for panel_id {}", panel_id)))
+            }
+        } else {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Trendlog_Monitor",
+                &format!("⚠️ BacnetWebView_SyncMonitorData function not available"),
+                LogLevel::Warn,
+            );
+            // Not a fatal error, just means the function isn't available
+            Ok(0)
+        }
+    }
+
     /// Sync all trendlog data to database (saves to TRENDLOG table)
     /// panel_id: The panel ID used to call C++ function (1, 2, 3, etc.)
     /// serial_number: The actual device serial number to save in database
     pub async fn sync_trendlogs_to_database(&self, panel_id: i32, serial_number: i32) -> Result<usize, AppError> {
+        // First, ensure monitor data is synced to global array
+        let _ = self.sync_monitor_data_to_global(panel_id).await;
+
         // Get trendlog list from C++
         let trendlog_list = self.get_trendlog_list(panel_id).await?;
 

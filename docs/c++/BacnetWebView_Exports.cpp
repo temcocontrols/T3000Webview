@@ -433,16 +433,16 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogList(int panel_id,
         json_result["success"] = true;
         json_result["panel_id"] = panel_id;
 
-        // Use m_monitor_data - the CURRENT device's monitor data (same as Fresh_Monitor_List in UI)
+        // Validate panel_id and get per-panel monitor count
         int monitors_for_panel = 0;
         try {
-            monitors_for_panel = (int)m_monitor_data.size();
-            logContent.AppendFormat(_T("Current device has %d monitors in m_monitor_data (global)\n"),
-                monitors_for_panel);
+            monitors_for_panel = (int)g_monitor_data.at(panel_id).size();
+            logContent.AppendFormat(_T("Panel %d has %d monitors in g_monitor_data\n"),
+                panel_id, monitors_for_panel);
         } catch (...) {
-            // m_monitor_data not accessible - return an informative error JSON
+            // panel_id out of range - return an informative error JSON
             json_result["success"] = false;
-            json_result["error"] = std::string("Monitor data not initialized for current device");
+            json_result["error"] = std::string("Invalid panel_id or panel data not initialized");
             json_result["panel_id"] = panel_id;
             json_result["total_monitors"] = 0;
             std::string json_string = Json::writeString(builder, json_result);
@@ -451,7 +451,7 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogList(int panel_id,
                 strncpy_s(result_buffer, buffer_size, json_string.c_str(), json_len);
                 result_buffer[json_len] = '\0';
 
-                logContent.AppendFormat(_T("ERROR: m_monitor_data not accessible\n"));
+                logContent.AppendFormat(_T("ERROR: Invalid panel_id %d (out of range in g_monitor_data)\n"), panel_id);
                 logContent.AppendFormat(_T("Response: %S\n"), json_string.c_str());
                 WriteToT3WebLog(_T("BacnetWebView_GetTrendlogList"), logContent);
 
@@ -471,18 +471,18 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogList(int panel_id,
             trendlog_item["id"] = std::string("MON") + std::to_string(i + 1);
 
             // LABEL field (from monitor data structure)
-            std::string label_str((char*)m_monitor_data.at(i).label);
+            std::string label_str((char*)g_monitor_data[panel_id].at(i).label);
             trendlog_item["label"] = label_str.empty() ? ("Monitor " + std::to_string(i + 1)) : label_str;
 
             // INTERVAL field (calculated same as Fresh_Monitor_List)
-            int interval_seconds = m_monitor_data.at(i).hour_interval_time * 3600 +
-                                 m_monitor_data.at(i).minute_interval_time * 60 +
-                                 m_monitor_data.at(i).second_interval_time;
+            int interval_seconds = g_monitor_data[panel_id].at(i).hour_interval_time * 3600 +
+                                 g_monitor_data[panel_id].at(i).minute_interval_time * 60 +
+                                 g_monitor_data[panel_id].at(i).second_interval_time;
             trendlog_item["interval_seconds"] = interval_seconds;
             trendlog_item["interval_text"] = IntervalToText(interval_seconds);
 
             // STATUS field (ON/OFF same as Fresh_Monitor_List)
-            if (m_monitor_data.at(i).status == 1) {
+            if (g_monitor_data[panel_id].at(i).status == 1) {
                 trendlog_item["status"] = "ON";
                 trendlog_item["status_code"] = 1;
             } else {
@@ -501,8 +501,8 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogList(int panel_id,
             trendlog_item["data_size_text"] = std::to_string(data_size_kb).substr(0, 4);
 
             // Additional useful fields
-            trendlog_item["num_inputs"] = (int)m_monitor_data.at(i).num_inputs;
-            trendlog_item["an_inputs"] = (int)m_monitor_data.at(i).an_inputs;
+            trendlog_item["num_inputs"] = (int)g_monitor_data[panel_id].at(i).num_inputs;
+            trendlog_item["an_inputs"] = (int)g_monitor_data[panel_id].at(i).an_inputs;
 
             json_result["trendlogs"][i] = trendlog_item;
         }
@@ -589,11 +589,12 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
         json_result["panel_id"] = panel_id;
         json_result["monitor_index"] = monitor_index;
 
-        // Validate monitor_index against m_monitor_data
+        // Validate panel_id and monitor_index
         try {
-            if (monitor_index < 0 || monitor_index >= (int)m_monitor_data.size()) {
+            auto &panel_vec = g_monitor_data.at(panel_id);
+            if (monitor_index < 0 || monitor_index >= (int)panel_vec.size()) {
                 json_result["success"] = false;
-                json_result["error"] = std::string("monitor_index out of range for current device");
+                json_result["error"] = std::string("monitor_index out of range for panel");
                 json_result["panel_id"] = panel_id;
                 std::string json_string = Json::writeString(builder, json_result);
                 size_t json_len = json_string.length();
@@ -601,8 +602,8 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
                     strncpy_s(result_buffer, buffer_size, json_string.c_str(), json_len);
                     result_buffer[json_len] = '\0';
 
-                    logContent.AppendFormat(_T("ERROR: monitor_index %d out of range (current device has %d monitors)\n"),
-                        monitor_index, (int)m_monitor_data.size());
+                    logContent.AppendFormat(_T("ERROR: monitor_index %d out of range (panel %d has %d monitors)\n"),
+                        monitor_index, panel_id, (int)panel_vec.size());
                     logContent.AppendFormat(_T("Response: %S\n"), json_string.c_str());
                     WriteToT3WebLog(_T("BacnetWebView_GetTrendlogEntry"), logContent);
 
@@ -611,12 +612,12 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
                 return -1;
             }
 
-            logContent.AppendFormat(_T("Current device has %d monitors, accessing monitor %d\n"),
-                (int)m_monitor_data.size(), monitor_index);
+            logContent.AppendFormat(_T("Panel %d has %d monitors, accessing monitor %d\n"),
+                panel_id, (int)panel_vec.size(), monitor_index);
 
         } catch (...) {
             json_result["success"] = false;
-            json_result["error"] = std::string("Monitor data not initialized for current device");
+            json_result["error"] = std::string("Invalid panel_id or panel data not initialized");
             json_result["panel_id"] = panel_id;
             std::string json_string = Json::writeString(builder, json_result);
             size_t json_len = json_string.length();
@@ -624,7 +625,7 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
                 strncpy_s(result_buffer, buffer_size, json_string.c_str(), json_len);
                 result_buffer[json_len] = '\0';
 
-                logContent.AppendFormat(_T("ERROR: m_monitor_data not accessible\n"));
+                logContent.AppendFormat(_T("ERROR: Invalid panel_id %d (out of range in g_monitor_data)\n"), panel_id);
                 logContent.AppendFormat(_T("Response: %S\n"), json_string.c_str());
                 WriteToT3WebLog(_T("BacnetWebView_GetTrendlogEntry"), logContent);
 
@@ -641,18 +642,18 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
         trendlog_item["id"] = std::string("MON") + std::to_string(monitor_index + 1);
 
         // LABEL field
-        std::string label_str((char*)m_monitor_data.at(monitor_index).label);
+        std::string label_str((char*)g_monitor_data[panel_id].at(monitor_index).label);
         trendlog_item["label"] = label_str.empty() ? ("Monitor " + std::to_string(monitor_index + 1)) : label_str;
 
         // INTERVAL field
-        int interval_seconds = m_monitor_data.at(monitor_index).hour_interval_time * 3600 +
-                             m_monitor_data.at(monitor_index).minute_interval_time * 60 +
-                             m_monitor_data.at(monitor_index).second_interval_time;
+        int interval_seconds = g_monitor_data[panel_id].at(monitor_index).hour_interval_time * 3600 +
+                             g_monitor_data[panel_id].at(monitor_index).minute_interval_time * 60 +
+                             g_monitor_data[panel_id].at(monitor_index).second_interval_time;
         trendlog_item["interval_seconds"] = interval_seconds;
         trendlog_item["interval_text"] = IntervalToText(interval_seconds);
 
         // STATUS field
-        if (m_monitor_data.at(monitor_index).status == 1) {
+        if (g_monitor_data[panel_id].at(monitor_index).status == 1) {
             trendlog_item["status"] = "ON";
             trendlog_item["status_code"] = 1;
         } else {
@@ -671,21 +672,21 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
         trendlog_item["data_size_text"] = std::to_string(data_size_kb).substr(0, 4);
 
         // Additional fields
-        trendlog_item["num_inputs"] = (int)m_monitor_data.at(monitor_index).num_inputs;
-        trendlog_item["an_inputs"] = (int)m_monitor_data.at(monitor_index).an_inputs;
+        trendlog_item["num_inputs"] = (int)g_monitor_data[panel_id].at(monitor_index).num_inputs;
+        trendlog_item["an_inputs"] = (int)g_monitor_data[panel_id].at(monitor_index).an_inputs;
 
         // Input points details (same as Fresh_Monitor_Input_List)
         Json::Value inputs_array;
         for (int j = 0; j < MAX_POINTS_IN_MONITOR; j++) {
-            if (j < m_monitor_data.at(monitor_index).num_inputs) {
+            if (j < g_monitor_data[panel_id].at(monitor_index).num_inputs) {
                 Json::Value input_item;
                 input_item["index"] = j;
-                input_item["panel"] = (int)m_monitor_data.at(monitor_index).inputs[j].panel;
-                input_item["sub_panel"] = (int)m_monitor_data.at(monitor_index).inputs[j].sub_panel;
-                input_item["point_type"] = (int)m_monitor_data.at(monitor_index).inputs[j].point_type;
-                input_item["point_number"] = (int)m_monitor_data.at(monitor_index).inputs[j].number;
-                input_item["network"] = (int)m_monitor_data.at(monitor_index).inputs[j].network;
-                input_item["range"] = (int)m_monitor_data.at(monitor_index).range[j];
+                input_item["panel"] = (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].panel;
+                input_item["sub_panel"] = (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].sub_panel;
+                input_item["point_type"] = (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].point_type;
+                input_item["point_number"] = (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].number;
+                input_item["network"] = (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].network;
+                input_item["range"] = (int)g_monitor_data[panel_id].at(monitor_index).range[j];
                 inputs_array[j] = input_item;
             }
         }
@@ -726,6 +727,79 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
         logContent.AppendFormat(_T("EXCEPTION: Caught exception in GetTrendlogEntry\n"));
         WriteToT3WebLog(_T("BacnetWebView_GetTrendlogEntry"), logContent);
 
+        return -1;
+    }
+}
+
+// Sync m_monitor_data to g_monitor_data[panel_id] to ensure webview can access monitor data
+// This function should be called after loading a device or when monitor data is updated
+extern "C" int BacnetWebView_SyncMonitorData(int panel_id) {
+    CString logContent;
+    logContent.AppendFormat(_T("=== BacnetWebView_SyncMonitorData START ===\n"));
+    logContent.AppendFormat(_T("panel_id: %d\n"), panel_id);
+
+    try {
+        // Validate panel_id
+        if (panel_id < 0 || panel_id >= 256) {
+            logContent.AppendFormat(_T("ERROR: Invalid panel_id %d (must be 0-255)\n"), panel_id);
+            WriteToT3WebLog(_T("BacnetWebView_SyncMonitorData"), logContent);
+            return -1;
+        }
+
+        // Ensure g_monitor_data is large enough
+        if (g_monitor_data.size() <= (size_t)panel_id) {
+            logContent.AppendFormat(_T("ERROR: g_monitor_data.size()=%d is too small for panel_id %d\n"),
+                (int)g_monitor_data.size(), panel_id);
+            WriteToT3WebLog(_T("BacnetWebView_SyncMonitorData"), logContent);
+            return -1;
+        }
+
+        // Check if m_monitor_data has any monitors
+        int monitor_count = (int)m_monitor_data.size();
+        logContent.AppendFormat(_T("m_monitor_data.size() = %d\n"), monitor_count);
+
+        if (monitor_count == 0) {
+            logContent.AppendFormat(_T("WARNING: m_monitor_data is empty, nothing to sync\n"));
+            WriteToT3WebLog(_T("BacnetWebView_SyncMonitorData"), logContent);
+            return 0;  // Not an error, just empty data
+        }
+
+        // Ensure g_monitor_data[panel_id] is the correct size
+        if (g_monitor_data[panel_id].size() != m_monitor_data.size()) {
+            logContent.AppendFormat(_T("Resizing g_monitor_data[%d] from %d to %d\n"),
+                panel_id, (int)g_monitor_data[panel_id].size(), monitor_count);
+            g_monitor_data[panel_id].resize(monitor_count);
+        }
+
+        // Copy all monitor data from m_monitor_data to g_monitor_data[panel_id]
+        int synced_count = 0;
+        for (int i = 0; i < monitor_count; i++) {
+            g_monitor_data[panel_id].at(i) = m_monitor_data.at(i);
+            synced_count++;
+        }
+
+        logContent.AppendFormat(_T("SUCCESS: Synced %d monitors to g_monitor_data[%d]\n"),
+            synced_count, panel_id);
+
+        // Log first monitor as verification
+        if (synced_count > 0) {
+            std::string label_str((char*)g_monitor_data[panel_id].at(0).label);
+            logContent.AppendFormat(_T("First monitor label: '%S'\n"), label_str.c_str());
+            logContent.AppendFormat(_T("First monitor status: %d\n"), (int)g_monitor_data[panel_id].at(0).status);
+        }
+
+        WriteToT3WebLog(_T("BacnetWebView_SyncMonitorData"), logContent);
+
+        return synced_count;  // Return number of monitors synced
+    }
+    catch (const std::exception& e) {
+        logContent.AppendFormat(_T("EXCEPTION: %S\n"), e.what());
+        WriteToT3WebLog(_T("BacnetWebView_SyncMonitorData"), logContent);
+        return -1;
+    }
+    catch (...) {
+        logContent.AppendFormat(_T("EXCEPTION: Unknown exception\n"));
+        WriteToT3WebLog(_T("BacnetWebView_SyncMonitorData"), logContent);
         return -1;
     }
 }
