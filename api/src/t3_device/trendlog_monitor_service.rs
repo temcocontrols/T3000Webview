@@ -359,7 +359,7 @@ impl TrendlogMonitorService {
         Ok(synced_count)
     }
 
-    /// Save individual trendlog to TRENDLOG table
+    /// Save individual trendlog to TRENDLOGS table
     async fn save_trendlog_to_database(
         &self,
         db: &DatabaseConnection,
@@ -368,7 +368,9 @@ impl TrendlogMonitorService {
     ) -> Result<(), AppError> {
         use sea_orm::{ActiveModelTrait, Set};
 
-        // Check if trendlog already exists (use correct field names from entity)
+        // CRITICAL FIX: The unique key is (SerialNumber, PanelId) where PanelId is the monitor index (0-11)
+        // trendlog.num is the monitor index (0-11), NOT a separate panel ID
+        // So we use trendlog.num as the PanelId for matching existing records
         let existing = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(device_id))
             .filter(trendlogs::Column::PanelId.eq(trendlog.num))
@@ -378,24 +380,33 @@ impl TrendlogMonitorService {
         let now = Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
 
         if let Some(existing_trendlog) = existing {
-            // Update existing trendlog with fresh data from C++
+            // UPDATE existing trendlog with fresh data from C++
             let mut update_model: trendlogs::ActiveModel = existing_trendlog.into();
 
-            // Map to correct entity fields
+            // Update ALL fields with fresh data
+            update_model.trendlog_id = Set(trendlog.id.clone());  // Update ID (MON1, MON2, etc.)
             update_model.trendlog_label = Set(Some(trendlog.label.clone()));
             update_model.interval_minutes = Set(Some(trendlog.interval_seconds / 60)); // Convert to minutes
             update_model.status = Set(Some(trendlog.status.clone()));
             update_model.data_size_kb = Set(Some(trendlog.data_size_text.clone()));
+            update_model.buffer_size = Set(Some((trendlog.data_size_kb * 1000.0) as i32)); // Update buffer size
             update_model.updated_at = Set(Some(now.clone()));
             update_model.ffi_synced = Set(Some(1)); // Mark as FFI synced
             update_model.last_ffi_sync = Set(Some(now));
 
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Trendlog_Monitor",
+                &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, ID='{}', Label='{}'",
+                    device_id, trendlog.num, trendlog.id, trendlog.label),
+                LogLevel::Info,
+            );
+
             update_model.update(db).await?;
         } else {
-            // Create new trendlog entry with correct entity fields
+            // INSERT new trendlog entry
             let new_trendlog = trendlogs::ActiveModel {
                 serial_number: Set(device_id),
-                panel_id: Set(trendlog.num),
+                panel_id: Set(trendlog.num),  // Use monitor index as PanelId
                 trendlog_id: Set(trendlog.id.clone()),
                 trendlog_label: Set(Some(trendlog.label.clone())),
                 interval_minutes: Set(Some(trendlog.interval_seconds / 60)), // Convert to minutes
@@ -409,6 +420,13 @@ impl TrendlogMonitorService {
                 last_ffi_sync: Set(Some(now)),
                 ..Default::default()
             };
+
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Trendlog_Monitor",
+                &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, ID='{}', Label='{}'",
+                    device_id, trendlog.num, trendlog.id, trendlog.label),
+                LogLevel::Info,
+            );
 
             new_trendlog.insert(db).await?;
         }

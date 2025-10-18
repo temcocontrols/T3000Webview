@@ -430,10 +430,18 @@ impl T3000MainService {
         use crate::t3_device::trendlog_monitor_service::TrendlogMonitorService;
         use std::sync::Arc;
         use tokio::sync::Mutex;
+        use tokio::time::{sleep, Duration};
 
         let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
         sync_logger.info("📊 Starting one-time trendlog configuration sync for all devices...");
+
+        // TIMING FIX: Wait for device data to be loaded into g_monitor_data before syncing
+        // This ensures g_monitor_data[panel_id] has real device data (not "Monitor 1" defaults)
+        const DEVICE_DATA_LOAD_DELAY_SECS: u64 = 5;
+        sync_logger.info(&format!("⏳ Waiting {} seconds for device data to load into g_monitor_data...", DEVICE_DATA_LOAD_DELAY_SECS));
+        sleep(Duration::from_secs(DEVICE_DATA_LOAD_DELAY_SECS)).await;
+        sync_logger.info("✅ Device data load delay complete, proceeding with trendlog sync");
 
         // Get database connection
         let db = establish_t3_device_connection().await?;
@@ -464,6 +472,10 @@ impl T3000MainService {
             }
 
             sync_logger.info(&format!("🔄 Syncing trendlog config for device {} (panel_id: {})", serial_number, panel_id));
+
+            // Small delay between devices to ensure data is available
+            const PER_DEVICE_DELAY_MS: u64 = 500;
+            sleep(Duration::from_millis(PER_DEVICE_DELAY_MS)).await;
 
             match trendlog_service.sync_trendlogs_to_database(panel_id, serial_number).await {
                 Ok(count) => {
