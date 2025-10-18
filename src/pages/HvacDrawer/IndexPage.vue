@@ -799,7 +799,7 @@ import ScheduleCalendar from "src/components/NewUI/ScheduleCalendar.vue";
 import ScheduleAnnual from "src/components/NewUI/ScheduleAnnual.vue";
 import TrendLogModal from "src/components/NewUI/TrendLogModal.vue";
 import T3UIUtil from "src/lib/T3000/Hvac/Opt/UI/T3UIUtil";
-import SelectoErrorHandler from "../../lib/performance/SelectoErrorHandler.js";
+import SelectoErrorHandler from "src/lib/T3000/Hvac/Util/SelectoErrorHandler.js";
 
 // const isBuiltInEdge = ref(false);
 import DataOpt from "src/lib/T3000/Hvac/Opt/Data/DataOpt";

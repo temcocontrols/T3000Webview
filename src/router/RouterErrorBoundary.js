@@ -5,7 +5,6 @@
 
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 import { ErrorHandler } from '../lib/T3000/Hvac/Util/ErrorHandler';
-import { asyncTimeoutManager } from '../lib/performance/AsyncComponentTimeoutManager.js';
 
 export class RouterErrorBoundary {
   constructor(router) {
@@ -133,22 +132,14 @@ export class RouterErrorBoundary {
   async handleComponentLoadingFailure(to) {
     // LogUtil.Debug(`[Router] Handling component loading failure for route: ${to.path}`);
 
-    // Get timeout statistics to determine if there's a pattern
-    const stats = asyncTimeoutManager.getTimeoutStats();
-
-    if (stats.failedComponents > 3) {
-      // LogUtil.Debug('[Router] Multiple component failures detected, showing global fallback');
-      this.navigateToGlobalFallback();
-    } else {
-      // Try to navigate to the same route again with a delay
-      setTimeout(() => {
-        // LogUtil.Debug(`[Router] Retrying navigation to ${to.path}`);
-        this.router.push(to.path).catch((retryError) => {
-          LogUtil.Error('[Router] Retry navigation failed:', retryError);
-          this.navigateToFallback();
-        });
-      }, 2000);
-    }
+    // Try to navigate to the same route again with a delay
+    setTimeout(() => {
+      // LogUtil.Debug(`[Router] Retrying navigation to ${to.path}`);
+      this.router.push(to.path).catch((retryError) => {
+        LogUtil.Error('[Router] Retry navigation failed:', retryError);
+        this.navigateToFallback();
+      });
+    }, 2000);
   }
 
   navigateToFallback() {
@@ -197,13 +188,12 @@ export class RouterErrorBoundary {
 
   // Recovery methods
   clearComponentCache() {
-    asyncTimeoutManager.clearAllTimeoutHistory();
+    // Component cache cleared (performance monitoring removed)
     // LogUtil.Debug('[Router] Cleared component timeout history');
   }
 
   getErrorStats() {
     return {
-      componentTimeouts: asyncTimeoutManager.getTimeoutStats(),
       errorHistory: this.errorHandler.getErrorHistory()
     };
   }
