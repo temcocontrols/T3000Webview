@@ -375,10 +375,13 @@ impl TrendlogMonitorService {
 
         // FIXED: The unique key is (SerialNumber, Trendlog_ID) where Trendlog_ID is "MON1", "MON2", etc.
         // PanelId should store the device's actual panel ID, not the monitor index
-        // trendlog.num is the monitor index (0-11), trendlog.id is the unique identifier ("MON1"-"MON12")
+        // trendlog.num is the monitor index (0-11), trendlog.id SHOULD be "MON1"-"MON12" but might be unreliable
+        // SOLUTION: Generate consistent Trendlog_ID from monitor index (trendlog.num)
+        let trendlog_id = format!("MON{}", trendlog.num + 1);  // MON1-MON12 (0-based to 1-based)
+
         let existing = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(device_id))
-            .filter(trendlogs::Column::TrendlogId.eq(&trendlog.id))
+            .filter(trendlogs::Column::TrendlogId.eq(&trendlog_id))
             .one(db)
             .await?;
 
@@ -388,11 +391,10 @@ impl TrendlogMonitorService {
             // UPDATE existing trendlog with fresh data from C++
             let mut update_model: trendlogs::ActiveModel = existing_trendlog.into();
 
-            // Update ALL fields with fresh data
-            update_model.trendlog_id = Set(trendlog.id.clone());  // Update ID (MON1, MON2, etc.)
+            // Update fields with fresh data from C++ (DO NOT update Trendlog_ID - it's the unique key!)
+            // NOTE: Trendlog_ID remains unchanged - it's part of the UNIQUE key (SerialNumber, Trendlog_ID)
             update_model.trendlog_label = Set(Some(trendlog.label.clone()));
             // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
-            // Database column is "Interval_Minutes" but Rust field is interval_seconds (reflects actual data)
             update_model.interval_seconds = Set(Some(trendlog.interval_seconds));
             update_model.status = Set(Some(trendlog.status.clone()));
             update_model.data_size_kb = Set(Some(trendlog.data_size_text.clone()));
@@ -403,8 +405,8 @@ impl TrendlogMonitorService {
 
             let _ = write_structured_log_with_level(
                 "T3_Webview_Trendlog_Monitor",
-                &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}', Label='{}'",
-                    device_id, panel_id, trendlog.num, trendlog.id, trendlog.label),
+                &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}' (from C++: '{}'), Label='{}'",
+                    device_id, panel_id, trendlog.num, trendlog_id, trendlog.id, trendlog.label),
                 LogLevel::Info,
             );
 
@@ -414,7 +416,7 @@ impl TrendlogMonitorService {
             let new_trendlog = trendlogs::ActiveModel {
                 serial_number: Set(device_id),
                 panel_id: Set(panel_id),  // FIXED: Use device's actual panel ID, not monitor index
-                trendlog_id: Set(trendlog.id.clone()),
+                trendlog_id: Set(trendlog_id.clone()),  // Use generated ID (MON1-MON12)
                 trendlog_label: Set(Some(trendlog.label.clone())),
                 // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
                 // Database column is "Interval_Minutes" but Rust field is interval_seconds (reflects actual data)
@@ -432,8 +434,8 @@ impl TrendlogMonitorService {
 
             let _ = write_structured_log_with_level(
                 "T3_Webview_Trendlog_Monitor",
-                &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}', Label='{}'",
-                    device_id, panel_id, trendlog.num, trendlog.id, trendlog.label),
+                &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}' (from C++: '{}'), Label='{}'",
+                    device_id, panel_id, trendlog.num, trendlog_id, trendlog.id, trendlog.label),
                 LogLevel::Info,
             );
 

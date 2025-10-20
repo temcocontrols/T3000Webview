@@ -441,19 +441,47 @@ impl TrendLogFFIService {
     ) -> Result<TrendLogInfo, AppError> {
         let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("🆕 Creating initial TrendLog info: {} for device {}", trendlog_id, device_id), LogLevel::Info);
 
-        // Parse TrendLog ID to get monitor index
-        let monitor_index = trendlog_id.replace("MONITOR", "").parse::<i32>()
-            .map_err(|_| AppError::ValidationError("Invalid TrendLog ID format".to_string()))?;
+        // Normalize Trendlog_ID: Convert numeric index (0,1,2...) to MON format (MON1,MON2,MON3...)
+        let normalized_trendlog_id = if trendlog_id.starts_with("MON") {
+            // Already in MON format
+            trendlog_id.to_string()
+        } else {
+            // Try to parse as number and convert to MON format (0-based to 1-based)
+            match trendlog_id.parse::<i32>() {
+                Ok(index) => format!("MON{}", index + 1),  // 0→MON1, 1→MON2, etc.
+                Err(_) => {
+                    // Try to parse MONITOR format
+                    if trendlog_id.starts_with("MONITOR") {
+                        let monitor_index = trendlog_id.replace("MONITOR", "").parse::<i32>()
+                            .map_err(|_| AppError::ValidationError("Invalid TrendLog ID format".to_string()))?;
+                        format!("MON{}", monitor_index)
+                    } else {
+                        return Err(AppError::ValidationError(format!("Invalid TrendLog ID format: {}", trendlog_id)));
+                    }
+                }
+            }
+        };
+
+        // Parse monitor index for label (1-based)
+        let monitor_number = if normalized_trendlog_id.starts_with("MON") {
+            normalized_trendlog_id.replace("MON", "").parse::<i32>()
+                .unwrap_or(1)
+        } else {
+            1
+        };
 
         // Create basic TrendLog info with defaults or custom title
         let trendlog_label = chart_title
             .map(|title| title.to_string())
-            .unwrap_or_else(|| format!("TrendLog {}", monitor_index));
+            .unwrap_or_else(|| format!("Monitor {}", monitor_number));
+
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI",
+            &format!("📝 Normalized Trendlog_ID: '{}' → '{}'", trendlog_id, normalized_trendlog_id), LogLevel::Info);
 
         let basic_info = TrendLogInfo {
             serial_number: device_id as i32,
             panel_id: panel_id, // Use provided panel ID
-            trendlog_id: trendlog_id.to_string(),
+            trendlog_id: normalized_trendlog_id,  // Use normalized ID (MON1-MON12)
             trendlog_label: trendlog_label,
             interval_seconds: 15, // Default interval (15 seconds)
             status: "UNKNOWN".to_string(), // Will be updated by FFI
