@@ -328,7 +328,8 @@ impl TrendlogMonitorService {
         // Process each trendlog
         for trendlog_data in &trendlog_list.trendlogs {
             // Create or update trendlog entry in database
-            let result = self.save_trendlog_to_database(&*db, serial_number, trendlog_data).await;
+            // Pass panel_id (device's panel ID) along with serial_number and trendlog data
+            let result = self.save_trendlog_to_database(&*db, serial_number, panel_id, trendlog_data).await;
 
             match result {
                 Ok(_) => {
@@ -360,20 +361,24 @@ impl TrendlogMonitorService {
     }
 
     /// Save individual trendlog to TRENDLOGS table
+    /// device_id: SerialNumber of the device
+    /// panel_id: Actual device panel ID (from DEVICES table)
+    /// trendlog: Trendlog data from C++ (trendlog.num is monitor index 0-11)
     async fn save_trendlog_to_database(
         &self,
         db: &DatabaseConnection,
         device_id: i32,
+        panel_id: i32,
         trendlog: &TrendlogMonitorData
     ) -> Result<(), AppError> {
         use sea_orm::{ActiveModelTrait, Set};
 
-        // CRITICAL FIX: The unique key is (SerialNumber, PanelId) where PanelId is the monitor index (0-11)
-        // trendlog.num is the monitor index (0-11), NOT a separate panel ID
-        // So we use trendlog.num as the PanelId for matching existing records
+        // FIXED: The unique key is (SerialNumber, Trendlog_ID) where Trendlog_ID is "MON1", "MON2", etc.
+        // PanelId should store the device's actual panel ID, not the monitor index
+        // trendlog.num is the monitor index (0-11), trendlog.id is the unique identifier ("MON1"-"MON12")
         let existing = trendlogs::Entity::find()
             .filter(trendlogs::Column::SerialNumber.eq(device_id))
-            .filter(trendlogs::Column::PanelId.eq(trendlog.num))
+            .filter(trendlogs::Column::TrendlogId.eq(&trendlog.id))
             .one(db)
             .await?;
 
@@ -386,7 +391,9 @@ impl TrendlogMonitorService {
             // Update ALL fields with fresh data
             update_model.trendlog_id = Set(trendlog.id.clone());  // Update ID (MON1, MON2, etc.)
             update_model.trendlog_label = Set(Some(trendlog.label.clone()));
-            update_model.interval_minutes = Set(Some(trendlog.interval_seconds / 60)); // Convert to minutes
+            // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
+            // Column name is "Interval_Minutes" but we store seconds (historical naming)
+            update_model.interval_minutes = Set(Some(trendlog.interval_seconds));
             update_model.status = Set(Some(trendlog.status.clone()));
             update_model.data_size_kb = Set(Some(trendlog.data_size_text.clone()));
             update_model.buffer_size = Set(Some((trendlog.data_size_kb * 1000.0) as i32)); // Update buffer size
@@ -396,8 +403,8 @@ impl TrendlogMonitorService {
 
             let _ = write_structured_log_with_level(
                 "T3_Webview_Trendlog_Monitor",
-                &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, ID='{}', Label='{}'",
-                    device_id, trendlog.num, trendlog.id, trendlog.label),
+                &format!("UPDATING trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}', Label='{}'",
+                    device_id, panel_id, trendlog.num, trendlog.id, trendlog.label),
                 LogLevel::Info,
             );
 
@@ -406,10 +413,12 @@ impl TrendlogMonitorService {
             // INSERT new trendlog entry
             let new_trendlog = trendlogs::ActiveModel {
                 serial_number: Set(device_id),
-                panel_id: Set(trendlog.num),  // Use monitor index as PanelId
+                panel_id: Set(panel_id),  // FIXED: Use device's actual panel ID, not monitor index
                 trendlog_id: Set(trendlog.id.clone()),
                 trendlog_label: Set(Some(trendlog.label.clone())),
-                interval_minutes: Set(Some(trendlog.interval_seconds / 60)), // Convert to minutes
+                // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
+                // Column name is "Interval_Minutes" but we store seconds (historical naming)
+                interval_minutes: Set(Some(trendlog.interval_seconds)),
                 data_size_kb: Set(Some(trendlog.data_size_text.clone())),
                 status: Set(Some(trendlog.status.clone())),
                 auto_manual: Set(Some("Auto".to_string())), // Default to Auto
@@ -423,8 +432,8 @@ impl TrendlogMonitorService {
 
             let _ = write_structured_log_with_level(
                 "T3_Webview_Trendlog_Monitor",
-                &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, ID='{}', Label='{}'",
-                    device_id, trendlog.num, trendlog.id, trendlog.label),
+                &format!("INSERTING new trendlog: SerialNumber={}, PanelId={}, MonitorIndex={}, ID='{}', Label='{}'",
+                    device_id, panel_id, trendlog.num, trendlog.id, trendlog.label),
                 LogLevel::Info,
             );
 
