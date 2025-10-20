@@ -392,8 +392,8 @@ impl TrendlogMonitorService {
             update_model.trendlog_id = Set(trendlog.id.clone());  // Update ID (MON1, MON2, etc.)
             update_model.trendlog_label = Set(Some(trendlog.label.clone()));
             // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
-            // Column name is "Interval_Minutes" but we store seconds (historical naming)
-            update_model.interval_minutes = Set(Some(trendlog.interval_seconds));
+            // Database column is "Interval_Minutes" but Rust field is interval_seconds (reflects actual data)
+            update_model.interval_seconds = Set(Some(trendlog.interval_seconds));
             update_model.status = Set(Some(trendlog.status.clone()));
             update_model.data_size_kb = Set(Some(trendlog.data_size_text.clone()));
             update_model.buffer_size = Set(Some((trendlog.data_size_kb * 1000.0) as i32)); // Update buffer size
@@ -417,8 +417,8 @@ impl TrendlogMonitorService {
                 trendlog_id: Set(trendlog.id.clone()),
                 trendlog_label: Set(Some(trendlog.label.clone())),
                 // FIXED: Store interval_seconds directly (not divided by 60) to preserve sub-minute intervals
-                // Column name is "Interval_Minutes" but we store seconds (historical naming)
-                interval_minutes: Set(Some(trendlog.interval_seconds)),
+                // Database column is "Interval_Minutes" but Rust field is interval_seconds (reflects actual data)
+                interval_seconds: Set(Some(trendlog.interval_seconds)),
                 data_size_kb: Set(Some(trendlog.data_size_text.clone())),
                 status: Set(Some(trendlog.status.clone())),
                 auto_manual: Set(Some("Auto".to_string())), // Default to Auto

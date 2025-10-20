@@ -197,7 +197,7 @@ pub struct TrendLogInfo {
     pub panel_id: i32,
     pub trendlog_id: String,
     pub trendlog_label: String,
-    pub interval_minutes: i32,
+    pub interval_seconds: i32,  // Stores seconds (not minutes)
     pub status: String,
     pub num_inputs: i32,
     pub analog_inputs: i32,
@@ -289,7 +289,7 @@ impl TrendLogFFIService {
                     panel_id: existing_trendlog.panel_id,
                     trendlog_id: existing_trendlog.trendlog_id,
                     trendlog_label: existing_trendlog.trendlog_label.unwrap_or_else(|| format!("TrendLog {}", trendlog_id)),
-                    interval_minutes: existing_trendlog.interval_minutes.unwrap_or(15),
+                    interval_seconds: existing_trendlog.interval_seconds.unwrap_or(15),
                     status: "DATABASE".to_string(), // Indicate this is from database
                     num_inputs: related_inputs.len() as i32,
                     analog_inputs: related_inputs.iter().filter(|input|
@@ -415,7 +415,7 @@ impl TrendLogFFIService {
                         panel_id: panel_id,
                         trendlog_id: trendlog_id.to_string(),
                         trendlog_label: label.to_string(),
-                        interval_minutes: total_interval_minutes,
+                        interval_seconds: total_interval_minutes * 60, // Convert minutes to seconds
                         status: format!("{} (WebMessage)", status_str), // Indicate source
                         num_inputs,
                         analog_inputs: an_inputs,
@@ -455,7 +455,7 @@ impl TrendLogFFIService {
             panel_id: panel_id, // Use provided panel ID
             trendlog_id: trendlog_id.to_string(),
             trendlog_label: trendlog_label,
-            interval_minutes: 15, // Default interval
+            interval_seconds: 15, // Default interval (15 seconds)
             status: "UNKNOWN".to_string(), // Will be updated by FFI
             num_inputs: 0, // Will be updated by FFI
             analog_inputs: 0, // Will be updated by FFI
@@ -485,7 +485,7 @@ impl TrendLogFFIService {
             trendlog_id: Set(info.trendlog_id.clone()),
             switch_node: Set(None),
             trendlog_label: Set(Some(info.trendlog_label.clone())),
-            interval_minutes: Set(Some(info.interval_minutes)),
+            interval_seconds: Set(Some(info.interval_seconds)),
             buffer_size: Set(info.buffer_size),
             data_size_kb: Set(Some(info.data_size_kb.clone())),
             auto_manual: Set(Some("AUTO".to_string())),
@@ -1007,7 +1007,7 @@ impl TrendLogFFIService {
             panel_id: 1, // Default panel ID from FFI data
             trendlog_id: trendlog_id.to_string(),
             trendlog_label: trendlog_label.clone(),
-            interval_minutes,
+            interval_seconds: interval_minutes * 60, // Convert minutes to seconds for storage
             status: status.clone(),
             num_inputs: num_inputs as i32,
             analog_inputs: monitor_data.an_inputs as i32,
@@ -1016,8 +1016,8 @@ impl TrendLogFFIService {
             related_points,
         };
 
-        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Created TrendLogInfo: '{}' ({} points, {} status, {} min interval)",
-            trendlog_info.trendlog_label, trendlog_info.num_inputs, trendlog_info.status, trendlog_info.interval_minutes), LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_TRL_FFI", &format!("✅ Created TrendLogInfo: '{}' ({} points, {} status, {} sec interval)",
+            trendlog_info.trendlog_label, trendlog_info.num_inputs, trendlog_info.status, trendlog_info.interval_seconds), LogLevel::Info);
 
         Ok(trendlog_info)
     }
@@ -1038,7 +1038,7 @@ impl TrendLogFFIService {
             trendlog_id: Set(info.trendlog_id.clone()),
             switch_node: Set(None),
             trendlog_label: Set(Some(info.trendlog_label.clone())),
-            interval_minutes: Set(Some(info.interval_minutes)),
+            interval_seconds: Set(Some(info.interval_seconds)),
             buffer_size: Set(info.buffer_size),
             data_size_kb: Set(Some(info.data_size_kb.clone())),
             auto_manual: Set(Some("AUTO".to_string())),
@@ -1155,7 +1155,7 @@ impl TrendLogFFIService {
             panel_id: trendlog.panel_id,
             trendlog_id: trendlog_id.to_string(),
             trendlog_label: trendlog.trendlog_label.unwrap_or_default(),
-            interval_minutes: trendlog.interval_minutes.unwrap_or(0),
+            interval_seconds: trendlog.interval_seconds.unwrap_or(0),
             status: trendlog.status.unwrap_or_default(),
             num_inputs: inputs.len() as i32,
             analog_inputs: inputs.iter().filter(|i| i.point_type == "INPUT").count() as i32,

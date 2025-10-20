@@ -21,8 +21,8 @@ pub struct Model {
     pub switch_node: Option<String>,            // C++ Switch_Node (following T3000 pattern)
     #[sea_orm(column_name = "Trendlog_Label")]
     pub trendlog_label: Option<String>,         // C++ Trendlog_Label (following T3000 label pattern)
-    #[sea_orm(column_name = "Interval_Minutes")]
-    pub interval_minutes: Option<i32>,          // C++ Interval_Minutes
+    #[sea_orm(column_name = "Interval_Seconds")]
+    pub interval_seconds: Option<i32>,          // C++ Interval_Seconds (stores interval in seconds)
     #[sea_orm(column_name = "Buffer_Size")]
     pub buffer_size: Option<i32>,               // C++ Buffer_Size
     #[sea_orm(column_name = "Data_Size_KB")]

@@ -144,7 +144,7 @@ impl T3TrendlogService {
                 "trendlog_id": trendlog.trendlog_id,
                 "trendlog_label": trendlog.trendlog_label,
                 "status": trendlog.status,
-                "interval_minutes": trendlog.interval_minutes,
+                "interval_seconds": trendlog.interval_seconds,
                 "buffer_size": trendlog.buffer_size,
                 "data_size_kb": trendlog.data_size_kb,
                 "auto_manual": trendlog.auto_manual,
