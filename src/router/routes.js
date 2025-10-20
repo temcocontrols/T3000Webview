@@ -158,26 +158,6 @@ const routes = [
         component: createOptimizedComponent(() => import('src/pages/V2/Schedules.vue'), "V2Holidays", { category: 'normal' })
       },
       {
-        path: 'grafana-demo',
-        component: createOptimizedComponent(() => import('src/pages/V2/GrafanaDemo.vue'), "GrafanaDemo", { category: 'normal' })
-      },
-      {
-        path: 'navigation-test',
-        component: createOptimizedComponent(() => import('src/pages/V2/NavigationTest.vue'), "NavigationTest", { category: 'normal' })
-      },
-      {
-        path: 'chartjs-dashboard',
-        component: createOptimizedComponent(() => import('src/pages/V2/ChartJsDashboard.vue'), "ChartJsDashboard", { category: 'normal' })
-      },
-      {
-        path: 'grafana-timeseries',
-        component: createOptimizedComponent(() => import('src/pages/V2/GrafanaTimeSeriesDemo.vue'), "GrafanaTimeSeriesDemo", { category: 'normal' })
-      },
-      {
-        path: 'grafana-react',
-        component: createOptimizedComponent(() => import('src/pages/V2/GrafanaReactDemo.vue'), "GrafanaReactDemo", { category: 'normal' })
-      },
-      {
         path: 'timeseries-dashboard',
         component: createOptimizedComponent(() => import('src/pages/V2/TrendLogDashboard.vue'), "TrendLogDashboard", { category: 'normal' })
       }
