@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS TRENDLOGS (
     Trendlog_ID TEXT NOT NULL,                 -- C++ Trendlog_ID (following T3000 ID pattern)
     Switch_Node TEXT,                          -- C++ Switch_Node (following T3000 pattern)
     Trendlog_Label TEXT,                       -- C++ Trendlog_Label (following T3000 label pattern)
-    Interval_Minutes INTEGER,                  -- C++ Interval_Minutes
+    Interval_Seconds INTEGER,                  -- C++ Interval_Seconds (stores interval in seconds)
     Buffer_Size INTEGER,                       -- C++ Buffer_Size
     Data_Size_KB TEXT,                         -- C++ Data_Size_KB (changed to TEXT for flexibility)
     Auto_Manual TEXT,                          -- C++ Auto_Manual (following T3000 pattern)
