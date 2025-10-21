@@ -212,7 +212,7 @@ pub struct T3000MainConfig {
 impl Default for T3000MainConfig {
     fn default() -> Self {
         Self {
-            sync_interval_secs: 30,   // 1 minute for faster debugging
+            sync_interval_secs: 900,   // 1 minute for faster debugging
             timeout_seconds: 30,      // 30 seconds FFI timeout
             retry_attempts: 3,
             auto_start: true,
