@@ -127,7 +127,7 @@
             :color="keyboardEnabled ? 'green' : 'default'"
             size="small"
             class="keyboard-status-tag clickable"
-            :title="keyboardEnabled ? 'Keyboard shortcuts:\n• 1-9, A-E: Toggle items (also removes navigation border)\n• ← →: Change timebase\n• ↑ ↓: Navigate items + Enter to toggle\n• ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
+            :title="keyboardEnabled ? 'Keyboard shortcuts:\n�?1-9, A-E: Toggle items (also removes navigation border)\n�?�?�? Change timebase\n�?�?�? Navigate items + Enter to toggle\n�?ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
             @click="toggleKeyboard"
           >
             <template #icon>
@@ -236,12 +236,12 @@
           <div class="data-series-header">
             <!-- Single line: Title, count, and status -->
             <div class="header-line-1">
-              <h7
+              <div
                 :title="devVersion"
                 class="chart-title-with-version"
               >
                 {{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})
-              </h7>
+              </div>
               <!-- Data Source Indicator -->
               <div class="data-source-indicator">
                 <span v-if="shouldShowLoading" class="source-badge loading">
@@ -254,7 +254,7 @@
                   📚 Historical ({{ timeBase }})
                 </span>
                 <span v-else-if="hasConnectionError" class="source-badge error">
-                  ❌ Connection Error
+                  ⚠️ Connection Error
                 </span>
               </div>
             </div>            <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
@@ -322,8 +322,8 @@
                 <div v-if="shouldShowLoading" class="empty-state-icon">
                   <a-spin size="small" />
                 </div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏰</div>
-                <div v-else-if="hasConnectionError" class="empty-state-icon">❌</div>
+                <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
+                <div v-else-if="hasConnectionError" class="empty-state-icon">⚠️</div>
                 <div v-else class="empty-state-icon">📊</div>
 
                 <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
@@ -453,7 +453,7 @@
               <div class="signal-info">
                 <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
                       :style="{ color: series.color }" class="signal-legend">
-                  ● {{ series.name }} ({{ series.unit }})
+                  �?{{ series.name }} ({{ series.unit }})
                   <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
                 </span>
               </div>
@@ -691,7 +691,7 @@
                     ACTIVE
                   </a-tag>
                 </div>
-                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} • {{ file.records }} records</div> -->
+                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} �?{{ file.records }} records</div> -->
               </div>
               <a-button
                 size="small"
@@ -1483,7 +1483,7 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
     return ''
   }
 
-  // Priority order: label → command → fullLabel → description → id
+  // Priority order: label �?command �?fullLabel �?description �?id
   const description = device.label || device.command || device.fullLabel || device.description || device.id || ''
 
   if (!description) {
@@ -1676,8 +1676,8 @@ const regenerateDataSeries = () => {
         // UPDATED ITEM: Use latest config but preserve user preferences
         LogUtil.Debug(`📝 Item updated: ${newSeriesItem.name}`, {
           changes: {
-            name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} → ${newSeriesItem.name}` : 'unchanged',
-            unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} → ${newSeriesItem.unitType}` : 'unchanged',
+            name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} �?${newSeriesItem.name}` : 'unchanged',
+            unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} �?${newSeriesItem.unitType}` : 'unchanged',
             description: existingSeries.description !== newSeriesItem.description ? 'changed' : 'unchanged'
           }
         })
@@ -1692,7 +1692,7 @@ const regenerateDataSeries = () => {
         }
       } else {
         // UNCHANGED ITEM: Preserve everything from existing series
-        // LogUtil.Debug(`✅ Item unchanged: ${existingSeries.name}`)
+        // LogUtil.Debug(`�?Item unchanged: ${existingSeries.name}`)
 
         return {
           ...existingSeries,  // Keep existing series as-is
@@ -1702,7 +1702,7 @@ const regenerateDataSeries = () => {
       }
     } else {
       // NEW ITEM: Use default settings
-      // LogUtil.Debug(`➕ New item added: ${newSeriesItem.name}`)
+      // LogUtil.Debug(`�?New item added: ${newSeriesItem.name}`)
 
       return {
         ...newSeriesItem,  // Use new configuration with defaults
@@ -1935,7 +1935,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
       // Update charts immediately with extended data
       updateCharts()
 
-      LogUtil.Info('✅ Seamless timebase transition completed', {
+      LogUtil.Info('�?Seamless timebase transition completed', {
         newTimeBase,
         totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
       })
@@ -2004,7 +2004,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     isLoading.value = false
   }
 
-  LogUtil.Info('✅ Timebase change completed', {
+  LogUtil.Info('�?Timebase change completed', {
     newTimeBase,
     autoScrollState: isRealTime.value,
     dataSeriesCount: dataSeries.value.length,
@@ -2116,7 +2116,7 @@ const getDisplayFormat = (timeBase: string): string => {
 
 // Custom tick formatter:
 // - For ranges > 1 day ('1d', '4d'): show date+time for first and last ticks, time only for middle ticks
-// - For ranges ≤ 1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
+// - For ranges �?1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
 const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
   const date = new Date(value)
   const currentRangeMinutes = getTimeRangeMinutes(timeBase.value)
@@ -2150,7 +2150,7 @@ const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
       return formatTimeOnly() // Show time only for middle ticks
     }
   } else {
-    // For ranges ≤ 1 day: show date+time for first tick, time only for the rest
+    // For ranges �?1 day: show date+time for first tick, time only for the rest
     if (isFirstTick) {
       return formatDateTime() // Show date+time for first tick
     } else {
@@ -2516,7 +2516,7 @@ const startLoadingTimeout = () => {
   loadingTimeout.value = setTimeout(() => {
     showLoadingTimeout.value = true
     isLoading.value = false
-    LogUtil.Warn('⏰ Loading timeout reached after 30 seconds')
+    LogUtil.Warn('�?Loading timeout reached after 30 seconds')
   }, loadingTimeoutDuration)
 }
 
@@ -2566,7 +2566,7 @@ const manualRefresh = async () => {
     isLoading.value = false
 
   } catch (error) {
-    LogUtil.Error('❌ Manual refresh failed:', error)
+    LogUtil.Error('�?Manual refresh failed:', error)
     clearLoadingTimeout()
     hasConnectionError.value = true
     isLoading.value = false
@@ -3071,7 +3071,7 @@ const getMonitorConfigFromT3000Data = async () => {
   })
 
   if (!monitorId) {
-    LogUtil.Warn('❌ getMonitorConfigFromT3000Data: No monitor ID available', {
+    LogUtil.Warn('�?getMonitorConfigFromT3000Data: No monitor ID available', {
       currentItemData: currentItemData.value,
       propsItemData: props.itemData
     })
@@ -3079,7 +3079,7 @@ const getMonitorConfigFromT3000Data = async () => {
   }
 
   if (!panelId && panelId !== 0) {
-    LogUtil.Warn('❌ getMonitorConfigFromT3000Data: No panel ID available', {
+    LogUtil.Warn('�?getMonitorConfigFromT3000Data: No panel ID available', {
       monitorId,
       panelId,
       currentItemData: currentItemData.value
@@ -3266,7 +3266,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Error('❌ fetchRealTimeMonitorData: No monitor config available')
+      LogUtil.Error('�?fetchRealTimeMonitorData: No monitor config available')
       isLoading.value = false
       return []
     }
@@ -3283,7 +3283,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     }
 
     if (!panelsDataReady) {
-      LogUtil.Error('❌ fetchRealTimeMonitorData: Timeout waiting for panels data', {
+      LogUtil.Error('�?fetchRealTimeMonitorData: Timeout waiting for panels data', {
         waitTimeout: '5000ms',
         currentPanelsDataLength: T3000_Data.value.panelsData?.length || 0,
         T3000DataExists: !!T3000_Data.value
@@ -3302,7 +3302,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     if (!dataClient) {
-      LogUtil.Error('❌ fetchRealTimeMonitorData: Failed to initialize data client')
+      LogUtil.Error('�?fetchRealTimeMonitorData: Failed to initialize data client')
       return []
     }
 
@@ -3528,7 +3528,7 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
     // Get panelId from query parameters (most reliable)
     const currentPanelId = getPanelIdFromQuery()
     if (!currentPanelId) {
-      LogUtil.Error('❌ sendGetEntitiesForDataSeries: No panelId from query parameters')
+      LogUtil.Error('�?sendGetEntitiesForDataSeries: No panelId from query parameters')
       return
     }
 
@@ -3537,14 +3537,14 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
     const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
     if (!currentPanelData || currentPanelData.length === 0) {
-      LogUtil.Debug('❌ sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
+      LogUtil.Debug('�?sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
       return
     }
 
     // Initialize data client
     const dataClient = initializeDataClients()
     if (!dataClient) {
-      LogUtil.Debug('❌ sendGetEntitiesForDataSeries: No data client available')
+      LogUtil.Debug('�?sendGetEntitiesForDataSeries: No data client available')
       return
     }
 
@@ -3579,7 +3579,7 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
     })
 
     if (batchRequestData.length === 0) {
-      LogUtil.Warn('❌ sendGetEntitiesForDataSeries: No valid items for batch request')
+      LogUtil.Warn('�?sendGetEntitiesForDataSeries: No valid items for batch request')
       return
     }
 
@@ -3592,10 +3592,10 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
       })
       dataClient.GetEntries(currentPanelId, null, batchRequestData)
     } else {
-      LogUtil.Error('❌ sendGetEntitiesForDataSeries: GetEntries method not available')
+      LogUtil.Error('�?sendGetEntitiesForDataSeries: GetEntries method not available')
     }
   } catch (error) {
-    LogUtil.Error('❌ sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
+    LogUtil.Error('�?sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
   }
 }
 
@@ -3631,7 +3631,7 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
         })
       } else {
         // CRITICAL ERROR: No panelId available from reliable sources
-        LogUtil.Error('❌ sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
+        LogUtil.Error('�?sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
           queryPanelId: route.query.panel_id,
           monitorConfigPid: monitorConfigData.pid,
           hasMonitorConfig: !!monitorConfigData
@@ -3722,7 +3722,7 @@ const initializeRealDataSeries = async () => {
 
   const monitorConfigData = monitorConfig.value
   if (!monitorConfigData) {
-    LogUtil.Warn('❌ initializeRealDataSeries: No monitor config available', {
+    LogUtil.Warn('�?initializeRealDataSeries: No monitor config available', {
       monitorConfig: monitorConfig.value,
       T3000DataExists: !!T3000_Data.value,
       propsItemData: !!props.itemData
@@ -4279,7 +4279,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     }
   }
 
-  LogUtil.Info('✅ Custom HandleGetEntriesRes handler setup complete', {
+  LogUtil.Info('�?Custom HandleGetEntriesRes handler setup complete', {
     handlerOverridden: typeof dataClient.HandleGetEntriesRes === 'function',
     hasOriginalHandler: typeof originalHandler === 'function',
     timestamp: new Date().toISOString()
@@ -4310,7 +4310,7 @@ const loadHistoricalDataFromDatabase = async () => {
     })
 
     if (!currentSN) {
-      LogUtil.Warn('❌ loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+      LogUtil.Warn('�?loadHistoricalDataFromDatabase: No serial number from reliable sources', {
         queryParams: route.query,
         panelsList: T3000_Data.value.panelsList?.length || 0
       })
@@ -4318,7 +4318,7 @@ const loadHistoricalDataFromDatabase = async () => {
     }
 
     if (!currentPanelId) {
-      LogUtil.Warn('❌ loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+      LogUtil.Warn('�?loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
         queryParams: route.query,
         panelsList: T3000_Data.value.panelsList?.length || 0
       })
@@ -4338,7 +4338,7 @@ const loadHistoricalDataFromDatabase = async () => {
 
       // If no dataseries either, we can't determine what to load
       if (dataSeries.value.length === 0) {
-        LogUtil.Warn('❌ loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
+        LogUtil.Warn('�?loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
         return
       }
     }
@@ -4733,7 +4733,7 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
     })
 
     if (!currentSN) {
-      LogUtil.Warn('❌ No serial number available for data storage', {
+      LogUtil.Warn('�?No serial number available for data storage', {
         panelsList: panelsList.slice(0, 2),
         T3000DataExists: !!T3000_Data.value
       })
@@ -4814,7 +4814,7 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
 
       const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
 
-      LogUtil.Info(`✅ Successfully stored ${rowsAffected} real-time data points`, {
+      LogUtil.Info(`�?Successfully stored ${rowsAffected} real-time data points`, {
         pointsCount: realtimeDataPoints.length,
         rowsAffected,
         serialNumber: currentSN,
@@ -4841,7 +4841,7 @@ const validateFilteringResults = (originalCount: number, filteredCount: number, 
     filteredDataCount: filteredCount,
     chartSeriesCount: chartSeriesCount,
     reductionRatio: filteredCount > 0 ? `${((filteredCount / originalCount) * 100).toFixed(1)}%` : '0%',
-    expectedRange: `≤ ${chartSeriesCount} items`,
+    expectedRange: `�?${chartSeriesCount} items`,
     isReasonableFilter: filteredCount > 0 && filteredCount <= chartSeriesCount && filteredCount < originalCount,
     message: filteredCount === 0 ? 'No matches found - check filtering logic' :
              filteredCount > chartSeriesCount ? 'More items than chart series - check filtering logic' :
@@ -4960,7 +4960,7 @@ const updateChartWithNewData = (validDataItems: any[]) => {
 
     matched++
 
-    LogUtil.Debug(`✅ Matched series ${series.name}`, {
+    LogUtil.Debug(`�?Matched series ${series.name}`, {
       matchedItem: {
         id: matchedItem.id,
         pid: matchedItem.pid,
@@ -5004,7 +5004,7 @@ const getTimeRangeMinutes = (range: string): number => {
 const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
   // Only optimize for real-time mode (5m) or when time offset is 0 (current time view)
   if (!isRealTime.value && timeOffset.value !== 0) {
-    LogUtil.Debug('❌ Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
+    LogUtil.Debug('�?Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
     return false
   }
 
@@ -5013,28 +5013,28 @@ const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: stri
   const newMinutes = getTimeRangeMinutes(newTimeBase)
 
   if (newMinutes <= oldMinutes) {
-    LogUtil.Debug('❌ Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
+    LogUtil.Debug('�?Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
     return false
   }
 
   // Must have existing data to reuse
   const hasExistingData = dataSeries.value.some(series => series.data && series.data.length > 0)
   if (!hasExistingData) {
-    LogUtil.Debug('❌ Cannot optimize: No existing data to reuse')
+    LogUtil.Debug('�?Cannot optimize: No existing data to reuse')
     return false
   }
 
-  // Only optimize for simple progression (e.g., 5m→10m, 10m→30m, 30m→1h, etc.)
+  // Only optimize for simple progression (e.g., 5m�?0m, 10m�?0m, 30m�?h, etc.)
   const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
   const oldIndex = timebaseProgression.indexOf(oldTimeBase)
   const newIndex = timebaseProgression.indexOf(newTimeBase)
 
   if (oldIndex === -1 || newIndex === -1 || newIndex !== oldIndex + 1) {
-    LogUtil.Debug('❌ Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
+    LogUtil.Debug('�?Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
     return false
   }
 
-  LogUtil.Info('✅ Data reuse optimization possible', {
+  LogUtil.Info('�?Data reuse optimization possible', {
     oldTimeBase,
     newTimeBase,
     oldMinutes,
@@ -5081,7 +5081,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     const { sn: currentSN, panel_id: currentPanelId } = deviceParams
 
     if (!currentSN || !currentPanelId) {
-      LogUtil.Warn('❌ loadHistoricalDataGap: Missing device parameters')
+      LogUtil.Warn('�?loadHistoricalDataGap: Missing device parameters')
       return
     }
 
@@ -5103,7 +5103,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     })
 
     if (specificPoints.length === 0) {
-      LogUtil.Warn('❌ loadHistoricalDataGap: No points to load gap for')
+      LogUtil.Warn('�?loadHistoricalDataGap: No points to load gap for')
       return
     }
 
@@ -5146,7 +5146,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
       // Process and prepend gap data to existing series
       processAndPrependGapData(gapDataResponse.data)
 
-      LogUtil.Info('✅ Gap data successfully loaded and merged', {
+      LogUtil.Info('�?Gap data successfully loaded and merged', {
         gapDataPoints: gapDataResponse.data.length,
         totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
       })
@@ -5155,7 +5155,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     }
 
   } catch (error) {
-    LogUtil.Error('❌ Error loading historical data gap:', error)
+    LogUtil.Error('�?Error loading historical data gap:', error)
     // Don't throw - fall back to showing existing data
   }
 }
@@ -5212,7 +5212,7 @@ const processAndPrependGapData = (gapData: any[]) => {
         })
         series.data = Array.from(uniqueData.values()).sort((a, b) => a.timestamp - b.timestamp)
 
-        LogUtil.Debug(`✅ Prepended gap data to ${series.name}`, {
+        LogUtil.Debug(`�?Prepended gap data to ${series.name}`, {
           gapPoints: gapChartData.length,
           totalPointsAfter: series.data.length,
           firstPoint: series.data[0],
@@ -5361,13 +5361,13 @@ const addRealtimeDataPoint = async () => {
 
   // Only add data if we're in real-time mode
   if (!isRealTime.value) {
-    LogUtil.Warn('❌ addRealtimeDataPoint: Not in real-time mode')
+    LogUtil.Warn('�?addRealtimeDataPoint: Not in real-time mode')
     return
   }
 
   // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
-    LogUtil.Warn('❌ addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
+    LogUtil.Warn('�?addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
 
     // 🆕 FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
     if (props.itemData?.t3Entry?.input?.length > 0) {
@@ -5376,11 +5376,11 @@ const addRealtimeDataPoint = async () => {
 
       // If still no data series after regeneration, exit
       if (dataSeries.value.length === 0) {
-        LogUtil.Warn('❌ addRealtimeDataPoint: No data series exist after regeneration attempt')
+        LogUtil.Warn('�?addRealtimeDataPoint: No data series exist after regeneration attempt')
         return
       }
     } else {
-      LogUtil.Warn('❌ addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
+      LogUtil.Warn('�?addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
       return
     }
   }
@@ -5401,7 +5401,7 @@ const addRealtimeDataPoint = async () => {
   }
 
   if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-    LogUtil.Warn('❌ addRealtimeDataPoint: No input items in monitor config')
+    LogUtil.Warn('�?addRealtimeDataPoint: No input items in monitor config')
     return
   }
 
@@ -5899,18 +5899,18 @@ const setView = (viewNumber: number) => {
 
   // Apply series visibility based on view
   if (viewNumber === 1) {
-    // View 1: Show all items (UNCHANGED LOGIC) ✅
+    // View 1: Show all items (UNCHANGED LOGIC) �?
     dataSeries.value.forEach(series => {
       series.visible = true
     })
 
-    LogUtil.Info(`✅ Set View: View 1 activated - showing all items`, {
+    LogUtil.Info(`�?Set View: View 1 activated - showing all items`, {
       totalSeries: dataSeries.value.length,
       visibleSeries: dataSeries.value.length,
       behavior: 'AUTO_SHOW_ALL'
     })
   } else {
-    // View 2 & 3: Show only user selected items with FFI persistence ✅
+    // View 2 & 3: Show only user selected items with FFI persistence �?
     const trackedItems = viewTrackedSeries.value[viewNumber] || []
 
     LogUtil.Info(`🔍 Set View: Processing View ${viewNumber} selections`, {
@@ -5991,7 +5991,7 @@ const setView = (viewNumber: number) => {
       series.visible = activeTrackedItems.includes(series.name)
 
       if (wasVisible !== series.visible) {
-        LogUtil.Debug(`👁️ Set View: Series visibility changed`, {
+        LogUtil.Debug(`👁�?Set View: Series visibility changed`, {
           seriesName: series.name,
           from: wasVisible,
           to: series.visible,
@@ -6002,7 +6002,7 @@ const setView = (viewNumber: number) => {
 
     const finalVisibleSeries = dataSeries.value.filter(s => s.visible)
 
-    LogUtil.Info(`✅ Set View: View ${viewNumber} applied successfully`, {
+    LogUtil.Info(`�?Set View: View ${viewNumber} applied successfully`, {
       viewNumber,
       selectionSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
       ffiSelectionsCount: ffiSelections.length,
@@ -6073,7 +6073,7 @@ const setView = (viewNumber: number) => {
 // Item tracking functions for View 2 & 3 - 🐛 FIXED: Made async to prevent race conditions
 const toggleItemTracking = async (seriesName: string) => {
   if (isSavingSelections.value) {
-    LogUtil.Info(`⏳ Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
+    LogUtil.Info(`�?Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
     return
   }
 
@@ -6113,7 +6113,7 @@ const toggleItemTracking = async (seriesName: string) => {
 
     afterTracked = viewTrackedSeries.value[currentView.value]
 
-    LogUtil.Info(`✅ Toggle Item Tracking: Updated tracking state`, {
+    LogUtil.Info(`�?Toggle Item Tracking: Updated tracking state`, {
       seriesName,
       currentView: currentView.value,
       action: wasTracked ? 'removed' : 'added',
@@ -6131,7 +6131,7 @@ const toggleItemTracking = async (seriesName: string) => {
 
     await saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
 
-    LogUtil.Info(`✅ Toggle Item Tracking: Database save completed`, {
+    LogUtil.Info(`�?Toggle Item Tracking: Database save completed`, {
       seriesName,
       currentView: currentView.value,
       dbSaveSuccessful: true
@@ -6141,7 +6141,7 @@ const toggleItemTracking = async (seriesName: string) => {
     setView(currentView.value)
 
   } catch (error) {
-    LogUtil.Error(`❌ Toggle Item Tracking: Database save failed`, {
+    LogUtil.Error(`�?Toggle Item Tracking: Database save failed`, {
       seriesName,
       currentView: currentView.value,
       error: error.message,
@@ -6169,7 +6169,7 @@ const clearAllTracking = async () => {
 
   const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
-  LogUtil.Info(`🗑️ Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
+  LogUtil.Info(`🗑�?Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
     currentView: currentView.value,
     beforeCount,
     action: 'CLEAR_ALL',
@@ -6182,20 +6182,20 @@ const clearAllTracking = async () => {
     viewTrackedSeries.value[currentView.value] = []
 
     await saveViewTracking(currentView.value, [])
-    LogUtil.Info(`✅ Clear All Tracking: Database cleared successfully`, {
+    LogUtil.Info(`�?Clear All Tracking: Database cleared successfully`, {
       currentView: currentView.value,
       dbClearSuccessful: true
     })
 
     setView(currentView.value)
 
-    LogUtil.Info(`✅ Clear All Tracking: All selections cleared`, {
+    LogUtil.Info(`�?Clear All Tracking: All selections cleared`, {
       currentView: currentView.value,
       clearedCount: beforeCount,
       finalState: []
     })
   } catch (error) {
-    LogUtil.Error(`❌ Clear All Tracking: Database clear failed`, {
+    LogUtil.Error(`�?Clear All Tracking: Database clear failed`, {
       currentView: currentView.value,
       error: error.message
     })
@@ -6228,20 +6228,20 @@ const selectAllItems = async () => {
     viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
 
     await saveViewTracking(currentView.value, allSeriesNames)
-    LogUtil.Info(`✅ Select All Items: Database save successful`, {
+    LogUtil.Info(`�?Select All Items: Database save successful`, {
       currentView: currentView.value,
       dbSaveSuccessful: true
     })
 
     setView(currentView.value)
 
-    LogUtil.Info(`✅ Select All Items: All items selected`, {
+    LogUtil.Info(`�?Select All Items: All items selected`, {
       currentView: currentView.value,
       selectedCount: allSeriesNames.length,
       finalState: allSeriesNames
     })
   } catch (error) {
-    LogUtil.Error(`❌ Select All Items: Database save failed`, {
+    LogUtil.Error(`�?Select All Items: Database save failed`, {
       currentView: currentView.value,
       error: error.message
     })
@@ -6280,7 +6280,7 @@ const applyAndCloseDrawer = () => {
   saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
   setView(currentView.value)
 
-  LogUtil.Info(`✅ Apply Selection: View ${currentView.value} changes applied successfully`, {
+  LogUtil.Info(`�?Apply Selection: View ${currentView.value} changes applied successfully`, {
     finalSelectedCount: selectedItems.length
   })
 }
@@ -6505,7 +6505,7 @@ const removeFromTracking = async (seriesName: string, event?: Event) => {
   const currentTracked = viewTrackedSeries.value[currentView.value] || []
   const wasTracked = currentTracked.includes(seriesName)
 
-  LogUtil.Info(`🗑️ Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
+  LogUtil.Info(`🗑�?Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
     seriesName,
     currentView: currentView.value,
     wasTracked,
@@ -6520,7 +6520,7 @@ const removeFromTracking = async (seriesName: string, event?: Event) => {
     viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
     const afterTracked = viewTrackedSeries.value[currentView.value]
 
-    LogUtil.Info(`✅ Remove From Tracking: Item removed successfully`, {
+    LogUtil.Info(`�?Remove From Tracking: Item removed successfully`, {
       seriesName,
       currentView: currentView.value,
       afterCount: afterTracked.length,
@@ -6534,7 +6534,7 @@ const removeFromTracking = async (seriesName: string, event?: Event) => {
       // Apply visibility after save
       setView(currentView.value)
     } catch (error) {
-      LogUtil.Error(`❌ Remove From Tracking: Failed to save changes`, {
+      LogUtil.Error(`�?Remove From Tracking: Failed to save changes`, {
         seriesName,
         currentView: currentView.value,
         error: error.message
@@ -6564,7 +6564,7 @@ const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => 
       await saveFFIViewSelections(viewNumber)
 
       const saveTime = Date.now() - saveStartTime
-      LogUtil.Info(`✅ Save View Tracking: View ${viewNumber} selections saved successfully`, {
+      LogUtil.Info(`�?Save View Tracking: View ${viewNumber} selections saved successfully`, {
         viewNumber,
         trackedSeries,
         count: trackedSeries.length,
@@ -6581,7 +6581,7 @@ const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => 
     }
   } catch (error) {
     const saveTime = Date.now() - saveStartTime
-    LogUtil.Error(`❌ Save View Tracking: Failed to save view ${viewNumber} tracking`, {
+    LogUtil.Error(`�?Save View Tracking: Failed to save view ${viewNumber} tracking`, {
       viewNumber,
       trackedSeries,
       error: error.message,
@@ -6598,7 +6598,7 @@ const loadViewTracking = async () => {
     // This function is kept for compatibility but the real loading happens in FFI init
     LogUtil.Info('📋 View tracking loaded via FFI integration during initialization')
   } catch (error) {
-    LogUtil.Error('❌ Failed to load view tracking:', error)
+    LogUtil.Error('�?Failed to load view tracking:', error)
   }
 }
 
@@ -7060,7 +7060,7 @@ const getPanelIdFromQuery = (): number | null => {
       return !isNaN(panelId) ? panelId : null
     }
   } catch (error) {
-    LogUtil.Warn('❌ getPanelIdFromQuery: Failed to parse panel_id from route', {
+    LogUtil.Warn('�?getPanelIdFromQuery: Failed to parse panel_id from route', {
       error,
       queryPanelId: route.query.panel_id
     })
@@ -7468,7 +7468,7 @@ const initializeWithCompleteFFI = async () => {
   // console.log('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
   if (!sn || trendlog_id === null || trendlog_id === undefined) {
-    LogUtil.Warn('❌ FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
+    LogUtil.Warn('�?FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
     console.log('🔥 FFI DEBUG: Early return due to missing parameters')
     return
   }
@@ -7504,7 +7504,7 @@ const initializeWithCompleteFFI = async () => {
       ffiSyncStatus.value.completed = true
       ffiSyncStatus.value.lastSync = new Date().toISOString()
 
-      LogUtil.Info('✅ FFI: Complete TrendLog initialization successful', {
+      LogUtil.Info('�?FFI: Complete TrendLog initialization successful', {
         initial_info: completeResult.initial?.trendlog_info,
         ffi_info: completeResult.ffi?.trendlog_info,
         num_points: ffiTrendlogInfo.value?.related_points?.length || 0
@@ -7520,7 +7520,7 @@ const initializeWithCompleteFFI = async () => {
     }
 
   } catch (error) {
-    LogUtil.Error('❌ FFI: Sync failed', error)
+    LogUtil.Error('�?FFI: Sync failed', error)
     ffiSyncStatus.value.error = error.message
 
     // Continue with existing logic as fallback
@@ -7595,7 +7595,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
             )
 
             if (matchingSeries) {
-              LogUtil.Debug(`✅ FFI Load: Found matching series by type/index`, {
+              LogUtil.Debug(`�?FFI Load: Found matching series by type/index`, {
                 selection,
                 matchedSeries: {
                   name: matchingSeries.name,
@@ -7632,7 +7632,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
 
         viewTrackedSeries.value[viewNum] = trackedNames
 
-        LogUtil.Info(`✅ FFI Load API: View ${viewNum} selections processed successfully`, {
+        LogUtil.Info(`�?FFI Load API: View ${viewNum} selections processed successfully`, {
           totalSelections: selections.length,
           selectedCount: selections.filter(s => s.is_selected).length,
           mappedNamesCount: trackedNames.length,
@@ -7655,7 +7655,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
     }
 
     const totalLoadTime = Date.now() - loadStartTime
-    LogUtil.Info(`✅ FFI Load API: Completed loading all view selections`, {
+    LogUtil.Info(`�?FFI Load API: Completed loading all view selections`, {
       totalTime: `${totalLoadTime}ms`,
       viewsProcessed: [2, 3],
       finalState: {
@@ -7680,7 +7680,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
 
   } catch (error) {
     const totalLoadTime = Date.now() - loadStartTime
-    LogUtil.Error(`❌ FFI Load API: Failed to load view selections`, {
+    LogUtil.Error(`�?FFI Load API: Failed to load view selections`, {
       error: error.message,
       errorType: error.constructor.name,
       totalTime: `${totalLoadTime}ms`,
@@ -7840,7 +7840,7 @@ const saveFFIViewSelections = async (viewNumber: number) => {
 
     if (success) {
       viewSelections.value.set(viewNumber, selections)
-      LogUtil.Info(`✅ FFI Save API: View ${viewNumber} selections saved successfully`, {
+      LogUtil.Info(`�?FFI Save API: View ${viewNumber} selections saved successfully`, {
         count: selections.length,
         responseTime: `${responseTime}ms`,
         savedSelections: selections.map(s => ({
@@ -7856,7 +7856,7 @@ const saveFFIViewSelections = async (viewNumber: number) => {
     }
   } catch (error) {
     const responseTime = Date.now() - startTime
-    LogUtil.Error(`❌ FFI Save API: Failed to save View ${viewNumber} selections`, {
+    LogUtil.Error(`�?FFI Save API: Failed to save View ${viewNumber} selections`, {
       error: error.message,
       errorType: error.constructor.name,
       responseTime: `${responseTime}ms`,
@@ -8585,10 +8585,10 @@ onMounted(async () => {
     })
 
     // 🆕 DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
-    LogUtil.Info('🗄️ TrendLogChart: Checking database partitions...')
+    LogUtil.Info('🗄�?TrendLogChart: Checking database partitions...')
     try {
       const partitionResult = await DatabaseConfigAPI.ensurePartitionsOnTrendlogOpen()
-      LogUtil.Info('✅ TrendLogChart: Partition check completed', {
+      LogUtil.Info('�?TrendLogChart: Partition check completed', {
         partitionsChecked: partitionResult.partitions_checked,
         partitionsCreated: partitionResult.partitions_created,
         dataMigratedMB: partitionResult.data_migrated_mb,
@@ -8616,7 +8616,7 @@ onMounted(async () => {
       // 🆕 FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
       monitorConfig.value = monitorConfigData
 
-      LogUtil.Info('✅ TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
+      LogUtil.Info('�?TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
         hasMonitorConfig: !!monitorConfig.value,
         monitorConfigPid: monitorConfig.value?.pid,
         inputItemsCount: monitorConfig.value?.inputItems?.length || 0
@@ -8630,7 +8630,7 @@ onMounted(async () => {
       const ffiInfo = await initializeWithCompleteFFI()
 
       if (ffiInfo) {
-        LogUtil.Info('✅ TrendLogChart: FFI integration completed', {
+        LogUtil.Info('�?TrendLogChart: FFI integration completed', {
           ffiInfo,
           hasViewSelections: viewSelections.value.size > 0
         })
@@ -8639,7 +8639,7 @@ onMounted(async () => {
       // Initialize data clients
       initializeDataClients()
 
-      LogUtil.Info('✅ TrendLogChart: Initialization completed successfully', {
+      LogUtil.Info('�?TrendLogChart: Initialization completed successfully', {
         finalDataSeriesCount: dataSeries.value.length,
         finalMonitorConfigReady: !!monitorConfig.value,
         finalPanelId: monitorConfig.value?.pid
@@ -8650,7 +8650,7 @@ onMounted(async () => {
       // hasConnectionError.value = true // Removed - keep loading instead
     }
   } catch (error) {
-    LogUtil.Error('❌ TrendLogChart: Initialization failed:', error)
+    LogUtil.Error('�?TrendLogChart: Initialization failed:', error)
     // Only show connection error for actual errors, not missing data during startup
     if (error.message && !error.message.includes('timeout')) {
       hasConnectionError.value = true

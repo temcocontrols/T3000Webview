@@ -1,7 +1,7 @@
 <template>
   <div class="simple-error-fallback">
     <div class="error-content">
-      <div class="error-icon">❌</div>
+      <div class="error-icon">⚠️</div>
       <h3>Component Loading Error</h3>
       <p>Failed to load the requested component.</p>
       <p class="error-details" v-if="error">
