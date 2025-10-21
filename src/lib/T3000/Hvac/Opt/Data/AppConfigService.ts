@@ -414,7 +414,7 @@ export class AppConfigService {
     if (result.errors.length === 0) {
       // Only clear if migration was successful
       localStorage.clear();
-      console.log(`✅ Migrated ${result.migrated} items from localStorage to database`);
+      console.log(`�?Migrated ${result.migrated} items from localStorage to database`);
     } else {
       console.warn(`⚠️ Migration completed with errors:`, result.errors);
     }

@@ -175,7 +175,7 @@ export const ranges = {
       },
       {
         id: 1,
-        unit: "℃",
+        unit: "°C",
         label: "Y3K -40 to 150",
       },
       {
@@ -185,7 +185,7 @@ export const ranges = {
       },
       {
         id: 3,
-        unit: "℃",
+        unit: "°C",
         label: "10K Type2",
       },
       {
@@ -195,7 +195,7 @@ export const ranges = {
       },
       {
         id: 5,
-        unit: "℃",
+        unit: "°C",
         label: "G3K -40 to 120",
       },
       {
@@ -205,7 +205,7 @@ export const ranges = {
       },
       {
         id: 7,
-        unit: "℃",
+        unit: "°C",
         label: "10K Type3",
       },
       {
@@ -215,7 +215,7 @@ export const ranges = {
       },
       {
         id: 9,
-        unit: "℃",
+        unit: "°C",
         label: "PT 1K -200 to 300",
       },
       {

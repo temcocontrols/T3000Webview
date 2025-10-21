@@ -358,7 +358,7 @@ class Utils2 {
   /**
    * Checks if a rectangle has zero or negative dimensions
    * @param rect - The rectangle to check
-   * @returns True if the rectangle is empty (width â‰¤ 0 or height â‰¤ 0), false otherwise
+   * @returns True if the rectangle is empty (width â‰?0 or height â‰?0), false otherwise
    */
   static IsRectEmpty(rect: { width: number; height: number }): boolean {
     return rect.width <= 0 || rect.height <= 0;

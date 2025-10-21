@@ -405,7 +405,7 @@ export function useTrendlogDataAPI() {
           url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`
         })
       } else {
-        console.log('âœ… TrendlogAPI: Save successful', {
+        console.log('âœ?TrendlogAPI: Save successful', {
           status: response.status,
           trendlogId,
           viewNumber,
