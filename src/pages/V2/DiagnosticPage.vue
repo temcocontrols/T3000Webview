@@ -6,15 +6,15 @@
         <h3>Application Status</h3>
         <div class="status-item">
           <span class="label">Vue.js:</span>
-          <span class="value success">âœ… Running</span>
+          <span class="value success">âœ?Running</span>
         </div>
         <div class="status-item">
           <span class="label">Quasar:</span>
-          <span class="value success">âœ… Loaded</span>
+          <span class="value success">âœ?Loaded</span>
         </div>
         <div class="status-item">
           <span class="label">Router:</span>
-          <span class="value success">âœ… Working</span>
+          <span class="value success">âœ?Working</span>
         </div>
         <div class="status-item">
           <span class="label">Current Route:</span>

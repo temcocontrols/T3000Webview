@@ -12,7 +12,7 @@
 import { onMounted, ref } from "vue";
 import { liveApi } from "../../lib/api";
 import { globalNav } from "../../lib/common";
-import AppCard from "src/components/hvac/AppCard.vue";
+import AppCard from "src/components/Hvac/AppCard.vue";
 
 const libData = ref([]);
 

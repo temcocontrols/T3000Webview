@@ -62,7 +62,7 @@
           üîß FFI API Data (HTTP with Retry)
         </span>
         <span v-else-if="dataSource === 'ffi-realtime'" class="source-badge ffi-realtime">
-          ‚ö° FFI Real-time (HTTP Direct)
+          ‚ö?FFI Real-time (HTTP Direct)
         </span>
         <span v-else class="source-badge fallback">
           ‚ö†Ô∏è No Data Available
@@ -103,7 +103,7 @@
 import { ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import TrendLogChart from '../../components/newui/TrendLogChartFfiApi.vue'
+import TrendLogChart from '../../components/NewUI/TrendLogChartFfiApi.vue'
 import { scheduleItemData } from '../../lib/T3000/Hvac/Data/Constant/RefConstant'
 import LogUtil from '../../lib/T3000/Hvac/Util/LogUtil'
 import { useT3000FfiApi } from '../../lib/T3000/Hvac/Opt/FFI/T3000FfiApi'
@@ -295,7 +295,7 @@ const loadTrendLogItemData = async () => {
           scheduleItemData.value = ffiScheduleData
           pageTitle.value = `FFI Real-time: ${deviceData.device_info.panel_name} - TrendLog ${params.trendlog_id || 0}`
 
-          LogUtil.Info('‚úÖ FFI Real-time data loaded')
+          LogUtil.Info('‚ú?FFI Real-time data loaded')
           return
         }
       } catch (ffiError) {
@@ -333,11 +333,11 @@ const loadTrendLogItemData = async () => {
           scheduleItemData.value = ffiScheduleData
           pageTitle.value = `FFI API: ${deviceData.device_info.panel_name} - TrendLog ${params.trendlog_id || 0}`
 
-          LogUtil.Info('‚úÖ FFI API data loaded')
+          LogUtil.Info('‚ú?FFI API data loaded')
           return
         }
       } catch (ffiError) {
-        LogUtil.Error('‚ùå FFI API failed:', ffiError)
+        LogUtil.Error('‚ù?FFI API failed:', ffiError)
       }
     }
 
@@ -370,9 +370,9 @@ const checkSystemStatus = async () => {
     LogUtil.Info('üìä Checking FFI API system status...')
     const status = await ffiApi.getSystemStatus()
     systemStatus.value = status
-    LogUtil.Info('‚úÖ FFI API system status:', status)
+    LogUtil.Info('‚ú?FFI API system status:', status)
   } catch (err) {
-    LogUtil.Error('‚ùå Failed to get system status:', err)
+    LogUtil.Error('‚ù?Failed to get system status:', err)
     systemStatus.value = { status: 'error', error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
@@ -382,10 +382,10 @@ const refreshSystemData = async () => {
   try {
     LogUtil.Info('üîÑ Refreshing FFI API system data...')
     await ffiApi.refreshAllData()
-    LogUtil.Info('‚úÖ FFI API system data refreshed')
+    LogUtil.Info('‚ú?FFI API system data refreshed')
     await loadTrendLogItemData()
   } catch (err) {
-    LogUtil.Error('‚ùå Failed to refresh system data:', err)
+    LogUtil.Error('‚ù?Failed to refresh system data:', err)
   }
 }
 

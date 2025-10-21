@@ -21,7 +21,7 @@ const createSimpleComponent = (importFn, name) => {
       template: `
         <div style="display: flex; align-items: center; justify-content: center; height: 200px;">
           <div style="text-align: center;">
-            <div style="font-size: 24px;">‚è≥</div>
+            <div style="font-size: 24px;">‚è?/div>
             <p>Loading ${name}...</p>
           </div>
         </div>
@@ -31,7 +31,7 @@ const createSimpleComponent = (importFn, name) => {
       template: `
         <div style="display: flex; align-items: center; justify-content: center; height: 200px; border: 2px solid red; margin: 20px;">
           <div style="text-align: center;">
-            <div style="font-size: 24px; color: red;">‚ùå</div>
+            <div style="font-size: 24px; color: red;">‚ù?/div>
             <h3>Failed to load ${name}</h3>
             <p>{{ error?.message || 'Unknown error' }}</p>
             <button onclick="window.location.reload()">Reload Page</button>

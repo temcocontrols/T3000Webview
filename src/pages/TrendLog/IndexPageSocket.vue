@@ -246,7 +246,7 @@ const formatDataFromQueryParams = () => {
   }
   LogUtil.Debug('📊 IndexPageSocket - Readable Query Object:', readableQuery)  // Validate required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
-    LogUtil.Debug('❌ IndexPageSocket: Missing required parameters for trend log data')
+    LogUtil.Debug('�?IndexPageSocket: Missing required parameters for trend log data')
     return null
   }
 
