@@ -40,8 +40,8 @@ const actualTicks = Math.floor(rangeMinutes / stepSize) + 1
 const pointsPerTick = dataPoints / actualTicks
 
 console.log(`6h timebase (${rangeMinutes} minutes):`)
-console.log(`  Data: every ${dataInterval}min → ${dataPoints} points`)
-console.log(`  Grid: every ${stepSize}min → ${actualTicks} actual ticks (max: ${maxTicks})`)
+console.log(`  Data: every ${dataInterval}min �?${dataPoints} points`)
+console.log(`  Grid: every ${stepSize}min �?${actualTicks} actual ticks (max: ${maxTicks})`)
 console.log(`  Points per tick: ${pointsPerTick.toFixed(1)}`)
 console.log('')
 
@@ -64,7 +64,7 @@ for (let i = 0; i <= actualTicks - 1; i++) {
 console.log('')
 
 // Quality assessment
-let quality = '✅ GOOD'
+let quality = '�?GOOD'
 if (actualTicks < 8) quality = '⚠️  Few ticks (might be sparse)'
 if (actualTicks > 15) quality = '⚠️  Many ticks (might be crowded)'
 if (pointsPerTick < 2) quality = '⚠️  Sparse data'

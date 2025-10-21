@@ -44,7 +44,7 @@ const allConfigsMatch = (
   xAxisMaxTicksConfigs['6h'] === expectedTicks
 )
 
-console.log(`All configurations match expected: ${allConfigsMatch ? '‚úÖ YES' : '‚ùå NO'}`)
+console.log(`All configurations match expected: ${allConfigsMatch ? '‚ú?YES' : '‚ù?NO'}`)
 
 if (allConfigsMatch) {
   console.log('üéØ Perfect! All 6h maxTicks configurations are consistent with 40-minute steps')

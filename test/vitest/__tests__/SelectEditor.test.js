@@ -1,6 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import SelectEditor from "../../../src/components/grid/SelectEditor.vue";
+import SelectEditor from "../../../src/components/Grid/SelectEditor.vue";
 import { Quasar } from "quasar";
 
 describe("SelectEditor.vue", () => {

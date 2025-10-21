@@ -112,7 +112,7 @@ timebases.forEach(timebase => {
 })
 
 console.log('\n=== SUMMARY ===')
-console.log('âœ… All configurations directly calculate from timeBase selection')
-console.log('âœ… Grid divisions are properly calculated for right panel width')
-console.log('âœ… Last data point is always within the time window')
-console.log('âœ… Chart will render with exact timebase-based ticks and intervals')
+console.log('âœ?All configurations directly calculate from timeBase selection')
+console.log('âœ?Grid divisions are properly calculated for right panel width')
+console.log('âœ?Last data point is always within the time window')
+console.log('âœ?Chart will render with exact timebase-based ticks and intervals')

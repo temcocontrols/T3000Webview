@@ -1,4 +1,4 @@
-import AppTabs from "../../../src/components/hvac/AppTabs.vue";
+import AppTabs from "../../../src/components/Hvac/AppTabs.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 

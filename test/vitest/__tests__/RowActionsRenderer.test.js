@@ -1,4 +1,4 @@
-import RowActionsRenderer from "../../../src/components/grid/RowActionsRenderer.vue";
+import RowActionsRenderer from "../../../src/components/Grid/RowActionsRenderer.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 

@@ -82,7 +82,7 @@ timebases.forEach(timebase => {
   const maxTicks = getTimeAxisMaxTicks(timebase)
 
   console.log(`${timebase}: ${rangeMinutes}min range`)
-  console.log(`  Data: every ${dataInterval}min → ${dataPoints} points`)
+  console.log(`  Data: every ${dataInterval}min �?${dataPoints} points`)
   console.log(`  Axis: ${axisUnit} unit, step ${stepSize}, max ${maxTicks} ticks`)
   console.log(`  Points per tick: ${(dataPoints / maxTicks).toFixed(1)}`)
   console.log('')
@@ -105,7 +105,7 @@ longTimebases.forEach(timebase => {
   } else if (dataPoints > 100) {
     console.log('  ⚠️  Warning: Many data points - might impact performance')
   } else {
-    console.log('  ✅ Good data point count')
+    console.log('  �?Good data point count')
   }
 
   // Verify points per tick is reasonable
@@ -115,7 +115,7 @@ longTimebases.forEach(timebase => {
   } else if (pointsPerTick > 10) {
     console.log('  ⚠️  Warning: Many points per tick - might be too dense')
   } else {
-    console.log('  ✅ Good points per tick ratio')
+    console.log('  �?Good points per tick ratio')
   }
   console.log('')
 })
