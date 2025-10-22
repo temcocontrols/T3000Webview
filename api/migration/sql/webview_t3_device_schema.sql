@@ -430,7 +430,7 @@ CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG (
 
 -- Application Configuration History Table
 -- Tracks all changes to APPLICATION_CONFIG for audit trail and rollback
--- Used for Sampling Interval changes, database settings, and other critical config modifications
+-- Used for Sampling Interval changes, Trendlog Configurations, and other critical config modifications
 CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG_HISTORY (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     config_key TEXT NOT NULL,           -- Configuration key that was changed

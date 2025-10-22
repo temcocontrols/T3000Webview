@@ -3,7 +3,7 @@
 //! Tracks all changes to APPLICATION_CONFIG for audit trail and rollback.
 //! Used for:
 //! - Sampling Interval changes
-//! - Database settings modifications
+//! - Trendlog Configurations modifications
 //! - Critical configuration changes
 //! - User preference updates
 //!

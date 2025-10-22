@@ -538,11 +538,98 @@
     <!-- Trendlog Configuration Modal -->
     <a-modal
       v-model:visible="showDatabaseConfig"
-      title="Database Setting"
+      title="Trendlog Configuration"
       :width="620"
       class="database-modal-compact"
     >
       <a-space direction="vertical" size="small" style="width: 100%">
+
+
+        <!-- Sampling Interval Card -->
+        <a-card size="small" class="config-card">
+          <template #title>
+            <span class="card-title">
+              <ClockCircleOutlined style="margin-right: 6px; color: #52c41a;" />
+              Sampling Interval
+            </span>
+          </template>
+
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 10px; color: #666; display: block; margin-bottom: 4px;">
+              How often should data sync from T3000?
+            </label>
+
+            <!-- Preset Intervals -->
+            <a-radio-group
+              v-model:value="ffiSyncConfig.interval_preset"
+              size="small"
+              @change="onFfiIntervalPresetChange"
+              style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"
+            >
+              <a-radio value="5min">5 min</a-radio>
+              <a-radio value="10min">10 min</a-radio>
+              <a-radio value="15min">15 min</a-radio>
+              <a-radio value="20min">20 min</a-radio>
+              <a-radio value="25min">25 min</a-radio>
+              <a-radio value="custom">Custom</a-radio>
+            </a-radio-group>
+
+            <!-- Custom Interval Input -->
+            <div
+              v-if="ffiSyncConfig.interval_preset === 'custom'"
+              class="form-item-compact"
+              style="margin-left: 16px; display: flex; align-items: center; gap: 6px;"
+            >
+              <label style="font-size: 10px; color: #666;">Every:</label>
+              <a-input-number
+                v-model:value="ffiSyncConfig.custom_value"
+                :min="getCustomMin()"
+                :max="getCustomMax()"
+                size="small"
+                style="width: 70px;"
+                @change="onCustomIntervalChange"
+              />
+              <span style="font-size: 12px; color: #666;">minutes</span>
+            </div>
+
+            <!-- Current Status -->
+            <div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px;">
+              <div style="font-size: 10px; color: #666; margin-bottom: 4px;">
+                <strong>Current Interval:</strong> {{ formatInterval(ffiSyncConfig.interval_secs) }}
+              </div>
+              <div v-if="ffiSyncConfig.last_sync" style="font-size: 10px; color: #666; margin-bottom: 4px;">
+                <strong>Last Sync:</strong> {{ ffiSyncConfig.last_sync }}
+              </div>
+              <div v-if="ffiSyncConfig.next_sync_in > 0" style="font-size: 10px; color: #666;">
+                <strong>Next Sync:</strong> {{ formatCountdown(ffiSyncConfig.next_sync_in) }}
+              </div>
+            </div>
+
+            <!-- Change History Button -->
+            <!-- View Change History Button - Commented Out -->
+            <!-- <div style="margin-top: 8px;">
+              <a-button
+                size="small"
+                @click="showFfiSyncHistory = true"
+                style="width: 100%; font-size: 10px; height: 24px;"
+              >
+                📜 View Change History
+              </a-button>
+            </div> -->
+
+            <!-- Warning Messages -->
+            <div v-if="ffiSyncWarning" style="margin-top: 8px;">
+              <a-alert
+                :message="ffiSyncWarning"
+                type="warning"
+                show-icon
+                closable
+                style="font-size: 10px; padding: 4px 8px;"
+              />
+            </div>
+          </div>
+        </a-card>
+
         <!-- Database Status Card -->
         <a-card size="small" class="status-card">
           <template #title>
@@ -648,91 +735,6 @@
               databaseConfig.strategy === 'CustomMonths' ? `One file every ${databaseConfig.custom_months} months` :
               `One file every ${databaseConfig.custom_days} days`
             }}
-          </div>
-        </a-card>
-
-        <!-- Sampling Interval Card -->
-        <a-card size="small" class="config-card">
-          <template #title>
-            <span class="card-title">
-              <ClockCircleOutlined style="margin-right: 6px; color: #52c41a;" />
-              Sampling Interval
-            </span>
-          </template>
-
-          <div style="margin-bottom: 12px;">
-            <label style="font-size: 10px; color: #666; display: block; margin-bottom: 4px;">
-              How often should data sync from T3000?
-            </label>
-
-            <!-- Preset Intervals -->
-            <a-radio-group
-              v-model:value="ffiSyncConfig.interval_preset"
-              size="small"
-              @change="onFfiIntervalPresetChange"
-              style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"
-            >
-              <a-radio value="5min">5 min</a-radio>
-              <a-radio value="10min">10 min</a-radio>
-              <a-radio value="15min">15 min</a-radio>
-              <a-radio value="20min">20 min</a-radio>
-              <a-radio value="25min">25 min</a-radio>
-              <a-radio value="custom">Custom</a-radio>
-            </a-radio-group>
-
-            <!-- Custom Interval Input -->
-            <div
-              v-if="ffiSyncConfig.interval_preset === 'custom'"
-              class="form-item-compact"
-              style="margin-left: 16px; display: flex; align-items: center; gap: 6px;"
-            >
-              <label style="font-size: 10px; color: #666;">Every:</label>
-              <a-input-number
-                v-model:value="ffiSyncConfig.custom_value"
-                :min="getCustomMin()"
-                :max="getCustomMax()"
-                size="small"
-                style="width: 70px;"
-                @change="onCustomIntervalChange"
-              />
-              <span style="font-size: 12px; color: #666;">minutes</span>
-            </div>
-
-            <!-- Current Status -->
-            <div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px;">
-              <div style="font-size: 10px; color: #666; margin-bottom: 4px;">
-                <strong>Current Interval:</strong> {{ formatInterval(ffiSyncConfig.interval_secs) }}
-              </div>
-              <div v-if="ffiSyncConfig.last_sync" style="font-size: 10px; color: #666; margin-bottom: 4px;">
-                <strong>Last Sync:</strong> {{ ffiSyncConfig.last_sync }}
-              </div>
-              <div v-if="ffiSyncConfig.next_sync_in > 0" style="font-size: 10px; color: #666;">
-                <strong>Next Sync:</strong> {{ formatCountdown(ffiSyncConfig.next_sync_in) }}
-              </div>
-            </div>
-
-            <!-- Change History Button -->
-            <!-- View Change History Button - Commented Out -->
-            <!-- <div style="margin-top: 8px;">
-              <a-button
-                size="small"
-                @click="showFfiSyncHistory = true"
-                style="width: 100%; font-size: 10px; height: 24px;"
-              >
-                📜 View Change History
-              </a-button>
-            </div> -->
-
-            <!-- Warning Messages -->
-            <div v-if="ffiSyncWarning" style="margin-top: 8px;">
-              <a-alert
-                :message="ffiSyncWarning"
-                type="warning"
-                show-icon
-                closable
-                style="font-size: 10px; padding: 4px 8px;"
-              />
-            </div>
           </div>
         </a-card>
 
