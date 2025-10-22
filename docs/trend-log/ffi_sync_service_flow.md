@@ -526,29 +526,230 @@ let sync_interval = sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS);
 3. Reduce BUFFER_SIZE if memory constrained
 4. Profile memory usage with `cargo flamegraph`
 
+## Dynamic Configuration
+
+### Configurable Sync Interval (Added October 22, 2025)
+
+The FFI sync service now supports **dynamic configuration** of the sync interval without requiring service restart. Users can change the interval from 1 minute to 365 days through the UI, and the service will automatically pick up the new setting on the next cycle.
+
+#### Configuration Storage
+
+Sync interval is stored in the `APPLICATION_CONFIG` table:
+
+```sql
+-- Default configuration
+config_key: "ffi.sync_interval_secs"
+config_value: "300"  -- 5 minutes (default)
+config_type: "number"
+description: "FFI Sync Service interval in seconds"
+is_system: false
+```
+
+All configuration changes are automatically logged to `APPLICATION_CONFIG_HISTORY` table for audit trail.
+
+#### API Endpoints
+
+**Get Current Interval:**
+```http
+GET /api/config/ffi-sync-interval
+
+Response:
+{
+  "interval_secs": 300,
+  "last_sync": "2025-10-22T10:30:00Z"
+}
+```
+
+**Update Interval:**
+```http
+PUT /api/config/ffi-sync-interval
+Content-Type: application/json
+
+{
+  "interval_secs": 600,
+  "changed_by": "user",
+  "change_reason": "Updated via Database Configuration UI"
+}
+
+Response:
+{
+  "interval_secs": 600,
+  "last_sync": null
+}
+```
+
+**Get Change History:**
+```http
+GET /api/config/history?config_key=ffi.sync_interval_secs&limit=100
+
+Response:
+[
+  {
+    "id": 1,
+    "config_key": "ffi.sync_interval_secs",
+    "old_value": "300",
+    "new_value": "600",
+    "old_value_display": "5 minutes",
+    "new_value_display": "10 minutes",
+    "changed_by": "user",
+    "change_reason": "Updated via Database Configuration UI",
+    "changed_at": "2025-10-22 10:30:15"
+  }
+]
+```
+
+#### Validation Rules
+
+- **Minimum**: 60 seconds (1 minute)
+- **Maximum**: 31,536,000 seconds (365 days)
+- **Warning**: Intervals < 5 minutes may impact performance
+- **Warning**: Intervals > 1 hour may delay data updates
+
+#### UI Configuration
+
+Users can configure the sync interval through the **Database Configuration** modal in TrendLogChart:
+
+**Preset Options:**
+- 5 minutes (default)
+- 10 minutes
+- 15 minutes
+- 30 minutes
+- 1 hour
+- Custom (with unit selector)
+
+**Custom Interval:**
+- Value range: 1-59 minutes, 1-23 hours, 1-365 days
+- Unit selector: Minutes, Hours, Days
+- Real-time validation
+
+**Status Display:**
+- Current interval (human-readable)
+- Last sync timestamp
+- Countdown timer: "Next sync in: MM:SS"
+
+**Change History:**
+- View last 100 configuration changes
+- Shows: Date/Time, Old → New value, Changed By, Reason
+- Modal table view with filtering
+
+#### How Dynamic Reload Works
+
+1. **Service Loop Check:**
+   ```rust
+   // Before each sleep cycle
+   let current_interval = reload_sync_interval_from_db().await.unwrap_or(config.sync_interval_secs);
+
+   if current_interval != config.sync_interval_secs {
+       logger.info("🔄 Sync interval updated: {}s → {}s",
+           config.sync_interval_secs, current_interval);
+       config.sync_interval_secs = current_interval;
+   }
+   ```
+
+2. **Log Output Example:**
+   ```
+   [2025-10-22 10:30:00] ⏰ Waiting 300 seconds until next sync cycle
+   [2025-10-22 10:35:00] 🔄 Sync interval updated: 300s (5 min) → 600s (10 min)
+   [2025-10-22 10:35:00] ⏰ Waiting 600 seconds until next sync cycle
+   ```
+
+3. **No Service Restart Required:**
+   - Configuration changes take effect on next cycle
+   - Current sync completes with old interval
+   - Next cycle starts with new interval
+   - Seamless transition without downtime
+
+#### Startup Behavior
+
+1. Service reads `APPLICATION_CONFIG` on startup
+2. If `ffi.sync_interval_secs` not found, inserts default (300 seconds)
+3. Logs: `"FFI Sync interval loaded: 300 seconds (5 minutes)"`
+4. Service starts with configured interval
+
+#### History Tracking
+
+Every configuration change is automatically logged:
+
+**Database Table:**
+```sql
+CREATE TABLE APPLICATION_CONFIG_HISTORY (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_key TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT NOT NULL,
+    changed_by TEXT,
+    change_reason TEXT,
+    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Log Entry Example:**
+```json
+{
+  "config_key": "ffi.sync_interval_secs",
+  "old_value": "300",
+  "new_value": "900",
+  "changed_by": "user",
+  "change_reason": "Reduced sync frequency to save resources",
+  "changed_at": "2025-10-22 14:30:00"
+}
+```
+
+#### Best Practices
+
+**Choosing the Right Interval:**
+
+| Interval | Use Case | Pros | Cons |
+|----------|----------|------|------|
+| 1-5 min | Critical monitoring, real-time alerts | Quick updates | High resource usage |
+| 5-15 min | Standard monitoring (default) | Balanced performance | Slight delay |
+| 15-60 min | Low-priority data, stable systems | Resource efficient | Noticeable delay |
+| 1+ hours | Historical data, archival systems | Minimal impact | Long delays |
+| Days | Infrequent checks, backup systems | Very efficient | Very long delays |
+
+**Performance Considerations:**
+- Each sync processes ALL devices and points
+- 100MB buffer allocated per sync
+- Network bandwidth used for data transfer
+- Database transaction per sync
+- Consider device count when setting interval
+
+**Monitoring:**
+- Check `FFI.log` for sync cycle completion times
+- Monitor database size growth rate
+- Watch for timeout errors with long intervals
+- Review change history for configuration auditing
+
 ## Related Files
 
 - **Service Implementation**: `api/src/t3_device/t3_ffi_sync_service.rs`
 - **Service Initialization**: `api/src/lib.rs`, `api/src/main.rs`
-- **Database Entities**: `api/src/entity/t3_device/*.rs`
+- **Database Entities**: `api/src/entity/t3_device/*.rs`, `api/src/entity/application_config_history.rs`
+- **API Endpoints**: `api/src/database_management/config_api.rs`
 - **Constants**: `api/src/t3_device/constants.rs`
 - **Trendlog Service**: `api/src/t3_device/trendlog_data_service.rs`
 - **Logger**: `api/src/logger.rs`
 - **C++ Integration**: `T3000-Source/BacnetWebView.cpp` (HandleWebViewMsg function)
+- **Frontend UI**: `src/components/NewUI/TrendLogChart.vue` (Database Configuration modal)
 
 ## Future Enhancements
 
 1. **WebSocket Broadcasting**: Push real-time updates to connected clients
-2. **Configurable Sync Interval**: Allow runtime adjustment via API
+2. ~~**Configurable Sync Interval**: Allow runtime adjustment via API~~ ✅ **Completed** (October 22, 2025)
 3. **Selective Sync**: Sync only changed data instead of all devices
 4. **Compression**: Compress JSON response for faster transfer
 5. **Parallel Processing**: Process multiple devices concurrently
 6. **Delta Sync**: Track and sync only changed points
 7. **Health Monitoring**: Expose service health metrics via API endpoint
+8. **Per-Device Intervals**: Different sync intervals for different devices based on priority
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: October 21, 2025
+**Document Version**: 1.1
+**Last Updated**: October 22, 2025
 **Author**: T3000 Development Team
 **Related**: [BACnet Implementation Plan](../bacnet/BACnet-Implementation-Plan-Phase1.md)
+
+**Changelog:**
+- **v1.1** (Oct 22, 2025): Added Dynamic Configuration section with configurable sync interval feature
+- **v1.0** (Oct 21, 2025): Initial documentation

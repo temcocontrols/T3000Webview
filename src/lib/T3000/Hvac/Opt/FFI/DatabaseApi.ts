@@ -122,6 +122,36 @@ export interface CleanupOptions {
   onProgress?: ProgressCallback
 }
 
+/**
+ * FFI sync interval configuration interface
+ */
+export interface FfiSyncIntervalConfig {
+  interval_secs: number
+  last_sync?: string
+}
+
+/**
+ * FFI sync interval update request interface
+ */
+export interface FfiSyncIntervalUpdateRequest {
+  interval_secs: number
+  changed_by?: string
+  change_reason?: string
+}
+
+/**
+ * FFI sync configuration history entry interface
+ */
+export interface FfiSyncConfigHistory {
+  id: number
+  config_key: string
+  old_value: string
+  new_value: string
+  changed_by?: string
+  change_reason?: string
+  changed_at: string
+}
+
 // =====================================
 // DATABASE CONFIGURATION API
 // =====================================
@@ -246,6 +276,208 @@ export class DatabaseConfigAPI {
       console.error('Failed to ensure partitions on trendlog open:', error)
       throw new Error('Failed to check database partitions')
     }
+  }
+}
+
+// =====================================
+// FFI SYNC INTERVAL CONFIGURATION API
+// =====================================
+
+/**
+ * FFI sync interval configuration management class
+ */
+export class FfiSyncConfigAPI {
+  /**
+   * Get current FFI sync interval configuration
+   * @returns Promise resolving to current FFI sync interval configuration
+   * @throws Error if configuration cannot be loaded
+   */
+  static async getFfiSyncInterval(): Promise<FfiSyncIntervalConfig> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/config/ffi-sync-interval`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: FfiSyncIntervalConfig = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to get FFI sync interval:', error)
+      throw new Error('Failed to load FFI sync interval configuration')
+    }
+  }
+
+  /**
+   * Update FFI sync interval configuration
+   * @param interval_secs Interval in seconds (60 to 31536000, i.e., 1 minute to 365 days)
+   * @param changed_by Optional: User or system identifier who made the change
+   * @param change_reason Optional: Reason for the configuration change
+   * @returns Promise resolving to updated FFI sync interval configuration
+   * @throws Error if configuration cannot be saved or validation fails
+   */
+  static async updateFfiSyncInterval(
+    interval_secs: number,
+    changed_by?: string,
+    change_reason?: string
+  ): Promise<FfiSyncIntervalConfig> {
+    try {
+      // Client-side validation
+      if (interval_secs < 60 || interval_secs > 31536000) {
+        throw new Error('Interval must be between 1 minute (60s) and 365 days (31536000s)')
+      }
+
+      const requestBody: FfiSyncIntervalUpdateRequest = {
+        interval_secs,
+        changed_by,
+        change_reason
+      }
+
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/config/ffi-sync-interval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `API request failed: ${response.status}`)
+      }
+
+      const data: FfiSyncIntervalConfig = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to update FFI sync interval:', error)
+      throw error instanceof Error ? error : new Error('Failed to save FFI sync interval configuration')
+    }
+  }
+
+  /**
+   * Get FFI sync configuration change history
+   * @param limit Maximum number of history entries to return (default: 100)
+   * @returns Promise resolving to array of configuration history entries
+   * @throws Error if history cannot be loaded
+   */
+  static async getFfiSyncHistory(limit: number = 100): Promise<FfiSyncConfigHistory[]> {
+    try {
+      const response = await fetch(
+        `${DATABASE_API_BASE_URL}/api/config/history?config_key=ffi.sync_interval_secs&limit=${limit}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: FfiSyncConfigHistory[] = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to get FFI sync history:', error)
+      throw new Error('Failed to load FFI sync configuration history')
+    }
+  }
+
+  /**
+   * Convert seconds to human-readable format
+   * @param seconds Number of seconds
+   * @returns Formatted string (e.g., "5 minutes", "2 hours", "1 day")
+   */
+  static formatInterval(seconds: number): string {
+    if (seconds < 60) return `${seconds} seconds`
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours`
+    return `${Math.floor(seconds / 86400)} days`
+  }
+
+  /**
+   * Convert seconds to custom value and unit for UI display
+   * @param seconds Number of seconds
+   * @returns Object with value and unit (minutes/hours/days)
+   */
+  static convertSecondsToCustom(seconds: number): { value: number; unit: 'minutes' | 'hours' | 'days' } {
+    if (seconds >= 86400 && seconds % 86400 === 0) {
+      return { value: seconds / 86400, unit: 'days' }
+    } else if (seconds >= 3600 && seconds % 3600 === 0) {
+      return { value: seconds / 3600, unit: 'hours' }
+    } else {
+      return { value: seconds / 60, unit: 'minutes' }
+    }
+  }
+
+  /**
+   * Convert custom value and unit to seconds
+   * @param value Numeric value
+   * @param unit Unit type ('minutes', 'hours', or 'days')
+   * @returns Total seconds
+   */
+  static convertToSeconds(value: number, unit: 'minutes' | 'hours' | 'days'): number {
+    const multipliers = {
+      minutes: 60,
+      hours: 3600,
+      days: 86400
+    }
+    return value * multipliers[unit]
+  }
+
+  /**
+   * Get preset interval options
+   * @returns Array of preset interval options with labels and values
+   */
+  static getPresetIntervals(): Array<{ label: string; value: number }> {
+    return [
+      { label: '5 minutes', value: 300 },
+      { label: '10 minutes', value: 600 },
+      { label: '15 minutes', value: 900 },
+      { label: '30 minutes', value: 1800 },
+      { label: '1 hour', value: 3600 }
+    ]
+  }
+
+  /**
+   * Check if interval value should show a performance warning
+   * @param seconds Interval in seconds
+   * @returns Warning message if applicable, null otherwise
+   */
+  static getWarningMessage(seconds: number): string | null {
+    if (seconds < 300) {
+      return 'Warning: Frequent syncs (< 5 min) may impact performance'
+    } else if (seconds > 3600) {
+      return 'Warning: Long intervals (> 1 hour) may delay data updates'
+    }
+    return null
+  }
+
+  /**
+   * Validate interval value
+   * @param seconds Interval in seconds to validate
+   * @returns Validation result with success flag and error message
+   */
+  static validateInterval(seconds: number): ValidationResult {
+    if (seconds < 60) {
+      return {
+        success: false,
+        error: 'Interval must be at least 1 minute (60 seconds)'
+      }
+    }
+    if (seconds > 31536000) {
+      return {
+        success: false,
+        error: 'Interval cannot exceed 365 days (31536000 seconds)'
+      }
+    }
+    return { success: true }
   }
 }
 
@@ -645,11 +877,13 @@ export class DatabaseUtils {
 export class DatabaseManagementService {
   public readonly config: typeof DatabaseConfigAPI
   public readonly files: typeof DatabaseFilesAPI
+  public readonly ffiSync: typeof FfiSyncConfigAPI
   public readonly utils: typeof DatabaseUtils
 
   constructor() {
     this.config = DatabaseConfigAPI
     this.files = DatabaseFilesAPI
+    this.ffiSync = FfiSyncConfigAPI
     this.utils = DatabaseUtils
   }
 
@@ -828,6 +1062,7 @@ export function useDatabaseAPI() {
   // Expose all the static API classes
   const configAPI = DatabaseConfigAPI
   const filesAPI = DatabaseFilesAPI
+  const ffiSyncAPI = FfiSyncConfigAPI
   const utils = DatabaseUtils
   const service = databaseService
 
@@ -839,6 +1074,7 @@ export function useDatabaseAPI() {
     // API classes
     configAPI,
     filesAPI,
+    ffiSyncAPI,
     utils,
     service,
 
@@ -865,6 +1101,48 @@ export function useDatabaseAPI() {
         return result
       } catch (err) {
         error.value = err instanceof Error ? err.message : 'Failed to get files'
+        throw err
+      } finally {
+        isLoading.value = false
+      }
+    },
+
+    async getFfiSyncInterval() {
+      isLoading.value = true
+      error.value = null
+      try {
+        const result = await ffiSyncAPI.getFfiSyncInterval()
+        return result
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to get FFI sync interval'
+        throw err
+      } finally {
+        isLoading.value = false
+      }
+    },
+
+    async updateFfiSyncInterval(interval_secs: number, changed_by?: string, change_reason?: string) {
+      isLoading.value = true
+      error.value = null
+      try {
+        const result = await ffiSyncAPI.updateFfiSyncInterval(interval_secs, changed_by, change_reason)
+        return result
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to update FFI sync interval'
+        throw err
+      } finally {
+        isLoading.value = false
+      }
+    },
+
+    async getFfiSyncHistory(limit: number = 100) {
+      isLoading.value = true
+      error.value = null
+      try {
+        const result = await ffiSyncAPI.getFfiSyncHistory(limit)
+        return result
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to get FFI sync history'
         throw err
       } finally {
         isLoading.value = false

@@ -651,6 +651,99 @@
           </div>
         </a-card>
 
+        <!-- FFI Sync Interval Card -->
+        <a-card size="small" class="config-card">
+          <template #title>
+            <span class="card-title">
+              <ClockCircleOutlined style="margin-right: 6px; color: #52c41a;" />
+              FFI Sync Interval
+            </span>
+          </template>
+
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 10px; color: #666; display: block; margin-bottom: 4px;">
+              How often should data sync from T3000?
+            </label>
+
+            <!-- Preset Intervals -->
+            <a-radio-group
+              v-model:value="ffiSyncConfig.interval_preset"
+              size="small"
+              @change="onFfiIntervalPresetChange"
+              style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"
+            >
+              <a-radio value="5min">5 min</a-radio>
+              <a-radio value="10min">10 min</a-radio>
+              <a-radio value="15min">15 min</a-radio>
+              <a-radio value="30min">30 min</a-radio>
+              <a-radio value="1hour">1 hour</a-radio>
+              <a-radio value="custom">Custom</a-radio>
+            </a-radio-group>
+
+            <!-- Custom Interval Input -->
+            <div
+              v-if="ffiSyncConfig.interval_preset === 'custom'"
+              class="form-item-compact"
+              style="margin-left: 16px; display: flex; align-items: center; gap: 6px;"
+            >
+              <label style="font-size: 10px; color: #666;">Every:</label>
+              <a-input-number
+                v-model:value="ffiSyncConfig.custom_value"
+                :min="getCustomMin()"
+                :max="getCustomMax()"
+                size="small"
+                style="width: 70px;"
+                @change="onCustomIntervalChange"
+              />
+              <a-select
+                v-model:value="ffiSyncConfig.custom_unit"
+                size="small"
+                style="width: 90px;"
+                @change="onCustomIntervalChange"
+              >
+                <a-select-option value="minutes">Minutes</a-select-option>
+                <a-select-option value="hours">Hours</a-select-option>
+                <a-select-option value="days">Days</a-select-option>
+              </a-select>
+            </div>
+
+            <!-- Current Status -->
+            <div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px;">
+              <div style="font-size: 10px; color: #666; margin-bottom: 4px;">
+                <strong>Current Interval:</strong> {{ formatInterval(ffiSyncConfig.interval_secs) }}
+              </div>
+              <div v-if="ffiSyncConfig.last_sync" style="font-size: 10px; color: #666; margin-bottom: 4px;">
+                <strong>Last Sync:</strong> {{ ffiSyncConfig.last_sync }}
+              </div>
+              <div v-if="ffiSyncConfig.next_sync_in > 0" style="font-size: 10px; color: #666;">
+                <strong>Next Sync:</strong> {{ formatCountdown(ffiSyncConfig.next_sync_in) }}
+              </div>
+            </div>
+
+            <!-- Change History Button -->
+            <div style="margin-top: 8px;">
+              <a-button
+                size="small"
+                @click="showFfiSyncHistory = true"
+                style="width: 100%; font-size: 10px; height: 24px;"
+              >
+                📜 View Change History
+              </a-button>
+            </div>
+
+            <!-- Warning Messages -->
+            <div v-if="ffiSyncWarning" style="margin-top: 8px;">
+              <a-alert
+                :message="ffiSyncWarning"
+                type="warning"
+                show-icon
+                closable
+                style="font-size: 10px; padding: 4px 8px;"
+              />
+            </div>
+          </div>
+        </a-card>
+
         <!-- Existing Database Files Card -->
         <a-card size="small" class="config-card">
           <template #title>
@@ -777,6 +870,44 @@
           </a-space>
         </div>
       </template>
+    </a-modal>
+
+    <!-- FFI Sync Interval Change History Modal -->
+    <a-modal
+      v-model:visible="showFfiSyncHistory"
+      title="FFI Sync Interval Change History"
+      :width="700"
+      :footer="null"
+    >
+      <div style="max-height: 400px; overflow-y: auto;">
+        <a-table
+          :columns="ffiHistoryColumns"
+          :data-source="ffiSyncHistory"
+          :pagination="false"
+          :loading="isLoadingHistory"
+          size="small"
+          :row-key="record => record.id"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'changed_at'">
+              <span style="font-size: 11px;">{{ record.changed_at }}</span>
+            </template>
+            <template v-else-if="column.key === 'change'">
+              <div style="font-size: 11px;">
+                <span style="color: #ff4d4f;">{{ record.old_value_display }}</span>
+                <span style="margin: 0 4px;">→</span>
+                <span style="color: #52c41a;">{{ record.new_value_display }}</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'changed_by'">
+              <a-tag size="small" style="font-size: 10px;">{{ record.changed_by }}</a-tag>
+            </template>
+            <template v-else-if="column.key === 'change_reason'">
+              <span style="font-size: 10px; color: #666;">{{ record.change_reason || '-' }}</span>
+            </template>
+          </template>
+        </a-table>
+      </div>
     </a-modal>
 
     <!-- Right Drawer for Item Selection -->
@@ -1371,6 +1502,55 @@ const databaseConfig = ref<DatabaseConfig>({
   retention_unit: 'days', // days, weeks, months
   is_active: true
 })
+
+// FFI Sync Interval Configuration
+interface FfiSyncConfig {
+  interval_preset: string // '5min', '10min', '15min', '30min', '1hour', 'custom'
+  custom_value: number
+  custom_unit: string // 'minutes', 'hours', 'days'
+  interval_secs: number // Actual value in seconds
+  last_sync: string | null
+  next_sync_in: number // Countdown in seconds
+}
+
+const ffiSyncConfig = ref<FfiSyncConfig>({
+  interval_preset: '5min',
+  custom_value: 5,
+  custom_unit: 'minutes',
+  interval_secs: 300, // Default: 5 minutes
+  last_sync: null,
+  next_sync_in: 0
+})
+
+const showFfiSyncHistory = ref(false)
+const ffiSyncHistory = ref<any[]>([])
+const isLoadingHistory = ref(false)
+const ffiSyncWarning = ref<string | null>(null)
+let ffiCountdownTimer: number | null = null
+
+// FFI History table columns
+const ffiHistoryColumns = [
+  {
+    title: 'Date/Time',
+    key: 'changed_at',
+    width: 150
+  },
+  {
+    title: 'Change',
+    key: 'change',
+    width: 180
+  },
+  {
+    title: 'Changed By',
+    key: 'changed_by',
+    width: 100
+  },
+  {
+    title: 'Reason',
+    key: 'change_reason',
+    width: 150
+  }
+]
 
 // ⌨️ Keyboard Navigation System
 const keyboardEnabled = ref(true)
@@ -8665,6 +8845,7 @@ onMounted(async () => {
   try {
     await loadDatabaseConfig()
     await loadDatabaseFiles()
+    await loadFfiSyncConfig() // Load FFI sync interval configuration
     LogUtil.Info('Database management initialized successfully')
   } catch (error) {
     LogUtil.Error('Failed to initialize database management', error)
@@ -8791,6 +8972,9 @@ const saveDatabaseConfig = async () => {
     // Refresh database files list to show new partitioned files
     await loadDatabaseFiles()
 
+    // Save FFI sync interval configuration
+    await saveFfiSyncConfig()
+
     message.success('Database configuration saved and partitioning applied successfully')
     showDatabaseConfig.value = false
     LogUtil.Info('Database configuration saved')
@@ -8822,6 +9006,220 @@ const deleteDbFile = async (fileId: number, fileName: string) => {
     LogUtil.Error('Failed to delete database file', error)
   }
 }
+
+// =================================================================
+// FFI SYNC INTERVAL CONFIGURATION METHODS
+// =================================================================
+
+// Load FFI sync interval configuration from API
+const loadFfiSyncConfig = async () => {
+  try {
+    const response = await fetch(`/api/config/ffi-sync-interval`)
+    if (!response.ok) throw new Error('Failed to load FFI sync config')
+
+    const data = await response.json()
+    ffiSyncConfig.value.interval_secs = data.interval_secs
+    ffiSyncConfig.value.last_sync = data.last_sync
+
+    // Set preset based on interval
+    const presets: Record<number, string> = {
+      300: '5min',
+      600: '10min',
+      900: '15min',
+      1800: '30min',
+      3600: '1hour'
+    }
+
+    ffiSyncConfig.value.interval_preset = presets[data.interval_secs] || 'custom'
+
+    if (ffiSyncConfig.value.interval_preset === 'custom') {
+      // Calculate custom value and unit
+      convertSecondsToCustom(data.interval_secs)
+    }
+
+    // Start countdown timer
+    startFfiCountdownTimer()
+
+    LogUtil.Info('FFI sync config loaded', data)
+  } catch (error) {
+    LogUtil.Error('Failed to load FFI sync config', error)
+  }
+}
+
+// Convert seconds to custom value and unit
+const convertSecondsToCustom = (secs: number) => {
+  if (secs >= 86400 && secs % 86400 === 0) {
+    ffiSyncConfig.value.custom_value = secs / 86400
+    ffiSyncConfig.value.custom_unit = 'days'
+  } else if (secs >= 3600 && secs % 3600 === 0) {
+    ffiSyncConfig.value.custom_value = secs / 3600
+    ffiSyncConfig.value.custom_unit = 'hours'
+  } else {
+    ffiSyncConfig.value.custom_value = secs / 60
+    ffiSyncConfig.value.custom_unit = 'minutes'
+  }
+}
+
+// Convert custom value to seconds
+const convertToSeconds = (): number => {
+  const presetValues: Record<string, number> = {
+    '5min': 300,
+    '10min': 600,
+    '15min': 900,
+    '30min': 1800,
+    '1hour': 3600
+  }
+
+  if (ffiSyncConfig.value.interval_preset !== 'custom') {
+    return presetValues[ffiSyncConfig.value.interval_preset] || 300
+  }
+
+  const unitMultipliers: Record<string, number> = {
+    'minutes': 60,
+    'hours': 3600,
+    'days': 86400
+  }
+
+  return ffiSyncConfig.value.custom_value * unitMultipliers[ffiSyncConfig.value.custom_unit]
+}
+
+// Handle preset interval change
+const onFfiIntervalPresetChange = () => {
+  const newSecs = convertToSeconds()
+  ffiSyncConfig.value.interval_secs = newSecs
+  checkFfiSyncWarning(newSecs)
+}
+
+// Handle custom interval change
+const onCustomIntervalChange = () => {
+  const newSecs = convertToSeconds()
+  ffiSyncConfig.value.interval_secs = newSecs
+  checkFfiSyncWarning(newSecs)
+}
+
+// Check for warning conditions
+const checkFfiSyncWarning = (secs: number) => {
+  if (secs < 300) {
+    ffiSyncWarning.value = 'Warning: Frequent syncs (< 5 min) may impact performance'
+  } else if (secs > 3600) {
+    ffiSyncWarning.value = 'Warning: Long intervals (> 1 hour) may delay data updates'
+  } else {
+    ffiSyncWarning.value = null
+  }
+}
+
+// Get custom input min/max based on unit
+const getCustomMin = (): number => {
+  if (ffiSyncConfig.value.custom_unit === 'minutes') return 1
+  if (ffiSyncConfig.value.custom_unit === 'hours') return 1
+  return 1 // days
+}
+
+const getCustomMax = (): number => {
+  if (ffiSyncConfig.value.custom_unit === 'minutes') return 59
+  if (ffiSyncConfig.value.custom_unit === 'hours') return 23
+  return 365 // days
+}
+
+// Format interval for display
+const formatInterval = (secs: number): string => {
+  if (secs < 60) return `${secs} seconds`
+  if (secs < 3600) return `${secs / 60} minutes`
+  if (secs < 86400) return `${secs / 3600} hours`
+  return `${secs / 86400} days`
+}
+
+// Format countdown timer
+const formatCountdown = (secs: number): string => {
+  if (secs <= 0) return 'Syncing now...'
+
+  const days = Math.floor(secs / 86400)
+  const hours = Math.floor((secs % 86400) / 3600)
+  const mins = Math.floor((secs % 3600) / 60)
+  const seconds = secs % 60
+
+  if (days > 0) return `${days}d ${hours}h ${mins}m`
+  if (hours > 0) return `${hours}h ${mins}m ${seconds}s`
+  if (mins > 0) return `${mins}:${String(seconds).padStart(2, '0')}`
+  return `${seconds}s`
+}
+
+// Start countdown timer
+const startFfiCountdownTimer = () => {
+  if (ffiCountdownTimer) {
+    clearInterval(ffiCountdownTimer)
+  }
+
+  ffiCountdownTimer = window.setInterval(() => {
+    if (ffiSyncConfig.value.next_sync_in > 0) {
+      ffiSyncConfig.value.next_sync_in--
+    } else {
+      // Reset to interval when countdown reaches 0
+      ffiSyncConfig.value.next_sync_in = ffiSyncConfig.value.interval_secs
+    }
+  }, 1000)
+}
+
+// Save FFI sync interval configuration (included in saveDatabaseConfig)
+const saveFfiSyncConfig = async () => {
+  try {
+    const interval_secs = convertToSeconds()
+
+    // Validate range (1 minute to 365 days)
+    if (interval_secs < 60 || interval_secs > 31536000) {
+      message.error('Interval must be between 1 minute and 365 days')
+      return false
+    }
+
+    const response = await fetch(`/api/config/ffi-sync-interval`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        interval_secs,
+        changed_by: 'user',
+        change_reason: 'Updated via Database Configuration UI'
+      })
+    })
+
+    if (!response.ok) throw new Error('Failed to save FFI sync config')
+
+    const data = await response.json()
+    ffiSyncConfig.value.interval_secs = data.interval_secs
+    ffiSyncConfig.value.next_sync_in = data.interval_secs
+
+    message.success(`FFI sync interval updated to ${formatInterval(interval_secs)}`)
+    LogUtil.Info('FFI sync interval saved', data)
+    return true
+  } catch (error) {
+    message.error('Failed to save FFI sync interval')
+    LogUtil.Error('Failed to save FFI sync config', error)
+    return false
+  }
+}
+
+// Load FFI sync change history
+const loadFfiSyncHistory = async () => {
+  isLoadingHistory.value = true
+  try {
+    const response = await fetch(`/api/config/history?config_key=ffi.sync_interval_secs&limit=100`)
+    if (!response.ok) throw new Error('Failed to load history')
+
+    ffiSyncHistory.value = await response.json()
+    LogUtil.Info('FFI sync history loaded', { count: ffiSyncHistory.value.length })
+  } catch (error) {
+    message.error('Failed to load change history')
+    LogUtil.Error('Failed to load FFI sync history', error)
+  } finally {
+    isLoadingHistory.value = false
+  }
+}
+
+// Watch for history modal opening to load data
+watch(showFfiSyncHistory, (visible) => {
+  if (visible) {
+    loadFfiSyncHistory()
+  }
+})
 
 // Cleanup old database files
 const cleanupOldFiles = async () => {
@@ -8887,6 +9285,11 @@ onUnmounted(() => {
   // ⌨️ Cleanup keyboard navigation
   document.removeEventListener('keydown', handleKeydown)
   LogUtil.Info('⌨️ Keyboard: Navigation system cleanup completed')
+
+  // Cleanup FFI countdown timer
+  if (ffiCountdownTimer) {
+    clearInterval(ffiCountdownTimer)
+  }
 })
 </script>
 
