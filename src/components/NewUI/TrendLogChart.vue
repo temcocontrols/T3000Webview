@@ -712,7 +712,8 @@
             </div>
 
             <!-- Change History Button -->
-            <div style="margin-top: 8px;">
+            <!-- View Change History Button - Commented Out -->
+            <!-- <div style="margin-top: 8px;">
               <a-button
                 size="small"
                 @click="showFfiSyncHistory = true"
@@ -720,7 +721,7 @@
               >
                 📜 View Change History
               </a-button>
-            </div>
+            </div> -->
 
             <!-- Warning Messages -->
             <div v-if="ffiSyncWarning" style="margin-top: 8px;">
@@ -863,8 +864,8 @@
       </template>
     </a-modal>
 
-    <!-- FFI Sync Interval Change History Modal -->
-    <a-modal
+    <!-- FFI Sync Interval Change History Modal - Commented Out -->
+    <!-- <a-modal
       v-model:visible="showFfiSyncHistory"
       title="FFI Sync Interval Change History"
       :width="700"
@@ -899,7 +900,7 @@
           </template>
         </a-table>
       </div>
-    </a-modal>
+    </a-modal> -->
 
     <!-- Right Drawer for Item Selection -->
     <a-drawer
@@ -9175,15 +9176,15 @@ const saveFfiSyncConfig = async () => {
   }
 }
 
-// Load FFI sync change history
+// Load FFI sync change history (latest only)
 const loadFfiSyncHistory = async () => {
   isLoadingHistory.value = true
   try {
-    const response = await fetch(`/api/config/history?config_key=ffi.sync_interval_secs&limit=100`)
+    const response = await fetch(`/api/config/history?config_key=ffi.sync_interval_secs&limit=1`)
     if (!response.ok) throw new Error('Failed to load history')
 
     ffiSyncHistory.value = await response.json()
-    LogUtil.Info('FFI sync history loaded', { count: ffiSyncHistory.value.length })
+    LogUtil.Info('FFI sync history loaded (latest only)', { count: ffiSyncHistory.value.length })
   } catch (error) {
     message.error('Failed to load change history')
     LogUtil.Error('Failed to load FFI sync history', error)
