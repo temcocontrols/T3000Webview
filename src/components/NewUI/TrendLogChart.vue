@@ -548,17 +548,18 @@
         <!-- Sampling Interval Card -->
         <a-card size="small" class="config-card">
           <template #title>
-            <span class="card-title">
-              <ClockCircleOutlined style="margin-right: 6px; color: #52c41a;" />
-              Sampling Interval
-            </span>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span class="card-title">
+                <ClockCircleOutlined style="margin-right: 6px; color: #52c41a;" />
+                Sampling Interval
+              </span>
+              <span style="font-size: 10px; color: #666;">
+                How often should data sync from T3000?
+              </span>
+            </div>
           </template>
 
           <div style="margin-bottom: 12px;">
-            <label style="font-size: 10px; color: #666; display: block; margin-bottom: 4px;">
-              How often should data sync from T3000?
-            </label>
-
             <!-- Preset Intervals -->
             <a-radio-group
               v-model:value="ffiSyncConfig.interval_preset"
