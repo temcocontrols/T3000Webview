@@ -92,13 +92,8 @@
           </a-button-group>
 
           <!-- Reconfigure button for View 2 & 3 -->
-          <a-button
-            v-if="currentView !== 1 && hasTrackedItems"
-            size="small"
-            @click="showItemSelector = true"
-            class="reconfigure-btn"
-            title="Reconfigure tracked items"
-          >
+          <a-button v-if="currentView !== 1 && hasTrackedItems" size="small" @click="showItemSelector = true"
+            class="reconfigure-btn" title="Reconfigure tracked items">
             <SettingOutlined />
           </a-button>
         </a-flex>
@@ -123,13 +118,9 @@
           <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
 
           <!-- ⌨️ Keyboard Navigation Status -->
-          <a-tag
-            :color="keyboardEnabled ? 'green' : 'default'"
-            size="small"
-            class="keyboard-status-tag clickable"
+          <a-tag :color="keyboardEnabled ? 'green' : 'default'" size="small" class="keyboard-status-tag clickable"
             :title="keyboardEnabled ? 'Keyboard shortcuts:\n�?1-9, A-E: Toggle items (also removes navigation border)\n�?�?�? Change timebase\n�?�?�? Navigate items + Enter to toggle\n�?ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
-            @click="toggleKeyboard"
-          >
+            @click="toggleKeyboard">
             <template #icon>
               <span class="keyboard-icon">⌨️</span>
             </template>
@@ -176,7 +167,7 @@
         <!-- Trendlog Configuration -->
         <a-flex align="center" class="control-group">
           <a-button @click="showDatabaseConfig = true" size="small" title="Trendlog Configuration"
-            style="display: flex; align-items: center; gap: 2px;">
+            style="display: flex; align-items: center; gap: 2px;padding:0px 5px;">
             <DatabaseOutlined />
             <span>Config</span>
           </a-button>
@@ -185,7 +176,7 @@
         <!-- Export Options -->
         <a-flex align="center" class="control-group export-options">
           <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center;">
+            <a-button size="small" style="display: flex; align-items: center;padding:0px 5px;">
               <ExportOutlined style="margin-right: 4px;" />
               <span>Export</span>
               <DownOutlined style="margin-left: 4px;" />
@@ -228,7 +219,7 @@
           Select Items to Track
         </a-button>
       </div>
-    </div>    <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
+    </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
       <div class="left-panel">
         <!-- Data Series -->
@@ -236,16 +227,13 @@
           <div class="data-series-header">
             <!-- Single line: Title, count, and status -->
             <div class="header-line-1">
-              <div
-                :title="devVersion"
-                class="chart-title-with-version"
-              >
+              <div :title="devVersion" class="chart-title-with-version">
                 {{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})
               </div>
               <!-- Data Source Indicator -->
               <div class="data-source-indicator">
                 <span v-if="shouldShowLoading" class="source-badge loading">
-                   Loading...
+                  Loading...
                 </span>
                 <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
                   📡 Live
@@ -257,7 +245,7 @@
                   ⚠️ Connection Error
                 </span>
               </div>
-            </div>            <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+            </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
             <div class="header-line-2">
               <div class="left-controls">
                 <a-dropdown>
@@ -340,12 +328,16 @@
                 <div v-else-if="hasConnectionError" class="empty-state-subtitle">
                   Unable to load real-time or historical data. Check system connections.
                 </div>
-                <div v-else class="empty-state-subtitle">Configure monitor points with valid T3000 devices to see data series</div>
+                <div v-else class="empty-state-subtitle">Configure monitor points with valid T3000 devices to see data
+                  series</div>
 
                 <!-- Refresh button for timeout and error states -->
-                <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions" style="margin-top: 16px;">
+                <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
+                  style="margin-top: 16px;">
                   <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small">
-                    <template #icon><ReloadOutlined /></template>
+                    <template #icon>
+                      <ReloadOutlined />
+                    </template>
                     Refresh Data
                   </a-button>
                 </div>
@@ -358,14 +350,8 @@
               'keyboard-selected': selectedItemIndex === index && keyboardEnabled
             }">
               <!-- Delete button overlay for View 2 & 3 tracked items -->
-              <a-button
-                v-if="currentView !== 1"
-                size="small"
-                type="text"
-                class="delete-series-btn delete-overlay"
-                @click="(e) => removeFromTracking(series.name, e)"
-                :title="'Remove from tracking'"
-              >
+              <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
+                @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
                 <template #icon>
                   <CloseOutlined class="delete-icon" />
                 </template>
@@ -376,13 +362,11 @@
                   :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                   <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
                   <!-- ⌨️ Keyboard shortcut badge for left panel -->
-                  <div
-                    v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                  <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
                     class="keyboard-shortcut-badge left-panel-badge"
                     :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
                     :data-key="getKeyboardShortcut(series.name)"
-                    :title="`Press ${getKeyboardShortcut(series.name)} to toggle`"
-                  >
+                    :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
                     {{ getKeyboardShortcut(series.name) }}
                   </div>
                 </div>
@@ -536,12 +520,8 @@
     </a-modal>
 
     <!-- Trendlog Configuration Modal -->
-    <a-modal
-      v-model:visible="showDatabaseConfig"
-      title="Trendlog Configuration"
-      :width="620"
-      class="database-modal-compact"
-    >
+    <a-modal v-model:visible="showDatabaseConfig" title="Trendlog Configuration" :width="620"
+      class="database-modal-compact">
       <a-space direction="vertical" size="small" style="width: 100%">
 
 
@@ -554,47 +534,37 @@
                 Sampling Interval
               </span>
               <span style="font-size: 10px; color: #666;">
-                How often should data sync from T3000?
+                How often should data be collected?
               </span>
             </div>
           </template>
 
-          <div style="margin-bottom: 12px;">
-            <!-- Preset Intervals -->
-            <a-radio-group
-              v-model:value="ffiSyncConfig.interval_preset"
-              size="small"
-              @change="onFfiIntervalPresetChange"
-              style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"
-            >
-              <a-radio value="5min">5 min</a-radio>
-              <a-radio value="10min">10 min</a-radio>
-              <a-radio value="15min">15 min</a-radio>
-              <a-radio value="20min">20 min</a-radio>
-              <a-radio value="25min">25 min</a-radio>
-              <a-radio value="custom">Custom</a-radio>
-            </a-radio-group>
+          <div style="margin-bottom: 5px;">
+            <!-- Preset Intervals and Custom Input on Same Line -->
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 0px;">
+              <a-radio-group v-model:value="ffiSyncConfig.interval_preset" size="small"
+                @change="onFfiIntervalPresetChange" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                <a-radio value="5min">5 min</a-radio>
+                <a-radio value="10min">10 min</a-radio>
+                <a-radio value="15min">15 min</a-radio>
+                <a-radio value="20min">20 min</a-radio>
+                <!-- <a-radio value="25min">25 min</a-radio> -->
+                <a-radio value="custom">Custom</a-radio>
+              </a-radio-group>
 
-            <!-- Custom Interval Input -->
-            <div
-              v-if="ffiSyncConfig.interval_preset === 'custom'"
-              class="form-item-compact"
-              style="margin-left: 16px; display: flex; align-items: center; gap: 6px;"
-            >
-              <label style="font-size: 10px; color: #666;">Every:</label>
-              <a-input-number
-                v-model:value="ffiSyncConfig.custom_value"
-                :min="getCustomMin()"
-                :max="getCustomMax()"
-                size="small"
-                style="width: 70px;"
-                @change="onCustomIntervalChange"
-              />
-              <span style="font-size: 12px; color: #666;">minutes</span>
+              <!-- Custom Interval Input (shows on same line when custom is selected) -->
+              <div v-if="ffiSyncConfig.interval_preset === 'custom'" class="form-item-compact"
+                style="display: flex; align-items: center; gap: 6px;margin-bottom: 0px;">
+                <label style="font-size: 10px; color: #666;">Every:</label>
+                <a-input-number v-model:value="ffiSyncConfig.custom_value" :min="getCustomMin()" :max="getCustomMax()"
+                  size="small" style="width: 40px;" @change="onCustomIntervalChange" />
+                <span style="font-size: 12px; color: #666;">minutes</span>
+              </div>
             </div>
 
             <!-- Current Status -->
-            <div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px;">
+            <!--
+            <div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; display:none;">
               <div style="font-size: 10px; color: #666; margin-bottom: 4px;">
                 <strong>Current Interval:</strong> {{ formatInterval(ffiSyncConfig.interval_secs) }}
               </div>
@@ -605,6 +575,7 @@
                 <strong>Next Sync:</strong> {{ formatCountdown(ffiSyncConfig.next_sync_in) }}
               </div>
             </div>
+            -->
 
             <!-- Change History Button -->
             <!-- View Change History Button - Commented Out -->
@@ -620,13 +591,8 @@
 
             <!-- Warning Messages -->
             <div v-if="ffiSyncWarning" style="margin-top: 8px;">
-              <a-alert
-                :message="ffiSyncWarning"
-                type="warning"
-                show-icon
-                closable
-                style="font-size: 10px; padding: 4px 8px;"
-              />
+              <a-alert :message="ffiSyncWarning" type="warning" show-icon closable
+                style="font-size: 10px; padding: 4px 8px;" />
             </div>
           </div>
         </a-card>
@@ -676,12 +642,8 @@
 
           <div class="form-item-compact" style="margin-bottom: 8px;">
             <label>Split new data by:</label>
-            <a-radio-group
-              v-model:value="databaseConfig.strategy"
-              size="small"
-              @change="onPartitionStrategyChange"
-              style="display: flex; flex-wrap: wrap; gap: 4px;"
-            >
+            <a-radio-group v-model:value="databaseConfig.strategy" size="small" @change="onPartitionStrategyChange"
+              style="display: flex; flex-wrap: wrap; gap: 4px;">
               <!-- <a-radio value="FiveMinutes">5 Minutes</a-radio> -->
               <a-radio value="Daily">Daily</a-radio>
               <a-radio value="Weekly">Weekly</a-radio>
@@ -693,48 +655,32 @@
           </div>
 
           <!-- Custom Days Input -->
-          <div
-            v-if="databaseConfig.strategy === 'Custom'"
-            class="form-item-compact"
-            style="margin-bottom: 8px; margin-left: 16px;"
-          >
+          <div v-if="databaseConfig.strategy === 'Custom'" class="form-item-compact"
+            style="margin-bottom: 8px; margin-left: 16px;">
             <label style="font-size: 10px; color: #666;">Every:</label>
-            <a-input-number
-              v-model:value="databaseConfig.custom_days"
-              :min="1"
-              :max="365"
-              size="small"
-              style="width: 60px; margin: 0 4px;"
-            />
+            <a-input-number v-model:value="databaseConfig.custom_days" :min="1" :max="365" size="small"
+              style="width: 60px; margin: 0 4px;" />
             <span style="font-size: 10px; color: #666;">days</span>
           </div>
 
           <!-- Custom Months Input -->
-          <div
-            v-if="databaseConfig.strategy === 'CustomMonths'"
-            class="form-item-compact"
-            style="margin-bottom: 8px; margin-left: 16px;"
-          >
+          <div v-if="databaseConfig.strategy === 'CustomMonths'" class="form-item-compact"
+            style="margin-bottom: 8px; margin-left: 16px;">
             <label style="font-size: 10px; color: #666;">Every:</label>
-            <a-input-number
-              v-model:value="databaseConfig.custom_months"
-              :min="1"
-              :max="12"
-              size="small"
-              style="width: 60px; margin: 0 4px;"
-            />
+            <a-input-number v-model:value="databaseConfig.custom_months" :min="1" :max="12" size="small"
+              style="width: 60px; margin: 0 4px;" />
             <span style="font-size: 10px; color: #666;">months</span>
           </div>
 
           <div class="info-row" style="font-size: 10px; color: #666; margin-top: 4px;">
             Current: {{
               databaseConfig.strategy === 'FiveMinutes' ? 'One file every 5 minutes (for testing)' :
-              databaseConfig.strategy === 'Daily' ? 'One file per day' :
-              databaseConfig.strategy === 'Weekly' ? 'One file per week' :
-              databaseConfig.strategy === 'Monthly' ? 'One file per month' :
-              databaseConfig.strategy === 'Quarterly' ? 'One file per quarter (3 months)' :
-              databaseConfig.strategy === 'CustomMonths' ? `One file every ${databaseConfig.custom_months} months` :
-              `One file every ${databaseConfig.custom_days} days`
+                databaseConfig.strategy === 'Daily' ? 'One file per day' :
+                  databaseConfig.strategy === 'Weekly' ? 'One file per week' :
+                    databaseConfig.strategy === 'Monthly' ? 'One file per month' :
+                      databaseConfig.strategy === 'Quarterly' ? 'One file per quarter (3 months)' :
+                        databaseConfig.strategy === 'CustomMonths' ? `One file every ${databaseConfig.custom_months} months` :
+                          `One file every ${databaseConfig.custom_days} days`
             }}
           </div>
         </a-card>
@@ -747,50 +693,35 @@
                 <DatabaseOutlined style="margin-right: 6px; color: #1890ff;" />
                 Database Files ({{ databaseFiles.length }})
               </span>
-              <a-button
-                size="small"
-                type="primary"
-                @click="cleanupAllFiles"
-                :loading="isCleaningUp"
-                style="font-size: 10px; height: 22px; padding: 0 8px;"
-              >
-                <template #icon><DeleteOutlined style="font-size: 10px;" /></template>
+              <a-button size="small" type="primary" @click="cleanupAllFiles" :loading="isCleaningUp"
+                style="font-size: 10px; height: 22px; padding: 0 8px;">
+                <template #icon>
+                  <DeleteOutlined style="font-size: 10px;" />
+                </template>
                 Clean All
               </a-button>
             </div>
           </template>
 
           <div class="db-files-list" style="max-height: 120px; overflow-y: auto;">
-            <div
-              v-for="file in databaseFiles"
-              :key="file.id || file.name"
-              class="db-file-item"
-              style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;"
-            >
+            <div v-for="file in databaseFiles" :key="file.id || file.name" class="db-file-item"
+              style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
               <div class="file-info" style="flex: 1;">
                 <div style="font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
                   {{ file.name }}
-                  <a-tag
-                    v-if="file.is_active"
-                    color="green"
-                    size="small"
-                    style="font-size: 9px; padding: 1px 4px; margin: 0;"
-                  >
+                  <a-tag v-if="file.is_active" color="green" size="small"
+                    style="font-size: 9px; padding: 1px 4px; margin: 0;">
                     ACTIVE
                   </a-tag>
                 </div>
                 <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} �?{{ file.records }} records</div> -->
               </div>
-              <a-button
-                size="small"
-                type="text"
-                danger
-                :disabled="file.is_active"
-                @click="deleteDbFile(file.id, file.name)"
-                style="padding: 2px 6px;"
-                :title="file.is_active ? 'Cannot delete active database file' : 'Delete database file'"
-              >
-                <template #icon><DeleteOutlined style="font-size: 10px;" /></template>
+              <a-button size="small" type="text" danger :disabled="file.is_active"
+                @click="deleteDbFile(file.id, file.name)" style="padding: 2px 6px;"
+                :title="file.is_active ? 'Cannot delete active database file' : 'Delete database file'">
+                <template #icon>
+                  <DeleteOutlined style="font-size: 10px;" />
+                </template>
               </a-button>
             </div>
           </div>
@@ -807,40 +738,26 @@
 
           <div class="form-item-compact" style="margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 4px;">
-              <span style="font-size: 11px; color: #666; white-space: nowrap; min-width: 90px;">Auto cleanup files older than:</span>
-              <a-input-number
-                v-model:value="databaseConfig.retention_value"
-                :min="1"
-                :max="365"
-                size="small"
-                style="width: 60px;"
-              />
-              <a-select
-                v-model:value="databaseConfig.retention_unit"
-                size="small"
-                style="width: 100px;"
-              >
+              <span style="font-size: 11px; color: #666; white-space: nowrap; min-width: 90px;">Auto cleanup files older
+                than:</span>
+              <a-input-number v-model:value="databaseConfig.retention_value" :min="1" :max="365" size="small"
+                style="width: 60px;" />
+              <a-select v-model:value="databaseConfig.retention_unit" size="small" style="width: 100px;">
                 <a-select-option value="days">Days</a-select-option>
                 <a-select-option value="weeks">Weeks</a-select-option>
                 <a-select-option value="months">Months</a-select-option>
               </a-select>
-              <a-button
-                size="small"
-                type="primary"
-                @click="cleanupOldFiles"
-                :loading="isCleaningUp"
-                style="width: 120px;"
-              >
-                <template #icon><DeleteOutlined /></template>
+              <a-button size="small" type="primary" @click="cleanupOldFiles" :loading="isCleaningUp"
+                style="width: 120px;">
+                <template #icon>
+                  <DeleteOutlined />
+                </template>
                 Clean up now
               </a-button>
-              <a-button
-                size="small"
-                @click="compactDatabase"
-                :loading="isOptimizing"
-                style="width: 90px;"
-              >
-                <template #icon><ThunderboltOutlined /></template>
+              <a-button size="small" @click="compactDatabase" :loading="isOptimizing" style="width: 90px;">
+                <template #icon>
+                  <ThunderboltOutlined />
+                </template>
                 Optimize
               </a-button>
             </div>
@@ -854,12 +771,7 @@
             <a-button @click="showDatabaseConfig = false" size="small">
               Cancel
             </a-button>
-            <a-button
-              type="primary"
-              size="small"
-              @click="saveDatabaseConfig"
-              :loading="isSaving"
-            >
+            <a-button type="primary" size="small" @click="saveDatabaseConfig" :loading="isSaving">
               Save Changes
             </a-button>
           </a-space>
@@ -906,15 +818,8 @@
     </a-modal> -->
 
     <!-- Right Drawer for Item Selection -->
-    <a-drawer
-      v-model:visible="showItemSelector"
-      title="Select Items to Track"
-      placement="right"
-      width="400"
-      :closable="true"
-      :mask-closable="true"
-      class="item-selector-drawer"
-    >
+    <a-drawer v-model:visible="showItemSelector" title="Select Items to Track" placement="right" width="400"
+      :closable="true" :mask-closable="true" class="item-selector-drawer">
       <template #title>
         <div class="drawer-title">
           <span>📊 Select Items for {{ currentView === 2 ? 'View 2' : 'View 3' }}</span>
@@ -926,23 +831,15 @@
 
       <div class="drawer-content">
         <div class="items-compact-list">
-          <div
-            v-for="series in dataSeries"
-            :key="series.name"
-            class="item-row"
-            :class="{
-              'selected': viewTrackedSeries[currentView]?.includes(series.name),
-              'analog': series.unitType === 'analog',
-              'digital': series.unitType === 'digital'
-            }"
-            @click="toggleItemTracking(series.name)"
-          >
+          <div v-for="series in dataSeries" :key="series.name" class="item-row" :class="{
+            'selected': viewTrackedSeries[currentView]?.includes(series.name),
+            'analog': series.unitType === 'analog',
+            'digital': series.unitType === 'digital'
+          }" @click="toggleItemTracking(series.name)">
             <!-- Checkbox and color indicator -->
             <div class="item-selection" @click.stop>
-              <a-checkbox
-                :checked="viewTrackedSeries[currentView]?.includes(series.name)"
-                @change="() => toggleItemTracking(series.name)"
-              />
+              <a-checkbox :checked="viewTrackedSeries[currentView]?.includes(series.name)"
+                @change="() => toggleItemTracking(series.name)" />
               <div class="item-color-dot" :style="{ backgroundColor: series.color }"></div>
             </div>
 
@@ -973,11 +870,7 @@
 
       <template #footer>
         <div class="drawer-footer">
-          <a-button
-            @click="toggleSelectAll"
-            :type="isAllSelected ? 'default' : 'primary'"
-            class="select-toggle-btn"
-          >
+          <a-button @click="toggleSelectAll" :type="isAllSelected ? 'default' : 'primary'" class="select-toggle-btn">
             {{ isAllSelected ? 'Unselect All' : 'Select All' }}
           </a-button>
 
@@ -2993,12 +2886,12 @@ const getAnalogChartConfig = () => ({
           },
           padding: 2,
           // Improve precision for small value ranges
-          callback: function(value: any) {
+          callback: function (value: any) {
             return Number(value).toFixed(2)
           }
         },
         // Dynamic Y-axis scaling to better show small variations
-        afterDataLimits: function(scale: any) {
+        afterDataLimits: function (scale: any) {
           const data = scale.chart.data.datasets
           if (data.length === 0) return
 
@@ -4544,7 +4437,7 @@ const loadHistoricalDataFromDatabase = async () => {
     const formattedEndTime = formatLocalTime(endTime)
 
     // 🆕 FIX: Create specific points list from available data sources
-    let specificPoints: Array<{point_id: string, point_type: string, point_index: number, panel_id: number}> = []
+    let specificPoints: Array<{ point_id: string, point_type: string, point_index: number, panel_id: number }> = []
 
     if (shouldUseDataSeriesForPoints) {
       // Method 1: Extract from existing data series (fallback when no monitorConfig)
@@ -4599,40 +4492,40 @@ const loadHistoricalDataFromDatabase = async () => {
         dataSeries.value.forEach((series, index) => {
           // Only include series that have meaningful identifiers and are not demo/test data
           if (series.id && series.id !== '1' && series.name &&
-              !series.name.includes('(P0)') &&
-              !series.name.match(/^\d+\s*\([P]\d+\)$/) &&
-              series.description) {
+            !series.name.includes('(P0)') &&
+            !series.name.match(/^\d+\s*\([P]\d+\)$/) &&
+            series.description) {
             let pointType = 'VARIABLE' // Default
             let pointIndex = index
             let pointId = series.id
 
-          // Try to extract point info from series.id or series.name
-          if (series.id.startsWith('VAR')) {
-            pointType = 'VARIABLE'
-            const match = series.id.match(/VAR(\d+)/)
-            pointIndex = match ? parseInt(match[1]) - 1 : index
-            pointId = series.id
-          } else if (series.id.startsWith('IN')) {
-            pointType = 'INPUT'
-            const match = series.id.match(/IN(\d+)/)
-            pointIndex = match ? parseInt(match[1]) - 1 : index
-            pointId = series.id
-          } else if (series.id.startsWith('OUT')) {
-            pointType = 'OUTPUT'
-            const match = series.id.match(/OUT(\d+)/)
-            pointIndex = match ? parseInt(match[1]) - 1 : index
-            pointId = series.id
-          }
+            // Try to extract point info from series.id or series.name
+            if (series.id.startsWith('VAR')) {
+              pointType = 'VARIABLE'
+              const match = series.id.match(/VAR(\d+)/)
+              pointIndex = match ? parseInt(match[1]) - 1 : index
+              pointId = series.id
+            } else if (series.id.startsWith('IN')) {
+              pointType = 'INPUT'
+              const match = series.id.match(/IN(\d+)/)
+              pointIndex = match ? parseInt(match[1]) - 1 : index
+              pointId = series.id
+            } else if (series.id.startsWith('OUT')) {
+              pointType = 'OUTPUT'
+              const match = series.id.match(/OUT(\d+)/)
+              pointIndex = match ? parseInt(match[1]) - 1 : index
+              pointId = series.id
+            }
 
-          specificPoints.push({
-            point_id: pointId,
-            point_type: pointType,
-            point_index: pointIndex,
-            panel_id: currentPanelId
-          })
-        }
-      })
-    }
+            specificPoints.push({
+              point_id: pointId,
+              point_type: pointType,
+              point_index: pointIndex,
+              panel_id: currentPanelId
+            })
+          }
+        })
+      }
 
       // Final fallback: Use known working points if still nothing found
       if (specificPoints.length === 0) {
@@ -5019,9 +4912,9 @@ const validateFilteringResults = (originalCount: number, filteredCount: number, 
     expectedRange: `�?${chartSeriesCount} items`,
     isReasonableFilter: filteredCount > 0 && filteredCount <= chartSeriesCount && filteredCount < originalCount,
     message: filteredCount === 0 ? 'No matches found - check filtering logic' :
-             filteredCount > chartSeriesCount ? 'More items than chart series - check filtering logic' :
-             filteredCount === originalCount ? 'No filtering occurred - check filtering logic' :
-             'Filtering working correctly'
+      filteredCount > chartSeriesCount ? 'More items than chart series - check filtering logic' :
+        filteredCount === originalCount ? 'No filtering occurred - check filtering logic' :
+          'Filtering working correctly'
   })
 }
 
@@ -5261,7 +5154,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     }
 
     // Get points from existing data series (they're already loaded)
-    const specificPoints: Array<{point_id: string, point_type: string, point_index: number, panel_id: number}> = []
+    const specificPoints: Array<{ point_id: string, point_type: string, point_index: number, panel_id: number }> = []
 
     dataSeries.value.forEach((series) => {
       if (series.pointType !== undefined && series.pointNumber !== undefined) {
@@ -5374,7 +5267,7 @@ const processAndPrependGapData = (gapData: any[]) => {
           description: item.description || ''
         }
       }).filter(point => !isNaN(point.timestamp) && !isNaN(point.value))
-      .sort((a, b) => a.timestamp - b.timestamp) // Ensure chronological order
+        .sort((a, b) => a.timestamp - b.timestamp) // Ensure chronological order
 
       // Prepend gap data to existing data (gap data comes before existing data)
       if (series.data && series.data.length > 0) {
@@ -8080,7 +7973,7 @@ const extractQueryParams = () => {
     propsItemData: props.itemData?.t3Entry?.id || 'not available',
     extractionMethod: trendlog_id > 0 ?
       (route.query.trendlog_id ? 'URL_PARAMS' :
-       props.itemData?.t3Entry?.id ? 'PROPS_ITEM_DATA' : 'DEFAULT_FALLBACK') : 'NOT_FOUND'
+        props.itemData?.t3Entry?.id ? 'PROPS_ITEM_DATA' : 'DEFAULT_FALLBACK') : 'NOT_FOUND'
   })
 
   return { sn, panel_id, trendlog_id }
@@ -11085,7 +10978,8 @@ onUnmounted(() => {
 }
 
 .item-selection {
-  position: relative; /* Needed for absolute positioning of badge */
+  position: relative;
+  /* Needed for absolute positioning of badge */
 }
 
 .keyboard-status-tag {
@@ -11115,7 +11009,8 @@ onUnmounted(() => {
   border-radius: 3px;
   font-size: 10px;
   white-space: nowrap;
-  z-index: 1100; /* Higher than badge z-index */
+  z-index: 1100;
+  /* Higher than badge z-index */
   margin-bottom: 2px;
 }
 
@@ -11137,6 +11032,7 @@ onUnmounted(() => {
     background-color: #e6f7ff;
     transform: scale(1.02);
   }
+
   100% {
     background-color: transparent;
     transform: scale(1);
@@ -11149,7 +11045,7 @@ onUnmounted(() => {
 }
 
 /* Hide shortcuts when keyboard is disabled */
-.keyboard-status-tag[aria-disabled="true"] ~ * .keyboard-shortcut-badge {
+.keyboard-status-tag[aria-disabled="true"]~* .keyboard-shortcut-badge {
   display: none;
 }
 
@@ -11173,7 +11069,6 @@ onUnmounted(() => {
   color: #1890ff;
   text-decoration: underline dotted;
 }
-
 </style>
 
 <style>
@@ -11203,6 +11098,7 @@ onUnmounted(() => {
 
 /* Trendlog Configuration Modal Styles */
 .database-config-modal {
+
   /* Status Card Styling */
   .database-status-card {
     .card-title {
@@ -11252,7 +11148,8 @@ onUnmounted(() => {
   }
 
   /* Configuration Cards Styling */
-  .config-card, .actions-card {
+  .config-card,
+  .actions-card {
     .card-title {
       font-size: 13px;
       font-weight: 600;
@@ -11311,7 +11208,9 @@ onUnmounted(() => {
 
   .ant-statistic-content {
     font-size: 12px !important;
-  }  /* Compact radio button group */
+  }
+
+  /* Compact radio button group */
   .ant-radio-group-small .ant-radio-button-wrapper {
     font-size: 11px;
     height: 24px;
@@ -11546,6 +11445,7 @@ onUnmounted(() => {
   }
 
   .ant-input-group-compact {
+
     .ant-input,
     .ant-select-selector,
     .ant-input-number-input {
@@ -11610,9 +11510,11 @@ onUnmounted(() => {
 /* Trendlog Configuration Modal Compact Styles */
 .database-modal-compact {
   margin-top: -60px;
-  .ant-modal-header{
+
+  .ant-modal-header {
     margin-bottom: 0px;
   }
+
   /* Status Card Styling */
   .status-card {
     .card-title {
@@ -11662,7 +11564,8 @@ onUnmounted(() => {
   }
 
   /* Configuration Cards Styling */
-  .config-card, .actions-card {
+  .config-card,
+  .actions-card {
     .card-title {
       font-size: 12px;
       font-weight: 600;
