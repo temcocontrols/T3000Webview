@@ -84,7 +84,7 @@ pub extern "C" fn run_server() -> RustError {
 
 use t3_device::t3_ffi_sync_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
 
-/// Load FFI sync interval from APPLICATION_CONFIG table
+/// Load Sampling Interval from APPLICATION_CONFIG table
 async fn load_ffi_sync_interval_from_db() -> Result<u64, Box<dyn std::error::Error>> {
     use crate::entity::application_settings;
     use sea_orm::*;
@@ -153,7 +153,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     let _ = write_structured_log_with_level(
         "T3_Webview_Initialize",
-        &format!("FFI Sync interval loaded: {} seconds ({} minutes)", sync_interval_secs, sync_interval_secs / 60),
+        &format!("Sampling Interval loaded: {} seconds ({} minutes)", sync_interval_secs, sync_interval_secs / 60),
         LogLevel::Info
     );
 

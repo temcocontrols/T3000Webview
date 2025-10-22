@@ -663,7 +663,7 @@ Users can configure the sync interval through the **Database Configuration** mod
 
 1. Service reads `APPLICATION_CONFIG` on startup
 2. If `ffi.sync_interval_secs` not found, inserts default (300 seconds)
-3. Logs: `"FFI Sync interval loaded: 300 seconds (5 minutes)"`
+3. Logs: `"Sampling Interval loaded: 300 seconds (5 minutes)"`
 4. Service starts with configured interval
 
 #### History Tracking

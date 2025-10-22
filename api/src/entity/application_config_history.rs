@@ -2,7 +2,7 @@
 //!
 //! Tracks all changes to APPLICATION_CONFIG for audit trail and rollback.
 //! Used for:
-//! - FFI sync interval changes
+//! - Sampling Interval changes
 //! - Database settings modifications
 //! - Critical configuration changes
 //! - User preference updates

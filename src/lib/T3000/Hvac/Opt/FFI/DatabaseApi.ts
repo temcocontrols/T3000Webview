@@ -123,7 +123,7 @@ export interface CleanupOptions {
 }
 
 /**
- * FFI sync interval configuration interface
+ * Sampling Interval configuration interface
  */
 export interface FfiSyncIntervalConfig {
   interval_secs: number
@@ -131,7 +131,7 @@ export interface FfiSyncIntervalConfig {
 }
 
 /**
- * FFI sync interval update request interface
+ * Sampling Interval update request interface
  */
 export interface FfiSyncIntervalUpdateRequest {
   interval_secs: number
@@ -280,16 +280,16 @@ export class DatabaseConfigAPI {
 }
 
 // =====================================
-// FFI SYNC INTERVAL CONFIGURATION API
+// Sampling Interval CONFIGURATION API
 // =====================================
 
 /**
- * FFI sync interval configuration management class
+ * Sampling Interval configuration management class
  */
 export class FfiSyncConfigAPI {
   /**
-   * Get current FFI sync interval configuration
-   * @returns Promise resolving to current FFI sync interval configuration
+   * Get current Sampling Interval configuration
+   * @returns Promise resolving to current Sampling Interval configuration
    * @throws Error if configuration cannot be loaded
    */
   static async getFfiSyncInterval(): Promise<FfiSyncIntervalConfig> {
@@ -308,17 +308,17 @@ export class FfiSyncConfigAPI {
       const data: FfiSyncIntervalConfig = await response.json()
       return data
     } catch (error) {
-      console.error('Failed to get FFI sync interval:', error)
-      throw new Error('Failed to load FFI sync interval configuration')
+      console.error('Failed to get Sampling Interval:', error)
+      throw new Error('Failed to load Sampling Interval configuration')
     }
   }
 
   /**
-   * Update FFI sync interval configuration
+   * Update Sampling Interval configuration
    * @param interval_secs Interval in seconds (60 to 31536000, i.e., 1 minute to 365 days)
    * @param changed_by Optional: User or system identifier who made the change
    * @param change_reason Optional: Reason for the configuration change
-   * @returns Promise resolving to updated FFI sync interval configuration
+   * @returns Promise resolving to updated Sampling Interval configuration
    * @throws Error if configuration cannot be saved or validation fails
    */
   static async updateFfiSyncInterval(
@@ -354,8 +354,8 @@ export class FfiSyncConfigAPI {
       const data: FfiSyncIntervalConfig = await response.json()
       return data
     } catch (error) {
-      console.error('Failed to update FFI sync interval:', error)
-      throw error instanceof Error ? error : new Error('Failed to save FFI sync interval configuration')
+      console.error('Failed to update Sampling Interval:', error)
+      throw error instanceof Error ? error : new Error('Failed to save Sampling Interval configuration')
     }
   }
 
@@ -1102,7 +1102,7 @@ export function useDatabaseAPI() {
         const result = await ffiSyncAPI.getFfiSyncInterval()
         return result
       } catch (err) {
-        error.value = err instanceof Error ? err.message : 'Failed to get FFI sync interval'
+        error.value = err instanceof Error ? err.message : 'Failed to get Sampling Interval'
         throw err
       } finally {
         isLoading.value = false
@@ -1116,7 +1116,7 @@ export function useDatabaseAPI() {
         const result = await ffiSyncAPI.updateFfiSyncInterval(interval_secs, changed_by, change_reason)
         return result
       } catch (err) {
-        error.value = err instanceof Error ? err.message : 'Failed to update FFI sync interval'
+        error.value = err instanceof Error ? err.message : 'Failed to update Sampling Interval'
         throw err
       } finally {
         isLoading.value = false

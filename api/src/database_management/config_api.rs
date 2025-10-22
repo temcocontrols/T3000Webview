@@ -454,17 +454,17 @@ async fn migrate_from_localstorage(
 }
 
 // =================================================================
-// FFI SYNC INTERVAL ENDPOINTS - Configurable sync interval
+// Sampling Interval ENDPOINTS - Configurable sync interval
 // =================================================================
 
-/// FFI sync interval response
+/// Sampling Interval response
 #[derive(Debug, Serialize)]
 pub struct FfiSyncIntervalResponse {
     pub interval_secs: u64,
     pub last_sync: Option<String>,
 }
 
-/// FFI sync interval update request
+/// Sampling Interval update request
 #[derive(Debug, Deserialize)]
 pub struct UpdateFfiSyncIntervalRequest {
     pub interval_secs: u64,
@@ -486,7 +486,7 @@ pub struct ConfigHistoryEntry {
     pub changed_at: String,
 }
 
-/// Get current FFI sync interval configuration
+/// Get current Sampling Interval configuration
 async fn get_ffi_sync_interval(
     State(state): State<T3AppState>,
 ) -> Result<Json<FfiSyncIntervalResponse>> {
@@ -519,7 +519,7 @@ async fn get_ffi_sync_interval(
     }))
 }
 
-/// Update FFI sync interval configuration
+/// Update Sampling Interval configuration
 async fn update_ffi_sync_interval(
     State(state): State<T3AppState>,
     Json(request): Json<UpdateFfiSyncIntervalRequest>,
@@ -681,7 +681,7 @@ pub fn config_routes() -> axum::Router<T3AppState> {
         .route("/api/config/export", post(export_configs))
         .route("/api/config/import", post(import_configs))
         .route("/api/config/migrate-localstorage", post(migrate_from_localstorage))
-        // FFI sync interval endpoints
+        // Sampling Interval endpoints
         .route("/api/config/ffi-sync-interval", get(get_ffi_sync_interval))
         .route("/api/config/ffi-sync-interval", put(update_ffi_sync_interval))
         .route("/api/config/history", get(get_config_history))

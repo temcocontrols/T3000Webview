@@ -651,12 +651,12 @@
           </div>
         </a-card>
 
-        <!-- FFI Sync Interval Card -->
+        <!-- Sampling Interval Card -->
         <a-card size="small" class="config-card">
           <template #title>
             <span class="card-title">
               <ClockCircleOutlined style="margin-right: 6px; color: #52c41a;" />
-              FFI Sync Interval
+              Sampling Interval
             </span>
           </template>
 
@@ -864,10 +864,10 @@
       </template>
     </a-modal>
 
-    <!-- FFI Sync Interval Change History Modal - Commented Out -->
+    <!-- Sampling Interval Change History Modal - Commented Out -->
     <!-- <a-modal
       v-model:visible="showFfiSyncHistory"
-      title="FFI Sync Interval Change History"
+      title="Sampling Interval Change History"
       :width="700"
       :footer="null"
     >
@@ -1495,7 +1495,7 @@ const databaseConfig = ref<DatabaseConfig>({
   is_active: true
 })
 
-// FFI Sync Interval Configuration
+// Sampling Interval Configuration
 interface FfiSyncConfig {
   interval_preset: string // '5min', '10min', '15min', '20min', '25min', 'custom'
   custom_value: number
@@ -8837,7 +8837,7 @@ onMounted(async () => {
   try {
     await loadDatabaseConfig()
     await loadDatabaseFiles()
-    await loadFfiSyncConfig() // Load FFI sync interval configuration
+    await loadFfiSyncConfig() // Load Sampling Interval configuration
     LogUtil.Info('Database management initialized successfully')
   } catch (error) {
     LogUtil.Error('Failed to initialize database management', error)
@@ -8964,7 +8964,7 @@ const saveDatabaseConfig = async () => {
     // Refresh database files list to show new partitioned files
     await loadDatabaseFiles()
 
-    // Save FFI sync interval configuration
+    // Save Sampling Interval configuration
     await saveFfiSyncConfig()
 
     message.success('Database configuration saved and partitioning applied successfully')
@@ -9000,10 +9000,10 @@ const deleteDbFile = async (fileId: number, fileName: string) => {
 }
 
 // =================================================================
-// FFI SYNC INTERVAL CONFIGURATION METHODS
+// Sampling Interval CONFIGURATION METHODS
 // =================================================================
 
-// Load FFI sync interval configuration from API
+// Load Sampling Interval configuration from API
 const loadFfiSyncConfig = async () => {
   try {
     const response = await fetch(`/api/config/ffi-sync-interval`)
@@ -9139,7 +9139,7 @@ const startFfiCountdownTimer = () => {
   }, 1000)
 }
 
-// Save FFI sync interval configuration (included in saveDatabaseConfig)
+// Save Sampling Interval configuration (included in saveDatabaseConfig)
 const saveFfiSyncConfig = async () => {
   try {
     const interval_secs = convertToSeconds()
@@ -9166,11 +9166,11 @@ const saveFfiSyncConfig = async () => {
     ffiSyncConfig.value.interval_secs = data.interval_secs
     ffiSyncConfig.value.next_sync_in = data.interval_secs
 
-    message.success(`FFI sync interval updated to ${formatInterval(interval_secs)}`)
-    LogUtil.Info('FFI sync interval saved', data)
+    message.success(`Sampling Interval updated to ${formatInterval(interval_secs)}`)
+    LogUtil.Info('Sampling Interval saved', data)
     return true
   } catch (error) {
-    message.error('Failed to save FFI sync interval')
+    message.error('Failed to save Sampling Interval')
     LogUtil.Error('Failed to save FFI sync config', error)
     return false
   }
