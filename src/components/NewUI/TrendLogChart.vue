@@ -173,12 +173,12 @@
           </a-dropdown>
         </a-flex> -->
 
-        <!-- Database Configuration -->
+        <!-- Trendlog Configuration -->
         <a-flex align="center" class="control-group">
-          <a-button @click="showDatabaseConfig = true" size="small" title="Database Configuration"
+          <a-button @click="showDatabaseConfig = true" size="small" title="Trendlog Configuration"
             style="display: flex; align-items: center; gap: 2px;">
             <DatabaseOutlined />
-            <span>Data</span>
+            <span>Config</span>
           </a-button>
         </a-flex>
 
@@ -535,7 +535,7 @@
       </div>
     </a-modal>
 
-    <!-- Database Configuration Modal -->
+    <!-- Trendlog Configuration Modal -->
     <a-modal
       v-model:visible="showDatabaseConfig"
       title="Database Setting"
@@ -1434,7 +1434,7 @@ const showItemSelector = ref(false)
 // Loading state for database operations
 const isSavingSelections = ref(false)
 
-// Database configuration modal state
+// Trendlog Configuration modal state
 const showDatabaseConfig = ref(false)
 const isBackingUp = ref(false)
 const isOptimizing = ref(false)
@@ -1462,7 +1462,7 @@ const loadDatabaseFiles = async () => {
   }
 }
 
-// Load database configuration from API
+// Load Trendlog Configuration from API
 const loadDatabaseConfig = async () => {
   try {
     const config = await databaseService.config.getConfig()
@@ -1484,7 +1484,7 @@ const databaseInfo = ref({
   location: '\\Database\\webview_t3_device.db'
 })
 
-// Database configuration settings (flat structure matching Rust API)
+// Trendlog Configuration settings (flat structure matching Rust API)
 const databaseConfig = ref<DatabaseConfig>({
   strategy: 'Monthly', // FiveMinutes, Daily, Weekly, Monthly, Quarterly, Custom, CustomMonths
   custom_days: 30, // for Custom strategy
@@ -8880,7 +8880,7 @@ onMounted(async () => {
   })
 })
 
-// Database configuration methods
+// Trendlog Configuration methods
 const onAutoBackupToggle = (enabled: boolean) => {
   LogUtil.Info('Database auto backup toggled', { enabled })
   // Add logic to enable/disable auto backup
@@ -8951,7 +8951,7 @@ const saveDatabaseConfig = async () => {
       return
     }
 
-    LogUtil.Info('Saving database configuration...', databaseConfig.value)
+    LogUtil.Info('Saving Trendlog Configuration...', databaseConfig.value)
 
     // Save configuration via API
     const savedConfig = await databaseService.config.updateConfig(databaseConfig.value)
@@ -8967,12 +8967,12 @@ const saveDatabaseConfig = async () => {
     // Save Sampling Interval configuration
     await saveFfiSyncConfig()
 
-    message.success('Database configuration saved and partitioning applied successfully')
+    message.success('Trendlog Configuration saved and partitioning applied successfully')
     showDatabaseConfig.value = false
-    LogUtil.Info('Database configuration saved')
+    LogUtil.Info('Trendlog Configuration saved')
   } catch (error) {
-    message.error('Failed to save database configuration')
-    LogUtil.Error('Failed to save database configuration', error)
+    message.error('Failed to save Trendlog Configuration')
+    LogUtil.Error('Failed to save Trendlog Configuration', error)
   } finally {
     isSaving.value = false
   }
@@ -9156,7 +9156,7 @@ const saveFfiSyncConfig = async () => {
       body: JSON.stringify({
         interval_secs,
         changed_by: 'user',
-        change_reason: 'Updated via Database Configuration UI'
+        change_reason: 'Updated via Trendlog Configuration UI'
       })
     })
 
@@ -11198,7 +11198,7 @@ onUnmounted(() => {
   background-color: rgba(102, 102, 102, 0.05);
 }
 
-/* Database Configuration Modal Styles */
+/* Trendlog Configuration Modal Styles */
 .database-config-modal {
   /* Status Card Styling */
   .database-status-card {
@@ -11604,7 +11604,7 @@ onUnmounted(() => {
   }
 }
 
-/* Database Configuration Modal Compact Styles */
+/* Trendlog Configuration Modal Compact Styles */
 .database-modal-compact {
   margin-top: -60px;
   .ant-modal-header{

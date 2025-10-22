@@ -424,7 +424,7 @@ sequenceDiagram
 ### Environment Variables
 
 ```env
-# Database Configuration
+# Trendlog Configuration
 DATABASE_URL=sqlite:///path/to/database.db
 DATABASE_POOL_SIZE=10
 

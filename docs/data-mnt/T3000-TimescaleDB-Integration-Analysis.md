@@ -1301,7 +1301,7 @@ Based on your T3000 architecture and the existing SQLite approach, I recommend *
 
 #### Implementation Strategy:
 ```typescript
-// T3000 Database Configuration
+// T3000 Trendlog Configuration
 export const DatabaseConfig = {
   // Embedded TimescaleDB (similar to current SQLite setup)
   timescale: {
@@ -1755,7 +1755,7 @@ T3000Webview/
 |-----------|------|---------------------------|---------|
 | **PostgreSQL Binaries** | ~180 MB | ✅ **REQUIRED** | Core database engine |
 | **TimescaleDB Extension** | ~15 MB | ✅ **REQUIRED** | Time-series functionality |
-| **Configuration Files** | ~50 KB | ✅ **REQUIRED** | Database configuration |
+| **Configuration Files** | ~50 KB | ✅ **REQUIRED** | Trendlog Configuration |
 | **Initial Schema Scripts** | ~10 KB | ✅ **REQUIRED** | Table creation scripts |
 | **Empty Database** | ~50 MB | ❌ *Dynamic* | Created on first run |
 | **Data Files** | Variable | ❌ *Dynamic* | User's sensor data |

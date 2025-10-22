@@ -1,7 +1,7 @@
 /**
  * T3000 Database Management API Service
  *
- * Provides comprehensive database configuration and file management APIs
+ * Provides comprehensive Trendlog Configuration and file management APIs
  * for the T3000 WebView application's database partitioning system.
  *
  * TypeScript implementation with full type safety and enhanced error handling.
@@ -39,7 +39,7 @@ export interface DatabasePartitionConfig {
 }
 
 /**
- * Complete database configuration interface (same as DatabasePartitionConfig)
+ * Complete Trendlog Configuration interface (same as DatabasePartitionConfig)
  */
 export type DatabaseConfig = DatabasePartitionConfig
 
@@ -153,16 +153,16 @@ export interface FfiSyncConfigHistory {
 }
 
 // =====================================
-// DATABASE CONFIGURATION API
+// Trendlog Configuration API
 // =====================================
 
 /**
- * Database configuration management class
+ * Trendlog Configuration management class
  */
 export class DatabaseConfigAPI {
   /**
-   * Get current database configuration
-   * @returns Promise resolving to current database configuration
+   * Get current Trendlog Configuration
+   * @returns Promise resolving to current Trendlog Configuration
    * @throws Error if configuration cannot be loaded
    */
   static async getConfig(): Promise<DatabaseConfig> {
@@ -182,13 +182,13 @@ export class DatabaseConfigAPI {
       return data
     } catch (error) {
       console.error('Failed to get database config:', error)
-      throw new Error('Failed to load database configuration')
+      throw new Error('Failed to load Trendlog Configuration')
     }
   }
 
   /**
-   * Update database configuration
-   * @param config Database configuration object to update
+   * Update Trendlog Configuration
+   * @param config Trendlog Configuration object to update
    * @returns Promise resolving to updated configuration
    * @throws Error if configuration cannot be saved
    */
@@ -210,7 +210,7 @@ export class DatabaseConfigAPI {
       return data
     } catch (error) {
       console.error('Failed to update database config:', error)
-      throw new Error('Failed to save database configuration')
+      throw new Error('Failed to save Trendlog Configuration')
     }
   }
 
@@ -774,7 +774,7 @@ export class DatabaseUtils {
   }
 
   /**
-   * Validate database configuration
+   * Validate Trendlog Configuration
    * @param config Configuration object to validate
    * @returns Validation result with success flag and error message
    */
@@ -913,7 +913,7 @@ export class DatabaseManagementService {
 
   /**
    * Get default configuration
-   * @returns Default database configuration object
+   * @returns Default Trendlog Configuration object
    */
   getDefaultConfig(): DatabaseConfig {
     return {

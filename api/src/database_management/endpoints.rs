@@ -31,7 +31,7 @@ use super::{
         .route("/db_management/settings/:category/:key", delete(delete_setting))
         .route("/db_management/settings/migrate", post(migrate_localstorage))
 
-        // Database Configuration endpoints (NEW)
+        // Trendlog Configuration endpoints (NEW)
         .route("/api/database/config", get(get_database_config))
         .route("/api/database/config", put(update_database_config))
         .route("/api/database/initialize", post(initialize_database_partitioning))
@@ -471,10 +471,10 @@ async fn backup_database(
 }
 
 // ============================================================================
-// NEW DATABASE CONFIGURATION ENDPOINTS
+// NEW Trendlog Configuration ENDPOINTS
 // ============================================================================
 
-/// Get current database configuration
+/// Get current Trendlog Configuration
 async fn get_database_config(
     State(app_state): State<T3AppState>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
@@ -486,7 +486,7 @@ async fn get_database_config(
     Ok(Json(config))
 }
 
-/// Update database configuration
+/// Update Trendlog Configuration
 async fn update_database_config(
     State(app_state): State<T3AppState>,
     Json(config): Json<database_partition_config::DatabasePartitionConfig>,

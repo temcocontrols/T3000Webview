@@ -1204,7 +1204,7 @@ app.start().catch(console.error);
    - Add error handling and transaction management
 
 2. **Production Preparation**
-   - Optimize database configuration for time-series workloads
+   - Optimize Trendlog Configuration for time-series workloads
    - Set up backup and recovery procedures
    - Create maintenance scripts for data cleanup
 

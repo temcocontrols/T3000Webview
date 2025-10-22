@@ -568,7 +568,7 @@ Content-Type: application/json
 {
   "interval_secs": 600,
   "changed_by": "user",
-  "change_reason": "Updated via Database Configuration UI"
+  "change_reason": "Updated via Trendlog Configuration UI"
 }
 
 Response:
@@ -592,7 +592,7 @@ Response:
     "old_value_display": "5 minutes",
     "new_value_display": "10 minutes",
     "changed_by": "user",
-    "change_reason": "Updated via Database Configuration UI",
+    "change_reason": "Updated via Trendlog Configuration UI",
     "changed_at": "2025-10-22 10:30:15"
   }
 ]
@@ -607,7 +607,7 @@ Response:
 
 #### UI Configuration
 
-Users can configure the sync interval through the **Database Configuration** modal in TrendLogChart:
+Users can configure the sync interval through the **Trendlog Configuration** modal in TrendLogChart:
 
 **Preset Options:**
 - 5 minutes (default)
@@ -730,7 +730,7 @@ CREATE TABLE APPLICATION_CONFIG_HISTORY (
 - **Trendlog Service**: `api/src/t3_device/trendlog_data_service.rs`
 - **Logger**: `api/src/logger.rs`
 - **C++ Integration**: `T3000-Source/BacnetWebView.cpp` (HandleWebViewMsg function)
-- **Frontend UI**: `src/components/NewUI/TrendLogChart.vue` (Database Configuration modal)
+- **Frontend UI**: `src/components/NewUI/TrendLogChart.vue` (Trendlog Configuration modal)
 
 ## Future Enhancements
 

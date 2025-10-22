@@ -540,13 +540,13 @@ fn format_path_for_attach(file_path: &std::path::Path) -> String {
     }
 }
 
-/// Database Configuration Service
+/// Trendlog Configuration Service
 ///
 /// Manages database partitioning configuration and file management
 pub struct DatabaseConfigService;
 
 impl DatabaseConfigService {
-    /// Get current database configuration
+    /// Get current Trendlog Configuration
     pub async fn get_config(db: &DatabaseConnection) -> Result<database_partition_config::DatabasePartitionConfig> {
         let config = database_partition_config::Entity::find()
             .filter(database_partition_config::Column::IsActive.eq(true))
@@ -573,7 +573,7 @@ impl DatabaseConfigService {
         }
     }
 
-    /// Save database configuration
+    /// Save Trendlog Configuration
     pub async fn save_config(
         db: &DatabaseConnection,
         config: &database_partition_config::DatabasePartitionConfig
