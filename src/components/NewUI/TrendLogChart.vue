@@ -675,8 +675,8 @@
               <a-radio value="5min">5 min</a-radio>
               <a-radio value="10min">10 min</a-radio>
               <a-radio value="15min">15 min</a-radio>
-              <a-radio value="30min">30 min</a-radio>
-              <a-radio value="1hour">1 hour</a-radio>
+              <a-radio value="20min">20 min</a-radio>
+              <a-radio value="25min">25 min</a-radio>
               <a-radio value="custom">Custom</a-radio>
             </a-radio-group>
 
@@ -695,16 +695,7 @@
                 style="width: 70px;"
                 @change="onCustomIntervalChange"
               />
-              <a-select
-                v-model:value="ffiSyncConfig.custom_unit"
-                size="small"
-                style="width: 90px;"
-                @change="onCustomIntervalChange"
-              >
-                <a-select-option value="minutes">Minutes</a-select-option>
-                <a-select-option value="hours">Hours</a-select-option>
-                <a-select-option value="days">Days</a-select-option>
-              </a-select>
+              <span style="font-size: 12px; color: #666;">minutes</span>
             </div>
 
             <!-- Current Status -->
@@ -1505,9 +1496,9 @@ const databaseConfig = ref<DatabaseConfig>({
 
 // FFI Sync Interval Configuration
 interface FfiSyncConfig {
-  interval_preset: string // '5min', '10min', '15min', '30min', '1hour', 'custom'
+  interval_preset: string // '5min', '10min', '15min', '20min', '25min', 'custom'
   custom_value: number
-  custom_unit: string // 'minutes', 'hours', 'days'
+  custom_unit: 'minutes' // Only minutes supported
   interval_secs: number // Actual value in seconds
   last_sync: string | null
   next_sync_in: number // Countdown in seconds
@@ -9026,8 +9017,8 @@ const loadFfiSyncConfig = async () => {
       300: '5min',
       600: '10min',
       900: '15min',
-      1800: '30min',
-      3600: '1hour'
+      1200: '20min',
+      1500: '25min'
     }
 
     ffiSyncConfig.value.interval_preset = presets[data.interval_secs] || 'custom'
@@ -9046,18 +9037,10 @@ const loadFfiSyncConfig = async () => {
   }
 }
 
-// Convert seconds to custom value and unit
+// Convert seconds to custom value (always in minutes)
 const convertSecondsToCustom = (secs: number) => {
-  if (secs >= 86400 && secs % 86400 === 0) {
-    ffiSyncConfig.value.custom_value = secs / 86400
-    ffiSyncConfig.value.custom_unit = 'days'
-  } else if (secs >= 3600 && secs % 3600 === 0) {
-    ffiSyncConfig.value.custom_value = secs / 3600
-    ffiSyncConfig.value.custom_unit = 'hours'
-  } else {
-    ffiSyncConfig.value.custom_value = secs / 60
-    ffiSyncConfig.value.custom_unit = 'minutes'
-  }
+  ffiSyncConfig.value.custom_value = secs / 60
+  ffiSyncConfig.value.custom_unit = 'minutes'
 }
 
 // Convert custom value to seconds
@@ -9066,21 +9049,16 @@ const convertToSeconds = (): number => {
     '5min': 300,
     '10min': 600,
     '15min': 900,
-    '30min': 1800,
-    '1hour': 3600
+    '20min': 1200,
+    '25min': 1500
   }
 
   if (ffiSyncConfig.value.interval_preset !== 'custom') {
     return presetValues[ffiSyncConfig.value.interval_preset] || 300
   }
 
-  const unitMultipliers: Record<string, number> = {
-    'minutes': 60,
-    'hours': 3600,
-    'days': 86400
-  }
-
-  return ffiSyncConfig.value.custom_value * unitMultipliers[ffiSyncConfig.value.custom_unit]
+  // Custom interval: always in minutes
+  return ffiSyncConfig.value.custom_value * 60
 }
 
 // Handle preset interval change

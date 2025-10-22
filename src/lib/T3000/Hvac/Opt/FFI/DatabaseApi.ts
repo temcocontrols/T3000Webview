@@ -402,33 +402,21 @@ export class FfiSyncConfigAPI {
   }
 
   /**
-   * Convert seconds to custom value and unit for UI display
+   * Convert seconds to custom value in minutes for UI display
    * @param seconds Number of seconds
-   * @returns Object with value and unit (minutes/hours/days)
+   * @returns Object with value in minutes and unit fixed to 'minutes'
    */
-  static convertSecondsToCustom(seconds: number): { value: number; unit: 'minutes' | 'hours' | 'days' } {
-    if (seconds >= 86400 && seconds % 86400 === 0) {
-      return { value: seconds / 86400, unit: 'days' }
-    } else if (seconds >= 3600 && seconds % 3600 === 0) {
-      return { value: seconds / 3600, unit: 'hours' }
-    } else {
-      return { value: seconds / 60, unit: 'minutes' }
-    }
+  static convertSecondsToCustom(seconds: number): { value: number; unit: 'minutes' } {
+    return { value: seconds / 60, unit: 'minutes' }
   }
 
   /**
-   * Convert custom value and unit to seconds
-   * @param value Numeric value
-   * @param unit Unit type ('minutes', 'hours', or 'days')
+   * Convert custom value (in minutes) to seconds
+   * @param value Numeric value in minutes
    * @returns Total seconds
    */
-  static convertToSeconds(value: number, unit: 'minutes' | 'hours' | 'days'): number {
-    const multipliers = {
-      minutes: 60,
-      hours: 3600,
-      days: 86400
-    }
-    return value * multipliers[unit]
+  static convertToSeconds(value: number): number {
+    return value * 60
   }
 
   /**
@@ -440,8 +428,8 @@ export class FfiSyncConfigAPI {
       { label: '5 minutes', value: 300 },
       { label: '10 minutes', value: 600 },
       { label: '15 minutes', value: 900 },
-      { label: '30 minutes', value: 1800 },
-      { label: '1 hour', value: 3600 }
+      { label: '20 minutes', value: 1200 },
+      { label: '25 minutes', value: 1500 }
     ]
   }
 
@@ -453,8 +441,8 @@ export class FfiSyncConfigAPI {
   static getWarningMessage(seconds: number): string | null {
     if (seconds < 300) {
       return 'Warning: Frequent syncs (< 5 min) may impact performance'
-    } else if (seconds > 3600) {
-      return 'Warning: Long intervals (> 1 hour) may delay data updates'
+    } else if (seconds > 1500) {
+      return 'Warning: Long intervals (> 25 min) may delay data updates'
     }
     return null
   }
