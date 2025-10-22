@@ -338,7 +338,7 @@ impl T3000MainService {
         logger.info(&format!("🚀 Starting T3000 LOGGING_DATA sync service with {}-second intervals", self.config.sync_interval_secs));
         logger.info("⚡ Running immediate sync on startup, then continuing with periodic sync...");
 
-        let config = self.config.clone();
+        let mut config = self.config.clone(); // Make config mutable for dynamic reload
         let is_running = self.is_running.clone();
 
         tokio::spawn(async move {
@@ -367,6 +367,17 @@ impl T3000MainService {
 
             // Continue with periodic sync loop
             while is_running.load(Ordering::Relaxed) {
+                // Reload sync interval from database before each sleep cycle (dynamic configuration)
+                let current_interval = Self::reload_sync_interval_from_db().await.unwrap_or(config.sync_interval_secs);
+
+                // Log if interval changed
+                if current_interval != config.sync_interval_secs {
+                    task_logger.info(&format!("🔄 Sync interval updated: {}s ({} min) → {}s ({} min)",
+                        config.sync_interval_secs, config.sync_interval_secs / 60,
+                        current_interval, current_interval / 60));
+                    config.sync_interval_secs = current_interval;
+                }
+
                 // Sleep until next sync interval
                 task_logger.info(&format!("⏰ Waiting {} seconds until next sync cycle", config.sync_interval_secs));
                 sleep(Duration::from_secs(config.sync_interval_secs)).await;
@@ -422,6 +433,33 @@ impl T3000MainService {
     /// Perform one-time logging data sync (can be called independently)
     pub async fn sync_once(&self) -> Result<(), AppError> {
         Self::sync_logging_data_static(self.config.clone()).await
+    }
+
+    /// Reload sync interval from APPLICATION_CONFIG table (dynamic configuration)
+    /// This allows changing the sync interval without restarting the service
+    async fn reload_sync_interval_from_db() -> Result<u64, AppError> {
+        use crate::entity::application_settings;
+
+        let db = establish_t3_device_connection().await?;
+
+        // Query APPLICATION_CONFIG for ffi.sync_interval_secs
+        let config = application_settings::Entity::find()
+            .filter(application_settings::Column::ConfigKey.eq("ffi.sync_interval_secs"))
+            .one(&db)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to query sync interval: {}", e)))?;
+
+        match config {
+            Some(cfg) => {
+                let interval = cfg.config_value.parse::<u64>()
+                    .map_err(|_| AppError::ParseError("Invalid sync interval value".to_string()))?;
+                Ok(interval)
+            }
+            None => {
+                // Config not found, return default
+                Ok(300) // 5 minutes default
+            }
+        }
     }
 
     /// Sync trendlog configurations for all devices (ONE-TIME operation)

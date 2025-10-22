@@ -14,6 +14,7 @@ pub mod user;
 // ============================================================================
 
 pub mod application_settings;
+pub mod application_config_history;
 pub mod database_partitions;
 pub mod database_partition_config;
 pub mod database_files;

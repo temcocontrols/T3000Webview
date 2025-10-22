@@ -1,5 +1,6 @@
 use std::panic;
 use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
+use db_connection::establish_t3_device_connection;
 
 pub mod app_state;
 pub mod auth;
@@ -83,6 +84,51 @@ pub extern "C" fn run_server() -> RustError {
 
 use t3_device::t3_ffi_sync_service::{initialize_logging_service, start_logging_sync, T3000MainConfig};
 
+/// Load FFI sync interval from APPLICATION_CONFIG table
+async fn load_ffi_sync_interval_from_db() -> Result<u64, Box<dyn std::error::Error>> {
+    use crate::entity::application_settings;
+    use sea_orm::*;
+
+    let db = establish_t3_device_connection().await?;
+
+    // Query APPLICATION_CONFIG for ffi.sync_interval_secs
+    let config = application_settings::Entity::find()
+        .filter(application_settings::Column::ConfigKey.eq("ffi.sync_interval_secs"))
+        .one(&db)
+        .await?;
+
+    match config {
+        Some(cfg) => {
+            let interval = cfg.config_value.parse::<u64>().unwrap_or(300);
+            Ok(interval)
+        }
+        None => {
+            // Config not found, insert default value
+            let default_config = application_settings::ActiveModel {
+                config_key: Set("ffi.sync_interval_secs".to_string()),
+                config_value: Set("300".to_string()),
+                config_type: Set("number".to_string()),
+                description: Set(Some("FFI Sync Service interval in seconds (default: 300 = 5 minutes)".to_string())),
+                is_system: Set(false),
+                user_id: Set(None),
+                device_serial: Set(None),
+                panel_id: Set(None),
+                version: Set(None),
+                size_bytes: Set(Some(3)), // "300" = 3 bytes
+                created_at: Set(chrono::Utc::now().naive_utc()),
+                updated_at: Set(chrono::Utc::now().naive_utc()),
+                ..Default::default()
+            };
+
+            application_settings::Entity::insert(default_config)
+                .exec(&db)
+                .await?;
+
+            Ok(300) // Return default
+        }
+    }
+}
+
 /// Start all T3000 services (HTTP + WebSocket)
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     // Log to file for headless service
@@ -102,8 +148,17 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         let _ = write_structured_log_with_level("T3_Webview_Initialize", &success_msg, LogLevel::Info);
     }
 
-    // Initialize T3000 Main Service
+    // Initialize T3000 Main Service with dynamic sync interval from database
+    let sync_interval_secs = load_ffi_sync_interval_from_db().await.unwrap_or(300); // Default 5 minutes
+
+    let _ = write_structured_log_with_level(
+        "T3_Webview_Initialize",
+        &format!("FFI Sync interval loaded: {} seconds ({} minutes)", sync_interval_secs, sync_interval_secs / 60),
+        LogLevel::Info
+    );
+
     let main_service_config = T3000MainConfig {
+        sync_interval_secs,
         auto_start: false,  // We'll start it manually in background task below
         ..T3000MainConfig::default()
     };

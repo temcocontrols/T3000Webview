@@ -453,9 +453,220 @@ async fn migrate_from_localstorage(
     }))
 }
 
+// =================================================================
+// FFI SYNC INTERVAL ENDPOINTS - Configurable sync interval
+// =================================================================
+
+/// FFI sync interval response
+#[derive(Debug, Serialize)]
+pub struct FfiSyncIntervalResponse {
+    pub interval_secs: u64,
+    pub last_sync: Option<String>,
+}
+
+/// FFI sync interval update request
+#[derive(Debug, Deserialize)]
+pub struct UpdateFfiSyncIntervalRequest {
+    pub interval_secs: u64,
+    pub changed_by: Option<String>,
+    pub change_reason: Option<String>,
+}
+
+/// Configuration history entry for display
+#[derive(Debug, Serialize)]
+pub struct ConfigHistoryEntry {
+    pub id: i32,
+    pub config_key: String,
+    pub old_value: Option<String>,
+    pub new_value: String,
+    pub old_value_display: String,
+    pub new_value_display: String,
+    pub changed_by: String,
+    pub change_reason: Option<String>,
+    pub changed_at: String,
+}
+
+/// Get current FFI sync interval configuration
+async fn get_ffi_sync_interval(
+    State(state): State<T3AppState>,
+) -> Result<Json<FfiSyncIntervalResponse>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    // Get current interval from APPLICATION_CONFIG
+    let config = ApplicationConfigService::get_config(
+        db,
+        "ffi.sync_interval_secs",
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    let interval_secs = match config {
+        Some(cfg) => cfg.config_value.parse::<u64>().unwrap_or(300),
+        None => 300, // Default to 5 minutes
+    };
+
+    // TODO: Get last sync time from T3000MainService status
+    let last_sync = None;
+
+    Ok(Json(FfiSyncIntervalResponse {
+        interval_secs,
+        last_sync,
+    }))
+}
+
+/// Update FFI sync interval configuration
+async fn update_ffi_sync_interval(
+    State(state): State<T3AppState>,
+    Json(request): Json<UpdateFfiSyncIntervalRequest>,
+) -> Result<Json<FfiSyncIntervalResponse>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    // Validate interval range (1 minute to 365 days)
+    const MIN_INTERVAL: u64 = 60;          // 1 minute
+    const MAX_INTERVAL: u64 = 31536000;    // 365 days
+
+    if request.interval_secs < MIN_INTERVAL || request.interval_secs > MAX_INTERVAL {
+        return Err(crate::error::Error::ValidationError(
+            format!("Interval must be between {} and {} seconds (1 minute to 365 days)", MIN_INTERVAL, MAX_INTERVAL)
+        ));
+    }
+
+    // Get old value for history
+    let old_config = ApplicationConfigService::get_config(
+        db,
+        "ffi.sync_interval_secs",
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    let old_value = old_config.as_ref().map(|c| c.config_value.clone());
+
+    // Update configuration
+    let new_value = serde_json::Value::String(request.interval_secs.to_string());
+    ApplicationConfigService::set_config(
+        db,
+        "ffi.sync_interval_secs".to_string(),
+        new_value,
+        None,
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    // Log change to APPLICATION_CONFIG_HISTORY
+    use crate::entity::application_config_history;
+    let history_entry = application_config_history::ActiveModel {
+        id: NotSet,
+        config_key: Set("ffi.sync_interval_secs".to_string()),
+        old_value: Set(old_value),
+        new_value: Set(request.interval_secs.to_string()),
+        changed_by: Set(request.changed_by.or(Some("api".to_string()))),
+        change_reason: Set(request.change_reason),
+        changed_at: Set(chrono::Utc::now().naive_utc()),
+    };
+
+    application_config_history::Entity::insert(history_entry)
+        .exec(db)
+        .await
+        .map_err(|e| crate::error::Error::DatabaseError(format!("Failed to log config change: {}", e)))?;
+
+    Ok(Json(FfiSyncIntervalResponse {
+        interval_secs: request.interval_secs,
+        last_sync: None,
+    }))
+}
+
+/// Get configuration change history
+async fn get_config_history(
+    State(state): State<T3AppState>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<ConfigHistoryEntry>>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    let limit = params
+        .get("limit")
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(100);
+
+    let config_key = params.get("config_key");
+
+    use crate::entity::application_config_history;
+
+    let mut query = application_config_history::Entity::find()
+        .order_by_desc(application_config_history::Column::ChangedAt);
+
+    if let Some(key) = config_key {
+        query = query.filter(application_config_history::Column::ConfigKey.eq(key));
+    }
+
+    let history = query
+        .limit(limit)
+        .all(db)
+        .await
+        .map_err(|e| crate::error::Error::DatabaseError(format!("Failed to fetch config history: {}", e)))?;
+
+    // Convert to display format
+    let entries: Vec<ConfigHistoryEntry> = history
+        .into_iter()
+        .map(|h| {
+            let old_display = h.old_value.as_ref()
+                .and_then(|v| format_interval_value(v))
+                .unwrap_or_else(|| "(not set)".to_string());
+
+            let new_display = format_interval_value(&h.new_value)
+                .unwrap_or_else(|| h.new_value.clone());
+
+            ConfigHistoryEntry {
+                id: h.id,
+                config_key: h.config_key,
+                old_value: h.old_value,
+                new_value: h.new_value,
+                old_value_display: old_display,
+                new_value_display: new_display,
+                changed_by: h.changed_by.unwrap_or_else(|| "unknown".to_string()),
+                change_reason: h.change_reason,
+                changed_at: h.changed_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+            }
+        })
+        .collect();
+
+    Ok(Json(entries))
+}
+
+/// Format interval value for human-readable display
+fn format_interval_value(value: &str) -> Option<String> {
+    if let Ok(secs) = value.parse::<u64>() {
+        if secs < 60 {
+            Some(format!("{} seconds", secs))
+        } else if secs < 3600 {
+            Some(format!("{} minutes", secs / 60))
+        } else if secs < 86400 {
+            Some(format!("{} hours", secs / 3600))
+        } else {
+            Some(format!("{} days", secs / 86400))
+        }
+    } else {
+        None
+    }
+}
+
 /// Create router with all config endpoints
 pub fn config_routes() -> axum::Router<T3AppState> {
-    use axum::routing::{get, post, delete};
+    use axum::routing::{get, post, delete, put};
 
     axum::Router::new()
         .route("/api/config/:key", get(get_config))
@@ -470,6 +681,10 @@ pub fn config_routes() -> axum::Router<T3AppState> {
         .route("/api/config/export", post(export_configs))
         .route("/api/config/import", post(import_configs))
         .route("/api/config/migrate-localstorage", post(migrate_from_localstorage))
+        // FFI sync interval endpoints
+        .route("/api/config/ffi-sync-interval", get(get_ffi_sync_interval))
+        .route("/api/config/ffi-sync-interval", put(update_ffi_sync_interval))
+        .route("/api/config/history", get(get_config_history))
 }
 
 

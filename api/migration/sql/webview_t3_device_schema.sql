@@ -428,6 +428,19 @@ CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG (
     UNIQUE(config_key, user_id, device_serial, panel_id)
 );
 
+-- Application Configuration History Table
+-- Tracks all changes to APPLICATION_CONFIG for audit trail and rollback
+-- Used for FFI sync interval changes, database settings, and other critical config modifications
+CREATE TABLE IF NOT EXISTS APPLICATION_CONFIG_HISTORY (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_key TEXT NOT NULL,           -- Configuration key that was changed
+    old_value TEXT,                     -- Previous value (NULL for new entries)
+    new_value TEXT NOT NULL,            -- New value after change
+    changed_by TEXT,                    -- Username or "system" for automatic changes
+    change_reason TEXT,                 -- Optional reason/comment for the change
+    changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Database Partitions Table
 -- Tracks active database partitions and their status
 CREATE TABLE IF NOT EXISTS database_partitions (
@@ -468,6 +481,11 @@ CREATE INDEX IF NOT EXISTS idx_application_config_user ON APPLICATION_CONFIG(use
 CREATE INDEX IF NOT EXISTS idx_application_config_device ON APPLICATION_CONFIG(device_serial);
 CREATE INDEX IF NOT EXISTS idx_application_config_size ON APPLICATION_CONFIG(size_bytes);
 
+-- Indexes for APPLICATION_CONFIG_HISTORY
+CREATE INDEX IF NOT EXISTS idx_application_config_history_key ON APPLICATION_CONFIG_HISTORY(config_key);
+CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_at ON APPLICATION_CONFIG_HISTORY(changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_application_config_history_changed_by ON APPLICATION_CONFIG_HISTORY(changed_by);
+
 -- Indexes for database_partitions
 CREATE INDEX IF NOT EXISTS idx_database_partitions_name ON database_partitions(partition_name);
 CREATE INDEX IF NOT EXISTS idx_database_partitions_identifier ON database_partitions(partition_identifier);
@@ -491,7 +509,8 @@ INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type,
 ('database.compression_enabled', 'false', 'boolean', 'Enable database compression', 1, NULL, NULL, NULL),
 ('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1, NULL, NULL, NULL),
 ('ui.theme', 'light', 'string', 'Application theme preference', 0, NULL, NULL, NULL),
-('ui.language', 'en', 'string', 'Application language', 0, NULL, NULL, NULL);
+('ui.language', 'en', 'string', 'Application language', 0, NULL, NULL, NULL),
+('ffi.sync_interval_secs', '300', 'number', 'FFI Sync Service interval in seconds (default: 300 = 5 minutes, range: 60-31536000)', 0, NULL, NULL, NULL);
 
 -- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
 
