@@ -17,9 +17,10 @@ use serde_json::Value as JsonValue;
 use tracing::{info, warn, error, debug};
 use crate::entity::t3_device::{
     devices, input_points, output_points, variable_points,
-    trendlog_data
+    trendlog_data, trendlog_data_detail
 };
 use crate::t3_device::constants::{DATA_SOURCE_FFI_SYNC, CREATED_BY_FFI_SYNC_SERVICE};
+use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
@@ -199,6 +200,14 @@ fn call_get_device_network_config(panel_id: i32, buffer: &mut [u8]) -> Result<i3
 
 /// Global main service instance
 static MAIN_SERVICE: OnceCell<Arc<T3000MainService>> = OnceCell::new();
+
+/// Global parent cache for trendlog split-table optimization
+static TRENDLOG_PARENT_CACHE: OnceCell<TrendlogParentCache> = OnceCell::new();
+
+/// Get or initialize the trendlog parent cache
+fn get_trendlog_cache() -> &'static TrendlogParentCache {
+    TRENDLOG_PARENT_CACHE.get_or_init(|| TrendlogParentCache::new(1000))
+}
 
 /// Configuration for the main T3000 service
 #[derive(Debug, Clone)]
@@ -989,31 +998,54 @@ impl T3000MainService {
 
         for (input_index, point) in device_data.input_points.iter().enumerate() {
             let units = Self::derive_units_from_range(point.range);
-            let trend_model = trendlog_data::ActiveModel {
-                serial_number: Set(serial_number),
-                panel_id: Set(device_data.device_info.panel_id),
-                point_id: Set(point.id.clone().unwrap_or_else(|| format!("IN{}", point.index))), // Use string ID from JSON like "IN1", fallback to "IN{index}"
-                point_index: Set(point.index as i32), // Use numeric index from JSON
-                point_type: Set("INPUT".to_string()),
-                logging_time: Set(device_data.device_info.input_logging_time.clone()),
-                logging_time_fmt: Set(Self::format_unix_timestamp_to_local(&device_data.device_info.input_logging_time)),
-                value: Set(point.value.to_string()),
-                range_field: Set(Some(point.range.to_string())),
-                digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-                units: Set(Some(units)),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
-                sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+
+            // Step 1: Get or create parent record (with caching)
+            let parent_key = ParentKey {
+                serial_number,
+                panel_id: device_data.device_info.panel_id,
+                point_id: point.id.clone().unwrap_or_else(|| format!("IN{}", point.index)),
+                point_index: point.index as i32,
+                point_type: "INPUT".to_string(),
             };
 
-            sync_logger.info(&format!("📊 Inserting INPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
-                input_index + 1, device_data.input_points.len(),
-                serial_number, point.index, point.value, point.status));
+            let parent_id = match get_trendlog_cache().get_or_create_parent(
+                txn,
+                parent_key,
+                point.digital_analog.map(|da| da.to_string()),
+                Some(point.range.to_string()),
+                Some(units.clone()),
+            ).await {
+                Ok(id) => id,
+                Err(e) => {
+                    sync_logger.error(&format!("❌ Failed to get/create INPUT parent - Serial: {}, Index: {}, Error: {}",
+                        serial_number, point.index, e));
+                    return Err(AppError::DatabaseError(format!("Failed to get/create INPUT parent: {}", e)));
+                }
+            };
 
-            if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
-                sync_logger.error(&format!("❌ INPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
+            // Step 2: Insert detail record only
+            let logging_time = device_data.device_info.input_logging_time.parse::<i64>().unwrap_or(0);
+            let logging_time_fmt = Self::format_unix_timestamp_to_local(&device_data.device_info.input_logging_time);
+
+            let trend_detail = trendlog_data_detail::ActiveModel {
+                parent_id: Set(parent_id),
+                value: Set(point.value.to_string()),
+                logging_time: Set(logging_time),
+                logging_time_fmt: Set(logging_time_fmt.clone()),
+                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+                sync_interval: Set(Some(config.sync_interval_secs as i32)),
+                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+                ..Default::default()
+            };
+
+            sync_logger.info(&format!("📊 Inserting INPUT trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
+                input_index + 1, device_data.input_points.len(),
+                serial_number, parent_id, point.index, point.value, point.status));
+
+            if let Err(e) = trendlog_data_detail::Entity::insert(trend_detail).exec(txn).await {
+                sync_logger.error(&format!("❌ INPUT trend detail insert failed - Serial: {}, Index: {}, Error: {}",
                     serial_number, point.index, e));
-                return Err(AppError::DatabaseError(format!("Failed to insert INPUT trend log: {}", e)));
+                return Err(AppError::DatabaseError(format!("Failed to insert INPUT trend detail: {}", e)));
             }
         }
 
@@ -1026,31 +1058,54 @@ impl T3000MainService {
 
         for (output_index, point) in device_data.output_points.iter().enumerate() {
             let units = Self::derive_units_from_range(point.range);
-            let trend_model = trendlog_data::ActiveModel {
-                serial_number: Set(serial_number),
-                panel_id: Set(device_data.device_info.panel_id),
-                point_id: Set(point.id.clone().unwrap_or_else(|| format!("OUT{}", point.index))), // Use string ID from JSON like "OUT1", fallback to "OUT{index}"
-                point_index: Set(point.index as i32), // Use numeric index from JSON
-                point_type: Set("OUTPUT".to_string()),
-                logging_time: Set(device_data.device_info.output_logging_time.clone()),
-                logging_time_fmt: Set(Self::format_unix_timestamp_to_local(&device_data.device_info.output_logging_time)),
-                value: Set(point.value.to_string()),
-                range_field: Set(Some(point.range.to_string())),
-                digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-                units: Set(Some(units)),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
-                sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+
+            // Step 1: Get or create parent record (with caching)
+            let parent_key = ParentKey {
+                serial_number,
+                panel_id: device_data.device_info.panel_id,
+                point_id: point.id.clone().unwrap_or_else(|| format!("OUT{}", point.index)),
+                point_index: point.index as i32,
+                point_type: "OUTPUT".to_string(),
             };
 
-            sync_logger.info(&format!("📊 Inserting OUTPUT trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
-                output_index + 1, device_data.output_points.len(),
-                serial_number, point.index, point.value, point.status));
+            let parent_id = match get_trendlog_cache().get_or_create_parent(
+                txn,
+                parent_key,
+                point.digital_analog.map(|da| da.to_string()),
+                Some(point.range.to_string()),
+                Some(units.clone()),
+            ).await {
+                Ok(id) => id,
+                Err(e) => {
+                    sync_logger.error(&format!("❌ Failed to get/create OUTPUT parent - Serial: {}, Index: {}, Error: {}",
+                        serial_number, point.index, e));
+                    return Err(AppError::DatabaseError(format!("Failed to get/create OUTPUT parent: {}", e)));
+                }
+            };
 
-            if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
-                sync_logger.error(&format!("❌ OUTPUT trend log insert failed - Serial: {}, Index: {}, Error: {}",
+            // Step 2: Insert detail record only
+            let logging_time = device_data.device_info.output_logging_time.parse::<i64>().unwrap_or(0);
+            let logging_time_fmt = Self::format_unix_timestamp_to_local(&device_data.device_info.output_logging_time);
+
+            let trend_detail = trendlog_data_detail::ActiveModel {
+                parent_id: Set(parent_id),
+                value: Set(point.value.to_string()),
+                logging_time: Set(logging_time),
+                logging_time_fmt: Set(logging_time_fmt.clone()),
+                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+                sync_interval: Set(Some(config.sync_interval_secs as i32)),
+                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+                ..Default::default()
+            };
+
+            sync_logger.info(&format!("📊 Inserting OUTPUT trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
+                output_index + 1, device_data.output_points.len(),
+                serial_number, parent_id, point.index, point.value, point.status));
+
+            if let Err(e) = trendlog_data_detail::Entity::insert(trend_detail).exec(txn).await {
+                sync_logger.error(&format!("❌ OUTPUT trend detail insert failed - Serial: {}, Index: {}, Error: {}",
                     serial_number, point.index, e));
-                return Err(AppError::DatabaseError(format!("Failed to insert OUTPUT trend log: {}", e)));
+                return Err(AppError::DatabaseError(format!("Failed to insert OUTPUT trend detail: {}", e)));
             }
         }
 
@@ -1063,31 +1118,54 @@ impl T3000MainService {
 
         for (variable_index, point) in device_data.variable_points.iter().enumerate() {
             let units = Self::derive_units_from_range(point.range);
-            let trend_model = trendlog_data::ActiveModel {
-                serial_number: Set(serial_number),
-                panel_id: Set(device_data.device_info.panel_id),
-                point_id: Set(point.id.clone().unwrap_or_else(|| format!("VAR{}", point.index))), // Use string ID from JSON like "VAR1", fallback to "VAR{index}"
-                point_index: Set(point.index as i32), // Use numeric index from JSON
-                point_type: Set("VARIABLE".to_string()),
-                logging_time: Set(device_data.device_info.variable_logging_time.clone()),
-                logging_time_fmt: Set(Self::format_unix_timestamp_to_local(&device_data.device_info.variable_logging_time)),
-                value: Set(point.value.to_string()),
-                range_field: Set(Some(point.range.to_string())),
-                digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-                units: Set(Some(units)),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
-                sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+
+            // Step 1: Get or create parent record (with caching)
+            let parent_key = ParentKey {
+                serial_number,
+                panel_id: device_data.device_info.panel_id,
+                point_id: point.id.clone().unwrap_or_else(|| format!("VAR{}", point.index)),
+                point_index: point.index as i32,
+                point_type: "VARIABLE".to_string(),
             };
 
-            sync_logger.info(&format!("📊 Inserting VARIABLE trend log {}/{} - Serial: {}, Index: {}, Value: {}, Status: {}",
-                variable_index + 1, device_data.variable_points.len(),
-                serial_number, point.index, point.value, point.status));
+            let parent_id = match get_trendlog_cache().get_or_create_parent(
+                txn,
+                parent_key,
+                point.digital_analog.map(|da| da.to_string()),
+                Some(point.range.to_string()),
+                Some(units.clone()),
+            ).await {
+                Ok(id) => id,
+                Err(e) => {
+                    sync_logger.error(&format!("❌ Failed to get/create VARIABLE parent - Serial: {}, Index: {}, Error: {}",
+                        serial_number, point.index, e));
+                    return Err(AppError::DatabaseError(format!("Failed to get/create VARIABLE parent: {}", e)));
+                }
+            };
 
-            if let Err(e) = trendlog_data::Entity::insert(trend_model).exec(txn).await {
-                sync_logger.error(&format!("❌ VARIABLE trend log insert failed - Serial: {}, Index: {}, Error: {}",
+            // Step 2: Insert detail record only
+            let logging_time = device_data.device_info.variable_logging_time.parse::<i64>().unwrap_or(0);
+            let logging_time_fmt = Self::format_unix_timestamp_to_local(&device_data.device_info.variable_logging_time);
+
+            let trend_detail = trendlog_data_detail::ActiveModel {
+                parent_id: Set(parent_id),
+                value: Set(point.value.to_string()),
+                logging_time: Set(logging_time),
+                logging_time_fmt: Set(logging_time_fmt.clone()),
+                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+                sync_interval: Set(Some(config.sync_interval_secs as i32)),
+                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+                ..Default::default()
+            };
+
+            sync_logger.info(&format!("📊 Inserting VARIABLE trend detail {}/{} - Serial: {}, ParentID: {}, Index: {}, Value: {}, Status: {}",
+                variable_index + 1, device_data.variable_points.len(),
+                serial_number, parent_id, point.index, point.value, point.status));
+
+            if let Err(e) = trendlog_data_detail::Entity::insert(trend_detail).exec(txn).await {
+                sync_logger.error(&format!("❌ VARIABLE trend detail insert failed - Serial: {}, Index: {}, Error: {}",
                     serial_number, point.index, e));
-                return Err(AppError::DatabaseError(format!("Failed to insert VARIABLE trend log: {}", e)));
+                return Err(AppError::DatabaseError(format!("Failed to insert VARIABLE trend detail: {}", e)));
             }
         }
 
@@ -1895,28 +1973,48 @@ impl T3000MainService {
         logging_time: &str,
     ) -> Result<usize, AppError> {
         let units = Self::derive_units_from_range(point.range);
-        let config = T3000MainConfig::default(); // Get config to use sync_interval_secs
+        let config = T3000MainConfig::default();
 
-        let trendlog_model = trendlog_data::ActiveModel {
-            serial_number: Set(serial_number),
-            panel_id: Set(panel_id),
-            point_id: Set(point.id.clone().unwrap_or_else(|| format!("{}{}", point_type, point.index))), // Use string ID from JSON or generate fallback
-            point_index: Set(point.index as i32), // Use numeric index from JSON
-            point_type: Set(point_type.to_string()),
-            logging_time: Set(logging_time.to_string()),
-            logging_time_fmt: Set(Self::format_unix_timestamp_to_local(logging_time)),
+        // Generate point_id from JSON or fallback
+        let point_id = point.id.clone().unwrap_or_else(|| format!("{}{}", point_type, point.index));
+
+        // Create parent key
+        let parent_key = ParentKey {
+            serial_number,
+            panel_id,
+            point_id: point_id.clone(),
+            point_index: point.index as i32,
+            point_type: point_type.to_string(),
+        };
+
+        // Get or create parent record using cache
+        let parent_id = get_trendlog_cache()
+            .get_or_create_parent(
+                txn,
+                parent_key,
+                point.digital_analog.map(|da| da.to_string()),
+                Some(point.range.to_string()),
+                Some(units),
+            )
+            .await?;
+
+        // Insert detail record with time-series data
+        let logging_time_value = logging_time.parse::<i64>().unwrap_or(0);
+        let detail_model = trendlog_data_detail::ActiveModel {
+            id: NotSet,
+            parent_id: Set(parent_id),
             value: Set(point.value.to_string()),
-            range_field: Set(Some(point.range.to_string())),
-            digital_analog: Set(point.digital_analog.map(|da| da.to_string())),
-            units: Set(Some(units)),
+            logging_time: Set(logging_time_value),
+            logging_time_fmt: Set(Self::format_unix_timestamp_to_local(logging_time)),
             data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
-            sync_interval: Set(Some(config.sync_interval_secs as i32)), // Use config sync_interval_secs
+            sync_interval: Set(Some(config.sync_interval_secs as i32)),
             created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
         };
 
-        trendlog_data::Entity::insert(trendlog_model)
-            .exec(txn).await
-            .map_err(|e| AppError::DatabaseError(format!("Failed to insert trend log data: {}", e)))?;
+        trendlog_data_detail::Entity::insert(detail_model)
+            .exec(txn)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to insert trend log detail: {}", e)))?;
 
         Ok(1)
     }

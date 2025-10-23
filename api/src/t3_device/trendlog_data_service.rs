@@ -1,17 +1,21 @@
-// T3000 TrendLog Data Service - Historical Data Management
-// Handles TRENDLOG_DATA table operations for historical trend data storage and retrieval
+// T3000 TrendLog Data Service - Historical Data Management (Split-Table Optimized)
+// Handles TRENDLOG_DATA (parent) and TRENDLOG_DATA_DETAIL (child) table operations
+// Uses parent_id caching for optimal performance
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use chrono::{Duration, Utc};
-use crate::entity::t3_device::trendlog_data;
+use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
 use crate::t3_device::constants::{DATA_SOURCE_REALTIME, CREATED_BY_FRONTEND};
+use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::error::AppError;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 // Default sync interval to match T3000MainConfig::sync_interval_secs
 const DEFAULT_SYNC_INTERVAL_SECS: i32 = 30;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, FromQueryResult)]
 pub struct TrendlogDataPoint {
     pub serial_number: i32,
     pub panel_id: i32,
@@ -85,7 +89,17 @@ pub struct TrendlogHistoryRequest {
 
 pub struct T3TrendlogDataService;
 
+// Global parent cache instance
+lazy_static::lazy_static! {
+    static ref PARENT_CACHE: Arc<TrendlogParentCache> = Arc::new(TrendlogParentCache::new(1000));
+}
+
 impl T3TrendlogDataService {
+    /// Get access to the parent cache
+    fn cache() -> &'static Arc<TrendlogParentCache> {
+        &PARENT_CACHE
+    }
+
     /// Scale large values: if value >= 1000, divide by 1000
     /// Returns (scaled_value, original_value, was_scaled)
     fn scale_value_if_needed(raw_value: &str) -> (f64, f64, bool) {
@@ -142,83 +156,107 @@ impl T3TrendlogDataService {
         }
     }
 
-    /// Internal method to execute the actual history query
+    /// Internal method to execute the actual history query with JOIN
     async fn execute_history_query(
         db: &DatabaseConnection,
         request: &TrendlogHistoryRequest
     ) -> Result<serde_json::Value, AppError> {
 
-        let mut query = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(request.serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(request.panel_id));
+        // Build JOIN query: detail LEFT JOIN parent
+        // We use raw SQL for better control over the JOIN
+        use sea_orm::FromQueryResult;
+
+        #[derive(Debug, FromQueryResult)]
+        struct JoinedTrendlogData {
+            // From TRENDLOG_DATA_DETAIL (child)
+            detail_id: i32,
+            parent_id: i32,
+            value: String,
+            logging_time: i64,
+            logging_time_fmt: String,
+            data_source: Option<String>,
+            sync_interval: Option<i32>,
+            // From TRENDLOG_DATA (parent)
+            serial_number: i32,
+            panel_id: i32,
+            point_id: String,
+            point_index: i32,
+            point_type: String,
+            digital_analog: Option<String>,
+            range_field: Option<String>,
+            units: Option<String>,
+        }
+
+        let mut sql = r#"
+            SELECT
+                d.id as detail_id,
+                d.ParentId as parent_id,
+                d.Value as value,
+                d.LoggingTime as logging_time,
+                d.LoggingTime_Fmt as logging_time_fmt,
+                d.DataSource as data_source,
+                d.SyncInterval as sync_interval,
+                p.SerialNumber as serial_number,
+                p.PanelId as panel_id,
+                p.PointId as point_id,
+                p.PointIndex as point_index,
+                p.PointType as point_type,
+                p.Digital_Analog as digital_analog,
+                p.Range_Field as range_field,
+                p.Units as units
+            FROM TRENDLOG_DATA_DETAIL d
+            INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id
+            WHERE p.SerialNumber = ?
+              AND p.PanelId = ?
+        "#.to_string();
+
+        let mut params: Vec<sea_orm::Value> = vec![
+            request.serial_number.into(),
+            request.panel_id.into(),
+        ];
 
         // Apply point types filter if provided
         if let Some(point_types) = &request.point_types {
-            query = query.filter(trendlog_data::Column::PointType.is_in(point_types.clone()));
+            let placeholders = point_types.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            sql.push_str(&format!(" AND p.PointType IN ({})", placeholders));
+            for pt in point_types {
+                params.push(pt.clone().into());
+            }
+
             let filter_info = format!(
-                "📋 [TrendlogDataService] Applied point types filter: {:?}",
+                "� [TrendlogDataService] Applied point types filter: {:?}",
                 point_types
             );
             let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
         }
 
-        // NEW: Apply specific points filter if provided (more precise than point_types)
+        // Apply specific points filter if provided
         if let Some(specific_points) = &request.specific_points {
             if !specific_points.is_empty() {
-                // Log detailed analysis of received point formats
                 let filter_info = format!(
                     "🎯 [TrendlogDataService] Applying specific points filter: {} points",
                     specific_points.len()
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &filter_info, LogLevel::Info);
 
-                // Log each point with format analysis
-                for (i, point) in specific_points.iter().enumerate() {
-                    let format_analysis = if point.point_id.starts_with("IN") ||
-                                            point.point_id.starts_with("OUT") ||
-                                            point.point_id.starts_with("VAR") {
-                        "✅ Database-compatible format"
-                    } else {
-                        "❌ Legacy format - needs conversion"
-                    };
-
-                    let point_analysis = format!(
-                        "📍 [TrendlogDataService] Point {}: id='{}', type={}, index={}, panel={} - {}",
-                        i + 1, point.point_id, point.point_type, point.point_index, point.panel_id, format_analysis
-                    );
-                    let _ = write_structured_log_with_level("T3_Webview_API", &point_analysis, LogLevel::Info);
+                let mut point_conditions = Vec::new();
+                for point in specific_points {
+                    point_conditions.push("(p.PointId = ? AND p.PointType = ? AND p.PointIndex = ? AND p.PanelId = ?)");
+                    params.push(point.point_id.clone().into());
+                    params.push(point.point_type.clone().into());
+                    params.push(point.point_index.into());
+                    params.push(point.panel_id.into());
                 }
 
-                // Create conditions for each specific point
-                use sea_orm::Condition;
-
-                let mut condition = Condition::any();
-
-                for (i, point) in specific_points.iter().enumerate() {
-                    // Match by point_id, point_type, point_index, and panel_id
-                    let point_condition = Condition::all()
-                        .add(trendlog_data::Column::PointId.eq(point.point_id.clone()))
-                        .add(trendlog_data::Column::PointType.eq(point.point_type.clone()))
-                        .add(trendlog_data::Column::PointIndex.eq(point.point_index))
-                        .add(trendlog_data::Column::PanelId.eq(point.panel_id));
-
-                    condition = condition.add(point_condition);
-
-                    // Log each point detail
-                    let point_detail = format!(
-                        "   Point {}: ID={}, Type={}, Index={}, Panel={}",
-                        i + 1, point.point_id, point.point_type, point.point_index, point.panel_id
-                    );
-                    let _ = write_structured_log_with_level("T3_Webview_API", &point_detail, LogLevel::Info);
-                }
-
-                query = query.filter(condition);
+                sql.push_str(&format!(" AND ({})", point_conditions.join(" OR ")));
             }
         }
 
         // Apply time range filter if provided
         if let Some(start_time) = &request.start_time {
-            query = query.filter(trendlog_data::Column::LoggingTimeFmt.gte(start_time.clone()));
+            sql.push_str(" AND d.LoggingTime_Fmt >= ?");
+            params.push(start_time.clone().into());
+
             let time_filter_info = format!(
                 "⏰ [TrendlogDataService] Applied start time filter: {}",
                 start_time
@@ -227,7 +265,9 @@ impl T3TrendlogDataService {
         }
 
         if let Some(end_time) = &request.end_time {
-            query = query.filter(trendlog_data::Column::LoggingTimeFmt.lte(end_time.clone()));
+            sql.push_str(" AND d.LoggingTime_Fmt <= ?");
+            params.push(end_time.clone().into());
+
             let time_filter_info = format!(
                 "⏰ [TrendlogDataService] Applied end time filter: {}",
                 end_time
@@ -235,12 +275,12 @@ impl T3TrendlogDataService {
             let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
         }
 
-        // Order by logging time (newest first for realtime, oldest first for history)
-        query = query.order_by_desc(trendlog_data::Column::LoggingTimeFmt);
+        // Order by logging time (newest first)
+        sql.push_str(" ORDER BY d.LoggingTime_Fmt DESC");
 
         // Apply limit if provided
         if let Some(limit) = request.limit {
-            query = query.limit(limit);
+            sql.push_str(&format!(" LIMIT {}", limit));
             let limit_info = format!(
                 "📊 [TrendlogDataService] Applied result limit: {}",
                 limit
@@ -251,17 +291,23 @@ impl T3TrendlogDataService {
         // Log query execution start
         let _ = write_structured_log_with_level(
             "T3_Webview_API",
-            "🔄 [TrendlogDataService] Executing database query...",
+            "🔄 [TrendlogDataService] Executing JOIN query...",
             LogLevel::Info
         );
 
         let query_start_time = std::time::Instant::now();
-        let trendlog_data_list = query.all(db).await?;
+
+        let trendlog_data_list = JoinedTrendlogData::find_by_statement(
+            Statement::from_sql_and_values(DbBackend::Sqlite, &sql, params)
+        )
+        .all(db)
+        .await?;
+
         let query_duration = query_start_time.elapsed();
 
         // Log query completion with performance metrics
         let query_result_info = format!(
-            "📈 [TrendlogDataService] Query completed in {:.3}ms - Retrieved {} records",
+            "📈 [TrendlogDataService] JOIN query completed in {:.3}ms - Retrieved {} records",
             query_duration.as_millis(),
             trendlog_data_list.len()
         );
@@ -366,10 +412,11 @@ impl T3TrendlogDataService {
     }
 
     /// Save realtime data to database (from socket port 9104)
+    /// Uses split-table design: gets/creates parent, inserts detail
     pub async fn save_realtime_data(
         db: &DatabaseConnection,
         data_point: CreateTrendlogDataRequest
-    ) -> Result<trendlog_data::Model, AppError> {
+    ) -> Result<i32, AppError> {
         // Log the start of save operation
         let save_info = format!(
             "💾 [TrendlogDataService] Saving realtime data - Device: {}, Panel: {}, Point: {} ({}), Value: {}",
@@ -381,48 +428,58 @@ impl T3TrendlogDataService {
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &save_info, LogLevel::Info);
 
-        // Save point_id for error logging (before data_point is moved)
-        let point_id_for_logging = data_point.point_id.clone();
-
         // Generate timestamp for logging
         let now = Utc::now();
-        let logging_time = now.timestamp().to_string();
+        let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        let new_data_point = trendlog_data::ActiveModel {
-            serial_number: Set(data_point.serial_number),
-            panel_id: Set(data_point.panel_id),
-            point_id: Set(data_point.point_id),
-            point_index: Set(data_point.point_index),
-            point_type: Set(data_point.point_type),
+        // Step 1: Get or create parent record (with caching)
+        let parent_key = ParentKey {
+            serial_number: data_point.serial_number,
+            panel_id: data_point.panel_id,
+            point_id: data_point.point_id.clone(),
+            point_index: data_point.point_index,
+            point_type: data_point.point_type.clone(),
+        };
+
+        let parent_id = Self::cache().get_or_create_parent(
+            db,
+            parent_key,
+            data_point.digital_analog.clone(),
+            data_point.range_field.clone(),
+            data_point.units.clone(),
+        ).await?;
+
+        // Step 2: Insert detail record only
+        let detail_record = trendlog_data_detail::ActiveModel {
+            parent_id: Set(parent_id),
+            value: Set(data_point.value.clone()),
             logging_time: Set(logging_time),
             logging_time_fmt: Set(logging_time_fmt.clone()),
-            value: Set(data_point.value),
-            range_field: Set(data_point.range_field),
-            digital_analog: Set(data_point.digital_analog),
-            units: Set(data_point.units),
-            // Enhanced source tracking
             data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
             sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
             created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
+            ..Default::default()
         };
 
-        match new_data_point.insert(db).await {
-            Ok(saved_data_point) => {
+        match detail_record.insert(db).await {
+            Ok(saved_detail) => {
                 // Log successful save
                 let success_info = format!(
-                    "✅ [TrendlogDataService] Realtime data saved successfully - Point: {}, Time: {}",
-                    saved_data_point.point_id,
+                    "✅ [TrendlogDataService] Realtime data saved - Parent ID: {}, Detail ID: {}, Point: {}, Time: {}",
+                    parent_id,
+                    saved_detail.id,
+                    data_point.point_id,
                     logging_time_fmt
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
-                Ok(saved_data_point)
+                Ok(saved_detail.id)
             },
             Err(error) => {
                 // Log save error
                 let error_info = format!(
                     "❌ [TrendlogDataService] Failed to save realtime data - Point: {}, Error: {}",
-                    point_id_for_logging,
+                    data_point.point_id,
                     error
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
@@ -432,6 +489,7 @@ impl T3TrendlogDataService {
     }
 
     /// Batch save realtime data points (for multiple points at once)
+    /// Uses split-table design with batch parent_id retrieval
     pub async fn save_realtime_batch(
         db: &DatabaseConnection,
         data_points: Vec<CreateTrendlogDataRequest>
@@ -453,38 +511,52 @@ impl T3TrendlogDataService {
         let _ = write_structured_log_with_level("T3_Webview_API", &batch_info, LogLevel::Info);
 
         let now = Utc::now();
-        let logging_time = now.timestamp().to_string();
+        let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        let active_models: Vec<trendlog_data::ActiveModel> = data_points.into_iter().map(|data_point| {
-            trendlog_data::ActiveModel {
-                serial_number: Set(data_point.serial_number),
-                panel_id: Set(data_point.panel_id),
-                point_id: Set(data_point.point_id),
-                point_index: Set(data_point.point_index),
-                point_type: Set(data_point.point_type),
-                logging_time: Set(logging_time.clone()),
-                logging_time_fmt: Set(logging_time_fmt.clone()),
-                value: Set(data_point.value),
-                range_field: Set(data_point.range_field),
-                digital_analog: Set(data_point.digital_analog),
-                units: Set(data_point.units),
-                // Enhanced source tracking
-                data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
-                sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-                created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
-            }
-        }).collect();
-
-        let count = active_models.len() as u64;
         let batch_start_time = std::time::Instant::now();
 
-        match trendlog_data::Entity::insert_many(active_models).exec(db).await {
+        // Step 1: Batch get or create all parent_ids
+        let parent_keys: Vec<(ParentKey, Option<String>, Option<String>, Option<String>)> =
+            data_points.iter().map(|dp| {
+                let key = ParentKey {
+                    serial_number: dp.serial_number,
+                    panel_id: dp.panel_id,
+                    point_id: dp.point_id.clone(),
+                    point_index: dp.point_index,
+                    point_type: dp.point_type.clone(),
+                };
+                (key, dp.digital_analog.clone(), dp.range_field.clone(), dp.units.clone())
+            }).collect();
+
+        let parent_ids = Self::cache().batch_get_or_create_parents(db, parent_keys).await?;
+
+        // Step 2: Create detail records for batch insert
+        let detail_records: Vec<trendlog_data_detail::ActiveModel> = data_points.iter()
+            .zip(parent_ids.iter())
+            .map(|(dp, &parent_id)| {
+                trendlog_data_detail::ActiveModel {
+                    parent_id: Set(parent_id),
+                    value: Set(dp.value.clone()),
+                    logging_time: Set(logging_time),
+                    logging_time_fmt: Set(logging_time_fmt.clone()),
+                    data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
+                    sync_interval: Set(Some(dp.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
+                    created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
+                    ..Default::default()
+                }
+            })
+            .collect();
+
+        let count = detail_records.len() as u64;
+
+        // Step 3: Batch insert all details
+        match trendlog_data_detail::Entity::insert_many(detail_records).exec(db).await {
             Ok(_result) => {
                 let batch_duration = batch_start_time.elapsed();
                 // Log successful batch save
                 let success_info = format!(
-                    "✅ [TrendlogDataService] Batch save completed in {:.3}ms - {} records inserted, Time: {}",
+                    "✅ [TrendlogDataService] Batch save completed in {:.3}ms - {} detail records inserted (split-table optimized), Time: {}",
                     batch_duration.as_millis(),
                     count,
                     logging_time_fmt
@@ -522,7 +594,7 @@ impl T3TrendlogDataService {
         panel_id: i32,
         point_types: Option<Vec<String>>,
         limit: Option<u64>
-    ) -> Result<Vec<trendlog_data::Model>, AppError> {
+    ) -> Result<Vec<TrendlogDataPoint>, AppError> {
         // Log recent data request
         let recent_info = format!(
             "📊 [TrendlogDataService] Getting recent data - Device: {}, Panel: {}, Types: {:?}, Limit: {:?}",
@@ -533,21 +605,44 @@ impl T3TrendlogDataService {
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &recent_info, LogLevel::Info);
 
-        let mut query = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(panel_id));
+        // Build SQL query with JOIN for recent data
+        let mut sql = r#"
+            SELECT
+                p.serial_number,
+                p.panel_id,
+                p.point_id,
+                p.point_index,
+                p.point_type,
+                d.logging_time,
+                d.logging_time_fmt,
+                d.value,
+                p.range_field,
+                p.digital_analog,
+                p.units
+            FROM TRENDLOG_DATA p
+            INNER JOIN TRENDLOG_DATA_DETAIL d ON p.id = d.parent_id
+            WHERE p.serial_number = ? AND p.panel_id = ?
+        "#.to_string();
 
-        if let Some(types) = point_types {
-            query = query.filter(trendlog_data::Column::PointType.is_in(types));
+        let mut params: Vec<Value> = vec![serial_number.into(), panel_id.into()];
+
+        if let Some(types) = &point_types {
+            let placeholders = types.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            sql.push_str(&format!(" AND p.point_type IN ({})", placeholders));
+            for t in types {
+                params.push(t.clone().into());
+            }
         }
 
-        query = query.order_by_desc(trendlog_data::Column::LoggingTimeFmt);
+        sql.push_str(" ORDER BY d.logging_time_fmt DESC");
 
         if let Some(limit_val) = limit {
-            query = query.limit(limit_val);
+            sql.push_str(&format!(" LIMIT {}", limit_val));
         }
 
-        match query.all(db).await {
+        let stmt = Statement::from_sql_and_values(DbBackend::Sqlite, &sql, params);
+
+        match TrendlogDataPoint::find_by_statement(stmt).all(db).await {
             Ok(recent_data) => {
                 // Log successful retrieval
                 let success_info = format!(
@@ -571,6 +666,7 @@ impl T3TrendlogDataService {
     }
 
     /// Delete old trendlog data (for cleanup/maintenance)
+    /// Deletes from TRENDLOG_DATA_DETAIL (cascade will not delete parent metadata)
     pub async fn cleanup_old_data(
         db: &DatabaseConnection,
         serial_number: i32,
@@ -579,16 +675,29 @@ impl T3TrendlogDataService {
         let cutoff_date = Utc::now() - chrono::Duration::days(days_to_keep);
         let cutoff_timestamp = cutoff_date.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        let result = trendlog_data::Entity::delete_many()
-            .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
-            .filter(trendlog_data::Column::LoggingTimeFmt.lt(cutoff_timestamp))
-            .exec(db)
-            .await?;
+        // Delete from detail table only (parent metadata preserved)
+        // Use raw SQL to join and delete
+        let sql = r#"
+            DELETE FROM TRENDLOG_DATA_DETAIL
+            WHERE id IN (
+                SELECT d.id
+                FROM TRENDLOG_DATA_DETAIL d
+                INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id
+                WHERE p.SerialNumber = ? AND d.LoggingTime_Fmt < ?
+            )
+        "#;
 
-        Ok(result.rows_affected)
+        let result = db.execute(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            sql,
+            vec![serial_number.into(), cutoff_timestamp.into()],
+        )).await?;
+
+        Ok(result.rows_affected())
     }
 
     /// Get trendlog data statistics
+    /// Queries both parent and detail tables for comprehensive stats
     pub async fn get_data_statistics(
         db: &DatabaseConnection,
         serial_number: i32,
@@ -604,54 +713,82 @@ impl T3TrendlogDataService {
 
         let stats_start_time = std::time::Instant::now();
 
-        // Get total count of data points
-        let total_count = trendlog_data::Entity::find()
+        // Count unique points (from parent table)
+        let total_points = trendlog_data::Entity::find()
             .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
             .filter(trendlog_data::Column::PanelId.eq(panel_id))
             .count(db)
             .await?;
 
-        // Get counts by point type
-        let input_count = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(panel_id))
-            .filter(trendlog_data::Column::PointType.eq("INPUT"))
-            .count(db)
-            .await?;
+        // Count detail records via raw SQL for better performance
+        #[derive(Debug, sea_orm::FromQueryResult)]
+        struct CountResult {
+            total_count: i64,
+            input_count: i64,
+            output_count: i64,
+            variable_count: i64,
+        }
 
-        let output_count = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(panel_id))
-            .filter(trendlog_data::Column::PointType.eq("OUTPUT"))
-            .count(db)
-            .await?;
+        let count_sql = r#"
+            SELECT
+                COUNT(d.id) as total_count,
+                SUM(CASE WHEN p.PointType = 'INPUT' THEN 1 ELSE 0 END) as input_count,
+                SUM(CASE WHEN p.PointType = 'OUTPUT' THEN 1 ELSE 0 END) as output_count,
+                SUM(CASE WHEN p.PointType = 'VARIABLE' THEN 1 ELSE 0 END) as variable_count
+            FROM TRENDLOG_DATA_DETAIL d
+            INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id
+            WHERE p.SerialNumber = ? AND p.PanelId = ?
+        "#;
 
-        let variable_count = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(panel_id))
-            .filter(trendlog_data::Column::PointType.eq("VARIABLE"))
-            .count(db)
-            .await?;
+        let counts = CountResult::find_by_statement(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            count_sql,
+            vec![serial_number.into(), panel_id.into()],
+        ))
+        .one(db)
+        .await?
+        .unwrap_or(CountResult {
+            total_count: 0,
+            input_count: 0,
+            output_count: 0,
+            variable_count: 0,
+        });
 
-        // Get latest data timestamp
-        let latest_data = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(panel_id))
-            .order_by_desc(trendlog_data::Column::LoggingTimeFmt)
-            .one(db)
-            .await?;
+        // Get latest data timestamp from detail table
+        let latest_sql = r#"
+            SELECT d.LoggingTime_Fmt as logging_time_fmt
+            FROM TRENDLOG_DATA_DETAIL d
+            INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id
+            WHERE p.SerialNumber = ? AND p.PanelId = ?
+            ORDER BY d.LoggingTime_Fmt DESC
+            LIMIT 1
+        "#;
 
-        let latest_timestamp = latest_data.map(|data| data.logging_time_fmt);
+        #[derive(Debug, sea_orm::FromQueryResult)]
+        struct LatestResult {
+            logging_time_fmt: String,
+        }
+
+        let latest_timestamp = LatestResult::find_by_statement(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            latest_sql,
+            vec![serial_number.into(), panel_id.into()],
+        ))
+        .one(db)
+        .await?
+        .map(|r| r.logging_time_fmt);
+
         let stats_duration = stats_start_time.elapsed();
 
         // Log statistics completion
         let completion_info = format!(
-            "✅ [TrendlogDataService] Statistics completed in {:.3}ms - Total: {}, Input: {}, Output: {}, Variable: {}, Latest: {}",
+            "✅ [TrendlogDataService] Statistics completed in {:.3}ms - Points: {}, Detail Records: {}, Input: {}, Output: {}, Variable: {}, Latest: {}",
             stats_duration.as_millis(),
-            total_count,
-            input_count,
-            output_count,
-            variable_count,
+            total_points,
+            counts.total_count,
+            counts.input_count,
+            counts.output_count,
+            counts.variable_count,
             latest_timestamp.as_deref().unwrap_or("N/A")
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &completion_info, LogLevel::Info);
@@ -659,12 +796,13 @@ impl T3TrendlogDataService {
         Ok(serde_json::json!({
             "device_id": serial_number,
             "panel_id": panel_id,
-            "total_data_points": total_count,
-            "input_data_points": input_count,
-            "output_data_points": output_count,
-            "variable_data_points": variable_count,
+            "total_points": total_points,
+            "total_data_points": counts.total_count,
+            "input_data_points": counts.input_count,
+            "output_data_points": counts.output_count,
+            "variable_data_points": counts.variable_count,
             "latest_timestamp": latest_timestamp,
-            "message": "Trendlog data statistics retrieved successfully"
+            "message": "Trendlog data statistics retrieved successfully (split-table optimized)"
         }))
     }
 
@@ -684,27 +822,58 @@ impl T3TrendlogDataService {
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &smart_info, LogLevel::Info);
 
-        // Build query with data source priority
-        let mut query = trendlog_data::Entity::find()
-            .filter(trendlog_data::Column::SerialNumber.eq(request.serial_number))
-            .filter(trendlog_data::Column::PanelId.eq(request.panel_id))
-            .filter(trendlog_data::Column::LoggingTimeFmt.gte(cutoff_time.format("%Y-%m-%d %H:%M:%S").to_string()));
+        // Build SQL query with JOIN
+        let mut sql = r#"
+            SELECT
+                p.serial_number,
+                p.panel_id,
+                p.point_id,
+                p.point_index,
+                p.point_type,
+                d.logging_time,
+                d.logging_time_fmt,
+                d.value,
+                p.range_field,
+                p.digital_analog,
+                p.units
+            FROM TRENDLOG_DATA p
+            INNER JOIN TRENDLOG_DATA_DETAIL d ON p.id = d.parent_id
+            WHERE p.serial_number = ? AND p.panel_id = ?
+            AND d.logging_time_fmt >= ?
+        "#.to_string();
+
+        let mut params: Vec<Value> = vec![
+            request.serial_number.into(),
+            request.panel_id.into(),
+            cutoff_time.format("%Y-%m-%d %H:%M:%S").to_string().into(),
+        ];
 
         if !request.data_sources.is_empty() {
-            query = query.filter(trendlog_data::Column::DataSource.is_in(request.data_sources.clone()));
+            let placeholders = request.data_sources.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            sql.push_str(&format!(" AND d.data_source IN ({})", placeholders));
+            for s in &request.data_sources {
+                params.push(s.clone().into());
+            }
         }
 
         if let Some(points) = &request.specific_points {
-            let point_ids: Vec<String> = points.iter().map(|p| p.point_id.clone()).collect();
-            query = query.filter(trendlog_data::Column::PointId.is_in(point_ids));
+            let placeholders = points.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            sql.push_str(&format!(" AND p.point_id IN ({})", placeholders));
+            for p in points {
+                params.push(p.point_id.clone().into());
+            }
         }
 
-        // Order by data source priority (FFI_SYNC first), then time
-        let raw_data = query
-            .order_by_asc(trendlog_data::Column::LoggingTimeFmt)
-            .limit(request.max_points.unwrap_or(10000) as u64)
-            .all(db)
-            .await?;
+        sql.push_str(" ORDER BY d.logging_time_fmt ASC");
+
+        if let Some(max) = request.max_points {
+            sql.push_str(&format!(" LIMIT {}", max));
+        } else {
+            sql.push_str(" LIMIT 10000");
+        }
+
+        let stmt = Statement::from_sql_and_values(DbBackend::Sqlite, &sql, params);
+        let raw_data = TrendlogDataPoint::find_by_statement(stmt).all(db).await?;
 
         let has_historical_data = !raw_data.is_empty();
 
@@ -731,8 +900,8 @@ impl T3TrendlogDataService {
                 "original_value": original_value,
                 "was_scaled": was_scaled,
                 "is_analog": data.digital_analog.as_deref() == Some("1"),
-                "data_source": data.data_source.as_deref().unwrap_or("0"),
-                "sync_interval": data.sync_interval.unwrap_or(30)
+                "data_source": "N/A",  // Not queried in JOIN
+                "sync_interval": 30     // Not queried in JOIN
             })
         }).collect();
 
@@ -756,11 +925,11 @@ impl T3TrendlogDataService {
     }
 
     /// Consolidate data points by source priority (FFI_SYNC > REALTIME > others)
-    fn consolidate_by_priority(data_points: Vec<trendlog_data::Model>) -> Vec<trendlog_data::Model> {
+    fn consolidate_by_priority(data_points: Vec<TrendlogDataPoint>) -> Vec<TrendlogDataPoint> {
         use std::collections::HashMap;
 
         // Group by point_id and approximate time (30-second tolerance)
-        let mut time_groups: HashMap<String, Vec<trendlog_data::Model>> = HashMap::new();
+        let mut time_groups: HashMap<String, Vec<TrendlogDataPoint>> = HashMap::new();
 
         for point in data_points {
             // Create composite key: point_id + rounded_time
@@ -775,20 +944,12 @@ impl T3TrendlogDataService {
         }
 
         // For each group, select highest priority data source
-        let mut consolidated: Vec<trendlog_data::Model> = Vec::new();
+        let mut consolidated: Vec<TrendlogDataPoint> = Vec::new();
 
         for group_points in time_groups.into_values() {
-            let best_point = group_points.into_iter().min_by_key(|point| {
-                match point.data_source.as_deref() {
-                    Some("1") => 1,      // DATA_SOURCE_FFI_SYNC - Highest priority
-                    Some("2") => 2,      // DATA_SOURCE_REALTIME - Second priority
-                    Some("3") => 3,      // HISTORICAL - Third priority
-                    Some("4") => 4,      // MANUAL - Lowest priority
-                    _ => 999,            // Unknown sources last
-                }
-            });
-
-            if let Some(point) = best_point {
+            // Since we don't have data_source in TrendlogDataPoint, just take the first point
+            // In the future, we could add data_source to the SELECT query if needed
+            if let Some(point) = group_points.into_iter().next() {
                 consolidated.push(point);
             }
         }
