@@ -587,6 +587,126 @@ async fn update_ffi_sync_interval(
     }))
 }
 
+// ============================================================================
+// REFRESH AND REDISCOVER INTERVAL API ENDPOINTS
+// ============================================================================
+
+/// Rediscover Interval response
+#[derive(Debug, Serialize)]
+pub struct RediscoverIntervalResponse {
+    pub interval_secs: u64,
+    pub last_rediscover: Option<String>,
+}
+
+/// Rediscover Interval update request
+#[derive(Debug, Deserialize)]
+pub struct UpdateRediscoverIntervalRequest {
+    pub interval_secs: u64,
+    pub changed_by: Option<String>,
+    pub change_reason: Option<String>,
+}
+
+/// Get current Rediscover Interval configuration
+async fn get_rediscover_interval(
+    State(state): State<T3AppState>,
+) -> Result<Json<RediscoverIntervalResponse>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    // Get current interval from APPLICATION_CONFIG
+    let config = ApplicationConfigService::get_config(
+        db,
+        "rediscover.interval_secs",
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    let interval_secs = match config {
+        Some(cfg) => cfg.config_value.parse::<u64>().unwrap_or(3600),
+        None => 3600, // Default to 1 hour
+    };
+
+    // TODO: Get last rediscover time from service status
+    let last_rediscover = None;
+
+    Ok(Json(RediscoverIntervalResponse {
+        interval_secs,
+        last_rediscover,
+    }))
+}
+
+/// Update Rediscover Interval configuration
+async fn update_rediscover_interval(
+    State(state): State<T3AppState>,
+    Json(request): Json<UpdateRediscoverIntervalRequest>,
+) -> Result<Json<RediscoverIntervalResponse>> {
+    let db = match &state.t3_device_conn {
+        Some(conn) => &*conn.lock().await,
+        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+    };
+
+    // Validate interval range (1 hour to 7 days)
+    const MIN_INTERVAL: u64 = 3600;        // 1 hour
+    const MAX_INTERVAL: u64 = 604800;      // 7 days
+
+    if request.interval_secs < MIN_INTERVAL || request.interval_secs > MAX_INTERVAL {
+        return Err(crate::error::Error::ValidationError(
+            format!("Interval must be between {} and {} seconds (1 hour to 7 days)", MIN_INTERVAL, MAX_INTERVAL)
+        ));
+    }
+
+    // Get old value for history
+    let old_config = ApplicationConfigService::get_config(
+        db,
+        "rediscover.interval_secs",
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    let old_value = old_config.as_ref().map(|c| c.config_value.clone());
+
+    // Update configuration
+    let new_value = serde_json::Value::String(request.interval_secs.to_string());
+    ApplicationConfigService::set_config(
+        db,
+        "rediscover.interval_secs".to_string(),
+        new_value,
+        None,
+        None,
+        None,
+        None,
+    )
+    .await?;
+
+    // Log change to APPLICATION_CONFIG_HISTORY
+    use crate::entity::application_config_history;
+    let history_entry = application_config_history::ActiveModel {
+        id: NotSet,
+        config_key: Set("rediscover.interval_secs".to_string()),
+        old_value: Set(old_value),
+        new_value: Set(request.interval_secs.to_string()),
+        changed_by: Set(request.changed_by.or(Some("api".to_string()))),
+        change_reason: Set(request.change_reason),
+        changed_at: Set(chrono::Utc::now().naive_utc()),
+    };
+
+    application_config_history::Entity::insert(history_entry)
+        .exec(db)
+        .await
+        .map_err(|e| crate::error::Error::DatabaseError(format!("Failed to log config change: {}", e)))?;
+
+    Ok(Json(RediscoverIntervalResponse {
+        interval_secs: request.interval_secs,
+        last_rediscover: None,
+    }))
+}
+
 /// Get configuration change history
 async fn get_config_history(
     State(state): State<T3AppState>,
@@ -684,6 +804,9 @@ pub fn config_routes() -> axum::Router<T3AppState> {
         // Sampling Interval endpoints
         .route("/api/config/ffi-sync-interval", get(get_ffi_sync_interval))
         .route("/api/config/ffi-sync-interval", put(update_ffi_sync_interval))
+        // Rediscover Interval endpoints
+        .route("/api/config/rediscover-interval", get(get_rediscover_interval))
+        .route("/api/config/rediscover-interval", put(update_rediscover_interval))
         .route("/api/config/history", get(get_config_history))
 }
 
