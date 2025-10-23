@@ -510,7 +510,8 @@ INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type,
 ('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1, NULL, NULL, NULL),
 ('ui.theme', 'light', 'string', 'Application theme preference', 0, NULL, NULL, NULL),
 ('ui.language', 'en', 'string', 'Application language', 0, NULL, NULL, NULL),
-('ffi.sync_interval_secs', '300', 'number', 'FFI Sync Service interval in seconds (default: 300 = 5 minutes, range: 60-31536000)', 0, NULL, NULL, NULL);
+('ffi.sync_interval_secs', '300', 'number', 'FFI Sync Service interval in seconds (default: 300 = 5 minutes, range: 60-31536000)', 0, NULL, NULL, NULL),
+('rediscover.interval_secs', '3600', 'number', 'Rediscover Service interval in seconds (default: 3600 = 1 hour, range: 3600-604800)', 0, NULL, NULL, NULL);
 
 -- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
 
