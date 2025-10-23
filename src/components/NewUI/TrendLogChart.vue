@@ -597,6 +597,69 @@
           </div>
         </a-card>
 
+        <!-- Refresh and Rediscover Interval Card -->
+        <a-card size="small" class="config-card">
+          <template #title>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span class="card-title">
+                <ReloadOutlined style="margin-right: 6px; color: #fa8c16;" />
+                Refresh and Rediscover Interval
+              </span>
+              <span style="font-size: 10px; color: #666;">
+                How often should system check for new BACnet objects?
+              </span>
+            </div>
+          </template>
+
+          <div style="margin-bottom: 12px;">
+            <!-- Preset Intervals and Custom Input on Same Line -->
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
+              <a-radio-group
+                v-model:value="rediscoverConfig.interval_preset"
+                size="small"
+                @change="onRediscoverIntervalPresetChange"
+                style="display: flex; flex-wrap: wrap; gap: 4px;"
+              >
+                <a-radio value="1hour">1 hour</a-radio>
+                <a-radio value="2hours">2 hours</a-radio>
+                <a-radio value="4hours">4 hours</a-radio>
+                <a-radio value="8hours">8 hours</a-radio>
+                <!-- <a-radio value="12hours">12 hours</a-radio> -->
+                <a-radio value="custom">Custom</a-radio>
+              </a-radio-group>
+
+              <!-- Custom Interval Input (shows on same line when custom is selected) -->
+              <div
+                v-if="rediscoverConfig.interval_preset === 'custom'"
+                class="form-item-compact"
+                style="display: flex; align-items: center; gap: 6px; margin-bottom: 0px;"
+              >
+                <label style="font-size: 10px; color: #666;">Every:</label>
+                <a-input-number
+                  v-model:value="rediscoverConfig.custom_value"
+                  :min="getRediscoverCustomMin()"
+                  :max="getRediscoverCustomMax()"
+                  size="small"
+                  style="width: 40px;"
+                  @change="onRediscoverCustomIntervalChange"
+                />
+                <span style="font-size: 12px; color: #666;">hours</span>
+              </div>
+            </div>
+
+            <!-- Warning Messages -->
+            <div v-if="rediscoverWarning" style="margin-top: 8px;">
+              <a-alert
+                :message="rediscoverWarning"
+                type="warning"
+                show-icon
+                closable
+                style="font-size: 10px; padding: 4px 8px;"
+              />
+            </div>
+          </div>
+        </a-card>
+
         <!-- Database Status Card -->
         <a-card size="small" class="status-card">
           <template #title>
@@ -1415,6 +1478,28 @@ const ffiSyncHistory = ref<any[]>([])
 const isLoadingHistory = ref(false)
 const ffiSyncWarning = ref<string | null>(null)
 let ffiCountdownTimer: number | null = null
+
+// Refresh and Rediscover Interval Configuration
+interface RediscoverConfig {
+  interval_preset: string // '1hour', '2hours', '4hours', '8hours', '12hours', 'custom'
+  custom_value: number
+  custom_unit: 'hours' // Only hours supported
+  interval_secs: number // Actual value in seconds
+  last_rediscover: string | null
+  next_rediscover_in: number // Countdown in seconds
+}
+
+const rediscoverConfig = ref<RediscoverConfig>({
+  interval_preset: '1hour',
+  custom_value: 1,
+  custom_unit: 'hours',
+  interval_secs: 3600, // Default: 1 hour
+  last_rediscover: null,
+  next_rediscover_in: 0
+})
+
+const rediscoverWarning = ref<string | null>(null)
+let rediscoverCountdownTimer: number | null = null
 
 // FFI History table columns
 const ffiHistoryColumns = [
@@ -9003,6 +9088,63 @@ const formatInterval = (secs: number): string => {
   if (secs < 86400) return `${secs / 3600} hours`
   return `${secs / 86400} days`
 }
+
+// ============ Refresh and Rediscover Interval Functions ============
+
+// Convert rediscover preset/custom to seconds
+const convertRediscoverToSeconds = (): number => {
+  const presetValues: Record<string, number> = {
+    '1hour': 3600,
+    '2hours': 7200,
+    '4hours': 14400,
+    '8hours': 28800,
+    '12hours': 43200
+  }
+
+  if (rediscoverConfig.value.interval_preset !== 'custom') {
+    return presetValues[rediscoverConfig.value.interval_preset] || 3600
+  }
+
+  // Custom interval: always in hours
+  return rediscoverConfig.value.custom_value * 3600
+}
+
+// Handle preset interval change
+const onRediscoverIntervalPresetChange = () => {
+  const newSecs = convertRediscoverToSeconds()
+  rediscoverConfig.value.interval_secs = newSecs
+  checkRediscoverWarning(newSecs)
+}
+
+// Handle custom interval change
+const onRediscoverCustomIntervalChange = () => {
+  const newSecs = convertRediscoverToSeconds()
+  rediscoverConfig.value.interval_secs = newSecs
+  checkRediscoverWarning(newSecs)
+}
+
+// Check for warning conditions
+const checkRediscoverWarning = (secs: number) => {
+  if (secs < 3600) {
+    rediscoverWarning.value = 'Warning: Minimum interval is 1 hour'
+  } else if (secs > 86400) {
+    rediscoverWarning.value = 'Warning: Long intervals (> 24 hours) may delay discovery of new devices'
+  } else {
+    rediscoverWarning.value = null
+  }
+}
+
+// Get custom input min/max for rediscover (hours only)
+const getRediscoverCustomMin = (): number => {
+  return 1 // Minimum 1 hour
+}
+
+const getRediscoverCustomMax = (): number => {
+  return 168 // Maximum 168 hours (7 days)
+}
+
+// ============ End Rediscover Functions ============
+
 
 // Format countdown timer
 const formatCountdown = (secs: number): string => {

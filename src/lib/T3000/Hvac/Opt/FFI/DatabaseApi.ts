@@ -470,6 +470,186 @@ export class FfiSyncConfigAPI {
 }
 
 // =====================================
+// REFRESH AND REDISCOVER CONFIG API
+// =====================================
+
+/**
+ * Refresh and Rediscover interval configuration class
+ * Manages how often the system checks for new BACnet objects and changes
+ */
+export class RediscoverConfigAPI {
+  /**
+   * Get current rediscover interval configuration
+   * @returns Promise resolving to current interval in seconds
+   * @throws Error if configuration cannot be loaded
+   */
+  static async getInterval(): Promise<number> {
+    try {
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/config/rediscover-interval`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.interval_secs
+    } catch (error) {
+      console.error('Failed to get rediscover interval:', error)
+      throw new Error('Failed to load rediscover interval configuration')
+    }
+  }
+
+  /**
+   * Update rediscover interval configuration
+   * @param intervalSecs New interval in seconds (minimum 3600 = 1 hour)
+   * @param changedBy Username of person making the change
+   * @param changeReason Optional reason for the change
+   * @returns Promise resolving to operation result
+   * @throws Error if configuration cannot be updated
+   */
+  static async updateInterval(
+    intervalSecs: number,
+    changedBy: string = 'system',
+    changeReason?: string
+  ): Promise<ApiResult> {
+    try {
+      // Validate interval
+      const validation = this.validateInterval(intervalSecs)
+      if (!validation.success) {
+        throw new Error(validation.error)
+      }
+
+      const response = await fetch(`${DATABASE_API_BASE_URL}/api/config/rediscover-interval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interval_secs: intervalSecs,
+          changed_by: changedBy,
+          change_reason: changeReason
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to update rediscover interval:', error)
+      throw new Error('Failed to update rediscover interval configuration')
+    }
+  }
+
+  /**
+   * Get rediscover interval change history
+   * @param limit Maximum number of history records to return (default 100)
+   * @returns Promise resolving to array of config history records
+   * @throws Error if history cannot be loaded
+   */
+  static async getHistory(limit: number = 100): Promise<ConfigHistoryRecord[]> {
+    try {
+      const response = await fetch(
+        `${DATABASE_API_BASE_URL}/api/config/history?config_key=rediscover.interval_secs&limit=${limit}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data: ConfigHistoryRecord[] = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to get rediscover interval history:', error)
+      throw new Error('Failed to load rediscover interval history')
+    }
+  }
+
+  /**
+   * Get preset interval options for rediscover
+   * @returns Array of preset interval options with labels and values
+   */
+  static getPresetIntervals(): Array<{ label: string; value: number }> {
+    return [
+      { label: '1 hour', value: 3600 },
+      { label: '2 hours', value: 7200 },
+      { label: '4 hours', value: 14400 },
+      { label: '8 hours', value: 28800 },
+      { label: '12 hours', value: 43200 }
+    ]
+  }
+
+  /**
+   * Convert seconds to custom format for rediscover (hours only)
+   * @param seconds Interval in seconds
+   * @returns Object with value and unit
+   */
+  static convertSecondsToCustom(seconds: number): { value: number; unit: 'hours' } {
+    return {
+      value: seconds / 3600,
+      unit: 'hours'
+    }
+  }
+
+  /**
+   * Convert custom value to seconds for rediscover (hours only)
+   * @param value The hour value
+   * @returns Seconds
+   */
+  static convertToSeconds(value: number): number {
+    return value * 3600
+  }
+
+  /**
+   * Check if interval value should show a performance warning
+   * @param seconds Interval in seconds
+   * @returns Warning message if applicable, null otherwise
+   */
+  static getWarningMessage(seconds: number): string | null {
+    if (seconds < 3600) {
+      return 'Warning: Minimum interval is 1 hour'
+    } else if (seconds > 86400) {
+      return 'Warning: Long intervals (> 24 hours) may delay discovery of new devices'
+    }
+    return null
+  }
+
+  /**
+   * Validate interval value
+   * @param seconds Interval in seconds to validate
+   * @returns Validation result with success flag and error message
+   */
+  static validateInterval(seconds: number): ValidationResult {
+    if (seconds < 3600) {
+      return {
+        success: false,
+        error: 'Interval must be at least 1 hour (3600 seconds)'
+      }
+    }
+    if (seconds > 604800) {
+      return {
+        success: false,
+        error: 'Interval cannot exceed 7 days (604800 seconds)'
+      }
+    }
+    return { success: true }
+  }
+}
+
+// =====================================
 // DATABASE FILES API
 // =====================================
 
