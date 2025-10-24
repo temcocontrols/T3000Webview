@@ -491,12 +491,27 @@ async fn update_database_config(
     State(app_state): State<T3AppState>,
     Json(config): Json<database_partition_config::DatabasePartitionConfig>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
+    println!("📝 [DatabaseConfig] Received update request: strategy={:?}, retention={}:{:?}",
+        config.strategy, config.retention_value, config.retention_unit);
+
     let db = match &app_state.t3_device_conn {
         Some(conn) => &*conn.lock().await,
-        None => return Err(crate::error::Error::ServerError("T3 device database not available".to_string()))
+        None => {
+            eprintln!("❌ [DatabaseConfig] T3 device database not available");
+            return Err(crate::error::Error::ServerError("T3 device database not available".to_string()));
+        }
     };
-    let updated_config = DatabaseConfigService::save_config(db, &config).await?;
-    Ok(Json(updated_config))
+
+    match DatabaseConfigService::save_config(db, &config).await {
+        Ok(updated_config) => {
+            println!("✅ [DatabaseConfig] Configuration saved successfully: id={:?}", updated_config.id);
+            Ok(Json(updated_config))
+        },
+        Err(e) => {
+            eprintln!("❌ [DatabaseConfig] Failed to save configuration: {:?}", e);
+            Err(e)
+        }
+    }
 }
 
 /// Initialize database partitioning system (called on T3000 startup)

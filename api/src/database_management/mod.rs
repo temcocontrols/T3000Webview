@@ -1089,7 +1089,8 @@ impl DatabaseConfigService {
         println!("📁 Creating partition file: {}", partition_file_path.display());
 
         // Create SQLite URL using helper function for cross-platform compatibility
-        let partition_db_url = create_sqlite_url(&partition_file_path);
+        // Add create mode to ensure SQLite creates the file if it doesn't exist
+        let partition_db_url = format!("{}?mode=rwc", create_sqlite_url(&partition_file_path));
         println!("🔗 SQLite URL: {}", partition_db_url);
 
         // Pre-flight checks for better error diagnostics
