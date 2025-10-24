@@ -456,9 +456,9 @@ impl T3TrendlogDataService {
             value: Set(data_point.value.clone()),
             logging_time: Set(logging_time),
             logging_time_fmt: Set(logging_time_fmt.clone()),
-            data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
+            data_source: Set(Some(DATA_SOURCE_REALTIME)),
             sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-            created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
+            created_by: Set(Some(CREATED_BY_FRONTEND)),
             ..Default::default()
         };
 
@@ -540,9 +540,9 @@ impl T3TrendlogDataService {
                     value: Set(dp.value.clone()),
                     logging_time: Set(logging_time),
                     logging_time_fmt: Set(logging_time_fmt.clone()),
-                    data_source: Set(Some(DATA_SOURCE_REALTIME.to_string())),
+                    data_source: Set(Some(DATA_SOURCE_REALTIME)),
                     sync_interval: Set(Some(dp.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-                    created_by: Set(Some(CREATED_BY_FRONTEND.to_string())),
+                    created_by: Set(Some(CREATED_BY_FRONTEND)),
                     ..Default::default()
                 }
             })

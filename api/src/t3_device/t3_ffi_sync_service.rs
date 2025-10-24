@@ -1032,9 +1032,9 @@ impl T3000MainService {
                 value: Set(point.value.to_string()),
                 logging_time: Set(logging_time),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+                data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
                 sync_interval: Set(Some(config.sync_interval_secs as i32)),
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
                 ..Default::default()
             };
 
@@ -1092,9 +1092,9 @@ impl T3000MainService {
                 value: Set(point.value.to_string()),
                 logging_time: Set(logging_time),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+                data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
                 sync_interval: Set(Some(config.sync_interval_secs as i32)),
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
                 ..Default::default()
             };
 
@@ -1152,9 +1152,9 @@ impl T3000MainService {
                 value: Set(point.value.to_string()),
                 logging_time: Set(logging_time),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+                data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
                 sync_interval: Set(Some(config.sync_interval_secs as i32)),
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
                 ..Default::default()
             };
 
@@ -2006,9 +2006,9 @@ impl T3000MainService {
             value: Set(point.value.to_string()),
             logging_time: Set(logging_time_value),
             logging_time_fmt: Set(Self::format_unix_timestamp_to_local(logging_time)),
-            data_source: Set(Some(DATA_SOURCE_FFI_SYNC.to_string())),
+            data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
             sync_interval: Set(Some(config.sync_interval_secs as i32)),
-            created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE.to_string())),
+            created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
         };
 
         trendlog_data_detail::Entity::insert(detail_model)

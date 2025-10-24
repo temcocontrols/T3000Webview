@@ -372,9 +372,9 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
     LoggingTime_Fmt TEXT NOT NULL,             -- C++ Formatted Time (e.g., "2025-10-23 12:34:56")
 
     -- Tracking fields (moved from parent, change per log entry)
-    DataSource TEXT DEFAULT 'REALTIME',       -- Data source tracking ('REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL')
-    SyncInterval INTEGER DEFAULT 30,          -- Sync interval in seconds
-    CreatedBy TEXT DEFAULT 'FRONTEND',        -- Creator identification ('FRONTEND', 'BACKEND', 'API')
+    DataSource INTEGER DEFAULT 2,              -- Data source tracking (1=FFI_SYNC, 2=REALTIME, 3=HISTORICAL, 4=MANUAL)
+    SyncInterval INTEGER DEFAULT 30,           -- Sync interval in seconds
+    CreatedBy INTEGER DEFAULT 2,               -- Creator identification (1=FFI_SYNC_SERVICE, 2=FRONTEND, 3=BACKEND, 4=API)
 
     -- Foreign key constraint with cascade delete
     FOREIGN KEY (ParentId) REFERENCES TRENDLOG_DATA(id) ON DELETE CASCADE

@@ -523,10 +523,10 @@ fn create_sqlite_url(file_path: &std::path::Path) -> String {
             println!("⚠️ Warning: Path length ({}) exceeds Windows MAX_PATH limit (260)", normalized_path.len());
         }
 
-        // Use proper SQLite URI format for Windows
-        format!("sqlite:///{}", normalized_path)
+        // Use proper SQLite URI format for Windows with mode=rwc to enable auto-create
+        format!("sqlite:///{}?mode=rwc", normalized_path)
     } else {
-        format!("sqlite://{}", path_str)
+        format!("sqlite://{}?mode=rwc", path_str)
     }
 }
 

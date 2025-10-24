@@ -24,13 +24,14 @@ pub struct Model {
     pub logging_time_fmt: String,              // C++ Formatted Time (e.g., "2025-10-23 12:34:56")
 
     #[sea_orm(column_name = "DataSource")]
-    pub data_source: Option<String>,           // Data source tracking ('REALTIME', 'FFI_SYNC', 'HISTORICAL', 'MANUAL')
+    pub data_source: Option<i32>,              // Data source tracking (1=FFI_SYNC, 2=REALTIME, 3=HISTORICAL, 4=MANUAL)
 
     #[sea_orm(column_name = "SyncInterval")]
     pub sync_interval: Option<i32>,            // Sync interval in seconds
 
     #[sea_orm(column_name = "CreatedBy")]
-    pub created_by: Option<String>,            // Creator identification ('FRONTEND', 'BACKEND', 'API')
+    pub created_by: Option<i32>,               // Creator identification (1=FFI_SYNC_SERVICE, 2=FRONTEND, 3=BACKEND, 4=API)
+
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
