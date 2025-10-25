@@ -99,7 +99,21 @@ async fn load_ffi_sync_interval_from_db() -> Result<u64, Box<dyn std::error::Err
 
     match config {
         Some(cfg) => {
-            let interval = cfg.config_value.parse::<u64>().unwrap_or(300);
+            // Parse config_value as JSON to handle both Number and String formats
+            // New format: 300 (JSON number)
+            // Old format: "300" (JSON string with quotes)
+            let json_value: serde_json::Value = serde_json::from_str(&cfg.config_value)
+                .unwrap_or_else(|_| {
+                    // Fallback: treat as plain string if not valid JSON
+                    serde_json::Value::String(cfg.config_value.clone())
+                });
+
+            let interval = match json_value {
+                serde_json::Value::Number(n) => n.as_u64().unwrap_or(300),
+                serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(300),
+                _ => 300,
+            };
+
             Ok(interval)
         }
         None => {

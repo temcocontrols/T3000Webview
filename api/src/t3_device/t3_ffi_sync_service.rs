@@ -460,8 +460,28 @@ impl T3000MainService {
 
         match config {
             Some(cfg) => {
-                let interval = cfg.config_value.parse::<u64>()
-                    .map_err(|_| AppError::ParseError("Invalid sync interval value".to_string()))?;
+                // Parse config_value as JSON to handle both Number and String formats
+                // New format: 300 (JSON number)
+                // Old format: "300" (JSON string with quotes)
+                let json_value: serde_json::Value = serde_json::from_str(&cfg.config_value)
+                    .unwrap_or_else(|_| {
+                        // Fallback: treat as plain string if not valid JSON
+                        serde_json::Value::String(cfg.config_value.clone())
+                    });
+
+                let interval = match json_value {
+                    serde_json::Value::Number(n) => {
+                        n.as_u64().ok_or_else(|| AppError::ParseError("Invalid number format".to_string()))?
+                    }
+                    serde_json::Value::String(s) => {
+                        s.parse::<u64>()
+                            .map_err(|_| AppError::ParseError(format!("Invalid string number: {}", s)))?
+                    }
+                    _ => {
+                        return Err(AppError::ParseError("Invalid config value type".to_string()));
+                    }
+                };
+
                 Ok(interval)
             }
             None => {
