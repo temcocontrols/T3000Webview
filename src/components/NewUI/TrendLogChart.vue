@@ -997,7 +997,7 @@ import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
-import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
+import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, RediscoverConfigAPI, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0
@@ -9107,17 +9107,22 @@ const convertRediscoverToSeconds = (): number => {
 }
 
 // Handle preset interval change
-const onRediscoverIntervalPresetChange = () => {
+// Handle preset interval change
+const onRediscoverIntervalPresetChange = async () => {
   const newSecs = convertRediscoverToSeconds()
   rediscoverConfig.value.interval_secs = newSecs
   checkRediscoverWarning(newSecs)
+  // Auto-save to database
+  await saveRediscoverConfig()
 }
 
 // Handle custom interval change
-const onRediscoverCustomIntervalChange = () => {
+const onRediscoverCustomIntervalChange = async () => {
   const newSecs = convertRediscoverToSeconds()
   rediscoverConfig.value.interval_secs = newSecs
   checkRediscoverWarning(newSecs)
+  // Auto-save to database
+  await saveRediscoverConfig()
 }
 
 // Check for warning conditions
@@ -9138,6 +9143,42 @@ const getRediscoverCustomMin = (): number => {
 
 const getRediscoverCustomMax = (): number => {
   return 168 // Maximum 168 hours (7 days)
+}
+
+// Save rediscover interval configuration to database
+const saveRediscoverConfig = async () => {
+  try {
+    const interval_secs = convertRediscoverToSeconds()
+
+    // Validate range (1 hour to 7 days)
+    if (interval_secs < 3600 || interval_secs > 604800) {
+      message.error('Rediscover interval must be between 1 hour and 7 days')
+      return false
+    }
+
+    await RediscoverConfigAPI.updateInterval(
+      interval_secs,
+      'user',
+      'Updated via Trendlog Configuration UI'
+    )
+
+    message.success(`Rediscover interval updated to ${formatRediscoverInterval(interval_secs)}`)
+    LogUtil.Info('Rediscover interval saved', { interval_secs })
+    return true
+  } catch (error) {
+    message.error('Failed to save rediscover interval')
+    LogUtil.Error('Failed to save rediscover config', error)
+    return false
+  }
+}
+
+// Format rediscover interval for display
+const formatRediscoverInterval = (secs: number): string => {
+  const hours = secs / 3600
+  if (hours === 1) return '1 hour'
+  if (hours < 24) return `${hours} hours`
+  const days = hours / 24
+  return days === 1 ? '1 day' : `${days} days`
 }
 
 // ============ End Rediscover Functions ============
