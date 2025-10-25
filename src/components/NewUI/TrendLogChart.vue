@@ -8819,6 +8819,7 @@ onMounted(async () => {
     await loadDatabaseConfig()
     await loadDatabaseFiles()
     await loadFfiSyncConfig() // Load Sampling Interval configuration
+    await loadRediscoverConfig() // Load Rediscover Interval configuration
     LogUtil.Info('Database management initialized successfully')
   } catch (error) {
     LogUtil.Error('Failed to initialize database management', error)
@@ -9174,6 +9175,35 @@ const saveRediscoverConfig = async (showMessage: boolean = false) => {
     }
     LogUtil.Error('Failed to save rediscover config', error)
     return false
+  }
+}
+
+// Load rediscover interval configuration from API
+const loadRediscoverConfig = async () => {
+  try {
+    const intervalSecs = await RediscoverConfigAPI.getInterval()
+    rediscoverConfig.value.interval_secs = intervalSecs
+
+    // Set preset based on interval
+    const presets: Record<number, string> = {
+      3600: '1hour',
+      7200: '2hours',
+      14400: '4hours',
+      28800: '8hours',
+      43200: '12hours'
+    }
+
+    rediscoverConfig.value.interval_preset = presets[intervalSecs] || 'custom'
+
+    if (rediscoverConfig.value.interval_preset === 'custom') {
+      // Custom intervals are always in hours
+      rediscoverConfig.value.custom_value = intervalSecs / 3600
+      rediscoverConfig.value.custom_unit = 'hours'
+    }
+
+    LogUtil.Info('Rediscover config loaded', { interval_secs: intervalSecs })
+  } catch (error) {
+    LogUtil.Error('Failed to load rediscover config', error)
   }
 }
 
