@@ -997,7 +997,7 @@ import WebViewClient from 'src/lib/T3000/Hvac/Opt/Webview2/WebViewClient'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { t3000DataManager, DataReadiness, type DataValidationResult } from 'src/lib/T3000/Hvac/Data/Manager/T3000DataManager'
 import { useTrendlogDataAPI, type RealtimeDataRequest } from 'src/lib/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
-import { databaseService, DatabaseUtils, DatabaseConfigAPI, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
+import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, type DatabaseConfig } from 'src/lib/T3000/Hvac/Opt/FFI/DatabaseApi'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0
@@ -8987,10 +8987,7 @@ const deleteDbFile = async (fileId: number, fileName: string) => {
 // Load Sampling Interval configuration from API
 const loadFfiSyncConfig = async () => {
   try {
-    const response = await fetch(`/api/config/ffi-sync-interval`)
-    if (!response.ok) throw new Error('Failed to load FFI sync config')
-
-    const data = await response.json()
+    const data = await FfiSyncConfigAPI.getFfiSyncInterval()
     ffiSyncConfig.value.interval_secs = data.interval_secs
     ffiSyncConfig.value.last_sync = data.last_sync
 
@@ -9188,19 +9185,12 @@ const saveFfiSyncConfig = async () => {
       return false
     }
 
-    const response = await fetch(`/api/config/ffi-sync-interval`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        interval_secs,
-        changed_by: 'user',
-        change_reason: 'Updated via Trendlog Configuration UI'
-      })
-    })
+    const data = await FfiSyncConfigAPI.updateFfiSyncInterval(
+      interval_secs,
+      'user',
+      'Updated via Trendlog Configuration UI'
+    )
 
-    if (!response.ok) throw new Error('Failed to save FFI sync config')
-
-    const data = await response.json()
     ffiSyncConfig.value.interval_secs = data.interval_secs
     ffiSyncConfig.value.next_sync_in = data.interval_secs
 
@@ -9218,10 +9208,7 @@ const saveFfiSyncConfig = async () => {
 const loadFfiSyncHistory = async () => {
   isLoadingHistory.value = true
   try {
-    const response = await fetch(`/api/config/history?config_key=ffi.sync_interval_secs&limit=1`)
-    if (!response.ok) throw new Error('Failed to load history')
-
-    ffiSyncHistory.value = await response.json()
+    ffiSyncHistory.value = await FfiSyncConfigAPI.getFfiSyncHistory(1)
     LogUtil.Info('FFI sync history loaded (latest only)', { count: ffiSyncHistory.value.length })
   } catch (error) {
     message.error('Failed to load change history')
