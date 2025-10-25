@@ -8948,6 +8948,9 @@ const saveDatabaseConfig = async () => {
     // Save Sampling Interval configuration
     await saveFfiSyncConfig()
 
+    // Save Rediscover Interval configuration
+    await saveRediscoverConfig()
+
     message.success('Trendlog Configuration saved and partitioning applied successfully')
     showDatabaseConfig.value = false
     LogUtil.Info('Trendlog Configuration saved')
@@ -9108,21 +9111,17 @@ const convertRediscoverToSeconds = (): number => {
 
 // Handle preset interval change
 // Handle preset interval change
-const onRediscoverIntervalPresetChange = async () => {
+const onRediscoverIntervalPresetChange = () => {
   const newSecs = convertRediscoverToSeconds()
   rediscoverConfig.value.interval_secs = newSecs
   checkRediscoverWarning(newSecs)
-  // Auto-save to database
-  await saveRediscoverConfig()
 }
 
 // Handle custom interval change
-const onRediscoverCustomIntervalChange = async () => {
+const onRediscoverCustomIntervalChange = () => {
   const newSecs = convertRediscoverToSeconds()
   rediscoverConfig.value.interval_secs = newSecs
   checkRediscoverWarning(newSecs)
-  // Auto-save to database
-  await saveRediscoverConfig()
 }
 
 // Check for warning conditions
@@ -9146,13 +9145,15 @@ const getRediscoverCustomMax = (): number => {
 }
 
 // Save rediscover interval configuration to database
-const saveRediscoverConfig = async () => {
+const saveRediscoverConfig = async (showMessage: boolean = false) => {
   try {
     const interval_secs = convertRediscoverToSeconds()
 
     // Validate range (1 hour to 7 days)
     if (interval_secs < 3600 || interval_secs > 604800) {
-      message.error('Rediscover interval must be between 1 hour and 7 days')
+      if (showMessage) {
+        message.error('Rediscover interval must be between 1 hour and 7 days')
+      }
       return false
     }
 
@@ -9162,11 +9163,15 @@ const saveRediscoverConfig = async () => {
       'Updated via Trendlog Configuration UI'
     )
 
-    message.success(`Rediscover interval updated to ${formatRediscoverInterval(interval_secs)}`)
+    if (showMessage) {
+      message.success(`Rediscover interval updated to ${formatRediscoverInterval(interval_secs)}`)
+    }
     LogUtil.Info('Rediscover interval saved', { interval_secs })
     return true
   } catch (error) {
-    message.error('Failed to save rediscover interval')
+    if (showMessage) {
+      message.error('Failed to save rediscover interval')
+    }
     LogUtil.Error('Failed to save rediscover config', error)
     return false
   }
