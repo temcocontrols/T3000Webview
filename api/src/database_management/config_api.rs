@@ -506,7 +506,20 @@ async fn get_ffi_sync_interval(
     .await?;
 
     let interval_secs = match config {
-        Some(cfg) => cfg.config_value.parse::<u64>().unwrap_or(300),
+        Some(cfg) => {
+            // Try to parse the config_value which is stored as JSON string
+            // It could be a number or a string depending on when it was saved
+            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&cfg.config_value) {
+                match json_val {
+                    serde_json::Value::Number(n) => n.as_u64().unwrap_or(300),
+                    serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(300),
+                    _ => 300
+                }
+            } else {
+                // Fallback: try direct string parse
+                cfg.config_value.parse::<u64>().unwrap_or(300)
+            }
+        },
         None => 300, // Default to 5 minutes
     };
 
@@ -551,8 +564,8 @@ async fn update_ffi_sync_interval(
 
     let old_value = old_config.as_ref().map(|c| c.config_value.clone());
 
-    // Update configuration
-    let new_value = serde_json::Value::String(request.interval_secs.to_string());
+    // Update configuration - store as number, not string
+    let new_value = serde_json::Value::Number(serde_json::Number::from(request.interval_secs));
     ApplicationConfigService::set_config(
         db,
         "ffi.sync_interval_secs".to_string(),
@@ -564,13 +577,13 @@ async fn update_ffi_sync_interval(
     )
     .await?;
 
-    // Log change to APPLICATION_CONFIG_HISTORY
+    // Log change to APPLICATION_CONFIG_HISTORY - store as number string for history
     use crate::entity::application_config_history;
     let history_entry = application_config_history::ActiveModel {
         id: NotSet,
         config_key: Set("ffi.sync_interval_secs".to_string()),
         old_value: Set(old_value),
-        new_value: Set(request.interval_secs.to_string()),
+        new_value: Set(request.interval_secs.to_string()), // History table uses TEXT, so keep as string
         changed_by: Set(request.changed_by.or(Some("api".to_string()))),
         change_reason: Set(request.change_reason),
         changed_at: Set(chrono::Utc::now().naive_utc()),
@@ -626,7 +639,20 @@ async fn get_rediscover_interval(
     .await?;
 
     let interval_secs = match config {
-        Some(cfg) => cfg.config_value.parse::<u64>().unwrap_or(3600),
+        Some(cfg) => {
+            // Try to parse the config_value which is stored as JSON string
+            // It could be a number or a string depending on when it was saved
+            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&cfg.config_value) {
+                match json_val {
+                    serde_json::Value::Number(n) => n.as_u64().unwrap_or(3600),
+                    serde_json::Value::String(s) => s.parse::<u64>().unwrap_or(3600),
+                    _ => 3600
+                }
+            } else {
+                // Fallback: try direct string parse
+                cfg.config_value.parse::<u64>().unwrap_or(3600)
+            }
+        },
         None => 3600, // Default to 1 hour
     };
 
@@ -671,8 +697,8 @@ async fn update_rediscover_interval(
 
     let old_value = old_config.as_ref().map(|c| c.config_value.clone());
 
-    // Update configuration
-    let new_value = serde_json::Value::String(request.interval_secs.to_string());
+    // Update configuration - store as number, not string
+    let new_value = serde_json::Value::Number(serde_json::Number::from(request.interval_secs));
     ApplicationConfigService::set_config(
         db,
         "rediscover.interval_secs".to_string(),
@@ -684,7 +710,7 @@ async fn update_rediscover_interval(
     )
     .await?;
 
-    // Log change to APPLICATION_CONFIG_HISTORY
+    // Log change to APPLICATION_CONFIG_HISTORY - store as number string for history
     use crate::entity::application_config_history;
     let history_entry = application_config_history::ActiveModel {
         id: NotSet,
