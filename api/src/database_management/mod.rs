@@ -19,6 +19,8 @@ use std::sync::{Arc, RwLock};
 
 pub mod endpoints;
 pub mod config_api;
+pub mod partition_monitor_service;
+pub mod partition_query_service;
 
 /// Partition metadata cache for faster queries
 static PARTITION_CACHE: std::sync::OnceLock<Arc<RwLock<HashMap<String, PartitionMetadata>>>> = std::sync::OnceLock::new();
@@ -531,7 +533,7 @@ fn create_sqlite_url(file_path: &std::path::Path) -> String {
 }
 
 /// Helper function to format paths for SQLite ATTACH statements
-fn format_path_for_attach(file_path: &std::path::Path) -> String {
+pub fn format_path_for_attach(file_path: &std::path::Path) -> String {
     if cfg!(windows) {
         // On Windows, normalize the path and escape single quotes
         file_path.to_string_lossy().replace("\\", "/").replace("'", "''")

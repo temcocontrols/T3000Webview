@@ -47,6 +47,9 @@ use super::{
         .route("/api/database/optimize", post(optimize_database))
         .route("/api/database/stats", get(get_database_file_stats))
 
+        // Trendlog Query endpoints (multi-partition support)
+        .route("/api/database/trendlog/query", post(query_trendlog_across_partitions))
+
         // Database Partition endpoints
         .route("/db_management/partitions", post(create_partition))
         .route("/db_management/partitions", get(get_partitions))
@@ -694,4 +697,46 @@ async fn get_database_file_stats(
     Ok(Json(stats))
 }
 
+// ============================================================================
+// Trendlog Query Endpoints (Multi-Partition Support)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+struct TrendlogQueryRequest {
+    start_date: String,  // ISO 8601 format: "2025-10-25T00:00:00"
+    end_date: String,    // ISO 8601 format: "2025-10-26T23:59:59"
+    serial_number: Option<i32>,
+    panel_id: Option<i32>,
+    point_id: Option<String>,
+    point_type: Option<String>,
+}
+
+/// Query trendlog data across multiple partitions and main database
+async fn query_trendlog_across_partitions(
+    State(_app_state): State<T3AppState>,
+    Json(request): Json<TrendlogQueryRequest>,
+) -> Result<Json<Vec<super::partition_query_service::TrendlogDataRecord>>> {
+    use super::partition_query_service::{query_trendlog_data, TrendlogFilters};
+    use chrono::NaiveDateTime;
+
+    // Parse datetime strings
+    let start_date = NaiveDateTime::parse_from_str(&request.start_date, "%Y-%m-%dT%H:%M:%S")
+        .map_err(|e| crate::error::Error::ValidationError(format!("Invalid start_date format: {}", e)))?;
+
+    let end_date = NaiveDateTime::parse_from_str(&request.end_date, "%Y-%m-%dT%H:%M:%S")
+        .map_err(|e| crate::error::Error::ValidationError(format!("Invalid end_date format: {}", e)))?;
+
+    // Build filters
+    let filters = TrendlogFilters {
+        serial_number: request.serial_number,
+        panel_id: request.panel_id,
+        point_id: request.point_id,
+        point_type: request.point_type,
+    };
+
+    // Query across all partitions
+    let results = query_trendlog_data(start_date, end_date, filters).await?;
+
+    Ok(Json(results))
+}
 

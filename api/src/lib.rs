@@ -194,6 +194,40 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)", LogLevel::Info);
 
+    // Start partition monitor service (hourly background checks)
+    use crate::database_management::partition_monitor_service;
+    if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
+        let error_msg = format!("Partition monitor service initialization failed: {}", e);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+    } else {
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "Partition monitor service started (checks every hour)", LogLevel::Info);
+    }
+
+    // Schedule startup partition migration check (10 second delay)
+    tokio::spawn(async {
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+
+        let _ = write_structured_log_with_level(
+            "T3_Webview_Initialize",
+            "🔍 Checking for pending partition migrations on startup...",
+            LogLevel::Info
+        );
+
+        if let Err(e) = partition_monitor_service::check_startup_migrations().await {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Initialize",
+                &format!("⚠️ Startup partition migration check failed: {}", e),
+                LogLevel::Warn
+            );
+        } else {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Initialize",
+                "✅ Startup partition migration check completed",
+                LogLevel::Info
+            );
+        }
+    });
+
     // Start WebSocket service in background
     let websocket_handle = tokio::spawn(async move {
         if let Err(e) = crate::t3_socket::start_websocket_service().await {
