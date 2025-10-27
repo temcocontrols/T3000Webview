@@ -174,7 +174,7 @@ impl T3TrendlogDataService {
             value: String,
             logging_time: i64,
             logging_time_fmt: String,
-            data_source: Option<String>,
+            data_source: Option<i32>,  // Fixed: Changed from String to i32 to match database schema
             sync_interval: Option<i32>,
             // From TRENDLOG_DATA (parent)
             serial_number: i32,
