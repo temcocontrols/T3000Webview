@@ -1,4 +1,4 @@
-﻿#include <afxwin.h>
+#include <afxwin.h>
 #include "resource.h"
 #include <Shellapi.h>
 #include <ShlObj_core.h>
@@ -193,7 +193,7 @@ PCWSTR BacnetWebViewAppWindow::GetWindowClass()
 			GetSystemMetrics(SM_CYSMICON),
 			LR_DEFAULTCOLOR);
 
-		// Register the window class.
+		// Register the window class. 
 		RegisterClassEx(&wcx);
 		return windowClass.c_str();
 	}();
@@ -542,7 +542,7 @@ void BacnetWebViewAppWindow::CloseWebView(bool cleanupUserDataFolder)
 		// creation, they would need to pass in that explicit value here.
 		// For more information about userDataFolder:
 		// https://docs.microsoft.com/microsoft-edge/webview2/reference/win32/webview2-idl#createcorewebview2environmentwithoptions
-		/*
+		/* 
 		PWSTR userDataPath;
 		HRESULT hrfolder = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &userDataPath);
 		std::wstring userDataFolder(userDataPath);
@@ -799,7 +799,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 	CString image_fordor = g_strExePth + CString("Database\\Buildings\\") + pFrame->m_strCurMainBuildingName + _T("\\image");
 	CString temp_item;
 	CString temp_item_zip;
-
+	
 #endif
 
 	// append msgId
@@ -807,7 +807,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		std::string msgId = json["msgId"].asString();
 		tempjson["msgId"] = msgId;
 	}
-
+	
 	CString temp_action;
 	temp_action.Format(_T("action value = %d\r\n"), action);
 	DFTrace(temp_action);
@@ -914,7 +914,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			tempjson["data"][p_i]["control"] = g_Output_data[npanel_id].at(i).control;
 			tempjson["data"][p_i]["digital_analog"] = g_Output_data[npanel_id].at(i).digital_analog;
 			tempjson["data"][p_i]["hw_switch_status"] = g_Output_data[npanel_id].at(i).hw_switch_status;
-			tempjson["data"][p_i]["decom"] = g_Output_data[npanel_id].at(i).decom; //for output   0 "Normal"    1"Alarm"
+			tempjson["data"][p_i]["decom"] = g_Output_data[npanel_id].at(i).decom; //for output   0 "Normal"    1"Alarm"  
 			p_i++;
 		}
 
@@ -1154,10 +1154,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		int panel_id;
 		if (msg_source == 0)//来自T3000按键点击
 		{
-			grp_serial_number = g_selected_serialnumber;
+			grp_serial_number = g_selected_serialnumber; 
 			panel_id = bac_gloab_panel;
 			// 判断是否存在 "viewitem" 字段
-			if (json.isMember("viewitem") && !json["viewitem"].isNull())
+			if (json.isMember("viewitem") && !json["viewitem"].isNull()) 
 			{
 				// 存在 "viewitem" 字段且不为 null
 				grp_index = json.get("viewitem", Json::nullValue).asInt(); //这里如果是按键点进来的，要用T3000的index ，如果是 浏览器的 要浏览器的index
@@ -1205,7 +1205,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 
 			if ((panel_id <= 0) || (panel_id > 254))
 			{
-				if (action == GET_INITIAL_DATA)
+				if (action == GET_INITIAL_DATA) 
 				{
 					tempjson["action"] = "GET_INITIAL_DATA_RES";
 				}
@@ -1404,7 +1404,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		int panelId = json.get("panelId", Json::nullValue).asInt(); //这里要根据panelId来判断是那个序列号的设备，进而确定保存的文件名
 		int save_grp_index = -1;
 
-
+		
 		if (msg_source == 0)//来自T3000按键点击
 		{
 			grp_serial_number = g_selected_serialnumber; //暂时用这个代替
@@ -1437,7 +1437,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			WrapErrorMessage(builder, tempjson, outmsg, _T("Message Source Error."));
 			break;
 		}
-
+		
 		if ((save_grp_index < 0) || (save_grp_index > 7))
 		{
 			if (msg_source == 0)
@@ -1445,7 +1445,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			WrapErrorMessage(builder, tempjson, outmsg, _T("Viewitem out of range."));
 			break;
 		}
-
+		
 
 		temp_item.Format(_T("%u_%d.txt"), grp_serial_number, save_grp_index);
 		temp_item_zip.Format(_T("%u_%d.zip"), grp_serial_number, save_grp_index);
@@ -1530,7 +1530,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			break;
 		}
 
-
+		
 
 		break;
 	}
@@ -1883,10 +1883,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["panel_number"] = g_bacnet_panel_info.at(i).panel_number;
 				tempjson["data"][send_index]["object_instance"] = g_bacnet_panel_info.at(i).object_instance;
 				tempjson["data"][send_index]["serial_number"] = g_bacnet_panel_info.at(i).nseiral_number;
-				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0
+				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
 				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;
 				tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
-				send_index++;
+				send_index++; 
 			}
 			else
 			{
@@ -1901,10 +1901,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["panel_number"] = temp_panel;
 				tempjson["data"][send_index]["object_instance"] = g_Device_Basic_Setting[temp_panel].reg.object_instance;
 				tempjson["data"][send_index]["serial_number"] = g_Device_Basic_Setting[temp_panel].reg.n_serial_number;
-				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0
+				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
 				tempjson["data"][send_index]["pid"] = g_Device_Basic_Setting[temp_panel].reg.panel_type;
 				tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
-				send_index++;
+				send_index++; 
 			}
 		}
 		const std::string output = Json::writeString(builder, tempjson);
@@ -1925,6 +1925,13 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				int entry_type = entry.get("type", Json::nullValue).asInt();
 				//tempjson["data"][i]["panel_id"] = panel_id;
 				tempjson["data"][i]["index"] = entry_index;
+
+				if (debug_item_show == DEBUG_SHOW_MESSAGE_THREAD)
+				{
+					CString Mession_ret;
+					Mession_ret.Format(_T("GET_ENTRIES panel = %d , entry_type=%d ,entry_index =%d."), npanel_id, entry_type, entry_index);
+					DFTrace(Mession_ret);
+				}
 
 				if (entry_type == BAC_IN)
 				{
@@ -1987,7 +1994,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 					tempjson["data"][i]["control"] = g_Output_data[npanel_id].at(entry_index).control;
 					tempjson["data"][i]["digital_analog"] = g_Output_data[npanel_id].at(entry_index).digital_analog;
 					tempjson["data"][i]["hw_switch_status"] = g_Output_data[npanel_id].at(entry_index).hw_switch_status;
-					tempjson["data"][i]["decom"] = g_Output_data[npanel_id].at(entry_index).decom; //for output   0 "Normal"    1"Alarm"
+					tempjson["data"][i]["decom"] = g_Output_data[npanel_id].at(entry_index).decom; //for output   0 "Normal"    1"Alarm"  
 
 				}
 				else if (entry_type == BAC_VAR)
@@ -2146,7 +2153,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 						tempjson["data"][i]["range"][m] = g_monitor_data[npanel_id].at(i).range[m]; //14个input对应的range
 						//例如 例子1  111OUT45          panel = 111 , sub_panel = 0 . point_type = 0 ，number = 45 , network 默认为0
 						//例如 例子2  123.45.MB_REG67   panel = 123 , sub_panel = 45, point_type = 2 , number = 67 , network 默认为0
-						//例子3		  45678AV90
+						//例子3		  45678AV90         
 						tempjson["data"][i]["input"][m]["panel"] = g_monitor_data[npanel_id].at(i).inputs[m].panel;
 						tempjson["data"][i]["input"][m]["sub_panel"] = g_monitor_data[npanel_id].at(i).inputs[m].sub_panel;
 						tempjson["data"][i]["input"][m]["point_type"] = g_monitor_data[npanel_id].at(i).inputs[m].point_type;
@@ -2399,7 +2406,19 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 	break;
 	case LOGGING_DATA:
 	{
+		int temp_panel_id = json.get("panelId", Json::nullValue).asInt();
+		int temp_serial_number = json.get("serialNumber", Json::nullValue).asInt();
+
 		// Local flag to enable/disable logging - set to false to disable
+		//15分钟内收到这个命令直接break;
+		static DWORD last_logging_time = 0;
+		DWORD current_time = GetTickCount();
+		if (current_time - last_logging_time <  60 * 1000) // 15 minutes in milliseconds
+		{
+			break; // Ignore the command if within 15 minutes
+		}
+		last_logging_time = current_time;
+
 		bool enable_logging_data_log = true;
 
 		Json::Value tempjson;
@@ -2409,11 +2428,14 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 
 		//发送消息加载所有panel 的 in out var 数据;
 		int device_count = 0;
-		for (int panel_idx = 0; panel_idx < g_bacnet_panel_info.size(); panel_idx++)
+		//for (int panel_idx = 0; panel_idx < g_bacnet_panel_info.size(); panel_idx++)
+		int panel_idx = temp_panel_id;
 		{
 #if 1
-			int npanel_id = g_bacnet_panel_info.at(panel_idx).panel_number;
+			//int npanel_id = g_bacnet_panel_info.at(panel_idx).panel_number;
+			int npanel_id = temp_serial_number;
 
+			/*
 			if (g_bacnet_panel_info.at(panel_idx).object_instance != g_logging_time[npanel_id].bac_instance)
 				continue;
 			if (g_bacnet_panel_info.at(panel_idx).nseiral_number != g_logging_time[npanel_id].sn)
@@ -2424,6 +2446,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				continue;
 			if (g_logging_time[npanel_id].basic_setting_status != 1)
 				continue;
+			*/
 
 			// Device passed validation - add device main info
 			g_Device_Basic_Setting[npanel_id].reg.ip_addr;
@@ -2737,7 +2760,7 @@ void BacnetWebViewAppWindow::get_png_image_dimensions(CString& file_path, unsign
 //	}
 //}
 
-//void setup_console()
+//void setup_console() 
 //{
 //	AllocConsole();
 //	freopen("CONOUT$", "w", stdout);
@@ -2777,7 +2800,7 @@ int webview_run_server() {
 
 	RustError result = run_server();
 	if (result != RustError::Ok) {
-
+		
 		SetPaneString(BAC_SHOW_MISSION_RESULTS, L"Couldn't run the webview API server");
 		return 1;
 	}

@@ -39,10 +39,10 @@ void WriteToT3WebLog(const CString& functionName, const CString& logContent) {
         int start_hour = (st.wHour / 4) * 4;
         int end_hour = start_hour + 3;
 
-        // Create log file with pattern: T3_CppMsg_BacnetWebView_Exports_MMDD_HHMM.txt
+        // Create log file with pattern: T3_CppMsg_BacnetWebView_Exports_HHMM.txt
         CString logFile;
-        logFile.Format(_T("%s\\T3_CppMsg_BacnetWebView_Exports_%02d%02d_%02d%02d.txt"),
-            logDir, st.wMonth, st.wDay, start_hour, end_hour);
+        logFile.Format(_T("%s\\T3_CppMsg_BacnetWebView_Exports_%02d%02d.txt"),
+            logDir, start_hour, end_hour);
 
         CStdioFile file;
         // Use append mode to add multiple calls to same 4-hour period file
