@@ -12,7 +12,7 @@ use std::path::Path;
 /// Start background partition monitor service (checks every hour)
 pub async fn start_partition_monitor_service() -> Result<()> {
     tokio::spawn(async {
-        let mut logger = match ServiceLogger::new("PartitionMonitor") {
+        let mut logger = match ServiceLogger::new("T3_PartitionMonitor") {
             Ok(l) => l,
             Err(e) => {
                 eprintln!("Failed to create partition monitor logger: {}", e);
