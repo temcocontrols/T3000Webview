@@ -769,13 +769,31 @@ impl T3000MainService {
             // Process device(s) from response (usually 1 device, but handle multiple just in case)
             for device_with_points in logging_response.devices.iter() {
                 let serial_number = device_with_points.device_info.panel_serial_number;
+                let panel_id = device_with_points.device_info.panel_id;
 
-                sync_logger.info(&format!("📝 Processing device data - Serial: {}, Name: '{}'",
-                    serial_number, device_with_points.device_info.panel_name));
+                sync_logger.info(&format!("📝 Processing device data - Serial: {}, PanelId: {}, Name: '{}'",
+                    serial_number, panel_id, device_with_points.device_info.panel_name));
+
+                // Validate critical fields - skip devices with invalid data from C++
+                if serial_number == 0 {
+                    sync_logger.warn(&format!("⚠️ Device has SerialNumber=0 (invalid C++ data) - Name: '{}', PanelId: {}",
+                        device_with_points.device_info.panel_name, panel_id));
+                    sync_logger.warn("⏭️  Skipping device with SerialNumber=0 - C++ needs to provide valid serial number");
+                    skipped_devices += 1;
+                    continue;
+                }
+
+                if panel_id == 0 {
+                    sync_logger.warn(&format!("⚠️ Device has PanelId=0 (invalid C++ data) - Serial: {}, Name: '{}'",
+                        serial_number, device_with_points.device_info.panel_name));
+                    sync_logger.warn("⏭️  Skipping device with PanelId=0 - C++ needs to provide valid panel ID");
+                    skipped_devices += 1;
+                    continue;
+                }
 
                 // UPSERT device basic info (INSERT or UPDATE)
-                sync_logger.info(&format!("📝 Syncing device basic info - Serial: {}, Name: {}",
-                    serial_number, &device_with_points.device_info.panel_name));
+                sync_logger.info(&format!("📝 Syncing device basic info - Serial: {}, PanelId: {}, Name: {}",
+                    serial_number, panel_id, &device_with_points.device_info.panel_name));
 
                 if let Err(e) = Self::sync_device_basic_info(&txn, &device_with_points.device_info).await {
                     sync_logger.error(&format!("❌ Device basic info sync failed - Serial: {}, Error: {}", serial_number, e));
