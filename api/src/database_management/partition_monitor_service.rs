@@ -1,0 +1,530 @@
+use crate::db_connection::establish_t3_device_connection;
+use crate::entity::database_files;
+use crate::entity::database_partition_config;
+use crate::database_management::DatabaseConfigService;
+use crate::error::{AppError, Result};
+use crate::logger::ServiceLogger;
+use crate::constants::get_t3000_database_path;
+use sea_orm::*;
+use chrono::{Utc, NaiveDate, Datelike, Duration};
+use std::path::Path;
+
+/// Start background partition monitor service (checks every hour)
+pub async fn start_partition_monitor_service() -> Result<()> {
+    tokio::spawn(async {
+        let mut logger = match ServiceLogger::new("PartitionMonitor") {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("Failed to create partition monitor logger: {}", e);
+                return;
+            }
+        };
+
+        logger.info("🚀 Starting partition monitor service (checks every hour)");
+
+        loop {
+            // Sleep for 1 hour
+            tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+
+            logger.info("🔍 Hourly partition check triggered");
+
+            match check_and_migrate_if_needed().await {
+                Ok(migrated) => {
+                    if migrated {
+                        logger.info("✅ Period transition detected and data migrated");
+                    } else {
+                        logger.info("✅ No migration needed - still in current period");
+                    }
+                }
+                Err(e) => {
+                    logger.error(&format!("❌ Partition check failed: {}", e));
+                }
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// Check on startup for any missing partitions (called with 10s delay after T3000 starts)
+pub async fn check_startup_migrations() -> Result<()> {
+    println!("🔍 Checking for pending partition migrations on startup...");
+
+    let db = establish_t3_device_connection().await
+        .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
+    let config = DatabaseConfigService::get_config(&db).await?;
+
+    if !config.is_active {
+        println!("ℹ️ Partitioning is disabled - skipping migration check");
+        return Ok(());
+    }
+
+    println!("📋 Partition strategy: {:?}", config.strategy);
+
+    // Get current date
+    let current_date = Utc::now().date_naive();
+    println!("📅 Current date: {}", current_date);
+
+    // Query DATABASE_FILES table for existing partitions
+    let existing_partitions = database_files::Entity::find()
+        .filter(database_files::Column::PartitionIdentifier.is_not_null())
+        .filter(database_files::Column::IsActive.eq(false)) // Partitions are inactive
+        .order_by_asc(database_files::Column::StartDate)
+        .all(&db)
+        .await?;
+
+    println!("📁 Found {} existing partition records", existing_partitions.len());
+
+    // Determine what needs to be migrated
+    let periods_to_migrate = if existing_partitions.is_empty() {
+        // DATABASE_FILES is empty - add 1 missing period (yesterday)
+        println!("⚠️ No partition records found - will migrate 1 previous period");
+        vec![calculate_previous_period(&config, current_date)]
+    } else {
+        // DATABASE_FILES has records - find gaps between last partition and current date
+        let last_partition_date = existing_partitions
+            .last()
+            .and_then(|p| p.end_date)
+            .map(|dt| dt.date())
+            .unwrap_or_else(|| current_date.pred_opt().unwrap());
+
+        println!("📊 Last partition date: {}", last_partition_date);
+
+        // Generate all missing periods between last partition and current date
+        generate_missing_periods(&config, last_partition_date, current_date)
+    };
+
+    if periods_to_migrate.is_empty() {
+        println!("✅ No migration needed - partitions are up to date");
+        return Ok(());
+    }
+
+    println!("🔄 Need to migrate {} periods", periods_to_migrate.len());
+
+    // Migrate each missing period
+    for (index, period_date) in periods_to_migrate.iter().enumerate() {
+        let partition_id = generate_partition_identifier(&config, period_date);
+        println!("📦 Migrating period {}/{}: {} ({})",
+                 index + 1, periods_to_migrate.len(), period_date, partition_id);
+
+        match migrate_single_period(&db, &config, &partition_id, *period_date).await {
+            Ok(count) => {
+                println!("✅ Migrated {} records for period {}", count, partition_id);
+            }
+            Err(e) => {
+                println!("❌ Failed to migrate period {}: {}", partition_id, e);
+                // Continue with next period instead of failing completely
+            }
+        }
+    }
+
+    println!("✅ Startup migration check completed");
+    Ok(())
+}
+
+/// Check if current date crossed a period boundary and migrate if needed (called hourly)
+async fn check_and_migrate_if_needed() -> Result<bool> {
+    let db = establish_t3_device_connection().await
+        .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
+    let config = DatabaseConfigService::get_config(&db).await?;
+
+    if !config.is_active {
+        return Ok(false); // Partitioning disabled
+    }
+
+    let current_date = Utc::now().date_naive();
+
+    // Get last partition date
+    let last_partition = database_files::Entity::find()
+        .filter(database_files::Column::PartitionIdentifier.is_not_null())
+        .filter(database_files::Column::IsActive.eq(false))
+        .order_by_desc(database_files::Column::EndDate)
+        .one(&db)
+        .await?;
+
+    let last_partition_date = last_partition
+        .and_then(|p| p.end_date)
+        .map(|dt| dt.date())
+        .unwrap_or_else(|| calculate_previous_period(&config, current_date));
+
+    // Check if we need to migrate based on strategy
+    let should_migrate = match config.strategy {
+        database_partition_config::PartitionStrategy::Daily => {
+            // If last partition is 2025-10-24 and today is 2025-10-26,
+            // we need to migrate 2025-10-25
+            last_partition_date < current_date.pred_opt().unwrap()
+        }
+        database_partition_config::PartitionStrategy::Weekly => {
+            // Check if we crossed Sunday -> Monday boundary
+            let current_week = current_date.iso_week();
+            let last_week = last_partition_date.iso_week();
+            current_week.week() != last_week.week() || current_week.year() != last_week.year()
+        }
+        database_partition_config::PartitionStrategy::Monthly => {
+            // Check if we're in a new month
+            current_date.month() != last_partition_date.month() ||
+            current_date.year() != last_partition_date.year()
+        }
+        _ => false
+    };
+
+    if should_migrate {
+        let periods = generate_missing_periods(&config, last_partition_date, current_date);
+        for period_date in periods {
+            let partition_id = generate_partition_identifier(&config, &period_date);
+            migrate_single_period(&db, &config, &partition_id, period_date).await?;
+        }
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+/// Calculate the previous period based on strategy
+fn calculate_previous_period(
+    config: &database_partition_config::DatabasePartitionConfig,
+    current_date: NaiveDate,
+) -> NaiveDate {
+    match config.strategy {
+        database_partition_config::PartitionStrategy::Daily => {
+            // Previous day (2025-10-25 if current is 2025-10-26)
+            current_date.pred_opt().unwrap()
+        }
+        database_partition_config::PartitionStrategy::Weekly => {
+            // Previous Monday (start of previous week)
+            let days_from_monday = current_date.weekday().num_days_from_monday() as i64;
+            let this_week_start = current_date - Duration::days(days_from_monday);
+            this_week_start - Duration::days(7) // Previous week's Monday
+        }
+        database_partition_config::PartitionStrategy::Monthly => {
+            // First day of previous month
+            if current_date.month() == 1 {
+                NaiveDate::from_ymd_opt(current_date.year() - 1, 12, 1).unwrap()
+            } else {
+                NaiveDate::from_ymd_opt(current_date.year(), current_date.month() - 1, 1).unwrap()
+            }
+        }
+        _ => current_date.pred_opt().unwrap()
+    }
+}
+
+/// Generate all missing periods between last_partition_date and current_date
+fn generate_missing_periods(
+    config: &database_partition_config::DatabasePartitionConfig,
+    last_partition_date: NaiveDate,
+    current_date: NaiveDate,
+) -> Vec<NaiveDate> {
+    let mut periods = Vec::new();
+
+    match config.strategy {
+        database_partition_config::PartitionStrategy::Daily => {
+            // Generate each day between last and current (excluding current)
+            let mut date = last_partition_date.succ_opt().unwrap();
+            while date < current_date {
+                periods.push(date);
+                date = date.succ_opt().unwrap();
+            }
+        }
+        database_partition_config::PartitionStrategy::Weekly => {
+            // Generate each week's Monday between last and current
+            let mut week_start = last_partition_date;
+            loop {
+                week_start = week_start + Duration::days(7);
+
+                // Check if this week has already started
+                let current_week_start = current_date - Duration::days(
+                    current_date.weekday().num_days_from_monday() as i64
+                );
+
+                if week_start >= current_week_start {
+                    break; // Don't migrate current week
+                }
+
+                periods.push(week_start);
+            }
+        }
+        database_partition_config::PartitionStrategy::Monthly => {
+            // Generate each month's 1st day between last and current
+            let mut month_date = last_partition_date;
+            loop {
+                // Move to next month
+                month_date = if month_date.month() == 12 {
+                    NaiveDate::from_ymd_opt(month_date.year() + 1, 1, 1).unwrap()
+                } else {
+                    NaiveDate::from_ymd_opt(month_date.year(), month_date.month() + 1, 1).unwrap()
+                };
+
+                // Check if this month has started
+                if month_date.year() > current_date.year() ||
+                   (month_date.year() == current_date.year() && month_date.month() >= current_date.month()) {
+                    break; // Don't migrate current month
+                }
+
+                periods.push(month_date);
+            }
+        }
+        _ => {}
+    }
+
+    periods
+}
+
+/// Generate partition identifier based on strategy and date
+fn generate_partition_identifier(
+    config: &database_partition_config::DatabasePartitionConfig,
+    date: &NaiveDate,
+) -> String {
+    match config.strategy {
+        database_partition_config::PartitionStrategy::Daily => {
+            date.format("%Y-%m-%d").to_string()
+        }
+        database_partition_config::PartitionStrategy::Weekly => {
+            format!("{}-W{:02}", date.format("%Y"), date.iso_week().week())
+        }
+        database_partition_config::PartitionStrategy::Monthly => {
+            date.format("%Y-%m").to_string()
+        }
+        _ => date.format("%Y-%m-%d").to_string()
+    }
+}
+
+/// Calculate exact start and end datetime for a period
+fn calculate_period_boundaries(
+    config: &database_partition_config::DatabasePartitionConfig,
+    period_date: NaiveDate,
+) -> (chrono::NaiveDateTime, chrono::NaiveDateTime) {
+    match config.strategy {
+        database_partition_config::PartitionStrategy::Daily => {
+            // Daily: 2025-10-25 00:00:00 to 2025-10-25 23:59:59
+            let start = period_date.and_hms_opt(0, 0, 0).unwrap();
+            let end = period_date.and_hms_opt(23, 59, 59).unwrap();
+            (start, end)
+        }
+        database_partition_config::PartitionStrategy::Weekly => {
+            // Weekly: Monday 00:00:00 to Sunday 23:59:59
+            let days_from_monday = period_date.weekday().num_days_from_monday() as i64;
+            let week_start = period_date - Duration::days(days_from_monday);
+            let week_end = week_start + Duration::days(6);
+            (week_start.and_hms_opt(0, 0, 0).unwrap(),
+             week_end.and_hms_opt(23, 59, 59).unwrap())
+        }
+        database_partition_config::PartitionStrategy::Monthly => {
+            // Monthly: 1st 00:00:00 to last day 23:59:59
+            let month_start = NaiveDate::from_ymd_opt(
+                period_date.year(),
+                period_date.month(),
+                1
+            ).unwrap();
+            let month_end = if period_date.month() == 12 {
+                NaiveDate::from_ymd_opt(period_date.year() + 1, 1, 1).unwrap()
+                    .pred_opt().unwrap()
+            } else {
+                NaiveDate::from_ymd_opt(period_date.year(), period_date.month() + 1, 1).unwrap()
+                    .pred_opt().unwrap()
+            };
+            (month_start.and_hms_opt(0, 0, 0).unwrap(),
+             month_end.and_hms_opt(23, 59, 59).unwrap())
+        }
+        _ => {
+            let start = period_date.and_hms_opt(0, 0, 0).unwrap();
+            let end = period_date.and_hms_opt(23, 59, 59).unwrap();
+            (start, end)
+        }
+    }
+}
+
+/// Migrate a single completed period to its partition file
+async fn migrate_single_period(
+    db: &DatabaseConnection,
+    config: &database_partition_config::DatabasePartitionConfig,
+    partition_id: &str,
+    period_date: NaiveDate,
+) -> Result<u64> {
+    use crate::database_management::format_path_for_attach;
+
+    println!("🔨 Creating partition: {}", partition_id);
+
+    // Step 1: Calculate date range for this period
+    let (start_date, end_date) = calculate_period_boundaries(config, period_date);
+    println!("📅 Period boundaries: {} to {}", start_date, end_date);
+
+    // Step 2: Create partition file
+    let runtime_path = get_t3000_database_path();
+    let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
+    let partition_path = runtime_path.join(&partition_file_name);
+
+    println!("📁 Creating partition file: {}", partition_path.display());
+
+    // Create the partition database file
+    let partition_db_url = format!("sqlite://{}?mode=rwc", partition_path.display());
+    let partition_conn = sea_orm::Database::connect(&partition_db_url).await
+        .map_err(|e| crate::error::Error::ServerError(format!("Failed to create partition file: {}", e)))?;
+
+    // Initialize partition database with required tables
+    let init_sql = r#"
+        CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
+            SerialNumber INTEGER NOT NULL,
+            PanelId INTEGER NOT NULL,
+            PointId TEXT NOT NULL,
+            PointIndex INTEGER NOT NULL,
+            PointType TEXT NOT NULL,
+            Digital_Analog TEXT,
+            Range_Field TEXT,
+            Units TEXT,
+            PRIMARY KEY (SerialNumber, PanelId, PointId, PointIndex, PointType)
+        );
+
+        CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            parent_id INTEGER NOT NULL,
+            value TEXT NOT NULL,
+            logging_time INTEGER NOT NULL,
+            logging_time_fmt TEXT NOT NULL,
+            data_source TEXT,
+            sync_interval INTEGER,
+            created_by TEXT,
+            FOREIGN KEY (parent_id) REFERENCES TRENDLOG_DATA(rowid)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_trendlog_data_device_panel
+        ON TRENDLOG_DATA(SerialNumber, PanelId);
+
+        CREATE INDEX IF NOT EXISTS idx_trendlog_detail_parent
+        ON TRENDLOG_DATA_DETAIL(parent_id);
+
+        CREATE INDEX IF NOT EXISTS idx_trendlog_detail_time
+        ON TRENDLOG_DATA_DETAIL(logging_time_fmt);
+
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA cache_size = 10000;
+        PRAGMA temp_store = memory;
+    "#;
+
+    partition_conn.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        init_sql.to_string()
+    )).await?;
+
+    partition_conn.close().await.ok();
+
+    // Step 3: Migrate data from main database to partition using ATTACH
+    let partition_path_str = format_path_for_attach(&partition_path);
+    let attach_sql = format!("ATTACH DATABASE '{}' AS partition_db", partition_path_str);
+
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        attach_sql
+    )).await?;
+
+    // Migrate TRENDLOG_DATA parent records
+    let migrate_parent_sql = format!(
+        r#"
+        INSERT OR IGNORE INTO partition_db.TRENDLOG_DATA
+        SELECT DISTINCT td.SerialNumber, td.PanelId, td.PointId, td.PointIndex, td.PointType,
+                        td.Digital_Analog, td.Range_Field, td.Units
+        FROM main.TRENDLOG_DATA td
+        INNER JOIN main.TRENDLOG_DATA_DETAIL tdd ON td.rowid = tdd.parent_id
+        WHERE datetime(tdd.logging_time_fmt) >= datetime('{}')
+        AND datetime(tdd.logging_time_fmt) <= datetime('{}')
+        "#,
+        start_date.format("%Y-%m-%d %H:%M:%S"),
+        end_date.format("%Y-%m-%d %H:%M:%S")
+    );
+
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        migrate_parent_sql
+    )).await?;
+
+    // Migrate TRENDLOG_DATA_DETAIL records
+    let migrate_detail_sql = format!(
+        r#"
+        INSERT INTO partition_db.TRENDLOG_DATA_DETAIL (parent_id, value, logging_time, logging_time_fmt, data_source, sync_interval, created_by)
+        SELECT
+            (SELECT rowid FROM partition_db.TRENDLOG_DATA p
+             WHERE p.SerialNumber = td.SerialNumber
+             AND p.PanelId = td.PanelId
+             AND p.PointId = td.PointId
+             AND p.PointIndex = td.PointIndex
+             AND p.PointType = td.PointType) as parent_id,
+            tdd.value, tdd.logging_time, tdd.logging_time_fmt, tdd.data_source, tdd.sync_interval, tdd.created_by
+        FROM main.TRENDLOG_DATA_DETAIL tdd
+        INNER JOIN main.TRENDLOG_DATA td ON tdd.parent_id = td.rowid
+        WHERE datetime(tdd.logging_time_fmt) >= datetime('{}')
+        AND datetime(tdd.logging_time_fmt) <= datetime('{}')
+        "#,
+        start_date.format("%Y-%m-%d %H:%M:%S"),
+        end_date.format("%Y-%m-%d %H:%M:%S")
+    );
+
+    let migration_result = db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        migrate_detail_sql
+    )).await?;
+
+    let migrated_count = migration_result.rows_affected();
+    println!("📦 Migrated {} records to partition {}", migrated_count, partition_id);
+
+    // Step 4: Delete migrated data from main database
+    if migrated_count > 0 {
+        let delete_detail_sql = format!(
+            r#"
+            DELETE FROM main.TRENDLOG_DATA_DETAIL
+            WHERE datetime(logging_time_fmt) >= datetime('{}')
+            AND datetime(logging_time_fmt) <= datetime('{}')
+            "#,
+            start_date.format("%Y-%m-%d %H:%M:%S"),
+            end_date.format("%Y-%m-%d %H:%M:%S")
+        );
+
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            delete_detail_sql
+        )).await?;
+
+        // Clean up orphaned parent records
+        let delete_parent_sql = r#"
+            DELETE FROM main.TRENDLOG_DATA
+            WHERE rowid NOT IN (SELECT DISTINCT parent_id FROM main.TRENDLOG_DATA_DETAIL)
+        "#;
+
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            delete_parent_sql.to_string()
+        )).await?;
+
+        println!("🗑️ Deleted migrated records from main DB");
+    }
+
+    // Detach partition database
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DETACH DATABASE partition_db".to_string()
+    )).await?;
+
+    // Step 5: Register partition in DATABASE_FILES table
+    let file_size = std::fs::metadata(&partition_path)
+        .map(|m| m.len() as i64)
+        .unwrap_or(0);
+
+    let new_file = database_files::ActiveModel {
+        file_name: Set(partition_file_name),
+        file_path: Set(partition_path.to_string_lossy().to_string()),
+        partition_identifier: Set(Some(partition_id.to_string())),
+        file_size_bytes: Set(file_size),
+        record_count: Set(migrated_count as i64),
+        start_date: Set(Some(start_date)),
+        end_date: Set(Some(end_date)),
+        is_active: Set(false), // Partitions are not active for new inserts
+        is_archived: Set(false),
+        created_at: Set(Utc::now().naive_utc()),
+        last_accessed_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+
+    new_file.insert(db).await?;
+
+    println!("✅ Partition {} registered in DATABASE_FILES", partition_id);
+    Ok(migrated_count)
+}
