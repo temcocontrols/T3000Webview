@@ -93,7 +93,28 @@ extern "C" int BacnetWebView_HandleWebViewMsg(int action, char* msg, int iLen) {
         return -1;
     }
 
-    // Initialize the buffer to ensure it's null-terminated
+    // IMPORTANT: Save the input JSON BEFORE clearing the buffer!
+    // Rust sends JSON like: {"action":"LOGGING_DATA","panelId":1,"serialNumber":237219}
+    // Or for simple actions, it sends an empty buffer
+    std::string input_json_str;
+
+    // Check if buffer has actual JSON content (starts with '{')
+    if (msg[0] == '{') {
+        // Find null terminator safely
+        size_t max_len = 0;
+        for (size_t i = 0; i < (size_t)iLen; i++) {
+            if (msg[i] == '\0') {
+                max_len = i;
+                break;
+            }
+        }
+        if (max_len == 0) {
+            max_len = iLen - 1; // No null terminator found, use max length
+        }
+        input_json_str = std::string(msg, max_len);
+    }
+
+    // Initialize the buffer to ensure it's null-terminated for the OUTPUT
     memset(msg, 0, iLen);
 
     // Check if MFC application is properly initialized before calling T3000 functions
@@ -114,22 +135,38 @@ extern "C" int BacnetWebView_HandleWebViewMsg(int action, char* msg, int iLen) {
     }
 
     try {
-        // Log function entry
+        // Log function entry with the INPUT JSON
         CString logContent;
-        logContent.Format(_T("Function called with:\nAction: %d\nBuffer size: %d\n"), action, iLen);
+        logContent.Format(_T("Function called with:\nAction: %d\nBuffer size: %d\nInput JSON length: %d\n"),
+            action, iLen, (int)input_json_str.length());
 
-        // Create the JSON message with the action
-        std::string json_msg = "{\"action\":" + std::to_string(action) + "}";
+        // Determine which JSON to use
+        std::string json_msg;
+        if (!input_json_str.empty()) {
+            // Use the JSON that Rust sent us (has parameters like panelId, serialNumber)
+            json_msg = input_json_str;
+            logContent.AppendFormat(_T("Using input JSON from Rust: %S\n"), json_msg.c_str());
+        } else {
+            // Create simple JSON with just the action (for backward compatibility)
+            json_msg = "{\"action\":" + std::to_string(action) + "}";
+            logContent.AppendFormat(_T("Created simple JSON: %S\n"), json_msg.c_str());
+        }
 
-        // Convert to CString for the real MFC function
+        logContent.AppendFormat(_T("About to convert std::string to CString...\n"));
+        WriteToT3WebLog(_T("BacnetWebView_HandleWebViewMsg"), logContent);
+
         CString input_msg(json_msg.c_str());
         CString output_msg;
 
-        logContent.AppendFormat(_T("Calling HandleWebViewMsg with input: %s\n"), input_msg);
+        logContent.Format(_T("Calling HandleWebViewMsg with input: %s\n"), input_msg);
+        WriteToT3WebLog(_T("BacnetWebView_HandleWebViewMsg"), logContent);
 
         // Call the REAL HandleWebViewMsg function in BacnetWebView.cpp
         // Use default parameter for msg_source (0)
         HandleWebViewMsg(input_msg, output_msg);
+
+        logContent.Format(_T("HandleWebViewMsg returned successfully\n"));
+        WriteToT3WebLog(_T("BacnetWebView_HandleWebViewMsg"), logContent);
 
         // Debug logging to understand what's happening
         int output_len = output_msg.GetLength();
