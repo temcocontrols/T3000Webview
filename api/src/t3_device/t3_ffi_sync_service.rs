@@ -1322,8 +1322,12 @@ impl T3000MainService {
                     });
                     let input_str = input_json.to_string();
 
-                    // Log FFI call start
+                    // Log FFI call start WITH ACTUAL JSON BEING SENT
                     info!("🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id_clone, serial_number_clone);
+                    info!("📤 Sending JSON to C++: {}", input_str);
+                    if let Ok(mut sync_logger) = ServiceLogger::ffi() {
+                        sync_logger.info(&format!("📤 LOGGING_DATA JSON sent to C++: {}", input_str));
+                    }
 
                     // Prepare buffer for response - very large buffer for up to 100 devices
                     // Each device can be ~1MB, so 100 devices = ~100MB
@@ -1477,8 +1481,8 @@ impl T3000MainService {
             tokio::task::spawn_blocking(move || {
                 info!("🔌 Calling HandleWebViewMsg(4) for GET_PANELS_LIST...");
 
-                // Prepare buffer for response - small buffer for device list
-                const BUFFER_SIZE: usize = 10240; // 10KB sufficient for device list
+                // Prepare buffer for response - increased size for large device lists
+                const BUFFER_SIZE: usize = 1048576; // 1MB buffer for large device lists (was 10KB)
                 let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
                 // Call HandleWebViewMsg with Action 4 (GET_PANELS_LIST)
