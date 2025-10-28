@@ -36,6 +36,30 @@ type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *m
 type GetDeviceBasicSettingsFn = unsafe extern "C" fn(panel_id: i32, buffer: *mut c_char, buffer_size: i32) -> i32;
 type GetDeviceNetworkConfigFn = unsafe extern "C" fn(panel_id: i32, buffer: *mut c_char, buffer_size: i32) -> i32;
 
+/// WebView message type enum matching C++ WEBVIEW_MESSAGE_TYPE
+/// These numeric values MUST match the C++ enum exactly
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+enum WebViewMessageType {
+    GET_PANEL_DATA = 0,
+    GET_INITIAL_DATA = 1,
+    SAVE_GRAPHIC_DATA = 2,
+    UPDATE_ENTRY = 3,
+    GET_PANELS_LIST = 4,           // Used for lightweight device list
+    GET_PANEL_RANGE_INFO = 5,
+    GET_ENTRIES = 6,
+    LOAD_GRAPHIC_ENTRY = 7,
+    OPEN_ENTRY_EDIT_WINDOW = 8,
+    SAVE_IMAGE = 9,
+    SAVE_LIBRAY_DATA = 10,
+    DELETE_IMAGE = 11,
+    GET_SELECTED_DEVICE_INFO = 12,
+    BIND_DEVICE = 13,
+    SAVE_NEW_LIBRARY_DATA = 14,
+    LOGGING_DATA = 15,             // Used for full device data sync
+}
+
 // Global function pointers - will be loaded from T3000.exe at runtime
 static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
 static mut GET_DEVICE_BASIC_SETTINGS_FN: Option<GetDeviceBasicSettingsFn> = None;
@@ -1316,7 +1340,7 @@ impl T3000MainService {
 
                     // Prepare input JSON with panel_id and serial_number
                     let input_json = serde_json::json!({
-                        "action": "LOGGING_DATA",
+                        "action": WebViewMessageType::LOGGING_DATA as i32,  // Use numeric enum value (15)
                         "panelId": panel_id_clone,
                         "serialNumber": serial_number_clone
                     });
@@ -1346,7 +1370,7 @@ impl T3000MainService {
 
                     // Call the T3000 HandleWebViewMsg function via runtime loading
                     // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
-                    let result = match call_handle_webview_msg(15, &mut buffer) {
+                    let result = match call_handle_webview_msg(WebViewMessageType::LOGGING_DATA as i32, &mut buffer) {
                         Ok(code) => code,
                         Err(err) => {
                             error!("❌ Failed to call BacnetWebView_HandleWebViewMsg: {}", err);
@@ -1479,17 +1503,17 @@ impl T3000MainService {
         let spawn_result = tokio::time::timeout(
             Duration::from_secs(10), // 10 second timeout for lightweight operation
             tokio::task::spawn_blocking(move || {
-                info!("🔌 Calling HandleWebViewMsg(4) for GET_PANELS_LIST...");
+                info!("🔌 Calling HandleWebViewMsg(GET_PANELS_LIST) for device list...");
 
                 // Prepare buffer for response - increased size for large device lists
                 const BUFFER_SIZE: usize = 1048576; // 1MB buffer for large device lists (was 10KB)
                 let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
                 // Call HandleWebViewMsg with Action 4 (GET_PANELS_LIST)
-                let result = match call_handle_webview_msg(4, &mut buffer) {
+                let result = match call_handle_webview_msg(WebViewMessageType::GET_PANELS_LIST as i32, &mut buffer) {
                     Ok(code) => code,
                     Err(err) => {
-                        error!("❌ Failed to call HandleWebViewMsg(4): {}", err);
+                        error!("❌ Failed to call HandleWebViewMsg(GET_PANELS_LIST): {}", err);
                         return Err(format!("Failed to call HandleWebViewMsg: {}", err));
                     }
                 };
@@ -1499,7 +1523,7 @@ impl T3000MainService {
                 } else if result != 0 {
                     let null_pos = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
                     let _error_response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                    error!("❌ HandleWebViewMsg(4) returned error code: {}", result);
+                    error!("❌ HandleWebViewMsg(GET_PANELS_LIST) returned error code: {}", result);
                     return Err(format!("HandleWebViewMsg returned error code: {}", result));
                 }
 
