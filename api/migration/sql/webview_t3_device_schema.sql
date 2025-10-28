@@ -359,25 +359,46 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
 -- TRENDLOG_DATA_DETAIL table (Child - Stores time-series values only)
 -- High-frequency writes: Only value + timestamp per log entry
 -- Typical size: ~1.27M records for production data (2,409 avg per point)
-CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
-    -- Primary Key
+-- TRENDLOG_DATA_SYNC_METADATA table (Tracks sync operations - replaces per-record SyncInterval/CreatedBy)
+-- Stores sync operation details ONCE instead of duplicating per detail record
+-- Space savings: ~24 bytes per detail record × millions of records = significant savings
+CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_SYNC_METADATA (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    -- Foreign Key to Parent table
-    ParentId INTEGER NOT NULL,
+    -- When (Single timestamp)
+    SyncTime_Fmt TEXT NOT NULL,                        -- "2025-10-28 13:35:49"
 
-    -- Time-series data (THE ONLY THINGS THAT CHANGE!)
-    Value TEXT NOT NULL,                       -- C++ Point Value (actual sensor/point value)
-    LoggingTime INTEGER NOT NULL,              -- C++ Logging Time as Unix timestamp (INTEGER for efficiency)
-    LoggingTime_Fmt TEXT NOT NULL,             -- C++ Formatted Time (e.g., "2025-10-23 12:34:56")
+    -- What (Message type)
+    MessageType TEXT NOT NULL,                         -- "LOGGING_DATA" or "GET_PANELS_LIST"
 
-    -- Tracking fields (moved from parent, change per log entry)
-    DataSource INTEGER DEFAULT 2,              -- Data source tracking (1=FFI_SYNC, 2=REALTIME, 3=HISTORICAL, 4=MANUAL)
-    SyncInterval INTEGER DEFAULT 30,           -- Sync interval in seconds
-    CreatedBy INTEGER DEFAULT 2,               -- Creator identification (1=FFI_SYNC_SERVICE, 2=FRONTEND, 3=BACKEND, 4=API)
+    -- Which (Device targeting - NULL means all devices)
+    PanelId INTEGER,                                   -- NULL = all panels
+    SerialNumber INTEGER,                              -- NULL = all devices
 
-    -- Foreign key constraint with cascade delete
-    FOREIGN KEY (ParentId) REFERENCES TRENDLOG_DATA(id) ON DELETE CASCADE
+    -- How Many (Statistics)
+    RecordsInserted INTEGER DEFAULT 0,                 -- Detail records created in this sync
+
+    -- Configuration
+    SyncInterval INTEGER NOT NULL,                     -- 15, 60, 300, 900 seconds
+
+    -- Result (Success/Failure - no IN_PROGRESS to avoid double updates)
+    Success INTEGER DEFAULT 1,                         -- 1=success, 0=failed (BOOLEAN)
+    ErrorMessage TEXT,                                 -- NULL if success, error text if failed
+
+    -- Audit
+    CreatedAt TEXT DEFAULT (datetime('now'))
+);
+
+-- TRENDLOG_DATA_DETAIL table (Child - Stores time-series values only)
+-- OPTIMIZED: Removed id, SyncInterval, CreatedBy (moved to TRENDLOG_DATA_SYNC_METADATA)
+-- Space savings: 24 bytes per record (35% reduction)
+CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
+    -- Core fields only (NO id field - use built-in rowid)
+    ParentId INTEGER NOT NULL,                         -- References TRENDLOG_DATA(id)
+    Value TEXT NOT NULL,                               -- C++ Point Value (actual sensor/point value)
+    LoggingTime_Fmt TEXT NOT NULL,                     -- C++ Formatted Time (e.g., "2025-10-28 13:35:49")
+    DataSource INTEGER DEFAULT 1,                      -- 1=FFI_SYNC, 2=REALTIME, 3=HISTORICAL, 4=MANUAL
+    SyncMetadataId INTEGER                             -- References TRENDLOG_DATA_SYNC_METADATA(id) - NULL for non-FFI
 );
 
 -- =================================================================
@@ -411,13 +432,18 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_SERIAL ON TRENDLOG_DATA(SerialNumbe
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TYPE ON TRENDLOG_DATA(PointType);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_ACTIVE ON TRENDLOG_DATA(IsActive);
 
--- New TRENDLOG_DATA_DETAIL (Child) indexes - for fast time-series queries
+-- New TRENDLOG_DATA_DETAIL (Child) indexes - for fast time-series queries (OPTIMIZED)
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_PARENT ON TRENDLOG_DATA_DETAIL(ParentId);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_TIME ON TRENDLOG_DATA_DETAIL(LoggingTime DESC);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_TIME_FMT ON TRENDLOG_DATA_DETAIL(LoggingTime_Fmt DESC);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_PARENT_TIME ON TRENDLOG_DATA_DETAIL(ParentId, LoggingTime DESC);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_PARENT_TIME ON TRENDLOG_DATA_DETAIL(ParentId, LoggingTime_Fmt DESC);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_SOURCE ON TRENDLOG_DATA_DETAIL(DataSource);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_CREATED_BY ON TRENDLOG_DATA_DETAIL(CreatedBy);
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_SYNC_META ON TRENDLOG_DATA_DETAIL(SyncMetadataId);
+
+-- New TRENDLOG_DATA_SYNC_METADATA indexes - for tracking sync operations
+CREATE INDEX IF NOT EXISTS IDX_SYNC_META_TIME ON TRENDLOG_DATA_SYNC_METADATA(SyncTime_Fmt DESC);
+CREATE INDEX IF NOT EXISTS IDX_SYNC_META_TYPE ON TRENDLOG_DATA_SYNC_METADATA(MessageType);
+CREATE INDEX IF NOT EXISTS IDX_SYNC_META_DEVICE ON TRENDLOG_DATA_SYNC_METADATA(PanelId, SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_SYNC_META_SUCCESS ON TRENDLOG_DATA_SYNC_METADATA(Success);
 
 CREATE INDEX IF NOT EXISTS IDX_VARIABLES_SERIAL ON VARIABLES(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_PROGRAMS_SERIAL ON PROGRAMS(SerialNumber);
