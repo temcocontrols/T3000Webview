@@ -198,7 +198,7 @@ extern "C" int BacnetWebView_HandleWebViewMsg(int action, char* msg, int iLen) {
             strncpy_s(msg, iLen, result.c_str(), result_len);
             msg[result_len] = '\0'; // Ensure null termination
 
-            logContent.AppendFormat(_T("SUCCESS: Returned %d bytes\nResponse preview: %.200S\n"),
+            logContent.AppendFormat(_T("SUCCESS: Returned %d bytes\n=== Full JSON Response ===\n%S\n=== End JSON Response ===\n"),
                 (int)result_len, result.c_str());
             WriteToT3WebLog(_T("BacnetWebView_HandleWebViewMsg"), logContent);
 
@@ -599,7 +599,7 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogList(int panel_id,
                 monitors_count,
                 use_m_monitor_data ? _T("m_monitor_data") : _T("g_monitor_data"),
                 (int)json_len);
-            logContent.AppendFormat(_T("Response preview: %.200S\n"), json_string.c_str());
+            logContent.AppendFormat(_T("=== Full JSON Response ===\n%S\n=== End JSON Response ===\n"), json_string.c_str());
             WriteToT3WebLog(_T("BacnetWebView_GetTrendlogList"), logContent);
 
             return (int)json_len;
@@ -812,7 +812,7 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
             result_buffer[json_len] = '\0';
 
             logContent.AppendFormat(_T("SUCCESS: Returned monitor entry, %d bytes\n"), (int)json_len);
-            logContent.AppendFormat(_T("Response preview: %.200S\n"), json_string.c_str());
+            logContent.AppendFormat(_T("=== Full JSON Response ===\n%S\n=== End JSON Response ===\n"), json_string.c_str());
             WriteToT3WebLog(_T("BacnetWebView_GetTrendlogEntry"), logContent);
 
             return (int)json_len;
