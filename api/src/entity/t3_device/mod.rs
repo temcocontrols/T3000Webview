@@ -12,6 +12,7 @@ pub mod schedules;
 pub mod trendlog_data;
 pub mod trendlog_data_detail;
 pub mod trendlog_data_old;
+pub mod trendlog_data_sync_metadata;
 pub mod trendlog_inputs;
 pub mod trendlog_views;
 pub mod trendlogs;
