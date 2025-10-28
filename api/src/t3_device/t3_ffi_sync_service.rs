@@ -707,6 +707,7 @@ impl T3000MainService {
 
         // STEP 1: Get lightweight device list via GET_PANELS_LIST (Action 4)
         sync_logger.info("📋 Step 1: Getting device list via GET_PANELS_LIST...");
+        let panels_call_time = chrono::Utc::now();
         let panels = Self::get_panels_list_via_ffi().await?;
 
         sync_logger.info(&format!("📋 Found {} devices to sync sequentially", panels.len()));
@@ -730,6 +731,29 @@ impl T3000MainService {
                 sync_logger.error(&format!("❌ Failed to start transaction: {}", e));
                 AppError::DatabaseError(format!("Transaction start failed: {}", e))
             })?;
+
+        // Create metadata record for GET_PANELS_LIST operation
+        let panels_metadata = trendlog_data_sync_metadata::ActiveModel {
+            sync_time_fmt: Set(panels_call_time.format("%Y-%m-%d %H:%M:%S").to_string()),
+            message_type: Set("GET_PANELS_LIST".to_string()),
+            panel_id: Set(None),  // NULL = all panels
+            serial_number: Set(None),  // NULL = all devices
+            records_inserted: Set(Some(panels.len() as i32)),  // Number of devices found
+            sync_interval: Set(config.sync_interval_secs as i32),
+            success: Set(Some(1)),  // Success
+            error_message: Set(None),
+            ..Default::default()
+        };
+
+        trendlog_data_sync_metadata::Entity::insert(panels_metadata)
+            .exec(&txn)
+            .await
+            .map_err(|e| {
+                sync_logger.error(&format!("❌ Failed to create GET_PANELS_LIST metadata: {}", e));
+                AppError::DatabaseError(format!("Panels metadata creation failed: {}", e))
+            })?;
+
+        sync_logger.info(&format!("📋 GET_PANELS_LIST metadata created - {} devices found", panels.len()));
 
         // Create sync metadata record for this entire sync operation
         let sync_start_time = chrono::Utc::now();
