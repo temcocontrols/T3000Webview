@@ -17,9 +17,9 @@ use serde_json::Value as JsonValue;
 use tracing::{info, warn, error, debug};
 use crate::entity::t3_device::{
     devices, input_points, output_points, variable_points,
-    trendlog_data, trendlog_data_detail
+    trendlog_data_detail, trendlog_data_sync_metadata
 };
-use crate::t3_device::constants::{DATA_SOURCE_FFI_SYNC, CREATED_BY_FFI_SYNC_SERVICE};
+use crate::t3_device::constants::{DATA_SOURCE_FFI_SYNC};
 use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
@@ -731,6 +731,31 @@ impl T3000MainService {
                 AppError::DatabaseError(format!("Transaction start failed: {}", e))
             })?;
 
+        // Create sync metadata record for this entire sync operation
+        let sync_start_time = chrono::Utc::now();
+        let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
+            sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
+            message_type: Set("LOGGING_DATA".to_string()),
+            panel_id: Set(None),  // NULL = all devices
+            serial_number: Set(None),  // NULL = all devices
+            records_inserted: Set(Some(0)),  // Will update later
+            sync_interval: Set(config.sync_interval_secs as i32),
+            success: Set(Some(1)),  // Assume success, will update if error
+            error_message: Set(None),
+            ..Default::default()
+        };
+
+        let sync_metadata_result = trendlog_data_sync_metadata::Entity::insert(sync_metadata)
+            .exec(&txn)
+            .await
+            .map_err(|e| {
+                sync_logger.error(&format!("❌ Failed to create sync metadata: {}", e));
+                AppError::DatabaseError(format!("Sync metadata creation failed: {}", e))
+            })?;
+
+        let sync_metadata_id = sync_metadata_result.last_insert_id;
+        sync_logger.info(&format!("📋 Sync metadata created - ID: {}", sync_metadata_id));
+
         // STEP 2: Process each device sequentially with per-device LOGGING_DATA calls
         let total_devices = panels.len();
         let mut successful_devices = 0;
@@ -855,7 +880,7 @@ impl T3000MainService {
                 if total_trend_points > 0 {
                     sync_logger.info(&format!("📊 Trend logs inserted ({} entries)", total_trend_points));
 
-                    if let Err(e) = Self::insert_trend_logs(&txn, serial_number, device_with_points).await {
+                    if let Err(e) = Self::insert_trend_logs(&txn, serial_number, device_with_points, sync_metadata_id).await {
                         sync_logger.error(&format!("❌ Trend log insertion failed - Serial: {}, Error: {}, Total entries: {}",
                             serial_number, e, total_trend_points));
                     }
@@ -1117,9 +1142,8 @@ impl T3000MainService {
     }
 
     /// INSERT trend log entries (ALWAYS INSERT for historical data)
-    async fn insert_trend_logs(txn: &DatabaseTransaction, serial_number: i32, device_data: &DeviceWithPoints) -> Result<(), AppError> {
+    async fn insert_trend_logs(txn: &DatabaseTransaction, serial_number: i32, device_data: &DeviceWithPoints, sync_metadata_id: i32) -> Result<(), AppError> {
         let timestamp = chrono::Utc::now().to_rfc3339();
-        let config = T3000MainConfig::default(); // Get config to use sync_interval_secs
 
         // Create sync logger for trend log operations
         let mut sync_logger = ServiceLogger::ffi().map_err(|e| {
@@ -1164,17 +1188,14 @@ impl T3000MainService {
             };
 
             // Step 2: Insert detail record only
-            let logging_time = device_data.device_info.input_logging_time.parse::<i64>().unwrap_or(0);
             let logging_time_fmt = Self::format_unix_timestamp_to_local(&device_data.device_info.input_logging_time);
 
             let trend_detail = trendlog_data_detail::ActiveModel {
                 parent_id: Set(parent_id),
                 value: Set(point.value.to_string()),
-                logging_time: Set(logging_time),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
                 data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-                sync_interval: Set(Some(config.sync_interval_secs as i32)),
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
+                sync_metadata_id: Set(Some(sync_metadata_id)),
                 ..Default::default()
             };
 
@@ -1224,17 +1245,14 @@ impl T3000MainService {
             };
 
             // Step 2: Insert detail record only
-            let logging_time = device_data.device_info.output_logging_time.parse::<i64>().unwrap_or(0);
             let logging_time_fmt = Self::format_unix_timestamp_to_local(&device_data.device_info.output_logging_time);
 
             let trend_detail = trendlog_data_detail::ActiveModel {
                 parent_id: Set(parent_id),
                 value: Set(point.value.to_string()),
-                logging_time: Set(logging_time),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
                 data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-                sync_interval: Set(Some(config.sync_interval_secs as i32)),
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
+                sync_metadata_id: Set(Some(sync_metadata_id)),
                 ..Default::default()
             };
 
@@ -1284,17 +1302,14 @@ impl T3000MainService {
             };
 
             // Step 2: Insert detail record only
-            let logging_time = device_data.device_info.variable_logging_time.parse::<i64>().unwrap_or(0);
             let logging_time_fmt = Self::format_unix_timestamp_to_local(&device_data.device_info.variable_logging_time);
 
             let trend_detail = trendlog_data_detail::ActiveModel {
                 parent_id: Set(parent_id),
                 value: Set(point.value.to_string()),
-                logging_time: Set(logging_time),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
                 data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-                sync_interval: Set(Some(config.sync_interval_secs as i32)),
-                created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
+                sync_metadata_id: Set(Some(sync_metadata_id)),
                 ..Default::default()
             };
 
@@ -2246,9 +2261,9 @@ impl T3000MainService {
         point: &PointData,
         point_type: &str,
         logging_time: &str,
+        sync_metadata_id: i32,
     ) -> Result<usize, AppError> {
         let units = Self::derive_units_from_range(point.range);
-        let config = T3000MainConfig::default();
 
         // Generate point_id from JSON or fallback
         let point_id = point.id.clone().unwrap_or_else(|| format!("{}{}", point_type, point.index));
@@ -2274,16 +2289,12 @@ impl T3000MainService {
             .await?;
 
         // Insert detail record with time-series data
-        let logging_time_value = logging_time.parse::<i64>().unwrap_or(0);
         let detail_model = trendlog_data_detail::ActiveModel {
-            id: NotSet,
             parent_id: Set(parent_id),
             value: Set(point.value.to_string()),
-            logging_time: Set(logging_time_value),
             logging_time_fmt: Set(Self::format_unix_timestamp_to_local(logging_time)),
             data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-            sync_interval: Set(Some(config.sync_interval_secs as i32)),
-            created_by: Set(Some(CREATED_BY_FFI_SYNC_SERVICE)),
+            sync_metadata_id: Set(Some(sync_metadata_id)),
         };
 
         trendlog_data_detail::Entity::insert(detail_model)

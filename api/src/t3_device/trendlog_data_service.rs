@@ -5,11 +5,10 @@ use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use chrono::{Duration, Utc};
 use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
-use crate::t3_device::constants::{DATA_SOURCE_REALTIME, CREATED_BY_FRONTEND};
+use crate::t3_device::constants::{DATA_SOURCE_REALTIME};
 use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::error::AppError;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 // Default sync interval to match T3000MainConfig::sync_interval_secs
 const DEFAULT_SYNC_INTERVAL_SECS: i32 = 30;
@@ -454,11 +453,9 @@ impl T3TrendlogDataService {
         let detail_record = trendlog_data_detail::ActiveModel {
             parent_id: Set(parent_id),
             value: Set(data_point.value.clone()),
-            logging_time: Set(logging_time),
             logging_time_fmt: Set(logging_time_fmt.clone()),
             data_source: Set(Some(DATA_SOURCE_REALTIME)),
-            sync_interval: Set(Some(data_point.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-            created_by: Set(Some(CREATED_BY_FRONTEND)),
+            sync_metadata_id: Set(None), // NULL for realtime data
             ..Default::default()
         };
 
@@ -466,14 +463,13 @@ impl T3TrendlogDataService {
             Ok(saved_detail) => {
                 // Log successful save
                 let success_info = format!(
-                    "✅ [TrendlogDataService] Realtime data saved - Parent ID: {}, Detail ID: {}, Point: {}, Time: {}",
+                    "✅ [TrendlogDataService] Realtime data saved - Parent ID: {}, Point: {}, Time: {}",
                     parent_id,
-                    saved_detail.id,
                     data_point.point_id,
                     logging_time_fmt
                 );
                 let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
-                Ok(saved_detail.id)
+                Ok(parent_id) // Return parent_id instead of detail.id
             },
             Err(error) => {
                 // Log save error
@@ -538,11 +534,9 @@ impl T3TrendlogDataService {
                 trendlog_data_detail::ActiveModel {
                     parent_id: Set(parent_id),
                     value: Set(dp.value.clone()),
-                    logging_time: Set(logging_time),
                     logging_time_fmt: Set(logging_time_fmt.clone()),
                     data_source: Set(Some(DATA_SOURCE_REALTIME)),
-                    sync_interval: Set(Some(dp.sync_interval.unwrap_or(DEFAULT_SYNC_INTERVAL_SECS))),
-                    created_by: Set(Some(CREATED_BY_FRONTEND)),
+                    sync_metadata_id: Set(None), // NULL for realtime data
                     ..Default::default()
                 }
             })
