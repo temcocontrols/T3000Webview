@@ -428,8 +428,8 @@ impl T3000MainService {
         let mut logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
         logger.info("🧪 Testing direct T3000 HandleWebViewMsg integration");
 
-        // Call the direct FFI function
-        let result = Self::get_logging_data_via_direct_ffi(&self.config).await?;
+        // Call the direct FFI function with default values (panel 1, serial 0 means fetch first device)
+        let result = Self::get_logging_data_via_direct_ffi(&self.config, 1, 0).await?;
 
         // Log test results
         let is_real_data = !result.contains("Test Device") && !result.contains("test") && !result.contains("mock");
@@ -724,7 +724,7 @@ impl T3000MainService {
             // Call LOGGING_DATA for this device (C++ will filter based on g_logging_time validation)
             sync_logger.info(&format!("🔄 Calling LOGGING_DATA (Action 15) for device {}...", panel_info.serial_number));
 
-            let json_data = match Self::get_logging_data_via_direct_ffi(&config).await {
+            let json_data = match Self::get_logging_data_via_direct_ffi(&config, panel_info.panel_number, panel_info.serial_number).await {
                 Ok(data) => data,
                 Err(e) => {
                     sync_logger.error(&format!("❌ LOGGING_DATA FFI call failed for device {} - Error: {}",
@@ -769,31 +769,13 @@ impl T3000MainService {
             // Process device(s) from response (usually 1 device, but handle multiple just in case)
             for device_with_points in logging_response.devices.iter() {
                 let serial_number = device_with_points.device_info.panel_serial_number;
-                let panel_id = device_with_points.device_info.panel_id;
 
-                sync_logger.info(&format!("📝 Processing device data - Serial: {}, PanelId: {}, Name: '{}'",
-                    serial_number, panel_id, device_with_points.device_info.panel_name));
-
-                // Validate critical fields - skip devices with invalid data from C++
-                if serial_number == 0 {
-                    sync_logger.warn(&format!("⚠️ Device has SerialNumber=0 (invalid C++ data) - Name: '{}', PanelId: {}",
-                        device_with_points.device_info.panel_name, panel_id));
-                    sync_logger.warn("⏭️  Skipping device with SerialNumber=0 - C++ needs to provide valid serial number");
-                    skipped_devices += 1;
-                    continue;
-                }
-
-                if panel_id == 0 {
-                    sync_logger.warn(&format!("⚠️ Device has PanelId=0 (invalid C++ data) - Serial: {}, Name: '{}'",
-                        serial_number, device_with_points.device_info.panel_name));
-                    sync_logger.warn("⏭️  Skipping device with PanelId=0 - C++ needs to provide valid panel ID");
-                    skipped_devices += 1;
-                    continue;
-                }
+                sync_logger.info(&format!("📝 Processing device data - Serial: {}, Name: '{}'",
+                    serial_number, device_with_points.device_info.panel_name));
 
                 // UPSERT device basic info (INSERT or UPDATE)
-                sync_logger.info(&format!("📝 Syncing device basic info - Serial: {}, PanelId: {}, Name: {}",
-                    serial_number, panel_id, &device_with_points.device_info.panel_name));
+                sync_logger.info(&format!("📝 Syncing device basic info - Serial: {}, Name: {}",
+                    serial_number, &device_with_points.device_info.panel_name));
 
                 if let Err(e) = Self::sync_device_basic_info(&txn, &device_with_points.device_info).await {
                     sync_logger.error(&format!("❌ Device basic info sync failed - Serial: {}, Error: {}", serial_number, e));
@@ -1311,31 +1293,52 @@ impl T3000MainService {
 
     /// Call T3000 C++ HandleWebViewMsg function directly via FFI for LOGGING_DATA
     /// Includes retry logic to wait for MFC application initialization
-    async fn get_logging_data_via_direct_ffi(config: &T3000MainConfig) -> Result<String, AppError> {
-        info!("🔄 Starting DIRECT FFI call to HandleWebViewMsg with LOGGING_DATA action");
+    async fn get_logging_data_via_direct_ffi(config: &T3000MainConfig, panel_id: i32, serial_number: i32) -> Result<String, AppError> {
+        info!("🔄 Starting DIRECT FFI call to HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id, serial_number);
         info!("📋 FFI Config - Timeout: {}s, Retry: {}", config.timeout_seconds, config.retry_attempts);
 
         if let Ok(mut sync_logger) = ServiceLogger::ffi() {
-            sync_logger.info("🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Real T3000 system integration");
+            sync_logger.info(&format!("🔄 Starting DIRECT FFI call to HandleWebViewMsg(15) - Panel: {}, Serial: {}", panel_id, serial_number));
         }
 
         // Try multiple times with increasing delays to wait for MFC initialization
         for attempt in 1..=(config.retry_attempts + 1) {
             info!("🔄 FFI attempt {}/{}", attempt, config.retry_attempts + 1);
 
+            let panel_id_clone = panel_id;
+            let serial_number_clone = serial_number;
+
             // Run FFI call in a blocking task with timeout
             let spawn_result = tokio::time::timeout(
                 Duration::from_secs(config.timeout_seconds),
                 tokio::task::spawn_blocking(move || {
-                    info!("🔌 Calling HandleWebViewMsg(15) via direct FFI...");
+                    info!("🔌 Calling HandleWebViewMsg(15) via direct FFI for Panel: {}, Serial: {}...", panel_id_clone, serial_number_clone);
 
-                    // Log FFI call start - using simple info! inside closure
-                    info!("🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Using real T3000 BacnetWebView function");
+                    // Prepare input JSON with panel_id and serial_number
+                    let input_json = serde_json::json!({
+                        "action": "LOGGING_DATA",
+                        "panelId": panel_id_clone,
+                        "serialNumber": serial_number_clone
+                    });
+                    let input_str = input_json.to_string();
+
+                    // Log FFI call start
+                    info!("🔌 About to call HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id_clone, serial_number_clone);
 
                     // Prepare buffer for response - very large buffer for up to 100 devices
                     // Each device can be ~1MB, so 100 devices = ~100MB
                     const BUFFER_SIZE: usize = 104857600; // 100MB buffer for maximum device capacity
                     let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+
+                    // Write input JSON to buffer
+                    let input_bytes = input_str.as_bytes();
+                    if input_bytes.len() < BUFFER_SIZE {
+                        buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+                        buffer[input_bytes.len()] = 0; // Null terminator
+                    } else {
+                        error!("❌ Input JSON too large for buffer");
+                        return Err("Input JSON too large".to_string());
+                    }
 
                     // Call the T3000 HandleWebViewMsg function via runtime loading
                     // Action 15 = LOGGING_DATA case in BacnetWebView.cpp
