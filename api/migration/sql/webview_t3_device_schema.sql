@@ -587,7 +587,7 @@ INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type,
 ('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1, NULL, NULL, NULL),
 ('ui.theme', 'light', 'string', 'Application theme preference', 0, NULL, NULL, NULL),
 ('ui.language', 'en', 'string', 'Application language', 0, NULL, NULL, NULL),
-('ffi.sync_interval_secs', '300', 'number', 'FFI Sync Service interval in seconds (default: 300 = 5 minutes, range: 60-31536000)', 0, NULL, NULL, NULL),
+('ffi.sync_interval_secs', '900', 'number', 'FFI Sync Service interval in seconds (default: 900 = 15 minutes, range: 60-31536000)', 0, NULL, NULL, NULL),
 ('rediscover.interval_secs', '3600', 'number', 'Rediscover Service interval in seconds (default: 3600 = 1 hour, range: 3600-604800)', 0, NULL, NULL, NULL);
 
 -- DATABASE MANAGEMENT TRIGGERS (Automatic Updates)
@@ -608,33 +608,8 @@ BEGIN
     UPDATE database_files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
--- Trigger to update updated_at timestamp for APPLICATION_CONFIG
-CREATE TRIGGER IF NOT EXISTS trigger_application_config_updated_at
-AFTER UPDATE ON APPLICATION_CONFIG
-FOR EACH ROW
-BEGIN
-    UPDATE APPLICATION_CONFIG SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
-
--- Trigger to auto-calculate size_bytes for APPLICATION_CONFIG
-CREATE TRIGGER IF NOT EXISTS trigger_application_config_size
-AFTER INSERT ON APPLICATION_CONFIG
-FOR EACH ROW
-BEGIN
-    UPDATE APPLICATION_CONFIG
-    SET size_bytes = LENGTH(config_value)
-    WHERE id = NEW.id;
-END;
-
--- Trigger to update size_bytes on value change
-CREATE TRIGGER IF NOT EXISTS trigger_application_config_size_update
-AFTER UPDATE OF config_value ON APPLICATION_CONFIG
-FOR EACH ROW
-BEGIN
-    UPDATE APPLICATION_CONFIG
-    SET size_bytes = LENGTH(NEW.config_value)
-    WHERE id = NEW.id;
-END;
+-- NOTE: Triggers removed for APPLICATION_CONFIG to prevent recursion issues
+-- Application code should handle updated_at and size_bytes directly during INSERT/UPDATE
 
 -- Trigger to update updated_at timestamp for database_partitions
 CREATE TRIGGER IF NOT EXISTS trigger_database_partitions_updated_at
