@@ -19,7 +19,6 @@ use crate::entity::t3_device::{
     devices, input_points, output_points, variable_points,
     trendlog_data_detail, trendlog_data_sync_metadata
 };
-use crate::t3_device::constants::{DATA_SOURCE_FFI_SYNC};
 use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::db_connection::establish_t3_device_connection;
 use crate::error::AppError;
@@ -1377,8 +1376,6 @@ impl T3000MainService {
                 parent_id: Set(parent_id),
                 value: Set(point.value.to_string()),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-                sync_metadata_id: Set(Some(sync_metadata_id)),
                 ..Default::default()
             };
 
@@ -1434,8 +1431,6 @@ impl T3000MainService {
                 parent_id: Set(parent_id),
                 value: Set(point.value.to_string()),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-                sync_metadata_id: Set(Some(sync_metadata_id)),
                 ..Default::default()
             };
 
@@ -1491,8 +1486,6 @@ impl T3000MainService {
                 parent_id: Set(parent_id),
                 value: Set(point.value.to_string()),
                 logging_time_fmt: Set(logging_time_fmt.clone()),
-                data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-                sync_metadata_id: Set(Some(sync_metadata_id)),
                 ..Default::default()
             };
 
@@ -2476,8 +2469,6 @@ impl T3000MainService {
             parent_id: Set(parent_id),
             value: Set(point.value.to_string()),
             logging_time_fmt: Set(Self::format_unix_timestamp_to_local(logging_time)),
-            data_source: Set(Some(DATA_SOURCE_FFI_SYNC)),
-            sync_metadata_id: Set(Some(sync_metadata_id)),
         };
 
         trendlog_data_detail::Entity::insert(detail_model)

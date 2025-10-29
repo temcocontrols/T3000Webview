@@ -1,6 +1,7 @@
 // T3000 TRENDLOG_DATA_DETAIL Entity (Child) - Stores time-series values only
-// OPTIMIZED: Removed id, LoggingTime, SyncInterval, CreatedBy (moved to TRENDLOG_DATA_SYNC_METADATA)
-// Space savings: 24 bytes per record (35% reduction)
+// OPTIMIZED: Removed id, LoggingTime, SyncInterval, CreatedBy, DataSource, SyncMetadataId
+// Space savings: 32 bytes per record (47% reduction from original schema)
+// Tracking: DataSource always FFI_SYNC (constant), SyncMetadataId tracked at metadata table level
 // NO FOREIGN KEYS - removed for simplicity
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -18,12 +19,6 @@ pub struct Model {
 
     #[sea_orm(column_name = "LoggingTime_Fmt")]
     pub logging_time_fmt: String,              // C++ Formatted Time (e.g., "2025-10-28 13:35:49")
-
-    #[sea_orm(column_name = "DataSource")]
-    pub data_source: Option<i32>,              // 1=FFI_SYNC, 2=REALTIME, 3=HISTORICAL, 4=MANUAL
-
-    #[sea_orm(column_name = "SyncMetadataId")]
-    pub sync_metadata_id: Option<i32>,         // References TRENDLOG_DATA_SYNC_METADATA.id - NULL for non-FFI
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

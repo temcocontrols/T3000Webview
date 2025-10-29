@@ -5,7 +5,6 @@ use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use chrono::{Duration, Utc};
 use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
-use crate::t3_device::constants::{DATA_SOURCE_REALTIME};
 use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::error::AppError;
 use std::sync::Arc;
@@ -167,12 +166,10 @@ impl T3TrendlogDataService {
 
         #[derive(Debug, FromQueryResult)]
         struct JoinedTrendlogData {
-            // From TRENDLOG_DATA_DETAIL (child) - OPTIMIZED SCHEMA (removed id, LoggingTime, SyncInterval, CreatedBy)
+            // From TRENDLOG_DATA_DETAIL (child) - OPTIMIZED SCHEMA (removed id, LoggingTime, SyncInterval, CreatedBy, DataSource, SyncMetadataId)
             parent_id: i32,
             value: String,
             logging_time_fmt: String,
-            data_source: Option<i32>,
-            sync_metadata_id: Option<i32>,  // New field replacing SyncInterval
             // From TRENDLOG_DATA (parent)
             serial_number: i32,
             panel_id: i32,
@@ -189,8 +186,6 @@ impl T3TrendlogDataService {
                 d.ParentId as parent_id,
                 d.Value as value,
                 d.LoggingTime_Fmt as logging_time_fmt,
-                d.DataSource as data_source,
-                d.SyncMetadataId as sync_metadata_id,
                 p.SerialNumber as serial_number,
                 p.PanelId as panel_id,
                 p.PointId as point_id,
@@ -450,8 +445,6 @@ impl T3TrendlogDataService {
             parent_id: Set(parent_id),
             value: Set(data_point.value.clone()),
             logging_time_fmt: Set(logging_time_fmt.clone()),
-            data_source: Set(Some(DATA_SOURCE_REALTIME)),
-            sync_metadata_id: Set(None), // NULL for realtime data
             ..Default::default()
         };
 
@@ -531,8 +524,6 @@ impl T3TrendlogDataService {
                     parent_id: Set(parent_id),
                     value: Set(dp.value.clone()),
                     logging_time_fmt: Set(logging_time_fmt.clone()),
-                    data_source: Set(Some(DATA_SOURCE_REALTIME)),
-                    sync_metadata_id: Set(None), // NULL for realtime data
                     ..Default::default()
                 }
             })
