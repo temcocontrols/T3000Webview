@@ -5827,16 +5827,11 @@ const updateAnalogChart = () => {
     }
   })
 
-  // Force chart update with animation mode to ensure render
-  analogChartInstance.update('active')
+  // Update chart without animations to avoid hover state issues
+  analogChartInstance.update('none')
 
-  // Additional explicit render call for safety
-  setTimeout(() => {
-    if (analogChartInstance) {
-      analogChartInstance.render()
-      LogUtil.Info('📊 Chart rendered explicitly after update')
-    }
-  }, 50)
+  // Force immediate render to ensure data displays
+  analogChartInstance.render()
 }
 
 const updateDigitalCharts = () => {
