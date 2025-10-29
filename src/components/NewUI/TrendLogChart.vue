@@ -2136,15 +2136,23 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     LogUtil.Info('🎨 Updating charts with loaded data', {
       totalSeries: dataSeries.value.length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-      autoScrollEnabled: isRealTime.value
+      autoScrollEnabled: isRealTime.value,
+      totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
     })
 
     // Force Vue reactivity update
     await nextTick()
     dataSeries.value = [...dataSeries.value]
 
+    // Wait for DOM to update, then update charts
+    await nextTick()
+
+    // Immediate chart update
+    updateCharts()
+
+    // Delayed chart update for safety (in case first one didn't render)
     setTimeout(() => {
-      // LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
+      LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
       updateCharts()
     }, 100)
 
@@ -4741,6 +4749,12 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
 
         LogUtil.Info(`📈 Successfully loaded ${dataPoints.length} historical points for ${series.name}`, {
           seriesIndex,
+          seriesId: series.id,
+          sampleDataPoints: dataPoints.slice(0, 3).map(p => ({
+            timestamp: p.timestamp,
+            timeISO: new Date(p.timestamp).toISOString(),
+            value: p.value
+          })),
           timeRange: dataPoints.length > 0 ? {
             first: new Date(dataPoints[0].timestamp).toISOString(),
             last: new Date(dataPoints[dataPoints.length - 1].timestamp).toISOString()
@@ -5684,12 +5698,14 @@ const updateCharts = () => {
     hasAnalogChart: !!analogChartInstance,
     digitalChartsCount: Object.keys(digitalChartInstances).length,
     totalDataSeries: dataSeries.value.length,
-    seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
+    seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+    visibleAnalogCount: visibleAnalogSeries.value.length,
+    visibleDigitalCount: visibleDigitalSeries.value.length
   })
 
   // Ensure analog chart exists if we have visible analog series
   if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
-    console.log('🔄 updateCharts: Analog chart missing but we have visible series, recreating...')
+    LogUtil.Info('🔄 updateCharts: Analog chart missing but we have visible series, recreating...')
     createAnalogChart()
   }
 
@@ -5800,7 +5816,27 @@ const updateAnalogChart = () => {
     }
   }
 
-  analogChartInstance.update('none')
+  // Log before update
+  LogUtil.Info('📊 updateAnalogChart: About to update chart', {
+    datasetsCount: analogChartInstance.data.datasets.length,
+    firstDatasetPoints: analogChartInstance.data.datasets[0]?.data.length || 0,
+    totalPoints: analogChartInstance.data.datasets.reduce((sum, ds) => sum + ds.data.length, 0),
+    timeWindow: {
+      min: analogChartInstance.options.scales?.x?.min,
+      max: analogChartInstance.options.scales?.x?.max
+    }
+  })
+
+  // Force chart update with animation mode to ensure render
+  analogChartInstance.update('active')
+
+  // Additional explicit render call for safety
+  setTimeout(() => {
+    if (analogChartInstance) {
+      analogChartInstance.render()
+      LogUtil.Info('📊 Chart rendered explicitly after update')
+    }
+  }, 50)
 }
 
 const updateDigitalCharts = () => {
