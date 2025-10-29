@@ -3213,6 +3213,15 @@ const timeOffset = ref(0) // Offset in minutes from current time
 
 // Add helper to get current time window with proper alignment (simplified)
 const getCurrentTimeWindow = () => {
+  // For custom date range, use the exact start/end times selected by user
+  if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+    return {
+      min: customStartDate.value.valueOf(), // Use Dayjs valueOf() to get timestamp
+      max: customEndDate.value.valueOf()
+    }
+  }
+
+  // For standard timebases, calculate based on current time and offset
   const now = new Date()
   // Align current time to exact minute
   const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0)
@@ -5795,8 +5804,29 @@ const updateAnalogChart = () => {
   // Update x-axis configuration
   if (analogChartInstance.options.scales?.x) {
     const xScale = analogChartInstance.options.scales.x as any
-    const tickConfig = getXAxisTickConfig(timeBase.value)
-    const displayFormat = getDisplayFormat(timeBase.value)
+
+    // For custom date range, use custom tick configuration
+    let tickConfig: any
+    let displayFormat: string
+    let maxTicks: number
+
+    if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+      const customConfig = getCustomTickConfig(
+        customStartDate.value.toDate(),
+        customEndDate.value.toDate()
+      )
+      tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+      displayFormat = customConfig.displayFormat
+      maxTicks = customConfig.maxTicks
+    } else {
+      tickConfig = getXAxisTickConfig(timeBase.value)
+      displayFormat = getDisplayFormat(timeBase.value)
+      const maxTicksConfigs = {
+        '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+        '4h': 9, '12h': 13, '1d': 13, '4d': 13
+      }
+      maxTicks = maxTicksConfigs[timeBase.value] || 7
+    }
 
     xScale.time = {
       unit: tickConfig.unit,
@@ -5809,14 +5839,9 @@ const updateAnalogChart = () => {
       minUnit: 'second'
     }
 
-    const maxTicksConfigs = {
-      '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-      '4h': 9, '12h': 13, '1d': 13, '4d': 13
-    }
-
     xScale.ticks = {
       ...xScale.ticks,
-      maxTicksLimit: maxTicksConfigs[timeBase.value] || 7,
+      maxTicksLimit: maxTicks,
       maxRotation: 0,
       minRotation: 0,
       callback: formatXAxisTick,
@@ -5891,8 +5916,29 @@ const updateDigitalCharts = () => {
     // Update x-axis for digital chart - use same configuration as analog chart
     if (chart.options.scales?.x) {
       const xScale = chart.options.scales.x as any
-      const tickConfig = getXAxisTickConfig(timeBase.value)
-      const displayFormat = getDisplayFormat(timeBase.value)
+
+      // For custom date range, use custom tick configuration
+      let tickConfig: any
+      let displayFormat: string
+      let maxTicks: number
+
+      if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+        const customConfig = getCustomTickConfig(
+          customStartDate.value.toDate(),
+          customEndDate.value.toDate()
+        )
+        tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+        displayFormat = customConfig.displayFormat
+        maxTicks = customConfig.maxTicks
+      } else {
+        tickConfig = getXAxisTickConfig(timeBase.value)
+        displayFormat = getDisplayFormat(timeBase.value)
+        const maxTicksConfigs = {
+          '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+          '4h': 9, '12h': 13, '1d': 13, '4d': 13
+        }
+        maxTicks = maxTicksConfigs[timeBase.value] || 7
+      }
 
       xScale.time = {
         unit: tickConfig.unit,
@@ -5905,14 +5951,9 @@ const updateDigitalCharts = () => {
         minUnit: 'second'
       }
 
-      const maxTicksConfigs = {
-        '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-        '4h': 9, '12h': 13, '1d': 13, '4d': 13
-      }
-
       xScale.ticks = {
         ...xScale.ticks,
-        maxTicksLimit: maxTicksConfigs[timeBase.value] || 7,
+        maxTicksLimit: maxTicks,
         maxRotation: 0,
         minRotation: 0,
         callback: formatXAxisTick,
@@ -6818,6 +6859,9 @@ const loadViewTracking = async () => {
 const onTimeBaseChange = async () => {
   console.log('= TLChart DataFlow: Timebase changed to:', timeBase.value)
 
+  // Stop any real-time updates when changing timebase
+  stopRealTimeUpdates()
+
   if (timeBase.value !== 'custom') {
     // Reset time offset when timebase changes
     timeOffset.value = 0
@@ -6858,6 +6902,9 @@ const onTimeBaseChange = async () => {
 const onCustomDateChange = async () => {
   if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
     console.log('= TLChart DataFlow: Custom date range selected - fetching historical data')
+
+    // Stop any real-time updates when using custom dates
+    stopRealTimeUpdates()
 
     // Extract device parameters
     const deviceParams = extractDeviceParameters()
