@@ -233,6 +233,29 @@ fn get_trendlog_cache() -> &'static TrendlogParentCache {
     TRENDLOG_PARENT_CACHE.get_or_init(|| TrendlogParentCache::new(1000))
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TWO-TIER SYNC STATE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+use tokio::sync::RwLock;
+use chrono::{DateTime, Utc};
+
+lazy_static::lazy_static! {
+    /// Cached device list from last GET_PANELS_LIST call
+    /// Used for quick sync cycles to avoid unnecessary GET_PANELS_LIST calls
+    static ref CACHED_DEVICE_LIST: Arc<RwLock<Option<Vec<PanelInfo>>>> =
+        Arc::new(RwLock::new(None));
+
+    /// Timestamp of last GET_PANELS_LIST rediscovery
+    /// Used to determine when to refresh device list
+    static ref LAST_REDISCOVER_TIME: Arc<RwLock<Option<DateTime<Utc>>>> =
+        Arc::new(RwLock::new(None));
+
+    /// Rediscovery interval in seconds (loaded from DATABASE_CONFIG)
+    /// Default: 3600 (1 hour)
+    static ref REDISCOVER_INTERVAL_SECS: Arc<RwLock<u64>> =
+        Arc::new(RwLock::new(3600));
+}
+
 /// Configuration for the main T3000 service
 #[derive(Debug, Clone)]
 pub struct T3000MainConfig {
@@ -387,8 +410,8 @@ impl T3000MainService {
             // Create logger for the spawned task
             let mut task_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-            // Run immediate sync on startup
-            task_logger.info("🏃 Performing immediate startup sync...");
+            // Run immediate sync on startup with full rediscovery
+            task_logger.info("🏃 Performing immediate startup sync with full rediscovery...");
             if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
                 task_logger.error(&format!("❌ Immediate startup sync failed: {}", e));
                 // Also log critical errors to Initialize category
@@ -407,17 +430,29 @@ impl T3000MainService {
                 task_logger.info("✅ Trendlog config sync completed successfully");
             }
 
-            // Continue with periodic sync loop
+            // Continue with periodic sync loop (TWO-TIER sync)
             while is_running.load(Ordering::Relaxed) {
-                // Reload sync interval from database before each sleep cycle (dynamic configuration)
-                let current_interval = Self::reload_sync_interval_from_db().await.unwrap_or(config.sync_interval_secs);
+                // Reload sync intervals from database before each sleep cycle (dynamic configuration)
+                let current_sync_interval = Self::reload_sync_interval_from_db().await.unwrap_or(config.sync_interval_secs);
+                let current_rediscover_interval = Self::reload_rediscover_interval_from_db().await.unwrap_or(3600);
 
-                // Log if interval changed
-                if current_interval != config.sync_interval_secs {
+                // Log if sync interval changed
+                if current_sync_interval != config.sync_interval_secs {
                     task_logger.info(&format!("🔄 Sync interval updated: {}s ({} min) → {}s ({} min)",
                         config.sync_interval_secs, config.sync_interval_secs / 60,
-                        current_interval, current_interval / 60));
-                    config.sync_interval_secs = current_interval;
+                        current_sync_interval, current_sync_interval / 60));
+                    config.sync_interval_secs = current_sync_interval;
+                }
+
+                // Update rediscover interval in state
+                {
+                    let mut interval = REDISCOVER_INTERVAL_SECS.write().await;
+                    if *interval != current_rediscover_interval {
+                        task_logger.info(&format!("🔄 Rediscover interval updated: {}s ({} min) → {}s ({} min)",
+                            *interval, *interval / 60,
+                            current_rediscover_interval, current_rediscover_interval / 60));
+                        *interval = current_rediscover_interval;
+                    }
                 }
 
                 // Sleep until next sync interval
@@ -524,7 +559,94 @@ impl T3000MainService {
         }
     }
 
-    /// Sync trendlog configurations for all devices (ONE-TIME operation)
+    async fn reload_rediscover_interval_from_db() -> Result<u64, AppError> {
+        use crate::entity::application_settings;
+
+        let db = establish_t3_device_connection().await?;
+
+        // Query APPLICATION_CONFIG for rediscover.interval_secs
+        let config = application_settings::Entity::find()
+            .filter(application_settings::Column::ConfigKey.eq("rediscover.interval_secs"))
+            .one(&db)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to query rediscover interval: {}", e)))?;
+
+        match config {
+            Some(cfg) => {
+                // Parse config_value as JSON to handle both Number and String formats
+                // New format: 3600 (JSON number)
+                // Old format: "3600" (JSON string with quotes)
+                let json_value: serde_json::Value = serde_json::from_str(&cfg.config_value)
+                    .unwrap_or_else(|_| {
+                        // Fallback: treat as plain string if not valid JSON
+                        serde_json::Value::String(cfg.config_value.clone())
+                    });
+
+                let interval = match json_value {
+                    serde_json::Value::Number(n) => {
+                        n.as_u64().ok_or_else(|| AppError::ParseError("Invalid number format".to_string()))?
+                    }
+                    serde_json::Value::String(s) => {
+                        s.parse::<u64>()
+                            .map_err(|_| AppError::ParseError(format!("Invalid string number: {}", s)))?
+                    }
+                    _ => {
+                        return Err(AppError::ParseError("Invalid config value type".to_string()));
+                    }
+                };
+
+                Ok(interval)
+            }
+            None => {
+                // Config not found, return default
+                Ok(3600) // 1 hour default
+            }
+        }
+    }
+
+    /// Check if we should perform a full rediscovery (GET_PANELS_LIST)
+    /// Returns true if:
+    /// - Never performed rediscovery before (LAST_REDISCOVER_TIME is None)
+    /// - Elapsed time since last rediscovery >= REDISCOVER_INTERVAL_SECS
+    async fn should_rediscover() -> bool {
+        let last_rediscover = LAST_REDISCOVER_TIME.read().await;
+        let interval_secs = *REDISCOVER_INTERVAL_SECS.read().await;
+
+        match *last_rediscover {
+            None => {
+                // Never performed rediscovery, do it now
+                true
+            }
+            Some(last_time) => {
+                let now = Utc::now();
+                let elapsed_secs = (now - last_time).num_seconds() as u64;
+
+                elapsed_secs >= interval_secs
+            }
+        }
+    }
+
+    /// Update the cached device list after a successful GET_PANELS_LIST operation
+    async fn update_cached_device_list(device_list: Vec<PanelInfo>) {
+        let mut cache = CACHED_DEVICE_LIST.write().await;
+        *cache = Some(device_list);
+    }
+
+    /// Get the cached device list
+    /// Returns error if cache is empty (rediscovery needed)
+    async fn get_cached_device_list() -> Result<Vec<PanelInfo>, AppError> {
+        let cache = CACHED_DEVICE_LIST.read().await;
+        match cache.as_ref() {
+            Some(list) => Ok(list.clone()),
+            None => Err(AppError::NotFound("Device list cache is empty, rediscovery required".to_string()))
+        }
+    }
+
+    /// Update the last rediscovery timestamp to current time
+    async fn update_last_rediscover_time() {
+        let mut last_time = LAST_REDISCOVER_TIME.write().await;
+        *last_time = Some(Utc::now());
+    }    /// Sync trendlog configurations for all devices (ONE-TIME operation)
     /// This calls the NEW BacnetWebView_GetTrendlogList/Entry C++ export functions
     async fn sync_all_trendlog_configs() -> Result<(), AppError> {
         use crate::t3_device::trendlog_monitor_service::TrendlogMonitorService;
@@ -690,6 +812,9 @@ impl T3000MainService {
     }
 
     /// Static method to sync logging data (for use in spawned tasks)
+    /// Implements TWO-TIER sync strategy:
+    /// - QUICK SYNC: Use cached device list, only call LOGGING_DATA (every ffi.sync_interval_secs)
+    /// - FULL REDISCOVERY: Call GET_PANELS_LIST + LOGGING_DATA (every rediscover.interval_secs)
     async fn sync_logging_data_static(config: T3000MainConfig) -> Result<(), AppError> {
         // Create logger for this sync operation
         let mut sync_logger = ServiceLogger::ffi().unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
@@ -703,21 +828,78 @@ impl T3000MainService {
             })?;
 
         sync_logger.info("✅ Database connection established");
-        sync_logger.info("🔄 Starting sequential device sync with GET_PANELS_LIST + per-device LOGGING_DATA");
 
-        // STEP 1: Get lightweight device list via GET_PANELS_LIST (Action 4)
-        sync_logger.info("📋 Step 1: Getting device list via GET_PANELS_LIST...");
-        let panels_call_time = chrono::Utc::now();
-        let panels = Self::get_panels_list_via_ffi().await?;
+        // STEP 1: Decide whether to perform full rediscovery or use cache
+        let should_do_rediscovery = Self::should_rediscover().await;
+        let panels: Vec<PanelInfo>;
 
-        sync_logger.info(&format!("📋 Found {} devices to sync sequentially", panels.len()));
+        if should_do_rediscovery {
+            sync_logger.info("🔍 FULL REDISCOVERY: Calling GET_PANELS_LIST to refresh device list...");
 
-        if panels.is_empty() {
-            sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
-            return Ok(());
-        }
+            // Get lightweight device list via GET_PANELS_LIST (Action 4)
+            panels = Self::get_panels_list_via_ffi().await?;
 
-        // Log device list for tracking
+            sync_logger.info(&format!("📋 Found {} devices via GET_PANELS_LIST", panels.len()));
+
+            if panels.is_empty() {
+                sync_logger.warn("⚠️ No devices found in GET_PANELS_LIST - skipping sync cycle");
+                return Ok(());
+            }
+
+            // Update cache with fresh device list
+            Self::update_cached_device_list(panels.clone()).await;
+            Self::update_last_rediscover_time().await;
+
+            sync_logger.info("✅ Device list cache updated");
+
+            // Create GET_PANELS_LIST sync metadata record
+            let rediscover_start_time = chrono::Utc::now();
+            let rediscover_metadata = trendlog_data_sync_metadata::ActiveModel {
+                sync_time_fmt: Set(rediscover_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
+                message_type: Set("GET_PANELS_LIST".to_string()),
+                panel_id: Set(None),  // NULL = all devices
+                serial_number: Set(None),  // NULL = all devices
+                records_inserted: Set(Some(panels.len() as i32)),
+                sync_interval: Set(*REDISCOVER_INTERVAL_SECS.read().await as i32),
+                success: Set(Some(1)),
+                error_message: Set(None),
+                ..Default::default()
+            };
+
+            trendlog_data_sync_metadata::Entity::insert(rediscover_metadata)
+                .exec(&db)
+                .await
+                .map_err(|e| {
+                    sync_logger.error(&format!("❌ Failed to create GET_PANELS_LIST metadata: {}", e));
+                    AppError::DatabaseError(format!("GET_PANELS_LIST metadata creation failed: {}", e))
+                })?;
+
+            sync_logger.info("✅ GET_PANELS_LIST metadata record created");
+        } else {
+            sync_logger.info("⚡ QUICK SYNC: Using cached device list, skipping GET_PANELS_LIST...");
+
+            // Try to get cached device list
+            match Self::get_cached_device_list().await {
+                Ok(cached_panels) => {
+                    panels = cached_panels;
+                    sync_logger.info(&format!("📋 Using {} devices from cache", panels.len()));
+                }
+                Err(_) => {
+                    // Cache is empty (should not happen after first run, but handle gracefully)
+                    sync_logger.warn("⚠️ Cache is empty, performing forced rediscovery...");
+                    panels = Self::get_panels_list_via_ffi().await?;
+
+                    if panels.is_empty() {
+                        sync_logger.warn("⚠️ No devices found - skipping sync cycle");
+                        return Ok(());
+                    }
+
+                    Self::update_cached_device_list(panels.clone()).await;
+                    Self::update_last_rediscover_time().await;
+                    sync_logger.info("✅ Cache initialized with forced rediscovery");
+                }
+            }
+        }        // Log device list for tracking
         for (idx, panel) in panels.iter().enumerate() {
             sync_logger.info(&format!("  Device {}/{}: Panel #{}, SN: {}, Name: '{}'",
                 idx + 1, panels.len(), panel.panel_number, panel.serial_number, panel.panel_name));
@@ -732,30 +914,7 @@ impl T3000MainService {
                 AppError::DatabaseError(format!("Transaction start failed: {}", e))
             })?;
 
-        // Create metadata record for GET_PANELS_LIST operation
-        let panels_metadata = trendlog_data_sync_metadata::ActiveModel {
-            sync_time_fmt: Set(panels_call_time.format("%Y-%m-%d %H:%M:%S").to_string()),
-            message_type: Set("GET_PANELS_LIST".to_string()),
-            panel_id: Set(None),  // NULL = all panels
-            serial_number: Set(None),  // NULL = all devices
-            records_inserted: Set(Some(panels.len() as i32)),  // Number of devices found
-            sync_interval: Set(config.sync_interval_secs as i32),
-            success: Set(Some(1)),  // Success
-            error_message: Set(None),
-            ..Default::default()
-        };
-
-        trendlog_data_sync_metadata::Entity::insert(panels_metadata)
-            .exec(&txn)
-            .await
-            .map_err(|e| {
-                sync_logger.error(&format!("❌ Failed to create GET_PANELS_LIST metadata: {}", e));
-                AppError::DatabaseError(format!("Panels metadata creation failed: {}", e))
-            })?;
-
-        sync_logger.info(&format!("📋 GET_PANELS_LIST metadata created - {} devices found", panels.len()));
-
-        // Create sync metadata record for this entire sync operation
+        // Create sync metadata record for this LOGGING_DATA sync operation
         let sync_start_time = chrono::Utc::now();
         let sync_metadata = trendlog_data_sync_metadata::ActiveModel {
             sync_time_fmt: Set(sync_start_time.format("%Y-%m-%d %H:%M:%S").to_string()),
@@ -778,7 +937,7 @@ impl T3000MainService {
             })?;
 
         let sync_metadata_id = sync_metadata_result.last_insert_id;
-        sync_logger.info(&format!("📋 Sync metadata created - ID: {}", sync_metadata_id));
+        sync_logger.info(&format!("📋 LOGGING_DATA sync metadata created - ID: {}", sync_metadata_id));
 
         // STEP 2: Process each device sequentially with per-device LOGGING_DATA calls
         let total_devices = panels.len();
