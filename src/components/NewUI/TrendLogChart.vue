@@ -222,6 +222,12 @@
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
       <div class="left-panel">
+        <!-- Loading overlay - inside left panel -->
+        <div v-if="isLoading" class="loading-overlay">
+          <a-spin size="large" />
+          <div class="loading-text">Loading trend log data...</div>
+        </div>
+
         <!-- Data Series -->
         <div class="control-section">
           <div class="data-series-header">
@@ -456,12 +462,6 @@
           </template>
         </div>
       </div>
-    </div>
-
-    <!-- Loading overlay -->
-    <div v-if="isLoading" class="loading-overlay">
-      <a-spin size="large" />
-      <div class="loading-text">Loading trend log data...</div>
     </div>
 
     <!-- Custom Date Range Modal -->
@@ -9434,6 +9434,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  position: relative; /* For loading overlay positioning */
 }
 
 .right-panel {
@@ -9450,6 +9451,29 @@ onUnmounted(() => {
   /* Make scrollable when content overflows */
   overflow-x: hidden;
   /* Hide horizontal overflow */
+}
+
+/* Loading overlay - centered in left panel */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 1000;
+  border-radius: 0px;
+}
+
+.loading-text {
+  color: #262626;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .control-section {
