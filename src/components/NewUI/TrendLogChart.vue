@@ -6871,14 +6871,33 @@ const onCustomDateChange = async () => {
     if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
       console.log('= TLChart DataFlow: Making API request for custom date range')
 
-      // Create time range object for custom dates
+      // Format timestamps for API (SQLite format) - use local time instead of UTC
+      const formatLocalTime = (date: any): string => {
+        // Convert dayjs object to native Date if needed
+        const nativeDate = date.toDate ? date.toDate() : new Date(date)
+        const year = nativeDate.getFullYear()
+        const month = String(nativeDate.getMonth() + 1).padStart(2, '0')
+        const day = String(nativeDate.getDate()).padStart(2, '0')
+        const hours = String(nativeDate.getHours()).padStart(2, '0')
+        const minutes = String(nativeDate.getMinutes()).padStart(2, '0')
+        const seconds = String(nativeDate.getSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      }
+
+      // Create time range object for custom dates with properly formatted local time
       const customTimeRanges = {
-        startTime: customStartDate.value.toISOString(),
-        endTime: customEndDate.value.toISOString(),
+        startTime: formatLocalTime(customStartDate.value),
+        endTime: formatLocalTime(customEndDate.value),
         durationMinutes: Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60)),
         expectedDataPoints: Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 15)), // Assume 15-second intervals
         timebaseLabel: `Custom Range (${customStartDate.value.format('DD/MM HH:mm')} - ${customEndDate.value.format('DD/MM HH:mm')})`
       }
+
+      console.log('= TLChart DataFlow: Custom time range formatted:', {
+        startTime: customTimeRanges.startTime,
+        endTime: customTimeRanges.endTime,
+        durationMinutes: customTimeRanges.durationMinutes
+      })
 
       await fetchHistoricalDataForTimebase(deviceParams, customTimeRanges)
     } else {
@@ -6886,10 +6905,25 @@ const onCustomDateChange = async () => {
       await initializeData()
     }
 
+    // Force Vue reactivity and DOM update
+    await nextTick()
+    dataSeries.value = [...dataSeries.value]
+    await nextTick()
+
     // Force charts recreation to ensure proper axis scaling
     if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
       destroyAllCharts()
+      await nextTick()
       createCharts()
+      await nextTick()
+      // Update charts with the loaded data
+      updateCharts()
+
+      console.log('= TLChart DataFlow: Charts recreated and updated with custom range data', {
+        seriesCount: dataSeries.value.length,
+        seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+        totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
+      })
     }
   }
 }
