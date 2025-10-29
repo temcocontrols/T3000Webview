@@ -167,14 +167,12 @@ impl T3TrendlogDataService {
 
         #[derive(Debug, FromQueryResult)]
         struct JoinedTrendlogData {
-            // From TRENDLOG_DATA_DETAIL (child)
-            detail_id: i32,
+            // From TRENDLOG_DATA_DETAIL (child) - OPTIMIZED SCHEMA (removed id, LoggingTime, SyncInterval, CreatedBy)
             parent_id: i32,
             value: String,
-            logging_time: i64,
             logging_time_fmt: String,
-            data_source: Option<i32>,  // Fixed: Changed from String to i32 to match database schema
-            sync_interval: Option<i32>,
+            data_source: Option<i32>,
+            sync_metadata_id: Option<i32>,  // New field replacing SyncInterval
             // From TRENDLOG_DATA (parent)
             serial_number: i32,
             panel_id: i32,
@@ -188,13 +186,11 @@ impl T3TrendlogDataService {
 
         let mut sql = r#"
             SELECT
-                d.id as detail_id,
                 d.ParentId as parent_id,
                 d.Value as value,
-                d.LoggingTime as logging_time,
                 d.LoggingTime_Fmt as logging_time_fmt,
                 d.DataSource as data_source,
-                d.SyncInterval as sync_interval,
+                d.SyncMetadataId as sync_metadata_id,
                 p.SerialNumber as serial_number,
                 p.PanelId as panel_id,
                 p.PointId as point_id,
