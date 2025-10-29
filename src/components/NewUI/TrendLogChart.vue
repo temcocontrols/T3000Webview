@@ -2436,12 +2436,12 @@ const displayedSeries = computed(() => {
 
 const timeBaseLabel = computed(() => {
   const labels = {
-    '5m': 'Last 5 minutes',
-    '10m': 'Last 10 minutes',
-    '30m': 'Last 30 minutes',
-    '1h': 'Last 1 hour',
-    '4h': 'Last 4 hours',
-    '12h': 'Last 12 hours',
+    '5m': 'Last 5 min',
+    '10m': 'Last 10 min',
+    '30m': 'Last 30 min',
+    '1h': 'Last 1 hr',
+    '4h': 'Last 4 hrs',
+    '12h': 'Last 12 hrs',
     '1d': 'Last 1 day',
     '4d': 'Last 4 days'
   }
