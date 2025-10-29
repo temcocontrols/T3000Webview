@@ -222,8 +222,8 @@
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
       <div class="left-panel">
-        <!-- Loading overlay - inside left panel -->
-        <div v-if="isLoading" class="loading-overlay">
+        <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
+        <div v-if="showLoadingOverlay" class="loading-overlay">
           <a-spin size="large" />
           <div class="loading-text">Loading trend log data...</div>
         </div>
@@ -865,7 +865,7 @@
             <template v-else-if="column.key === 'change'">
               <div style="font-size: 11px;">
                 <span style="color: #ff4d4f;">{{ record.old_value_display }}</span>
-                <span style="margin: 0 4px;">→</span>
+                <span style="margin: 0 4px;">�?/span>
                 <span style="color: #52c41a;">{{ record.new_value_display }}</span>
               </div>
             </template>
@@ -1572,6 +1572,9 @@ const updateInterval = computed(() => {
 })
 
 const isLoading = ref(false)
+const showLoadingOverlay = ref(false) // Delayed loading display to avoid flashing
+const loadingDelayTimer = ref<NodeJS.Timeout | null>(null)
+const loadingDelayDuration = 300 // Only show loading after 300ms
 const showGrid = ref(true)
 const showLegend = ref(false)  // Hide legend by default to give more space to chart
 const smoothLines = ref(false)
@@ -1587,6 +1590,31 @@ const showLoadingTimeout = ref(false)
 const trendlogAPI = useTrendlogDataAPI()
 const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
 const hasConnectionError = ref(false) // Track connection errors for UI display
+
+// Helper functions for delayed loading indicator
+const startLoading = () => {
+  isLoading.value = true
+  // Clear any existing timer
+  if (loadingDelayTimer.value) {
+    clearTimeout(loadingDelayTimer.value)
+    loadingDelayTimer.value = null
+  }
+  // Only show overlay if loading takes longer than 300ms
+  loadingDelayTimer.value = setTimeout(() => {
+    if (isLoading.value) {
+      showLoadingOverlay.value = true
+    }
+  }, loadingDelayDuration)
+}
+
+const stopLoading = () => {
+  isLoading.value = false
+  showLoadingOverlay.value = false
+  if (loadingDelayTimer.value) {
+    clearTimeout(loadingDelayTimer.value)
+    loadingDelayTimer.value = null
+  }
+}
 
 // Route for URL parameter extraction
 const route = useRoute()
@@ -2102,7 +2130,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
       newTimeBase
     })
 
-    isLoading.value = true
+    startLoading()
     startLoadingTimeout() // Start timeout when loading begins
 
     // Clear existing data first
@@ -2162,7 +2190,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     hasConnectionError.value = true
   } finally {
     clearLoadingTimeout() // Always clear timeout when done
-    isLoading.value = false
+    stopLoading()
   }
 
   LogUtil.Info('�?Timebase change completed', {
@@ -2194,7 +2222,7 @@ watch(() => T3000_Data.value?.panelsList, async (newPanelsList, oldPanelsList) =
     })
 
     try {
-      isLoading.value = true
+      startLoading()
 
       // Clear existing data first
       dataSeries.value.forEach(series => {
@@ -2210,7 +2238,7 @@ watch(() => T3000_Data.value?.panelsList, async (newPanelsList, oldPanelsList) =
     } catch (error) {
       LogUtil.Error('Error loading historical data for new device:', error)
     } finally {
-      isLoading.value = false
+      stopLoading()
     }
   }
 }, { deep: true, immediate: false })
@@ -2676,7 +2704,7 @@ const startLoadingTimeout = () => {
   clearLoadingTimeout()
   loadingTimeout.value = setTimeout(() => {
     showLoadingTimeout.value = true
-    isLoading.value = false
+    stopLoading()
     LogUtil.Warn('�?Loading timeout reached after 30 seconds')
   }, loadingTimeoutDuration)
 }
@@ -2697,7 +2725,7 @@ const manualRefresh = async () => {
   clearLoadingTimeout()
   showLoadingTimeout.value = false
   hasConnectionError.value = false
-  isLoading.value = true
+  startLoading()
 
   // Clear existing data
   dataSeries.value.forEach(series => {
@@ -2724,13 +2752,13 @@ const manualRefresh = async () => {
 
     // Success - clear timeout
     clearLoadingTimeout()
-    isLoading.value = false
+    stopLoading()
 
   } catch (error) {
     LogUtil.Error('�?Manual refresh failed:', error)
     clearLoadingTimeout()
     hasConnectionError.value = true
-    isLoading.value = false
+    stopLoading()
   }
 }
 
@@ -3422,13 +3450,13 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     // Set loading state
-    isLoading.value = true
+    startLoading()
 
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
       LogUtil.Error('�?fetchRealTimeMonitorData: No monitor config available')
-      isLoading.value = false
+      stopLoading()
       return []
     }
 
@@ -3449,7 +3477,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
         currentPanelsDataLength: T3000_Data.value.panelsData?.length || 0,
         T3000DataExists: !!T3000_Data.value
       })
-      isLoading.value = false
+      stopLoading()
       return []
     }
 
@@ -3503,7 +3531,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     return []
   } finally {
     // Clear loading state
-    isLoading.value = false
+    stopLoading()
   }
 }
 
@@ -5403,7 +5431,7 @@ const initializeData = async () => {
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
     try {
-      isLoading.value = true
+      startLoading()
 
       // Step 1: Load historical data from database first (fast)
       LogUtil.Info('📚 Loading historical data from database for current timebase')
@@ -5421,13 +5449,13 @@ const initializeData = async () => {
         updateCharts()
       })
 
-      isLoading.value = false
+      stopLoading()
 
     } catch (error) {
       LogUtil.Error('= TLChart: Error in hybrid data initialization:', error)
       hasConnectionError.value = true
       dataSeries.value = []
-      isLoading.value = false
+      stopLoading()
     }
   } else {
     LogUtil.Info('📊 Empty State Configuration:', {
@@ -5441,7 +5469,7 @@ const initializeData = async () => {
     })
     hasConnectionError.value = true
     dataSeries.value = []
-    isLoading.value = false
+    stopLoading()
   }  // If no data series available, chart will remain empty (no mock data generation)
   if (dataSeries.value.length === 0) {
     LogUtil.Info('📊 TrendLogChart: No data series available - maintaining empty state', {
@@ -6986,7 +7014,7 @@ const initializeHistoricalData = async () => {
   const monitorConfigData = monitorConfig.value
   if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
     try {
-      isLoading.value = true
+      startLoading()
 
       // Load historical data from database only
       LogUtil.Info('📚 Loading historical data from database for current timebase')
@@ -7000,19 +7028,19 @@ const initializeHistoricalData = async () => {
         updateCharts()
       })
 
-      isLoading.value = false
+      stopLoading()
 
     } catch (error) {
       LogUtil.Error('= TLChart: Error in historical data initialization:', error)
       hasConnectionError.value = true
       dataSeries.value = []
-      isLoading.value = false
+      stopLoading()
     }
   } else {
     LogUtil.Info('📊 No monitor configuration available for historical data')
     hasConnectionError.value = true
     dataSeries.value = []
-    isLoading.value = false
+    stopLoading()
   }
 }
 
@@ -7412,7 +7440,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
   try {
     console.log('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
 
-    isLoading.value = true
+    startLoading()
     dataSource.value = 'api'
     isRealTime.value = false // Auto Scroll should be off for historical data
 
@@ -7491,7 +7519,7 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
     // Fall back to standard initialization
     await initializeData()
   } finally {
-    isLoading.value = false
+    stopLoading()
   }
 }
 
@@ -9460,7 +9488,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(250, 250, 250, 0.85);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9468,6 +9496,17 @@ onUnmounted(() => {
   gap: 12px;
   z-index: 1000;
   border-radius: 0px;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .loading-text {
@@ -11914,3 +11953,5 @@ onUnmounted(() => {
   }
 }
 </style>
+
+
