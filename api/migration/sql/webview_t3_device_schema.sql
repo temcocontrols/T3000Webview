@@ -390,15 +390,14 @@ CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_SYNC_METADATA (
 );
 
 -- TRENDLOG_DATA_DETAIL table (Child - Stores time-series values only)
--- OPTIMIZED: Removed id, SyncInterval, CreatedBy (moved to TRENDLOG_DATA_SYNC_METADATA)
--- Space savings: 24 bytes per record (35% reduction)
+-- OPTIMIZED: Removed id, SyncInterval, CreatedBy, DataSource, SyncMetadataId
+-- Space savings: 32 bytes per record (47% reduction from original schema)
+-- Tracking: DataSource always FFI_SYNC (constant), SyncMetadataId tracked at metadata table level
 CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
     -- Core fields only (NO id field - use built-in rowid)
     ParentId INTEGER NOT NULL,                         -- References TRENDLOG_DATA(id)
     Value TEXT NOT NULL,                               -- C++ Point Value (actual sensor/point value)
-    LoggingTime_Fmt TEXT NOT NULL,                     -- C++ Formatted Time (e.g., "2025-10-28 13:35:49")
-    DataSource INTEGER DEFAULT 1,                      -- 1=FFI_SYNC, 2=REALTIME, 3=HISTORICAL, 4=MANUAL
-    SyncMetadataId INTEGER                             -- References TRENDLOG_DATA_SYNC_METADATA(id) - NULL for non-FFI
+    LoggingTime_Fmt TEXT NOT NULL                      -- C++ Formatted Time (e.g., "2025-10-28 13:35:49")
 );
 
 -- =================================================================
@@ -440,8 +439,6 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_TIME_FMT ON TRENDLOG_DATA_DETAIL(
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_PARENT_TIME ON TRENDLOG_DATA_DETAIL(ParentId, LoggingTime_Fmt DESC);
 -- Composite index for history query time range filtering
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_TIME_RANGE ON TRENDLOG_DATA_DETAIL(LoggingTime_Fmt, ParentId);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_SOURCE ON TRENDLOG_DATA_DETAIL(DataSource);
-CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_SYNC_META ON TRENDLOG_DATA_DETAIL(SyncMetadataId);
 
 -- New TRENDLOG_DATA_SYNC_METADATA indexes - for tracking sync operations
 CREATE INDEX IF NOT EXISTS IDX_SYNC_META_TIME ON TRENDLOG_DATA_SYNC_METADATA(SyncTime_Fmt DESC);
