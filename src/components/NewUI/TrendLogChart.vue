@@ -1977,6 +1977,16 @@ watch(() => props.itemData, (newData, oldData) => {
 
 // Watch T3000_Data for panels data changes
 watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
+  // Only process panel data updates in real-time mode
+  // Skip for custom/historical data to avoid interfering with loaded historical datasets
+  if (!isRealTime.value) {
+    LogUtil.Debug('⏭️ T3000_Data watcher: Skipping panel data processing (not in real-time mode)', {
+      timeBase: timeBase.value,
+      isRealTime: isRealTime.value
+    })
+    return
+  }
+
   if (newPanelsData && newPanelsData.length > 0) {
     // Regenerate data series when panels data becomes available or changes
     if (currentItemData.value) {
@@ -5876,8 +5886,15 @@ const updateAnalogChart = () => {
     totalPoints: analogChartInstance.data.datasets.reduce((sum, ds) => sum + ds.data.length, 0),
     timeWindow: {
       min: analogChartInstance.options.scales?.x?.min,
-      max: analogChartInstance.options.scales?.x?.max
-    }
+      max: analogChartInstance.options.scales?.x?.max,
+      minDate: new Date(analogChartInstance.options.scales?.x?.min || 0).toISOString(),
+      maxDate: new Date(analogChartInstance.options.scales?.x?.max || 0).toISOString()
+    },
+    datasetDetails: analogChartInstance.data.datasets.map(ds => ({
+      label: ds.label,
+      pointCount: ds.data.length,
+      sampleData: ds.data.slice(0, 2) // First 2 points
+    }))
   })
 
   // Update chart without animations to avoid hover state issues
@@ -7067,11 +7084,22 @@ const formatDateTimeRange = () => {
 const onRealTimeToggle = (checked: boolean) => {
   LogUtil.Info(`🔄 TrendLogModal: Auto Scroll toggle - ${checked ? 'ON' : 'OFF'}`, {
     currentDataSeriesLength: dataSeries.value.length,
-    hasRealData: !!monitorConfig.value?.inputItems?.length
+    hasRealData: !!monitorConfig.value?.inputItems?.length,
+    currentTimeBase: timeBase.value
   })
 
   if (checked) {
     // AUTO SCROLL ON: Show real-time + historical data
+
+    // If currently viewing custom date range, reset to 5 minutes timebase
+    if (timeBase.value === 'custom') {
+      LogUtil.Info('🔄 Auto Scroll ON: Resetting from custom timebase to 5 minutes', {
+        previousTimeBase: timeBase.value,
+        newTimeBase: '5m'
+      })
+      timeBase.value = '5m'
+    }
+
     timeOffset.value = 0
     initializeData()
     startRealTimeUpdates()
@@ -7740,7 +7768,20 @@ const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[]
   console.log('= TLChart DataFlow: 14 panel items series conversion completed:', {
     totalItems: series.length,
     itemsWithData: series.filter(s => !s.isEmpty).length,
-    totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0)
+    totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
+    seriesDetails: series.map(s => ({
+      name: s.name,
+      dataPoints: s.data.length,
+      isEmpty: s.isEmpty || false,
+      timeRange: s.data.length > 0 ? {
+        first: new Date(s.data[0].timestamp).toISOString(),
+        last: new Date(s.data[s.data.length - 1].timestamp).toISOString()
+      } : null,
+      valueRange: s.data.length > 0 ? {
+        min: Math.min(...s.data.map(d => d.value)),
+        max: Math.max(...s.data.map(d => d.value))
+      } : null
+    }))
   })
 
   return series
