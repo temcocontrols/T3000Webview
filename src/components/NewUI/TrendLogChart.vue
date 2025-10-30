@@ -2143,9 +2143,10 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
     startLoading()
     startLoadingTimeout() // Start timeout when loading begins
 
-    // Clear existing data first
-    dataSeries.value.forEach(series => {
-      series.data = []
+    // 🆕 DON'T clear existing data - let merge function handle deduplication
+    // This preserves real-time data that hasn't been saved to database yet
+    LogUtil.Debug('🔄 Preserving existing data, will merge with historical load', {
+      existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
     })
 
     // Load data based on current Auto Scroll state (preserve user's choice)
@@ -2557,14 +2558,16 @@ const setTimeBase = (value: string) => {
     return
   }
 
-  timeBase.value = value
-
-  // Update UI mode based on timebase (affects navigation controls and display)
+  // 🆕 FIX: Update isRealTime BEFORE changing timebase
+  // This ensures the timebase watcher sees the correct Auto Scroll state
   if (value === '5m') {
     isRealTime.value = true // Enable real-time UI mode (current time view, nav buttons disabled)
   } else {
     isRealTime.value = false // Enable historical UI mode (allows time navigation with arrow buttons)
   }
+
+  // Now set timebase - the watcher will see the correct isRealTime value
+  timeBase.value = value
 
   // Don't call onTimeBaseChange() manually - let the Vue watcher handle timebase changes
   // This prevents duplicate API calls with different trendlog IDs
@@ -4495,6 +4498,37 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 }
 
 /**
+ * Get the time range of existing data across all series
+ * Returns null if no data exists
+ */
+const getExistingDataTimeRange = (): { earliest: number, latest: number } | null => {
+  if (!dataSeries.value || dataSeries.value.length === 0) {
+    return null
+  }
+
+  let earliest = Infinity
+  let latest = -Infinity
+  let hasAnyData = false
+
+  dataSeries.value.forEach(series => {
+    if (series.data && series.data.length > 0) {
+      hasAnyData = true
+      const seriesEarliest = series.data[0].timestamp
+      const seriesLatest = series.data[series.data.length - 1].timestamp
+
+      if (seriesEarliest < earliest) earliest = seriesEarliest
+      if (seriesLatest > latest) latest = seriesLatest
+    }
+  })
+
+  if (!hasAnyData) {
+    return null
+  }
+
+  return { earliest, latest }
+}
+
+/**
  * Load historical data from database based on current timebase
  */
 const loadHistoricalDataFromDatabase = async () => {
@@ -4559,8 +4593,43 @@ const loadHistoricalDataFromDatabase = async () => {
     const offsetEndTime = new Date(currentTime.getTime() + timeOffset.value * 60 * 1000)
     const offsetStartTime = new Date(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000)
 
-    const endTime = offsetEndTime
-    const startTime = offsetStartTime
+    // 🆕 SMART LOADING: Check if we already have data in this time range
+    const existingDataRange = getExistingDataTimeRange()
+    let actualStartTime = offsetStartTime
+    let actualEndTime = offsetEndTime
+
+    if (existingDataRange) {
+      LogUtil.Info('📊 Existing data detected - optimizing load range', {
+        requestedRange: {
+          start: offsetStartTime.toISOString(),
+          end: offsetEndTime.toISOString(),
+          durationMinutes: timeRangeMinutes
+        },
+        existingRange: {
+          start: new Date(existingDataRange.earliest).toISOString(),
+          end: new Date(existingDataRange.latest).toISOString()
+        }
+      })
+
+      // Only load data BEFORE the earliest existing point (historical gap)
+      if (offsetStartTime.getTime() < existingDataRange.earliest) {
+        actualEndTime = new Date(existingDataRange.earliest - 1000) // 1 second before earliest
+        LogUtil.Info('🔍 Loading historical gap BEFORE existing data', {
+          gapStart: actualStartTime.toISOString(),
+          gapEnd: actualEndTime.toISOString(),
+          gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
+        })
+      } else {
+        LogUtil.Info('✅ All requested data already exists in memory - skipping database load', {
+          requestedStart: offsetStartTime.toISOString(),
+          existingStart: new Date(existingDataRange.earliest).toISOString()
+        })
+        return // No need to load anything
+      }
+    }
+
+    const endTime = actualEndTime
+    const startTime = actualStartTime
 
     // Format timestamps for API (SQLite format) - use local time instead of UTC
     const formatLocalTime = (date: Date): string => {
@@ -4744,7 +4813,59 @@ const loadHistoricalDataFromDatabase = async () => {
 }
 
 /**
+ * Merge and deduplicate data points based on timestamp proximity
+ * Prevents duplicate data when combining real-time and historical data
+ */
+const mergeAndDeduplicate = (existingData: DataPoint[], newData: DataPoint[]): DataPoint[] => {
+  if (!existingData || existingData.length === 0) {
+    return newData
+  }
+  if (!newData || newData.length === 0) {
+    return existingData
+  }
+
+  // Create a map of existing data points by timestamp (rounded to nearest second)
+  const existingMap = new Map<number, DataPoint>()
+  existingData.forEach(point => {
+    const roundedTime = Math.floor(point.timestamp / 1000) * 1000 // Round to nearest second
+    existingMap.set(roundedTime, point)
+  })
+
+  // Add new data points, but only if they don't exist within 1 second
+  const merged = [...existingData]
+  let duplicatesSkipped = 0
+  let newPointsAdded = 0
+
+  newData.forEach(point => {
+    const roundedTime = Math.floor(point.timestamp / 1000) * 1000
+
+    // Check if a point exists within 1 second window
+    if (!existingMap.has(roundedTime)) {
+      merged.push(point)
+      existingMap.set(roundedTime, point)
+      newPointsAdded++
+    } else {
+      duplicatesSkipped++
+    }
+  })
+
+  // Sort by timestamp
+  merged.sort((a, b) => a.timestamp - b.timestamp)
+
+  LogUtil.Debug('🔄 Merge and deduplicate complete', {
+    existingCount: existingData.length,
+    newDataCount: newData.length,
+    mergedCount: merged.length,
+    duplicatesSkipped,
+    newPointsAdded
+  })
+
+  return merged
+}
+
+/**
  * Populate data series with historical data from database
+ * Now MERGES with existing data instead of replacing
  */
 const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
   try {
@@ -4791,12 +4912,16 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
           description: `Historical: ${item.point_id}`
         })).sort((a, b) => a.timestamp - b.timestamp)
 
-        // Replace series data with historical data
-        series.data = dataPoints
+        // 🆕 MERGE instead of replace - preserves real-time data not yet in database
+        const existingDataCount = series.data?.length || 0
+        series.data = mergeAndDeduplicate(series.data || [], dataPoints)
 
-        LogUtil.Info(`📈 Successfully loaded ${dataPoints.length} historical points for ${series.name}`, {
+        LogUtil.Info(`📈 Successfully merged ${dataPoints.length} historical points with ${existingDataCount} existing points for ${series.name}`, {
           seriesIndex,
           seriesId: series.id,
+          existingPoints: existingDataCount,
+          historicalPoints: dataPoints.length,
+          mergedTotal: series.data.length,
           sampleDataPoints: dataPoints.slice(0, 3).map(p => ({
             timestamp: p.timestamp,
             timeISO: new Date(p.timestamp).toISOString(),
@@ -6097,11 +6222,19 @@ const zoomIn = () => {
   const currentIndex = timebaseProgression.indexOf(timeBase.value)
   if (currentIndex > 0) {
     const newTimebase = timebaseProgression[currentIndex - 1]
+
+    // 🆕 FIX: Update isRealTime BEFORE changing timebase (same as setTimeBase)
+    if (newTimebase === '5m') {
+      isRealTime.value = true
+    } else {
+      isRealTime.value = false
+    }
+
     timeBase.value = newTimebase
 
     LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
       autoScrollState: isRealTime.value,
-      note: 'Auto Scroll state unchanged by zoom operation'
+      note: 'Auto Scroll updated based on timebase'
     })
 
     // Refresh data with new timebase, preserving Auto Scroll state
@@ -6119,11 +6252,19 @@ const zoomOut = () => {
   const currentIndex = timebaseProgression.indexOf(timeBase.value)
   if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
     const newTimebase = timebaseProgression[currentIndex + 1]
+
+    // 🆕 FIX: Update isRealTime BEFORE changing timebase (same as setTimeBase)
+    if (newTimebase === '5m') {
+      isRealTime.value = true
+    } else {
+      isRealTime.value = false
+    }
+
     timeBase.value = newTimebase
 
     LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
       autoScrollState: isRealTime.value,
-      note: 'Auto Scroll state unchanged by zoom operation'
+      note: 'Auto Scroll updated based on timebase'
     })
 
     // Refresh data with new timebase, preserving Auto Scroll state

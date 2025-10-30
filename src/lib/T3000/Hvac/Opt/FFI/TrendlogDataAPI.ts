@@ -185,13 +185,36 @@ export function useTrendlogDataAPI() {
       })
 
       if (!response.ok) {
-        throw new Error(`Batch save failed: ${response.status}`)
+        // Try to get error details from response body
+        let errorDetails = `${response.status} ${response.statusText}`
+        try {
+          const errorBody = await response.text()
+          if (errorBody) {
+            errorDetails += ` - ${errorBody}`
+          }
+        } catch (e) {
+          // Ignore parse error
+        }
+
+        LogUtil.Error('❌ Realtime batch save API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          dataPointsCount: dataPoints.length,
+          errorDetails
+        })
+
+        throw new Error(`Batch save failed: ${errorDetails}`)
       }
 
       const result = await response.json()
       return result.rows_affected || 0
     } catch (err) {
-      LogUtil.Error('Failed to save realtime batch:', err)
+      LogUtil.Error('❌ Failed to save realtime batch - Network or API error:', {
+        error: err instanceof Error ? err.message : String(err),
+        dataPointsCount: dataPoints.length,
+        apiUrl: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlog-data/realtime/batch`
+      })
       return 0
     }
   }
@@ -405,7 +428,7 @@ export function useTrendlogDataAPI() {
           url: `${TRENDLOG_API_BASE_URL}/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`
         })
       } else {
-        console.log('�?TrendlogAPI: Save successful', {
+        console.log('�?TrendlogAPI: Save successful', {
           status: response.status,
           trendlogId,
           viewNumber,
