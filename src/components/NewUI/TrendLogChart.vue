@@ -1381,6 +1381,13 @@ const customEndTime = ref<Dayjs | null>(null)
 const customDateModalVisible = ref(false)
 const isRealTime = ref(true)
 
+// 🆕 Request management for timebase changes
+let timebaseChangeTimeout: NodeJS.Timeout | null = null
+let historyAbortController: AbortController | null = null
+
+// 🆕 Chart update debouncing to prevent UI freezing in C++ embedded WebView
+let chartUpdatePending = false
+
 // View-specific series tracking for View 2 & 3
 const viewTrackedSeries = ref({
   2: [] as string[], // View 2: user-selected series for tracking
@@ -2099,135 +2106,179 @@ watch(scheduleItemData, (newData, oldData) => {
   */
 }, { deep: true })
 
-// Watch timeBase for changes and hybrid data loading
+// Watch timeBase for changes and hybrid data loading with debouncing and cancellation
 watch(timeBase, async (newTimeBase, oldTimeBase) => {
-  LogUtil.Info('= TLChart: timeBase changed - Smart Data Loading with Reuse Optimization', {
-    oldTimeBase: oldTimeBase,
-    newTimeBase: newTimeBase,
-    autoScrollState: isRealTime.value,
-    timestamp: new Date().toISOString()
-  })
+  // 🆕 DEBOUNCE: Cancel previous pending timebase change
+  if (timebaseChangeTimeout) {
+    clearTimeout(timebaseChangeTimeout)
+    LogUtil.Debug('⏸️ Cancelled pending timebase change', { cancelledTimebase: oldTimeBase })
+  }
 
-  try {
-    // 🆕 OPTIMIZATION: Check if we can reuse existing data for seamless transition
-    const canReuseExistingData = await checkDataReuseOptimization(oldTimeBase, newTimeBase)
-
-    if (canReuseExistingData) {
-      LogUtil.Info('🚀 Smart timebase transition: Reusing existing data, loading only missing gap', {
-        optimization: 'INCREMENTAL_LOAD',
-        oldTimeBase,
-        newTimeBase,
-        existingDataCount: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-      })
-
-      // Load only the missing historical data gap (no loading state needed)
-      await loadHistoricalDataGap(oldTimeBase, newTimeBase)
-
-      // Update charts immediately with extended data
-      updateCharts()
-
-      LogUtil.Info('�?Seamless timebase transition completed', {
-        newTimeBase,
-        totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
-      })
-      return // Skip the full reload logic below
-    }
-
-    // Fallback to full reload for complex cases
-    LogUtil.Info('📚 Full timebase reload: Cannot optimize, doing complete data refresh', {
-      reason: 'COMPLEX_TRANSITION',
+  // 🆕 CANCEL: Abort any ongoing history API request
+  if (historyAbortController) {
+    historyAbortController.abort()
+    LogUtil.Info('🛑 Aborted previous history API request', {
+      reason: 'New timebase change',
       oldTimeBase,
       newTimeBase
     })
-
-    // 🆕 FIX: Don't show loading state if we already have data
-    const existingDataRange = getExistingDataTimeRange()
-    const hasExistingData = existingDataRange && existingDataRange.totalPoints > 0
-
-    if (!hasExistingData) {
-      // Only show loading for initial data fetch
-      startLoading()
-      startLoadingTimeout()
-      LogUtil.Debug('🔄 No existing data - showing loading state', {
-        willLoadHistorical: true
-      })
-    } else {
-      LogUtil.Debug('✅ Existing data found - skipping loading state', {
-        existingDataPoints: existingDataRange.totalPoints,
-        existingTimeRange: {
-          start: new Date(existingDataRange.earliest).toISOString(),
-          end: new Date(existingDataRange.latest).toISOString()
-        }
-      })
-    }
-
-    // 🆕 DON'T clear existing data - let merge function handle deduplication
-    // This preserves real-time data that hasn't been saved to database yet
-    LogUtil.Debug('🔄 Preserving existing data, will merge with historical load', {
-      existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
-    })
-
-    // Load data based on current Auto Scroll state (preserve user's choice)
-    if (isRealTime.value) {
-      // Auto Scroll ON: Load real-time + historical data
-      // LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
-
-      // Step 1: Initialize real-time data series structure
-      await initializeRealDataSeries()
-
-      // Step 2: Load historical data to populate the series
-      await loadHistoricalDataFromDatabase()
-
-      // Step 3: Ensure real-time updates are active
-      if (!realtimeInterval) {
-        // LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
-        startRealTimeUpdates()
-      }
-    } else {
-      // Auto Scroll OFF: Load historical data only
-      // LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
-      await loadHistoricalDataFromDatabase()
-    }
-
-    // Update charts with loaded data
-    LogUtil.Info('🎨 Updating charts with loaded data', {
-      totalSeries: dataSeries.value.length,
-      seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-      autoScrollEnabled: isRealTime.value,
-      totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-    })
-
-    // Force Vue reactivity update
-    await nextTick()
-    dataSeries.value = [...dataSeries.value]
-
-    // Wait for DOM to update, then update charts
-    await nextTick()
-
-    // Immediate chart update
-    updateCharts()
-
-    // Delayed chart update for safety (in case first one didn't render)
-    setTimeout(() => {
-      LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
-      updateCharts()
-    }, 100)
-
-  } catch (error) {
-    LogUtil.Error('Error loading data for new timebase:', error)
-    clearLoadingTimeout() // Clear timeout on error
-    hasConnectionError.value = true
-  } finally {
-    clearLoadingTimeout() // Always clear timeout when done
-    stopLoading()
   }
 
-  LogUtil.Info('�?Timebase change completed', {
-    newTimeBase,
-    autoScrollState: isRealTime.value,
-    dataSeriesCount: dataSeries.value.length,
-    totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
-  })
+  // Wait 300ms before executing (debounce rapid changes)
+  timebaseChangeTimeout = setTimeout(async () => {
+    LogUtil.Info('= TLChart: timeBase changed - Smart Data Loading with Reuse Optimization', {
+      oldTimeBase: oldTimeBase,
+      newTimeBase: newTimeBase,
+      autoScrollState: isRealTime.value,
+      timestamp: new Date().toISOString()
+    })
+
+    try {
+      // Create new abort controller for this request
+      historyAbortController = new AbortController()
+
+      // 🆕 OPTIMIZATION: Check if we can reuse existing data for seamless transition
+      const canReuseExistingData = await checkDataReuseOptimization(oldTimeBase, newTimeBase)
+
+      if (canReuseExistingData) {
+        LogUtil.Info('🚀 Smart timebase transition: Reusing existing data, loading only missing gap', {
+          optimization: 'INCREMENTAL_LOAD',
+          oldTimeBase,
+          newTimeBase,
+          existingDataCount: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
+        })
+
+        // Load only the missing historical data gap (no loading state needed)
+        await loadHistoricalDataGap(oldTimeBase, newTimeBase)
+
+        // Update charts immediately with extended data
+        updateCharts()
+
+        LogUtil.Info('✅ Seamless timebase transition completed', {
+          newTimeBase,
+          totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
+        })
+        return // Skip the full reload logic below
+      }
+
+      // Fallback to full reload for complex cases
+      LogUtil.Info('📚 Full timebase reload: Cannot optimize, doing complete data refresh', {
+        reason: 'COMPLEX_TRANSITION',
+        oldTimeBase,
+        newTimeBase
+      })
+
+      // 🆕 FIX: Don't show loading state if we already have data
+      const existingDataRange = getExistingDataTimeRange()
+      const hasExistingData = existingDataRange && existingDataRange.totalPoints > 0
+
+      if (!hasExistingData) {
+        // Only show loading for initial data fetch
+        startLoading()
+        startLoadingTimeout()
+        LogUtil.Debug('🔄 No existing data - showing loading state', {
+          willLoadHistorical: true
+        })
+      } else {
+        LogUtil.Debug('✅ Existing data found - skipping loading state', {
+          existingDataPoints: existingDataRange.totalPoints,
+          existingTimeRange: {
+            start: new Date(existingDataRange.earliest).toISOString(),
+            end: new Date(existingDataRange.latest).toISOString()
+          }
+        })
+      }
+
+      // 🆕 DON'T clear existing data - let merge function handle deduplication
+      // This preserves real-time data that hasn't been saved to database yet
+      LogUtil.Debug('🔄 Preserving existing data, will merge with historical load', {
+        existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+      })
+
+      // Load data based on current Auto Scroll state (preserve user's choice)
+      if (isRealTime.value) {
+        // Auto Scroll ON: Load real-time + historical data
+        // LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
+
+        // 🆕 FIX: Only initialize series structure if we don't already have it
+        // This prevents unnecessary loading state when switching back to 5m
+        const needsSeriesInit = dataSeries.value.length === 0 ||
+                                dataSeries.value.every(s => s.data.length === 0)
+
+        if (needsSeriesInit) {
+          // Step 1: Initialize real-time data series structure
+          await initializeRealDataSeries()
+        } else {
+          LogUtil.Info('✅ Series structure already exists, skipping initializeRealDataSeries', {
+            seriesCount: dataSeries.value.length,
+            dataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
+          })
+        }
+
+        // Step 2: Load historical data to populate the series
+        await loadHistoricalDataFromDatabase()
+
+        // Step 3: Ensure real-time updates are active
+        if (!realtimeInterval) {
+          // LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
+          startRealTimeUpdates()
+        }
+      } else {
+        // Auto Scroll OFF: Load historical data only
+        // LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
+        await loadHistoricalDataFromDatabase()
+      }
+
+      // Update charts with loaded data
+      LogUtil.Info('🎨 Updating charts with loaded data', {
+        totalSeries: dataSeries.value.length,
+        seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+        autoScrollEnabled: isRealTime.value,
+        totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
+      })
+
+      // Force Vue reactivity update
+      await nextTick()
+      dataSeries.value = [...dataSeries.value]
+
+      // Wait for DOM to update, then update charts
+      await nextTick()
+
+      // 🆕 FIX: Add extra yield for C++ embedded WebView to process messages
+      // This prevents the parent application from freezing
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Immediate chart update (now properly deferred)
+      updateCharts()
+
+      // Delayed chart update for safety (in case first one didn't render)
+      setTimeout(() => {
+        LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
+        updateCharts()
+      }, 100)
+
+    } catch (error) {
+      // Check if error is due to abort
+      if (error.name === 'AbortError') {
+        LogUtil.Info('⏹️ History request aborted (newer request started)', { timeBase: newTimeBase })
+        return
+      }
+
+      LogUtil.Error('Error loading data for new timebase:', error)
+      clearLoadingTimeout() // Clear timeout on error
+      hasConnectionError.value = true
+    } finally {
+      clearLoadingTimeout() // Always clear timeout when done
+      stopLoading()
+    }
+
+    LogUtil.Info('✅ Timebase change completed', {
+      newTimeBase,
+      autoScrollState: isRealTime.value,
+      dataSeriesCount: dataSeries.value.length,
+      totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
+    })
+  }, 300) // 300ms debounce delay
 }, { immediate: false })
 
 // Watch for device/serial number changes to reload historical data
@@ -5868,6 +5919,14 @@ const destroyAllCharts = () => {
 }
 
 const updateCharts = () => {
+  // 🆕 FIX: Prevent multiple concurrent chart updates (critical for C++ WebView)
+  if (chartUpdatePending) {
+    LogUtil.Debug('⏸️ Chart update already pending, skipping duplicate call')
+    return
+  }
+
+  chartUpdatePending = true
+
   LogUtil.Info('🎨 updateCharts: Starting chart updates', {
     hasAnalogChart: !!analogChartInstance,
     digitalChartsCount: Object.keys(digitalChartInstances).length,
@@ -5883,16 +5942,25 @@ const updateCharts = () => {
     createAnalogChart()
   }
 
-  // Update analog chart
-  updateAnalogChart()
+  // 🆕 FIX: Double-defer to prevent UI blocking in embedded C++ WebView
+  // First defer breaks out of current call stack
+  requestAnimationFrame(() => {
+    // Second defer ensures browser message pump runs (critical for C++ embedding)
+    setTimeout(async () => {
+      // Update analog chart (now async with yield points)
+      await updateAnalogChart()
 
-  // Update digital charts
-  updateDigitalCharts()
-
-  LogUtil.Info('🎨 updateCharts: Chart updates completed')
+      // Update digital charts after another yield
+      requestAnimationFrame(() => {
+        updateDigitalCharts()
+        chartUpdatePending = false // Reset flag
+        LogUtil.Info('🎨 updateCharts: Chart updates completed')
+      })
+    }, 0)
+  })
 }
 
-const updateAnalogChart = () => {
+const updateAnalogChart = async () => {
   if (!analogChartInstance) {
     LogUtil.Debug('📊 updateAnalogChart: No analog chart instance available')
     return
@@ -5911,7 +5979,19 @@ const updateAnalogChart = () => {
     }))
   })
 
-  analogChartInstance.data.datasets = visibleAnalog.map(series => {
+  // 🆕 FIX: Process data asynchronously to prevent UI blocking
+  // Process each series sequentially with yield points for C++ WebView
+  const datasets: any[] = []
+
+  for (let i = 0; i < visibleAnalog.length; i++) {
+    const series = visibleAnalog[i]
+
+    // Yield to event loop every 3 series to prevent blocking
+    if (i > 0 && i % 3 === 0) {
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+
+    // Clone and sort data
     const sortedData = series.data
       .slice()
       .sort((a, b) => a.timestamp - b.timestamp)
@@ -5920,7 +6000,7 @@ const updateAnalogChart = () => {
         y: point.value
       }))
 
-    return {
+    datasets.push({
       label: series.name,
       data: sortedData,
       borderColor: series.color,
@@ -5935,8 +6015,11 @@ const updateAnalogChart = () => {
       pointBorderWidth: 2,
       pointStyle: 'circle' as const,
       spanGaps: false
-    }
-  })
+    })
+  }
+
+  // Batch update to minimize reflows
+  analogChartInstance.data.datasets = datasets
 
   // Update x-axis configuration
   if (analogChartInstance.options.scales?.x) {
@@ -6024,11 +6107,10 @@ const updateAnalogChart = () => {
     }))
   })
 
-  // Update chart without animations to avoid hover state issues
+  // 🆕 FIX: Update chart without blocking UI thread
+  // Using 'none' mode prevents animations but still allows async rendering
+  // Removed synchronous render() call that was blocking the entire application
   analogChartInstance.update('none')
-
-  // Force immediate render to ensure data displays
-  analogChartInstance.render()
 }
 
 const updateDigitalCharts = () => {
@@ -9721,6 +9803,14 @@ onUnmounted(() => {
   // Cleanup FFI countdown timer
   if (ffiCountdownTimer) {
     clearInterval(ffiCountdownTimer)
+  }
+
+  // 🆕 Cleanup timebase change timeout and abort controller
+  if (timebaseChangeTimeout) {
+    clearTimeout(timebaseChangeTimeout)
+  }
+  if (historyAbortController) {
+    historyAbortController.abort()
   }
 })
 </script>
