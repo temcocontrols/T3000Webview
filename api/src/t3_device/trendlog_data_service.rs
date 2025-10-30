@@ -303,6 +303,25 @@ impl T3TrendlogDataService {
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &query_result_info, LogLevel::Info);
 
+        // Analyze data distribution across points for debugging
+        if !trendlog_data_list.is_empty() {
+            use std::collections::HashMap;
+            let mut point_counts: HashMap<String, usize> = HashMap::new();
+
+            for record in &trendlog_data_list {
+                let key = format!("{}_{}", record.point_type, record.point_id);
+                *point_counts.entry(key).or_insert(0) += 1;
+            }
+
+            let distribution_info = format!(
+                "📊 [TrendlogDataService] Data distribution - Total: {}, Unique points: {}, Records per point: {:?}",
+                trendlog_data_list.len(),
+                point_counts.len(),
+                point_counts
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &distribution_info, LogLevel::Info);
+        }
+
         // Format the data for the TrendLogChart component
         let format_start_time = std::time::Instant::now();
         let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {

@@ -7553,23 +7553,42 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
     dataSource.value = 'api'
     isRealTime.value = false // Auto Scroll should be off for historical data
 
-    // Extract specific points from current data series
-    const specificPoints = extractSpecificPoints()
+  // Extract specific points from current data series
+  const specificPoints = extractSpecificPoints()
 
-    // Enhanced API request with specific point filtering
-    // This ensures we only fetch data for the exact points displayed in the chart
-    const historyRequest = {
-      serial_number: deviceParams.sn,
-      panel_id: deviceParams.panel_id,
-      trendlog_id: deviceParams.trendlog_id.toString(),
-      start_time: timeRanges.startTime,
-      end_time: timeRanges.endTime,
-      limit: Math.min(timeRanges.expectedDataPoints * 2, 5000), // Request up to 2x expected points, max 5000
-      point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types
-      specific_points: specificPoints // NEW: Pass specific points to filter
-    }
+  // Calculate limit based on number of points to ensure all data is returned
+  // Formula: expectedDataPoints × numberOfPoints × safetyMultiplier
+  const pointCount = specificPoints.length || 14 // Number of points being queried
+  const safetyMultiplier = 2 // Request 2x expected to account for irregular intervals
+  const maxTotalRecords = 100000 // Absolute maximum for safety (prevents excessive queries)
 
-    console.log('= TLChart DataFlow: API request details:', {
+  const calculatedLimit = timeRanges.expectedDataPoints * pointCount * safetyMultiplier
+  const finalLimit = Math.min(calculatedLimit, maxTotalRecords)
+
+  console.log('📊 TLChart DataFlow: Calculated query limit to ensure complete data:', {
+    pointCount,
+    expectedDataPointsPerPoint: timeRanges.expectedDataPoints,
+    safetyMultiplier,
+    calculatedLimit,
+    finalLimit,
+    timeRange: `${timeRanges.durationMinutes} minutes`,
+    willGetCompleteData: calculatedLimit <= maxTotalRecords
+  })
+
+  // Enhanced API request with specific point filtering
+  // This ensures we only fetch data for the exact points displayed in the chart
+  const historyRequest = {
+    serial_number: deviceParams.sn,
+    panel_id: deviceParams.panel_id,
+    trendlog_id: deviceParams.trendlog_id.toString(),
+    start_time: timeRanges.startTime,
+    end_time: timeRanges.endTime,
+    limit: finalLimit, // Calculated per point to ensure all data is returned
+    point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types
+    specific_points: specificPoints // NEW: Pass specific points to filter
+  }
+
+  console.log('= TLChart DataFlow: API request details:', {
       device: `SN:${deviceParams.sn}, Panel:${deviceParams.panel_id}, TrendLog:${deviceParams.trendlog_id}`,
       pointsRequested: specificPoints.length,
       timeRange: `${timeRanges.durationMinutes} minutes`
@@ -7579,8 +7598,33 @@ const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any
 
     console.log('= TLChart DataFlow: API response received:', {
       hasData: !!(historyResponse?.data && historyResponse.data.length > 0),
-      dataPointsCount: historyResponse?.data?.length || 0
+      dataPointsCount: historyResponse?.data?.length || 0,
+      requestedLimit: finalLimit,
+      responseFiltering: historyResponse?.filtering,
+      deviceId: historyResponse?.device_id,
+      panelId: historyResponse?.panel_id,
+      message: historyResponse?.message
     })
+
+    // Analyze data distribution across points
+    if (historyResponse?.data && historyResponse.data.length > 0) {
+      const pointDistribution = new Map<string, number>()
+      historyResponse.data.forEach((record: any) => {
+        const key = `${record.point_type}_${record.point_id}`
+        pointDistribution.set(key, (pointDistribution.get(key) || 0) + 1)
+      })
+
+      console.log('📊 TLChart DataFlow: Data distribution across points:', {
+        totalRecords: historyResponse.data.length,
+        uniquePoints: pointDistribution.size,
+        recordsPerPoint: Array.from(pointDistribution.entries()).map(([point, count]) => ({
+          point,
+          count
+        })),
+        averagePerPoint: Math.floor(historyResponse.data.length / pointDistribution.size),
+        expectedPerPoint: timeRanges.expectedDataPoints
+      })
+    }
 
     if (historyResponse && historyResponse.data && historyResponse.data.length > 0) {
       console.log('= TLChart DataFlow: Converting API data to chart format for 14 panel items')
