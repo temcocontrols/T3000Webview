@@ -4854,8 +4854,8 @@ const loadHistoricalDataFromDatabase = async () => {
         timeRange: `${timeRangeMinutes} minutes`
       })
 
-      // Convert historical data to chart format and populate data series
-      populateDataSeriesWithHistoricalData(historyResponse.data)
+      // 🆕 Convert historical data to chart format and populate data series (now async)
+      await populateDataSeriesWithHistoricalData(historyResponse.data)
     } else {
       LogUtil.Debug('📭 No historical data found for current timebase')
     }
@@ -4919,8 +4919,9 @@ const mergeAndDeduplicate = (existingData: DataPoint[], newData: DataPoint[]): D
 /**
  * Populate data series with historical data from database
  * Now MERGES with existing data instead of replacing
+ * 🆕 ASYNC with yield points to prevent UI blocking
  */
-const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
+const populateDataSeriesWithHistoricalData = async (historicalData: any[]) => {
   try {
     // Group historical data by point_id and point_type
     const dataByPoint = new Map<string, any[]>()
@@ -4940,8 +4941,15 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
       dataGroupKeys: Array.from(dataByPoint.keys())
     })
 
-    // Populate existing data series with historical data
-    dataSeries.value.forEach((series, seriesIndex) => {
+    // 🆕 Process series asynchronously with yield points to prevent UI blocking
+    for (let seriesIndex = 0; seriesIndex < dataSeries.value.length; seriesIndex++) {
+      const series = dataSeries.value[seriesIndex]
+
+      // Yield to event loop every 3 series to prevent blocking
+      if (seriesIndex > 0 && seriesIndex % 3 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      }
+
       const seriesKey = `${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
       const seriesHistoricalData = dataByPoint.get(seriesKey) || []
 
@@ -4991,7 +4999,7 @@ const populateDataSeriesWithHistoricalData = (historicalData: any[]) => {
           availableKeys: Array.from(dataByPoint.keys())
         })
       }
-    })
+    } // End of for loop
 
     LogUtil.Info('📊 Historical data population completed', {
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
@@ -5950,9 +5958,9 @@ const updateCharts = () => {
       // Update analog chart (now async with yield points)
       await updateAnalogChart()
 
-      // Update digital charts after another yield
-      requestAnimationFrame(() => {
-        updateDigitalCharts()
+      // Update digital charts after another yield (also async now)
+      requestAnimationFrame(async () => {
+        await updateDigitalCharts()
         chartUpdatePending = false // Reset flag
         LogUtil.Info('🎨 updateCharts: Chart updates completed')
       })
@@ -6113,10 +6121,18 @@ const updateAnalogChart = async () => {
   analogChartInstance.update('none')
 }
 
-const updateDigitalCharts = () => {
-  visibleDigitalSeries.value.forEach((series, index) => {
+const updateDigitalCharts = async () => {
+  // 🆕 Process digital charts asynchronously to prevent UI blocking
+  for (let index = 0; index < visibleDigitalSeries.value.length; index++) {
+    const series = visibleDigitalSeries.value[index]
     const chart = digitalChartInstances[index]
-    if (!chart || series.data.length === 0) return
+
+    if (!chart || series.data.length === 0) continue
+
+    // Yield to event loop every 2 digital charts
+    if (index > 0 && index % 2 === 0) {
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
 
     const sortedData = series.data
       .slice()
@@ -6198,7 +6214,7 @@ const updateDigitalCharts = () => {
     }
 
     chart.update('none')
-  })
+  } // End of for loop
 }
 
 // Series control methods
@@ -8994,11 +9010,16 @@ const exportDataJSON = () => {
 
 // Chart Options Methods
 const onChartOptionChange = () => {
-  // Auto-refresh charts when options change
-  if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
-    destroyAllCharts()
-    createCharts()
-  }
+  // 🆕 Defer auto-refresh to prevent UI blocking
+  requestAnimationFrame(() => {
+    if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
+      destroyAllCharts()
+      // Wait for destruction before recreating
+      setTimeout(() => {
+        createCharts()
+      }, 10)
+    }
+  })
 }
 
 const resetChartOptions = () => {
@@ -9036,10 +9057,16 @@ const togglePointsOption = () => {
 
 // Watchers
 watch([showGrid, showLegend, smoothLines, showPoints], () => {
-  if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
-    destroyAllCharts()
-    createCharts()
-  }
+  // 🆕 Defer chart recreation to prevent UI blocking
+  requestAnimationFrame(() => {
+    if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
+      destroyAllCharts()
+      // Wait for destruction to complete before recreating
+      setTimeout(() => {
+        createCharts()
+      }, 10)
+    }
+  })
 })
 
 // Watch for changes in visible analog series to ensure proper chart updates
