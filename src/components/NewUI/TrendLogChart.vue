@@ -2140,8 +2140,26 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
       newTimeBase
     })
 
-    startLoading()
-    startLoadingTimeout() // Start timeout when loading begins
+    // 🆕 FIX: Don't show loading state if we already have data
+    const existingDataRange = getExistingDataTimeRange()
+    const hasExistingData = existingDataRange && existingDataRange.totalPoints > 0
+
+    if (!hasExistingData) {
+      // Only show loading for initial data fetch
+      startLoading()
+      startLoadingTimeout()
+      LogUtil.Debug('🔄 No existing data - showing loading state', {
+        willLoadHistorical: true
+      })
+    } else {
+      LogUtil.Debug('✅ Existing data found - skipping loading state', {
+        existingDataPoints: existingDataRange.totalPoints,
+        existingTimeRange: {
+          start: new Date(existingDataRange.earliest).toISOString(),
+          end: new Date(existingDataRange.latest).toISOString()
+        }
+      })
+    }
 
     // 🆕 DON'T clear existing data - let merge function handle deduplication
     // This preserves real-time data that hasn't been saved to database yet
@@ -3933,7 +3951,7 @@ const initializeRealDataSeries = async () => {
 
   const monitorConfigData = monitorConfig.value
   if (!monitorConfigData) {
-    LogUtil.Warn('�?initializeRealDataSeries: No monitor config available', {
+    LogUtil.Warn('⚠️ initializeRealDataSeries: No monitor config available', {
       monitorConfig: monitorConfig.value,
       T3000DataExists: !!T3000_Data.value,
       propsItemData: !!props.itemData
@@ -3943,58 +3961,26 @@ const initializeRealDataSeries = async () => {
   }
 
   try {
-    // Fetch real-time data for all items
-    const realTimeData = await fetchRealTimeMonitorData()
-
-    // Check if we have any real data at all
-    const hasAnyRealData = realTimeData.some(series => series.length > 0)
-
-    if (!hasAnyRealData) {
-      dataSeries.value = []
-      return
-    }
-
-    // Update data series with real configuration - only for series that have data
+    // 🆕 FIX: Create data series structure IMMEDIATELY from monitorConfig
+    // Don't wait for real-time data - historical data load needs this structure
     const newDataSeries: SeriesConfig[] = []
 
     for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
       const inputItem = monitorConfigData.inputItems[i]
       const pointTypeInfo = getPointTypeInfo(inputItem.point_type)
       const rangeValue = monitorConfigData.ranges[i] || 0
-      const itemData = realTimeData[i] || []
 
       // Use device description for series name
       const prefix = pointTypeInfo.category
       const desc = getDeviceDescription(inputItem.panel, inputItem.point_type, inputItem.point_number)
 
-      // Only skip items that have no data at all
-      // Keep items that have data even if they don't have descriptions
-      if (itemData.length === 0) {
-        LogUtil.Debug('🚫 Skipping item with no data:', {
-          itemIndex: i,
-          panel: inputItem.panel,
-          point_type: inputItem.point_type,
-          point_number: inputItem.point_number,
-          hasDescription: !!desc
-        })
-        continue
-      }      // Create clean name - only for items with data or valid descriptions
+      // Create series name
       const seriesName = desc || `${inputItem.point_number + 1} (P${inputItem.panel})`
       const cleanDescription = desc || `${inputItem.point_number + 1}`
 
-      // Determine unit type based on digital_analog field from panel data
-      // BAC_UNITS_DIGITAL = 0 (digital), BAC_UNITS_ANALOG = 1 (analog)
+      // Determine unit type
       const digitalAnalog = getDigitalAnalogFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number)
       const isDigital = digitalAnalog === BAC_UNITS_DIGITAL
-
-      LogUtil.Info('= TLChart: Series generation - Digital/Analog analysis', {
-        inputItemIndex: i,
-        panelId: inputItem.panel,
-        pointType: inputItem.point_type,
-        pointNumber: inputItem.point_number,
-        digitalAnalog,
-        isDigital
-      })
 
       let unitType: 'digital' | 'analog'
       let unitSymbol: string
@@ -4004,20 +3990,15 @@ const initializeRealDataSeries = async () => {
         unitSymbol = getUnitFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number)
       } else {
         unitType = 'analog'
-        unitSymbol = getUnitFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number) // Get unit from panel data
+        unitSymbol = getUnitFromPanelData(inputItem.panel, inputItem.point_type, inputItem.point_number)
       }
-
-      LogUtil.Info('= TLChart: Series generation - Unit determination result', {
-        unitType,
-        unitSymbol
-      })
 
       const seriesConfig: SeriesConfig = {
         name: seriesName,
         color: `hsl(${(newDataSeries.length * 360) / monitorConfigData.inputItems.length}, 70%, 50%)`,
-        data: itemData,
+        data: [], // Start with empty data - will be filled by historical load and real-time updates
         visible: true,
-        isEmpty: false, // Only create series for data that exists
+        isEmpty: false,
         unit: unitSymbol,
         unitType: unitType,
         unitCode: rangeValue,
@@ -4068,8 +4049,27 @@ const initializeRealDataSeries = async () => {
 
     dataSeries.value = newDataSeries
 
-    // Update sync time since we successfully loaded real data
+    // Update sync time since we successfully created series structure
     lastSyncTime.value = new Date().toLocaleTimeString()
+
+    // 🆕 NOW fetch real-time data in background to populate the series
+    // This happens AFTER series structure is created, so it won't block historical load
+    LogUtil.Info('📡 Fetching real-time data in background (non-blocking)')
+    fetchRealTimeMonitorData().then(realTimeData => {
+      if (realTimeData && realTimeData.length > 0) {
+        // Merge real-time data into existing series
+        realTimeData.forEach((itemData, index) => {
+          if (dataSeries.value[index] && itemData.length > 0) {
+            const existingData = dataSeries.value[index].data || []
+            dataSeries.value[index].data = mergeAndDeduplicate(existingData, itemData)
+            LogUtil.Info(`📡 Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`)
+          }
+        })
+        updateCharts()
+      }
+    }).catch(error => {
+      LogUtil.Warn('Real-time data fetch failed (will retry on next interval)', error)
+    })
 
   } catch (error) {
     LogUtil.Error('= TLChart: Error initializing real data series:', error)
@@ -4501,18 +4501,20 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
  * Get the time range of existing data across all series
  * Returns null if no data exists
  */
-const getExistingDataTimeRange = (): { earliest: number, latest: number } | null => {
+const getExistingDataTimeRange = (): { earliest: number, latest: number, totalPoints: number } | null => {
   if (!dataSeries.value || dataSeries.value.length === 0) {
     return null
   }
 
   let earliest = Infinity
   let latest = -Infinity
+  let totalPoints = 0
   let hasAnyData = false
 
   dataSeries.value.forEach(series => {
     if (series.data && series.data.length > 0) {
       hasAnyData = true
+      totalPoints += series.data.length
       const seriesEarliest = series.data[0].timestamp
       const seriesLatest = series.data[series.data.length - 1].timestamp
 
@@ -4525,7 +4527,7 @@ const getExistingDataTimeRange = (): { earliest: number, latest: number } | null
     return null
   }
 
-  return { earliest, latest }
+  return { earliest, latest, totalPoints }
 }
 
 /**
@@ -5577,13 +5579,13 @@ const initializeData = async () => {
     try {
       startLoading()
 
-      // Step 1: Load historical data from database first (fast)
-      LogUtil.Info('📚 Loading historical data from database for current timebase')
-      await loadHistoricalDataFromDatabase()
-
-      // Step 2: Initialize real-time data monitoring
-      LogUtil.Info('📡 Starting real-time data monitoring')
+      // Step 1: Initialize real-time data series structure FIRST (needed for loading historical data)
+      LogUtil.Info('� Initializing data series structure')
       await initializeRealDataSeries()
+
+      // Step 2: Load historical data from database to populate the series
+      LogUtil.Info('� Loading historical data from database for current timebase')
+      await loadHistoricalDataFromDatabase()
 
       // Step 3: Update charts with combined data
       updateCharts()
@@ -6230,21 +6232,13 @@ const zoomIn = () => {
       isRealTime.value = false
     }
 
+    // Just change timebase - let the watcher handle data loading with smart detection
     timeBase.value = newTimebase
 
     LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
       autoScrollState: isRealTime.value,
-      note: 'Auto Scroll updated based on timebase'
+      note: 'Timebase watcher will handle data loading'
     })
-
-    // Refresh data with new timebase, preserving Auto Scroll state
-    if (isRealTime.value) {
-      // If Auto Scroll is ON, reload with real-time + historical
-      initializeData()
-    } else {
-      // If Auto Scroll is OFF, reload with historical only
-      initializeHistoricalData()
-    }
   }
 }
 
@@ -6260,21 +6254,13 @@ const zoomOut = () => {
       isRealTime.value = false
     }
 
+    // Just change timebase - let the watcher handle data loading with smart detection
     timeBase.value = newTimebase
 
     LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
       autoScrollState: isRealTime.value,
-      note: 'Auto Scroll updated based on timebase'
+      note: 'Timebase watcher will handle data loading'
     })
-
-    // Refresh data with new timebase, preserving Auto Scroll state
-    if (isRealTime.value) {
-      // If Auto Scroll is ON, reload with real-time + historical
-      initializeData()
-    } else {
-      // If Auto Scroll is OFF, reload with historical only
-      initializeHistoricalData()
-    }
   }
 }
 
