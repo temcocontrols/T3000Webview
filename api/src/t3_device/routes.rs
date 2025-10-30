@@ -1406,15 +1406,48 @@ async fn get_trendlog_history(
     Path((device_id, trendlog_id)): Path<(i32, String)>,
     Json(mut payload): Json<TrendlogHistoryRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    use crate::logger::{write_structured_log_with_level, LogLevel};
+
     let db = get_t3_device_conn!(state);
 
     // Ensure the payload has the correct device_id and trendlog_id from the URL path
     payload.serial_number = device_id;
-    payload.trendlog_id = trendlog_id;
+    payload.trendlog_id = trendlog_id.clone(); // Clone for later use in error logging
+
+    // Log the history request
+    let request_info = format!(
+        "🔄 [Routes] Get trendlog history - Device: {}, TrendLog: {}, Panel: {}, Time: {} to {}, Limit: {:?}, SpecificPoints: {}",
+        device_id,
+        payload.trendlog_id,
+        payload.panel_id,
+        payload.start_time.as_deref().unwrap_or("N/A"),
+        payload.end_time.as_deref().unwrap_or("N/A"),
+        payload.limit,
+        payload.specific_points.as_ref().map(|sp| sp.len()).unwrap_or(0)
+    );
+    let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
 
     match T3TrendlogDataService::get_trendlog_history(&*db, payload).await {
-        Ok(history_data) => Ok(Json(history_data)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Ok(history_data) => {
+            let success_info = format!(
+                "✅ [Routes] Trendlog history retrieved successfully - Device: {}",
+                device_id
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+            Ok(Json(history_data))
+        },
+        Err(error) => {
+            let error_info = format!(
+                "❌ [Routes] Get trendlog history FAILED - Device: {}, TrendLog: {}, Error: {:?}",
+                device_id,
+                trendlog_id, // Use the path parameter instead of moved payload
+                error
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+
+            eprintln!("❌ [Routes] Trendlog history error details: {:?}", error);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -1545,14 +1578,40 @@ async fn save_realtime_trendlog_batch(
     State(state): State<T3AppState>,
     Json(payload): Json<Vec<CreateTrendlogDataRequest>>,
 ) -> Result<Json<Value>, StatusCode> {
+    use crate::logger::{write_structured_log_with_level, LogLevel};
+
     let db = get_t3_device_conn!(state);
 
+    // Log the batch save request
+    let request_info = format!(
+        "🔄 [Routes] Realtime batch save request - {} data points",
+        payload.len()
+    );
+    let _ = write_structured_log_with_level("T3_Webview_API", &request_info, LogLevel::Info);
+
     match T3TrendlogDataService::save_realtime_batch(&*db, payload).await {
-        Ok(rows_affected) => Ok(Json(json!({
-            "rows_affected": rows_affected,
-            "message": "Realtime trendlog batch data saved successfully"
-        }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Ok(rows_affected) => {
+            let success_info = format!(
+                "✅ [Routes] Realtime batch save successful - {} rows affected",
+                rows_affected
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+
+            Ok(Json(json!({
+                "rows_affected": rows_affected,
+                "message": "Realtime trendlog batch data saved successfully"
+            })))
+        },
+        Err(error) => {
+            let error_info = format!(
+                "❌ [Routes] Realtime batch save FAILED - Error: {:?}",
+                error
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+
+            eprintln!("❌ [Routes] Realtime batch save error details: {:?}", error);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 

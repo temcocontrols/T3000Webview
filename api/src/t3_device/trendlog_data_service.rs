@@ -494,6 +494,7 @@ impl T3TrendlogDataService {
 
     /// Batch save realtime data points (for multiple points at once)
     /// Uses split-table design with batch parent_id retrieval
+    /// Implements retry logic with exponential backoff for database lock handling
     pub async fn save_realtime_batch(
         db: &DatabaseConnection,
         data_points: Vec<CreateTrendlogDataRequest>
@@ -550,40 +551,102 @@ impl T3TrendlogDataService {
 
         let count = detail_records.len() as u64;
 
-        // Step 3: Batch insert all details
-        match trendlog_data_detail::Entity::insert_many(detail_records).exec(db).await {
-            Ok(_result) => {
-                let batch_duration = batch_start_time.elapsed();
-                // Log successful batch save
-                let success_info = format!(
-                    "✅ [TrendlogDataService] Batch save completed in {:.3}ms - {} detail records inserted (split-table optimized), Time: {}",
-                    batch_duration.as_millis(),
-                    count,
-                    logging_time_fmt
-                );
-                let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
+        // Step 3: Batch insert with retry logic for database locks
+        // Retry configuration: max 5 attempts with exponential backoff (50ms, 100ms, 200ms, 400ms)
+        let max_retries = 5;
+        let mut retry_count = 0;
+        let mut last_error = None;
 
-                // Check if database partitioning is needed after successful data insertion
-                if let Err(e) = crate::database_management::DatabaseConfigService::check_and_apply_partitioning(db).await {
-                    let partition_error = format!(
-                        "⚠️ [TrendlogDataService] Partitioning check failed: {}",
-                        e
+        while retry_count < max_retries {
+            match trendlog_data_detail::Entity::insert_many(detail_records.clone()).exec(db).await {
+                Ok(_result) => {
+                    let batch_duration = batch_start_time.elapsed();
+
+                    // Log retry info if applicable
+                    if retry_count > 0 {
+                        let retry_info = format!(
+                            "✅ [TrendlogDataService] Batch save succeeded after {} retries",
+                            retry_count
+                        );
+                        let _ = write_structured_log_with_level("T3_Webview_API", &retry_info, LogLevel::Info);
+                    }
+
+                    // Log successful batch save
+                    let success_info = format!(
+                        "✅ [TrendlogDataService] Batch save completed in {:.3}ms - {} detail records inserted (split-table optimized), Time: {}",
+                        batch_duration.as_millis(),
+                        count,
+                        logging_time_fmt
                     );
-                    let _ = write_structured_log_with_level("T3_Webview_API", &partition_error, LogLevel::Warn);
-                }
+                    let _ = write_structured_log_with_level("T3_Webview_API", &success_info, LogLevel::Info);
 
-                Ok(count)
-            },
-            Err(error) => {
-                // Log batch save error
-                let error_info = format!(
-                    "❌ [TrendlogDataService] Batch save failed - {} points, Error: {}",
-                    count,
-                    error
-                );
-                let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
-                Err(error.into())
+                    // Check if database partitioning is needed after successful data insertion
+                    if let Err(e) = crate::database_management::DatabaseConfigService::check_and_apply_partitioning(db).await {
+                        let partition_error = format!(
+                            "⚠️ [TrendlogDataService] Partitioning check failed: {}",
+                            e
+                        );
+                        let _ = write_structured_log_with_level("T3_Webview_API", &partition_error, LogLevel::Warn);
+                    }
+
+                    return Ok(count);
+                },
+                Err(error) => {
+                    // Check if this is a database lock error
+                    let error_string = error.to_string();
+                    let is_lock_error = error_string.contains("database is locked")
+                        || error_string.contains("code: 5");
+
+                    if is_lock_error && retry_count < max_retries - 1 {
+                        // Calculate exponential backoff delay: 50ms * 2^retry_count
+                        let delay_ms = 50 * (1 << retry_count);
+
+                        let retry_info = format!(
+                            "⏳ [TrendlogDataService] Database locked, retrying in {}ms (attempt {}/{})",
+                            delay_ms,
+                            retry_count + 1,
+                            max_retries
+                        );
+                        let _ = write_structured_log_with_level("T3_Webview_API", &retry_info, LogLevel::Warn);
+
+                        // Wait before retrying
+                        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        retry_count += 1;
+                        last_error = Some(error);
+                    } else {
+                        // Non-lock error or max retries reached
+                        if is_lock_error {
+                            let max_retry_info = format!(
+                                "❌ [TrendlogDataService] Batch save failed after {} retries - database still locked",
+                                max_retries
+                            );
+                            let _ = write_structured_log_with_level("T3_Webview_API", &max_retry_info, LogLevel::Error);
+                        }
+
+                        // Log batch save error
+                        let error_info = format!(
+                            "❌ [TrendlogDataService] Batch save failed - {} points, Error: {}",
+                            count,
+                            error
+                        );
+                        let _ = write_structured_log_with_level("T3_Webview_API", &error_info, LogLevel::Error);
+                        return Err(error.into());
+                    }
+                }
             }
+        }
+
+        // If we get here, all retries failed
+        if let Some(error) = last_error {
+            let final_error = format!(
+                "❌ [TrendlogDataService] Batch save failed permanently after {} retries - {} points",
+                max_retries,
+                count
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &final_error, LogLevel::Error);
+            Err(error.into())
+        } else {
+            Err(AppError::DatabaseError("Unexpected retry loop exit".to_string()))
         }
     }
 

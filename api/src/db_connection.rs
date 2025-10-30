@@ -25,8 +25,32 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
         .connect_timeout(Duration::from_secs(8))
         .acquire_timeout(Duration::from_secs(8))
         .idle_timeout(Duration::from_secs(8))
-        .max_lifetime(Duration::from_secs(8));
+        .max_lifetime(Duration::from_secs(8))
+        // SQLite-specific optimizations for better concurrency
+        .sqlx_logging(false);
 
     let db = Database::connect(opt).await?;
+
+    // Enable WAL mode for better concurrent write performance
+    // WAL (Write-Ahead Logging) allows readers to access the database while writes are in progress
+    use sea_orm::ConnectionTrait;
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA journal_mode = WAL;".to_owned()
+    )).await?;
+
+    // Increase busy timeout to 30 seconds to handle database locks gracefully
+    // This gives SQLite more time to wait for locks instead of failing immediately
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA busy_timeout = 30000;".to_owned()
+    )).await?;
+
+    // Optimize synchronous mode for better performance with WAL
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA synchronous = NORMAL;".to_owned()
+    )).await?;
+
     Ok(db)
 }
