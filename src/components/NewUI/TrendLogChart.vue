@@ -6366,19 +6366,16 @@ const resetToDefaultTimebase = () => {
   timeBase.value = '5m'
   timeOffset.value = 0 // Reset time navigation as well
 
-  LogUtil.Info('🔄 Reset to default timebase (5m)', {
+  // 🆕 FIX: Reset button should always turn Auto Scroll ON (5m = real-time mode)
+  isRealTime.value = true
+
+  LogUtil.Info('🔄 Reset to default timebase (5m) with Auto Scroll ON', {
     autoScrollState: isRealTime.value,
-    note: 'Auto Scroll state preserved during reset'
+    note: 'Reset button always enables Auto Scroll for 5m timebase'
   })
 
-  // Refresh data with default timebase, preserving Auto Scroll state
-  if (isRealTime.value) {
-    // If Auto Scroll is ON, reload with real-time + historical
-    initializeData()
-  } else {
-    // If Auto Scroll is OFF, reload with historical only
-    initializeHistoricalData()
-  }
+  // Reload with real-time + historical data
+  initializeData()
 }
 
 const setView = (viewNumber: number) => {
