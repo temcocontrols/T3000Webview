@@ -1381,9 +1381,10 @@ const customEndTime = ref<Dayjs | null>(null)
 const customDateModalVisible = ref(false)
 const isRealTime = ref(true)
 
-// 🆕 Request management for timebase changes
+// 🆕 Request management for timebase changes and historical data fetching
 let timebaseChangeTimeout: NodeJS.Timeout | null = null
 let historyAbortController: AbortController | null = null
+let historyFetchDebounceTimeout: NodeJS.Timeout | null = null // 🆕 PERFORMANCE: Debounce rapid API calls
 
 // 🆕 Chart update debouncing to prevent UI freezing in C++ embedded WebView
 let chartUpdatePending = false
@@ -7125,8 +7126,8 @@ const onTimeBaseChange = async () => {
       })
 
       if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-        console.log('= TLChart DataFlow: Valid device parameters - making API request for 14 panel items')
-        await fetchHistoricalDataForTimebase(deviceParams, timeRanges)
+        console.log('= TLChart DataFlow: Valid device parameters - making debounced API request for 14 panel items')
+        await debouncedFetchHistoricalData(deviceParams, timeRanges)
       } else {
         console.log('= TLChart DataFlow: Missing device parameters - using fallback initialization')
         await initializeData()
@@ -7185,7 +7186,7 @@ const onCustomDateChange = async () => {
         durationMinutes: customTimeRanges.durationMinutes
       })
 
-      await fetchHistoricalDataForTimebase(deviceParams, customTimeRanges)
+      await debouncedFetchHistoricalData(deviceParams, customTimeRanges)
     } else {
       console.log('= TLChart DataFlow: Missing device parameters - using standard initialization')
       await initializeData()
@@ -7765,6 +7766,32 @@ const extractSpecificPoints = () => {
   })
 
   return points
+}
+
+// 🆕 PERFORMANCE: Debounced wrapper to prevent rapid successive API calls
+const debouncedFetchHistoricalData = (deviceParams: any, timeRanges: any) => {
+  // Cancel any pending debounced fetch
+  if (historyFetchDebounceTimeout) {
+    clearTimeout(historyFetchDebounceTimeout)
+  }
+
+  // Cancel any in-flight request
+  if (historyAbortController) {
+    historyAbortController.abort()
+    historyAbortController = null
+  }
+
+  // Debounce for 300ms to batch rapid timebase changes
+  return new Promise<void>((resolve, reject) => {
+    historyFetchDebounceTimeout = setTimeout(async () => {
+      try {
+        await fetchHistoricalDataForTimebase(deviceParams, timeRanges)
+        resolve()
+      } catch (error) {
+        reject(error)
+      }
+    }, 300)
+  })
 }
 
 const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any) => {

@@ -583,10 +583,14 @@ impl DatabaseConfigService {
         // Validate configuration
         config.validate().map_err(|e| crate::error::Error::ValidationError(e))?;
 
+        // 🆕 FIX: Use explicit transaction to prevent "database is locked" errors
+        // This ensures both UPDATE and INSERT happen atomically without intermediate locks
+        let txn = db.begin().await?;
+
         // Deactivate all existing configurations
         database_partition_config::Entity::update_many()
             .col_expr(database_partition_config::Column::IsActive, Expr::value(false))
-            .exec(db)
+            .exec(&txn)
             .await?;
 
         // Create new configuration
@@ -603,7 +607,10 @@ impl DatabaseConfigService {
             ..Default::default()
         };
 
-        let saved_config = new_config.insert(db).await?;
+        let saved_config = new_config.insert(&txn).await?;
+
+        // Commit transaction
+        txn.commit().await?;
 
         Ok(database_partition_config::DatabasePartitionConfig {
             id: Some(saved_config.id),

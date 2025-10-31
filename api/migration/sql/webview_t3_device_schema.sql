@@ -432,6 +432,9 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_TYPE ON TRENDLOG_DATA(PointType);
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_ACTIVE ON TRENDLOG_DATA(IsActive);
 -- Composite index for history query filtering (optimized for WHERE clause)
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_HISTORY_FILTER ON TRENDLOG_DATA(SerialNumber, PanelId, PointType, PointIndex);
+-- 🆕 PERFORMANCE: Optimized index for specific_points filtering (covers exact WHERE conditions)
+-- This index covers: (p.PointId = ? AND p.PointType = ? AND p.PointIndex = ? AND p.PanelId = ?)
+CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DATA_SPECIFIC_POINTS ON TRENDLOG_DATA(PointId, PointType, PointIndex, PanelId);
 
 -- New TRENDLOG_DATA_DETAIL (Child) indexes - for fast time-series queries (OPTIMIZED)
 CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_DETAIL_PARENT ON TRENDLOG_DATA_DETAIL(ParentId);

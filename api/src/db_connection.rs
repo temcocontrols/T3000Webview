@@ -20,12 +20,12 @@ pub async fn establish_connection() -> Result<DatabaseConnection, Box<dyn std::e
 /// Establish connection to the webview T3000 database
 pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
     let mut opt = ConnectOptions::new(T3_DEVICE_DATABASE_URL.as_str());
-    opt.max_connections(100)
-        .min_connections(5)
+    opt.max_connections(200)  // 🆕 PERFORMANCE: Increased from 100 to 200 for better concurrent request handling
+        .min_connections(10)  // 🆕 PERFORMANCE: Increased from 5 to 10 to maintain ready connections
         .connect_timeout(Duration::from_secs(8))
         .acquire_timeout(Duration::from_secs(8))
-        .idle_timeout(Duration::from_secs(8))
-        .max_lifetime(Duration::from_secs(8))
+        .idle_timeout(Duration::from_secs(30))  // 🆕 PERFORMANCE: Increased from 8s to 30s to reuse connections
+        .max_lifetime(Duration::from_secs(300))  // 🆕 PERFORMANCE: Increased from 8s to 5min for connection reuse during bursts
         // SQLite-specific optimizations for better concurrency
         .sqlx_logging(false);
 
@@ -50,6 +50,42 @@ pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
         "PRAGMA synchronous = NORMAL;".to_owned()
+    )).await?;
+
+    // 🆕 PERFORMANCE: Increase cache size for better query performance
+    // Default is -2000 (2MB), increase to -64000 (64MB)
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA cache_size = -64000;".to_owned()
+    )).await?;
+
+    // 🆕 FIX: Increase WAL autocheckpoint to reduce lock contention with 308K+ records
+    // Default is 1000 pages (~4MB), increase to 10000 pages (~40MB)
+    // This reduces frequency of checkpoint operations which can cause "database is locked" errors
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA wal_autocheckpoint = 10000;".to_owned()
+    )).await?;
+
+    // 🆕 FIX: Set locking mode to NORMAL for better concurrency
+    // This allows multiple readers while a writer is active
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA locking_mode = NORMAL;".to_owned()
+    )).await?;
+
+    // 🆕 FIX: Increase page size for better performance with large datasets (308K+ records)
+    // Note: This only affects new databases, existing ones keep their page size
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA page_size = 4096;".to_owned()
+    )).await?;
+
+    // 🆕 FIX: Enable memory-mapped I/O for faster reads (helps with large datasets)
+    // Map up to 256MB of database into memory
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "PRAGMA mmap_size = 268435456;".to_owned()
     )).await?;
 
     Ok(db)
