@@ -239,6 +239,16 @@ impl T3TrendlogDataService {
                 }
 
                 sql.push_str(&format!(" AND ({})", point_conditions.join(" OR ")));
+
+                // 🆕 DEBUG: Log the actual specific points being filtered
+                let debug_points: Vec<String> = specific_points.iter()
+                    .map(|p| format!("{}:{}/{}[panel:{}]", p.point_type, p.point_id, p.point_index, p.panel_id))
+                    .collect();
+                let debug_info = format!(
+                    "🔍 [TrendlogDataService] Specific points detail: {:?}",
+                    debug_points
+                );
+                let _ = write_structured_log_with_level("T3_Webview_API", &debug_info, LogLevel::Info);
             }
         }
 

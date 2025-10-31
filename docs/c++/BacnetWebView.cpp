@@ -797,9 +797,9 @@ void WriteHandleWebViewMsgLog(const CString& messageType, const CString& outmsg,
 		int start_hour = (st.wHour / 4) * 4;
 		int end_hour = start_hour + 3;
 
-		// Create log file with pattern: YYYY-MM/MMDD/T3_CppMsg_HandWebViewMsg_MMDD_HHMM.txt
+		// Create log file with pattern: YYYY-MM/MMDD/T3_CppMsg_HandWebViewMsg_MMDD_HHMM.txt _%02d%02d
 		CString logFile;
-		logFile.Format(_T("%s\\T3_CppMsg_HandWebViewMsg_%02d%02d_%02d%02d.txt"),
+		logFile.Format(_T("%s\\T3_CppMsg_HandWebViewMsg_%02d%02d.txt"),
 			logDir, st.wMonth, st.wDay, start_hour, end_hour);
 
 		CStdioFile file;
@@ -2514,7 +2514,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		{
 #if 1
 			//int npanel_id = g_bacnet_panel_info.at(panel_idx).panel_number;
-			int npanel_id = temp_panel_id; temp_serial_number;
+			int npanel_id = temp_panel_id; //temp_serial_number;
 
 			/*
 			if (g_bacnet_panel_info.at(panel_idx).object_instance != g_logging_time[npanel_id].bac_instance)
