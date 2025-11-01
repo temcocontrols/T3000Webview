@@ -340,170 +340,152 @@ async fn migrate_single_period(
     partition_id: &str,
     period_date: NaiveDate,
 ) -> Result<u64> {
-    use crate::database_management::format_path_for_attach;
+    // Create logger for detailed partition logging
+    let mut logger = ServiceLogger::new("T3_PartitionMonitor")
+        .map_err(|e| crate::error::Error::ServerError(format!("Logger creation failed: {}", e)))?;
 
-    println!("🔨 Creating partition: {}", partition_id);
+    logger.info(&format!("🔨 Creating partition: {}", partition_id));
 
     // Step 1: Calculate date range for this period
     let (start_date, end_date) = calculate_period_boundaries(config, period_date);
-    println!("📅 Period boundaries: {} to {}", start_date, end_date);
+    logger.info(&format!("📅 Period boundaries: {} to {}", start_date, end_date));
 
-    // Step 2: Create partition file
+    // Step 2: Copy main database to create partition file
     let runtime_path = get_t3000_database_path();
+    let main_db_path = runtime_path.join("webview_t3_device.db");
     let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
     let partition_path = runtime_path.join(&partition_file_name);
 
-    println!("📁 Creating partition file: {}", partition_path.display());
+    logger.info(&format!("📁 Creating partition by copying main database"));
+    logger.info(&format!("   Source: {}", main_db_path.display()));
+    logger.info(&format!("   Destination: {}", partition_path.display()));
 
-    // Create the partition database file
+    // Copy the main database file to partition location
+    std::fs::copy(&main_db_path, &partition_path)
+        .map_err(|e| crate::error::Error::ServerError(format!("Failed to copy database: {}", e)))?;
+
+    let copied_size = std::fs::metadata(&partition_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    logger.info(&format!("✅ Database copied: {} bytes", copied_size));
+
+    // Step 3: Connect to partition database and delete data we DON'T want (keep only this period's data)
+    logger.info("🔗 Connecting to partition database to clean up non-period data");
     let partition_db_url = format!("sqlite://{}?mode=rwc", partition_path.display());
     let partition_conn = sea_orm::Database::connect(&partition_db_url).await
-        .map_err(|e| crate::error::Error::ServerError(format!("Failed to create partition file: {}", e)))?;
+        .map_err(|e| crate::error::Error::ServerError(format!("Failed to connect to partition: {}", e)))?;
 
-    // Initialize partition database with required tables
-    let init_sql = r#"
-        CREATE TABLE IF NOT EXISTS TRENDLOG_DATA (
-            SerialNumber INTEGER NOT NULL,
-            PanelId INTEGER NOT NULL,
-            PointId TEXT NOT NULL,
-            PointIndex INTEGER NOT NULL,
-            PointType TEXT NOT NULL,
-            Digital_Analog TEXT,
-            Range_Field TEXT,
-            Units TEXT,
-            PRIMARY KEY (SerialNumber, PanelId, PointId, PointIndex, PointType)
-        );
+    // Delete all data OUTSIDE the target period from partition (keep only period data)
+    logger.info(&format!("🗑️ Deleting non-period data from partition (keeping {} to {})", start_date, end_date));
 
-        CREATE TABLE IF NOT EXISTS TRENDLOG_DATA_DETAIL (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            parent_id INTEGER NOT NULL,
-            value TEXT NOT NULL,
-            logging_time INTEGER NOT NULL,
-            logging_time_fmt TEXT NOT NULL,
-            data_source TEXT,
-            sync_interval INTEGER,
-            created_by TEXT,
-            FOREIGN KEY (parent_id) REFERENCES TRENDLOG_DATA(rowid)
-        );
+    let delete_partition_detail_sql = format!(
+        r#"
+        DELETE FROM TRENDLOG_DATA_DETAIL
+        WHERE datetime(LoggingTime_Fmt) < datetime('{}')
+        OR datetime(LoggingTime_Fmt) > datetime('{}')
+        "#,
+        start_date.format("%Y-%m-%d %H:%M:%S"),
+        end_date.format("%Y-%m-%d %H:%M:%S")
+    );
 
-        CREATE INDEX IF NOT EXISTS idx_trendlog_data_device_panel
-        ON TRENDLOG_DATA(SerialNumber, PanelId);
+    let partition_delete_result = partition_conn.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        delete_partition_detail_sql
+    )).await?;
 
-        CREATE INDEX IF NOT EXISTS idx_trendlog_detail_parent
-        ON TRENDLOG_DATA_DETAIL(parent_id);
+    let partition_deleted = partition_delete_result.rows_affected();
+    logger.info(&format!("✅ Deleted {} non-period records from partition", partition_deleted));
 
-        CREATE INDEX IF NOT EXISTS idx_trendlog_detail_time
-        ON TRENDLOG_DATA_DETAIL(logging_time_fmt);
-
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA cache_size = 10000;
-        PRAGMA temp_store = memory;
+    // Clean up orphaned parent records in partition
+    let delete_partition_orphans_sql = r#"
+        DELETE FROM TRENDLOG_DATA
+        WHERE id NOT IN (SELECT DISTINCT ParentId FROM TRENDLOG_DATA_DETAIL)
     "#;
 
+    let orphan_result = partition_conn.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        delete_partition_orphans_sql.to_string()
+    )).await?;
+
+    logger.info(&format!("✅ Cleaned up {} orphaned parent records from partition", orphan_result.rows_affected()));
+
+    // Count remaining records in partition (this is what we migrated)
+    let count_sql = "SELECT COUNT(*) as count FROM TRENDLOG_DATA_DETAIL";
+    let count_result: Option<i64> = partition_conn.query_one(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        count_sql.to_string()
+    ))
+    .await?
+    .and_then(|row| row.try_get("", "count").ok());
+
+    let migrated_count = count_result.unwrap_or(0) as u64;
+    logger.info(&format!("📊 Partition contains {} period records", migrated_count));
+
+    // VACUUM partition to reclaim space
+    logger.info("🧹 Running VACUUM on partition database to reclaim space");
     partition_conn.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
-        init_sql.to_string()
+        "VACUUM".to_string()
     )).await?;
 
     partition_conn.close().await.ok();
 
-    // Step 3: Migrate data from main database to partition using ATTACH
-    let partition_path_str = format_path_for_attach(&partition_path);
-    let attach_sql = format!("ATTACH DATABASE '{}' AS partition_db", partition_path_str);
+    // Get partition file size after VACUUM
+    let partition_size = std::fs::metadata(&partition_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    let partition_size_mb = (partition_size as f64 / 1024.0 / 1024.0).round() as i32;
+    logger.info(&format!("✅ Partition size after VACUUM: {} MB ({} bytes)", partition_size_mb, partition_size));
 
-    db.execute(sea_orm::Statement::from_string(
-        sea_orm::DatabaseBackend::Sqlite,
-        attach_sql
-    )).await?;
+    // Step 4: Delete period data from main database (we've already saved it to partition)
+    logger.info(&format!("🗑️ Deleting period data from main database ({} to {})", start_date, end_date));
 
-    // Migrate TRENDLOG_DATA parent records
-    let migrate_parent_sql = format!(
+    let delete_main_detail_sql = format!(
         r#"
-        INSERT OR IGNORE INTO partition_db.TRENDLOG_DATA
-        SELECT DISTINCT td.SerialNumber, td.PanelId, td.PointId, td.PointIndex, td.PointType,
-                        td.Digital_Analog, td.Range_Field, td.Units
-        FROM main.TRENDLOG_DATA td
-        INNER JOIN main.TRENDLOG_DATA_DETAIL tdd ON td.rowid = tdd.parent_id
-        WHERE datetime(tdd.logging_time_fmt) >= datetime('{}')
-        AND datetime(tdd.logging_time_fmt) <= datetime('{}')
+        DELETE FROM TRENDLOG_DATA_DETAIL
+        WHERE datetime(LoggingTime_Fmt) >= datetime('{}')
+        AND datetime(LoggingTime_Fmt) <= datetime('{}')
         "#,
         start_date.format("%Y-%m-%d %H:%M:%S"),
         end_date.format("%Y-%m-%d %H:%M:%S")
     );
 
+    let main_delete_result = db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        delete_main_detail_sql
+    )).await?;
+
+    logger.info(&format!("✅ Deleted {} period records from main database", main_delete_result.rows_affected()));
+
+    // Clean up orphaned parent records in main database
+    let delete_main_orphans_sql = r#"
+        DELETE FROM TRENDLOG_DATA
+        WHERE id NOT IN (SELECT DISTINCT ParentId FROM TRENDLOG_DATA_DETAIL)
+    "#;
+
+    let main_orphan_result = db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        delete_main_orphans_sql.to_string()
+    )).await?;
+
+    logger.info(&format!("✅ Cleaned up {} orphaned parent records from main database", main_orphan_result.rows_affected()));
+
+    // VACUUM main database to reclaim space
+    logger.info("🧹 Running VACUUM on main database to reclaim space");
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
-        migrate_parent_sql
+        "VACUUM".to_string()
     )).await?;
 
-    // Migrate TRENDLOG_DATA_DETAIL records
-    let migrate_detail_sql = format!(
-        r#"
-        INSERT INTO partition_db.TRENDLOG_DATA_DETAIL (parent_id, value, logging_time, logging_time_fmt, data_source, sync_interval, created_by)
-        SELECT
-            (SELECT rowid FROM partition_db.TRENDLOG_DATA p
-             WHERE p.SerialNumber = td.SerialNumber
-             AND p.PanelId = td.PanelId
-             AND p.PointId = td.PointId
-             AND p.PointIndex = td.PointIndex
-             AND p.PointType = td.PointType) as parent_id,
-            tdd.value, tdd.logging_time, tdd.logging_time_fmt, tdd.data_source, tdd.sync_interval, tdd.created_by
-        FROM main.TRENDLOG_DATA_DETAIL tdd
-        INNER JOIN main.TRENDLOG_DATA td ON tdd.parent_id = td.rowid
-        WHERE datetime(tdd.logging_time_fmt) >= datetime('{}')
-        AND datetime(tdd.logging_time_fmt) <= datetime('{}')
-        "#,
-        start_date.format("%Y-%m-%d %H:%M:%S"),
-        end_date.format("%Y-%m-%d %H:%M:%S")
-    );
-
-    let migration_result = db.execute(sea_orm::Statement::from_string(
-        sea_orm::DatabaseBackend::Sqlite,
-        migrate_detail_sql
-    )).await?;
-
-    let migrated_count = migration_result.rows_affected();
-    println!("📦 Migrated {} records to partition {}", migrated_count, partition_id);
-
-    // Step 4: Delete migrated data from main database
-    if migrated_count > 0 {
-        let delete_detail_sql = format!(
-            r#"
-            DELETE FROM main.TRENDLOG_DATA_DETAIL
-            WHERE datetime(logging_time_fmt) >= datetime('{}')
-            AND datetime(logging_time_fmt) <= datetime('{}')
-            "#,
-            start_date.format("%Y-%m-%d %H:%M:%S"),
-            end_date.format("%Y-%m-%d %H:%M:%S")
-        );
-
-        db.execute(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            delete_detail_sql
-        )).await?;
-
-        // Clean up orphaned parent records
-        let delete_parent_sql = r#"
-            DELETE FROM main.TRENDLOG_DATA
-            WHERE rowid NOT IN (SELECT DISTINCT parent_id FROM main.TRENDLOG_DATA_DETAIL)
-        "#;
-
-        db.execute(sea_orm::Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            delete_parent_sql.to_string()
-        )).await?;
-
-        println!("🗑️ Deleted migrated records from main DB");
-    }
-
-    // Detach partition database
-    db.execute(sea_orm::Statement::from_string(
-        sea_orm::DatabaseBackend::Sqlite,
-        "DETACH DATABASE partition_db".to_string()
-    )).await?;
+    let main_size_after = std::fs::metadata(&main_db_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    let main_size_mb = (main_size_after as f64 / 1024.0 / 1024.0).round() as i32;
+    logger.info(&format!("✅ Main database size after VACUUM: {} MB", main_size_mb));
 
     // Step 5: Register partition in DATABASE_FILES table
+    logger.info("📝 Registering partition in DATABASE_FILES table");
+
     let file_size = std::fs::metadata(&partition_path)
         .map(|m| m.len() as i64)
         .unwrap_or(0);
@@ -525,6 +507,9 @@ async fn migrate_single_period(
 
     new_file.insert(db).await?;
 
-    println!("✅ Partition {} registered in DATABASE_FILES", partition_id);
+    logger.info(&format!("✅ Partition {} registered in DATABASE_FILES", partition_id));
+    logger.info(&format!("🎉 Migration complete: {} records, {} MB partition, main DB now {} MB",
+        migrated_count, partition_size_mb, main_size_mb));
+
     Ok(migrated_count)
 }
