@@ -437,7 +437,11 @@ async fn migrate_single_period(
     let partition_size_mb = (partition_size as f64 / 1024.0 / 1024.0).round() as i32;
     logger.info(&format!("✅ Partition size after VACUUM: {} MB ({} bytes)", partition_size_mb, partition_size));
 
-    // Step 4: Delete period data from main database (we've already saved it to partition)
+    // Step 4: Delete period data from main database (COMMENTED OUT FOR TESTING)
+    // TODO: Uncomment this section when ready to actually remove old data from main DB
+    logger.info("⚠️ Skipping deletion from main database (commented out for testing)");
+
+    /*
     logger.info(&format!("🗑️ Deleting period data from main database ({} to {})", start_date, end_date));
 
     let delete_main_detail_sql = format!(
@@ -482,6 +486,7 @@ async fn migrate_single_period(
         .unwrap_or(0);
     let main_size_mb = (main_size_after as f64 / 1024.0 / 1024.0).round() as i32;
     logger.info(&format!("✅ Main database size after VACUUM: {} MB", main_size_mb));
+    */
 
     // Step 5: Register partition in DATABASE_FILES table
     logger.info("📝 Registering partition in DATABASE_FILES table");
@@ -508,8 +513,8 @@ async fn migrate_single_period(
     new_file.insert(db).await?;
 
     logger.info(&format!("✅ Partition {} registered in DATABASE_FILES", partition_id));
-    logger.info(&format!("🎉 Migration complete: {} records, {} MB partition, main DB now {} MB",
-        migrated_count, partition_size_mb, main_size_mb));
+    logger.info(&format!("🎉 Migration complete: {} records, {} MB partition (main DB unchanged for testing)",
+        migrated_count, partition_size_mb));
 
     Ok(migrated_count)
 }
