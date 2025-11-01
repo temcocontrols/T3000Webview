@@ -119,7 +119,7 @@
 
           <!-- ⌨️ Keyboard Navigation Status -->
           <a-tag :color="keyboardEnabled ? 'green' : 'default'" size="small" class="keyboard-status-tag clickable"
-            :title="keyboardEnabled ? 'Keyboard shortcuts:\n�?1-9, A-E: Toggle items (also removes navigation border)\n�?�?�? Change timebase\n�?�?�? Navigate items + Enter to toggle\n�?ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
+            :title="keyboardEnabled ? 'Keyboard shortcuts:\n• 1-9, A-E: Toggle items (also removes navigation border)\n• ← → Change timebase\n• ↑ ↓ Navigate items + Enter to toggle\n• ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
             @click="toggleKeyboard">
             <template #icon>
               <span class="keyboard-icon">⌨️</span>
