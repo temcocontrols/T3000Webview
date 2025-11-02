@@ -394,20 +394,11 @@ async fn migrate_single_period(
     )).await?;
 
     let partition_deleted = partition_delete_result.rows_affected();
-    logger.info(&format!("✅ Deleted {} non-period records from partition", partition_deleted));
+    logger.info(&format!("✅ Deleted {} non-period DETAIL records from partition", partition_deleted));
 
-    // Clean up orphaned parent records in partition
-    let delete_partition_orphans_sql = r#"
-        DELETE FROM TRENDLOG_DATA
-        WHERE id NOT IN (SELECT DISTINCT ParentId FROM TRENDLOG_DATA_DETAIL)
-    "#;
-
-    let orphan_result = partition_conn.execute(sea_orm::Statement::from_string(
-        sea_orm::DatabaseBackend::Sqlite,
-        delete_partition_orphans_sql.to_string()
-    )).await?;
-
-    logger.info(&format!("✅ Cleaned up {} orphaned parent records from partition", orphan_result.rows_affected()));
+    // NOTE: We keep ALL TRENDLOG_DATA parent records (no orphan cleanup)
+    // This ensures partition has complete device/point metadata
+    logger.info("ℹ️ Keeping all TRENDLOG_DATA parent records in partition");
 
     // Count remaining records in partition (this is what we migrated)
     let count_sql = "SELECT COUNT(*) as count FROM TRENDLOG_DATA_DETAIL";
@@ -419,7 +410,7 @@ async fn migrate_single_period(
     .and_then(|row| row.try_get("", "count").ok());
 
     let migrated_count = count_result.unwrap_or(0) as u64;
-    logger.info(&format!("📊 Partition contains {} period records", migrated_count));
+    logger.info(&format!("📊 Partition contains {} period DETAIL records", migrated_count));
 
     // VACUUM partition to reclaim space
     logger.info("🧹 Running VACUUM on partition database to reclaim space");
