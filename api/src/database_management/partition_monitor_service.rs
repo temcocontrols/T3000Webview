@@ -50,6 +50,9 @@ pub async fn start_partition_monitor_service() -> Result<()> {
 pub async fn check_startup_migrations() -> Result<()> {
     println!("🔍 Checking for pending partition migrations on startup...");
 
+    // First, clean up any orphaned WAL/SHM files for partition databases
+    cleanup_partition_wal_shm_files();
+
     let db = establish_t3_device_connection().await
         .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
     let config = DatabaseConfigService::get_config(&db).await?;
@@ -531,4 +534,64 @@ async fn migrate_single_period(
         migrated_count, partition_size_mb));
 
     Ok(migrated_count)
+}
+
+/// Clean up orphaned WAL and SHM files for partition databases
+fn cleanup_partition_wal_shm_files() {
+    let runtime_path = get_t3000_database_path();
+
+    println!("🧹 Cleaning up orphaned WAL/SHM files for partition databases...");
+
+    // Find all partition database files (matching pattern webview_t3_device_YYYY-MM-DD.db)
+    if let Ok(entries) = std::fs::read_dir(&runtime_path) {
+        let mut cleaned_count = 0;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+            // Check if this is a partition database (has date pattern)
+            if file_name.starts_with("webview_t3_device_")
+                && file_name.ends_with(".db")
+                && file_name.contains("-") // Date separator
+                && file_name != "webview_t3_device.db" // Not the main DB
+            {
+                // Try to remove associated WAL file
+                let wal_path = path.with_extension("db-wal");
+                if wal_path.exists() {
+                    match std::fs::remove_file(&wal_path) {
+                        Ok(_) => {
+                            println!("   🗑️ Removed: {}", wal_path.file_name().unwrap().to_string_lossy());
+                            cleaned_count += 1;
+                        }
+                        Err(e) => {
+                            println!("   ⚠️ Could not remove {}: {}", wal_path.file_name().unwrap().to_string_lossy(), e);
+                        }
+                    }
+                }
+
+                // Try to remove associated SHM file
+                let shm_path = path.with_extension("db-shm");
+                if shm_path.exists() {
+                    match std::fs::remove_file(&shm_path) {
+                        Ok(_) => {
+                            println!("   🗑️ Removed: {}", shm_path.file_name().unwrap().to_string_lossy());
+                            cleaned_count += 1;
+                        }
+                        Err(e) => {
+                            println!("   ⚠️ Could not remove {}: {}", shm_path.file_name().unwrap().to_string_lossy(), e);
+                        }
+                    }
+                }
+            }
+        }
+
+        if cleaned_count > 0 {
+            println!("✅ Cleaned up {} orphaned WAL/SHM file(s)", cleaned_count);
+        } else {
+            println!("✅ No orphaned WAL/SHM files found");
+        }
+    } else {
+        println!("⚠️ Could not read database directory: {}", runtime_path.display());
+    }
 }
