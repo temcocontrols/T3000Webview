@@ -1,12 +1,13 @@
 //! FFI Test Helper
 //! Simple functions to test T3000 FFI service connectivity
 
-use crate::error::AppError;
-use crate::logger::{write_structured_log_with_level, LogLevel};
+use t3_webview_api::error::AppError;
+use t3_webview_api::logger::{write_structured_log_with_level, LogLevel};
 use std::ffi::c_int;
 
 #[cfg(target_os = "windows")]
 extern "system" {
+    #[allow(dead_code)]
     fn LoadLibraryA(name: *const u8) -> *mut std::ffi::c_void;
     fn GetProcAddress(handle: *mut std::ffi::c_void, name: *const u8) -> *mut std::ffi::c_void;
     fn GetModuleHandleA(name: *const u8) -> *mut std::ffi::c_void;

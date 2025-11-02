@@ -2,12 +2,11 @@ use crate::db_connection::establish_t3_device_connection;
 use crate::entity::database_files;
 use crate::entity::database_partition_config;
 use crate::database_management::DatabaseConfigService;
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::logger::ServiceLogger;
 use crate::constants::get_t3000_database_path;
 use sea_orm::*;
 use chrono::{Utc, NaiveDate, Datelike, Duration};
-use std::path::Path;
 
 /// Start background partition monitor service (checks every hour)
 pub async fn start_partition_monitor_service() -> Result<()> {

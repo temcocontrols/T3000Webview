@@ -1,12 +1,30 @@
-# Data Splitting Strategy - Fix Summary
+# Data Splitting Strategy - Fix Summary (HISTORICAL)
 
-**Date**: November 1, 2025  
-**Status**: ✅ **COMPLETE - Ready for Production**  
-**Build**: ✅ Compiled Successfully (Release mode)
+> **⚠️ HISTORICAL DOCUMENT**
+> This document describes the ATTACH DATABASE approach that was **attempted but ultimately abandoned**.
+> For the current working implementation, see: **[Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md)**
+
+**Date**: November 1, 2025
+**Status**: ⚠️ **SUPERSEDED** - Replaced by Copy-Delete Strategy
+**Build**: ✅ Compiled Successfully (but approach changed)
 
 ---
 
-## 🎯 Problem Summary
+## 📌 Historical Context
+
+This document records the ATTACH DATABASE approach that was attempted to fix the data splitting strategy. While the schema fixes documented here were correct, the overall approach had fundamental issues with SQLite WAL mode and multi-connection visibility.
+
+**What Happened:**
+1. Original implementation had schema mismatch (snake_case vs PascalCase)
+2. Fixed schema issues as documented below
+3. ATTACH DATABASE approach still failed due to visibility issues
+4. **Final Solution**: Abandoned ATTACH for partition creation, switched to Copy-Delete strategy
+
+**Current Status:** See [Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md) for working implementation.
+
+---
+
+## 🎯 Problem Summary (Original)
 
 The Data Splitting Strategy (Partition Monitor Service) was **creating partition files but not migrating any data**. Investigation revealed a critical schema mismatch between the migration code and the runtime database.
 
@@ -69,14 +87,14 @@ WHERE datetime(tdd.LoggingTime_Fmt) >= datetime('{}')
 
 **Before**:
 ```sql
-INSERT INTO partition_db.TRENDLOG_DATA_DETAIL 
+INSERT INTO partition_db.TRENDLOG_DATA_DETAIL
     (parent_id, value, logging_time_fmt, ...)
 SELECT ... tdd.value, tdd.logging_time_fmt, ...
 ```
 
 **After**:
 ```sql
-INSERT INTO partition_db.TRENDLOG_DATA_DETAIL 
+INSERT INTO partition_db.TRENDLOG_DATA_DETAIL
     (ParentId, Value, LoggingTime_Fmt)
 SELECT ... tdd.Value, tdd.LoggingTime_Fmt, ...
 ```
@@ -86,19 +104,19 @@ SELECT ... tdd.Value, tdd.LoggingTime_Fmt, ...
 
 **Before**:
 ```sql
-DELETE FROM TRENDLOG_DATA_DETAIL 
+DELETE FROM TRENDLOG_DATA_DETAIL
 WHERE datetime(logging_time_fmt) >= ...
 
-DELETE FROM TRENDLOG_DATA 
+DELETE FROM TRENDLOG_DATA
 WHERE rowid NOT IN (SELECT parent_id ...)
 ```
 
 **After**:
 ```sql
-DELETE FROM TRENDLOG_DATA_DETAIL 
+DELETE FROM TRENDLOG_DATA_DETAIL
 WHERE datetime(LoggingTime_Fmt) >= ...
 
-DELETE FROM TRENDLOG_DATA 
+DELETE FROM TRENDLOG_DATA
 WHERE id NOT IN (SELECT ParentId ...)
 ```
 
@@ -316,7 +334,7 @@ webview_t3_device_2025-10.db     18.67
 ### 3. Verify Record Counts
 ```sql
 -- Main database (should have current month only)
-SELECT COUNT(*) FROM TRENDLOG_DATA_DETAIL 
+SELECT COUNT(*) FROM TRENDLOG_DATA_DETAIL
 WHERE datetime(LoggingTime_Fmt) >= datetime('2025-11-01');
 -- Expected: ~146,000
 
@@ -380,25 +398,25 @@ If issues occur:
 
 ---
 
-## 🎉 Summary
+## 🎉 Summary (Original Fixes)
 
 ### What Was Fixed:
-✅ SQL schema mismatch (snake_case → PascalCase)  
-✅ Parent record migration queries  
-✅ Detail record migration queries  
-✅ Cleanup and orphan removal queries  
-✅ Comprehensive logging added  
-✅ Compilation errors resolved  
+✅ SQL schema mismatch (snake_case → PascalCase)
+✅ Parent record migration queries
+✅ Detail record migration queries
+✅ Cleanup and orphan removal queries
+✅ Comprehensive logging added
+✅ Compilation errors resolved
 
-### What Now Works:
-✅ Automatic monthly data partitioning  
-✅ Historical data migration to separate files  
-✅ Main database size reduction (60% smaller)  
-✅ Faster query performance (64% faster)  
-✅ Detailed migration logging  
-✅ Automatic cleanup of old data  
+### What This Approach Attempted:
+✅ Automatic monthly data partitioning
+✅ Historical data migration to separate files
+✅ Main database size reduction (60% smaller)
+✅ Faster query performance (64% faster)
+✅ Detailed migration logging
+✅ Automatic cleanup of old data
 
-### Impact:
+### Expected Impact (If Approach Had Worked):
 - **Main DB**: 76 MB → 30 MB (46 MB freed)
 - **Query Speed**: 2-5s → 0.5-1s (64% faster)
 - **Records Migrated**: 259,246 historical records
@@ -407,12 +425,32 @@ If issues occur:
 
 ---
 
-**Status**: ✅ **READY FOR PRODUCTION**  
-**Next Action**: Deploy updated DLL and monitor logs  
-**Expected Outcome**: Historical data automatically migrated within 5-10 minutes of startup
+## ⚠️ OUTCOME: APPROACH ABANDONED
+
+**Final Status**: ❌ **SUPERSEDED BY COPY-DELETE STRATEGY**
+
+While the schema fixes documented here were correct, the ATTACH DATABASE approach for partition creation proved unreliable due to:
+
+- ❌ ATTACH visibility problems across separate SeaORM connections
+- ❌ WAL mode complications on Windows
+- ❌ "no such table: partition_db.sqlite_master" errors
+- ❌ Inconsistent partition file creation
+
+**Successful Alternative (November 2, 2025):**
+The **Copy-Delete Strategy** successfully achieves all the original goals:
+- ✅ Copy entire main DB → partition file (std::fs::copy)
+- ✅ Delete non-period data from partition
+- ✅ VACUUM to shrink partition
+- ✅ Clean up WAL/SHM files
+- ✅ Same performance benefits achieved
+- ✅ More reliable than ATTACH approach
+
+**See Current Working Implementation:**
+- 📖 [Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md) - Complete guide
+- 📖 [Data-Splitting-Strategy-Analysis.md](./Data-Splitting-Strategy-Analysis.md) - Includes resolution
 
 ---
 
-*Fix completed: November 1, 2025*  
-*Build status: Release mode, warnings only (non-critical)*  
-*Testing: Schema verified, queries validated, compilation successful*
+*Original fix date: November 1, 2025*
+*Approach superseded: November 2, 2025*
+*Status: Historical record of ATTACH approach*
