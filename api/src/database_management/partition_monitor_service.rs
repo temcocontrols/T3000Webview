@@ -421,12 +421,35 @@ async fn migrate_single_period(
 
     partition_conn.close().await.ok();
 
+    // Small delay to ensure connection is fully closed
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
     // Get partition file size after VACUUM
     let partition_size = std::fs::metadata(&partition_path)
         .map(|m| m.len())
         .unwrap_or(0);
     let partition_size_mb = (partition_size as f64 / 1024.0 / 1024.0).round() as i32;
     logger.info(&format!("✅ Partition size after VACUUM: {} MB ({} bytes)", partition_size_mb, partition_size));
+
+    // Clean up WAL and SHM files if they still exist
+    let wal_path = partition_path.with_extension("db-wal");
+    let shm_path = partition_path.with_extension("db-shm");
+
+    if wal_path.exists() {
+        if let Err(e) = std::fs::remove_file(&wal_path) {
+            logger.warn(&format!("⚠️ Could not remove .db-wal file: {}", e));
+        } else {
+            logger.info("🧹 Removed .db-wal file");
+        }
+    }
+
+    if shm_path.exists() {
+        if let Err(e) = std::fs::remove_file(&shm_path) {
+            logger.warn(&format!("⚠️ Could not remove .db-shm file: {}", e));
+        } else {
+            logger.info("🧹 Removed .db-shm file");
+        }
+    }
 
     // Step 4: Delete period data from main database (COMMENTED OUT FOR TESTING)
     // TODO: Uncomment this section when ready to actually remove old data from main DB
