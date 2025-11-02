@@ -537,13 +537,20 @@ async fn migrate_single_period(
 
 /// Clean up orphaned WAL and SHM files for partition databases
 fn cleanup_partition_wal_shm_files() {
+    use crate::logger::{write_structured_log_with_level, LogLevel};
+
     let runtime_path = get_t3000_database_path();
 
-    println!("🧹 Cleaning up orphaned WAL/SHM files for partition databases...");
+    let _ = write_structured_log_with_level(
+        "T3_PartitionMonitor",
+        "🧹 Cleaning up orphaned WAL/SHM files for partition databases...",
+        LogLevel::Info
+    );
 
     // Find all partition database files (matching pattern webview_t3_device_YYYY-MM-DD.db)
     if let Ok(entries) = std::fs::read_dir(&runtime_path) {
         let mut cleaned_count = 0;
+        let mut failed_count = 0;
 
         for entry in entries.flatten() {
             let path = entry.path();
@@ -560,11 +567,14 @@ fn cleanup_partition_wal_shm_files() {
                 if wal_path.exists() {
                     match std::fs::remove_file(&wal_path) {
                         Ok(_) => {
-                            println!("   🗑️ Removed: {}", wal_path.file_name().unwrap().to_string_lossy());
+                            let msg = format!("   🗑️ Removed: {}", wal_path.file_name().unwrap().to_string_lossy());
+                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
                             cleaned_count += 1;
                         }
                         Err(e) => {
-                            println!("   ⚠️ Could not remove {}: {}", wal_path.file_name().unwrap().to_string_lossy(), e);
+                            let msg = format!("   ⚠️ Could not remove {}: {}", wal_path.file_name().unwrap().to_string_lossy(), e);
+                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Warn);
+                            failed_count += 1;
                         }
                     }
                 }
@@ -574,11 +584,14 @@ fn cleanup_partition_wal_shm_files() {
                 if shm_path.exists() {
                     match std::fs::remove_file(&shm_path) {
                         Ok(_) => {
-                            println!("   🗑️ Removed: {}", shm_path.file_name().unwrap().to_string_lossy());
+                            let msg = format!("   🗑️ Removed: {}", shm_path.file_name().unwrap().to_string_lossy());
+                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
                             cleaned_count += 1;
                         }
                         Err(e) => {
-                            println!("   ⚠️ Could not remove {}: {}", shm_path.file_name().unwrap().to_string_lossy(), e);
+                            let msg = format!("   ⚠️ Could not remove {}: {}", shm_path.file_name().unwrap().to_string_lossy(), e);
+                            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Warn);
+                            failed_count += 1;
                         }
                     }
                 }
@@ -586,11 +599,22 @@ fn cleanup_partition_wal_shm_files() {
         }
 
         if cleaned_count > 0 {
-            println!("✅ Cleaned up {} orphaned WAL/SHM file(s)", cleaned_count);
+            let msg = format!("✅ Cleaned up {} orphaned WAL/SHM file(s)", cleaned_count);
+            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
         } else {
-            println!("✅ No orphaned WAL/SHM files found");
+            let _ = write_structured_log_with_level(
+                "T3_PartitionMonitor",
+                "✅ No orphaned WAL/SHM files found",
+                LogLevel::Info
+            );
+        }
+
+        if failed_count > 0 {
+            let msg = format!("⚠️ Failed to remove {} WAL/SHM file(s) - may be in use", failed_count);
+            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Warn);
         }
     } else {
-        println!("⚠️ Could not read database directory: {}", runtime_path.display());
+        let msg = format!("⚠️ Could not read database directory: {}", runtime_path.display());
+        let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Error);
     }
 }

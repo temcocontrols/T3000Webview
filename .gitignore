@@ -6,6 +6,10 @@ node_modules
 .quasar
 /dist
 
+# Rust build artifacts
+/target
+target/
+
 # CMake build artifacts and native module builds
 /build
 build/
