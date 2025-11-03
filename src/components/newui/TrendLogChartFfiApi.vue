@@ -1393,7 +1393,7 @@ const getChartConfig = () => ({
             size: 11,
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
-          // Format y-axis numbers to remove decimal places (e.g., 60.0 ‚Ü?60)
+          // Format y-axis numbers to remove decimal places (e.g., 60.0 ÔøΩ?60)
           callback: function (value: any) {
             // Format all numeric values as integers (remove decimal places)
             if (typeof value === 'number') {
@@ -1660,12 +1660,12 @@ const getMonitorConfigFromT3000Data = async () => {
   })
 
   if (!monitorId) {
-    LogUtil.Warn('‚ù?TrendLogModal: No monitor ID found in currentItemData.t3Entry.id')
+    LogUtil.Warn('ÔøΩ?TrendLogModal: No monitor ID found in currentItemData.t3Entry.id')
     return null
   }
 
   if (!panelId && panelId !== 0) {
-    LogUtil.Warn('‚ù?TrendLogModal: No panel ID found in currentItemData.t3Entry.pid')
+    LogUtil.Warn('ÔøΩ?TrendLogModal: No panel ID found in currentItemData.t3Entry.pid')
     return null
   }
 
@@ -1673,29 +1673,29 @@ const getMonitorConfigFromT3000Data = async () => {
 
   try {
     // Use FFI API to validate data readiness
-    LogUtil.Info('‚è?TrendLogModal: Using FFI API to get panel data...')
+    LogUtil.Info('ÔøΩ?TrendLogModal: Using FFI API to get panel data...')
     if (!ffiApi.isReady.value) {
-      LogUtil.Error('‚ù?TrendLogModal: FFI API is not ready')
+      LogUtil.Error('ÔøΩ?TrendLogModal: FFI API is not ready')
       return null
     }
 
     const panelData = await ffiApi.ffiGetPanelData(panelId)
     if (!panelData || !panelData.entries) {
-      LogUtil.Error('‚ù?TrendLogModal: Panel data not available', { panelId })
+      LogUtil.Error('ÔøΩ?TrendLogModal: Panel data not available', { panelId })
       return null
     }
 
-    LogUtil.Info('‚ú?TrendLogModal: Panel data retrieved successfully')
+    LogUtil.Info('ÔøΩ?TrendLogModal: Panel data retrieved successfully')
 
     // Get the monitor entry by ID
     const monitorConfig = panelData.entries.find((entry: any) => entry.id === monitorId)
 
     if (!monitorConfig) {
-      LogUtil.Warn(`‚ù?TrendLogModal: Monitor configuration not found for ID: ${monitorId}`)
+      LogUtil.Warn(`ÔøΩ?TrendLogModal: Monitor configuration not found for ID: ${monitorId}`)
       return null
     }
 
-    LogUtil.Info('‚ú?TrendLogModal: Found monitor configuration:', monitorConfig)
+    LogUtil.Info('ÔøΩ?TrendLogModal: Found monitor configuration:', monitorConfig)
 
     // Calculate the data retrieval interval in milliseconds using the unified function
     const intervalMs = calculateT3000Interval(monitorConfig)
@@ -1741,11 +1741,11 @@ const getMonitorConfigFromT3000Data = async () => {
       }
     }
 
-    LogUtil.Info(`‚ú?TrendLogModal: Extracted ranges array:`, ranges)
+    LogUtil.Info(`ÔøΩ?TrendLogModal: Extracted ranges array:`, ranges)
 
     // Check if we actually have valid input items with meaningful data
     if (inputItems.length === 0) {
-      LogUtil.Info('‚ù?TrendLogModal: No valid input items found in monitor config, returning null')
+      LogUtil.Info('ÔøΩ?TrendLogModal: No valid input items found in monitor config, returning null')
       return null
     }
 
@@ -1757,7 +1757,7 @@ const getMonitorConfigFromT3000Data = async () => {
     )
 
     if (validInputItems.length === 0) {
-      LogUtil.Info('‚ù?TrendLogModal: No input items with valid point numbers found, returning null')
+      LogUtil.Info('ÔøΩ?TrendLogModal: No input items with valid point numbers found, returning null')
       return null
     }
 
@@ -1784,7 +1784,7 @@ const getMonitorConfigFromT3000Data = async () => {
     return result
 
   } catch (error) {
-    LogUtil.Error('‚ù?TrendLogModal: Error extracting monitor config:', error)
+    LogUtil.Error('ÔøΩ?TrendLogModal: Error extracting monitor config:', error)
     return null
   }
 }
@@ -1818,15 +1818,15 @@ const waitForPanelsData = async (timeoutMs: number = 10000): Promise<boolean> =>
     const panelsData = T3000_Data.value.panelsData || []
 
     if (panelsData.length > 0) {
-      LogUtil.Info(`‚ú?TrendLogModal: PanelsData loaded with ${panelsData.length} devices`)
+      LogUtil.Info(`ÔøΩ?TrendLogModal: PanelsData loaded with ${panelsData.length} devices`)
       return true
     }
 
-    LogUtil.Info(`‚è?TrendLogModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
+    LogUtil.Info(`ÔøΩ?TrendLogModal: Waiting for panelsData... (${Date.now() - startTime}ms elapsed)`)
     await new Promise(resolve => setTimeout(resolve, 200)) // Reduced from 500ms to 200ms for faster detection
   }
 
-  LogUtil.Warn(`‚ù?TrendLogModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
+  LogUtil.Warn(`ÔøΩ?TrendLogModal: Timeout waiting for panelsData after ${timeoutMs}ms`)
   return false
 }
 
@@ -1843,12 +1843,12 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Info('‚ù?TrendLogModal: No monitor config found, falling back to mock data')
+      LogUtil.Info('ÔøΩ?TrendLogModal: No monitor config found, falling back to mock data')
       isLoading.value = false
       return []
     }
 
-    LogUtil.Info('‚ú?TrendLogModal: Monitor config extracted:', monitorConfig)
+    LogUtil.Info('ÔøΩ?TrendLogModal: Monitor config extracted:', monitorConfig)
     LogUtil.Info('üìä TrendLogModal: Monitor config details:', {
       id: monitorConfigData.id,
       inputItemsCount: monitorConfigData.inputItems?.length || 0,
@@ -1861,16 +1861,16 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     let panelsDataReady = false
 
     if (currentPanelsData.length > 0) {
-      LogUtil.Info(`‚ú?TrendLogModal: PanelsData already available with ${currentPanelsData.length} devices - proceeding immediately`)
+      LogUtil.Info(`ÔøΩ?TrendLogModal: PanelsData already available with ${currentPanelsData.length} devices - proceeding immediately`)
       panelsDataReady = true
     } else {
       // Only wait if panelsData is not already available
-      LogUtil.Info('‚è?TrendLogModal: PanelsData not ready, waiting for it to load...')
+      LogUtil.Info('ÔøΩ?TrendLogModal: PanelsData not ready, waiting for it to load...')
       panelsDataReady = await waitForPanelsData(5000) // Reduced timeout from 10s to 5s
     }
 
     if (!panelsDataReady) {
-      LogUtil.Error('‚ù?TrendLogModal: PanelsData not available, cannot proceed')
+      LogUtil.Error('ÔøΩ?TrendLogModal: PanelsData not available, cannot proceed')
       isLoading.value = false
       return []
     }
@@ -1879,11 +1879,11 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     const dataClient = initializeDataClients()
 
     if (!dataClient) {
-      LogUtil.Info('Ôø?TrendLogModal: No data client available')
+      LogUtil.Info('ÔøΩ?TrendLogModal: No data client available')
       return []
     }
 
-    LogUtil.Info('Ôø?TrendLogModal: Data client initialized:', {
+    LogUtil.Info('ÔøΩ?TrendLogModal: Data client initialized:', {
       clientType: dataClient.constructor.name,
       hasGetEntriesMethod: typeof dataClient.ffiGetEntries === 'function',
       clientMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)).filter(name => name.includes('Get'))
@@ -1937,7 +1937,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     const allDataResults = await Promise.all(allDataPromises)
-    LogUtil.Info('Ôø?TrendLogModal: All data fetched successfully, results count:', allDataResults.length)
+    LogUtil.Info('ÔøΩ?TrendLogModal: All data fetched successfully, results count:', allDataResults.length)
 
     // Log detailed results
     allDataResults.forEach((result, index) => {
@@ -1951,7 +1951,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     return allDataResults
 
   } catch (error) {
-    LogUtil.Error('‚ù?TrendLogModal: Error fetching real-time monitor data:', error)
+    LogUtil.Error('ÔøΩ?TrendLogModal: Error fetching real-time monitor data:', error)
     return []
   } finally {
     // Clear loading state
@@ -1990,7 +1990,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     const matchingDevice = findPanelDataDevice(inputItem, config.panelData)
 
     if (!matchingDevice) {
-      LogUtil.Info(`‚ù?TrendLogModal: No device found with ID: ${deviceId}, leaving as empty`)
+      LogUtil.Info(`ÔøΩ?TrendLogModal: No device found with ID: ${deviceId}, leaving as empty`)
       LogUtil.Info(`üîç TrendLogModal: Searched for "${deviceId}" in ${config.panelData.length} devices`)
       return [{
         timestamp: Date.now(),
@@ -1998,7 +1998,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
       }]
     }
 
-    LogUtil.Info(`‚ú?TrendLogModal: Found matching device:`, matchingDevice)
+    LogUtil.Info(`ÔøΩ?TrendLogModal: Found matching device:`, matchingDevice)
 
     // Process the device value using enhanced logic with panel data + input range
     const processedValue = processDeviceValue(matchingDevice, rangeValue)
@@ -2031,7 +2031,7 @@ const fetchSingleItemData = async (dataClient: any, inputItem: any, config: any)
     return [resultDataPoint]
 
   } catch (error) {
-    LogUtil.Error('Ôø?TrendLogModal: Error fetching single item data:', error)
+    LogUtil.Error('ÔøΩ?TrendLogModal: Error fetching single item data:', error)
     return [{
       timestamp: Date.now(),
       value: 0
@@ -2084,16 +2084,14 @@ const initializeRealDataSeries = async () => {
     LogUtil.Info('üîç TrendLogModal: Real data availability check:', {
       realTimeDataLength: realTimeData.length,
       hasAnyRealData: hasAnyRealData,
-      sampleSeriesLengths: realTimeData.slice(0, 5).map(series => series.length)
+      sampleSeriesLengths: realTimeData.slice(0, 5).map(series => series.length),
+      note: 'Will show all 14 items even if no data yet'
     })
 
-    if (!hasAnyRealData) {
-      LogUtil.Info('üö´ TrendLogModal: No real data available for any series, showing empty state - CLEARING SERIES')
-      dataSeries.value = []
-      return
-    }
+    // Note: We continue even if hasAnyRealData is false to show all 14 items structure
+    // This allows users to see which items are configured, even if data collection hasn't started
 
-    // Update data series with real configuration - only for series that have data
+    // Update data series with real configuration - all 14 items from monitor config
     const newDataSeries: SeriesConfig[] = []
 
     for (let i = 0; i < monitorConfigData.inputItems.length; i++) {
@@ -2102,17 +2100,13 @@ const initializeRealDataSeries = async () => {
       const rangeValue = monitorConfigData.ranges[i] || 0
       const itemData = realTimeData[i] || []
 
-      // Skip series that have no data
-      if (itemData.length === 0) {
-        LogUtil.Info(`Skipping series ${i + 1} - no data available`)
-        continue
-      }
-
+      // Log status for all series (even those without data yet)
       LogUtil.Info(`üìä TrendLogModal: Processing series ${i + 1}/${monitorConfigData.inputItems.length}:`, {
         inputItem,
         pointTypeInfo,
         rangeValue,
-        dataPointsCount: itemData.length
+        dataPointsCount: itemData.length,
+        hasData: itemData.length > 0
       })
 
       // *** DETAILED VALUE LOGGING FOR 14 ITEMS FROM T3000 ***
@@ -2172,7 +2166,7 @@ const initializeRealDataSeries = async () => {
         color: `hsl(${(newDataSeries.length * 360) / monitorConfigData.inputItems.length}, 70%, 50%)`,
         data: itemData,
         visible: true,
-        isEmpty: false, // Only create series for data that exists
+        isEmpty: itemData.length === 0, // Mark as empty if no data points yet
         unit: unitSymbol,
         unitType: unitType,
         unitCode: rangeValue,
@@ -2184,7 +2178,7 @@ const initializeRealDataSeries = async () => {
 
       newDataSeries.push(seriesConfig)
 
-      LogUtil.Info(`Ôø?TrendLogModal: Created series "${seriesConfig.name}":`, {
+      LogUtil.Info(`ÔøΩ?TrendLogModal: Created series "${seriesConfig.name}":`, {
         type: seriesConfig.unitType,
         unit: seriesConfig.unit,
         dataPoints: seriesConfig.data.length,
@@ -2238,11 +2232,11 @@ const findPanelDataDevice = (inputItem: any, panelsData: any[]): any | null => {
   const device = panelsData.find(device => device.id === deviceId)
 
   if (!device) {
-    LogUtil.Warn(`‚ù?TrendLogModal: Device ${deviceId} not found in panelsData`)
+    LogUtil.Warn(`ÔøΩ?TrendLogModal: Device ${deviceId} not found in panelsData`)
     return null
   }
 
-  LogUtil.Info(`‚ú?TrendLogModal: Found device ${deviceId}:`, device)
+  LogUtil.Info(`ÔøΩ?TrendLogModal: Found device ${deviceId}:`, device)
   return device
 }
 
@@ -2617,10 +2611,10 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
       }
 
     } catch (error) {
-      LogUtil.Error('Ôø?TrendLogModal: Error calling GetEntries:', error)
+      LogUtil.Error('ÔøΩ?TrendLogModal: Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('Ôø?TrendLogModal: GetEntries method not available:', {
+    LogUtil.Error('ÔøΩ?TrendLogModal: GetEntries method not available:', {
       hasDataClient: !!dataClient,
       clientType: dataClient?.constructor?.name,
       availableMethods: dataClient ? Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)) : 'N/A'
@@ -2637,7 +2631,7 @@ const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{pane
   if (dataClient && dataClient.GetEntries) {
     dataClient.GetEntries(requests)
   } else {
-    LogUtil.Error('Ôø?TrendLogModal: No GetEntries method available on data client')
+    LogUtil.Error('ÔøΩ?TrendLogModal: No GetEntries method available on data client')
   }
 }
 
@@ -2650,14 +2644,14 @@ const findDeviceByGeneratedId = (panelData: any[], deviceId: string): any => {
   const matchingDevice = panelData.find(device => device.id === deviceId)
 
   if (matchingDevice) {
-    LogUtil.Info(`Ôø?TrendLogModal: Found device:`, {
+    LogUtil.Info(`ÔøΩ?TrendLogModal: Found device:`, {
       id: matchingDevice.id,
       value: matchingDevice.value,
       label: matchingDevice.label,
       unit: matchingDevice.unit
     })
   } else {
-    LogUtil.Info(`Ôø?TrendLogModal: No device found with ID: ${deviceId}`)
+    LogUtil.Info(`ÔøΩ?TrendLogModal: No device found with ID: ${deviceId}`)
   }
 
   return matchingDevice
@@ -2721,7 +2715,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
   })
 
   if (!dataClient) {
-    LogUtil.Error('Ôø?TrendLogModal: No dataClient provided to setupGetEntriesResponseHandlers')
+    LogUtil.Error('ÔøΩ?TrendLogModal: No dataClient provided to setupGetEntriesResponseHandlers')
     return
   }
 
@@ -2745,15 +2739,15 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
 
     try {
       if (msgData.data && Array.isArray(msgData.data)) {
-        LogUtil.Info('Ôø?TrendLogModal: Valid data array received, processing...')
+        LogUtil.Info('ÔøΩ?TrendLogModal: Valid data array received, processing...')
         updateChartWithNewData(msgData.data)
       } else if (msgData.data) {
         LogUtil.Info('‚ö†Ô∏è TrendLogModal: Data received but not array format:', msgData.data)
       } else {
-        LogUtil.Info('Ôø?TrendLogModal: No data in response or data is null/undefined')
+        LogUtil.Info('ÔøΩ?TrendLogModal: No data in response or data is null/undefined')
       }
     } catch (error) {
-      LogUtil.Error('Ôø?TrendLogModal: Error processing GET_ENTRIES response:', error)
+      LogUtil.Error('ÔøΩ?TrendLogModal: Error processing GET_ENTRIES response:', error)
     }
 
     // Call original handler if it existed
@@ -2762,7 +2756,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
       try {
         originalHandler.call(dataClient, msgData)
       } catch (error) {
-        LogUtil.Error('Ôø?TrendLogModal: Error calling original handler:', error)
+        LogUtil.Error('ÔøΩ?TrendLogModal: Error calling original handler:', error)
       }
     } else {
       LogUtil.Info('‚ÑπÔ∏è TrendLogModal: No original handler to call')
@@ -2770,7 +2764,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     LogUtil.Info('üì® TrendLogModal: === GET_ENTRIES RESPONSE PROCESSING COMPLETE ===')
   }
 
-  LogUtil.Info('Ôø?TrendLogModal: GET_ENTRIES response handler setup complete')
+  LogUtil.Info('ÔøΩ?TrendLogModal: GET_ENTRIES response handler setup complete')
 }
 
 /**
@@ -2839,7 +2833,7 @@ const initializeData = async () => {
                          dataSeries.value.some(series => series.data.length > 0)
 
     if (hasRecentData) {
-      LogUtil.Info('‚ú?TrendLogModal: Recent data already available, skipping refetch')
+      LogUtil.Info('ÔøΩ?TrendLogModal: Recent data already available, skipping refetch')
       return
     }
 
@@ -2866,7 +2860,7 @@ const initializeData = async () => {
       const realTimeData = await fetchRealTimeMonitorData()
 
       if (realTimeData && realTimeData.length > 0) {
-        LogUtil.Info('‚ú?TrendLogModal: Real data fetch successful, got', realTimeData.length, 'data series')
+        LogUtil.Info('ÔøΩ?TrendLogModal: Real data fetch successful, got', realTimeData.length, 'data series')
 
         // Log sample data for first few series
         realTimeData.slice(0, 3).forEach((seriesData, index) => {
@@ -2896,7 +2890,7 @@ const initializeData = async () => {
         isLoading.value = false
       }
     } catch (error) {
-      LogUtil.Error('‚ù?TrendLogModal: Failed to initialize real data series:', error)
+      LogUtil.Error('ÔøΩ?TrendLogModal: Failed to initialize real data series:', error)
       isLoading.value = false // Clear loading state on error
     }
   } else {
@@ -3510,7 +3504,7 @@ const startRealTimeUpdates = () => {
   }
 
   // Track when timer starts
-  LogUtil.Info(`‚è?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
+  LogUtil.Info(`ÔøΩ?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
 
   realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
 }
@@ -3831,7 +3825,7 @@ onMounted(async () => {
       // Set the reactive monitor config variable for all functions to use
       monitorConfig.value = monitorConfigData
 
-      LogUtil.Info('‚ú?TEST 2 PASSED: Monitor Configuration Found')
+      LogUtil.Info('ÔøΩ?TEST 2 PASSED: Monitor Configuration Found')
       LogUtil.Info('üìã TrendLogModal: Monitor Configuration:', monitorConfigData)
       LogUtil.Info(`üìä TrendLogModal: Found ${monitorConfigData.inputItems.length} input items to monitor`)
       LogUtil.Info(`‚è±Ô∏è TrendLogModal: Data retrieval interval: ${monitorConfigData.dataIntervalMs}ms`)
@@ -3857,20 +3851,20 @@ onMounted(async () => {
             const panelData = await ffiApi.ffiGetPanelData(searchPanelId)
             const foundDevice = panelData?.entries?.find((entry: any) => entry.id === deviceId)
             if (foundDevice) {
-              LogUtil.Info(`‚ú?TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
+              LogUtil.Info(`ÔøΩ?TEST 3.${i + 1} PASSED: Device ${deviceId} found in panelsData with PID ${searchPanelId}`, {
                 id: foundDevice.id,
                 label: foundDevice.label,
                 pid: foundDevice.pid,
                 type: foundDevice.type
               })
             } else {
-              LogUtil.Warn(`‚ù?TEST 3.${i + 1} FAILED: Device ${deviceId} not found in panel ${searchPanelId}`)
+              LogUtil.Warn(`ÔøΩ?TEST 3.${i + 1} FAILED: Device ${deviceId} not found in panel ${searchPanelId}`)
             }
           } else {
-            LogUtil.Warn(`‚ù?TEST 3.${i + 1} SKIPPED: No PID available for device search`)
+            LogUtil.Warn(`ÔøΩ?TEST 3.${i + 1} SKIPPED: No PID available for device search`)
           }
         } catch (error) {
-          LogUtil.Warn(`‚ù?TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
+          LogUtil.Warn(`ÔøΩ?TEST 3.${i + 1} FAILED: Device ${deviceId} NOT found in panelsData with PID ${searchPanelId}:`, error.message)
 
           // Fallback: Try to find device in all panels
           try {
@@ -3896,10 +3890,10 @@ onMounted(async () => {
                 note: `Found with PID ${foundDeviceAnyPid.pid} instead of expected PID ${searchPanelId}`
               })
             } else {
-              LogUtil.Warn(`‚ù?TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found in any panel`)
+              LogUtil.Warn(`ÔøΩ?TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found in any panel`)
             }
           } catch (fallbackError) {
-            LogUtil.Warn(`‚ù?TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
+            LogUtil.Warn(`ÔøΩ?TEST 3.${i + 1} COMPLETE FAILURE: Device ${deviceId} not found even without PID filtering`)
           }
         }
       }
@@ -3908,25 +3902,25 @@ onMounted(async () => {
       LogUtil.Info('üîç TrendLogModal: TEST 4 - Data Client Initialization:')
       const dataClient = initializeDataClients()
       if (dataClient) {
-        LogUtil.Info('‚ú?TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
+        LogUtil.Info('ÔøΩ?TEST 4 PASSED: Data client initialized:', dataClient.constructor.name)
         LogUtil.Info('üîß TrendLogModal: Available client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(dataClient)))
       } else {
-        LogUtil.Warn('‚ù?TEST 4 FAILED: No data client available')
+        LogUtil.Warn('ÔøΩ?TEST 4 FAILED: No data client available')
       }
 
       // Test 5: Value Processing
       LogUtil.Info('üîç TrendLogModal: TEST 5 - Value Processing Test:')
       // Test digital value processing
       const testDigitalValue = processDeviceValue({ value: '1' }, 1) // Off/On
-      LogUtil.Info('‚ú?TEST 5.1 Digital Value Processing:', testDigitalValue)
+      LogUtil.Info('ÔøΩ?TEST 5.1 Digital Value Processing:', testDigitalValue)
 
       // Test analog value processing
       const testAnalogValue = processDeviceValue({ value: '2500' }, 31) // Celsius, should be divided by 1000
-      LogUtil.Info('‚ú?TEST 5.2 Analog Value Processing:', testAnalogValue)
+      LogUtil.Info('ÔøΩ?TEST 5.2 Analog Value Processing:', testAnalogValue)
 
       LogUtil.Info('üèÅ TrendLogModal: === ENHANCED T3000 REAL DATA INTEGRATION TEST COMPLETE ===')
     } else {
-      LogUtil.Warn('‚ù?TEST 2 FAILED: No Monitor Configuration Found')
+      LogUtil.Warn('ÔøΩ?TEST 2 FAILED: No Monitor Configuration Found')
       LogUtil.Info('üîç TrendLogModal: Debugging info:')
       LogUtil.Info('üìä TrendLogModal: currentItemData.t3Entry:', (currentItemData.value as any)?.t3Entry)
 
@@ -3936,12 +3930,12 @@ onMounted(async () => {
         const isReady = ffiApi.isReady.value
         LogUtil.Info('üìä TrendLogModal: FFI API validation details:', { isReady })
       } catch (validationError) {
-        LogUtil.Error('‚ù?TrendLogModal: FFI API validation failed:', validationError)
+        LogUtil.Error('ÔøΩ?TrendLogModal: FFI API validation failed:', validationError)
       }
     }
 
   } catch (error) {
-    LogUtil.Error('‚ù?TrendLogModal: Enhanced data integration test failed:', error)
+    LogUtil.Error('ÔøΩ?TrendLogModal: Enhanced data integration test failed:', error)
   }
 
   // Apply default view configuration to ensure settings are properly initialized
