@@ -10,6 +10,7 @@ use chrono::{Utc, NaiveDate, Datelike, Duration};
 
 /// Start background partition monitor service (checks every hour)
 pub async fn start_partition_monitor_service() -> Result<()> {
+    // Spawn hourly partition migration task
     tokio::spawn(async {
         let mut logger = match ServiceLogger::new("T3_PartitionMonitor") {
             Ok(l) => l,
@@ -39,6 +40,28 @@ pub async fn start_partition_monitor_service() -> Result<()> {
                     logger.error(&format!("❌ Partition check failed: {}", e));
                 }
             }
+        }
+    });
+
+    // Spawn periodic WAL/SHM cleanup task (every 5 minutes)
+    tokio::spawn(async {
+        use crate::logger::{write_structured_log_with_level, LogLevel};
+
+        // Initial delay to let system stabilize
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+
+        let _ = write_structured_log_with_level(
+            "T3_PartitionMonitor",
+            "🧹 Starting periodic WAL/SHM cleanup task (every 5 minutes)",
+            LogLevel::Info
+        );
+
+        loop {
+            // Sleep for 5 minutes
+            tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
+
+            // Try to clean up WAL/SHM files
+            cleanup_partition_wal_shm_files();
         }
     });
 
@@ -601,7 +624,7 @@ fn cleanup_partition_wal_shm_files() {
         if cleaned_count > 0 {
             let msg = format!("✅ Cleaned up {} orphaned WAL/SHM file(s)", cleaned_count);
             let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
-        } else {
+        } else if failed_count == 0 {
             let _ = write_structured_log_with_level(
                 "T3_PartitionMonitor",
                 "✅ No orphaned WAL/SHM files found",
@@ -610,8 +633,8 @@ fn cleanup_partition_wal_shm_files() {
         }
 
         if failed_count > 0 {
-            let msg = format!("⚠️ Failed to remove {} WAL/SHM file(s) - may be in use", failed_count);
-            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Warn);
+            let msg = format!("⏳ {} WAL/SHM file(s) still in use - will retry in 5 minutes", failed_count);
+            let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Info);
         }
     } else {
         let msg = format!("⚠️ Could not read database directory: {}", runtime_path.display());
