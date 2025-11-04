@@ -1,9 +1,9 @@
 # Technical Design Document: Hybrid Vue + React Architecture
 # T3000 Webview - Dual Framework Implementation
 
-**Version**: 1.0
+**Version**: 1.1
 **Date**: November 5, 2025
-**Status**: PENDING APPROVAL
+**Status**: AWAITING FINAL APPROVAL
 **Author**: Development Team
 **Project**: T3000 Webview Hybrid Architecture
 
@@ -14,8 +14,31 @@
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-11-05 | Dev Team | Initial technical design |
+| 1.1 | 2025-11-05 | Dev Team | **Updated with user decisions: `t3-vue`, `t3-react`, `common` folders + Option B aliases** |
 
-**Approval Required From**:
+---
+
+## ✅ USER DECISIONS CONFIRMED
+
+### Folder Naming (Final):
+- ✅ **Vue folder**: `src/t3-vue/` (clearer than `vue-app`)
+- ✅ **React folder**: `src/t3-react/` (clearer than `react-app`)
+- ✅ **Shared folder**: `src/common/` (clearer than `shared`)
+
+### Import Alias Strategy (Final):
+- ✅ **Option B Selected**: Explicit aliases (`@t3-vue/`, `@t3-react/`, `@common/`)
+- ✅ **Update ~262 Vue files**: Change `@/` → `@t3-vue/` (automated)
+- ✅ **Router guarantee**: Paths stay identical, only import strings change
+
+### Key Benefits of User's Choices:
+1. **Clear naming**: `t3-vue` and `t3-react` show framework ownership
+2. **Explicit imports**: Code is self-documenting
+3. **Better tooling**: IDE autocomplete works perfectly
+4. **Future-proof**: Easy to add more apps later
+
+---
+
+## Approval Required From:
 - [ ] Technical Lead
 - [ ] Product Owner
 - [ ] Development Team Lead
@@ -231,7 +254,7 @@ Only the required framework is loaded per session!
 
 ## 3. Detailed Technical Design
 
-### 3.1 Project Structure (Final)
+### 3.1 Project Structure (Final - With User's Naming)
 
 ```
 T3000Webview5/
@@ -244,7 +267,7 @@ T3000Webview5/
 │   │
 │   ├── main.ts                           # 🎯 CRITICAL: Route dispatcher
 │   │
-│   ├── vue-app/                          # 🔵 Vue 3 Application
+│   ├── t3-vue/                           # 🔵 Vue 3 Application (EXISTING - moved here)
 │   │   ├── main.ts                       # Vue entry point
 │   │   ├── App.vue                       # Vue root component
 │   │   │
@@ -289,7 +312,7 @@ T3000Webview5/
 │   │   └── styles/                       # Vue-specific styles
 │   │       └── quasar-overrides.scss
 │   │
-│   ├── react-app/                        # 🟢 React 18 Application (NEW)
+│   ├── t3-react/                         # 🟢 React 18 Application (NEW)
 │   │   ├── main.tsx                      # React entry point
 │   │   ├── App.tsx                       # React root component
 │   │   │
@@ -348,7 +371,7 @@ T3000Webview5/
 │   │       ├── menu.config.tsx
 │   │       └── routes.config.tsx
 │   │
-│   ├── shared/                           # 🟡 Shared Infrastructure
+│   ├── common/                           # 🟡 Shared Infrastructure
 │   │   │
 │   │   ├── api/                          # API client (framework-agnostic)
 │   │   │   ├── client.ts                 # Axios instance + interceptors
@@ -396,9 +419,9 @@ T3000Webview5/
 │       └── ...
 │
 ├── tests/                                # Tests
-│   ├── vue-app/                          # Vue tests
-│   ├── react-app/                        # React tests
-│   └── shared/                           # Shared code tests
+│   ├── t3-vue/                           # Vue tests
+│   ├── t3-react/                         # React tests
+│   └── common/                           # Shared code tests
 │
 ├── package.json                          # Dependencies (Vue + React)
 ├── vite.config.ts                        # Vite config (dual plugins)
@@ -465,7 +488,7 @@ if (currentPath.startsWith('/t3000')) {
 
 ---
 
-#### File 2: `src/vue-app/main.ts` (Vue Entry)
+#### File 2: `src/t3-vue/main.ts` (Vue Entry)
 
 ```typescript
 /**
@@ -515,7 +538,7 @@ export function initVueApp() {
 
 ---
 
-#### File 3: `src/vue-app/router/routes.ts` (Vue Routes)
+#### File 3: `src/t3-vue/router/routes.ts` (Vue Routes)
 
 ```typescript
 /**
@@ -594,7 +617,7 @@ export default routes;
 
 ---
 
-#### File 4: `src/react-app/main.tsx` (React Entry)
+#### File 4: `src/t3-react/main.tsx` (React Entry)
 
 ```typescript
 /**
@@ -638,7 +661,7 @@ export function initReactApp() {
 
 ---
 
-#### File 5: `src/react-app/router/routes.tsx` (React Routes)
+#### File 5: `src/t3-react/router/routes.tsx` (React Routes)
 
 ```typescript
 /**
@@ -722,7 +745,7 @@ export const router = createBrowserRouter([
 
 ---
 
-#### File 6: `src/shared/api/client.ts` (Shared API Client)
+#### File 6: `src/common/api/client.ts` (Shared API Client)
 
 ```typescript
 /**
@@ -798,7 +821,7 @@ export const apiDelete = <T>(url: string) => api.delete<T>(url).then(res => res.
 
 ---
 
-#### File 7: `src/shared/auth/authService.ts` (Shared Auth)
+#### File 7: `src/common/auth/authService.ts` (Shared Auth)
 
 ```typescript
 /**
@@ -879,10 +902,10 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@vue-app': resolve(__dirname, 'src/vue-app'),
-      '@react-app': resolve(__dirname, 'src/react-app'),
-      '@shared': resolve(__dirname, 'src/shared'),
+      '@': resolve(__dirname, 'src'),                    // Root src/
+      '@t3-vue': resolve(__dirname, 'src/t3-vue'),       // Vue app (explicit)
+      '@t3-react': resolve(__dirname, 'src/t3-react'),   // React app (explicit)
+      '@common': resolve(__dirname, 'src/common'),       // Shared code
     },
   },
 
@@ -1039,33 +1062,40 @@ export default defineConfig({
 
 - [ ] **Day 3**: Create folder structure
   ```bash
-  mkdir -p src/vue-app src/react-app src/shared
-  mkdir -p src/react-app/{pages,components,layouts,hooks,store,styles,config}
-  mkdir -p src/shared/{api,auth,state,types,utils,components}
+  mkdir -p src/t3-vue src/t3-react src/common
+  mkdir -p src/t3-react/{pages,components,layouts,hooks,store,styles,config}
+  mkdir -p src/common/{api,auth,state,types,utils,components}
   ```
 
 - [ ] **Day 4-5**: Move existing Vue code
   ```bash
-  # Move existing files to vue-app/
-  mv src/App.vue src/vue-app/
-  mv src/pages src/vue-app/
-  mv src/components src/vue-app/
-  mv src/layouts src/vue-app/
-  mv src/router src/vue-app/
+  # Move existing files to t3-vue/
+  mv src/App.vue src/t3-vue/
+  mv src/pages src/t3-vue/
+  mv src/components src/t3-vue/
+  mv src/layouts src/t3-vue/
+  mv src/router src/t3-vue/
 
   # Create shared API layer
-  mv src/lib/api.js src/shared/api/client.ts
-  ```
+  mv src/lib/api.js src/common/api/client.ts
 
-**Week 2 Tasks**:
-- [ ] **Day 1-2**: Create `src/main.ts` (route dispatcher)
-- [ ] **Day 3**: Create `src/vue-app/main.ts` (Vue entry)
-- [ ] **Day 4**: Create `src/react-app/main.tsx` (React entry)
+  # Update all imports: @/ → @t3-vue/ (automated)
+  # This will be done with find & replace
+  ```**Week 2 Tasks**:
+- [ ] **Day 1**: Update all Vue imports (automated find & replace)
+  ```bash
+  # Find & Replace across all Vue files
+  # Replace: from '@/ → from '@t3-vue/
+  # Replace: import('@/ → import('@t3-vue/
+  ```
+- [ ] **Day 2**: Create `src/main.ts` (route dispatcher)
+- [ ] **Day 3**: Create `src/t3-vue/main.ts` (Vue entry)
+- [ ] **Day 4**: Create `src/t3-react/main.tsx` (React entry)
 - [ ] **Day 5**: Create shared infrastructure
-  - `src/shared/api/client.ts`
-  - `src/shared/auth/authService.ts`
-  - `src/shared/state/sharedState.ts`
-  - `src/shared/types/device.types.ts`
+  - `src/common/api/client.ts`
+  - `src/common/auth/authService.ts`
+  - `src/common/state/sharedState.ts`
+  - `src/common/types/device.types.ts`
 
 **Testing**:
 - [ ] Verify Vue app loads on `/v2/dashboard`
@@ -1097,7 +1127,7 @@ export default defineConfig({
   - Error boundaries
 
 - [ ] **Day 5**: Create first page placeholder
-  - `src/react-app/pages/T3000/Tstat/TstatView.tsx`
+  - `src/t3-react/pages/T3000/Tstat/TstatView.tsx`
   - Basic layout with Fluent UI components
 
 **Week 4 Tasks**:
@@ -1184,7 +1214,7 @@ export default defineConfig({
 
 ### 5.1 Complete Example: React Page with Fluent UI
 
-**File**: `src/react-app/pages/T3000/Tstat/TstatView.tsx`
+**File**: `src/t3-react/pages/T3000/Tstat/TstatView.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -1207,8 +1237,8 @@ import {
   TableCellLayout,
   TableColumnDefinition,
 } from '@fluentui/react-components';
-import { apiGet } from '@shared/api/client';
-import { Device, DataPoint } from '@shared/types/device.types';
+import { apiGet } from '@common/api/client';
+import { Device, DataPoint } from '@common/types/device.types';
 
 const useStyles = makeStyles({
   container: {
@@ -1356,7 +1386,7 @@ export default TstatView;
 
 ### 5.2 Navigation Example: Vue → React
 
-**In Vue Component** (`src/vue-app/layouts/MainLayout.vue`):
+**In Vue Component** (`src/t3-vue/layouts/MainLayout.vue`):
 
 ```vue
 <template>
@@ -1395,7 +1425,7 @@ const goToT3BASWeb = () => {
 
 ### 5.3 Navigation Example: React → Vue
 
-**In React Component** (`src/react-app/layouts/MainLayout.tsx`):
+**In React Component** (`src/t3-react/layouts/MainLayout.tsx`):
 
 ```tsx
 import { Menu, MenuItem, MenuTrigger, MenuPopover, MenuList, Button } from '@fluentui/react-components';
@@ -1448,9 +1478,9 @@ export const MainLayout: React.FC = () => {
 
 **Vue Tests** (using @vue/test-utils):
 ```typescript
-// tests/vue-app/components/StatusIndicator.spec.ts
+// tests/t3-vue/components/StatusIndicator.spec.ts
 import { mount } from '@vue/test-utils';
-import StatusIndicator from '@/vue-app/components/Basic/StatusIndicator.vue';
+import StatusIndicator from '@t3-vue/components/Basic/StatusIndicator.vue';
 
 describe('StatusIndicator (Vue)', () => {
   it('renders online status', () => {
@@ -1464,9 +1494,9 @@ describe('StatusIndicator (Vue)', () => {
 
 **React Tests** (using @testing-library/react):
 ```typescript
-// tests/react-app/components/StatusIndicator.spec.tsx
+// tests/t3-react/components/StatusIndicator.spec.tsx
 import { render, screen } from '@testing-library/react';
-import { StatusIndicator } from '@/react-app/components/T3000/StatusIndicator';
+import { StatusIndicator } from '@t3-react/components/T3000/StatusIndicator';
 
 describe('StatusIndicator (React)', () => {
   it('renders online status', () => {
@@ -1478,9 +1508,9 @@ describe('StatusIndicator (React)', () => {
 
 **Shared Code Tests**:
 ```typescript
-// tests/shared/api/client.spec.ts
+// tests/common/api/client.spec.ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import { api } from '@shared/api/client';
+import { api } from '@common/api/client';
 
 describe('API Client', () => {
   it('should add auth token to requests', async () => {
