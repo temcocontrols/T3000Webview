@@ -385,9 +385,9 @@ const onSubmit = () => {
 **AFTER** (React + Fluent UI):
 ```tsx
 import React, { useState } from 'react';
-import { 
-  Field, 
-  Input, 
+import {
+  Field,
+  Input,
   Button,
   makeStyles,
 } from '@fluentui/react-components';
@@ -435,7 +435,7 @@ export const DeviceForm: React.FC = () => {
           onChange={handleChange('name')}
         />
       </Field>
-      
+
       <Field label="IP Address" required>
         <Input
           value={formData.ip}
@@ -461,12 +461,12 @@ export const DeviceForm: React.FC = () => {
     <a-layout-header>
       <TopMenu />
     </a-layout-header>
-    
+
     <a-layout>
       <a-layout-sider>
         <SideNav />
       </a-layout-sider>
-      
+
       <a-layout-content>
         <router-view />
       </a-layout-content>
@@ -525,12 +525,12 @@ export const MainLayout: React.FC = () => {
       <header className={styles.header}>
         <TopMenu />
       </header>
-      
+
       <div className={styles.body}>
         <aside className={styles.sider}>
           <SideNav />
         </aside>
-        
+
         <main className={styles.content}>
           <Outlet />
         </main>
@@ -628,7 +628,7 @@ export const useDeviceStore = defineStore('device', {
     devices: [] as Device[],
     isLoading: false,
   }),
-  
+
   actions: {
     async fetchDevices() {
       this.isLoading = true;
@@ -639,12 +639,12 @@ export const useDeviceStore = defineStore('device', {
         this.isLoading = false;
       }
     },
-    
+
     selectDevice(device: Device) {
       this.selectedDevice = device;
     },
   },
-  
+
   getters: {
     deviceCount: (state) => state.devices.length,
     hasSelection: (state) => state.selectedDevice !== null,
@@ -742,7 +742,7 @@ interface DeviceStore {
   selectedDevice: Device | null;
   devices: Device[];
   isLoading: boolean;
-  
+
   fetchDevices: () => Promise<void>;
   selectDevice: (device: Device) => void;
 }
@@ -751,7 +751,7 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
   selectedDevice: null,
   devices: [],
   isLoading: false,
-  
+
   fetchDevices: async () => {
     set({ isLoading: true });
     try {
@@ -761,7 +761,7 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
       set({ isLoading: false });
     }
   },
-  
+
   selectDevice: (device) => set({ selectedDevice: device }),
 }));
 ```

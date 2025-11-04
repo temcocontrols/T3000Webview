@@ -60,8 +60,8 @@ npm install @fluentui/web-components
 <!-- Awkward in Vue -->
 <template>
   <fluent-button @click="handleClick">Click</fluent-button>
-  <fluent-text-field 
-    :value="text" 
+  <fluent-text-field
+    :value="text"
     @input="text = $event.target.value"
   ></fluent-text-field>
 </template>
@@ -181,8 +181,8 @@ Azure Portal uses Fluent 2 design principles:
 
   <a-layout>
     <!-- Icon-only Left Sidebar -->
-    <a-layout-sider 
-      :width="50" 
+    <a-layout-sider
+      :width="50"
       theme="dark"
       class="azure-sider"
     >
@@ -347,7 +347,7 @@ import { azureTheme } from '@/lib/T3000/BASWeb/config/azure-theme';
 #### Azure Portal Card
 ```vue
 <!-- Azure-style Card -->
-<a-card 
+<a-card
   :bordered="false"
   class="azure-card"
   :bodyStyle="{ padding: '16px' }"
@@ -398,12 +398,12 @@ import { azureTheme } from '@/lib/T3000/BASWeb/config/azure-theme';
 #### Azure Portal Navigation
 ```vue
 <!-- Azure-style Icon Navigation -->
-<a-layout-sider 
-  :width="50" 
+<a-layout-sider
+  :width="50"
   theme="light"
   class="azure-nav"
 >
-  <a-menu 
+  <a-menu
     mode="inline"
     :selectedKeys="selectedKeys"
     class="azure-menu"
@@ -490,7 +490,7 @@ import fluentDeviceIcon from '@fluentui/svg-icons/icons/device_meeting_room_24_r
 <template>
   <!-- Ant Design Icons -->
   <DatabaseOutlined />
-  
+
   <!-- Fluent Icons (custom SVG) -->
   <span v-html="fluentDeviceIcon"></span>
 </template>
@@ -602,8 +602,8 @@ import fluentDeviceIcon from '@fluentui/svg-icons/icons/device_meeting_room_24_r
           <span class="portal-name">T3000 Portal</span>
         </div>
         <div class="header-center">
-          <a-input-search 
-            placeholder="Search resources, services, and docs" 
+          <a-input-search
+            placeholder="Search resources, services, and docs"
             style="width: 400px"
             size="large"
           />
@@ -618,7 +618,7 @@ import fluentDeviceIcon from '@fluentui/svg-icons/icons/device_meeting_room_24_r
       <a-layout>
         <!-- Icon-only Left Nav -->
         <a-layout-sider :width="50" theme="light" class="azure-sider">
-          <a-menu 
+          <a-menu
             v-model:selectedKeys="selectedKeys"
             mode="inline"
             class="azure-menu"
@@ -713,9 +713,9 @@ import fluentDeviceIcon from '@fluentui/svg-icons/icons/device_meeting_room_24_r
 
 <script setup lang="ts">
 import { ref, h } from 'vue';
-import { 
-  HomeOutlined, 
-  DatabaseOutlined, 
+import {
+  HomeOutlined,
+  DatabaseOutlined,
   LineChartOutlined,
   BellOutlined,
   SettingOutlined,
