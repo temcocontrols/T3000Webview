@@ -1592,7 +1592,68 @@ The T3-React application will use Fluent UI v9 components to match the desktop a
 
 ---
 
-## 5. Implementation Plan
+## 5. Implementation Plan & Tracking
+
+### 5.0 Implementation Task Breakdown (121 Tasks)
+
+**Total Tasks**: 121 organized into 19 phases
+**Estimated Timeline**: 6 weeks (2-3 developers)
+**Current Status**: Ready to begin
+
+#### Task Summary by Phase
+
+| Phase | Tasks | Estimated Days | Description |
+|-------|-------|----------------|-------------|
+| **Phase 0** | 1 task | 0.5 days | Project setup & planning |
+| **Phase 1** | 5 tasks | 1 day | Create folder structure |
+| **Phase 2** | 5 tasks | 2 days | Move Vue code to t3-vue |
+| **Phase 3** | 8 tasks | 2 days | Create TypeScript types |
+| **Phase 4** | 5 tasks | 2 days | Create shared API layer |
+| **Phase 5** | 5 tasks | 1.5 days | Create config files |
+| **Phase 6** | 2 tasks | 0.5 days | Create React Router |
+| **Phase 7** | 5 tasks | 2 days | Create Zustand stores |
+| **Phase 8** | 5 tasks | 2 days | Create custom hooks |
+| **Phase 9** | 9 tasks | 3 days | Create layout components |
+| **Phase 10** | 5 tasks | 2 days | Create common UI components |
+| **Phase 11** | 4 tasks | 1.5 days | Create dialog components |
+| **Phase 12** | 1 task | 0.5 days | Create form components |
+| **Phase 13** | 1 task | 0.5 days | Create chart components |
+| **Phase 14** | 5 tasks | 2 days | Create Inputs page (first page) |
+| **Phase 15** | 13 tasks | 8 days | Create remaining 12 pages |
+| **Phase 16** | 4 tasks | 1 day | Create entry points |
+| **Phase 17** | 14 tasks | 5 days | Testing & debugging |
+| **Phase 18** | 4 tasks | 2 days | Documentation & cleanup |
+| **Phase 19** | 3 tasks | 1 day | Production build & deployment |
+| **TOTAL** | **121 tasks** | **~40 days** | **6 weeks (3 devs)** |
+
+#### Critical Path Tasks (Must Complete First)
+
+1. ✅ **Phase 0-2** (Days 1-3.5): Setup → Folder structure → Move Vue files
+2. ✅ **Phase 3** (Days 4-5): TypeScript types (everything depends on this)
+3. ✅ **Phase 4** (Days 6-7): API layer (pages need this)
+4. ✅ **Phase 5-8** (Days 8-13): Config, routing, stores, hooks (foundation)
+5. ✅ **Phase 9** (Days 14-16): Layout components (shell of the app)
+6. ✅ **Phase 10-13** (Days 17-20): UI components (pages use these)
+7. ✅ **Phase 14** (Days 21-22): First page (Inputs - establishes pattern)
+8. ✅ **Phase 15** (Days 23-30): Remaining pages (parallel work possible)
+9. ✅ **Phase 16-19** (Days 31-40): Integration, testing, deployment
+
+#### Files to Create by Category
+
+| Category | Files | Locations |
+|----------|-------|-----------|
+| **Pages** | ~60 files | `src/t3-react/pages/{13 folders}` |
+| **Components** | ~31 files | `src/t3-react/components/{layout,common,dialogs,forms,charts}` |
+| **Hooks** | 8 files | `src/t3-react/hooks/` |
+| **Stores** | 8 files | `src/t3-react/store/` |
+| **API Modules** | ~20 files | `src/common/api/{bacnet,modbus,etc}` |
+| **Types** | ~12 files | `src/common/types/` |
+| **Utils** | ~10 files | `src/common/utils/` |
+| **Config** | 5 files | `src/t3-react/config/` |
+| **Entry Points** | 4 files | `src/main.ts`, `src/t3-react/{main,App}`, etc. |
+| **TOTAL** | **~158 new files** | Est. 16,100 lines of code |
+
+---
 
 ### 5.1 Sprint Breakdown (6 weeks total)
 
