@@ -309,6 +309,10 @@ T3000Webview5/
 │   │   │   ├── useDeviceConnection.ts
 │   │   │   └── useDataRefresh.ts
 │   │   │
+│   │   ├── lib/                          # Vue-specific utilities
+│   │   │   ├── demo-data.js              # Demo/mock data
+│   │   │   └── gridColumns.js            # Grid column configs
+│   │   │
 │   │   └── styles/                       # Vue-specific styles
 │   │       └── quasar-overrides.scss
 │   │
@@ -374,7 +378,7 @@ T3000Webview5/
 │   ├── common/                           # 🟡 Shared Infrastructure
 │   │   │
 │   │   ├── api/                          # API client (framework-agnostic)
-│   │   │   ├── client.ts                 # Axios instance + interceptors
+│   │   │   ├── client.ts                 # Axios instance + interceptors (from lib/api.js)
 │   │   │   ├── device.api.ts             # Device endpoints
 │   │   │   ├── trendlog.api.ts           # Trend log endpoints
 │   │   │   ├── bacnet.api.ts             # BACnet endpoints
@@ -395,10 +399,16 @@ T3000Webview5/
 │   │   │   └── index.ts
 │   │   │
 │   │   ├── utils/                        # Utility functions
+│   │   │   ├── common.ts                 # Common utilities (from lib/common.js)
 │   │   │   ├── format.ts                 # Data formatting
 │   │   │   ├── validation.ts             # Input validation
 │   │   │   ├── constants.ts              # Constants
 │   │   │   └── helpers.ts                # Helper functions
+│   │   │
+│   │   ├── T3000/                        # T3000 Business Logic (from lib/T3000/)
+│   │   │   ├── Hvac/                     # HVAC controllers
+│   │   │   ├── Security/                 # Security controllers
+│   │   │   └── T3000.ts                  # Main T3000 logic
 │   │   │
 │   │   └── components/                   # Framework-agnostic logic
 │   │       └── AppSwitcher.ts            # Navigation helper
