@@ -6,6 +6,11 @@
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "paths": {
+      // New hybrid architecture aliases
+      "@t3-vue/*": ["src/t3-vue/*"],
+      "@t3-react/*": ["src/t3-react/*"],
+      "@common/*": ["src/common/*"],
+      // Existing aliases for backward compatibility
       "src/*": ["src/*"],
       "app/*": ["*"],
       "components/*": ["src/components/*"],

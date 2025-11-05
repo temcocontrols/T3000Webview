@@ -79,6 +79,13 @@ module.exports = configure(function (/* ctx */) {
 
       // extendViteConf (viteConf) {},
       extendViteConf(viteConf) {
+        // Add path aliases for hybrid Vue+React architecture
+        viteConf.resolve = viteConf.resolve || {};
+        viteConf.resolve.alias = viteConf.resolve.alias || {};
+        viteConf.resolve.alias['@t3-vue'] = require('path').resolve(__dirname, 'src/t3-vue');
+        viteConf.resolve.alias['@t3-react'] = require('path').resolve(__dirname, 'src/t3-react');
+        viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/common');
+
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';
@@ -197,16 +204,16 @@ module.exports = configure(function (/* ctx */) {
     animations: [],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#property-sourcefiles
-    // sourceFiles: {
-    //   rootComponent: 'src/App.vue',
-    //   router: 'src/router/index',
-    //   store: 'src/store/index',
-    //   registerServiceWorker: 'src-pwa/register-service-worker',
-    //   serviceWorker: 'src-pwa/custom-service-worker',
-    //   pwaManifestFile: 'src-pwa/manifest.json',
-    //   electronMain: 'src-electron/electron-main',
-    //   electronPreload: 'src-electron/electron-preload'
-    // },
+    sourceFiles: {
+      rootComponent: 'src/t3-vue/App.vue',
+      router: 'src/t3-vue/router/index',
+      // store: 'src/t3-vue/store/index', // Not used
+      // registerServiceWorker: 'src-pwa/register-service-worker',
+      // serviceWorker: 'src-pwa/custom-service-worker',
+      // pwaManifestFile: 'src-pwa/manifest.json',
+      // electronMain: 'src-electron/electron-main',
+      // electronPreload: 'src-electron/electron-preload'
+    },
 
     // https://v2.quasar.dev/quasar-cli/developing-ssr/configuring-ssr
     ssr: {
