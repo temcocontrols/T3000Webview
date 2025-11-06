@@ -33,6 +33,7 @@ export interface ApiRequestOptions {
   retries?: number;
   headers?: Record<string, string>;
   params?: Record<string, any>;
+  useLocalApi?: boolean; // If true, use local API client instead of live API
 }
 
 // WebSocket message

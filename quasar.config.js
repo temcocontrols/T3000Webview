@@ -28,7 +28,7 @@ module.exports = configure(function (/* ctx */) {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli/boot-files
     boot: [
-      'antd'
+      'react.tsx' // Initialize React app conditionally based on route
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#css
@@ -82,6 +82,7 @@ module.exports = configure(function (/* ctx */) {
         // Add path aliases for hybrid Vue+React architecture
         viteConf.resolve = viteConf.resolve || {};
         viteConf.resolve.alias = viteConf.resolve.alias || {};
+        viteConf.resolve.alias['@'] = require('path').resolve(__dirname, 'src');
         viteConf.resolve.alias['@t3-vue'] = require('path').resolve(__dirname, 'src/t3-vue');
         viteConf.resolve.alias['@t3-react'] = require('path').resolve(__dirname, 'src/t3-react');
         viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/common');

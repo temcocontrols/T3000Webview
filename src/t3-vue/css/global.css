@@ -1,0 +1,15 @@
+/* Target all Ant Design components */
+.ant-btn,
+.ant-input,
+.ant-select,
+.ant-table,
+.ant-dropdown-menu,
+.ant-menu,
+.ant-form,
+.ant-form-item,
+.ant-modal-content,
+.ant-pagination,
+.ant-alert-message,
+.ant-calendar {
+  font-size: 12px !important;
+}

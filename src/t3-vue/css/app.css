@@ -1,0 +1,15 @@
+/* app global css */
+input[type="color"] {
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
