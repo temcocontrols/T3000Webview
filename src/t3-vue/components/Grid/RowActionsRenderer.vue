@@ -12,8 +12,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
-import { /*user,*/ isAdmin, getModbusRegisterSettings } from "../../lib/common";
-import { user } from "../../lib/T3000/Hvac/Data/T3Data";
+import { /*user,*/ isAdmin, getModbusRegisterSettings } from "@/lib/common.js";
+import { user } from "@/lib/T3000/Hvac/Data/T3Data.js";
 
 const $q = useQuasar();
 const props = defineProps({

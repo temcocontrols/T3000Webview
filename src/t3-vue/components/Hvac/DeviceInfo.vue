@@ -202,8 +202,8 @@ import { defineComponent, ref, onMounted, watch, reactive, toRefs, computed } fr
 import MockData from '@common/T3000/Hvac/Data/MockData'
 import Hvac from '@common/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
-import { T3Data } from '../../lib/T3000/Hvac/Data/T3Data'
-import { globalMsg } from '../../lib/T3000/Hvac/Data/T3Data'
+import { T3Data } from '@/lib/T3000/Hvac/Data/T3Data.js'
+import { globalMsg } from '@/lib/T3000/Hvac/Data/T3Data.js'
 import MessageType from '@common/T3000/Hvac/Opt/Socket/MessageType'
 import GlobalMsgModel from '@common/T3000/Hvac/Model/GlobalMsgModel'
 import LogUtil from '@common/T3000/Hvac/Util/LogUtil'

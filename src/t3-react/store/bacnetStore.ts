@@ -33,7 +33,7 @@ import {
   bacnetGraphicsApi
 } from '@common/api';
 
-interface BacnetState {
+export interface BacnetState {
   // Data cache
   inputs: InputPoint[];
   outputs: OutputPoint[];

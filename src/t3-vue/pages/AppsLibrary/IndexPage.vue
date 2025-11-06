@@ -10,8 +10,8 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
-import { liveApi } from "../../lib/api";
-import { globalNav } from "../../lib/common";
+import { liveApi } from "@/lib/api.js";
+import { globalNav } from "@/lib/common.js";
 import AppCard from "@t3-vue/components/Hvac/AppCard.vue";
 
 const libData = ref([]);

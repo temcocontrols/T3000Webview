@@ -4,12 +4,32 @@
  */
 
 import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
-import { ErrorHandler } from '../lib/T3000/Hvac/Util/ErrorHandler';
+
+// Simple error handler stub (replace with actual ErrorHandler if available)
+class SimpleErrorHandler {
+  static instance = null;
+
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new SimpleErrorHandler();
+    }
+    return this.instance;
+  }
+
+  handleError(error, context, severity) {
+    LogUtil.Error(`[${severity}] Error in ${context.component}:`, error);
+    console.error('Error context:', context);
+  }
+
+  getErrorHistory() {
+    return [];
+  }
+}
 
 export class RouterErrorBoundary {
   constructor(router) {
     this.router = router;
-    this.errorHandler = ErrorHandler.getInstance();
+    this.errorHandler = SimpleErrorHandler.getInstance();
     this.setupErrorHandling();
   }
 

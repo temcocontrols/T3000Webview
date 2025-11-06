@@ -148,6 +148,26 @@ export interface TrendLogRecord {
   status?: PointStatus;
 }
 
+// Trend log data point (for charts/graphs)
+export type TrendDataPoint = TrendLogRecord;
+
+// Alarm severity levels
+export enum AlarmSeverity {
+  Critical = 'critical',
+  High = 'high',
+  Medium = 'medium',
+  Low = 'low',
+  Info = 'info',
+}
+
+// Alarm status
+export enum AlarmStatus {
+  Active = 'active',
+  Acknowledged = 'acknowledged',
+  Cleared = 'cleared',
+  Resolved = 'resolved',
+}
+
 // Alarm/Event data (BACnet Notification Class)
 export interface AlarmData {
   id: number;

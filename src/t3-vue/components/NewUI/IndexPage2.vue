@@ -322,8 +322,8 @@ import TopToolbar from "../hvac/TopToolbar.vue";
 import ToolsSidebar2 from "./ToolsSidebar2.vue";
 import ObjectConfig from "../hvac/ObjectConfig.vue";
 import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
-import { tools, demoDeviceData } from "../../lib/common";
-import { liveApi } from "../../lib/api";
+import { tools, demoDeviceData } from "@/lib/common.js";
+import { liveApi } from "@/lib/api.js";
 import CanvasType from "@t3-vue/components/Hvac/CanvasType.vue";
 import CanvasShape from "@t3-vue/components/Hvac/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
@@ -351,7 +351,7 @@ import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
   savedNotify, undoHistory, redoHistory, moveable, appStateV2
-} from '../../lib/T3000/Hvac/Data/T3Data';
+} from '@/lib/T3000/Hvac/Data/T3Data.js';
 import IdxPage from "@common/T3000/Hvac/Opt/Common/IdxPage";
 import T3Util from "@common/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "@common/T3000/Hvac/Opt/Quasar/QuasarUtil";

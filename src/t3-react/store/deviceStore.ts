@@ -11,9 +11,10 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { TreeNode } from '@common/types/device';
+import { DeviceStatus } from '@common/types/device';
 import * as devicesApi from '@common/api/devices';
 
-interface DeviceState {
+export interface DeviceState {
   // State
   selectedDevice: TreeNode | null;
   devices: TreeNode[];
@@ -22,18 +23,18 @@ interface DeviceState {
 
   // Device selection
   setSelectedDevice: (device: TreeNode | null) => void;
-  selectDeviceById: (deviceId: number) => void;
+  selectDeviceById: (deviceId: string) => void;
   clearSelection: () => void;
 
   // Device list management
   loadDevices: () => Promise<void>;
   addDevice: (device: TreeNode) => void;
-  updateDevice: (deviceId: number, updates: Partial<TreeNode>) => void;
-  removeDevice: (deviceId: number) => void;
+  updateDevice: (deviceId: string, updates: Partial<TreeNode>) => void;
+  removeDevice: (deviceId: string) => void;
 
   // Utilities
-  getDeviceById: (deviceId: number) => TreeNode | undefined;
-  isDeviceOnline: (deviceId: number) => boolean;
+  getDeviceById: (deviceId: string) => TreeNode | undefined;
+  isDeviceOnline: (deviceId: string) => boolean;
   getDeviceCount: () => number;
   reset: () => void;
 }
@@ -73,7 +74,7 @@ export const useDeviceStore = create<DeviceState>()(
         loadDevices: async () => {
           set({ isLoading: true, error: null });
           try {
-            const response = await devicesApi.getDevices();
+            const response = await devicesApi.getDeviceTree();
             set({
               devices: response.data || [],
               isLoading: false,
@@ -126,7 +127,7 @@ export const useDeviceStore = create<DeviceState>()(
 
         isDeviceOnline: (deviceId) => {
           const device = get().getDeviceById(deviceId);
-          return device?.online ?? false;
+          return device?.deviceInfo?.status === DeviceStatus.Online;
         },
 
         getDeviceCount: () => {
@@ -159,6 +160,6 @@ export const deviceSelectors = {
   isLoading: (state: DeviceState) => state.isLoading,
   error: (state: DeviceState) => state.error,
   hasSelection: (state: DeviceState) => state.selectedDevice !== null,
-  onlineDevices: (state: DeviceState) => state.devices.filter(d => d.online),
-  offlineDevices: (state: DeviceState) => state.devices.filter(d => !d.online),
+  onlineDevices: (state: DeviceState) => state.devices.filter(d => d.deviceInfo?.status === DeviceStatus.Online),
+  offlineDevices: (state: DeviceState) => state.devices.filter(d => d.deviceInfo?.status !== DeviceStatus.Online),
 };

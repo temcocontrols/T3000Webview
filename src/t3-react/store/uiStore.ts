@@ -17,7 +17,7 @@ interface DialogState {
   props?: Record<string, any>;
 }
 
-interface UiState {
+export interface UiState {
   // Window state
   activeWindow: number;
   windowHistory: number[];
@@ -66,7 +66,27 @@ interface UiState {
   reset: () => void;
 }
 
-const initialState = {
+const initialState: Omit<UiState, keyof {
+  setActiveWindow: any;
+  goBack: any;
+  goForward: any;
+  canGoBack: any;
+  canGoForward: any;
+  toggleLeftPanel: any;
+  toggleRightPanel: any;
+  setLeftPanelVisible: any;
+  setRightPanelVisible: any;
+  setLeftPanelWidth: any;
+  setRightPanelWidth: any;
+  openDialog: any;
+  closeDialog: any;
+  closeAllDialogs: any;
+  toggleFullscreen: any;
+  setTheme: any;
+  isWindowActive: any;
+  hasActiveDialog: any;
+  reset: any;
+}> = {
   activeWindow: WINDOW_IDS.HOME,
   windowHistory: [WINDOW_IDS.HOME],
   isLeftPanelVisible: true,
@@ -76,18 +96,18 @@ const initialState = {
   activeDialog: null,
   dialogStack: [],
   isFullscreen: false,
-  theme: 'light' as const,
+  theme: 'light',
 };
 
-export const useUiStore = create<UiState>()(
+export const useUIStore = create<UiState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set: any, get: any) => ({
         ...initialState,
 
         // Window management
-        setActiveWindow: (windowId) => {
-          set((state) => {
+        setActiveWindow: (windowId: number) => {
+          set((state: UiState) => {
             // Don't add duplicate if it's already the active window
             if (state.activeWindow === windowId) {
               return state;
@@ -109,7 +129,7 @@ export const useUiStore = create<UiState>()(
         },
 
         goBack: () => {
-          set((state) => {
+          set((state: UiState) => {
             if (state.windowHistory.length <= 1) return state;
 
             const newHistory = [...state.windowHistory];
@@ -131,42 +151,42 @@ export const useUiStore = create<UiState>()(
           return get().windowHistory.length > 1;
         },
 
-        canGoForward: () => {
+        canGoForward: (): boolean => {
           return false; // Not implemented
         },
 
         // Panel management
         toggleLeftPanel: () => {
-          set((state) => ({
+          set((state: UiState) => ({
             isLeftPanelVisible: !state.isLeftPanelVisible,
           }));
         },
 
         toggleRightPanel: () => {
-          set((state) => ({
+          set((state: UiState) => ({
             isRightPanelVisible: !state.isRightPanelVisible,
           }));
         },
 
-        setLeftPanelVisible: (visible) => {
+        setLeftPanelVisible: (visible: boolean) => {
           set({ isLeftPanelVisible: visible });
         },
 
-        setRightPanelVisible: (visible) => {
+        setRightPanelVisible: (visible: boolean) => {
           set({ isRightPanelVisible: visible });
         },
 
-        setLeftPanelWidth: (width) => {
+        setLeftPanelWidth: (width: number) => {
           set({ leftPanelWidth: Math.max(200, Math.min(width, 500)) });
         },
 
-        setRightPanelWidth: (width) => {
+        setRightPanelWidth: (width: number) => {
           set({ rightPanelWidth: Math.max(250, Math.min(width, 600)) });
         },
 
         // Dialog management
-        openDialog: (id, props) => {
-          set((state) => {
+        openDialog: (id: string, props?: any) => {
+          set((state: UiState) => {
             const dialog: DialogState = { id, props };
             return {
               activeDialog: dialog,
@@ -176,7 +196,7 @@ export const useUiStore = create<UiState>()(
         },
 
         closeDialog: () => {
-          set((state) => {
+          set((state: UiState) => {
             const newStack = [...state.dialogStack];
             newStack.pop();
             const activeDialog = newStack[newStack.length - 1] || null;
@@ -197,17 +217,17 @@ export const useUiStore = create<UiState>()(
 
         // Layout
         toggleFullscreen: () => {
-          set((state) => ({
+          set((state: UiState) => ({
             isFullscreen: !state.isFullscreen,
           }));
         },
 
-        setTheme: (theme) => {
+        setTheme: (theme: 'light' | 'dark') => {
           set({ theme });
         },
 
         // Utilities
-        isWindowActive: (windowId) => {
+        isWindowActive: (windowId: number) => {
           return get().activeWindow === windowId;
         },
 
@@ -221,7 +241,7 @@ export const useUiStore = create<UiState>()(
       }),
       {
         name: 't3000-ui-store',
-        partialize: (state) => ({
+        partialize: (state: UiState) => ({
           isLeftPanelVisible: state.isLeftPanelVisible,
           isRightPanelVisible: state.isRightPanelVisible,
           leftPanelWidth: state.leftPanelWidth,

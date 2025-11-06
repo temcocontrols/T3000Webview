@@ -22,9 +22,9 @@ import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import FileUpload from "../../components/Hvac/FileUploadS3.vue";
-import { /*user,*/ globalNav, isAdmin } from "../../lib/common";
-import { user } from "../../lib/T3000/Hvac/Data/T3Data";
-import { liveApi } from "../../lib/api";
+import { /*user,*/ globalNav, isAdmin } from "@/lib/common.js";
+import { user } from "@/lib/T3000/Hvac/Data/T3Data.js";
+import { liveApi } from "@/lib/api.js";
 import ky from "ky";
 
 const $q = useQuasar();

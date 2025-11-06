@@ -3,7 +3,7 @@
  * Axios-based HTTP client with authentication, error handling, and logging
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import type { ApiResponse, ApiError, ApiRequestOptions } from '../types';
 
 // Environment variables (will be set by Vite)

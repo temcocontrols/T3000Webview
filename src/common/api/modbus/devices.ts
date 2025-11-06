@@ -4,7 +4,7 @@
  */
 
 import { api } from '../client';
-import type { ApiResponse, ModbusDevice, TreeNode } from '../../types';
+import type { ApiResponse, TreeNode } from '../../types';
 
 export interface ModbusDeviceInfo {
   id: string;

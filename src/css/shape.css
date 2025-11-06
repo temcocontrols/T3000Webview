@@ -1,0 +1,268 @@
+/**
+ * Shape and layout styles for graphics and custom shapes
+ * Used in the graphics editor and custom visualizations
+ */
+
+/* SVG container styles */
+.svg-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.svg-canvas {
+  width: 100%;
+  height: 100%;
+  background-color: #fafafa;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Shape styles */
+.shape {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.shape:hover {
+  filter: brightness(1.1);
+}
+
+.shape.selected {
+  stroke: var(--primary-color);
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+  animation: dash 0.5s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* Shape types */
+.shape-rectangle {
+  fill: #e3f2fd;
+  stroke: #1976d2;
+  stroke-width: 1;
+  rx: 4;
+  ry: 4;
+}
+
+.shape-circle {
+  fill: #f3e5f5;
+  stroke: #9c27b0;
+  stroke-width: 1;
+}
+
+.shape-triangle {
+  fill: #fff3e0;
+  stroke: #ff9800;
+  stroke-width: 1;
+}
+
+.shape-line {
+  stroke: #424242;
+  stroke-width: 2;
+  fill: none;
+}
+
+.shape-text {
+  font-family: inherit;
+  font-size: 14px;
+  fill: #333;
+  user-select: none;
+}
+
+/* Connection lines */
+.connection-line {
+  stroke: #666;
+  stroke-width: 2;
+  fill: none;
+  marker-end: url(#arrowhead);
+}
+
+.connection-line.active {
+  stroke: var(--primary-color);
+  stroke-width: 3;
+}
+
+.connection-line.dashed {
+  stroke-dasharray: 5, 5;
+}
+
+/* Control points */
+.control-point {
+  fill: white;
+  stroke: var(--primary-color);
+  stroke-width: 2;
+  cursor: move;
+}
+
+.control-point:hover {
+  fill: var(--primary-color);
+}
+
+/* Resize handles */
+.resize-handle {
+  fill: white;
+  stroke: var(--primary-color);
+  stroke-width: 2;
+  cursor: nwse-resize;
+}
+
+.resize-handle.top { cursor: ns-resize; }
+.resize-handle.bottom { cursor: ns-resize; }
+.resize-handle.left { cursor: ew-resize; }
+.resize-handle.right { cursor: ew-resize; }
+.resize-handle.top-left { cursor: nwse-resize; }
+.resize-handle.top-right { cursor: nesw-resize; }
+.resize-handle.bottom-left { cursor: nesw-resize; }
+.resize-handle.bottom-right { cursor: nwse-resize; }
+
+/* Selection box */
+.selection-box {
+  fill: rgba(25, 118, 210, 0.1);
+  stroke: var(--primary-color);
+  stroke-width: 1;
+  stroke-dasharray: 5, 5;
+  pointer-events: none;
+}
+
+/* Grid */
+.grid-line {
+  stroke: rgba(0, 0, 0, 0.1);
+  stroke-width: 0.5;
+  shape-rendering: crispEdges;
+}
+
+/* Layers */
+.layer-background {
+  z-index: 1;
+}
+
+.layer-shapes {
+  z-index: 2;
+}
+
+.layer-connections {
+  z-index: 3;
+}
+
+.layer-controls {
+  z-index: 4;
+}
+
+.layer-annotations {
+  z-index: 5;
+}
+
+/* HVAC-specific shapes */
+.hvac-duct {
+  fill: #b0bec5;
+  stroke: #546e7a;
+  stroke-width: 2;
+}
+
+.hvac-pipe {
+  stroke: #1976d2;
+  stroke-width: 4;
+  fill: none;
+}
+
+.hvac-valve {
+  fill: #ffd54f;
+  stroke: #f57c00;
+  stroke-width: 2;
+}
+
+.hvac-damper {
+  fill: #a5d6a7;
+  stroke: #388e3c;
+  stroke-width: 2;
+}
+
+.hvac-fan {
+  fill: #ef9a9a;
+  stroke: #c62828;
+  stroke-width: 2;
+}
+
+.hvac-sensor {
+  fill: #90caf9;
+  stroke: #1565c0;
+  stroke-width: 2;
+}
+
+/* Device status indicators */
+.status-indicator {
+  transition: fill var(--transition-fast);
+}
+
+.status-indicator.online {
+  fill: var(--positive-color);
+}
+
+.status-indicator.offline {
+  fill: var(--negative-color);
+}
+
+.status-indicator.alarm {
+  fill: var(--warning-color);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Tooltips for shapes */
+.shape-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  pointer-events: none;
+  z-index: var(--z-tooltip);
+  white-space: nowrap;
+}
+
+/* Zoom controls */
+.zoom-controls {
+  position: absolute;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  background: white;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-dropdown);
+}
+
+.zoom-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.zoom-button:hover {
+  background: #f5f5f5;
+  border-color: var(--primary-color);
+}

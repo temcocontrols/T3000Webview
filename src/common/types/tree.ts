@@ -4,6 +4,9 @@
 
 import { TreeNode, TreeNodeType } from './device';
 
+// Re-export TreeNode for convenience
+export type { TreeNode, TreeNodeType } from './device';
+
 // Context menu item
 export interface ContextMenuItem {
   id: string;

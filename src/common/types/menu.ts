@@ -11,19 +11,21 @@ export enum MenuItemType {
   Separator = 'separator',
   Checkbox = 'checkbox',
   Radio = 'radio',
+  Item = 'item',              // Single menu item
+  Divider = 'divider',        // Menu divider
 }
 
 // Menu item
 export interface MenuItem {
-  id: string;
-  type: MenuItemType;
-  label: string;
+  id?: string;
+  type: MenuItemType | 'submenu' | 'item' | 'divider' | 'separator' | 'checkbox';
+  label?: string;
   icon?: string;
   shortcut?: string;
   disabled?: boolean;
   checked?: boolean;          // For checkbox/radio
   children?: MenuItem[];      // For submenu
-  action?: () => void;
+  action?: MenuAction | (() => void);
   windowType?: WindowType;    // For window navigation
 }
 
@@ -58,6 +60,7 @@ export enum MenuAction {
   Open = 'open',
   Save = 'save',
   SaveAs = 'save-as',
+  Load = 'load',
   Import = 'import',
   Export = 'export',
   Print = 'print',

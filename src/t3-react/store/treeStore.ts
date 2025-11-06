@@ -13,7 +13,7 @@ import { devtools } from 'zustand/middleware';
 import type { TreeNode } from '@common/types/tree';
 import { networkApi } from '@common/api/network';
 
-interface TreeState {
+export interface TreeState {
   // State
   treeData: TreeNode[];
   expandedNodes: Set<string>;

@@ -503,9 +503,9 @@
 import { defineComponent, ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from "vue-router";
 import { useQuasar } from "quasar"
-import { tools/*, user*/ } from "../../lib/common";
-import { user } from "../../lib/T3000/Hvac/Data/T3Data";
-import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
+import { tools/*, user*/ } from "@/lib/common.js";
+import { user } from "@/lib/T3000/Hvac/Data/T3Data.js";
+import { devVersion } from '@/lib/T3000/Hvac/Data/T3Data.js'
 
 export default defineComponent({
   name: 'NewTopToolBar',

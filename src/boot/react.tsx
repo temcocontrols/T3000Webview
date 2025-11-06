@@ -1,17 +1,26 @@
 /**
- * Bootstrap file to initialize both Vue and React applications
- * This file is imported in the Quasar boot process
+ * Hybrid Architecture: Route-based React initialization
+ * This boot file conditionally loads React app only for /t3000/* routes
+ * Vue (Quasar) handles all other routes
  */
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { App } from '@t3-react/App';
+import { isReactRoute } from '../shared/routes';
 
 /**
- * Initialize React Application
- * This runs after Vue is initialized by Quasar
+ * Initialize React Application (conditionally based on route)
+ * Only mounts React app when on /t3000/* routes
  */
 export function initializeReactApp() {
+  // Check if current route should be handled by React
+  if (!isReactRoute()) {
+    console.log('📘 Vue route detected - skipping React initialization');
+    return;
+  }
+
+  console.log('⚛️ React route detected - initializing React app...');
+
   // Check if React root element exists
   const rootElement = document.getElementById('t3000-react-root');
 
@@ -21,25 +30,36 @@ export function initializeReactApp() {
   }
 
   try {
-    // Create React root and render app
-    const root = ReactDOM.createRoot(rootElement);
+    // Lazy load React app (code splitting)
+    import('@t3-react/App').then(({ App }) => {
+      // Create React root and render app
+      const root = ReactDOM.createRoot(rootElement);
 
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    );
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
 
-    console.log('✅ T3000 React application initialized');
+      console.log('✅ T3000 React application initialized');
+    }).catch((error) => {
+      console.error('Failed to load React application:', error);
+    });
   } catch (error) {
     console.error('Failed to initialize T3000 React application:', error);
   }
 }
 
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeReactApp);
-} else {
-  // DOM already loaded
-  initializeReactApp();
-}
+/**
+ * Quasar boot function export
+ * This is called by Quasar during app initialization
+ */
+export default () => {
+  // Initialize React app if on React route
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeReactApp);
+  } else {
+    // DOM already loaded
+    initializeReactApp();
+  }
+};

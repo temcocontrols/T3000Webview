@@ -18,7 +18,7 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
-import { liveApi } from "../../lib/api";
+import { liveApi } from "@/lib/api.js";
 import AppCard from "@t3-vue/components/Hvac/AppCard.vue";
 
 const libData = ref([]);

@@ -235,7 +235,7 @@
 <script>
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
-import { /*getEntryRange,*/ icons, switchIcons, tools } from "../../lib/common";
+import { /*getEntryRange,*/ icons, switchIcons, tools } from "@/lib/common.js";
 import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
 import T3000 from "@common/T3000/T3000";
 

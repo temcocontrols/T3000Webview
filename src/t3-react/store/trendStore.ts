@@ -20,10 +20,11 @@ interface TrendChartConfig {
   yAxisId: 'left' | 'right';
 }
 
-interface TrendState {
+export interface TrendState {
   // Data
   trendLogs: TrendLogData[];
   trendData: Map<number, TrendDataPoint[]>; // trendLogId -> data points
+  currentDeviceId: string | null; // Track which device we're viewing
 
   // Chart configuration
   chartConfigs: TrendChartConfig[];
@@ -41,10 +42,10 @@ interface TrendState {
   error: string | null;
 
   // Trend log management
-  loadTrendLogs: (deviceId: number) => Promise<void>;
-  loadTrendData: (trendLogId: number, start?: Date, end?: Date) => Promise<void>;
-  loadMultipleTrends: (trendLogIds: number[]) => Promise<void>;
-  refreshTrendData: (trendLogId: number) => Promise<void>;
+  loadTrendLogs: (deviceId: string) => Promise<void>;
+  loadTrendData: (deviceId: string, trendLogId: number, start?: Date, end?: Date) => Promise<void>;
+  loadMultipleTrends: (deviceId: string, trendLogIds: number[]) => Promise<void>;
+  refreshTrendData: (deviceId: string, trendLogId: number) => Promise<void>;
 
   // Chart configuration
   addToChart: (trendLogId: number, config?: Partial<TrendChartConfig>) => void;
@@ -83,6 +84,7 @@ const getDefaultTimeRange = () => ({
 const initialState = {
   trendLogs: [],
   trendData: new Map(),
+  currentDeviceId: null,
   chartConfigs: [],
   timeRange: getDefaultTimeRange(),
   autoRefresh: false,
@@ -99,12 +101,12 @@ export const useTrendStore = create<TrendState>()(
       ...initialState,
 
       // Trend log management
-      loadTrendLogs: async (deviceId) => {
-        set({ isLoading: true, error: null });
+      loadTrendLogs: async (deviceId: string) => {
+        set({ isLoading: true, error: null, currentDeviceId: deviceId });
         try {
           const response = await bacnetTrendsApi.getTrendLogs(deviceId);
           set({
-            trendLogs: response.data,
+            trendLogs: response.data || [],
             isLoading: false
           });
         } catch (error) {
@@ -115,19 +117,23 @@ export const useTrendStore = create<TrendState>()(
         }
       },
 
-      loadTrendData: async (trendLogId, start, end) => {
+      loadTrendData: async (deviceId: string, trendLogId: number, start?: Date, end?: Date) => {
         set({ isLoadingData: true, error: null });
         try {
           const { timeRange } = get();
+          const startTime = start || timeRange.start;
+          const endTime = end || timeRange.end;
+
           const response = await bacnetTrendsApi.getTrendData(
+            deviceId,
             trendLogId,
-            start || timeRange.start,
-            end || timeRange.end
+            startTime,
+            endTime
           );
 
-          set((state) => {
+          set((state: TrendState) => {
             const newTrendData = new Map(state.trendData);
-            newTrendData.set(trendLogId, response.data);
+            newTrendData.set(trendLogId, response.data || []);
 
             return {
               trendData: newTrendData,
@@ -142,21 +148,26 @@ export const useTrendStore = create<TrendState>()(
         }
       },
 
-      loadMultipleTrends: async (trendLogIds) => {
+      loadMultipleTrends: async (deviceId: string, trendLogIds: number[]) => {
         set({ isLoadingData: true, error: null });
         try {
           const { timeRange } = get();
 
           const promises = trendLogIds.map((id) =>
-            bacnetTrendsApi.getTrendData(id, timeRange.start, timeRange.end)
+            bacnetTrendsApi.getTrendData(
+              deviceId,
+              id,
+              timeRange.start,
+              timeRange.end
+            )
           );
 
           const responses = await Promise.all(promises);
 
-          set((state) => {
+          set((state: TrendState) => {
             const newTrendData = new Map(state.trendData);
             trendLogIds.forEach((id, index) => {
-              newTrendData.set(id, responses[index].data);
+              newTrendData.set(id, responses[index].data || []);
             });
 
             return {
@@ -172,13 +183,13 @@ export const useTrendStore = create<TrendState>()(
         }
       },
 
-      refreshTrendData: async (trendLogId) => {
-        await get().loadTrendData(trendLogId);
+      refreshTrendData: async (deviceId: string, trendLogId: number) => {
+        await get().loadTrendData(deviceId, trendLogId);
       },
 
       // Chart configuration
-      addToChart: (trendLogId, config) => {
-        set((state) => {
+      addToChart: (trendLogId: number, config?: Partial<TrendChartConfig>) => {
+        set((state: TrendState) => {
           // Don't add if already exists
           if (state.chartConfigs.some((c) => c.trendLogId === trendLogId)) {
             return state;
@@ -200,18 +211,21 @@ export const useTrendStore = create<TrendState>()(
           };
         });
 
-        // Load data for this trend
-        get().loadTrendData(trendLogId);
+        // Load data for this trend if we have a device
+        const { currentDeviceId } = get();
+        if (currentDeviceId) {
+          get().loadTrendData(currentDeviceId, trendLogId);
+        }
       },
 
-      removeFromChart: (trendLogId) => {
-        set((state) => ({
+      removeFromChart: (trendLogId: number) => {
+        set((state: TrendState) => ({
           chartConfigs: state.chartConfigs.filter((c) => c.trendLogId !== trendLogId),
         }));
       },
 
-      updateChartConfig: (trendLogId, config) => {
-        set((state) => ({
+      updateChartConfig: (trendLogId: number, config: Partial<TrendChartConfig>) => {
+        set((state: TrendState) => ({
           chartConfigs: state.chartConfigs.map((c) =>
             c.trendLogId === trendLogId ? { ...c, ...config } : c
           ),
@@ -226,17 +240,18 @@ export const useTrendStore = create<TrendState>()(
       },
 
       // Time range
-      setTimeRange: (start, end) => {
+      setTimeRange: (start: Date, end: Date) => {
         set({ timeRange: { start, end } });
 
-        // Reload data for visible trends
-        const visibleTrends = get().getVisibleTrends();
-        if (visibleTrends.length > 0) {
-          get().loadMultipleTrends(visibleTrends.map((t) => t.trendLogId));
+        // Reload data for visible trends if we have a device
+        const { currentDeviceId, getVisibleTrends } = get();
+        const visibleTrends = getVisibleTrends();
+        if (currentDeviceId && visibleTrends.length > 0) {
+          get().loadMultipleTrends(currentDeviceId, visibleTrends.map((t) => t.trendLogId));
         }
       },
 
-      setTimeRangePreset: (preset) => {
+      setTimeRangePreset: (preset: 'hour' | 'day' | 'week' | 'month' | 'year') => {
         const now = new Date();
         let start: Date;
 
@@ -262,7 +277,7 @@ export const useTrendStore = create<TrendState>()(
       },
 
       // Auto refresh
-      setAutoRefresh: (enabled) => {
+      setAutoRefresh: (enabled: boolean) => {
         set({ autoRefresh: enabled });
 
         if (enabled) {
@@ -271,7 +286,7 @@ export const useTrendStore = create<TrendState>()(
         }
       },
 
-      setRefreshInterval: (interval) => {
+      setRefreshInterval: (interval: number) => {
         set({ refreshInterval: interval });
 
         // Restart auto-refresh if active
@@ -282,7 +297,7 @@ export const useTrendStore = create<TrendState>()(
       },
 
       // Selection
-      selectTrend: (trendLogId) => {
+      selectTrend: (trendLogId: number | null) => {
         set({ selectedTrendId: trendLogId });
       },
 
@@ -302,7 +317,7 @@ export const useTrendStore = create<TrendState>()(
       },
 
       // Export
-      exportToCSV: async (trendLogIds) => {
+      exportToCSV: async (trendLogIds: number[]) => {
         try {
           const { trendData, trendLogs } = get();
 

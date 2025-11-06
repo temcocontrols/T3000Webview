@@ -10,20 +10,28 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { AlarmData, AlarmSeverity, AlarmStatus } from '@common/types/bacnet';
+import type { AlarmRecord, AlarmStatus } from '@common/types/alarm';
 import { bacnetAlarmsApi } from '@common/api';
+
+// Alarm severity (simplified from priority)
+export enum AlarmSeverity {
+  Critical = 'critical',  // Priority 1-4
+  High = 'high',         // Priority 5-8
+  Medium = 'medium',     // Priority 9-12
+  Low = 'low',           // Priority 13-16
+}
 
 interface AlarmFilter {
   severity?: AlarmSeverity[];
   status?: AlarmStatus[];
-  deviceId?: number;
+  deviceId?: string;
   searchText?: string;
 }
 
-interface AlarmState {
+export interface AlarmState {
   // Data
-  activeAlarms: AlarmData[];
-  alarmHistory: AlarmData[];
+  activeAlarms: AlarmRecord[];
+  alarmHistory: AlarmRecord[];
 
   // Filter and sort
   filter: AlarmFilter;
@@ -31,16 +39,16 @@ interface AlarmState {
   sortOrder: 'asc' | 'desc';
 
   // UI state
-  selectedAlarmId: number | null;
+  selectedAlarmId: string | null;
   isLoading: boolean;
   error: string | null;
 
   // Alarm management
-  loadActiveAlarms: (deviceId?: number) => Promise<void>;
-  loadAlarmHistory: (deviceId?: number, startDate?: Date, endDate?: Date) => Promise<void>;
-  acknowledgeAlarm: (alarmId: number) => Promise<void>;
-  acknowledgeAll: () => Promise<void>;
-  clearAlarm: (alarmId: number) => Promise<void>;
+  loadActiveAlarms: (deviceId: string) => Promise<void>;
+  loadAlarmHistory: (deviceId?: string, startDate?: Date, endDate?: Date) => Promise<void>;
+  acknowledgeAlarm: (deviceId: string, alarmId: number, recordId: string) => Promise<void>;
+  acknowledgeAll: (deviceId: string) => Promise<void>;
+  clearAlarm: (deviceId: string, alarmId: number, recordId: string) => Promise<void>;
 
   // Filter and sort
   setFilter: (filter: Partial<AlarmFilter>) => void;
@@ -49,24 +57,40 @@ interface AlarmState {
   setSortOrder: (order: 'asc' | 'desc') => void;
 
   // Selection
-  selectAlarm: (alarmId: number | null) => void;
+  selectAlarm: (alarmId: string | null) => void;
 
   // Computed
-  getFilteredAlarms: () => AlarmData[];
+  getFilteredAlarms: () => AlarmRecord[];
   getUnacknowledgedCount: () => number;
   getCriticalAlarmsCount: () => number;
-  getAlarmsByDevice: (deviceId: number) => AlarmData[];
+  getAlarmsByDevice: (deviceId: string) => AlarmRecord[];
 
   // Utilities
   reset: () => void;
 }
 
-const initialState = {
+const initialState: Omit<AlarmState, keyof {
+  loadActiveAlarms: any;
+  loadAlarmHistory: any;
+  acknowledgeAlarm: any;
+  acknowledgeAll: any;
+  clearAlarm: any;
+  setFilter: any;
+  clearFilter: any;
+  setSortBy: any;
+  setSortOrder: any;
+  selectAlarm: any;
+  getFilteredAlarms: any;
+  getUnacknowledgedCount: any;
+  getCriticalAlarmsCount: any;
+  getAlarmsByDevice: any;
+  reset: any;
+}> = {
   activeAlarms: [],
   alarmHistory: [],
   filter: {},
-  sortBy: 'timestamp' as const,
-  sortOrder: 'desc' as const,
+  sortBy: 'timestamp',
+  sortOrder: 'desc',
   selectedAlarmId: null,
   isLoading: false,
   error: null,
@@ -78,18 +102,16 @@ export const useAlarmStore = create<AlarmState>()(
       ...initialState,
 
       // Alarm management
-      loadActiveAlarms: async (deviceId) => {
+      loadActiveAlarms: async (deviceId: string) => {
         set({ isLoading: true, error: null });
         try {
-          const response = deviceId
-            ? await bacnetAlarmsApi.getAlarms(deviceId)
-            : await bacnetAlarmsApi.getAllAlarms();
+          const response = await bacnetAlarmsApi.getActiveAlarms(deviceId);
 
           set({
-            activeAlarms: response.data,
+            activeAlarms: response.data || [],
             isLoading: false
           });
-        } catch (error) {
+        } catch (error: any) {
           set({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Failed to load alarms'
@@ -97,17 +119,21 @@ export const useAlarmStore = create<AlarmState>()(
         }
       },
 
-      loadAlarmHistory: async (deviceId, startDate, endDate) => {
+      loadAlarmHistory: async (deviceId?: string, startDate?: Date, endDate?: Date) => {
+        if (!deviceId) {
+          set({ error: 'Device ID is required' });
+          return;
+        }
+
         set({ isLoading: true, error: null });
         try {
-          const response = await bacnetAlarmsApi.getAlarmHistory({
-            deviceId,
+          const response = await bacnetAlarmsApi.getAlarmRecords(deviceId, {
             startDate,
             endDate,
           });
 
           set({
-            alarmHistory: response.data,
+            alarmHistory: response.data || [],
             isLoading: false
           });
         } catch (error) {
@@ -118,13 +144,13 @@ export const useAlarmStore = create<AlarmState>()(
         }
       },
 
-      acknowledgeAlarm: async (alarmId) => {
+      acknowledgeAlarm: async (deviceId: string, alarmId: number, recordId: string) => {
         try {
-          await bacnetAlarmsApi.acknowledgeAlarm(alarmId);
+          await bacnetAlarmsApi.acknowledgeAlarm(deviceId, alarmId, recordId);
 
-          set((state) => ({
+          set((state: AlarmState) => ({
             activeAlarms: state.activeAlarms.map((alarm) =>
-              alarm.id === alarmId
+              alarm.id === recordId
                 ? { ...alarm, status: 'acknowledged' as AlarmStatus }
                 : alarm
             ),
@@ -136,11 +162,19 @@ export const useAlarmStore = create<AlarmState>()(
         }
       },
 
-      acknowledgeAll: async () => {
+      acknowledgeAll: async (deviceId: string) => {
         try {
-          await bacnetAlarmsApi.acknowledgeAll();
+          // Acknowledge each active alarm individually
+          const { activeAlarms } = get();
+          const ackPromises = activeAlarms
+            .filter(alarm => alarm.status === 'active')
+            .map(alarm =>
+              bacnetAlarmsApi.acknowledgeAlarm(deviceId, alarm.objectId, alarm.id)
+            );
 
-          set((state) => ({
+          await Promise.all(ackPromises);
+
+          set((state: AlarmState) => ({
             activeAlarms: state.activeAlarms.map((alarm) => ({
               ...alarm,
               status: 'acknowledged' as AlarmStatus,
@@ -153,12 +187,12 @@ export const useAlarmStore = create<AlarmState>()(
         }
       },
 
-      clearAlarm: async (alarmId) => {
+      clearAlarm: async (deviceId: string, alarmId: number, recordId: string) => {
         try {
-          await bacnetAlarmsApi.clearAlarm(alarmId);
+          await bacnetAlarmsApi.clearAlarm(deviceId, alarmId, recordId);
 
-          set((state) => ({
-            activeAlarms: state.activeAlarms.filter((alarm) => alarm.id !== alarmId),
+          set((state: AlarmState) => ({
+            activeAlarms: state.activeAlarms.filter((alarm) => alarm.id !== recordId),
           }));
         } catch (error) {
           set({
@@ -168,8 +202,8 @@ export const useAlarmStore = create<AlarmState>()(
       },
 
       // Filter and sort
-      setFilter: (filter) => {
-        set((state) => ({
+      setFilter: (filter: Partial<AlarmFilter>) => {
+        set((state: AlarmState) => ({
           filter: { ...state.filter, ...filter },
         }));
       },
@@ -178,16 +212,16 @@ export const useAlarmStore = create<AlarmState>()(
         set({ filter: {} });
       },
 
-      setSortBy: (sortBy) => {
+      setSortBy: (sortBy: 'timestamp' | 'severity' | 'device') => {
         set({ sortBy });
       },
 
-      setSortOrder: (order) => {
+      setSortOrder: (order: 'asc' | 'desc') => {
         set({ sortOrder: order });
       },
 
       // Selection
-      selectAlarm: (alarmId) => {
+      selectAlarm: (alarmId: string | null) => {
         set({ selectedAlarmId: alarmId });
       },
 
@@ -199,9 +233,20 @@ export const useAlarmStore = create<AlarmState>()(
 
         // Apply filters
         if (filter.severity && filter.severity.length > 0) {
-          filtered = filtered.filter((alarm) =>
-            filter.severity!.includes(alarm.severity)
-          );
+          // Convert severity to priority ranges for filtering
+          const priorityRanges: Record<AlarmSeverity, [number, number]> = {
+            [AlarmSeverity.Critical]: [1, 4],
+            [AlarmSeverity.High]: [5, 8],
+            [AlarmSeverity.Medium]: [9, 12],
+            [AlarmSeverity.Low]: [13, 16],
+          };
+
+          filtered = filtered.filter((alarm) => {
+            return filter.severity!.some(sev => {
+              const [min, max] = priorityRanges[sev];
+              return alarm.priority >= min && alarm.priority <= max;
+            });
+          });
         }
 
         if (filter.status && filter.status.length > 0) {
@@ -233,8 +278,8 @@ export const useAlarmStore = create<AlarmState>()(
               comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
               break;
             case 'severity':
-              const severityOrder = { critical: 3, high: 2, medium: 1, low: 0 };
-              comparison = (severityOrder[a.severity] || 0) - (severityOrder[b.severity] || 0);
+              // Lower priority number = higher severity
+              comparison = a.priority - b.priority;
               break;
             case 'device':
               comparison = (a.deviceName || '').localeCompare(b.deviceName || '');
@@ -252,10 +297,11 @@ export const useAlarmStore = create<AlarmState>()(
       },
 
       getCriticalAlarmsCount: () => {
-        return get().activeAlarms.filter((alarm) => alarm.severity === 'critical').length;
+        // Priority 1-4 are critical
+        return get().activeAlarms.filter((alarm) => alarm.priority >= 1 && alarm.priority <= 4).length;
       },
 
-      getAlarmsByDevice: (deviceId) => {
+      getAlarmsByDevice: (deviceId: string) => {
         return get().activeAlarms.filter((alarm) => alarm.deviceId === deviceId);
       },
 

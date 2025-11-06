@@ -13,7 +13,7 @@ import { devtools, persist } from 'zustand/middleware';
 import type { User, LoginCredentials, UserRole, Permission } from '@common/types/auth';
 import { authApi } from '@common/api/auth';
 
-interface AuthState {
+export interface AuthState {
   // State
   user: User | null;
   token: string | null;
@@ -66,7 +66,7 @@ export const useAuthStore = create<AuthState>()(
         ...initialState,
 
         // Auth actions
-        login: async (credentials) => {
+        login: async (credentials: LoginCredentials) => {
           set({ isLoading: true, error: null });
           try {
             const response = await authApi.login(credentials);
@@ -140,7 +140,7 @@ export const useAuthStore = create<AuthState>()(
         },
 
         // User management
-        updateProfile: async (updates) => {
+        updateProfile: async (updates: Partial<User>) => {
           set({ isLoading: true, error: null });
           try {
             const response = await authApi.updateProfile(updates);
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        changePassword: async (currentPassword, newPassword) => {
+        changePassword: async (currentPassword: string, newPassword: string) => {
           set({ isLoading: true, error: null });
           try {
             await authApi.changePassword({ currentPassword, newPassword });
@@ -174,21 +174,21 @@ export const useAuthStore = create<AuthState>()(
         },
 
         // Permissions
-        hasPermission: (permission) => {
+        hasPermission: (permission: Permission) => {
           const { user } = get();
           if (!user) return false;
 
           return user.permissions?.includes(permission) ?? false;
         },
 
-        hasRole: (role) => {
+        hasRole: (role: UserRole) => {
           const { user } = get();
           if (!user) return false;
 
           return user.role === role;
         },
 
-        canAccessWindow: (windowId) => {
+        canAccessWindow: (windowId: number) => {
           const { user } = get();
           if (!user) return false;
 
@@ -222,7 +222,7 @@ export const useAuthStore = create<AuthState>()(
           return false; // Session still valid
         },
 
-        setSessionTimeout: (timeout) => {
+        setSessionTimeout: (timeout: number) => {
           set({ sessionTimeout: timeout });
         },
 
@@ -239,7 +239,7 @@ export const useAuthStore = create<AuthState>()(
       }),
       {
         name: 't3000-auth-store',
-        partialize: (state) => ({
+        partialize: (state: AuthState) => ({
           user: state.user,
           token: state.token,
           isAuthenticated: state.isAuthenticated,

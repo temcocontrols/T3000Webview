@@ -20,6 +20,24 @@ export {
   WINDOW_REMOTE_POINT,
 } from '../../common/types/window';
 
+// Window IDs object for convenience
+export const WINDOW_IDS = {
+  HOME: 0,
+  INPUT: 1,
+  OUTPUT: 2,
+  VARIABLE: 3,
+  PROGRAM: 4,
+  CONTROLLER: 7,
+  SCREEN: 8,
+  WEEKLY: 5,
+  ANNUAL: 6,
+  MONITOR: 9,
+  ALARMLOG: 10,
+  SETTING: 11,
+  ARRAY: 14,
+  REMOTE_POINT: 13,
+} as const;
+
 // Re-export layout dimensions from theme
 export {
   layoutDimensions,

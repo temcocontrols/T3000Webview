@@ -753,8 +753,8 @@ import FileUpload from "../../components/Hvac/FileUpload.vue";
 import TopToolbar from "../../components/Hvac/TopToolbar.vue";
 import ToolsSidebar from "../../components/Hvac/ToolsSidebar.vue";
 import ObjectConfig from "../../components/Hvac/ObjectConfig.vue";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data, user,*/ /*globalNav,*/ demoDeviceData } from "../../lib/common";
-import { liveApi } from "../../lib/api";
+import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data, user,*/ /*globalNav,*/ demoDeviceData } from "@/lib/common.js";
+import { liveApi } from "@/lib/api.js";
 import CanvasType from "@t3-vue/components/Hvac/CanvasType.vue";
 import CanvasShape from "@t3-vue/components/Hvac/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
@@ -782,7 +782,7 @@ import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, /*user,*/ library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
-} from '../../lib/T3000/Hvac/Data/T3Data'
+} from '@/lib/T3000/Hvac/Data/T3Data.js'
 
 import {
   scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible,
@@ -791,7 +791,7 @@ import {
 
 import IdxPage from "@common/T3000/Hvac/Opt/Common/IdxPage";
 
-import { user } from "../../lib/T3000/Hvac/Data/T3Data";
+import { user } from "@/lib/T3000/Hvac/Data/T3Data.js";
 import LogUtil from "@common/T3000/Hvac/Util/LogUtil";
 
 import ScheduleModal from "@t3-vue/components/NewUI/ScheduleModal.vue";

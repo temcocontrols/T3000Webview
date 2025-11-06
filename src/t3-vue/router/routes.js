@@ -102,158 +102,158 @@ async function loadComponentWithRetry(importFn, name, maxRetries, retryDelay, ti
 const routes = [
   {
     path: "/",
-    component: createOptimizedComponent(() => import("layouts/MainLayout.vue"), "MainLayout", { category: 'critical' }),
+    component: createOptimizedComponent(() => import("../layouts/MainLayout.vue"), "MainLayout", { category: 'critical' }),
     children: [
       {
         path: "",
         name: "home",
-        component: createOptimizedComponent(() => import("pages/HvacDrawer/IndexPage.vue"), "HvacIndexPage", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/HvacDrawer/IndexPage.vue"), "HvacIndexPage", { category: 'normal' }),
       },
       {
         path: "login",
-        component: createOptimizedComponent(() => import("pages/LoginPage.vue"), "LoginPage", { category: 'fast' })
+        component: createOptimizedComponent(() => import("../pages/LoginPage.vue"), "LoginPage", { category: 'fast' })
       },
     ],
   },
   {
     path: "/trend-log",
-    component: createOptimizedComponent(() => import("layouts/TrendLogLayout.vue"), "TrendLogLayout", { category: 'critical' }),
+    component: createOptimizedComponent(() => import("../layouts/TrendLogLayout.vue"), "TrendLogLayout", { category: 'critical' }),
     children: [
       {
         path: "",
-        component: createOptimizedComponent(() => import("pages/TrendLog/IndexPageSocket.vue"), "IndexPageSocket", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/TrendLog/IndexPageSocket.vue"), "IndexPageSocket", { category: 'normal' }),
       }
     ],
   },
   {
     path: '/new',
-    component: createOptimizedComponent(() => import('layouts/MainLayout2.vue'), "MainLayout2", { category: 'critical' }),
+    component: createOptimizedComponent(() => import('../layouts/MainLayout2.vue'), "MainLayout2", { category: 'critical' }),
     children: [
       {
         path: '',
-        component: createOptimizedComponent(() => import('src/pages/V2/Dashboard.vue'), "V2Dashboard", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/Dashboard.vue'), "V2Dashboard", { category: 'normal' })
       },
       {
         path: 'dashboard',
-        component: createOptimizedComponent(() => import('src/pages/V2/Dashboard.vue'), "V2Dashboard", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/Dashboard.vue'), "V2Dashboard", { category: 'normal' })
       },
       {
         path: 'new-ui',
-        component: createOptimizedComponent(() => import('src/components/NewUI/IndexPage2.vue'), "NewUIIndexPage2", { category: 'slow' })
+        component: createOptimizedComponent(() => import('../components/NewUI/IndexPage2.vue'), "NewUIIndexPage2", { category: 'slow' })
       },
       {
         path: 'app-library',
-        component: createOptimizedComponent(() => import('src/pages/V2/AppLibrary.vue'), "V2AppLibrary", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/AppLibrary.vue'), "V2AppLibrary", { category: 'normal' })
       },
       {
         path: 'modbus-register',
-        component: createOptimizedComponent(() => import('src/pages/V2/ModbusRegister.vue'), "V2ModbusRegister", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/ModbusRegister.vue'), "V2ModbusRegister", { category: 'normal' })
       },
       {
         path: 'schedules',
-        component: createOptimizedComponent(() => import('src/pages/V2/Schedules.vue'), "V2Schedules", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/Schedules.vue'), "V2Schedules", { category: 'normal' })
       },
       {
         path: 'holidays',
-        component: createOptimizedComponent(() => import('src/pages/V2/Schedules.vue'), "V2Holidays", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/Schedules.vue'), "V2Holidays", { category: 'normal' })
       },
       {
         path: 'timeseries-dashboard',
-        component: createOptimizedComponent(() => import('src/pages/V2/TrendLogDashboard.vue'), "TrendLogDashboard", { category: 'normal' })
+        component: createOptimizedComponent(() => import('../pages/V2/TrendLogDashboard.vue'), "TrendLogDashboard", { category: 'normal' })
       }
     ]
   },
   {
     path: "/hvac",
-    component: createOptimizedComponent(() => import("layouts/MainLayout.vue"), "HvacMainLayout", { category: 'critical' }),
+    component: createOptimizedComponent(() => import("../layouts/MainLayout.vue"), "HvacMainLayout", { category: 'critical' }),
     children: [
       {
         path: "t2",
         name: "hvac2",
-        component: createOptimizedComponent(() => import("src/components/NewUI/IndexPage2.vue"), "HvacIndexPage2", { category: 'slow' }),
+        component: createOptimizedComponent(() => import("../components/NewUI/IndexPage2.vue"), "HvacIndexPage2", { category: 'slow' }),
       },
       {
         path: "schedules",
         name: "schedules",
-        component: createOptimizedComponent(() => import("src/pages/V2/Schedules.vue"), "HvacSchedules", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/V2/Schedules.vue"), "HvacSchedules", { category: 'normal' }),
       },
       {
         path: "library",
         name: "library",
-        component: createOptimizedComponent(() => import("src/components/NewUI/NewLibrary.vue"), "HvacNewLibrary", { category: 'slow' }),
+        component: createOptimizedComponent(() => import("../components/NewUI/NewLibrary.vue"), "HvacNewLibrary", { category: 'slow' }),
       }
     ],
   },
   {
     path: "/apps-library",
-    component: createOptimizedComponent(() => import("layouts/AppsLibLayout.vue"), "AppsLibLayout", { category: 'normal' }),
+    component: createOptimizedComponent(() => import("../layouts/AppsLibLayout.vue"), "AppsLibLayout", { category: 'normal' }),
     children: [
       {
         path: "",
-        component: createOptimizedComponent(() => import("pages/AppsLibrary/IndexPage.vue"), "AppsLibIndexPage", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/AppsLibrary/IndexPage.vue"), "AppsLibIndexPage", { category: 'normal' }),
       },
       {
         path: "create",
-        component: createOptimizedComponent(() => import("pages/AppsLibrary/CreateApp.vue"), "AppsLibCreateApp", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/AppsLibrary/CreateApp.vue"), "AppsLibCreateApp", { category: 'normal' }),
       },
       {
         path: ":id/edit",
-        component: createOptimizedComponent(() => import("pages/AppsLibrary/EditApp.vue"), "AppsLibEditApp", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/AppsLibrary/EditApp.vue"), "AppsLibEditApp", { category: 'normal' }),
       },
       {
         path: "user/apps",
-        component: createOptimizedComponent(() => import("pages/AppsLibrary/UserApps.vue"), "AppsLibUserApps", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/AppsLibrary/UserApps.vue"), "AppsLibUserApps", { category: 'normal' }),
       },
     ],
   },
   {
     path: "/modbus-register",
-    component: createOptimizedComponent(() => import("layouts/ModbusRegLayout.vue"), "ModbusRegLayout", { category: 'normal' }),
+    component: createOptimizedComponent(() => import("../layouts/ModbusRegLayout.vue"), "ModbusRegLayout", { category: 'normal' }),
     children: [
       {
         path: "",
-        component: createOptimizedComponent(() => import("pages/ModbusRegister/IndexPage.vue"), "ModbusRegIndexPage", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/ModbusRegister/IndexPage.vue"), "ModbusRegIndexPage", { category: 'normal' }),
       },
     ],
   },
   {
     path: "/dashboard",
-    component: createOptimizedComponent(() => import("layouts/MainLayout2.vue"), "ModbusRegLayout", { category: 'normal' }),
+    component: createOptimizedComponent(() => import("../layouts/MainLayout2.vue"), "ModbusRegLayout", { category: 'normal' }),
     children: [
       {
         path: "",
-        component: createOptimizedComponent(() => import("src/pages/Dashboard/T3DeviceDb.vue"), "T3DeviceDBPage", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../pages/Dashboard/T3DeviceDb.vue"), "T3DeviceDBPage", { category: 'normal' }),
       },
     ],
   },
   {
     path: "/database",
-    component: createOptimizedComponent(() => import("layouts/MainLayout2.vue"), "DatabaseLayout", { category: 'normal' }),
+    component: createOptimizedComponent(() => import("../layouts/MainLayout2.vue"), "DatabaseLayout", { category: 'normal' }),
     children: [
       {
         path: "",
         name: "database",
-        component: createOptimizedComponent(() => import("src/components/Database/DatabaseManagementPage.vue"), "DatabaseManagementPage", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../components/Database/DatabaseManagementPage.vue"), "DatabaseManagementPage", { category: 'normal' }),
       },
       {
         path: "settings",
         name: "database-settings",
-        component: createOptimizedComponent(() => import("src/components/Database/ApplicationSettingsPanel.vue"), "ApplicationSettingsPanel", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../components/Database/ApplicationSettingsPanel.vue"), "ApplicationSettingsPanel", { category: 'normal' }),
       },
       {
         path: "partitions",
         name: "database-partitions",
-        component: createOptimizedComponent(() => import("src/components/Database/DatabasePartitionsPanel.vue"), "DatabasePartitionsPanel", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../components/Database/DatabasePartitionsPanel.vue"), "DatabasePartitionsPanel", { category: 'normal' }),
       },
       {
         path: "monitoring",
         name: "database-monitoring",
-        component: createOptimizedComponent(() => import("src/components/Database/MonitoringStatsPanel.vue"), "MonitoringStatsPanel", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../components/Database/MonitoringStatsPanel.vue"), "MonitoringStatsPanel", { category: 'normal' }),
       },
       {
         path: "tools",
         name: "database-tools",
-        component: createOptimizedComponent(() => import("src/components/Database/ManagementToolsPanel.vue"), "ManagementToolsPanel", { category: 'normal' }),
+        component: createOptimizedComponent(() => import("../components/Database/ManagementToolsPanel.vue"), "ManagementToolsPanel", { category: 'normal' }),
       },
     ],
   },
@@ -265,13 +265,13 @@ const routes = [
   // Error fallback page for severe failures
   {
     path: "/error-fallback",
-    component: createOptimizedComponent(() => import("pages/V2/PageFallback.vue"), "PageFallback", { category: 'fast' }),
+    component: createOptimizedComponent(() => import("../pages/V2/PageFallback.vue"), "PageFallback", { category: 'fast' }),
   },
   // Always leave this as last one,
   // but you can also remove it
   {
     path: "/:catchAll(.*)*",
-    component: createOptimizedComponent(() => import("pages/V2/ErrorNotFound.vue"), "ErrorNotFound", { category: 'fast' }),
+    component: createOptimizedComponent(() => import("../pages/V2/ErrorNotFound.vue"), "ErrorNotFound", { category: 'fast' }),
   },
 ];
 
