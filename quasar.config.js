@@ -85,7 +85,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.resolve.alias['@'] = require('path').resolve(__dirname, 'src');
         viteConf.resolve.alias['@t3-vue'] = require('path').resolve(__dirname, 'src/t3-vue');
         viteConf.resolve.alias['@t3-react'] = require('path').resolve(__dirname, 'src/t3-react');
-        viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/common');
+        viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/lib');
 
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};

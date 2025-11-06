@@ -80,46 +80,129 @@ Both apps share:
 
 ## Project Structure
 
+### Current Structure (Before Reorganization)
+
 ```
 T3000Webview5/
 ├── src/
-│   ├── t3-vue/              # Vue 3 + Quasar application
+│   ├── t3-vue/              # Vue 3 + Quasar UI layer
 │   │   ├── App.vue
 │   │   ├── pages/           # Vue pages
 │   │   ├── components/      # Vue components
 │   │   ├── layouts/         # Vue layouts
 │   │   └── router/          # Vue Router config
 │   │
-│   ├── t3-react/            # React 18 + Fluent UI application
+│   ├── t3-react/            # React 18 + Fluent UI layer
 │   │   ├── App.tsx
-│   │   ├── types/           # TypeScript type definitions (12 files)
-│   │   ├── api/             # API layer (17 files)
 │   │   ├── config/          # Configuration files (6 files)
 │   │   ├── store/           # Zustand stores (9 files)
 │   │   ├── hooks/           # Custom React hooks (9 files)
-│   │   ├── layouts/         # Layout components (4 files)
-│   │   ├── components/      # Shared components (11 files)
+│   │   ├── layout/          # Layout components (4 files)
+│   │   ├── components/      # UI components (11 files)
 │   │   ├── pages/           # React pages (14 files)
 │   │   └── router/          # React Router config
 │   │
-│   ├── shared/              # Shared between Vue & React
-│   │   ├── api/             # API client (Axios)
-│   │   ├── auth/            # Authentication service
-│   │   ├── state/           # Cross-framework state sharing
-│   │   └── routes.ts        # Route constants & navigation
+│   ├── lib/                 # Legacy Vue code (JavaScript)
+│   │   ├── T3000/           # Old T3000 business logic
+│   │   ├── Database/        # Old database code
+│   │   ├── Store/           # Old Vue stores
+│   │   ├── common.js        # Vue utilities (user, globalNav, etc.)
+│   │   └── api.js           # Vue API client
 │   │
-│   ├── common/              # Common utilities (legacy)
-│   │   ├── api/
-│   │   ├── types/
-│   │   └── utils/
+│   ├── common/              # Shared TypeScript foundation
+│   │   ├── types/           # TypeScript interfaces (12 files)
+│   │   ├── api/             # Modern API modules (17 files)
+│   │   ├── auth/            # Authentication utilities
+│   │   ├── state/           # Cross-framework state bridge
+│   │   └── utils/           # Common utilities
+│   │
+│   ├── shared/              # Route utilities & navigation
+│   │   └── routes.ts        # Route constants & navigation helpers
 │   │
 │   └── boot/
 │       └── react.tsx        # Route-based React initialization
 │
 ├── package.json             # Both Vue & React dependencies
 ├── quasar.config.js         # Quasar CLI configuration
-├── vite.config.ts           # Vite configuration
 └── tsconfig.json            # TypeScript configuration
+```
+
+### Planned Structure (After Reorganization)
+
+**Goal**: Consolidate `lib/` and `common/` into a unified `lib/` with clear separation by framework.
+
+```
+T3000Webview5/
+├── src/
+│   ├── t3-vue/              # Vue UI layer ONLY
+│   │   ├── App.vue
+│   │   ├── pages/           # Vue pages
+│   │   ├── components/      # Vue components
+│   │   ├── layouts/         # Vue layouts
+│   │   └── router/          # Vue Router config
+│   │
+│   ├── t3-react/            # React UI layer ONLY
+│   │   ├── App.tsx
+│   │   ├── config/          # Configuration files
+│   │   ├── store/           # Zustand stores
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── layout/          # Layout components
+│   │   ├── components/      # UI components
+│   │   ├── pages/           # React pages
+│   │   └── router/          # React Router config
+│   │
+│   ├── lib/                 # Unified library code
+│   │   ├── vue/             # Vue-specific legacy code
+│   │   │   ├── T3000/       # Old T3000 business logic
+│   │   │   ├── Database/    # Old database code
+│   │   │   ├── Store/       # Old Vue stores
+│   │   │   ├── common.js    # Vue utilities
+│   │   │   └── api.js       # Vue API client
+│   │   │
+│   │   ├── react/           # React-specific modern code
+│   │   │   ├── types/       # TypeScript interfaces (12 files)
+│   │   │   ├── api/         # Modern API modules (17 files)
+│   │   │   ├── constants.ts # React constants
+│   │   │   └── utils/       # React utilities
+│   │   │
+│   │   └── shared/          # Truly shared between both
+│   │       ├── auth/        # Authentication (both use)
+│   │       ├── state/       # Cross-framework state bridge
+│   │       ├── routes.ts    # Route constants & navigation
+│   │       └── utils/       # Common utilities
+│   │
+│   └── boot/
+│       └── react.tsx        # Route-based React initialization
+│
+├── package.json
+├── quasar.config.js
+└── tsconfig.json
+```
+
+### Structure Benefits
+
+✅ **Clear Separation**: Each framework's library code is isolated (`vue/`, `react/`, `shared/`)
+✅ **No Duplication**: Distinct purpose for each subfolder
+✅ **Logical Grouping**: All library code unified under `lib/`
+✅ **Easy Navigation**: Know exactly where to find code
+✅ **Migration Path**: Move files from `vue/` to `shared/` as Vue components modernize
+
+### Import Patterns
+
+**Before Reorganization**:
+```typescript
+// Confusing - two "common" locations
+import { user } from '@/lib/common.js'           // Vue legacy
+import { Device } from '@/common/types/device'   // React new
+import { AuthService } from '@/common/auth'      // Shared
+```
+
+**After Reorganization**:
+```typescript
+// Clear - framework explicit
+import { user } from '@/lib/vue/common.js'       // Vue legacy
+import { Device } from '@/lib/react/types/device' // React new
+import { AuthService } from '@/lib/shared/auth'   // Both use
 ```
 
 ---
@@ -454,7 +537,7 @@ const unsubscribe = EventBus.on(SHARED_EVENTS.DEVICE_SELECTED, (device) => {
 **Guidelines**:
 - ✅ **New pages**: Always use React + Fluent UI
 - ✅ **New features for existing Vue pages**: Keep in Vue
-- ✅ **Shared utilities**: Put in `src/shared/` or `src/common/`
+- ✅ **Shared utilities**: Put in `src/lib/shared/`
 - ✅ **New components for both**: Create in both frameworks or use web components
 
 ---
@@ -530,7 +613,7 @@ VITE_WS_URL=ws://127.0.0.1:8080/ws
 - `@t3-vue/` → `src/t3-vue/`
 - `@t3-react/` → `src/t3-react/`
 - `@shared/` → `src/shared/`
-- `@common/` → `src/common/`
+- `@common/` → `src/lib/`
 
 ### Issue: Authentication not working
 
