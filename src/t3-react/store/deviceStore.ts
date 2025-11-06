@@ -10,8 +10,8 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { TreeNode } from '@common/types/tree';
-import { devicesApi } from '@common/api/devices';
+import type { TreeNode } from '@common/types/device';
+import * as devicesApi from '@common/api/devices';
 
 interface DeviceState {
   // State
@@ -73,9 +73,9 @@ export const useDeviceStore = create<DeviceState>()(
         loadDevices: async () => {
           set({ isLoading: true, error: null });
           try {
-            const response = await devicesApi.getAllDevices();
+            const response = await devicesApi.getDevices();
             set({
-              devices: response.data,
+              devices: response.data || [],
               isLoading: false,
               error: null
             });

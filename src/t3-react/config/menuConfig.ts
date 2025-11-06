@@ -488,6 +488,11 @@ export const topMenuConfig: MenuItem[] = [
 ];
 
 /**
+ * Alias for compatibility
+ */
+export const menuConfig = topMenuConfig;
+
+/**
  * Get menu item by ID (helper function)
  */
 export function getMenuItemById(id: string): MenuItem | undefined {

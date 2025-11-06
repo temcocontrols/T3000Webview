@@ -6,8 +6,8 @@
 import { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { t3000Routes } from './routes';
-import MainLayout from '../layouts/MainLayout';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import { MainLayout } from '../layout';
+import { LoadingSpinner } from '../components';
 
 /**
  * App Router Component

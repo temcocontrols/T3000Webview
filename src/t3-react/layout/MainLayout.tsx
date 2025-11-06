@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { Header } from './Header';
 import { TreePanel } from './TreePanel';
@@ -60,11 +61,7 @@ const useStyles = makeStyles({
   },
 });
 
-interface MainLayoutProps {
-  children: React.ReactNode;
-}
-
-export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+export const MainLayout: React.FC = () => {
   const styles = useStyles();
 
   const isLeftPanelVisible = useUiStore((state) => state.isLeftPanelVisible);
@@ -141,7 +138,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
         {/* Main Content Area */}
         <div className={styles.mainContent}>
-          {children}
+          <Outlet />
         </div>
 
         {/* Right Panel - Properties/Details */}

@@ -7,27 +7,27 @@ import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 
 // Lazy load page components for code splitting
-const HomePage = lazy(() => import('../pages/HomePage'));
-const InputsPage = lazy(() => import('../pages/inputs/InputsPage'));
-const OutputsPage = lazy(() => import('../pages/outputs/OutputsPage'));
-const VariablesPage = lazy(() => import('../pages/variables/VariablesPage'));
-const ProgramsPage = lazy(() => import('../pages/programs/ProgramsPage'));
-const ControllersPage = lazy(() => import('../pages/controllers/ControllersPage'));
-const GraphicsPage = lazy(() => import('../pages/graphics/GraphicsPage'));
-const SchedulesPage = lazy(() => import('../pages/schedules/SchedulesPage'));
-const HolidaysPage = lazy(() => import('../pages/holidays/HolidaysPage'));
-const TrendLogsPage = lazy(() => import('../pages/trend-logs/TrendLogsPage'));
-const AlarmsPage = lazy(() => import('../pages/alarms/AlarmsPage'));
-const NetworkPage = lazy(() => import('../pages/network/NetworkPage'));
-const ArrayPage = lazy(() => import('../pages/array/ArrayPage'));
-const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
+const HomePage = lazy(() => import('../pages').then(m => ({ default: m.HomePage })));
+const InputsPage = lazy(() => import('../pages').then(m => ({ default: m.InputsPage })));
+const OutputsPage = lazy(() => import('../pages').then(m => ({ default: m.OutputsPage })));
+const VariablesPage = lazy(() => import('../pages').then(m => ({ default: m.VariablesPage })));
+const ProgramsPage = lazy(() => import('../pages').then(m => ({ default: m.ProgramsPage })));
+const ControllersPage = lazy(() => import('../pages').then(m => ({ default: m.ControllersPage })));
+const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.GraphicsPage })));
+const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
+const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
+const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
+const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsPage })));
+const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
+const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
+const SettingsPage = lazy(() => import('../pages').then(m => ({ default: m.SettingsPage })));
 
 /**
  * Route configuration with metadata
  */
 export interface T3000Route {
   path: string;
-  element: React.LazyExoticComponent<() => JSX.Element>;
+  element: React.LazyExoticComponent<React.FC>;
   title: string;
   windowId?: number;
   shortcut?: string;
@@ -154,7 +154,7 @@ export const t3000Routes: T3000Route[] = [
 export function getRouteObjects(): RouteObject[] {
   return t3000Routes.map((route) => ({
     path: route.path,
-    element: route.element,
+    element: route.element as any, // React Router accepts lazy components
   }));
 }
 

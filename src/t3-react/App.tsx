@@ -9,7 +9,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import { ErrorBoundary, NotificationProvider } from '@t3-react/components';
 import { MainLayout } from '@t3-react/layout';
-import { t3000Routes } from '@t3-react/router';
 import { useAuthStore } from '@t3-react/store';
 
 // Lazy load pages
@@ -61,7 +60,7 @@ const SettingsPage = React.lazy(() =>
  * Redirects to login if not authenticated
  */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore((state: any) => state.isAuthenticated);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -85,188 +84,129 @@ export const App: React.FC = () => {
               {/* Redirect root to T3000 home */}
               <Route path="/" element={<Navigate to="/t3000" replace />} />
 
-              {/* T3000 Routes - All protected */}
+              {/* T3000 Routes - All protected with MainLayout wrapper */}
               <Route
                 path="/t3000"
                 element={
                   <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <HomePage />
-                      </React.Suspense>
-                    </MainLayout>
+                    <MainLayout />
                   </ProtectedRoute>
                 }
-              />
-
-              <Route
-                path="/t3000/inputs"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <InputsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/outputs"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <OutputsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/variables"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <VariablesPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/programs"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <ProgramsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/controllers"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <ControllersPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/graphics"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <GraphicsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/schedules"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <SchedulesPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/holidays"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <HolidaysPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/trendlogs"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <TrendLogsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/alarms"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <AlarmsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/network"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <NetworkPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/array"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <ArrayPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/t3000/settings"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <SettingsPage />
-                      </React.Suspense>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
+              >
+                {/* Nested routes */}
+                <Route
+                  index
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <HomePage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="inputs"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <InputsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="outputs"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <OutputsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="variables"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <VariablesPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="programs"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <ProgramsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="controllers"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <ControllersPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="graphics"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <GraphicsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="schedules"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <SchedulesPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="holidays"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <HolidaysPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="trendlogs"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <TrendLogsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="alarms"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <AlarmsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="network"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <NetworkPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="array"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <ArrayPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <SettingsPage />
+                    </React.Suspense>
+                  }
+                />
+              </Route>
 
               {/* Fallback route */}
               <Route path="*" element={<Navigate to="/t3000" replace />} />
