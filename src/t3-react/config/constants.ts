@@ -37,7 +37,7 @@ export {
 export const routes = {
   // Root
   home: '/t3000',
-  
+
   // Windows
   inputs: '/t3000/inputs',
   outputs: '/t3000/outputs',
@@ -52,7 +52,7 @@ export const routes = {
   network: '/t3000/network',
   array: '/t3000/array',
   settings: '/t3000/settings',
-  
+
   // Dialogs (handled by query params or modal state)
   discover: '/t3000?dialog=discover',
   buildings: '/t3000?dialog=buildings',

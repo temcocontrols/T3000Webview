@@ -1,6 +1,6 @@
 /**
  * usePolling Hook
- * 
+ *
  * Provides polling functionality for auto-refreshing data
  * Manages polling intervals and lifecycle
  */

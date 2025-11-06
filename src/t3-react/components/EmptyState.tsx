@@ -1,6 +1,6 @@
 /**
  * EmptyState Component
- * 
+ *
  * Placeholder for empty data states
  */
 

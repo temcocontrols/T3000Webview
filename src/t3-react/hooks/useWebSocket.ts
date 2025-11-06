@@ -1,6 +1,6 @@
 /**
  * useWebSocket Hook
- * 
+ *
  * Provides WebSocket connection for real-time data updates
  * Manages connection state and message handling
  */

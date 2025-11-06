@@ -1,6 +1,6 @@
 /**
  * Trend Store - Manages trend data state
- * 
+ *
  * Responsibilities:
  * - Cache trend log configurations
  * - Cache trend data
@@ -24,7 +24,7 @@ interface TrendState {
   // Data
   trendLogs: TrendLogData[];
   trendData: Map<number, TrendDataPoint[]>; // trendLogId -> data points
-  
+
   // Chart configuration
   chartConfigs: TrendChartConfig[];
   timeRange: {
@@ -33,43 +33,43 @@ interface TrendState {
   };
   autoRefresh: boolean;
   refreshInterval: number; // milliseconds
-  
+
   // UI state
   selectedTrendId: number | null;
   isLoading: boolean;
   isLoadingData: boolean;
   error: string | null;
-  
+
   // Trend log management
   loadTrendLogs: (deviceId: number) => Promise<void>;
   loadTrendData: (trendLogId: number, start?: Date, end?: Date) => Promise<void>;
   loadMultipleTrends: (trendLogIds: number[]) => Promise<void>;
   refreshTrendData: (trendLogId: number) => Promise<void>;
-  
+
   // Chart configuration
   addToChart: (trendLogId: number, config?: Partial<TrendChartConfig>) => void;
   removeFromChart: (trendLogId: number) => void;
   updateChartConfig: (trendLogId: number, config: Partial<TrendChartConfig>) => void;
   clearChart: () => void;
-  
+
   // Time range
   setTimeRange: (start: Date, end: Date) => void;
   setTimeRangePreset: (preset: 'hour' | 'day' | 'week' | 'month' | 'year') => void;
-  
+
   // Auto refresh
   setAutoRefresh: (enabled: boolean) => void;
   setRefreshInterval: (interval: number) => void;
-  
+
   // Selection
   selectTrend: (trendLogId: number | null) => void;
-  
+
   // Computed
   getChartData: () => Array<{ trendLogId: number; data: TrendDataPoint[]; config: TrendChartConfig }>;
   getVisibleTrends: () => TrendChartConfig[];
-  
+
   // Export
   exportToCSV: (trendLogIds: number[]) => Promise<string>;
-  
+
   // Utilities
   clearCache: () => void;
   reset: () => void;
@@ -103,12 +103,12 @@ export const useTrendStore = create<TrendState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await bacnetTrendsApi.getTrendLogs(deviceId);
-          set({ 
+          set({
             trendLogs: response.data,
-            isLoading: false 
+            isLoading: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Failed to load trend logs'
           });
@@ -124,18 +124,18 @@ export const useTrendStore = create<TrendState>()(
             start || timeRange.start,
             end || timeRange.end
           );
-          
+
           set((state) => {
             const newTrendData = new Map(state.trendData);
             newTrendData.set(trendLogId, response.data);
-            
+
             return {
               trendData: newTrendData,
               isLoadingData: false,
             };
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingData: false,
             error: error instanceof Error ? error.message : 'Failed to load trend data'
           });
@@ -146,26 +146,26 @@ export const useTrendStore = create<TrendState>()(
         set({ isLoadingData: true, error: null });
         try {
           const { timeRange } = get();
-          
+
           const promises = trendLogIds.map((id) =>
             bacnetTrendsApi.getTrendData(id, timeRange.start, timeRange.end)
           );
-          
+
           const responses = await Promise.all(promises);
-          
+
           set((state) => {
             const newTrendData = new Map(state.trendData);
             trendLogIds.forEach((id, index) => {
               newTrendData.set(id, responses[index].data);
             });
-            
+
             return {
               trendData: newTrendData,
               isLoadingData: false,
             };
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingData: false,
             error: error instanceof Error ? error.message : 'Failed to load multiple trends'
           });
@@ -183,10 +183,10 @@ export const useTrendStore = create<TrendState>()(
           if (state.chartConfigs.some((c) => c.trendLogId === trendLogId)) {
             return state;
           }
-          
+
           const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2'];
           const color = colors[state.chartConfigs.length % colors.length];
-          
+
           const newConfig: TrendChartConfig = {
             trendLogId,
             color,
@@ -194,12 +194,12 @@ export const useTrendStore = create<TrendState>()(
             yAxisId: 'left',
             ...config,
           };
-          
+
           return {
             chartConfigs: [...state.chartConfigs, newConfig],
           };
         });
-        
+
         // Load data for this trend
         get().loadTrendData(trendLogId);
       },
@@ -228,7 +228,7 @@ export const useTrendStore = create<TrendState>()(
       // Time range
       setTimeRange: (start, end) => {
         set({ timeRange: { start, end } });
-        
+
         // Reload data for visible trends
         const visibleTrends = get().getVisibleTrends();
         if (visibleTrends.length > 0) {
@@ -239,7 +239,7 @@ export const useTrendStore = create<TrendState>()(
       setTimeRangePreset: (preset) => {
         const now = new Date();
         let start: Date;
-        
+
         switch (preset) {
           case 'hour':
             start = new Date(now.getTime() - 60 * 60 * 1000);
@@ -257,14 +257,14 @@ export const useTrendStore = create<TrendState>()(
             start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
             break;
         }
-        
+
         get().setTimeRange(start, now);
       },
 
       // Auto refresh
       setAutoRefresh: (enabled) => {
         set({ autoRefresh: enabled });
-        
+
         if (enabled) {
           // Start refresh timer (in real implementation)
           // You'd want to store the timer ID and clear it when disabled
@@ -273,7 +273,7 @@ export const useTrendStore = create<TrendState>()(
 
       setRefreshInterval: (interval) => {
         set({ refreshInterval: interval });
-        
+
         // Restart auto-refresh if active
         if (get().autoRefresh) {
           get().setAutoRefresh(false);
@@ -289,7 +289,7 @@ export const useTrendStore = create<TrendState>()(
       // Computed
       getChartData: () => {
         const { chartConfigs, trendData } = get();
-        
+
         return chartConfigs.map((config) => ({
           trendLogId: config.trendLogId,
           data: trendData.get(config.trendLogId) || [],
@@ -305,42 +305,42 @@ export const useTrendStore = create<TrendState>()(
       exportToCSV: async (trendLogIds) => {
         try {
           const { trendData, trendLogs } = get();
-          
+
           let csv = 'Timestamp';
-          
+
           // Header row
           trendLogIds.forEach((id) => {
             const log = trendLogs.find((l) => l.id === id);
             csv += `,${log?.name || `Trend ${id}`}`;
           });
           csv += '\n';
-          
+
           // Find all unique timestamps
           const timestamps = new Set<number>();
           trendLogIds.forEach((id) => {
             const data = trendData.get(id) || [];
             data.forEach((point) => timestamps.add(new Date(point.timestamp).getTime()));
           });
-          
+
           // Sort timestamps
           const sortedTimestamps = Array.from(timestamps).sort();
-          
+
           // Data rows
           sortedTimestamps.forEach((timestamp) => {
             csv += new Date(timestamp).toISOString();
-            
+
             trendLogIds.forEach((id) => {
               const data = trendData.get(id) || [];
               const point = data.find((p) => new Date(p.timestamp).getTime() === timestamp);
               csv += `,${point?.value ?? ''}`;
             });
-            
+
             csv += '\n';
           });
-          
+
           return csv;
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Export failed'
           });
           return '';

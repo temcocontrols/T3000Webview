@@ -1,6 +1,6 @@
 /**
  * Header Component
- * 
+ *
  * Top application header with:
  * - Menu bar
  * - Toolbar (icon buttons)
@@ -146,7 +146,7 @@ export const Header: React.FC = () => {
                   if (item.divider) {
                     return <MenuDivider key={item.id} />;
                   }
-                  
+
                   return (
                     <MenuItem
                       key={item.id}

@@ -1,18 +1,18 @@
 /**
  * useBacnetApi Hook
- * 
+ *
  * Provides convenient access to BACnet operations
  * Wraps bacnetStore and API calls with loading states
  */
 
 import { useCallback } from 'react';
 import { useBacnetStore, bacnetSelectors } from '@t3-react/store';
-import type { 
-  InputPoint, 
-  OutputPoint, 
+import type {
+  InputPoint,
+  OutputPoint,
   VariablePoint,
   ProgramData,
-  ControllerData 
+  ControllerData
 } from '@common/types/bacnet';
 
 export function useBacnetApi() {

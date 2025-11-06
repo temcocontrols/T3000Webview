@@ -1,6 +1,6 @@
 /**
  * ConfirmDialog Component
- * 
+ *
  * Confirmation dialog for destructive or important actions
  */
 

@@ -1,6 +1,6 @@
 /**
  * Layout Components Index
- * 
+ *
  * Re-exports all layout components
  */
 

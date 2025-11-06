@@ -33,10 +33,10 @@ export default function AppRouter() {
             />
           );
         })}
-        
+
         {/* Redirect root to /t3000 */}
         <Route path="/" element={<Navigate to="/t3000" replace />} />
-        
+
         {/* 404 - redirect to home */}
         <Route path="*" element={<Navigate to="/t3000" replace />} />
       </Route>

@@ -1,6 +1,6 @@
 /**
  * MainLayout Component
- * 
+ *
  * Main application layout shell
  * Composition:
  * - Header (menu, toolbar, breadcrumb)
@@ -66,7 +66,7 @@ interface MainLayoutProps {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const styles = useStyles();
-  
+
   const isLeftPanelVisible = useUiStore((state) => state.isLeftPanelVisible);
   const isRightPanelVisible = useUiStore((state) => state.isRightPanelVisible);
   const leftPanelWidth = useUiStore((state) => state.leftPanelWidth);
@@ -77,7 +77,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Handle left panel resize
   const handleLeftPanelResize = (e: React.MouseEvent) => {
     e.preventDefault();
-    
+
     const startX = e.clientX;
     const startWidth = leftPanelWidth;
 
@@ -99,7 +99,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Handle right panel resize
   const handleRightPanelResize = (e: React.MouseEvent) => {
     e.preventDefault();
-    
+
     const startX = e.clientX;
     const startWidth = rightPanelWidth;
 
@@ -121,7 +121,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <div className={styles.container}>
       <Header />
-      
+
       <div className={styles.body}>
         {/* Left Panel - Tree Navigation */}
         {isLeftPanelVisible && (

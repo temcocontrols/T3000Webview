@@ -1,6 +1,6 @@
 /**
  * useTreeNavigation Hook
- * 
+ *
  * Provides tree navigation functionality
  * Wraps treeStore with convenient helpers
  */
@@ -51,7 +51,7 @@ export function useTreeNavigation() {
     (nodeId: string) => {
       selectNode(nodeId);
       expandNode(nodeId);
-      
+
       // Expand all parent nodes to make selected node visible
       const path = getNodePath(nodeId);
       path.forEach((node) => {

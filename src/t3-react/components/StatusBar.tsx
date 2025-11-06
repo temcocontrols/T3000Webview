@@ -1,6 +1,6 @@
 /**
  * StatusBar Component
- * 
+ *
  * Bottom status bar showing connection status, device info, etc.
  */
 
@@ -40,7 +40,7 @@ const useStyles = makeStyles({
 
 export const StatusBar: React.FC = () => {
   const styles = useStyles();
-  
+
   const { selectedDevice, onlineCount, offlineCount, deviceCount } = useDeviceData();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);

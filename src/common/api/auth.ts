@@ -38,11 +38,11 @@ export interface UserPermissions {
  */
 export async function login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
   const response = await api.post<LoginResponse>('/auth/login', credentials);
-  
+
   if (response.success && response.data) {
     authToken.setToken(response.data.token, credentials.remember || false);
   }
-  
+
   return response;
 }
 
@@ -74,11 +74,11 @@ export async function getUserPermissions(): Promise<ApiResponse<UserPermissions>
  */
 export async function refreshToken(): Promise<ApiResponse<{ token: string }>> {
   const response = await api.post<{ token: string }>('/auth/refresh');
-  
+
   if (response.success && response.data) {
     authToken.setToken(response.data.token, true);
   }
-  
+
   return response;
 }
 

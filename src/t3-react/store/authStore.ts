@@ -1,6 +1,6 @@
 /**
  * Auth Store - Manages authentication state
- * 
+ *
  * Responsibilities:
  * - User authentication
  * - Session management
@@ -20,31 +20,31 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   // Session
   sessionTimeout: number; // milliseconds
   lastActivity: number | null;
-  
+
   // Auth actions
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   validateSession: () => Promise<boolean>;
-  
+
   // User management
   updateProfile: (updates: Partial<User>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  
+
   // Permissions
   hasPermission: (permission: Permission) => boolean;
   hasRole: (role: UserRole) => boolean;
   canAccessWindow: (windowId: number) => boolean;
-  
+
   // Session management
   updateActivity: () => void;
   checkSessionTimeout: () => boolean;
   setSessionTimeout: (timeout: number) => void;
-  
+
   // Utilities
   reset: () => void;
 }
@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true, error: null });
           try {
             const response = await authApi.login(credentials);
-            
+
             set({
               user: response.data.user,
               token: response.data.token,
@@ -106,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: async () => {
           try {
             const response = await authApi.refreshToken();
-            
+
             set({
               token: response.data.token,
               lastActivity: Date.now(),
@@ -122,10 +122,10 @@ export const useAuthStore = create<AuthState>()(
           if (!get().isAuthenticated) {
             return false;
           }
-          
+
           try {
             const response = await authApi.validateSession();
-            
+
             if (response.data.valid) {
               set({ lastActivity: Date.now() });
               return true;
@@ -144,7 +144,7 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true, error: null });
           try {
             const response = await authApi.updateProfile(updates);
-            
+
             set({
               user: response.data,
               isLoading: false,
@@ -162,7 +162,7 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true, error: null });
           try {
             await authApi.changePassword({ currentPassword, newPassword });
-            
+
             set({ isLoading: false });
           } catch (error) {
             set({
@@ -177,24 +177,24 @@ export const useAuthStore = create<AuthState>()(
         hasPermission: (permission) => {
           const { user } = get();
           if (!user) return false;
-          
+
           return user.permissions?.includes(permission) ?? false;
         },
 
         hasRole: (role) => {
           const { user } = get();
           if (!user) return false;
-          
+
           return user.role === role;
         },
 
         canAccessWindow: (windowId) => {
           const { user } = get();
           if (!user) return false;
-          
+
           // Admin can access everything
           if (user.role === 'admin') return true;
-          
+
           // Check window-specific permissions (if implemented)
           // For now, allow all authenticated users
           return true;
@@ -207,18 +207,18 @@ export const useAuthStore = create<AuthState>()(
 
         checkSessionTimeout: () => {
           const { lastActivity, sessionTimeout, isAuthenticated } = get();
-          
+
           if (!isAuthenticated || !lastActivity) {
             return false;
           }
-          
+
           const elapsed = Date.now() - lastActivity;
-          
+
           if (elapsed > sessionTimeout) {
             get().logout();
             return true; // Session timed out
           }
-          
+
           return false; // Session still valid
         },
 

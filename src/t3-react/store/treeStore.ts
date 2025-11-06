@@ -1,6 +1,6 @@
 /**
  * Tree Store - Manages left panel tree navigation state
- * 
+ *
  * Responsibilities:
  * - Tree data structure
  * - Expanded/collapsed nodes
@@ -20,25 +20,25 @@ interface TreeState {
   selectedNodeId: string | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Node expansion
   expandNode: (nodeId: string) => void;
   collapseNode: (nodeId: string) => void;
   toggleNode: (nodeId: string) => void;
   expandAll: () => void;
   collapseAll: () => void;
-  
+
   // Node selection
   selectNode: (nodeId: string | null) => void;
   getSelectedNode: () => TreeNode | null;
-  
+
   // Tree management
   loadTree: () => Promise<void>;
   refreshTree: () => Promise<void>;
   updateNode: (nodeId: string, updates: Partial<TreeNode>) => void;
   addNode: (parentId: string, node: TreeNode) => void;
   removeNode: (nodeId: string) => void;
-  
+
   // Utilities
   findNode: (nodeId: string) => TreeNode | null;
   getNodePath: (nodeId: string) => TreeNode[];
@@ -93,7 +93,7 @@ export const useTreeStore = create<TreeState>()(
             ...(node.children ? getAllNodeIds(node.children) : []),
           ]);
         };
-        
+
         const allIds = getAllNodeIds(get().treeData);
         set({ expandedNodes: new Set(allIds) });
       },
@@ -117,13 +117,13 @@ export const useTreeStore = create<TreeState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await networkApi.getNetworkTree();
-          set({ 
+          set({
             treeData: response.data,
             isLoading: false,
-            error: null 
+            error: null
           });
         } catch (error) {
-          set({ 
+          set({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Failed to load tree'
           });

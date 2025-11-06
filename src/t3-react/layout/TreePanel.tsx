@@ -1,6 +1,6 @@
 /**
  * TreePanel Component
- * 
+ *
  * Left navigation panel with device tree
  * Features:
  * - Hierarchical tree view
@@ -68,7 +68,7 @@ const useStyles = makeStyles({
 
 export const TreePanel: React.FC = () => {
   const styles = useStyles();
-  
+
   const {
     treeData,
     isLoading,
@@ -91,7 +91,7 @@ export const TreePanel: React.FC = () => {
   // Handle node click
   const handleNodeClick = (node: TreeNode) => {
     selectNode(String(node.id));
-    
+
     // If it's a device node, update selected device
     if (node.type === 'device') {
       selectDeviceById(node.id);
@@ -111,7 +111,7 @@ export const TreePanel: React.FC = () => {
   // Handle context menu
   const handleContextMenu = (event: React.MouseEvent, node: TreeNode) => {
     event.preventDefault();
-    
+
     // Determine context menu type based on node type
     const menuType = node.type === 'building' ? 'building' : 'device';
     showContextMenu(event, menuType, node);
@@ -155,7 +155,7 @@ export const TreePanel: React.FC = () => {
         >
           {node.label}
         </TreeItemLayout>
-        
+
         {hasChildren && expanded && (
           <Tree>
             {node.children!.map((child) => renderNode(child))}
@@ -168,7 +168,7 @@ export const TreePanel: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>Building Tree</div>
-      
+
       <div className={styles.treeContainer}>
         {isLoading ? (
           <div className={styles.loadingContainer}>

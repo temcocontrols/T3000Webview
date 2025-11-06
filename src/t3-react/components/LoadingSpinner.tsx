@@ -1,6 +1,6 @@
 /**
  * LoadingSpinner Component
- * 
+ *
  * Reusable loading indicator with optional message
  */
 

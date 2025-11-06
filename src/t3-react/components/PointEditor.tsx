@@ -1,6 +1,6 @@
 /**
  * PointEditor Component
- * 
+ *
  * Universal editor for BACnet points (Input, Output, Variable)
  * Displays point properties in a form
  */

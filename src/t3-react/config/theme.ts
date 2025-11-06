@@ -46,24 +46,24 @@ export const t3000Colors = {
   backgroundPrimary: '#FFFFFF',
   backgroundSecondary: '#FAFAFA',
   backgroundTertiary: '#F5F5F5',
-  
+
   // Borders
   borderDefault: '#E0E0E0',
   borderHover: '#BDBDBD',
   borderActive: '#0078D4',
-  
+
   // Text
   textPrimary: '#333333',
   textSecondary: '#616161',
   textDisabled: '#9E9E9E',
   textOnPrimary: '#FFFFFF',
-  
+
   // Status colors
   statusOnline: '#107C10',
   statusOffline: '#D13438',
   statusWarning: '#FF8C00',
   statusInfo: '#0078D4',
-  
+
   // Component colors
   topMenuBackground: '#F5F5F5',
   toolbarBackground: '#FAFAFA',
@@ -73,7 +73,7 @@ export const t3000Colors = {
   treeHover: '#F0F0F0',
   treeSelected: '#E3F2FD',
   treeSelectedBorder: '#0078D4',
-  
+
   // Data grid colors
   gridHeader: '#F5F5F5',
   gridRow: '#FFFFFF',
@@ -81,7 +81,7 @@ export const t3000Colors = {
   gridRowHover: '#F0F0F0',
   gridRowSelected: '#E3F2FD',
   gridBorder: '#E0E0E0',
-  
+
   // Chart colors
   chartPrimary: '#0078D4',
   chartSecondary: '#107C10',
@@ -89,7 +89,7 @@ export const t3000Colors = {
   chartQuaternary: '#D13438',
   chartGrid: '#E0E0E0',
   chartText: '#333333',
-  
+
   // Alarm priority colors
   alarmPriority1: '#D13438', // Critical - Red
   alarmPriority2: '#FF8C00', // High - Orange

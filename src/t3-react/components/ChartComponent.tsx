@@ -1,6 +1,6 @@
 /**
  * ChartComponent
- * 
+ *
  * ECharts wrapper for displaying trend data
  */
 

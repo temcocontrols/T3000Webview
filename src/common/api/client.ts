@@ -176,7 +176,7 @@ async function handleApiCall<T>(
         message: error.response?.data?.message || error.message || 'An error occurred',
         details: error.response?.data?.details,
       };
-      
+
       return {
         success: false,
         error: apiError,

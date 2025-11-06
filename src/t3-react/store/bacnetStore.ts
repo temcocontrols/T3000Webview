@@ -1,6 +1,6 @@
 /**
  * BACnet Store - Manages BACnet data cache
- * 
+ *
  * Responsibilities:
  * - Cache BACnet points (inputs, outputs, variables)
  * - Cache programs, controllers, schedules, trends, alarms
@@ -10,18 +10,18 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { 
-  InputPoint, 
-  OutputPoint, 
+import type {
+  InputPoint,
+  OutputPoint,
   VariablePoint,
   ProgramData,
   ControllerData,
   ScheduleData,
   TrendLogData,
   AlarmData,
-  GraphicData 
+  GraphicData
 } from '@common/types/bacnet';
-import { 
+import {
   bacnetInputsApi,
   bacnetOutputsApi,
   bacnetVariablesApi,
@@ -44,52 +44,52 @@ interface BacnetState {
   trendLogs: TrendLogData[];
   alarms: AlarmData[];
   graphics: GraphicData[];
-  
+
   // Loading states
   isLoadingInputs: boolean;
   isLoadingOutputs: boolean;
   isLoadingVariables: boolean;
   isLoadingPrograms: boolean;
   isLoadingControllers: boolean;
-  
+
   // Errors
   error: string | null;
-  
+
   // Inputs
   loadInputs: (deviceId: number) => Promise<void>;
   updateInput: (deviceId: number, inputId: number, data: Partial<InputPoint>) => Promise<void>;
   refreshInput: (deviceId: number, inputId: number) => Promise<void>;
-  
+
   // Outputs
   loadOutputs: (deviceId: number) => Promise<void>;
   updateOutput: (deviceId: number, outputId: number, data: Partial<OutputPoint>) => Promise<void>;
   refreshOutput: (deviceId: number, outputId: number) => Promise<void>;
-  
+
   // Variables
   loadVariables: (deviceId: number) => Promise<void>;
   updateVariable: (deviceId: number, variableId: number, data: Partial<VariablePoint>) => Promise<void>;
   refreshVariable: (deviceId: number, variableId: number) => Promise<void>;
-  
+
   // Programs
   loadPrograms: (deviceId: number) => Promise<void>;
   updateProgram: (deviceId: number, programId: number, code: string) => Promise<void>;
-  
+
   // Controllers
   loadControllers: (deviceId: number) => Promise<void>;
   updateController: (deviceId: number, controllerId: number, data: Partial<ControllerData>) => Promise<void>;
-  
+
   // Schedules
   loadSchedules: (deviceId: number) => Promise<void>;
-  
+
   // Trend Logs
   loadTrendLogs: (deviceId: number) => Promise<void>;
-  
+
   // Alarms
   loadAlarms: (deviceId: number) => Promise<void>;
-  
+
   // Graphics
   loadGraphics: (deviceId: number) => Promise<void>;
-  
+
   // Utilities
   clearCache: () => void;
   reset: () => void;
@@ -123,12 +123,12 @@ export const useBacnetStore = create<BacnetState>()(
         set({ isLoadingInputs: true, error: null });
         try {
           const response = await bacnetInputsApi.getInputs(deviceId);
-          set({ 
+          set({
             inputs: response.data,
-            isLoadingInputs: false 
+            isLoadingInputs: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingInputs: false,
             error: error instanceof Error ? error.message : 'Failed to load inputs'
           });
@@ -144,7 +144,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to update input'
           });
         }
@@ -159,7 +159,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to refresh input'
           });
         }
@@ -170,12 +170,12 @@ export const useBacnetStore = create<BacnetState>()(
         set({ isLoadingOutputs: true, error: null });
         try {
           const response = await bacnetOutputsApi.getOutputs(deviceId);
-          set({ 
+          set({
             outputs: response.data,
-            isLoadingOutputs: false 
+            isLoadingOutputs: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingOutputs: false,
             error: error instanceof Error ? error.message : 'Failed to load outputs'
           });
@@ -191,7 +191,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to update output'
           });
         }
@@ -206,7 +206,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to refresh output'
           });
         }
@@ -217,12 +217,12 @@ export const useBacnetStore = create<BacnetState>()(
         set({ isLoadingVariables: true, error: null });
         try {
           const response = await bacnetVariablesApi.getVariables(deviceId);
-          set({ 
+          set({
             variables: response.data,
-            isLoadingVariables: false 
+            isLoadingVariables: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingVariables: false,
             error: error instanceof Error ? error.message : 'Failed to load variables'
           });
@@ -238,7 +238,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to update variable'
           });
         }
@@ -253,7 +253,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to refresh variable'
           });
         }
@@ -264,12 +264,12 @@ export const useBacnetStore = create<BacnetState>()(
         set({ isLoadingPrograms: true, error: null });
         try {
           const response = await bacnetProgramsApi.getPrograms(deviceId);
-          set({ 
+          set({
             programs: response.data,
-            isLoadingPrograms: false 
+            isLoadingPrograms: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingPrograms: false,
             error: error instanceof Error ? error.message : 'Failed to load programs'
           });
@@ -285,7 +285,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to update program'
           });
         }
@@ -296,12 +296,12 @@ export const useBacnetStore = create<BacnetState>()(
         set({ isLoadingControllers: true, error: null });
         try {
           const response = await bacnetControllersApi.getControllers(deviceId);
-          set({ 
+          set({
             controllers: response.data,
-            isLoadingControllers: false 
+            isLoadingControllers: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingControllers: false,
             error: error instanceof Error ? error.message : 'Failed to load controllers'
           });
@@ -317,7 +317,7 @@ export const useBacnetStore = create<BacnetState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to update controller'
           });
         }
@@ -329,7 +329,7 @@ export const useBacnetStore = create<BacnetState>()(
           const response = await bacnetSchedulesApi.getSchedules(deviceId);
           set({ schedules: response.data });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to load schedules'
           });
         }
@@ -341,7 +341,7 @@ export const useBacnetStore = create<BacnetState>()(
           const response = await bacnetTrendsApi.getTrendLogs(deviceId);
           set({ trendLogs: response.data });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to load trend logs'
           });
         }
@@ -353,7 +353,7 @@ export const useBacnetStore = create<BacnetState>()(
           const response = await bacnetAlarmsApi.getAlarms(deviceId);
           set({ alarms: response.data });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to load alarms'
           });
         }
@@ -365,7 +365,7 @@ export const useBacnetStore = create<BacnetState>()(
           const response = await bacnetGraphicsApi.getGraphics(deviceId);
           set({ graphics: response.data });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to load graphics'
           });
         }
@@ -403,9 +403,9 @@ export const bacnetSelectors = {
   variables: (state: BacnetState) => state.variables,
   programs: (state: BacnetState) => state.programs,
   controllers: (state: BacnetState) => state.controllers,
-  isLoading: (state: BacnetState) => 
-    state.isLoadingInputs || 
-    state.isLoadingOutputs || 
+  isLoading: (state: BacnetState) =>
+    state.isLoadingInputs ||
+    state.isLoadingOutputs ||
     state.isLoadingVariables ||
     state.isLoadingPrograms ||
     state.isLoadingControllers,

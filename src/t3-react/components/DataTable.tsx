@@ -1,6 +1,6 @@
 /**
  * DataTable Component
- * 
+ *
  * Reusable data table with sorting, filtering, and pagination
  * Built on Fluent UI Table components
  */
@@ -85,7 +85,7 @@ export function DataTable<T extends Record<string, any>>({
   searchable = true,
 }: DataTableProps<T>) {
   const styles = useStyles();
-  
+
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');

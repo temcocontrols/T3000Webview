@@ -1,6 +1,6 @@
 /**
  * UI Store - Manages UI state
- * 
+ *
  * Responsibilities:
  * - Active window tracking
  * - Panel visibility (left tree, right properties)
@@ -21,28 +21,28 @@ interface UiState {
   // Window state
   activeWindow: number;
   windowHistory: number[];
-  
+
   // Panel visibility
   isLeftPanelVisible: boolean;
   isRightPanelVisible: boolean;
   leftPanelWidth: number;
   rightPanelWidth: number;
-  
+
   // Dialog/Modal state
   activeDialog: DialogState | null;
   dialogStack: DialogState[];
-  
+
   // Layout
   isFullscreen: boolean;
   theme: 'light' | 'dark';
-  
+
   // Window management
   setActiveWindow: (windowId: number) => void;
   goBack: () => void;
   goForward: () => void;
   canGoBack: () => boolean;
   canGoForward: () => boolean;
-  
+
   // Panel management
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
@@ -50,16 +50,16 @@ interface UiState {
   setRightPanelVisible: (visible: boolean) => void;
   setLeftPanelWidth: (width: number) => void;
   setRightPanelWidth: (width: number) => void;
-  
+
   // Dialog management
   openDialog: (id: string, props?: Record<string, any>) => void;
   closeDialog: () => void;
   closeAllDialogs: () => void;
-  
+
   // Layout
   toggleFullscreen: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
-  
+
   // Utilities
   isWindowActive: (windowId: number) => boolean;
   hasActiveDialog: () => boolean;
@@ -95,7 +95,7 @@ export const useUiStore = create<UiState>()(
 
             // Add to history
             const windowHistory = [...state.windowHistory, windowId];
-            
+
             // Keep history to max 50 items
             if (windowHistory.length > 50) {
               windowHistory.shift();
@@ -111,11 +111,11 @@ export const useUiStore = create<UiState>()(
         goBack: () => {
           set((state) => {
             if (state.windowHistory.length <= 1) return state;
-            
+
             const newHistory = [...state.windowHistory];
             newHistory.pop(); // Remove current
             const previousWindow = newHistory[newHistory.length - 1];
-            
+
             return {
               activeWindow: previousWindow,
               windowHistory: newHistory,
@@ -180,7 +180,7 @@ export const useUiStore = create<UiState>()(
             const newStack = [...state.dialogStack];
             newStack.pop();
             const activeDialog = newStack[newStack.length - 1] || null;
-            
+
             return {
               activeDialog,
               dialogStack: newStack,

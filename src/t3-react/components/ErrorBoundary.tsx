@@ -1,6 +1,6 @@
 /**
  * ErrorBoundary Component
- * 
+ *
  * Catches React errors and displays fallback UI
  */
 
@@ -75,7 +75,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo,

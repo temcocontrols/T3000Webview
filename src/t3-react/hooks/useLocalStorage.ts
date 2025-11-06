@@ -1,6 +1,6 @@
 /**
  * useLocalStorage Hook
- * 
+ *
  * Provides localStorage integration with React state
  * Automatically syncs state with localStorage
  */
@@ -89,7 +89,7 @@ export function useLocalStorage<T>(
 
 /**
  * useSessionStorage Hook
- * 
+ *
  * Similar to useLocalStorage but uses sessionStorage
  * Data persists only for the browser session
  */

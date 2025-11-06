@@ -1,6 +1,6 @@
 /**
  * Alarm Store - Manages alarm state
- * 
+ *
  * Responsibilities:
  * - Cache active alarms
  * - Alarm history
@@ -24,39 +24,39 @@ interface AlarmState {
   // Data
   activeAlarms: AlarmData[];
   alarmHistory: AlarmData[];
-  
+
   // Filter and sort
   filter: AlarmFilter;
   sortBy: 'timestamp' | 'severity' | 'device';
   sortOrder: 'asc' | 'desc';
-  
+
   // UI state
   selectedAlarmId: number | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Alarm management
   loadActiveAlarms: (deviceId?: number) => Promise<void>;
   loadAlarmHistory: (deviceId?: number, startDate?: Date, endDate?: Date) => Promise<void>;
   acknowledgeAlarm: (alarmId: number) => Promise<void>;
   acknowledgeAll: () => Promise<void>;
   clearAlarm: (alarmId: number) => Promise<void>;
-  
+
   // Filter and sort
   setFilter: (filter: Partial<AlarmFilter>) => void;
   clearFilter: () => void;
   setSortBy: (sortBy: 'timestamp' | 'severity' | 'device') => void;
   setSortOrder: (order: 'asc' | 'desc') => void;
-  
+
   // Selection
   selectAlarm: (alarmId: number | null) => void;
-  
+
   // Computed
   getFilteredAlarms: () => AlarmData[];
   getUnacknowledgedCount: () => number;
   getCriticalAlarmsCount: () => number;
   getAlarmsByDevice: (deviceId: number) => AlarmData[];
-  
+
   // Utilities
   reset: () => void;
 }
@@ -84,13 +84,13 @@ export const useAlarmStore = create<AlarmState>()(
           const response = deviceId
             ? await bacnetAlarmsApi.getAlarms(deviceId)
             : await bacnetAlarmsApi.getAllAlarms();
-          
-          set({ 
+
+          set({
             activeAlarms: response.data,
-            isLoading: false 
+            isLoading: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Failed to load alarms'
           });
@@ -105,13 +105,13 @@ export const useAlarmStore = create<AlarmState>()(
             startDate,
             endDate,
           });
-          
-          set({ 
+
+          set({
             alarmHistory: response.data,
-            isLoading: false 
+            isLoading: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoading: false,
             error: error instanceof Error ? error.message : 'Failed to load alarm history'
           });
@@ -121,7 +121,7 @@ export const useAlarmStore = create<AlarmState>()(
       acknowledgeAlarm: async (alarmId) => {
         try {
           await bacnetAlarmsApi.acknowledgeAlarm(alarmId);
-          
+
           set((state) => ({
             activeAlarms: state.activeAlarms.map((alarm) =>
               alarm.id === alarmId
@@ -130,7 +130,7 @@ export const useAlarmStore = create<AlarmState>()(
             ),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to acknowledge alarm'
           });
         }
@@ -139,7 +139,7 @@ export const useAlarmStore = create<AlarmState>()(
       acknowledgeAll: async () => {
         try {
           await bacnetAlarmsApi.acknowledgeAll();
-          
+
           set((state) => ({
             activeAlarms: state.activeAlarms.map((alarm) => ({
               ...alarm,
@@ -147,7 +147,7 @@ export const useAlarmStore = create<AlarmState>()(
             })),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to acknowledge all alarms'
           });
         }
@@ -156,12 +156,12 @@ export const useAlarmStore = create<AlarmState>()(
       clearAlarm: async (alarmId) => {
         try {
           await bacnetAlarmsApi.clearAlarm(alarmId);
-          
+
           set((state) => ({
             activeAlarms: state.activeAlarms.filter((alarm) => alarm.id !== alarmId),
           }));
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to clear alarm'
           });
         }
@@ -194,28 +194,28 @@ export const useAlarmStore = create<AlarmState>()(
       // Computed
       getFilteredAlarms: () => {
         const { activeAlarms, filter, sortBy, sortOrder } = get();
-        
+
         let filtered = [...activeAlarms];
-        
+
         // Apply filters
         if (filter.severity && filter.severity.length > 0) {
           filtered = filtered.filter((alarm) =>
             filter.severity!.includes(alarm.severity)
           );
         }
-        
+
         if (filter.status && filter.status.length > 0) {
           filtered = filtered.filter((alarm) =>
             filter.status!.includes(alarm.status)
           );
         }
-        
+
         if (filter.deviceId) {
           filtered = filtered.filter((alarm) =>
             alarm.deviceId === filter.deviceId
           );
         }
-        
+
         if (filter.searchText) {
           const search = filter.searchText.toLowerCase();
           filtered = filtered.filter((alarm) =>
@@ -223,11 +223,11 @@ export const useAlarmStore = create<AlarmState>()(
             alarm.deviceName?.toLowerCase().includes(search)
           );
         }
-        
+
         // Sort
         filtered.sort((a, b) => {
           let comparison = 0;
-          
+
           switch (sortBy) {
             case 'timestamp':
               comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
@@ -240,10 +240,10 @@ export const useAlarmStore = create<AlarmState>()(
               comparison = (a.deviceName || '').localeCompare(b.deviceName || '');
               break;
           }
-          
+
           return sortOrder === 'asc' ? comparison : -comparison;
         });
-        
+
         return filtered;
       },
 

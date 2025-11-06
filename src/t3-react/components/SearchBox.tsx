@@ -1,6 +1,6 @@
 /**
  * SearchBox Component
- * 
+ *
  * Search input with debouncing
  */
 

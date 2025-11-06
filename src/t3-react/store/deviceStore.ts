@@ -1,6 +1,6 @@
 /**
  * Device Store - Manages selected device and device list
- * 
+ *
  * Responsibilities:
  * - Track currently selected device
  * - Store list of all devices
@@ -19,18 +19,18 @@ interface DeviceState {
   devices: TreeNode[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Device selection
   setSelectedDevice: (device: TreeNode | null) => void;
   selectDeviceById: (deviceId: number) => void;
   clearSelection: () => void;
-  
+
   // Device list management
   loadDevices: () => Promise<void>;
   addDevice: (device: TreeNode) => void;
   updateDevice: (deviceId: number, updates: Partial<TreeNode>) => void;
   removeDevice: (deviceId: number) => void;
-  
+
   // Utilities
   getDeviceById: (deviceId: number) => TreeNode | undefined;
   isDeviceOnline: (deviceId: number) => boolean;
@@ -74,13 +74,13 @@ export const useDeviceStore = create<DeviceState>()(
           set({ isLoading: true, error: null });
           try {
             const response = await devicesApi.getAllDevices();
-            set({ 
+            set({
               devices: response.data,
               isLoading: false,
-              error: null 
+              error: null
             });
           } catch (error) {
-            set({ 
+            set({
               isLoading: false,
               error: error instanceof Error ? error.message : 'Failed to load devices'
             });
@@ -98,7 +98,7 @@ export const useDeviceStore = create<DeviceState>()(
             const devices = state.devices.map((device) =>
               device.id === deviceId ? { ...device, ...updates } : device
             );
-            
+
             // Update selectedDevice if it's the one being updated
             const selectedDevice = state.selectedDevice?.id === deviceId
               ? { ...state.selectedDevice, ...updates }
@@ -111,10 +111,10 @@ export const useDeviceStore = create<DeviceState>()(
         removeDevice: (deviceId) => {
           set((state) => {
             const devices = state.devices.filter((d) => d.id !== deviceId);
-            const selectedDevice = state.selectedDevice?.id === deviceId 
-              ? null 
+            const selectedDevice = state.selectedDevice?.id === deviceId
+              ? null
               : state.selectedDevice;
-            
+
             return { devices, selectedDevice };
           });
         },

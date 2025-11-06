@@ -1,6 +1,6 @@
 /**
  * Modbus Store - Manages Modbus data cache
- * 
+ *
  * Responsibilities:
  * - Cache Modbus device data
  * - Cache Modbus registers
@@ -11,46 +11,46 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { ModbusDevice, ModbusRegister } from '@common/types/modbus';
-import { 
+import {
   modbusDevicesApi,
   modbusRegistersApi,
-  modbusPollingApi 
+  modbusPollingApi
 } from '@common/api';
 
 interface ModbusState {
   // Data cache
   devices: ModbusDevice[];
   registers: Map<number, ModbusRegister[]>; // deviceId -> registers
-  
+
   // Polling state
   isPolling: boolean;
   pollingInterval: number; // milliseconds
   lastPollTime: number | null;
-  
+
   // Loading states
   isLoadingDevices: boolean;
   isLoadingRegisters: boolean;
-  
+
   // Errors
   error: string | null;
-  
+
   // Device management
   loadDevices: () => Promise<void>;
   addDevice: (device: ModbusDevice) => void;
   updateDevice: (deviceId: number, updates: Partial<ModbusDevice>) => void;
   removeDevice: (deviceId: number) => void;
-  
+
   // Register management
   loadRegisters: (deviceId: number) => Promise<void>;
   updateRegister: (deviceId: number, registerId: number, value: number) => Promise<void>;
   refreshRegister: (deviceId: number, registerId: number) => Promise<void>;
-  
+
   // Polling
   startPolling: () => void;
   stopPolling: () => void;
   setPollingInterval: (interval: number) => void;
   pollAllDevices: () => Promise<void>;
-  
+
   // Utilities
   getDevice: (deviceId: number) => ModbusDevice | undefined;
   getRegisters: (deviceId: number) => ModbusRegister[];
@@ -80,12 +80,12 @@ export const useModbusStore = create<ModbusState>()(
         set({ isLoadingDevices: true, error: null });
         try {
           const response = await modbusDevicesApi.getDevices();
-          set({ 
+          set({
             devices: response.data,
-            isLoadingDevices: false 
+            isLoadingDevices: false
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingDevices: false,
             error: error instanceof Error ? error.message : 'Failed to load Modbus devices'
           });
@@ -110,7 +110,7 @@ export const useModbusStore = create<ModbusState>()(
         set((state) => {
           const newRegisters = new Map(state.registers);
           newRegisters.delete(deviceId);
-          
+
           return {
             devices: state.devices.filter((d) => d.id !== deviceId),
             registers: newRegisters,
@@ -126,14 +126,14 @@ export const useModbusStore = create<ModbusState>()(
           set((state) => {
             const newRegisters = new Map(state.registers);
             newRegisters.set(deviceId, response.data);
-            
+
             return {
               registers: newRegisters,
               isLoadingRegisters: false,
             };
           });
         } catch (error) {
-          set({ 
+          set({
             isLoadingRegisters: false,
             error: error instanceof Error ? error.message : 'Failed to load registers'
           });
@@ -143,11 +143,11 @@ export const useModbusStore = create<ModbusState>()(
       updateRegister: async (deviceId, registerId, value) => {
         try {
           await modbusRegistersApi.updateRegister(deviceId, registerId, { value });
-          
+
           set((state) => {
             const deviceRegisters = state.registers.get(deviceId);
             if (!deviceRegisters) return state;
-            
+
             const newRegisters = new Map(state.registers);
             newRegisters.set(
               deviceId,
@@ -155,11 +155,11 @@ export const useModbusStore = create<ModbusState>()(
                 reg.id === registerId ? { ...reg, value } : reg
               )
             );
-            
+
             return { registers: newRegisters };
           });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to update register'
           });
         }
@@ -168,11 +168,11 @@ export const useModbusStore = create<ModbusState>()(
       refreshRegister: async (deviceId, registerId) => {
         try {
           const response = await modbusRegistersApi.getRegister(deviceId, registerId);
-          
+
           set((state) => {
             const deviceRegisters = state.registers.get(deviceId);
             if (!deviceRegisters) return state;
-            
+
             const newRegisters = new Map(state.registers);
             newRegisters.set(
               deviceId,
@@ -180,11 +180,11 @@ export const useModbusStore = create<ModbusState>()(
                 reg.id === registerId ? response.data : reg
               )
             );
-            
+
             return { registers: newRegisters };
           });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Failed to refresh register'
           });
         }
@@ -193,14 +193,14 @@ export const useModbusStore = create<ModbusState>()(
       // Polling
       startPolling: () => {
         if (get().isPolling) return;
-        
+
         set({ isPolling: true });
-        
+
         // Start polling loop
         const pollInterval = setInterval(() => {
           get().pollAllDevices();
         }, get().pollingInterval);
-        
+
         // Store interval ID for cleanup (in real implementation)
         // You'd want to store this and clear it on stopPolling
       },
@@ -211,7 +211,7 @@ export const useModbusStore = create<ModbusState>()(
 
       setPollingInterval: (interval) => {
         set({ pollingInterval: interval });
-        
+
         // Restart polling if active
         if (get().isPolling) {
           get().stopPolling();
@@ -222,24 +222,24 @@ export const useModbusStore = create<ModbusState>()(
       pollAllDevices: async () => {
         try {
           const response = await modbusPollingApi.pollAll();
-          
+
           set((state) => {
             const newRegisters = new Map(state.registers);
-            
+
             // Update all registers with polled data
             response.data.forEach((deviceData: any) => {
               if (deviceData.registers) {
                 newRegisters.set(deviceData.deviceId, deviceData.registers);
               }
             });
-            
+
             return {
               registers: newRegisters,
               lastPollTime: Date.now(),
             };
           });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Polling failed'
           });
         }
@@ -282,6 +282,6 @@ export const modbusSelectors = {
   devices: (state: ModbusState) => state.devices,
   isPolling: (state: ModbusState) => state.isPolling,
   pollingInterval: (state: ModbusState) => state.pollingInterval,
-  isLoading: (state: ModbusState) => 
+  isLoading: (state: ModbusState) =>
     state.isLoadingDevices || state.isLoadingRegisters,
 };

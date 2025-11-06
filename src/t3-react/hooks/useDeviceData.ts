@@ -1,6 +1,6 @@
 /**
  * useDeviceData Hook
- * 
+ *
  * Provides easy access to device selection and device list
  * Wraps deviceStore with convenient selectors
  */

@@ -1,15 +1,15 @@
 /**
  * useContextMenu Hook
- * 
+ *
  * Provides context menu functionality
  * Manages right-click menu state and actions
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { 
-  ContextMenuConfig, 
-  ContextMenuType, 
-  ContextMenuItem 
+import type {
+  ContextMenuConfig,
+  ContextMenuType,
+  ContextMenuItem
 } from '@t3-react/config/contextMenuConfig';
 import { contextMenuConfigs } from '@t3-react/config/contextMenuConfig';
 
@@ -128,7 +128,7 @@ export function useContextMenu() {
       setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
       }, 0);
-      
+
       return () => {
         document.removeEventListener('click', handleClickOutside);
       };

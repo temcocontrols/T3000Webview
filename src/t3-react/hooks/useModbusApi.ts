@@ -1,6 +1,6 @@
 /**
  * useModbusApi Hook
- * 
+ *
  * Provides convenient access to Modbus operations
  * Wraps modbusStore and API calls
  */

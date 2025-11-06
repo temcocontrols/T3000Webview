@@ -1,6 +1,6 @@
 /**
  * NotificationCenter Component
- * 
+ *
  * Toast notifications for user feedback
  */
 
