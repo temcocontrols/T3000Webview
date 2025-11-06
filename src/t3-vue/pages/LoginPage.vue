@@ -14,8 +14,8 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 
-import { user, globalNav, getModbusRegisterSettings } from "@/lib/common.js";
-import { localApi } from "@/lib/api.js";
+import { user, globalNav, getModbusRegisterSettings } from "@/lib/vue/common.js";
+import { localApi } from "@/lib/vue/api.js";
 
 const router = useRouter();
 const $q = useQuasar();

@@ -624,7 +624,7 @@ import {
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
-import { liveApi, localApi } from "@/lib/api.js";
+import { liveApi, localApi } from "@/lib/vue/api.js";
 import {
   globalNav,
   modbusRegColumns,
@@ -634,8 +634,8 @@ import {
   isAdmin,
   getModbusRegisterSettings,
   devices,
-} from "@/lib/common.js";
-import { user } from "@/lib/T3000/Hvac/Data/T3Data.js";
+} from "@/lib/vue/common.js";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
 import UserTopBar from "../../components/Hvac/UserTopBar.vue";
 
 import RowActionsRenderer from "../../components/Grid/RowActionsRenderer.vue";

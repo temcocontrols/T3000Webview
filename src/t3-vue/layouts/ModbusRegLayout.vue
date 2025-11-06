@@ -8,7 +8,7 @@
 
 <script setup>
 import { onMounted } from "vue";
-import { globalNav } from "@/lib/common.js";
+import { globalNav } from "@/lib/vue/common.js";
 import { useMeta } from "quasar";
 
 useMeta({ title: "Modbus Register" });

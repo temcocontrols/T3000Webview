@@ -94,7 +94,7 @@
 </template>
 
 <script setup>
-import { liveApi } from "@/lib/api.js";
+import { liveApi } from "@/lib/vue/api.js";
 import { useQuasar } from "quasar";
 
 const props = defineProps({
