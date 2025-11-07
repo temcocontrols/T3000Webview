@@ -73,15 +73,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
-import Utils2 from "@common/T3000/Hvac/Util/Utils2";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
+import Utils2 from '@/lib/vue/T3000/Hvac/Util/Utils2';
 import { LockOutlined, UnlockOutlined } from '@ant-design/icons-vue';
 import { Tooltip as ATooltip } from 'ant-design-vue';
 import { Button as AButton } from 'ant-design-vue';
-import IdxPage2 from "@common/T3000/Hvac/Opt/Common/IdxPage2";
-import DataOpt from "@common/T3000/Hvac/Opt/Data/DataOpt";
-import T3Util from "@common/T3000/Hvac/Util/T3Util";
-import LogUtil from "@common/T3000/Hvac/Util/LogUtil";
+import IdxPage2 from '@/lib/vue/T3000/Hvac/Opt/Common/IdxPage2';
+import DataOpt from '@/lib/vue/T3000/Hvac/Opt/Data/DataOpt';
+import T3Util from '@/lib/vue/T3000/Hvac/Util/T3Util';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 interface T3Entry {
   id?: string;

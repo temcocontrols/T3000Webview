@@ -13,7 +13,7 @@ import type {
   VariablePoint,
   ProgramData,
   ControllerData
-} from '@common/types/bacnet';
+} from '@common/react/types/bacnet';
 
 export function useBacnetApi() {
   // State selectors

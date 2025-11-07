@@ -11,7 +11,8 @@ import type {
   ContextMenuType,
   ContextMenuItem
 } from '@t3-react/config/contextMenuConfig';
-import { contextMenuConfigs } from '@t3-react/config/contextMenuConfig';
+// TODO: contextMenuConfigs not exported from config file
+// import { contextMenuConfigs } from '@t3-react/config/contextMenuConfig';
 
 interface ContextMenuState {
   visible: boolean;

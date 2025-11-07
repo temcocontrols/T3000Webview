@@ -160,11 +160,11 @@
 import { ref, watch } from "vue";
 import { useQuasar } from "quasar";
 import FileUpload from "../hvac/FileUploadS3.vue";
-import { toolsCategories } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
-import { NewTool } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
-import T3Util from "@/lib/vue/T3000/Hvac/Util/T3Util.js";
-import LogUtil from "@/lib/vue/T3000/Hvac/Util/LogUtil.js";
+import { toolsCategories } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import { NewTool } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import T3Util from "@/lib/vue/T3000/Hvac/Util/T3Util.ts";
+import LogUtil from "@/lib/vue/T3000/Hvac/Util/LogUtil.ts";
 
 const props = defineProps({
   selectedTool: {

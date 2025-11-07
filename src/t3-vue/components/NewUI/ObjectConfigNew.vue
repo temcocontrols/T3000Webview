@@ -231,24 +231,24 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, onUpdated, ref, computed, watch } from 'vue';
 import { Drawer as ADrawer, Radio as ARadio, RadioGroup as ARadioGroup, Button as AButton } from 'ant-design-vue';
-import T3Util from '@common/T3000/Hvac/Util/T3Util';
-import { objectConfigShow } from "@common/T3000/Hvac/Data/Constant/RefConstant";
+import T3Util from '@/lib/vue/T3000/Hvac/Util/T3Util';
+import { objectConfigShow } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 import { isEqual, cloneDeep } from 'lodash';
-import { tools, switchIcons } from "@common/utils/common";
-import T3000 from '@common/T3000/T3000';
-import IdxUtils from '@common/T3000/Hvac/Opt/Common/IdxUtils';
-import RulerUtil from '@common/T3000/Hvac/Opt/UI/RulerUtil';
-import EvtOpt from '@common/T3000/Hvac/Event/EvtOpt';
-import T3Gv from '@common/T3000/Hvac/Data/T3Gv';
-import DrawUtil from '@common/T3000/Hvac/Opt/Opt/DrawUtil';
-import SvgUtil from '@common/T3000/Hvac/Opt/Opt/SvgUtil';
-import { NewTool, appStateV2 } from '@common/T3000/Hvac/Data/T3Data';
-import DataOpt from '@common/T3000/Hvac/Opt/Data/DataOpt';
-import Hvac from '@common/T3000/Hvac/Hvac';
-import SelectUtil from '@common/T3000/Hvac/Opt/Opt/SelectUtil';
-import OptConstant from '@common/T3000/Hvac/Data/Constant/OptConstant';
-import QuasarUtil from '@common/T3000/Hvac/Opt/Quasar/QuasarUtil';
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
+import { tools, switchIcons } from "@common/shared/utils/common";
+import T3000 from '@/lib/vue/T3000/T3000';
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
+import RulerUtil from '@/lib/vue/T3000/Hvac/Opt/UI/RulerUtil';
+import EvtOpt from '@/lib/vue/T3000/Hvac/Event/EvtOpt';
+import T3Gv from '@/lib/vue/T3000/Hvac/Data/T3Gv';
+import DrawUtil from '@/lib/vue/T3000/Hvac/Opt/Opt/DrawUtil';
+import SvgUtil from '@/lib/vue/T3000/Hvac/Opt/Opt/SvgUtil';
+import { NewTool, appStateV2 } from '@/lib/vue/T3000/Hvac/Data/T3Data';
+import DataOpt from '@/lib/vue/T3000/Hvac/Opt/Data/DataOpt';
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac';
+import SelectUtil from '@/lib/vue/T3000/Hvac/Opt/Opt/SelectUtil';
+import OptConstant from '@/lib/vue/T3000/Hvac/Data/Constant/OptConstant';
+import QuasarUtil from '@/lib/vue/T3000/Hvac/Opt/Quasar/QuasarUtil';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 // Define interface for setting
 interface Setting {

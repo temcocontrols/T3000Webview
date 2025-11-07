@@ -474,8 +474,8 @@
 import { defineComponent, ref, watch } from "vue"
 import { useQuasar } from "quasar"
 import { tools/*, user*/ } from "@/lib/vue/common.js";
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
-import { devVersion } from "@/lib/vue/T3000/Hvac/Data/T3Data.js"
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import { devVersion } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts"
 
 export default defineComponent({
   name: "TopToolbar",

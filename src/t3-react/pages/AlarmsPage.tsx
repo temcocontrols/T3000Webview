@@ -10,7 +10,7 @@ import { AlertRegular, DismissRegular, CheckmarkRegular } from '@fluentui/react-
 import { DataTable, Column, LoadingSpinner, EmptyState, SearchBox } from '@t3-react/components';
 import { useDeviceData } from '@t3-react/hooks';
 import { useAlarmStore } from '@t3-react/store';
-import type { Alarm } from '@common/types/bacnet';
+import type { Alarm } from '@common/react/types/bacnet';
 
 const useStyles = makeStyles({
   container: {

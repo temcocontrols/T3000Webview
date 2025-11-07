@@ -237,8 +237,8 @@
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
 import { /*getEntryRange,*/ icons, switchIcons, tools } from "@/lib/vue/common.js";
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
-import T3000 from "@common/T3000/T3000";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
+import T3000 from '@/lib/vue/T3000/T3000';
 
 export default defineComponent({
   name: "ToolConfig",

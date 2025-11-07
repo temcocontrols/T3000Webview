@@ -80,9 +80,9 @@ import {
 import { message } from 'ant-design-vue';
 
 import { computed, onMounted, onUnmounted } from 'vue';
-import CtxMenuUtil from '@common/T3000/Hvac/Doc/CtxMenuUtil'; // Adjust the import path if needed
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
-import { ICtxMenuConfig } from '@common/T3000/Hvac/Data/Constant/RefConstant';
+import CtxMenuUtil from '@/lib/vue/T3000/Hvac/Doc/CtxMenuUtil'; // Adjust the import path if needed
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
+import { ICtxMenuConfig } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 
 // Define props with TypeScript
 const props = defineProps<{

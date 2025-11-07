@@ -10,9 +10,9 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { TreeNode } from '@common/types/device';
-import { DeviceStatus } from '@common/types/device';
-import * as devicesApi from '@common/api/devices';
+import type { TreeNode } from '@common/react/types/device';
+import { DeviceStatus } from '@common/react/types/device';
+import { api } from '@/shared/api/client';
 
 export interface DeviceState {
   // State

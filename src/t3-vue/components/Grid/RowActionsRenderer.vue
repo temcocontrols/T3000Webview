@@ -13,7 +13,7 @@
 import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { /*user,*/ isAdmin, getModbusRegisterSettings } from "@/lib/vue/common.js";
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
 
 const $q = useQuasar();
 const props = defineProps({

@@ -10,7 +10,7 @@ import { AddRegular, DeleteRegular, SettingsRegular } from '@fluentui/react-icon
 import { DataTable, Column, LoadingSpinner, EmptyState } from '@t3-react/components';
 import { useDeviceData } from '@t3-react/hooks';
 import { useDeviceStore } from '@t3-react/store';
-import type { T3Device } from '@common/types/device';
+import type { T3Device } from '@common/react/types/device';
 
 const useStyles = makeStyles({
   container: {

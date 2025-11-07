@@ -10,7 +10,7 @@ import { AddRegular, EditRegular } from '@fluentui/react-icons';
 import { DataTable, Column, LoadingSpinner, EmptyState, PointEditor } from '@t3-react/components';
 import { useBacnetApi, useDeviceData } from '@t3-react/hooks';
 import { useBacnetStore } from '@t3-react/store';
-import type { VariablePoint } from '@common/types/bacnet';
+import type { VariablePoint } from '@common/react/types/bacnet';
 
 const useStyles = makeStyles({
   container: {

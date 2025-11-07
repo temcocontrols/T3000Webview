@@ -10,8 +10,8 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { AlarmRecord, AlarmStatus } from '@common/types/alarm';
-import { bacnetAlarmsApi } from '@common/api';
+import type { AlarmRecord, AlarmStatus } from '@common/react/types/alarm';
+// TODO: API not implemented yet - import { bacnetAlarmsApi } from '@common/api';
 
 // Alarm severity (simplified from priority)
 export enum AlarmSeverity {

@@ -166,13 +166,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, defineProps, defineEmits } from "vue";
 import { useQuasar } from "quasar";
-import { T3Data, globalMsg } from "@common/T3000/Hvac/Data/T3Data";
-import MockData from "@common/T3000/Hvac/Data/MockData";
-import Hvac from "@common/T3000/Hvac/Hvac";
-import MessageType from "@common/T3000/Hvac/Opt/Socket/MessageType";
-import GlobalMsgModel from "@common/T3000/Hvac/Model/GlobalMsgModel";
-import AntdUtil from "@common/T3000/Hvac/Opt/UI/AntdUtil";
-import LogUtil from "@common/T3000/Hvac/Util/LogUtil";
+import { T3Data, globalMsg } from '@/lib/vue/T3000/Hvac/Data/T3Data';
+import MockData from '@/lib/vue/T3000/Hvac/Data/MockData';
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac';
+import MessageType from '@/lib/vue/T3000/Hvac/Opt/Socket/MessageType';
+import GlobalMsgModel from '@/lib/vue/T3000/Hvac/Model/GlobalMsgModel';
+import AntdUtil from '@/lib/vue/T3000/Hvac/Opt/UI/AntdUtil';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 interface TreeNode {
   id: number;

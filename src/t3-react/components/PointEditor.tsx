@@ -16,7 +16,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import type { InputPoint, OutputPoint, VariablePoint } from '@common/types/bacnet';
+import type { InputPoint, OutputPoint, VariablePoint } from '@common/react/types/bacnet';
 
 const useStyles = makeStyles({
   container: {

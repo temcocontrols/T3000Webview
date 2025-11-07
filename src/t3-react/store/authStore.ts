@@ -10,8 +10,8 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { User, LoginCredentials, UserRole, Permission } from '@common/types/auth';
-import { authApi } from '@common/api/auth';
+import type { User, LoginCredentials, UserRole, Permission } from '@common/react/types/auth';
+// TODO: API not implemented yet - import { authApi } from '@common/api/auth';
 
 export interface AuthState {
   // State

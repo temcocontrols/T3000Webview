@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import { switchIcons } from "@common/utils/common";
+import { switchIcons } from "@common/shared/utils/common";
 import { computed, defineComponent } from "vue";
 
 export default defineComponent({

@@ -12,8 +12,8 @@
 
 <script>
 import { defineComponent, computed } from "vue";
-// import { getEntryRange } from "@common/utils/common";
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
+// import { getEntryRange } from "@common/shared/utils/common";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
 
 export default defineComponent({
   name: "ValueEl",

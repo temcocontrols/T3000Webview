@@ -989,15 +989,15 @@ import {
   ThunderboltOutlined,
   DeleteOutlined
 } from '@ant-design/icons-vue'
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil'
-import { scheduleItemData } from '@common/T3000/Hvac/Data/Constant/RefConstant'
-import { T3000_Data, devVersion } from '@common/T3000/Hvac/Data/T3Data'
-import { ranges as rangeDefinitions, T3_Types } from '@common/T3000/Hvac/Data/Constant/T3Range'
-import WebViewClient from '@common/T3000/Hvac/Opt/Webview2/WebViewClient'
-import Hvac from '@common/T3000/Hvac/Hvac'
-import { t3000DataManager, DataReadiness, type DataValidationResult } from '@common/T3000/Hvac/Data/Manager/T3000DataManager'
-import { useTrendlogDataAPI, type RealtimeDataRequest } from '@common/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
-import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, RediscoverConfigAPI, type DatabaseConfig } from '@common/T3000/Hvac/Opt/FFI/DatabaseApi'
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
+import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
+import { T3000_Data, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data'
+import { ranges as rangeDefinitions, T3_Types } from '@/lib/vue/T3000/Hvac/Data/Constant/T3Range'
+import WebViewClient from '@/lib/vue/T3000/Hvac/Opt/Webview2/WebViewClient'
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
+import { t3000DataManager, DataReadiness, type DataValidationResult } from '@/lib/vue/T3000/Hvac/Data/Manager/T3000DataManager'
+import { useTrendlogDataAPI, type RealtimeDataRequest } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, RediscoverConfigAPI, type DatabaseConfig } from '@/lib/vue/T3000/Hvac/Opt/FFI/DatabaseApi'
 
 // BAC Units Constants - Digital/Analog Type Indicators
 const BAC_UNITS_DIGITAL = 0

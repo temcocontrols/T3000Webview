@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Modal, Table, Button, Switch, Select } from 'ant-design-vue';
-import { scheduleModalVisible, selectedSchedule, scheduleItemData } from '@common/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalVisible, selectedSchedule, scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 import dayjs from 'dayjs';
 
 interface ScheduleItem {
@@ -253,7 +253,7 @@ const handleCancel = () => {
 };
 
 import { onMounted } from 'vue';
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 const modalTitle = ref<string>("Schedule full label test title");
 const schInfo = ref<string>("T3-TB / Test Schedule / Panel 1 / Schedule 1");

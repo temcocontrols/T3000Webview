@@ -11,7 +11,7 @@
 import { computed, ref, onMounted } from "vue";
 import { Button as AButton } from 'ant-design-vue';
 import { EditOutlined,LockOutlined } from '@ant-design/icons-vue';
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
 
 interface Item {
   title?: string;

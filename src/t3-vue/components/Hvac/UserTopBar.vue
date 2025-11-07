@@ -16,7 +16,7 @@ import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import { /*user,*/ globalNav, isAdmin } from "@/lib/vue/common.js";
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
 import { liveApi, localApi } from "@/lib/vue/api.js";
 
 export default {

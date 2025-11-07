@@ -31,10 +31,10 @@ import DrawUtil from "../Opt/DrawUtil"
 import ToolActUtil from "../Opt/ToolActUtil"
 import LMEvtUtil from "../Opt/LMEvtUtil"
 import ToolSvgData from "./ToolSvgData"
-import VueCircle from "src/components/Basic/Circle.vue";
-import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
-import AntdTest from "src/components/NewUI/AntdTest.vue";
-import ObjectType from "src/components/Hvac/ObjectType.vue"
+import VueCircle from "@t3-vue/components/Basic/Circle.vue";
+import ObjectType2 from "@t3-vue/components/NewUI/ObjectType2.vue";
+import AntdTest from "@t3-vue/components/NewUI/AntdTest.vue";
+import ObjectType from "@t3-vue/components/Hvac/ObjectType.vue"
 import QuasarUtil from "../Quasar/QuasarUtil"
 import LogUtil from "../../Util/LogUtil"
 import Hvac from "../../Hvac"

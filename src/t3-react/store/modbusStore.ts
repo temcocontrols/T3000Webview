@@ -10,11 +10,14 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { ModbusDevice, ModbusRegister } from '@common/types/modbus';
+import type { ModbusDevice, ModbusRegister } from '@common/react/types/modbus';
+// TODO: API not implemented yet
+/*
 import {
   modbusDevicesApi,
   modbusRegistersApi,
 } from '@common/api';
+*/
 
 export interface ModbusState {
   // Data cache

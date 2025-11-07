@@ -334,27 +334,27 @@ import HVGrid from "@t3-vue/components/Hvac/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "@t3-vue/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "@t3-vue/components/Hvac/NewTopBar.vue";
-import T3000 from "@common/T3000/T3000";
+import T3000 from '@/lib/vue/T3000/T3000';
 import DeviceInfo2 from "@t3-vue/components/NewUI/DeviceInfo2.vue";
 import NewTopToolBar2 from "@t3-vue/components/NewUI/NewTopToolBar2.vue";
 
 // New import for Data
-import Data from "@common/T3000/Hvac/Data/Data";
-import { insertT3EntryDialog } from "@common/T3000/Hvac/Data/Data";
-import Hvac from "@common/T3000/Hvac/Hvac";
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
+import Data from '@/lib/vue/T3000/Hvac/Data/Data';
+import { insertT3EntryDialog } from '@/lib/vue/T3000/Hvac/Data/Data';
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac';
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
 
-import { ctxMenuConfig, objectConfigShow, globalMsgShow } from "@common/T3000/Hvac/Data/Constant/RefConstant";
+import { ctxMenuConfig, objectConfigShow, globalMsgShow } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 import ObjectConfigNew from "@t3-vue/components/NewUI/ObjectConfigNew.vue";
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
   savedNotify, undoHistory, redoHistory, moveable, appStateV2
-} from '@/lib/vue/T3000/Hvac/Data/T3Data.js';
-import IdxPage from "@common/T3000/Hvac/Opt/Common/IdxPage";
-import T3Util from "@common/T3000/Hvac/Util/T3Util";
-import QuasarUtil from "@common/T3000/Hvac/Opt/Quasar/QuasarUtil";
+} from '@/lib/vue/T3000/Hvac/Data/T3Data.ts';
+import IdxPage from '@/lib/vue/T3000/Hvac/Opt/Common/IdxPage';
+import T3Util from '@/lib/vue/T3000/Hvac/Util/T3Util';
+import QuasarUtil from '@/lib/vue/T3000/Hvac/Opt/Quasar/QuasarUtil';
 
 import { Alert as AAlert } from 'ant-design-vue';
 import T3Message from "@t3-vue/components/NewUI/T3Message.vue";
@@ -363,8 +363,8 @@ import AntdTest from "@t3-vue/components/NewUI/AntdTest.vue";
 import {
   topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable, toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue,
   gaugeSettingsDialog, insertCount, selectedTool, isDrawing, snappable, keepRatio, selecto, importJsonDialog, clipboardFull
-} from "@common/T3000/Hvac/Data/Constant/RefConstant";
-import LogUtil from "@common/T3000/Hvac/Util/LogUtil";
+} from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 import T3ContextMenu from "@t3-vue/components/NewUI/T3ContextMenu.vue";
 
 // Meta information for the application

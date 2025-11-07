@@ -441,11 +441,11 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
-import { user, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data.js'
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
+import { user, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 import type { MenuProps } from 'ant-design-vue';
-import CtxMenuUtil from '@common/T3000/Hvac/Doc/CtxMenuUtil';
-import T3UIUtil from '@common/T3000/Hvac/Opt/UI/T3UIUtil';
+import CtxMenuUtil from '@/lib/vue/T3000/Hvac/Doc/CtxMenuUtil';
+import T3UIUtil from '@/lib/vue/T3000/Hvac/Opt/UI/T3UIUtil';
 import {
   CloseOutlined,
   EditOutlined,
@@ -484,9 +484,9 @@ import {
   ZoomOutOutlined,
   ZoomInOutlined
 } from '@ant-design/icons-vue';
-import T3Gv from '@common/T3000/Hvac/Data/T3Gv';
-import { zoomScale, showRulers, showGrid } from '@common/T3000/Hvac/Data/Constant/RefConstant';
-import DataOpt from '@common/T3000/Hvac/Opt/Data/DataOpt';
+import T3Gv from '@/lib/vue/T3000/Hvac/Data/T3Gv';
+import { zoomScale, showRulers, showGrid } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
+import DataOpt from '@/lib/vue/T3000/Hvac/Opt/Data/DataOpt';
 
 // Define props using defineProps with TypeScript interface
 const props = defineProps<{

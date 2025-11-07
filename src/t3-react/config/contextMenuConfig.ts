@@ -4,7 +4,7 @@
  * Based on C++ ImageTreeCtrl.cpp
  */
 
-import type { ContextMenuItem, TreeNodeType } from '../../common/types/tree';
+import type { ContextMenuItem, TreeNodeType } from '@common/react/types/tree';
 
 /**
  * Building Root Context Menu

@@ -18,7 +18,7 @@ export {
   WINDOW_SETTING,
   WINDOW_ARRAY,
   WINDOW_REMOTE_POINT,
-} from '../../common/types/window';
+} from '@common/react/types/window';
 
 // Window IDs object for convenience
 export const WINDOW_IDS = {

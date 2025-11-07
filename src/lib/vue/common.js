@@ -1815,7 +1815,7 @@ export const modbusRegColumns = [
 export const user = ref(null);
 
 export const demoDeviceData = () => {
-  return import("./demo-data").then((exps) => {
+  return import("../demo-data.js").then((exps) => {
     return exps.default;
   });
 };

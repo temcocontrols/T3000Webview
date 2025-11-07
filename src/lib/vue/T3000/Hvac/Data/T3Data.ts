@@ -634,7 +634,7 @@ console.log('= T3Data: STORE INITIALIZATION - T3000_Data reactive store created:
     panelsRanges: T3000_Data.value.panelsRanges,
     loadingPanel: T3000_Data.value.loadingPanel
   },
-  storeLocation: 'src/lib/T3000/Hvac/Data/T3Data.ts',
+  storeLocation: 'src/lib/vue/T3000/Hvac/Data/T3Data.ts',
   timestamp: new Date().toISOString(),
   note: 'This is the global reactive store shared across all components'
 });

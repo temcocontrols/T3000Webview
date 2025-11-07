@@ -22,7 +22,7 @@
 
 <script>
 import { defineComponent, computed, onMounted, watch, ref } from "vue";
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
 import paper from "paper";
 
 export default defineComponent({

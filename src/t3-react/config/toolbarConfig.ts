@@ -3,7 +3,7 @@
  * 16 icon buttons for quick access to main windows
  */
 
-import type { ToolbarButton } from '../../common/types/menu';
+import type { ToolbarButton } from '@common/react/types/menu';
 import {
   WINDOW_INPUT,
   WINDOW_OUTPUT,
@@ -18,7 +18,7 @@ import {
   WINDOW_SETTING,
   WINDOW_ARRAY,
   WINDOW_REMOTE_POINT,
-} from '../../common/types/window';
+} from '@common/react/types/window';
 
 /**
  * Toolbar Button Configuration

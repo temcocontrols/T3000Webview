@@ -10,9 +10,9 @@
 import { computed, ref, onMounted } from "vue";
 import { Button as AButton } from 'ant-design-vue';
 import { EditOutlined } from '@ant-design/icons-vue';
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
-import T3Util from "@common/T3000/Hvac/Util/T3Util";
-import LogUtil from "@common/T3000/Hvac/Util/LogUtil";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
+import T3Util from '@/lib/vue/T3000/Hvac/Util/T3Util';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 interface Item {
   title?: string;

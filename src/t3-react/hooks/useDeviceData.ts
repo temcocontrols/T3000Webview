@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react';
 import { useDeviceStore, deviceSelectors } from '@t3-react/store';
-import type { TreeNode } from '@common/types/tree';
+import type { TreeNode } from '@common/react/types/tree';
 
 export function useDeviceData() {
   // State selectors

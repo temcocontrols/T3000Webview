@@ -88,18 +88,18 @@ import { LeftOutlined, RightOutlined } from '@ant-design/icons-vue';
 import Calendar from '@toast-ui/calendar';
 import '@toast-ui/calendar/dist/toastui-calendar.min.css';
 import { format } from 'date-fns';
-import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo } from '@common/T3000/Hvac/Data/Constant/RefConstant';
+import { scheduleModalNVisible, selectedSchedule, currentDate, scheduleItemData, modalTitle, schInfo } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 import 'tui-date-picker/dist/tui-date-picker.css';
 import 'tui-time-picker/dist/tui-time-picker.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/en';
-import TuiCalendarUtil, { ModalModeType } from '@common/T3000/Hvac/Opt/UI/TuiCalendarUtil';
+import TuiCalendarUtil, { ModalModeType } from '@/lib/vue/T3000/Hvac/Opt/UI/TuiCalendarUtil';
 dayjs.locale('en');
-import { locked } from '@common/T3000/Hvac/Data/T3Data';
+import { locked } from '@/lib/vue/T3000/Hvac/Data/T3Data';
 import { FieldTimeOutlined } from '@ant-design/icons-vue';
-import T3UIUtil from '@common/T3000/Hvac/Opt/UI/T3UIUtil';
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
-import { EventFormState } from '@common/T3000/Hvac/Data/Constant/T3Interface';
+import T3UIUtil from '@/lib/vue/T3000/Hvac/Opt/UI/T3UIUtil';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
+import { EventFormState } from '@/lib/vue/T3000/Hvac/Data/Constant/T3Interface';
 
 defineOptions({
   name: 'ScheduleCalendar',

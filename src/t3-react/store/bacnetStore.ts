@@ -20,7 +20,9 @@ import type {
   TrendLogData,
   AlarmData,
   GraphicData
-} from '@common/types/bacnet';
+} from '@common/react/types/bacnet';
+// TODO: API not implemented yet
+/*
 import {
   bacnetInputsApi,
   bacnetOutputsApi,
@@ -32,6 +34,7 @@ import {
   bacnetAlarmsApi,
   bacnetGraphicsApi
 } from '@common/api';
+*/
 
 export interface BacnetState {
   // Data cache

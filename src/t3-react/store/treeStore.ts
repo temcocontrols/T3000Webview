@@ -10,8 +10,8 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { TreeNode } from '@common/types/tree';
-import { networkApi } from '@common/api/network';
+import type { TreeNode } from '@common/react/types/tree';
+// TODO: API not implemented yet - import { networkApi } from '@common/api/network';
 
 export interface TreeState {
   // State

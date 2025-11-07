@@ -406,7 +406,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
-import { t3DeviceApi } from '/src/lib/T3000/Hvac/Util/T3DeviceApi'
+import { t3DeviceApi } from '@/lib/vue/T3000/Hvac/Util/T3DeviceApi.ts'
 
 const $q = useQuasar()
 

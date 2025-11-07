@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { MenuOutlined } from '@ant-design/icons-vue'
-import { topMenuCurrent } from '@common/T3000/Hvac/Data/Constant/RefConstant'
+import { topMenuCurrent } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
 
 defineOptions({
   name: 'Header-Component'

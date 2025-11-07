@@ -120,7 +120,7 @@ class ForeignObject extends BaseShape {
 
         // Create a component registry that maps names to their import functions
         const componentRegistry = {
-          'ObjectType2.vue': () => import('../../../../components/NewUI/ObjectType2.vue'),
+          'ObjectType2.vue': () => import('@t3-vue/components/NewUI/ObjectType2.vue'),
           // Add more components to the registry as needed
         };
 

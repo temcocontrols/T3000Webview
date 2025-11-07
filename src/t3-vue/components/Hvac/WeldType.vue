@@ -127,7 +127,7 @@
 
 <script>
 import { defineComponent, computed, ref } from "vue";
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils";
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils';
 import DuctEl from "../ObjectTypes/Duct.vue";
 import FanEl from "../ObjectTypes/Fan.vue";
 import CoolingCoil from "../ObjectTypes/CoolingCoil.vue";

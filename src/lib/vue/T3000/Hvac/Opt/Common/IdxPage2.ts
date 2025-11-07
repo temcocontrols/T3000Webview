@@ -8,7 +8,7 @@ import {
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
-import { liveApi } from "src/lib/api";
+import { liveApi } from "src/lib/vue/api";
 import DataOpt from "../Data/DataOpt";
 import T3Util from "../../Util/T3Util";
 import AntdUtil from "../UI/AntdUtil";
@@ -20,7 +20,7 @@ import {
 } from "../../Data/Constant/RefConstant";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
 
-import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
+import { insertT3EntryDialog } from "src/lib/vue/T3000/Hvac/Data/Data";
 import LogUtil from "../../Util/LogUtil";
 
 //  let lastAction = null; // Store the last action performed

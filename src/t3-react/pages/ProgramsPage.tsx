@@ -10,7 +10,7 @@ import { AddRegular, SaveRegular, PlayRegular, StopRegular } from '@fluentui/rea
 import { DataTable, Column, LoadingSpinner, EmptyState } from '@t3-react/components';
 import { useBacnetApi, useDeviceData } from '@t3-react/hooks';
 import { useBacnetStore } from '@t3-react/store';
-import type { Program } from '@common/types/bacnet';
+import type { Program } from '@common/react/types/bacnet';
 
 const useStyles = makeStyles({
   container: {
@@ -103,7 +103,7 @@ export const ProgramsPage: React.FC = () => {
     {
       key: 'status',
       label: 'Status',
-      render: (row) => (row.status === 'running' ? '‚ñ∂ Running' : '‚è∏ Stopped'),
+      render: (row) => (row.status === 'running' ? '‚ñ?Running' : '‚è?Stopped'),
     },
   ];
 

@@ -451,11 +451,11 @@ const T3000_Data = {
 }
 
 // FFI API SPECIFIC: Replace WebSocket imports with FFI API imports
-import { useT3000FfiApi } from '@/lib/vue/T3000/Hvac/Opt/FFI/T3000FfiApi.js'
+import { useT3000FfiApi } from '@/lib/vue/T3000/Hvac/Opt/FFI/T3000FfiApi.ts'
 // Remove WebViewClient and Hvac dependencies for FFI API version
-// import WebViewClient from '@common/T3000/Hvac/Opt/Webview2/WebViewClient'
-// import Hvac from '@common/T3000/Hvac/Hvac'
-// import { t3000DataManager, DataReadiness, type DataValidationResult } from '@common/T3000/Hvac/Data/Manager/T3000DataManager'
+// import WebViewClient from '@/lib/vue/T3000/Hvac/Opt/Webview2/WebViewClient'
+// import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
+// import { t3000DataManager, DataReadiness, type DataValidationResult } from '@/lib/vue/T3000/Hvac/Data/Manager/T3000DataManager'
 
 // Unit Type Mappings for T3000 (Updated to match T3000.rc definitions exactly)
 const DIGITAL_UNITS = {

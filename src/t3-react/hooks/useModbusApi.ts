@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react';
 import { useModbusStore, modbusSelectors } from '@t3-react/store';
-import type { ModbusDevice, ModbusRegister } from '@common/types/modbus';
+import type { ModbusDevice, ModbusRegister } from '@common/react/types/modbus';
 
 export function useModbusApi() {
   // State selectors

@@ -17,7 +17,7 @@ import { ChartMultipleRegular, ArrowDownloadRegular } from '@fluentui/react-icon
 import { ChartComponent, ChartDataSeries, LoadingSpinner, EmptyState } from '@t3-react/components';
 import { useDeviceData } from '@t3-react/hooks';
 import { useTrendStore } from '@t3-react/store';
-import type { TrendLog } from '@common/types/bacnet';
+import type { TrendLog } from '@common/react/types/bacnet';
 
 const useStyles = makeStyles({
   container: {

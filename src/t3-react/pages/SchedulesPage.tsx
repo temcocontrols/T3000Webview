@@ -10,7 +10,7 @@ import { AddRegular, EditRegular, DeleteRegular } from '@fluentui/react-icons';
 import { DataTable, Column, LoadingSpinner, EmptyState } from '@t3-react/components';
 import { useBacnetApi, useDeviceData } from '@t3-react/hooks';
 import { useBacnetStore } from '@t3-react/store';
-import type { Schedule } from '@common/types/bacnet';
+import type { Schedule } from '@common/react/types/bacnet';
 
 const useStyles = makeStyles({
   container: {

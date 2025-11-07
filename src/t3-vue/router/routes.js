@@ -1,5 +1,5 @@
 
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil.ts';
 import { defineAsyncComponent } from 'vue';
 
 // Create optimized lazy components with robust error handling and retry logic

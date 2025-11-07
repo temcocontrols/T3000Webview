@@ -17,7 +17,7 @@ export { useBacnetStore, bacnetSelectors } from './bacnetStore';
 export type { BacnetState } from './bacnetStore';
 
 // UI Store
-export { useUiStore, uiSelectors } from './uiStore';
+export { useUIStore, uiSelectors } from './uiStore';
 export type { UiState } from './uiStore';
 
 // Modbus Store

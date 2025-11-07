@@ -768,41 +768,41 @@ import HVGrid from "@t3-vue/components/Hvac/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "@t3-vue/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "@t3-vue/components/Hvac/NewTopBar.vue";
-import T3000 from "@common/T3000/T3000";
+import T3000 from '@/lib/vue/T3000/T3000';
 import DeviceInfo from "@t3-vue/components/Hvac/DeviceInfo.vue";
 import NewTopToolBar from "@t3-vue/components/Hvac/NewTopToolBar.vue";
 
 // New import for Data
-import Data from "@common/T3000/Hvac/Data/Data";
-import { insertT3EntryDialog } from "@common/T3000/Hvac/Data/Data";
-import Hvac from "@common/T3000/Hvac/Hvac"
-import IdxUtils from "@common/T3000/Hvac/Opt/Common/IdxUtils"
+import Data from '@/lib/vue/T3000/Hvac/Data/Data';
+import { insertT3EntryDialog } from '@/lib/vue/T3000/Hvac/Data/Data';
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
+import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils'
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, /*user,*/ library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
-} from '@/lib/vue/T3000/Hvac/Data/T3Data.js'
+} from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
 
 import {
   scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible,
   leftNavVisible, rightNavVisible, annualScheduleVisible, annualScheduleData, trendLogData, trendLogVisible
-} from "@common/T3000/Hvac/Data/Constant/RefConstant";
+} from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 
-import IdxPage from "@common/T3000/Hvac/Opt/Common/IdxPage";
+import IdxPage from '@/lib/vue/T3000/Hvac/Opt/Common/IdxPage';
 
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.js";
-import LogUtil from "@common/T3000/Hvac/Util/LogUtil";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 import ScheduleModal from "@t3-vue/components/NewUI/ScheduleModal.vue";
 import ScheduleCalendar from "@t3-vue/components/NewUI/ScheduleCalendar.vue";
 import ScheduleAnnual from "@t3-vue/components/NewUI/ScheduleAnnual.vue";
 import TrendLogModal from "@t3-vue/components/NewUI/TrendLogModal.vue";
-import T3UIUtil from "@common/T3000/Hvac/Opt/UI/T3UIUtil";
-import SelectoErrorHandler from "@common/T3000/Hvac/Util/SelectoErrorHandler.js";
+import T3UIUtil from '@/lib/vue/T3000/Hvac/Opt/UI/T3UIUtil';
+import SelectoErrorHandler from '@/lib/vue/T3000/Hvac/Util/SelectoErrorHandler.js';
 
 // const isBuiltInEdge = ref(false);
-import DataOpt from "@common/T3000/Hvac/Opt/Data/DataOpt";
+import DataOpt from '@/lib/vue/T3000/Hvac/Opt/Data/DataOpt';
 
 // Meta information for the application
 // Set the meta information

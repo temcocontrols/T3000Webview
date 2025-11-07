@@ -80,12 +80,12 @@ import { Alert as AAlert } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import TrendLogChart from '@t3-vue/components/NewUI/TrendLogChart.vue'
-import { scheduleItemData } from '@common/T3000/Hvac/Data/Constant/RefConstant'
-import { T3000_Data, logT3000DataFlowState } from '@common/T3000/Hvac/Data/T3Data'
-import Hvac from '@common/T3000/Hvac/Hvac'
-import { t3000DataManager } from '@common/T3000/Hvac/Data/Manager/T3000DataManager'
-import { useTrendlogDataAPI } from '@common/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil'
+import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
+import { T3000_Data, logT3000DataFlowState } from '@/lib/vue/T3000/Hvac/Data/T3Data'
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
+import { t3000DataManager } from '@/lib/vue/T3000/Hvac/Data/Manager/T3000DataManager'
+import { useTrendlogDataAPI } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
 
 // Define component name
 defineOptions({

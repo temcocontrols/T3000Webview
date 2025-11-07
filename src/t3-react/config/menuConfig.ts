@@ -3,8 +3,8 @@
  * Based on C++ T3000.rc menu structure
  */
 
-import type { MenuItem } from '../../common/types/menu';
-import { MenuAction } from '../../common/types/menu';
+import type { MenuItem } from '@common/react/types/menu';
+import { MenuAction } from '@common/react/types/menu';
 
 /**
  * File Menu

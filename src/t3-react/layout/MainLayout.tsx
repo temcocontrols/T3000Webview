@@ -14,7 +14,7 @@ import { Outlet } from 'react-router-dom';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { Header } from './Header';
 import { TreePanel } from './TreePanel';
-import { useUiStore } from '@t3-react/store';
+import { useUIStore } from '@t3-react/store';
 
 const useStyles = makeStyles({
   container: {
@@ -64,12 +64,12 @@ const useStyles = makeStyles({
 export const MainLayout: React.FC = () => {
   const styles = useStyles();
 
-  const isLeftPanelVisible = useUiStore((state) => state.isLeftPanelVisible);
-  const isRightPanelVisible = useUiStore((state) => state.isRightPanelVisible);
-  const leftPanelWidth = useUiStore((state) => state.leftPanelWidth);
-  const rightPanelWidth = useUiStore((state) => state.rightPanelWidth);
-  const setLeftPanelWidth = useUiStore((state) => state.setLeftPanelWidth);
-  const setRightPanelWidth = useUiStore((state) => state.setRightPanelWidth);
+  const isLeftPanelVisible = useUIStore((state) => state.isLeftPanelVisible);
+  const isRightPanelVisible = useUIStore((state) => state.isRightPanelVisible);
+  const leftPanelWidth = useUIStore((state) => state.leftPanelWidth);
+  const rightPanelWidth = useUIStore((state) => state.rightPanelWidth);
+  const setLeftPanelWidth = useUIStore((state) => state.setLeftPanelWidth);
+  const setRightPanelWidth = useUIStore((state) => state.setRightPanelWidth);
 
   // Handle left panel resize
   const handleLeftPanelResize = (e: React.MouseEvent) => {

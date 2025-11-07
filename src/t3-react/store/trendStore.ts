@@ -10,8 +10,8 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { TrendLogData, TrendDataPoint } from '@common/types/bacnet';
-import { bacnetTrendsApi } from '@common/api';
+import type { TrendLogData, TrendDataPoint } from '@common/react/types/bacnet';
+// TODO: API not implemented yet - import { bacnetTrendsApi } from '@common/api';
 
 interface TrendChartConfig {
   trendLogId: number;

@@ -199,14 +199,14 @@
 <script lang="ts">
 
 import { defineComponent, ref, onMounted, watch, reactive, toRefs, computed } from 'vue'
-import MockData from '@common/T3000/Hvac/Data/MockData'
-import Hvac from '@common/T3000/Hvac/Hvac'
+import MockData from '@/lib/vue/T3000/Hvac/Data/MockData'
+import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
-import { T3Data } from '@/lib/vue/T3000/Hvac/Data/T3Data.js'
-import { globalMsg } from '@/lib/vue/T3000/Hvac/Data/T3Data.js'
-import MessageType from '@common/T3000/Hvac/Opt/Socket/MessageType'
-import GlobalMsgModel from '@common/T3000/Hvac/Model/GlobalMsgModel'
-import LogUtil from '@common/T3000/Hvac/Util/LogUtil'
+import { T3Data } from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
+import { globalMsg } from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
+import MessageType from '@/lib/vue/T3000/Hvac/Opt/Socket/MessageType'
+import GlobalMsgModel from '@/lib/vue/T3000/Hvac/Model/GlobalMsgModel'
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
 
 export default defineComponent({
   name: 'DeviceInfo',

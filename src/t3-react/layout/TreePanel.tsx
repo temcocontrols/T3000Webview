@@ -22,11 +22,11 @@ import {
 import {
   FolderRegular,
   FolderOpenRegular,
-  DeviceDesktopRegular,
+  DesktopRegular,
   CircleFilled,
 } from '@fluentui/react-icons';
 import { useTreeNavigation, useContextMenu, useDeviceData } from '@t3-react/hooks';
-import type { TreeNode } from '@common/types/tree';
+import type { TreeNode } from '@common/react/types/tree';
 
 const useStyles = makeStyles({
   container: {
@@ -129,7 +129,7 @@ export const TreePanel: React.FC = () => {
     if (node.type === 'building' || node.type === 'group') {
       icon = expanded ? <FolderOpenRegular /> : <FolderRegular />;
     } else {
-      icon = <DeviceDesktopRegular />;
+      icon = <DesktopRegular />;
     }
 
     return (
