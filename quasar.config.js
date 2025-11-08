@@ -28,6 +28,7 @@ module.exports = configure(function (/* ctx */) {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli/boot-files
     boot: [
+      '../t3-vue/boot/antd', // Load Ant Design Vue
       'react.tsx' // Initialize React app conditionally based on route
     ],
 
