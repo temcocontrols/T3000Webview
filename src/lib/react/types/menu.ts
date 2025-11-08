@@ -3,6 +3,7 @@
  */
 
 import { WindowType } from './window';
+import type { FluentIcon } from '@fluentui/react-icons';
 
 // Menu item type
 export enum MenuItemType {
@@ -20,10 +21,11 @@ export interface MenuItem {
   id?: string;
   type: MenuItemType | 'submenu' | 'item' | 'divider' | 'separator' | 'checkbox';
   label?: string;
-  icon?: string;
+  icon?: FluentIcon | string; // Support both component and string name
   shortcut?: string;
   disabled?: boolean;
   checked?: boolean;          // For checkbox/radio
+  divider?: boolean;          // Is this a divider? (for backwards compatibility)
   children?: MenuItem[];      // For submenu
   action?: MenuAction | (() => void);
   windowType?: WindowType;    // For window navigation
@@ -39,12 +41,15 @@ export interface TopMenuConfig {
 export interface ToolbarButton {
   id: string;
   label: string;
-  icon: string;
+  icon: FluentIcon | string; // Support both component and string name
   tooltip: string;
   shortcut?: string;
-  windowType?: WindowType;
-  dialogType?: string;        // For dialog buttons (Discover, Buildings)
-  action?: () => void;
+  windowId?: number;          // Window ID for navigation
+  route?: string;             // Route path
+  dialog?: string;            // Dialog name for opening dialogs
+  dialogId?: string;          // Dialog ID (alternative name)
+  divider?: boolean;          // Is this a divider?
+  action?: string | (() => void); // Action identifier or function
   disabled?: boolean;
 }
 

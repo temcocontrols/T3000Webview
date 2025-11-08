@@ -267,6 +267,11 @@ const routes = [
     path: "/error-fallback",
     component: createOptimizedComponent(() => import("../pages/V2/PageFallback.vue"), "PageFallback", { category: 'fast' }),
   },
+  // React app container for /t3000/* routes (must be before catch-all)
+  {
+    path: "/t3000/:pathMatch(.*)*",
+    component: () => import("../pages/ReactContainer.vue"),
+  },
   // Always leave this as last one,
   // but you can also remove it
   {

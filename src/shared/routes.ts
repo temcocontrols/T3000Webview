@@ -34,7 +34,9 @@ export const APP_ROUTES = {
  * Determine which app should handle the current route
  */
 export function getActiveApp(): 'vue' | 'react' {
-  const path = window.location.pathname;
+  // Use hash for hash routing mode
+  const hash = window.location.hash.replace('#', '');
+  const path = hash || window.location.pathname;
 
   // Check if React route
   if (path.startsWith('/t3000')) {

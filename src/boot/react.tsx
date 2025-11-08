@@ -8,6 +8,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { isReactRoute } from '../shared/routes';
 
+// Track if React has already been initialized
+let reactRoot: ReactDOM.Root | null = null;
+let isInitialized = false;
+
 /**
  * Initialize React Application (conditionally based on route)
  * Only mounts React app when on /t3000/* routes
@@ -21,6 +25,12 @@ export function initializeReactApp() {
 
   console.log('⚛️ React route detected - initializing React app...');
 
+  // Prevent multiple initializations
+  if (isInitialized) {
+    console.log('⚠️ React already initialized, skipping...');
+    return;
+  }
+
   // Check if React root element exists
   const rootElement = document.getElementById('t3000-react-root');
 
@@ -32,14 +42,36 @@ export function initializeReactApp() {
   try {
     // Lazy load React app (code splitting)
     import('@t3-react/App').then(({ App }) => {
-      // Create React root and render app
-      const root = ReactDOM.createRoot(rootElement);
+      console.log('📦 React App module loaded, rootElement:', rootElement);
+      console.log('📦 rootElement innerHTML before mount:', rootElement.innerHTML);
+      console.log('📦 rootElement parent:', rootElement.parentElement);
 
-      root.render(
+      // Create React root and render app
+      reactRoot = ReactDOM.createRoot(rootElement);
+
+      console.log('📦 React root created:', reactRoot);
+
+      reactRoot.render(
         <React.StrictMode>
           <App />
         </React.StrictMode>
       );
+
+      isInitialized = true;
+      console.log('📦 React render called');
+
+      // Check after a brief delay
+      setTimeout(() => {
+        console.log('📦 rootElement innerHTML after mount:', rootElement.innerHTML);
+        console.log('📦 rootElement children count:', rootElement.children.length);
+      }, 100);
+
+      // Check again after 500ms to see if Vue cleared it
+      setTimeout(() => {
+        console.log('🔍 rootElement innerHTML after 500ms:', rootElement.innerHTML);
+        console.log('🔍 rootElement children count after 500ms:', rootElement.children.length);
+        console.log('🔍 rootElement still in DOM?', document.contains(rootElement));
+      }, 500);
 
       console.log('✅ T3000 React application initialized');
     }).catch((error) => {
@@ -52,14 +84,9 @@ export function initializeReactApp() {
 
 /**
  * Quasar boot function export
- * This is called by Quasar during app initialization
+ * NOTE: React is now initialized by ReactContainer.vue's onMounted hook
+ * This ensures the DOM element exists before React tries to mount
  */
 export default () => {
-  // Initialize React app if on React route
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeReactApp);
-  } else {
-    // DOM already loaded
-    initializeReactApp();
-  }
+  console.log('⚛️ React boot file loaded (initialization handled by ReactContainer)');
 };

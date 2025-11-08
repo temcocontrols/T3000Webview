@@ -20,10 +20,12 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100vh',
-    width: '100vw',
+    height: '100%',
+    width: '100%',
+    minHeight: '100vh',
     overflow: 'hidden',
-    backgroundColor: tokens.colorNeutralBackground3,
+    backgroundColor: '#f5f5f5',
+    position: 'relative',
   },
   body: {
     display: 'flex',
@@ -70,6 +72,13 @@ export const MainLayout: React.FC = () => {
   const rightPanelWidth = useUIStore((state) => state.rightPanelWidth);
   const setLeftPanelWidth = useUIStore((state) => state.setLeftPanelWidth);
   const setRightPanelWidth = useUIStore((state) => state.setRightPanelWidth);
+
+  console.log('🏗️ MainLayout rendering...', {
+    isLeftPanelVisible,
+    isRightPanelVisible,
+    leftPanelWidth,
+    rightPanelWidth,
+  });
 
   // Handle left panel resize
   const handleLeftPanelResize = (e: React.MouseEvent) => {

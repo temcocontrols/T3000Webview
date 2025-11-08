@@ -98,6 +98,13 @@ export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedDevice, deviceCount, onlineCount, offlineCount } = useDeviceData();
 
+  console.log('🏠 HomePage rendering...', {
+    selectedDevice,
+    deviceCount,
+    onlineCount,
+    offlineCount,
+  });
+
   const quickAccessItems = [
     {
       title: 'Inputs',

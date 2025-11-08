@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import { ErrorBoundary, NotificationProvider } from '@t3-react/components';
 import { MainLayout } from '@t3-react/layout';
@@ -58,13 +58,14 @@ const SettingsPage = React.lazy(() =>
 /**
  * Protected Route Wrapper
  * Redirects to login if not authenticated
+ * TODO: Re-enable authentication after testing
  */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = useAuthStore((state: any) => state.isAuthenticated);
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  // Temporarily disable authentication for testing
+  // const isAuthenticated = useAuthStore((state: any) => state.isAuthenticated);
+  // if (!isAuthenticated) {
+  //   return <Navigate to="/login" replace />;
+  // }
 
   return <>{children}</>;
 };
@@ -75,15 +76,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 export const App: React.FC = () => {
   const [theme] = React.useState<'light' | 'dark'>('light');
 
+  console.log('🚀 React App component rendering...');
+
   return (
-    <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
+    <div style={{ width: '100%', height: '100%', minHeight: '100vh', background: '#ffffff' }}>
+      <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
       <ErrorBoundary>
         <NotificationProvider>
-          <BrowserRouter>
+          <HashRouter>
             <Routes>
-              {/* Redirect root to T3000 home */}
-              <Route path="/" element={<Navigate to="/t3000" replace />} />
-
               {/* T3000 Routes - All protected with MainLayout wrapper */}
               <Route
                 path="/t3000"
@@ -211,9 +212,10 @@ export const App: React.FC = () => {
               {/* Fallback route */}
               <Route path="*" element={<Navigate to="/t3000" replace />} />
             </Routes>
-          </BrowserRouter>
+          </HashRouter>
         </NotificationProvider>
       </ErrorBoundary>
     </FluentProvider>
+    </div>
   );
 };

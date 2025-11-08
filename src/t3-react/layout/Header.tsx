@@ -37,11 +37,14 @@ import {
   PersonRegular,
   SignOutRegular,
 } from '@fluentui/react-icons';
+import type { FluentIcon } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
+import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/router/routes';
+import { getIconComponent } from '@t3-react/utils/iconMapper';
 
 const useStyles = makeStyles({
   header: {
@@ -101,13 +104,20 @@ export const Header: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
+  console.log('🎯 Header rendering...', { location: location.pathname, user, menuConfig, toolbarConfig });
+
   // Get current route for breadcrumb
   const currentRoute = t3000Routes.find((route) => route.path === location.pathname);
 
   // Handle menu item click
-  const handleMenuClick = (action?: () => void) => {
-    if (action) {
+  const handleMenuClick = (action?: MenuAction | (() => void)) => {
+    if (!action) return;
+
+    if (typeof action === 'function') {
       action();
+    } else {
+      // Handle MenuAction enum (implement menu actions)
+      console.log('Menu action:', action);
     }
   };
 
@@ -142,10 +152,15 @@ export const Header: React.FC = () => {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                {menu.items.map((item) => {
-                  if (item.divider) {
+                {menu.children?.map((item) => {
+                  if (item.divider || item.type === 'divider') {
                     return <MenuDivider key={item.id} />;
                   }
+
+                  // Get icon component (handle both FluentIcon and string)
+                  const IconComponent = typeof item.icon === 'string'
+                    ? getIconComponent(item.icon)
+                    : item.icon;
 
                   return (
                     <MenuItem
@@ -153,7 +168,7 @@ export const Header: React.FC = () => {
                       disabled={item.disabled}
                       onClick={() => handleMenuClick(item.action)}
                     >
-                      {item.icon && <item.icon />}
+                      {IconComponent && <IconComponent />}
                       {item.label}
                       {item.shortcut && (
                         <span style={{ marginLeft: 'auto', opacity: 0.6 }}>
@@ -178,11 +193,15 @@ export const Header: React.FC = () => {
                 return <ToolbarDivider key={`divider-${index}`} />;
               }
 
-              const Icon = item.icon;
+              // Get icon component (handle both FluentIcon and string)
+              const IconComponent = typeof item.icon === 'string'
+                ? getIconComponent(item.icon)
+                : item.icon;
+
               return (
                 <ToolbarButton
                   key={item.id}
-                  icon={Icon ? <Icon /> : undefined}
+                  icon={IconComponent ? <IconComponent /> : undefined}
                   disabled={item.disabled}
                   onClick={() => handleToolbarClick(item.windowId, item.dialog)}
                   title={item.tooltip || item.label}

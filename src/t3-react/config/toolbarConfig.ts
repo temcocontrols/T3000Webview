@@ -19,6 +19,24 @@ import {
   WINDOW_ARRAY,
   WINDOW_REMOTE_POINT,
 } from '@common/react/types/window';
+import {
+  InfoRegular,
+  ArrowCircleDownRegular,
+  ArrowCircleUpRegular,
+  CodeRegular,
+  SettingsRegular,
+  ImageRegular,
+  CalendarRegular,
+  CalendarStarRegular,
+  ChartMultipleRegular,
+  AlertRegular,
+  TableRegular,
+  NetworkCheckRegular,
+  SettingsRegular as SettingsGearRegular,
+  SearchRegular,
+  BuildingMultipleRegular,
+  ArrowClockwiseRegular,
+} from '@fluentui/react-icons';
 
 /**
  * Toolbar Button Configuration
@@ -27,14 +45,14 @@ import {
 export const toolbarConfig: ToolbarButton[] = [
   {
     id: 'toolbar-info',
-    icon: 'Info',
+    icon: InfoRegular,
     label: 'Information',
     tooltip: 'Device Information',
     action: 'openDeviceInfo',
   },
   {
     id: 'toolbar-inputs',
-    icon: 'ArrowCircleDown',
+    icon: ArrowCircleDownRegular,
     label: 'Inputs',
     tooltip: 'Inputs (Alt+I)',
     action: 'openWindow',
@@ -44,7 +62,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-outputs',
-    icon: 'ArrowCircleUp',
+    icon: ArrowCircleUpRegular,
     label: 'Outputs',
     tooltip: 'Outputs (Alt+O)',
     action: 'openWindow',
@@ -54,7 +72,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-variables',
-    icon: 'Variable',
+    icon: CodeRegular,
     label: 'Variables',
     tooltip: 'Variables (Alt+V)',
     action: 'openWindow',
@@ -64,7 +82,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-programs',
-    icon: 'Code',
+    icon: CodeRegular,
     label: 'Programs',
     tooltip: 'Programs (Alt+P)',
     action: 'openWindow',
@@ -74,7 +92,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-controllers',
-    icon: 'Settings',
+    icon: SettingsRegular,
     label: 'Controllers',
     tooltip: 'PID Controllers (Alt+L)',
     action: 'openWindow',
@@ -84,7 +102,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-graphics',
-    icon: 'Image',
+    icon: ImageRegular,
     label: 'Graphics',
     tooltip: 'Graphics Screens (Alt+G)',
     action: 'openWindow',
@@ -94,7 +112,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-schedules',
-    icon: 'Calendar',
+    icon: CalendarRegular,
     label: 'Schedules',
     tooltip: 'Weekly Schedules (Alt+S)',
     action: 'openWindow',
@@ -104,7 +122,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-holidays',
-    icon: 'CalendarStar',
+    icon: CalendarStarRegular,
     label: 'Holidays',
     tooltip: 'Annual Routines (Alt+H)',
     action: 'openWindow',
@@ -114,7 +132,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-trends',
-    icon: 'LineChart',
+    icon: ChartMultipleRegular,
     label: 'Trends',
     tooltip: 'Trend Logs (Alt+T)',
     action: 'openWindow',
@@ -124,7 +142,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-alarms',
-    icon: 'Alert',
+    icon: AlertRegular,
     label: 'Alarms',
     tooltip: 'Alarm Log (Alt+A)',
     action: 'openWindow',
@@ -134,7 +152,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-array',
-    icon: 'Table',
+    icon: TableRegular,
     label: 'Array',
     tooltip: 'Array Data',
     action: 'openWindow',
@@ -143,7 +161,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-network',
-    icon: 'Network',
+    icon: NetworkCheckRegular,
     label: 'Network',
     tooltip: 'Network Points (Alt+N)',
     action: 'openWindow',
@@ -153,7 +171,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-settings',
-    icon: 'SettingsGear',
+    icon: SettingsGearRegular,
     label: 'Settings',
     tooltip: 'Device Settings (Alt+E)',
     action: 'openWindow',
@@ -163,7 +181,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-discover',
-    icon: 'Search',
+    icon: SearchRegular,
     label: 'Discover',
     tooltip: 'Discover Devices',
     action: 'openDialog',
@@ -171,7 +189,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-buildings',
-    icon: 'BuildingMultiple',
+    icon: BuildingMultipleRegular,
     label: 'Buildings',
     tooltip: 'Manage Buildings',
     action: 'openDialog',
@@ -179,7 +197,7 @@ export const toolbarConfig: ToolbarButton[] = [
   },
   {
     id: 'toolbar-refresh',
-    icon: 'ArrowClockwise',
+    icon: ArrowClockwiseRegular,
     label: 'Refresh',
     tooltip: 'Refresh (F5)',
     action: 'refresh',
