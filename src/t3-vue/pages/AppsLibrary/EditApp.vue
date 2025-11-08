@@ -23,7 +23,7 @@ import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import FileUpload from "../../components/Hvac/FileUploadS3.vue";
 import { /*user,*/ globalNav, isAdmin } from "@/lib/vue/common.js";
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data";
 import { liveApi } from "@/lib/vue/api.js";
 import ky from "ky";
 

@@ -351,7 +351,7 @@ import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
   savedNotify, undoHistory, redoHistory, moveable, appStateV2
-} from '@/lib/vue/T3000/Hvac/Data/T3Data.ts';
+} from '@/lib/vue/T3000/Hvac/Data/T3Data';
 import IdxPage from '@/lib/vue/T3000/Hvac/Opt/Common/IdxPage';
 import T3Util from '@/lib/vue/T3000/Hvac/Util/T3Util';
 import QuasarUtil from '@/lib/vue/T3000/Hvac/Opt/Quasar/QuasarUtil';

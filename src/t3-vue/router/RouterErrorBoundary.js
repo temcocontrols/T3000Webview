@@ -3,7 +3,7 @@
  * Handles navigation errors and component loading failures at the router level
  */
 
-import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil.ts';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 // Simple error handler stub (replace with actual ErrorHandler if available)
 class SimpleErrorHandler {

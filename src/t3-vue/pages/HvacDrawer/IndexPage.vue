@@ -782,7 +782,7 @@ import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, /*user,*/ library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
-} from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
+} from '@/lib/vue/T3000/Hvac/Data/T3Data'
 
 import {
   scheduleModalVisible, selectedSchedule, scheduleItemData, scheduleModalNVisible, topNavVisible,
@@ -791,7 +791,6 @@ import {
 
 import IdxPage from '@/lib/vue/T3000/Hvac/Opt/Common/IdxPage';
 
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
 import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 
 import ScheduleModal from "@t3-vue/components/NewUI/ScheduleModal.vue";

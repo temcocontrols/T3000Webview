@@ -202,8 +202,8 @@ import { defineComponent, ref, onMounted, watch, reactive, toRefs, computed } fr
 import MockData from '@/lib/vue/T3000/Hvac/Data/MockData'
 import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
-import { T3Data } from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
-import { globalMsg } from '@/lib/vue/T3000/Hvac/Data/T3Data.ts'
+import { T3Data } from '@/lib/vue/T3000/Hvac/Data/T3Data'
+import { globalMsg } from '@/lib/vue/T3000/Hvac/Data/T3Data'
 import MessageType from '@/lib/vue/T3000/Hvac/Opt/Socket/MessageType'
 import GlobalMsgModel from '@/lib/vue/T3000/Hvac/Model/GlobalMsgModel'
 import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'

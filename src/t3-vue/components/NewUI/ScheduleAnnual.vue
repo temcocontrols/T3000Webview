@@ -61,7 +61,7 @@ import { annualScheduleVisible, annualScheduleData, scheduleItemData, } from '@/
 import { locked } from '@/lib/vue/T3000/Hvac/Data/T3Data'
 import { h } from 'vue'
 import T3UIUtil from '@/lib/vue/T3000/Hvac/Opt/UI/T3UIUtil'
-import { isBuiltInEdge, T3_Types } from '@/lib/vue/T3000/Hvac/Data/T3Data.ts';
+import { isBuiltInEdge, T3_Types } from '@/lib/vue/T3000/Hvac/Data/T3Data';
 import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
 import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
 

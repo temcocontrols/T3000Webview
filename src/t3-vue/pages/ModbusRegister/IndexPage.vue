@@ -635,7 +635,7 @@ import {
   getModbusRegisterSettings,
   devices,
 } from "@/lib/vue/common.js";
-import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data.ts";
+import { user } from "@/lib/vue/T3000/Hvac/Data/T3Data";
 import UserTopBar from "../../components/Hvac/UserTopBar.vue";
 
 import RowActionsRenderer from "../../components/Grid/RowActionsRenderer.vue";
