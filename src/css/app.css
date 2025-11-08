@@ -13,6 +13,12 @@
 @import './lib.css';
 @import './shape.css';
 
+/* Import t3-vue specific styles */
+@import '../t3-vue/css/main.css';
+@import '../t3-vue/css/global.css';
+@import '../t3-vue/css/lib.css';
+@import '../t3-vue/css/shape.css';
+
 /* Application-wide styles */
 * {
   box-sizing: border-box;
