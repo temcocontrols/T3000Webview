@@ -19,81 +19,60 @@ import {
   Toolbar,
   ToolbarButton,
   ToolbarDivider,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbButton,
-  BreadcrumbDivider,
   Avatar,
   Popover,
   PopoverTrigger,
   PopoverSurface,
   makeStyles,
-  tokens,
 } from '@fluentui/react-components';
 import {
-  DocumentRegular,
-  FolderRegular,
   SettingsRegular,
   PersonRegular,
   SignOutRegular,
 } from '@fluentui/react-icons';
-import type { FluentIcon } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { menuConfig } from '@t3-react/config/menuConfig';
-import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/router/routes';
 import { getIconComponent } from '@t3-react/utils/iconMapper';
+import { ThemeSelector, useTheme } from '@t3-react/theme';
 
 const useStyles = makeStyles({
   header: {
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  menuBar: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '4px 12px',
-    gap: '4px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  menuItem: {
-    padding: '6px 12px',
-    cursor: 'pointer',
-    fontSize: tokens.fontSizeBase200,
-    '&:hover': {
-      backgroundColor: tokens.colorNeutralBackground2Hover,
-    },
+    backgroundColor: 'var(--t3-color-header-background)',
+    borderBottom: '1px solid var(--t3-color-header-border)',
+    height: 'var(--t3-header-height)',
   },
   toolbarContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '8px 12px',
-    gap: '8px',
+    padding: '0 16px',
+    height: '100%',
+    gap: '16px',
   },
   toolbarSection: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
   },
-  breadcrumbContainer: {
-    padding: '8px 12px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
   userSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '12px',
   },
   userName: {
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightSemibold,
+    fontSize: 'var(--t3-font-size-body)',
+    fontWeight: 'var(--t3-font-weight-semibold)',
+    color: 'var(--t3-color-header-text)',
+  },
+  userAvatar: {
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
   },
 });
 
@@ -103,23 +82,9 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const { theme } = useTheme();
 
-  console.log('🎯 Header rendering...', { location: location.pathname, user, menuConfig, toolbarConfig });
-
-  // Get current route for breadcrumb
-  const currentRoute = t3000Routes.find((route) => route.path === location.pathname);
-
-  // Handle menu item click
-  const handleMenuClick = (action?: MenuAction | (() => void)) => {
-    if (!action) return;
-
-    if (typeof action === 'function') {
-      action();
-    } else {
-      // Handle MenuAction enum (implement menu actions)
-      console.log('Menu action:', action);
-    }
-  };
+  console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
   // Handle toolbar button click
   const handleToolbarClick = (windowId?: number, dialog?: string) => {
@@ -143,48 +108,7 @@ export const Header: React.FC = () => {
 
   return (
     <div className={styles.header}>
-      {/* Menu Bar */}
-      <div className={styles.menuBar}>
-        {menuConfig.map((menu) => (
-          <Menu key={menu.id}>
-            <MenuTrigger>
-              <div className={styles.menuItem}>{menu.label}</div>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                {menu.children?.map((item) => {
-                  if (item.divider || item.type === 'divider') {
-                    return <MenuDivider key={item.id} />;
-                  }
-
-                  // Get icon component (handle both FluentIcon and string)
-                  const IconComponent = typeof item.icon === 'string'
-                    ? getIconComponent(item.icon)
-                    : item.icon;
-
-                  return (
-                    <MenuItem
-                      key={item.id}
-                      disabled={item.disabled}
-                      onClick={() => handleMenuClick(item.action)}
-                    >
-                      {IconComponent && <IconComponent />}
-                      {item.label}
-                      {item.shortcut && (
-                        <span style={{ marginLeft: 'auto', opacity: 0.6 }}>
-                          {item.shortcut}
-                        </span>
-                      )}
-                    </MenuItem>
-                  );
-                })}
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-        ))}
-      </div>
-
-      {/* Toolbar */}
+      {/* Simplified Toolbar - Azure Portal Style */}
       <div className={styles.toolbarContainer}>
         <div className={styles.toolbarSection}>
           <Toolbar>
@@ -201,10 +125,12 @@ export const Header: React.FC = () => {
               return (
                 <ToolbarButton
                   key={item.id}
+                  appearance="subtle"
                   icon={IconComponent ? <IconComponent /> : undefined}
                   disabled={item.disabled}
                   onClick={() => handleToolbarClick(item.windowId, item.dialog)}
                   title={item.tooltip || item.label}
+                  style={{ color: theme.colors.headerText }}
                 >
                   {item.label}
                 </ToolbarButton>
@@ -215,9 +141,11 @@ export const Header: React.FC = () => {
 
         {/* User Section */}
         <div className={styles.userSection}>
+          <ThemeSelector appearance="subtle" size="small" />
+
           <Popover>
             <PopoverTrigger>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <div className={styles.userAvatar}>
                 <span className={styles.userName}>{user?.username || 'Guest'}</span>
                 <Avatar
                   name={user?.username || 'Guest'}
@@ -241,27 +169,6 @@ export const Header: React.FC = () => {
           </Popover>
         </div>
       </div>
-
-      {/* Breadcrumb */}
-      {currentRoute && (
-        <div className={styles.breadcrumbContainer}>
-          <Breadcrumb>
-            <BreadcrumbItem>
-              <BreadcrumbButton onClick={() => navigate('/t3000')}>
-                Home
-              </BreadcrumbButton>
-            </BreadcrumbItem>
-            {currentRoute.path !== '/t3000' && (
-              <>
-                <BreadcrumbDivider />
-                <BreadcrumbItem>
-                  <BreadcrumbButton>{currentRoute.title}</BreadcrumbButton>
-                </BreadcrumbItem>
-              </>
-            )}
-          </Breadcrumb>
-        </div>
-      )}
     </div>
   );
 };

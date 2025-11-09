@@ -1,6 +1,6 @@
 /**
  * Theme Index
- * 
+ *
  * Central export for all theme files
  */
 
@@ -8,6 +8,8 @@ export * from './types';
 export { azureTheme } from './azureTheme';
 export { darkTheme } from './darkTheme';
 export { lightTheme } from './lightTheme';
+export { ThemeProvider, useTheme } from './ThemeProvider';
+export { ThemeSelector } from './ThemeSelector';
 
 import { azureTheme } from './azureTheme';
 import { darkTheme } from './darkTheme';

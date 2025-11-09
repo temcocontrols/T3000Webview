@@ -10,6 +10,7 @@ import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-com
 import { ErrorBoundary, NotificationProvider } from '@t3-react/components';
 import { MainLayout } from '@t3-react/layout';
 import { useAuthStore } from '@t3-react/store';
+import { ThemeProvider } from '@t3-react/theme';
 
 // Lazy load pages
 const HomePage = React.lazy(() =>
@@ -79,21 +80,22 @@ export const App: React.FC = () => {
   console.log('🚀 React App component rendering...');
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: '100vh', background: '#ffffff' }}>
-      <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
-      <ErrorBoundary>
-        <NotificationProvider>
-          <HashRouter>
-            <Routes>
-              {/* T3000 Routes - All protected with MainLayout wrapper */}
-              <Route
-                path="/t3000"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout />
-                  </ProtectedRoute>
-                }
-              >
+    <ThemeProvider>
+      <div style={{ width: '100%', height: '100%', minHeight: '100vh', background: '#ffffff' }}>
+        <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
+          <ErrorBoundary>
+            <NotificationProvider>
+              <HashRouter>
+                <Routes>
+                  {/* T3000 Routes - All protected with MainLayout wrapper */}
+                  <Route
+                    path="/t3000"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout />
+                      </ProtectedRoute>
+                    }
+                  >
                 {/* Nested routes */}
                 <Route
                   index
@@ -215,7 +217,8 @@ export const App: React.FC = () => {
           </HashRouter>
         </NotificationProvider>
       </ErrorBoundary>
-    </FluentProvider>
-    </div>
+      </FluentProvider>
+      </div>
+    </ThemeProvider>
   );
 };

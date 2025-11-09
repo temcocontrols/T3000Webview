@@ -1,6 +1,6 @@
 /**
  * Theme Type Definitions
- * 
+ *
  * Defines the structure for application themes
  * to enable consistent theming across all components
  */
@@ -10,53 +10,53 @@ export interface ThemeColors {
   primary: string;
   primaryHover: string;
   primaryActive: string;
-  
+
   // Background colors
   background: string;
   backgroundSecondary: string;
   backgroundTertiary: string;
-  
+
   // Surface colors (cards, panels)
   surface: string;
   surfaceHover: string;
   surfaceSelected: string;
-  
+
   // Sidebar colors
   sidebarBackground: string;
   sidebarText: string;
   sidebarHover: string;
   sidebarSelected: string;
   sidebarBorder: string;
-  
+
   // Header colors
   headerBackground: string;
   headerText: string;
   headerBorder: string;
-  
+
   // Text colors
   text: string;
   textSecondary: string;
   textTertiary: string;
   textInverse: string;
-  
+
   // Border colors
   border: string;
   borderLight: string;
   borderDark: string;
-  
+
   // Message/Alert colors
   info: string;
   infoBackground: string;
   infoText: string;
-  
+
   warning: string;
   warningBackground: string;
   warningText: string;
-  
+
   error: string;
   errorBackground: string;
   errorText: string;
-  
+
   success: string;
   successBackground: string;
   successText: string;
@@ -64,7 +64,7 @@ export interface ThemeColors {
 
 export interface ThemeTypography {
   fontFamily: string;
-  
+
   // Font sizes
   fontSizeH1: string;
   fontSizeH2: string;
@@ -72,13 +72,13 @@ export interface ThemeTypography {
   fontSizeBody: string;
   fontSizeSmall: string;
   fontSizeTiny: string;
-  
+
   // Font weights
   fontWeightRegular: number;
   fontWeightMedium: number;
   fontWeightSemibold: number;
   fontWeightBold: number;
-  
+
   // Line heights
   lineHeightH1: string;
   lineHeightH2: string;
