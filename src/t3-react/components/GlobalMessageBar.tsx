@@ -13,7 +13,6 @@ import {
   MessageBarActions,
   Button,
   makeStyles,
-  tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
 
@@ -37,7 +36,27 @@ interface GlobalMessageBarProps {
 const useStyles = makeStyles({
   container: {
     width: '100%',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderBottom: '1px solid var(--t3-color-border)',
+  },
+  messageBarInfo: {
+    backgroundColor: 'var(--t3-color-info-background)',
+    color: 'var(--t3-color-info-text)',
+    borderLeft: '4px solid var(--t3-color-info)',
+  },
+  messageBarWarning: {
+    backgroundColor: 'var(--t3-color-warning-background)',
+    color: 'var(--t3-color-warning-text)',
+    borderLeft: '4px solid var(--t3-color-warning)',
+  },
+  messageBarError: {
+    backgroundColor: 'var(--t3-color-error-background)',
+    color: 'var(--t3-color-error-text)',
+    borderLeft: '4px solid var(--t3-color-error)',
+  },
+  messageBarSuccess: {
+    backgroundColor: 'var(--t3-color-success-background)',
+    color: 'var(--t3-color-success-text)',
+    borderLeft: '4px solid var(--t3-color-success)',
   },
 });
 
@@ -57,9 +76,25 @@ export const GlobalMessageBar: React.FC<GlobalMessageBarProps> = ({
     }
   };
 
+  // Get style class based on message type
+  const getMessageBarClass = () => {
+    switch (message.type) {
+      case 'info':
+        return styles.messageBarInfo;
+      case 'warning':
+        return styles.messageBarWarning;
+      case 'error':
+        return styles.messageBarError;
+      case 'success':
+        return styles.messageBarSuccess;
+      default:
+        return styles.messageBarInfo;
+    }
+  };
+
   return (
     <div className={styles.container}>
-      <MessageBar intent={message.type}>
+      <MessageBar intent={message.type} className={getMessageBarClass()}>
         <MessageBarBody>
           {message.title && <MessageBarTitle>{message.title}</MessageBarTitle>}
           {message.message}

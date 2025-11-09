@@ -16,7 +16,6 @@ import {
   TreeItem,
   TreeItemLayout,
   makeStyles,
-  tokens,
   Spinner,
 } from '@fluentui/react-components';
 import {
@@ -27,25 +26,28 @@ import {
 } from '@fluentui/react-icons';
 import { useTreeNavigation, useContextMenu, useDeviceData } from '@t3-react/hooks';
 import type { TreeNode } from '@common/react/types/tree';
+import { useTheme } from '@t3-react/theme';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: 'var(--t3-color-sidebar-background)',
+    borderRight: '1px solid var(--t3-color-sidebar-border)',
   },
   header: {
-    padding: '12px',
-    fontWeight: tokens.fontWeightSemibold,
-    fontSize: tokens.fontSizeBase300,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    padding: '16px',
+    fontWeight: 'var(--t3-font-weight-semibold)',
+    fontSize: 'var(--t3-font-size-body)',
+    color: 'var(--t3-color-sidebar-text)',
+    borderBottom: '1px solid var(--t3-color-sidebar-border)',
   },
   treeContainer: {
     flex: 1,
     overflow: 'auto',
     padding: '8px',
+    color: 'var(--t3-color-sidebar-text)',
   },
   loadingContainer: {
     display: 'flex',
@@ -53,21 +55,33 @@ const useStyles = makeStyles({
     alignItems: 'center',
     padding: '24px',
   },
+  treeItem: {
+    color: 'var(--t3-color-sidebar-text)',
+    '&:hover': {
+      backgroundColor: 'var(--t3-color-sidebar-hover)',
+    },
+  },
+  treeItemSelected: {
+    backgroundColor: 'var(--t3-color-sidebar-selected)',
+    borderLeft: '3px solid var(--t3-color-primary)',
+    paddingLeft: '5px',
+  },
   statusIndicator: {
     width: '8px',
     height: '8px',
-    marginRight: '8px',
+    marginLeft: '8px',
   },
   onlineStatus: {
-    color: tokens.colorPaletteGreenForeground1,
+    color: 'var(--t3-color-success)',
   },
   offlineStatus: {
-    color: tokens.colorPaletteRedForeground1,
+    color: 'var(--t3-color-error)',
   },
 });
 
 export const TreePanel: React.FC = () => {
   const styles = useStyles();
+  const { theme } = useTheme();
 
   const {
     treeData,
@@ -98,15 +112,16 @@ export const TreePanel: React.FC = () => {
     }
   };
 
-  // Handle node expand/collapse
-  const handleNodeToggle = (node: TreeNode) => {
-    const nodeId = String(node.id);
-    if (isExpanded(nodeId)) {
-      collapseNode(nodeId);
-    } else {
-      expandNode(nodeId);
-    }
-  };
+  // Handle node expand/collapse (currently handled by Tree component automatically)
+  // Keeping for future custom expansion logic if needed
+  // const handleNodeToggle = (node: TreeNode) => {
+  //   const nodeId = String(node.id);
+  //   if (isExpanded(nodeId)) {
+  //     collapseNode(nodeId);
+  //   } else {
+  //     expandNode(nodeId);
+  //   }
+  // };
 
   // Handle context menu
   const handleContextMenu = (event: React.MouseEvent, node: TreeNode) => {
@@ -126,11 +141,14 @@ export const TreePanel: React.FC = () => {
 
     // Icon based on node type and state
     let icon: React.ReactElement;
-    if (node.type === 'building' || node.type === 'group') {
+    if (node.type === 'building' || node.type === 'root' || node.type === 'floor') {
       icon = expanded ? <FolderOpenRegular /> : <FolderRegular />;
     } else {
       icon = <DesktopRegular />;
     }
+
+    // Device online status (if applicable)
+    const deviceOnline = (node as any).online; // Use type assertion for optional property
 
     return (
       <TreeItem
@@ -138,22 +156,23 @@ export const TreePanel: React.FC = () => {
         itemType={hasChildren ? 'branch' : 'leaf'}
         value={nodeId}
         aria-selected={selected}
+        className={`${styles.treeItem} ${selected ? styles.treeItemSelected : ''}`}
       >
         <TreeItemLayout
           onClick={() => handleNodeClick(node)}
           onContextMenu={(e) => handleContextMenu(e, node)}
           iconBefore={icon}
           iconAfter={
-            node.type === 'device' && (
+            node.type === 'device' && deviceOnline !== undefined ? (
               <CircleFilled
                 className={`${styles.statusIndicator} ${
-                  node.online ? styles.onlineStatus : styles.offlineStatus
+                  deviceOnline ? styles.onlineStatus : styles.offlineStatus
                 }`}
               />
-            )
+            ) : null
           }
         >
-          {node.label}
+          {(node as any).label || node.name}
         </TreeItemLayout>
 
         {hasChildren && expanded && (

@@ -31,6 +31,9 @@ body {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  font-family: var(--t3-font-family, 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif);
+  font-size: var(--t3-font-size-body, 14px);
+  color: var(--t3-color-text, #323130);
 }
 
 #q-app {

@@ -11,7 +11,6 @@ import {
   CardHeader,
   Button,
   makeStyles,
-  tokens,
 } from '@fluentui/react-components';
 import {
   DataUsageRegular,
@@ -26,70 +25,95 @@ import { StatusBar } from '@t3-react/components';
 
 const useStyles = makeStyles({
   container: {
-    padding: '24px',
+    padding: 'var(--t3-spacing-lg)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '24px',
+    gap: 'var(--t3-spacing-lg)',
   },
   welcome: {
-    fontSize: tokens.fontSizeBase500,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground1,
+    fontSize: 'var(--t3-font-size-h1)',
+    fontWeight: 'var(--t3-font-weight-semibold)',
+    color: 'var(--t3-color-text)',
   },
   subtitle: {
-    fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground2,
-    marginTop: '8px',
+    fontSize: 'var(--t3-font-size-h3)',
+    color: 'var(--t3-color-text-secondary)',
+    marginTop: 'var(--t3-spacing-sm)',
   },
   quickAccess: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: '16px',
+    gap: 'var(--t3-spacing-md)',
   },
   card: {
     cursor: 'pointer',
-    transition: 'transform 0.2s',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    backgroundColor: 'var(--t3-color-surface)',
+    border: '1px solid var(--t3-color-border)',
+    borderRadius: 'var(--t3-border-radius)',
+    boxShadow: 'var(--t3-shadow-card)',
     '&:hover': {
-      transform: 'scale(1.02)',
-      boxShadow: tokens.shadow8,
+      transform: 'translateY(-2px)',
+      boxShadow: 'var(--t3-shadow-card-hover)',
     },
   },
   cardContent: {
-    padding: '16px',
+    padding: 'var(--t3-spacing-md)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: 'var(--t3-spacing-sm)',
   },
   cardIcon: {
     fontSize: '48px',
-    color: tokens.colorBrandForeground1,
+    color: 'var(--t3-color-primary)',
   },
   cardTitle: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightSemibold,
+    fontSize: 'var(--t3-font-size-h3)',
+    fontWeight: 'var(--t3-font-weight-semibold)',
+    color: 'var(--t3-color-text)',
   },
   cardDescription: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground2,
+    fontSize: 'var(--t3-font-size-body)',
+    color: 'var(--t3-color-text-secondary)',
   },
   stats: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '16px',
+    gap: 'var(--t3-spacing-md)',
   },
   statCard: {
-    padding: '16px',
+    padding: 'var(--t3-spacing-md)',
     textAlign: 'center',
+    backgroundColor: 'var(--t3-color-surface)',
+    border: '1px solid var(--t3-color-border)',
+    borderRadius: 'var(--t3-border-radius)',
+    boxShadow: 'var(--t3-shadow-card)',
   },
   statValue: {
-    fontSize: tokens.fontSizeBase600,
-    fontWeight: tokens.fontWeightBold,
-    color: tokens.colorBrandForeground1,
+    fontSize: 'var(--t3-font-size-h1)',
+    fontWeight: 'var(--t3-font-weight-bold)',
+    color: 'var(--t3-color-primary)',
   },
   statLabel: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground2,
-    marginTop: '4px',
+    fontSize: 'var(--t3-font-size-body)',
+    color: 'var(--t3-color-text-secondary)',
+    marginTop: 'var(--t3-spacing-xs)',
+  },
+  demoButtons: {
+    padding: 'var(--t3-spacing-md)',
+    display: 'flex',
+    gap: 'var(--t3-spacing-sm)',
+    flexWrap: 'wrap',
+  },
+  statOnline: {
+    fontSize: 'var(--t3-font-size-h1)',
+    fontWeight: 'var(--t3-font-weight-bold)',
+    color: 'var(--t3-color-success)',
+  },
+  statOffline: {
+    fontSize: 'var(--t3-font-size-h1)',
+    fontWeight: 'var(--t3-font-weight-bold)',
+    color: 'var(--t3-color-error)',
   },
 });
 
@@ -152,18 +176,18 @@ export const HomePage: React.FC = () => {
           <div className={styles.welcome}>Welcome to T3000</div>
           <div className={styles.subtitle}>
             {selectedDevice
-              ? `Connected to ${selectedDevice.label}`
+              ? `Connected to ${(selectedDevice as any).label || selectedDevice.name}`
               : 'Select a device from the tree to get started'}
           </div>
         </div>
 
         {/* Demo: Global Message Test Buttons */}
-        <Card>
+        <Card className={styles.card}>
           <CardHeader
             header={<div>Global Message Demo</div>}
             description={<div>Test the global message bar at the top</div>}
           />
-          <div style={{ padding: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className={styles.demoButtons}>
             <Button
               appearance="primary"
               onClick={() => showInfo('This is an informational message')}
@@ -195,16 +219,16 @@ export const HomePage: React.FC = () => {
             <div className={styles.statLabel}>Total Devices</div>
           </Card>
           <Card className={styles.statCard}>
-            <div className={styles.statValue} style={{ color: 'green' }}>
+            <div className={styles.statOnline}>
               {onlineCount}
             </div>
-            <div className={styles.statLabel}>Online</div>
+            <div className={styles.statLabel}>Online Devices</div>
           </Card>
           <Card className={styles.statCard}>
-            <div className={styles.statValue} style={{ color: 'red' }}>
+            <div className={styles.statOffline}>
               {offlineCount}
             </div>
-            <div className={styles.statLabel}>Offline</div>
+            <div className={styles.statLabel}>Offline Devices</div>
           </Card>
         </div>
 

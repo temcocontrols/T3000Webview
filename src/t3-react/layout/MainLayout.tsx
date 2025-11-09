@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
 import { TreePanel } from './TreePanel';
 import { GlobalMessageBar } from '@t3-react/components';
@@ -25,8 +25,9 @@ const useStyles = makeStyles({
     width: '100%',
     minHeight: '100vh',
     overflow: 'hidden',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'var(--t3-color-background)',
     position: 'relative',
+    fontFamily: 'var(--t3-font-family)',
   },
   body: {
     display: 'flex',
@@ -42,9 +43,10 @@ const useStyles = makeStyles({
   resizer: {
     width: '4px',
     cursor: 'col-resize',
-    backgroundColor: tokens.colorNeutralStroke2,
+    backgroundColor: 'var(--t3-color-border)',
+    transition: 'background-color 0.2s',
     '&:hover': {
-      backgroundColor: tokens.colorBrandBackground,
+      backgroundColor: 'var(--t3-color-primary)',
     },
   },
   mainContent: {
@@ -52,15 +54,20 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: 'var(--t3-color-background)',
+    padding: 'var(--t3-spacing-lg)',
   },
   rightPanel: {
     display: 'flex',
     flexDirection: 'column',
     transition: 'width 0.3s ease',
     overflow: 'hidden',
-    borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    borderLeft: '1px solid var(--t3-color-border)',
+    backgroundColor: 'var(--t3-color-surface)',
+  },
+  rightPanelContent: {
+    padding: 'var(--t3-spacing-md)',
+    color: 'var(--t3-color-text)',
   },
 });
 
@@ -171,7 +178,7 @@ export const MainLayout: React.FC = () => {
               style={{ width: `${rightPanelWidth}px` }}
             >
               {/* Right panel content will be rendered here */}
-              <div style={{ padding: '16px' }}>
+              <div className={styles.rightPanelContent}>
                 <h3>Properties</h3>
                 <p>Property panel content...</p>
               </div>
