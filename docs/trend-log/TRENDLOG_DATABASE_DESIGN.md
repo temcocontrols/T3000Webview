@@ -424,28 +424,28 @@ rm api/migration/src/m20250122_000000_data_management_schema.rs
 # - file management
 ```
 
-### 📅 Phase 1: New Database Foundation (Week 1-2)
+### 📅 Phase 1: New Database Foundation
 
 - [ ] Create `trendlog_database.db` schema
 - [ ] Implement basic Rust entities and migrations
 - [ ] Set up database connection management
 - [ ] Create initial API endpoints
 
-### 📅 Phase 2: Background Collection Service (Week 3-4)
+### 📅 Phase 2: Background Collection Service
 
 - [ ] BACnet bulk data collection service
 - [ ] Scheduled collection based on timebase
 - [ ] Error handling and retry logic
 - [ ] Data validation and quality tracking
 
-### 📅 Phase 3: API & Frontend Integration (Week 5-6)
+### 📅 Phase 3: API & Frontend Integration
 
 - [ ] Historical data query endpoints
 - [ ] Frontend chart component updates
 - [ ] Combined real-time + historical views
 - [ ] Performance optimization
 
-### 📅 Phase 4: Admin Dashboard & Management (Week 7-8)
+### 📅 Phase 4: Admin Dashboard & Management
 
 - [ ] Admin dashboard for database management
 - [ ] Configuration management UI

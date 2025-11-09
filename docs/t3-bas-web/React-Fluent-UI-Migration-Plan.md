@@ -29,15 +29,13 @@
 
 | Phase | Duration | Effort |
 |-------|----------|--------|
-| **Setup & Infrastructure** | 1-2 weeks | Low |
-| **Core Layout Migration** | 2-3 weeks | Medium |
-| **Component Migration** | 12-20 weeks | High |
-| **State Management** | 2-4 weeks | Medium |
-| **Testing & QA** | 4-6 weeks | High |
-| **Bug Fixes & Polish** | 2-4 weeks | Medium |
-| **TOTAL** | **6-9 months** | **Very High** |
-
-**Team Size Required**: 2-4 developers
+| **Setup & Infrastructure** | Low | Low |
+| **Core Layout Migration** | Medium | Medium |
+| **Component Migration** | High | High |
+| **State Management** | Complex | Medium |
+| **Testing & QA** | Complex | High |
+| **Bug Fixes & Polish** | Complex | Medium |
+| **TOTAL** | **Very Complex** | **Very High** |
 
 ---
 
@@ -113,7 +111,7 @@ src/
 
 ## 2. Detailed Migration Tasks
 
-### 2.1 Phase 1: Project Setup (1-2 weeks)
+### 2.1 Phase 1: Project Setup
 
 #### Task 1.1: Remove Vue Dependencies
 ```bash
@@ -243,7 +241,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ---
 
-### 2.2 Phase 2: Component Migration (12-20 weeks)
+### 2.2 Phase 2: Component Migration
 
 #### Migration Effort by Component Count
 
@@ -542,7 +540,7 @@ export const MainLayout: React.FC = () => {
 
 ---
 
-### 2.3 Phase 3: Routing Migration (1 week)
+### 2.3 Phase 3: Routing Migration
 
 #### Vue Router → React Router
 
@@ -613,7 +611,7 @@ export default App;
 
 ---
 
-### 2.4 Phase 4: State Management Migration (2-4 weeks)
+### 2.4 Phase 4: State Management Migration
 
 #### Option A: Redux Toolkit (Recommended for large apps)
 
@@ -1041,33 +1039,22 @@ describe('StatusIndicator', () => {
 
 ---
 
-## 6. Timeline & Resource Planning
+## 6. Migration Phases & Dependencies
 
-### 6.1 Detailed Timeline (3-4 developers)
+### 6.1 Implementation Sequence
 
-| Week | Phase | Tasks | Team |
-|------|-------|-------|------|
-| 1-2 | Setup | Dependencies, config, entry points | 1 dev |
-| 3-4 | Core Layout | MainLayout, routing, navigation | 2 devs |
-| 5-8 | Pages (Phase 1) | Dashboard, DeviceList, TrendLog | 3 devs |
-| 9-12 | Pages (Phase 2) | Remaining 30+ pages | 3 devs |
-| 13-16 | Components (Phase 1) | Basic, Navigation, NewUI | 3 devs |
-| 17-20 | Components (Phase 2) | Hvac, Grid, ObjectTypes | 3 devs |
-| 21-24 | State Management | Redux slices, integration | 2 devs |
-| 25-28 | Testing | Unit tests, integration tests | 3 devs |
-| 29-32 | QA & Bug Fixes | Testing, fixes, polish | 4 devs |
-| 33-36 | Performance & Deploy | Optimization, deployment | 2 devs |
-
-**Total: 36 weeks (9 months)** with 3-4 developers
-
-### 6.2 Cost Estimation
-
-**Developer Cost** (assuming $100k/year per developer):
-- 3 developers × 9 months × $8,333/month = **$225,000**
-- QA Engineer × 3 months × $7,000/month = **$21,000**
-- Project Manager × 9 months × $10,000/month = **$90,000**
-
-**TOTAL ESTIMATED COST: $336,000**
+| Phase | Tasks | Complexity |
+|------|-------|------|
+| Setup | Dependencies, config, entry points | Low |
+| Core Layout | MainLayout, routing, navigation | Medium |
+| Pages (Phase 1) | Dashboard, DeviceList, TrendLog | Medium |
+| Pages (Phase 2) | Remaining 30+ pages | High |
+| Components (Phase 1) | Basic, Navigation, NewUI | Medium |
+| Components (Phase 2) | Hvac, Grid, ObjectTypes | High |
+| State Management | Redux slices, integration | High |
+| Testing | Unit tests, integration tests | High |
+| QA & Bug Fixes | Testing, fixes, polish | High |
+| Performance & Deploy | Optimization, deployment | Medium |
 
 ---
 
@@ -1108,15 +1095,13 @@ describe('StatusIndicator', () => {
 
 **✅ Migrate to React + Fluent UI IF:**
 - You want 100% Microsoft Fluent design
-- You're willing to invest 9+ months
-- Budget allows $300k+ investment
-- Team knows React or willing to learn
+- You have significant time available
 - Long-term product (5+ years)
+- Learning React is acceptable
 
 **❌ DON'T Migrate IF:**
 - Need to deliver features quickly (next 6 months)
-- Limited budget
-- Team is Vue-expert
+- Vue expertise is strong
 - Ant Design + Azure theme is "good enough"
 
 ### 8.2 My Recommendation
@@ -1124,8 +1109,8 @@ describe('StatusIndicator', () => {
 **Stay with Vue + Ant Design + Azure Theme** because:
 1. ✅ Already built and working
 2. ✅ 95% visual similarity to Azure Portal
-3. ✅ 3-4 days vs 9 months
-4. ✅ $0 vs $300k+
+3. ✅ Quick implementation vs full rewrite
+4. ✅ Minimal effort required
 5. ✅ Team already knows Vue
 6. ✅ Can focus on features, not rewrites
 
@@ -1184,11 +1169,11 @@ tsconfig.json                     # TypeScript config
 ## 10. Summary
 
 **Migration Scope**: Complete rewrite of frontend
-**Effort**: 6-9 months, 3-4 developers
-**Cost**: $300k+
+**Effort**: Very High - Complex migration
 **Risk**: High
 **Benefit**: 100% Fluent UI design
 
-**Alternative**: Stay with Vue + Ant Design + Azure theme (3-4 days, $0)
+**Alternative**: Stay with Vue + Ant Design + Azure theme (much faster)
 
 **Decision**: Up to you! 🎯
+

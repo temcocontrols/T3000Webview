@@ -18,10 +18,7 @@
 5. **Use the [Troubleshooting](#troubleshooting-common-issues)** section if you hit issues
 
 **Current Status:** Phase 1 complete ✅
-**Next Action:** Start Phase 2 (Settings Page Migration) when ready
-**Estimated Time:** 6-8 weeks for Phase 2
-
----
+**Next Action:** Start Phase 2 (Settings Page Migration) when ready---
 
 ## 📋 Resuming Work Checklist
 
@@ -65,7 +62,7 @@ npm run client-dev
 - [ ] State management (Zustand) implemented
 - [ ] API layer with React Query working
 
-### Choose Your Next Task
+**Next Task Based on Progress:**
 
 Based on what's checked above, go to:
 
@@ -233,7 +230,7 @@ This document outlines the complete migration path from the current hybrid Vue/Q
 - [ ] Or integrate Zustand/Redux if needed
 - [ ] Migrate Vue stores to React state
 
-**Estimated Duration:** 6-8 weeks
+**Estimated Duration:** See individual phase sections for details
 
 ---
 
@@ -260,8 +257,6 @@ This document outlines the complete migration path from the current hybrid Vue/Q
 - [ ] Integration tests for critical flows
 - [ ] E2E tests (Playwright/Cypress)
 
-**Estimated Duration:** 8-10 weeks
-
 ---
 
 ### Phase 4: 📋 TODO - Infrastructure Migration
@@ -287,8 +282,6 @@ This document outlines the complete migration path from the current hybrid Vue/Q
 - [ ] Remove Vue Router
 - [ ] Update route configuration
 - [ ] Test all navigation flows
-
-**Estimated Duration:** 2-3 weeks
 
 ---
 
@@ -1312,13 +1305,12 @@ This section provides a complete, self-contained guide for implementing Phase 2.
 Before starting Phase 2, ensure:
 - ✅ Phase 1 complete (React running on `/t3000/*` routes)
 - ✅ Git branch created: `feature/phase2-react-migration`
-- ✅ All team members have reviewed this document
 - ✅ Staging environment available for testing
 - ✅ Backup of current production version
 
 ---
 
-### Phase 2.1: Settings Page Migration (Week 1-2)
+### Phase 2.1: Settings Page Migration
 
 **Goal:** Convert Vue settings page to React as proof of concept
 
@@ -1571,7 +1563,7 @@ export default function SettingsPage() {
 
 ---
 
-### Phase 2.2: Inputs Table (Week 3-4)
+### Phase 2.2: Inputs Table
 
 **Goal:** Create fully functional Inputs data grid
 
@@ -1753,7 +1745,7 @@ Find the Inputs button and add route:
 
 ---
 
-### Phase 2.3: Repeat for Outputs, Variables, Programs (Week 5-8)
+### Phase 2.3: Repeat for Outputs, Variables, Programs
 
 Follow the exact same pattern as Inputs:
 
@@ -1787,7 +1779,7 @@ export default function XxxPage() {
 
 ---
 
-### Phase 2.4: Common Components (Week 9-10)
+### Phase 2.4: Common Components
 
 #### Device Tree Component
 
@@ -1842,7 +1834,7 @@ Replace the placeholder in `MainLayout.tsx`:
 
 ---
 
-### Phase 2.5: State Management Setup (Week 11)
+### Phase 2.5: State Management Setup
 
 #### Install Zustand
 
@@ -2060,52 +2052,7 @@ If specific features broken but overall stable:
 
 ---
 
-## Timeline Estimate
-
-| Phase | Duration | Dependencies |
-|-------|----------|--------------|
-| Phase 1 | ✅ Complete | - |
-| Phase 2 | 6-8 weeks | Phase 1 |
-| Phase 3 | 8-10 weeks | Phase 2 |
-| Phase 4 | 2-3 weeks | Phase 3 |
-| Phase 5 | 2-3 weeks | Phase 4 |
-| **Total** | **18-24 weeks** | Sequential |
-
-**Recommended Start Date:** Q1 2026
-**Target Completion:** Q3 2026
-
----
-
-## Resources Required
-
-### Team
-- 2-3 Frontend Developers (React expertise)
-- 1 QA Engineer (testing focus)
-- 1 DevOps Engineer (build system migration)
-
-### Tools
-- Staging environment for parallel testing
-- CI/CD pipeline updates
-- Performance monitoring tools
-- Error tracking (Sentry/LogRocket)
-
----
-
 ## How to Use This Document
-
-### For Team Leads / Project Managers
-
-1. **Planning Phase:**
-   - Read [Overview](#overview) and [Migration Phases](#migration-phases)
-   - Review [Timeline Estimate](#timeline-estimate) and [Resources Required](#resources-required)
-   - Check [Risk Assessment](#risk-assessment)
-   - Present to stakeholders for approval
-
-2. **Execution Phase:**
-   - Assign developers to specific Phase 2 tasks
-   - Use [Phase 2 Implementation Guide](#phase-2-implementation-guide-start-here-next-time) as sprint planning guide
-   - Track progress with [Success Criteria](#success-criteria)
-   - Monitor using [Phase 2 Completion Checklist](#phase-2-completion-checklist)
 
 ### For Developers
 
@@ -2174,19 +2121,17 @@ If specific features broken but overall stable:
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
-| 1.0 | 2025-11-09 | Initial comprehensive plan | GitHub Copilot |
-| 1.1 | 2025-11-09 | Added Phase 2 implementation guide | GitHub Copilot |
-| 1.2 | 2025-11-09 | Added Quick Start and How to Use sections | GitHub Copilot |
+| 1.0 | 2025-11-09 | Initial comprehensive plan | AI Assistant |
+| 1.1 | 2025-11-09 | Added Phase 2 implementation guide | AI Assistant |
+| 1.2 | 2025-11-09 | Added Quick Start and How to Use sections | AI Assistant |
 
 ---
 
 ## Next Steps
 
-1. **Review this document** with team and stakeholders
-2. **Get approval** for migration timeline and resources
-3. **Set up feature flags** for gradual rollout
-4. **Create detailed subtasks** for Phase 2
-5. **Begin Phase 2** when ready (Q1 2026 target)
+1. **Review this document** thoroughly
+2. **Set up feature flags** for gradual rollout
+3. **Begin Phase 2** implementation when ready
 
 ---
 
@@ -2203,10 +2148,10 @@ If specific features broken but overall stable:
 
 | Date | Author | Changes |
 |------|--------|---------|
-| 2025-11-09 | GitHub Copilot | Initial document creation |
+| 2025-11-09 | AI Assistant | Initial document creation |
 
 ---
 
 **Document Status:** 📋 Planning Phase
 **Last Updated:** November 9, 2025
-**Next Review:** Q1 2026 (before Phase 2 kickoff)
+
