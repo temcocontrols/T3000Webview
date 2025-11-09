@@ -78,6 +78,7 @@ const fileMenu: MenuItem = {
       type: 'item',
       action: MenuAction.Exit,
       shortcut: 'Alt+F4',
+      icon: 'SignOut',
     },
   ],
 };

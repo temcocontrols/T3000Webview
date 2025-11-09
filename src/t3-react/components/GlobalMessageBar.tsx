@@ -39,24 +39,41 @@ const useStyles = makeStyles({
     borderBottom: '1px solid var(--t3-color-border)',
   },
   messageBarInfo: {
-    backgroundColor: 'var(--t3-color-info-background)',
-    color: 'var(--t3-color-info-text)',
-    borderLeft: '4px solid var(--t3-color-info)',
+    backgroundColor: '#f0f6ff', // Softer light blue
+    color: '#323130',
+    borderLeft: '3px solid #0078d4', // Thinner border
+    padding: '6px 12px', // Compact padding
+    fontSize: '12px', // Smaller font
   },
   messageBarWarning: {
-    backgroundColor: 'var(--t3-color-warning-background)',
-    color: 'var(--t3-color-warning-text)',
-    borderLeft: '4px solid var(--t3-color-warning)',
+    backgroundColor: '#fff8f0', // Softer light orange
+    color: '#323130',
+    borderLeft: '3px solid #f7630c',
+    padding: '6px 12px',
+    fontSize: '12px',
   },
   messageBarError: {
-    backgroundColor: 'var(--t3-color-error-background)',
-    color: 'var(--t3-color-error-text)',
-    borderLeft: '4px solid var(--t3-color-error)',
+    backgroundColor: '#fef0f1', // Softer light red
+    color: '#323130',
+    borderLeft: '3px solid #d13438',
+    padding: '6px 12px',
+    fontSize: '12px',
   },
   messageBarSuccess: {
-    backgroundColor: 'var(--t3-color-success-background)',
-    color: 'var(--t3-color-success-text)',
-    borderLeft: '4px solid var(--t3-color-success)',
+    backgroundColor: '#f0faf0', // Softer light green
+    color: '#323130',
+    borderLeft: '3px solid #107c10',
+    padding: '6px 12px',
+    fontSize: '12px',
+  },
+  messageTitle: {
+    fontSize: '12px',
+    fontWeight: '600',
+    marginBottom: '2px',
+  },
+  messageText: {
+    fontSize: '11px',
+    lineHeight: '16px',
   },
 });
 
@@ -96,14 +113,19 @@ export const GlobalMessageBar: React.FC<GlobalMessageBarProps> = ({
     <div className={styles.container}>
       <MessageBar intent={message.type} className={getMessageBarClass()}>
         <MessageBarBody>
-          {message.title && <MessageBarTitle>{message.title}</MessageBarTitle>}
-          {message.message}
+          {message.title && (
+            <MessageBarTitle className={styles.messageTitle}>
+              {message.title}
+            </MessageBarTitle>
+          )}
+          <span className={styles.messageText}>{message.message}</span>
         </MessageBarBody>
         <MessageBarActions>
           {message.action && (
             <Button
               appearance="transparent"
               onClick={message.action.onClick}
+              style={{ fontSize: '11px', padding: '2px 8px' }}
             >
               {message.action.label}
             </Button>
@@ -114,6 +136,7 @@ export const GlobalMessageBar: React.FC<GlobalMessageBarProps> = ({
               icon={<Dismiss24Regular />}
               onClick={handleDismiss}
               aria-label="Dismiss"
+              style={{ padding: '2px' }}
             />
           )}
         </MessageBarActions>

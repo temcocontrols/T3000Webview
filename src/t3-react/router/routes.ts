@@ -8,6 +8,7 @@ import type { RouteObject } from 'react-router-dom';
 
 // Lazy load page components for code splitting
 const HomePage = lazy(() => import('../pages').then(m => ({ default: m.HomePage })));
+const DashboardPage = lazy(() => import('../pages').then(m => ({ default: m.DashboardPage })));
 const InputsPage = lazy(() => import('../pages').then(m => ({ default: m.InputsPage })));
 const OutputsPage = lazy(() => import('../pages').then(m => ({ default: m.OutputsPage })));
 const VariablesPage = lazy(() => import('../pages').then(m => ({ default: m.VariablesPage })));
@@ -21,6 +22,8 @@ const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsP
 const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
 const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
 const SettingsPage = lazy(() => import('../pages').then(m => ({ default: m.SettingsPage })));
+const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
+const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
 
 /**
  * Route configuration with metadata
@@ -42,6 +45,12 @@ export const t3000Routes: T3000Route[] = [
     path: '/t3000',
     element: HomePage,
     title: 'Home',
+  },
+  {
+    path: '/t3000/dashboard',
+    element: DashboardPage,
+    title: 'Dashboard',
+    windowId: 0, // WINDOW_DASHBOARD
   },
   {
     path: '/t3000/inputs',
@@ -76,26 +85,10 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
-    path: '/t3000/controllers',
-    element: ControllersPage,
-    title: 'Controllers',
-    windowId: 5, // WINDOW_CONTROLLER
-    shortcut: 'Alt+L',
-    requiresDevice: true,
-  },
-  {
-    path: '/t3000/graphics',
-    element: GraphicsPage,
-    title: 'Graphics',
-    windowId: 6, // WINDOW_SCREEN
-    shortcut: 'Alt+G',
-    requiresDevice: true,
-  },
-  {
     path: '/t3000/schedules',
     element: SchedulesPage,
     title: 'Schedules',
-    windowId: 7, // WINDOW_WEEKLY
+    windowId: 5, // WINDOW_WEEKLY
     shortcut: 'Alt+S',
     requiresDevice: true,
   },
@@ -103,8 +96,24 @@ export const t3000Routes: T3000Route[] = [
     path: '/t3000/holidays',
     element: HolidaysPage,
     title: 'Holidays',
-    windowId: 8, // WINDOW_ANNUAL
+    windowId: 6, // WINDOW_ANNUAL
     shortcut: 'Alt+H',
+    requiresDevice: true,
+  },
+  {
+    path: '/t3000/controllers',
+    element: ControllersPage,
+    title: 'Controllers',
+    windowId: 7, // WINDOW_CONTROLLER
+    shortcut: 'Alt+L',
+    requiresDevice: true,
+  },
+  {
+    path: '/t3000/graphics',
+    element: GraphicsPage,
+    title: 'Graphics',
+    windowId: 8, // WINDOW_SCREEN
+    shortcut: 'Alt+G',
     requiresDevice: true,
   },
   {
@@ -124,10 +133,18 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
+    path: '/t3000/settings',
+    element: SettingsPage,
+    title: 'Settings',
+    windowId: 11, // WINDOW_SETTING
+    shortcut: 'Alt+E',
+    requiresDevice: true,
+  },
+  {
     path: '/t3000/network',
     element: NetworkPage,
     title: 'Network Points',
-    windowId: 15, // WINDOW_REMOTE_POINT
+    windowId: 13, // WINDOW_REMOTE_POINT
     shortcut: 'Alt+N',
     requiresDevice: true,
   },
@@ -139,12 +156,16 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
-    path: '/t3000/settings',
-    element: SettingsPage,
-    title: 'Settings',
-    windowId: 11, // WINDOW_SETTING
-    shortcut: 'Alt+E',
-    requiresDevice: true,
+    path: '/t3000/discover',
+    element: DiscoverPage,
+    title: 'Discover Devices',
+    windowId: 15, // WINDOW_DISCOVER
+  },
+  {
+    path: '/t3000/buildings',
+    element: BuildingsPage,
+    title: 'Buildings',
+    windowId: 16, // WINDOW_BUILDINGS
   },
 ];
 

@@ -5,6 +5,7 @@
 
 import type { ToolbarButton } from '@common/react/types/menu';
 import {
+  WINDOW_DASHBOARD,
   WINDOW_INPUT,
   WINDOW_OUTPUT,
   WINDOW_VARIABLE,
@@ -18,6 +19,8 @@ import {
   WINDOW_SETTING,
   WINDOW_ARRAY,
   WINDOW_REMOTE_POINT,
+  WINDOW_DISCOVER,
+  WINDOW_BUILDINGS,
 } from '@common/react/types/window';
 import {
   InfoRegular,
@@ -44,11 +47,13 @@ import {
  */
 export const toolbarConfig: ToolbarButton[] = [
   {
-    id: 'toolbar-info',
+    id: 'toolbar-dashboard',
     icon: InfoRegular,
-    label: 'Information',
-    tooltip: 'Device Information',
-    action: 'openDeviceInfo',
+    label: 'Dashboard',
+    tooltip: 'Dashboard',
+    action: 'openWindow',
+    windowId: WINDOW_DASHBOARD,
+    route: '/t3000/dashboard',
   },
   {
     id: 'toolbar-inputs',
@@ -133,7 +138,7 @@ export const toolbarConfig: ToolbarButton[] = [
   {
     id: 'toolbar-trends',
     icon: ChartMultipleRegular,
-    label: 'Trends',
+    label: 'Trend Logs',
     tooltip: 'Trend Logs (Alt+T)',
     action: 'openWindow',
     windowId: WINDOW_MONITOR,
@@ -184,16 +189,18 @@ export const toolbarConfig: ToolbarButton[] = [
     icon: SearchRegular,
     label: 'Discover',
     tooltip: 'Discover Devices',
-    action: 'openDialog',
-    dialogId: 'discoverDialog',
+    action: 'openWindow',
+    windowId: WINDOW_DISCOVER,
+    route: '/t3000/discover',
   },
   {
     id: 'toolbar-buildings',
     icon: BuildingMultipleRegular,
     label: 'Buildings',
     tooltip: 'Manage Buildings',
-    action: 'openDialog',
-    dialogId: 'buildingsDialog',
+    action: 'openWindow',
+    windowId: WINDOW_BUILDINGS,
+    route: '/t3000/buildings',
   },
   {
     id: 'toolbar-refresh',

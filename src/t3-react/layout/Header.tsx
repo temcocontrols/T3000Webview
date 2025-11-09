@@ -207,21 +207,26 @@ export const Header: React.FC = () => {
       'StatusBar': PanelLeftRegular,
       'DataConnection': PlugConnectedRegular,
       'Network': ShareScreenStartRegular,
+      'SignOut': SignOutRegular,
     };
     return iconMap[icon];
   };
 
   // Handle toolbar button click
-  const handleToolbarClick = (windowId?: number, dialog?: string) => {
-    if (windowId) {
-      // Navigate to window
-      const route = t3000Routes.find((r) => r.windowId === windowId);
+  const handleToolbarClick = (item: any) => {
+    console.log('Toolbar button clicked:', item);
+
+    if (item.windowId !== undefined) {
+      // Navigate to window by windowId
+      const route = t3000Routes.find((r) => r.windowId === item.windowId);
       if (route) {
         navigate(route.path);
       }
-    } else if (dialog) {
-      // Open dialog (implement dialog logic)
-      console.log('Open dialog:', dialog);
+    } else if (item.action === 'refresh') {
+      // Refresh current page
+      window.location.reload();
+    } else {
+      console.warn('Unhandled toolbar action:', item);
     }
   };
 
@@ -361,7 +366,7 @@ export const Header: React.FC = () => {
                   appearance="subtle"
                   icon={IconComponent ? <IconComponent /> : undefined}
                   disabled={item.disabled}
-                  onClick={() => handleToolbarClick(item.windowId, item.dialog)}
+                  onClick={() => handleToolbarClick(item)}
                   title={item.tooltip || item.label}
                   style={{
                     color: theme.colors.text,

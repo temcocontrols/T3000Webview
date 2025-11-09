@@ -16,6 +16,9 @@ import { ThemeProvider } from '@t3-react/theme';
 const HomePage = React.lazy(() =>
   import('@t3-react/pages').then((m) => ({ default: m.HomePage }))
 );
+const DashboardPage = React.lazy(() =>
+  import('@t3-react/pages').then((m) => ({ default: m.DashboardPage }))
+);
 const InputsPage = React.lazy(() =>
   import('@t3-react/pages').then((m) => ({ default: m.InputsPage }))
 );
@@ -54,6 +57,12 @@ const ArrayPage = React.lazy(() =>
 );
 const SettingsPage = React.lazy(() =>
   import('@t3-react/pages').then((m) => ({ default: m.SettingsPage }))
+);
+const DiscoverPage = React.lazy(() =>
+  import('@t3-react/pages').then((m) => ({ default: m.DiscoverPage }))
+);
+const BuildingsPage = React.lazy(() =>
+  import('@t3-react/pages').then((m) => ({ default: m.BuildingsPage }))
 );
 
 /**
@@ -101,7 +110,15 @@ export const App: React.FC = () => {
                   index
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
-                      <HomePage />
+                      <DashboardPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="dashboard"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DashboardPage />
                     </React.Suspense>
                   }
                 />
@@ -170,7 +187,7 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="trendlogs"
+                  path="trend-logs"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <TrendLogsPage />
@@ -206,6 +223,22 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <SettingsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="discover"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DiscoverPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="buildings"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <BuildingsPage />
                     </React.Suspense>
                   }
                 />

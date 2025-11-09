@@ -4,6 +4,7 @@
  */
 
 // Main window types (from WINDOW_ constants)
+export const WINDOW_DASHBOARD = 0;      // Dashboard (new)
 export const WINDOW_INPUT = 1;
 export const WINDOW_OUTPUT = 2;
 export const WINDOW_VARIABLE = 3;
@@ -17,9 +18,12 @@ export const WINDOW_ALARMLOG = 10;      // Alarms
 export const WINDOW_SETTING = 11;       // Device Settings
 export const WINDOW_REMOTE_POINT = 13;  // Network Points
 export const WINDOW_ARRAY = 14;
+export const WINDOW_DISCOVER = 15;      // Discover Devices (new)
+export const WINDOW_BUILDINGS = 16;     // Buildings Management (new)
 
 // Window type enum for type safety
 export enum WindowType {
+  DASHBOARD = 0,
   INPUT = 1,
   OUTPUT = 2,
   VARIABLE = 3,
@@ -33,10 +37,13 @@ export enum WindowType {
   SETTING = 11,
   REMOTE_POINT = 13,
   ARRAY = 14,
+  DISCOVER = 15,
+  BUILDINGS = 16,
 }
 
 // Window route mapping for React Router
 export const WINDOW_ROUTES: Record<WindowType, string> = {
+  [WindowType.DASHBOARD]: '/t3000/dashboard',
   [WindowType.INPUT]: '/t3000/inputs',
   [WindowType.OUTPUT]: '/t3000/outputs',
   [WindowType.VARIABLE]: '/t3000/variables',
@@ -50,10 +57,13 @@ export const WINDOW_ROUTES: Record<WindowType, string> = {
   [WindowType.SETTING]: '/t3000/settings',
   [WindowType.REMOTE_POINT]: '/t3000/network',
   [WindowType.ARRAY]: '/t3000/array',
+  [WindowType.DISCOVER]: '/t3000/discover',
+  [WindowType.BUILDINGS]: '/t3000/buildings',
 };
 
 // Window display names
 export const WINDOW_NAMES: Record<WindowType, string> = {
+  [WindowType.DASHBOARD]: 'Dashboard',
   [WindowType.INPUT]: 'Inputs',
   [WindowType.OUTPUT]: 'Outputs',
   [WindowType.VARIABLE]: 'Variables',
@@ -67,10 +77,13 @@ export const WINDOW_NAMES: Record<WindowType, string> = {
   [WindowType.SETTING]: 'Settings',
   [WindowType.REMOTE_POINT]: 'Network Points',
   [WindowType.ARRAY]: 'Array',
+  [WindowType.DISCOVER]: 'Discover Devices',
+  [WindowType.BUILDINGS]: 'Buildings',
 };
 
 // Keyboard shortcuts (from C++ menu accelerators)
 export const WINDOW_SHORTCUTS: Record<WindowType, string> = {
+  [WindowType.DASHBOARD]: '',
   [WindowType.INPUT]: 'Alt+I',
   [WindowType.OUTPUT]: 'Alt+O',
   [WindowType.VARIABLE]: 'Alt+V',
@@ -84,4 +97,6 @@ export const WINDOW_SHORTCUTS: Record<WindowType, string> = {
   [WindowType.SETTING]: 'Alt+E',
   [WindowType.REMOTE_POINT]: 'Alt+N',
   [WindowType.ARRAY]: '',
+  [WindowType.DISCOVER]: '',
+  [WindowType.BUILDINGS]: '',
 };

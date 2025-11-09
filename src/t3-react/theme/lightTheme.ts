@@ -68,7 +68,7 @@ export const lightTheme: Theme = {
   },
 
   typography: {
-    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif",
+    fontFamily: "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif",
 
     // Font sizes - Azure Portal standard (same across all themes)
     fontSizeH1: '24px',     // Blade titles (weight: 600)

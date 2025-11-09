@@ -68,7 +68,8 @@ export const azureTheme: Theme = {
   },
 
   typography: {
-    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif",
+    // Typography - Azure Portal standard
+    fontFamily: "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif",
 
     // Font sizes - From actual Azure Portal (13px is the standard body size!)
     fontSizeH1: '24px',     // Blade titles (weight: 600)
