@@ -243,7 +243,7 @@ export const Header: React.FC = () => {
             <MenuPopover>
               <MenuList>
                 {menu.children?.map((item) => {
-                  if (item.divider) {
+                  if (item.type === 'divider') {
                     return <MenuDivider key={item.id} />;
                   }
                   // Handle icon: could be a string or FluentIcon component
