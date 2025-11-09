@@ -22,32 +22,40 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
+    height: '100vh',
     width: '100%',
-    minHeight: '100vh',
     overflow: 'hidden',
-    backgroundColor: 'var(--t3-color-background)',
-    position: 'relative',
+    backgroundColor: '#f5f5f5',
     fontFamily: 'var(--t3-font-family)',
   },
-  body: {
+  topArea: {
+    flexShrink: 0,
+    // borderBottom: '1px solid #d1d1d1',
+  },
+  middleArea: {
     display: 'flex',
     flex: 1,
     overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    borderBottom: '1px solid #d1d1d1',
   },
   leftPanel: {
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width 0.3s ease',
-    overflow: 'hidden',
+    overflow: 'auto',
+    minWidth: '200px',
+    maxWidth: '500px',
+    borderRight: '1px solid #e1e1e1',
+    backgroundColor: '#fafafa',
   },
   resizer: {
     width: '4px',
     cursor: 'col-resize',
-    backgroundColor: 'var(--t3-color-border)',
+    backgroundColor: '#e1e1e1',
     transition: 'background-color 0.2s',
+    flexShrink: 0,
     '&:hover': {
-      backgroundColor: 'var(--t3-color-primary)',
+      backgroundColor: '#0078d4',
     },
   },
   mainContent: {
@@ -55,20 +63,26 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
-    backgroundColor: 'var(--t3-color-background)',
-    padding: 'var(--t3-spacing-lg)',
+    padding: '16px',
+    minWidth: 0,
+    backgroundColor: '#ffffff',
   },
   rightPanel: {
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width 0.3s ease',
     overflow: 'hidden',
-    borderLeft: '1px solid var(--t3-color-border)',
-    backgroundColor: 'var(--t3-color-surface)',
+    borderLeft: '1px solid #e1e1e1',
+    backgroundColor: '#fafafa',
+    minWidth: '200px',
+    maxWidth: '500px',
   },
   rightPanelContent: {
-    padding: 'var(--t3-spacing-md)',
-    color: 'var(--t3-color-text)',
+    padding: '16px',
+    color: '#323130',
+  },
+  bottomArea: {
+    flexShrink: 0,
+    marginTop: '1px',
   },
 });
 
@@ -109,7 +123,7 @@ export const MainLayout: React.FC = () => {
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
-      const newWidth = startWidth + delta;
+      const newWidth = Math.min(Math.max(startWidth + delta, 200), 500);
       setLeftPanelWidth(newWidth);
     };
 
@@ -131,7 +145,7 @@ export const MainLayout: React.FC = () => {
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = startX - moveEvent.clientX;
-      const newWidth = startWidth + delta;
+      const newWidth = Math.min(Math.max(startWidth + delta, 200), 500);
       setRightPanelWidth(newWidth);
     };
 
@@ -152,9 +166,13 @@ export const MainLayout: React.FC = () => {
         onDismiss={dismissGlobalMessage}
       />
 
-      <Header />
+      {/* Top Area: Header */}
+      <div className={styles.topArea}>
+        <Header />
+      </div>
 
-      <div className={styles.body}>
+      {/* Middle Area: Left Panel + Content (+ Right Panel) */}
+      <div className={styles.middleArea}>
         {/* Left Panel - Tree Navigation */}
         {isLeftPanelVisible && (
           <>
@@ -197,16 +215,18 @@ export const MainLayout: React.FC = () => {
         )}
       </div>
 
-      {/* Status Bar */}
-      <StatusBar
-        rxCount={rxCount}
-        txCount={txCount}
-        buildingName={buildingName}
-        deviceName={deviceName}
-        protocol={protocol}
-        connectionType={connectionType}
-        message={statusMessage}
-      />
+      {/* Bottom Area: Status Bar */}
+      <div className={styles.bottomArea}>
+        <StatusBar
+          rxCount={rxCount}
+          txCount={txCount}
+          buildingName={buildingName}
+          deviceName={deviceName}
+          protocol={protocol}
+          connectionType={connectionType}
+          message={statusMessage}
+        />
+      </div>
     </div>
   );
 };
