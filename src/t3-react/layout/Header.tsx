@@ -33,6 +33,27 @@ import {
   FolderRegular,
   DeleteRegular,
   InfoRegular,
+  FolderOpenRegular,
+  ArrowUploadRegular,
+  ArrowDownloadRegular,
+  PrintRegular,
+  SearchRegular,
+  BuildingMultipleRegular,
+  ClockRegular,
+  ArchiveRegular,
+  ArrowCounterclockwiseRegular,
+  ArrowClockwiseRegular,
+  ArrowResetRegular,
+  CheckmarkCircleRegular,
+  Wifi1Regular,
+  PeopleRegular,
+  ShieldRegular,
+  DocumentTextRegular,
+  WrenchRegular,
+  BookRegular,
+  LightbulbRegular,
+  BugRegular,
+  CommentRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -69,8 +90,11 @@ const useStyles = makeStyles({
     },
   },
   menuShortcut: {
-    marginLeft: 'auto',
-    opacity: 0.7,
+    opacity: 0.6,
+    fontSize: '10px', // Smaller font for shortcuts
+    fontWeight: '400',
+    color: 'var(--t3-color-text-secondary)',
+    whiteSpace: 'nowrap',
   },
   menuBarRight: {
     marginLeft: 'auto',
@@ -134,14 +158,35 @@ export const Header: React.FC = () => {
   // Get icon component for menu items
   const getIconComponent = (icon?: string) => {
     if (!icon) return null;
-    const icons = {
-      'save': SaveRegular,
-      'folder': FolderRegular,
-      'delete': DeleteRegular,
-      'settings': SettingsRegular,
-      'info': InfoRegular,
+    const iconMap: Record<string, React.ComponentType> = {
+      'Save': SaveRegular,
+      'SaveAs': SaveRegular, // Use Save icon for SaveAs
+      'FolderOpen': FolderOpenRegular,
+      'ArrowUpload': ArrowUploadRegular,
+      'ArrowDownload': ArrowDownloadRegular,
+      'Print': PrintRegular,
+      'Search': SearchRegular,
+      'BuildingMultiple': BuildingMultipleRegular,
+      'Clock': ClockRegular,
+      'Archive': ArchiveRegular,
+      'ArrowCounterclockwise': ArrowCounterclockwiseRegular,
+      'ArrowClockwise': ArrowClockwiseRegular,
+      'ArrowReset': ArrowResetRegular,
+      'CheckmarkCircle': CheckmarkCircleRegular,
+      'Settings': SettingsRegular,
+      'Delete': DeleteRegular,
+      'Wifi': Wifi1Regular,
+      'People': PeopleRegular,
+      'Shield': ShieldRegular,
+      'DocumentText': DocumentTextRegular,
+      'Wrench': WrenchRegular,
+      'Book': BookRegular,
+      'Lightbulb': LightbulbRegular,
+      'Bug': BugRegular,
+      'Comment': CommentRegular,
+      'Info': InfoRegular,
     };
-    return icons[icon as keyof typeof icons];
+    return iconMap[icon];
   };
 
   // Handle toolbar button click
@@ -188,14 +233,27 @@ export const Header: React.FC = () => {
                       key={item.id}
                       onClick={() => handleMenuClick(item.action)}
                       disabled={item.disabled}
+                      icon={IconComponent ? <IconComponent /> : undefined}
+                      style={{
+                        fontSize: 'var(--t3-font-size-small)', // 12px for dropdown items
+                        padding: '8px 16px',
+                        minHeight: '32px',
+                      }}
                     >
-                      {IconComponent && <IconComponent />}
-                      {item.label}
-                      {item.shortcut && (
-                        <span className={styles.menuShortcut}>
-                          {item.shortcut}
-                        </span>
-                      )}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        gap: '24px'
+                      }}>
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span className={styles.menuShortcut}>
+                            {item.shortcut}
+                          </span>
+                        )}
+                      </div>
                     </MenuItem>
                   );
                 })}
@@ -222,10 +280,36 @@ export const Header: React.FC = () => {
             <PopoverSurface>
               <Menu>
                 <MenuList>
-                  <MenuItem icon={<PersonRegular />}>Profile</MenuItem>
-                  <MenuItem icon={<SettingsRegular />}>Settings</MenuItem>
+                  <MenuItem
+                    icon={<PersonRegular />}
+                    style={{
+                      fontSize: 'var(--t3-font-size-small)',
+                      padding: '8px 16px',
+                      minHeight: '32px',
+                    }}
+                  >
+                    Profile
+                  </MenuItem>
+                  <MenuItem
+                    icon={<SettingsRegular />}
+                    style={{
+                      fontSize: 'var(--t3-font-size-small)',
+                      padding: '8px 16px',
+                      minHeight: '32px',
+                    }}
+                  >
+                    Settings
+                  </MenuItem>
                   <MenuDivider />
-                  <MenuItem icon={<SignOutRegular />} onClick={handleLogout}>
+                  <MenuItem
+                    icon={<SignOutRegular />}
+                    onClick={handleLogout}
+                    style={{
+                      fontSize: 'var(--t3-font-size-small)',
+                      padding: '8px 16px',
+                      minHeight: '32px',
+                    }}
+                  >
                     Logout
                   </MenuItem>
                 </MenuList>
