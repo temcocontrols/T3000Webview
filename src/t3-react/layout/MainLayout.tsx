@@ -14,8 +14,9 @@ import { Outlet } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
 import { TreePanel } from './TreePanel';
+import { StatusBar } from './StatusBar';
 import { GlobalMessageBar } from '@t3-react/components';
-import { useUIStore } from '@t3-react/store';
+import { useUIStore, useStatusBarStore } from '@t3-react/store';
 
 const useStyles = makeStyles({
   container: {
@@ -82,6 +83,15 @@ export const MainLayout: React.FC = () => {
   const setRightPanelWidth = useUIStore((state) => state.setRightPanelWidth);
   const globalMessage = useUIStore((state) => state.globalMessage);
   const dismissGlobalMessage = useUIStore((state) => state.dismissGlobalMessage);
+
+  // Status bar state
+  const rxCount = useStatusBarStore((state) => state.rxCount);
+  const txCount = useStatusBarStore((state) => state.txCount);
+  const buildingName = useStatusBarStore((state) => state.buildingName);
+  const deviceName = useStatusBarStore((state) => state.deviceName);
+  const protocol = useStatusBarStore((state) => state.protocol);
+  const connectionType = useStatusBarStore((state) => state.connectionType);
+  const statusMessage = useStatusBarStore((state) => state.message);
 
   console.log('🏗️ MainLayout rendering...', {
     isLeftPanelVisible,
@@ -186,6 +196,17 @@ export const MainLayout: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Status Bar */}
+      <StatusBar
+        rxCount={rxCount}
+        txCount={txCount}
+        buildingName={buildingName}
+        deviceName={deviceName}
+        protocol={protocol}
+        connectionType={connectionType}
+        message={statusMessage}
+      />
     </div>
   );
 };

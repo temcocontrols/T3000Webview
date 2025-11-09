@@ -5,7 +5,8 @@
  */
 
 import React from 'react';
-import { makeStyles, Title1, Card, Text } from '@fluentui/react-components';
+import { makeStyles, Title1, Card, Text, Button } from '@fluentui/react-components';
+import { useStatusBarStore } from '@t3-react/store';
 
 const useStyles = makeStyles({
   container: {
@@ -25,6 +26,18 @@ const useStyles = makeStyles({
   card: {
     padding: '20px',
   },
+  demoSection: {
+    marginTop: '40px',
+    padding: '20px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '12px',
+    flexWrap: 'wrap',
+  },
 });
 
 /**
@@ -32,6 +45,37 @@ const useStyles = makeStyles({
  */
 export const DashboardPage: React.FC = () => {
   const styles = useStyles();
+
+  // Get status bar actions
+  const setMessage = useStatusBarStore((state) => state.setMessage);
+  const setConnection = useStatusBarStore((state) => state.setConnection);
+  const setProtocol = useStatusBarStore((state) => state.setProtocol);
+  const incrementRx = useStatusBarStore((state) => state.incrementRx);
+  const incrementTx = useStatusBarStore((state) => state.incrementTx);
+  const reset = useStatusBarStore((state) => state.reset);
+
+  // Demo handlers
+  const handleConnect = () => {
+    setConnection('Main Building', 'Tstat-101');
+    setProtocol('BACnet IP', '192.168.1.100');
+    setMessage('Connected to device');
+  };
+
+  const handleDisconnect = () => {
+    setConnection('', '');
+    setProtocol('', '');
+    setMessage('Disconnected');
+  };
+
+  const handleSimulateTraffic = () => {
+    incrementRx();
+    incrementTx();
+    setMessage('Data transferred');
+  };
+
+  const handleReset = () => {
+    reset();
+  };
 
   return (
     <div className={styles.container}>
@@ -60,6 +104,20 @@ export const DashboardPage: React.FC = () => {
           <Title1 as="h3">Recent Activity</Title1>
           <Text>No recent activity</Text>
         </Card>
+      </div>
+
+      {/* Demo Section for Status Bar */}
+      <div className={styles.demoSection}>
+        <Title1 as="h3">Status Bar Demo</Title1>
+        <Text>Use these buttons to test the status bar at the bottom of the page:</Text>
+        <div className={styles.buttonGroup}>
+          <Button appearance="primary" onClick={handleConnect}>
+            Connect to Device
+          </Button>
+          <Button onClick={handleDisconnect}>Disconnect</Button>
+          <Button onClick={handleSimulateTraffic}>Simulate Traffic</Button>
+          <Button onClick={handleReset}>Reset Status Bar</Button>
+        </div>
       </div>
     </div>
   );

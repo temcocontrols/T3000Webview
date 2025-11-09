@@ -35,3 +35,7 @@ export type { TrendState } from './trendStore';
 // Auth Store
 export { useAuthStore, authSelectors } from './authStore';
 export type { AuthState } from './authStore';
+
+// Status Bar Store
+export { useStatusBarStore } from './statusBarStore';
+export type { StatusBarState } from './statusBarStore';
