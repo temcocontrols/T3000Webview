@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { WINDOW_IDS } from '@t3-react/config/constants';
+import type { GlobalMessage } from '@t3-react/components';
 
 interface DialogState {
   id: string;
@@ -36,6 +37,9 @@ export interface UiState {
   isFullscreen: boolean;
   theme: 'light' | 'dark';
 
+  // Global message
+  globalMessage: GlobalMessage | null;
+
   // Window management
   setActiveWindow: (windowId: number) => void;
   goBack: () => void;
@@ -60,6 +64,10 @@ export interface UiState {
   toggleFullscreen: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
 
+  // Global message
+  setGlobalMessage: (message: GlobalMessage | null) => void;
+  dismissGlobalMessage: () => void;
+
   // Utilities
   isWindowActive: (windowId: number) => boolean;
   hasActiveDialog: () => boolean;
@@ -83,6 +91,8 @@ const initialState: Omit<UiState, keyof {
   closeAllDialogs: any;
   toggleFullscreen: any;
   setTheme: any;
+  setGlobalMessage: any;
+  dismissGlobalMessage: any;
   isWindowActive: any;
   hasActiveDialog: any;
   reset: any;
@@ -97,6 +107,7 @@ const initialState: Omit<UiState, keyof {
   dialogStack: [],
   isFullscreen: false,
   theme: 'light',
+  globalMessage: null,
 };
 
 export const useUIStore = create<UiState>()(
@@ -226,6 +237,15 @@ export const useUIStore = create<UiState>()(
           set({ theme });
         },
 
+        // Global message
+        setGlobalMessage: (message: GlobalMessage | null) => {
+          set({ globalMessage: message });
+        },
+
+        dismissGlobalMessage: () => {
+          set({ globalMessage: null });
+        },
+
         // Utilities
         isWindowActive: (windowId: number) => {
           return get().activeWindow === windowId;
@@ -264,4 +284,6 @@ export const uiSelectors = {
   activeDialog: (state: UiState) => state.activeDialog,
   hasActiveDialog: (state: UiState) => state.activeDialog !== null,
   theme: (state: UiState) => state.theme,
+  globalMessage: (state: UiState) => state.globalMessage,
 };
+

@@ -21,7 +21,7 @@ import {
   AlertRegular,
   DeviceDesktopRegular,
 } from '@fluentui/react-icons';
-import { useDeviceData } from '@t3-react/hooks';
+import { useDeviceData, useGlobalMessage } from '@t3-react/hooks';
 import { StatusBar } from '@t3-react/components';
 
 const useStyles = makeStyles({
@@ -97,6 +97,7 @@ export const HomePage: React.FC = () => {
   const styles = useStyles();
   const navigate = useNavigate();
   const { selectedDevice, deviceCount, onlineCount, offlineCount } = useDeviceData();
+  const { showInfo, showWarning, showError, showSuccess } = useGlobalMessage();
 
   console.log('🏠 HomePage rendering...', {
     selectedDevice,
@@ -155,6 +156,37 @@ export const HomePage: React.FC = () => {
               : 'Select a device from the tree to get started'}
           </div>
         </div>
+
+        {/* Demo: Global Message Test Buttons */}
+        <Card>
+          <CardHeader
+            header={<div>Global Message Demo</div>}
+            description={<div>Test the global message bar at the top</div>}
+          />
+          <div style={{ padding: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <Button
+              appearance="primary"
+              onClick={() => showInfo('This is an informational message')}
+            >
+              Show Info
+            </Button>
+            <Button
+              onClick={() => showWarning('Warning: Check system configuration', 'System Warning')}
+            >
+              Show Warning
+            </Button>
+            <Button
+              onClick={() => showError('Error: Connection failed', 'Connection Error')}
+            >
+              Show Error
+            </Button>
+            <Button
+              onClick={() => showSuccess('Successfully saved changes!', 'Success')}
+            >
+              Show Success
+            </Button>
+          </div>
+        </Card>
 
         {/* Statistics */}
         <div className={styles.stats}>

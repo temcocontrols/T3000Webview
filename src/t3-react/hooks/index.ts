@@ -12,3 +12,5 @@ export { useModbusApi } from './useModbusApi';
 export { useWebSocket } from './useWebSocket';
 export { usePolling } from './usePolling';
 export { useLocalStorage, useSessionStorage } from './useLocalStorage';
+export { useGlobalMessage } from './useGlobalMessage';
+

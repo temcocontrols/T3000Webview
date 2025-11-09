@@ -17,3 +17,6 @@ export { NotificationProvider, useNotification } from './NotificationCenter';
 export type { NotificationType, Notification } from './NotificationCenter';
 export { EmptyState } from './EmptyState';
 export { SearchBox } from './SearchBox';
+export { GlobalMessageBar } from './GlobalMessageBar';
+export type { GlobalMessage } from './GlobalMessageBar';
+

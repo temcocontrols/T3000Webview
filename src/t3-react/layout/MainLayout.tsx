@@ -14,6 +14,7 @@ import { Outlet } from 'react-router-dom';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { Header } from './Header';
 import { TreePanel } from './TreePanel';
+import { GlobalMessageBar } from '@t3-react/components';
 import { useUIStore } from '@t3-react/store';
 
 const useStyles = makeStyles({
@@ -72,6 +73,8 @@ export const MainLayout: React.FC = () => {
   const rightPanelWidth = useUIStore((state) => state.rightPanelWidth);
   const setLeftPanelWidth = useUIStore((state) => state.setLeftPanelWidth);
   const setRightPanelWidth = useUIStore((state) => state.setRightPanelWidth);
+  const globalMessage = useUIStore((state) => state.globalMessage);
+  const dismissGlobalMessage = useUIStore((state) => state.dismissGlobalMessage);
 
   console.log('🏗️ MainLayout rendering...', {
     isLeftPanelVisible,
@@ -126,6 +129,12 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {/* Global Message Bar */}
+      <GlobalMessageBar
+        message={globalMessage}
+        onDismiss={dismissGlobalMessage}
+      />
+
       <Header />
 
       <div className={styles.body}>
