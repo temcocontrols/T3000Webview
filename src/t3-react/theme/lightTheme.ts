@@ -70,22 +70,24 @@ export const lightTheme: Theme = {
   typography: {
     fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif",
 
-    fontSizeH1: '28px',
-    fontSizeH2: '20px',
-    fontSizeH3: '16px',
-    fontSizeBody: '14px',
-    fontSizeSmall: '12px',
-    fontSizeTiny: '10px',
+    // Font sizes - Azure Portal standard (same across all themes)
+    fontSizeH1: '24px',     // Blade titles (weight: 600)
+    fontSizeH2: '18px',     // Section headers/greeting (weight: 600)
+    fontSizeH3: '14px',     // Small headers/labels (weight: 600)
+    fontSizeBody: '13px',   // Body text (Azure's standard size)
+    fontSizeSmall: '12px',  // Notes, descriptions
+    fontSizeTiny: '10px',   // Small labels, meta info
 
     fontWeightRegular: 400,
     fontWeightMedium: 500,
     fontWeightSemibold: 600,
     fontWeightBold: 700,
 
-    lineHeightH1: '36px',
-    lineHeightH2: '28px',
-    lineHeightH3: '22px',
-    lineHeightBody: '20px',
+    // Line heights - Azure Portal patterns
+    lineHeightH1: '28px',   // 24px font → 28px line height
+    lineHeightH2: '24px',   // 18px font → 24px line height
+    lineHeightH3: '18px',   // 14px font → 18px line height
+    lineHeightBody: '18px', // 13px font → 18px line height
   },
 
   spacing: {

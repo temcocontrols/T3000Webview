@@ -70,13 +70,13 @@ export const azureTheme: Theme = {
   typography: {
     fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif",
 
-    // Font sizes - Azure Portal uses specific sizes
-    fontSizeH1: '28px',
-    fontSizeH2: '20px',
-    fontSizeH3: '16px',
-    fontSizeBody: '14px',
-    fontSizeSmall: '12px',
-    fontSizeTiny: '10px',
+    // Font sizes - From actual Azure Portal (13px is the standard body size!)
+    fontSizeH1: '24px',     // Blade titles (weight: 600)
+    fontSizeH2: '18px',     // Section headers/greeting (weight: 600)
+    fontSizeH3: '14px',     // Small headers/labels (weight: 600)
+    fontSizeBody: '13px',   // Body text (Azure's standard size, NOT 14px!)
+    fontSizeSmall: '12px',  // Notes, descriptions
+    fontSizeTiny: '10px',   // Small labels, meta info
 
     // Font weights
     fontWeightRegular: 400,
@@ -84,11 +84,11 @@ export const azureTheme: Theme = {
     fontWeightSemibold: 600,
     fontWeightBold: 700,
 
-    // Line heights
-    lineHeightH1: '36px',
-    lineHeightH2: '28px',
-    lineHeightH3: '22px',
-    lineHeightBody: '20px',
+    // Line heights - Based on Azure Portal patterns
+    lineHeightH1: '28px',   // 24px font → 28px line height
+    lineHeightH2: '24px',   // 18px font → 24px line height
+    lineHeightH3: '18px',   // 14px font → 18px line height
+    lineHeightBody: '18px', // 13px font → 18px line height (Azure uses line-height: normal which is ~1.38)
   },
 
   spacing: {
