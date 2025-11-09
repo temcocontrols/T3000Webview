@@ -31,6 +31,8 @@ This document provides a comprehensive guide for implementing the left panel dev
 
 This combines both architectural planning and step-by-step implementation instructions in one comprehensive document.
 
+**📖 C++ Design Reference**: For detailed information about the original C++ implementation (tree_product structure, CImageTreeCtrl methods, threading patterns, and message handlers), see [`LEFT_PANEL_CPP_DESIGN.md`](./LEFT_PANEL_CPP_DESIGN.md).
+
 ## Key Features
 - **Device Hierarchy**: Building → Subnet → Device tree structure
 - **Real-time Status**: Online/offline indicators with background monitoring
@@ -742,6 +744,22 @@ try {
 /**
  * Device Tree Type Definitions
  * Based on C++ tree_product structure
+ *
+ * C++ to React Mapping Reference:
+ * ================================
+ * C++ (tree_product)                    → React (DeviceInfo)
+ * ------------------------------------------------
+ * serial_number                         → serialNumber
+ * product_class_id                      → productClassId
+ * status + status_last_time[5]          → status + statusHistory[]
+ * NameShowOnTree                        → nameShowOnTree
+ * expand (1=expanded, 2=collapsed)      → expand / expandedNodes Set
+ * note_parent_serial_number             → noteParentSerialNumber
+ * HTREEITEM product_item                → React component key/id
+ * strImgPathName                        → imgPathName (icon mapping)
+ * BuildingInfo                          → buildingName, mainBuildingName
+ *
+ * See LEFT_PANEL_CPP_DESIGN.md Section 1 for complete field details
  */
 
 export type DeviceStatus = 'online' | 'offline' | 'unknown';
@@ -1513,6 +1531,21 @@ export type {
 /**
  * Tree Builder Utility
  * Converts flat device list into hierarchical tree structure
+ *
+ * C++ Equivalent: CImageTreeCtrl methods
+ * ========================================
+ * - InsertSubnetItem()   → Building node creation
+ * - InsertFloorItem()    → Floor node creation
+ * - InsertRoomItem()     → Room node creation
+ * - InsertDeviceItem()   → Device node creation (HTREEITEM + icon index)
+ *
+ * React Approach:
+ * - C++ creates HTREEITEM with CImageList icon index
+ * - React creates TreeNode with icon name string
+ * - C++ stores nodes in m_product vector with HTREEITEM reference
+ * - React stores expandedNodes Set in Zustand store
+ *
+ * See LEFT_PANEL_CPP_DESIGN.md Section 2 for CImageTreeCtrl details
  */
 
 import { DeviceInfo, TreeNode, DeviceStatus } from '@t3-react/types';
@@ -1633,6 +1666,19 @@ const statusOrder: Record<DeviceStatus, number> = {
 
 /**
  * Get device icon based on product class
+ *
+ * C++ Equivalent: CImageList m_ImageList + strImgPathName
+ * ========================================================
+ * C++ uses integer indices into CImageList (e.g., TREE_IMAGE_INPUT_ONLINE = 37)
+ * and stores image paths in tree_product.strImgPathName
+ *
+ * React uses Fluent UI icon names as strings
+ *
+ * Icon Pattern Mapping:
+ * - C++: TREE_IMAGE_INPUT_ONLINE (37), TREE_IMAGE_INPUT_OFFLINE (38), TREE_IMAGE_INPUT_UNKNOWN (39)
+ * - React: getDeviceIcon() + getStatusColor() composition
+ *
+ * See LEFT_PANEL_CPP_DESIGN.md Section 6 for icon constants
  */
 export function getDeviceIcon(productClassId: number): string {
   const iconMap: Record<number, string> = {
@@ -1926,6 +1972,27 @@ function getDeviceIconComponent(iconName: string): React.ComponentType {
 /**
  * Device Status Monitor Hook
  * Polls device status at regular intervals
+ *
+ * C++ Equivalent: Background threads + OnTimer handler
+ * =====================================================
+ * C++ Implementation:
+ * - m_pCheck_net_device_online: Dedicated thread that polls devices
+ * - OnTimer(UINT_PTR nIDEvent): Periodic timer for UI updates and status checks
+ * - Updates status_last_time[5] array in tree_product for history tracking
+ * - Posts window messages back to main frame to refresh tree display
+ *
+ * React Implementation:
+ * - useEffect + setInterval: JavaScript timer-based polling (30s interval)
+ * - async/await fetch: Non-blocking status checks
+ * - Zustand store updates: Direct state mutation triggers React re-renders
+ * - statusHistory boolean array: Maps to C++ status_last_time[5]
+ *
+ * Threading Pattern Migration:
+ * C++ Thread (blocking)          → React Timer (non-blocking)
+ * PostMessage(WM_UPDATE)         → store.updateDeviceStatus()
+ * CriticalSection locks          → No locks needed (single-threaded JS)
+ *
+ * See LEFT_PANEL_CPP_DESIGN.md Section 4 for threading details
  */
 
 import { useEffect, useRef } from 'react';
@@ -1975,6 +2042,27 @@ export const useDeviceStatusMonitor = (intervalMs: number = 30000) => {
 ## Step 3.2: Create Background Sync Service
 
 **File**: `src/t3-react/services/syncService.ts`
+
+```typescript
+/**
+ * Background Sync Service
+ * Periodically syncs device list from database
+ *
+ * C++ Equivalent: m_pFreshTree thread
+ * ====================================
+ * C++ Implementation:
+ * - m_pFreshTree: CWinThread* background thread
+ * - Periodically calls LoadProductFromDB() to refresh m_product vector
+ * - Updates CImageTreeCtrl by posting messages to main window
+ * - Thread synchronization with critical sections
+ *
+ * React Implementation:
+ * - Singleton class with setInterval timers (60s sync, 30s status)
+ * - Calls deviceApi.getAllDevices() and updates Zustand store
+ * - No thread synchronization needed (single-threaded JavaScript)
+ *
+ * See LEFT_PANEL_CPP_DESIGN.md Section 3 for CMainFrame thread management
+ */
 
 ```typescript
 /**
@@ -2244,6 +2332,34 @@ export const TreeToolbar: React.FC = () => {
 /**
  * Tree Context Menu Component
  * Right-click menu for device nodes
+ *
+ * C++ Equivalent: CImageTreeCtrl::DisplayContextMenu()
+ * ====================================================
+ * C++ Implementation:
+ * - DisplayContextMenu(CPoint& point): Shows popup menu at cursor position
+ * - DisplayContextOtherMenu(CPoint& point): Alternate menu for special nodes
+ * - Menu items defined in .rc resource file
+ * - Menu handlers: OnContextCmd(UINT uID) routes to specific operations
+ * - Operations call C++ device communication modules then post refresh messages
+ *
+ * React Implementation:
+ * - Fluent UI Menu components rendered at click coordinates
+ * - Menu items defined in JSX with inline handlers
+ * - Handlers call Zustand store actions (connectToDevice, updateDevice, etc.)
+ * - Store actions call REST API which triggers C++ operations via Rust FFI
+ *
+ * Context Menu Actions Mapping:
+ * C++ Handler                    → React Store Action
+ * ------------------------------------------------
+ * PingDevice()                   → (Future: API endpoint)
+ * BM_Communicate()               → connectToDevice()
+ * DoEditLabel()                  → updateDevice() rename
+ * DoDeleteItem()                 → deleteDevice()
+ * BM_Property()                  → (Future: properties dialog)
+ * BM_IO_Mapping()                → (Future: mapping dialog)
+ * SyncToController()             → (Future: sync endpoint)
+ *
+ * See LEFT_PANEL_CPP_DESIGN.md Section 2 & 5 for context menu details
  */
 
 import React from 'react';
