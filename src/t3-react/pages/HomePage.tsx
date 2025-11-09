@@ -47,14 +47,15 @@ const useStyles = makeStyles({
   },
   card: {
     cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
     backgroundColor: 'var(--t3-color-surface)',
     border: '1px solid var(--t3-color-border)',
     borderRadius: 'var(--t3-border-radius)',
     boxShadow: 'var(--t3-shadow-card)',
     '&:hover': {
-      transform: 'translateY(-2px)',
+      transform: 'translateY(-4px)',
       boxShadow: 'var(--t3-shadow-card-hover)',
+      borderColor: 'var(--t3-color-primary)',
     },
   },
   cardContent: {

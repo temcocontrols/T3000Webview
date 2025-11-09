@@ -16,61 +16,61 @@ export const azureTheme: Theme = {
     primaryHover: '#106ebe',
     primaryActive: '#005a9e',
 
-    // Background colors
-    background: '#f3f2f1',          // Light gray page background
-    backgroundSecondary: '#faf9f8', // Slightly lighter
-    backgroundTertiary: '#edebe9',  // Slightly darker
+    // Background colors - From actual Azure Portal
+    background: '#faf9f8',          // Main content area
+    backgroundSecondary: '#f3f2f1', // Secondary background (Azure uses #f3f2f1)
+    backgroundTertiary: '#ffffff',  // Pure white
 
-    // Surface colors (cards, panels)
+    // Surface colors (cards, panels) - Azure Portal uses white
     surface: '#ffffff',
-    surfaceHover: '#f3f2f1',
-    surfaceSelected: '#e1dfdd',
+    surfaceHover: '#f8f8f8',
+    surfaceSelected: 'rgba(85, 179, 255, 0.2)',  // Light blue (from Azure)
 
-    // Sidebar colors - Dark charcoal
-    sidebarBackground: '#1e1e1e',
-    sidebarText: '#ffffff',
-    sidebarHover: 'rgba(255, 255, 255, 0.1)',
-    sidebarSelected: '#0078d4',
-    sidebarBorder: '#323130',
+    // Sidebar colors - White sidebar (from actual Azure Portal)
+    sidebarBackground: '#ffffff',   // White sidebar
+    sidebarText: '#323130',         // Dark text (Azure Portal uses #000 or #323130)
+    sidebarHover: '#f3f2f1',        // Very subtle gray hover
+    sidebarSelected: 'rgba(85, 179, 255, 0.2)',  // Light blue selected (from Azure Portal)
+    sidebarBorder: '#edebe9',       // Soft border
 
-    // Header colors - Azure Blue
-    headerBackground: '#0078d4',
-    headerText: '#ffffff',
-    headerBorder: '#106ebe',
+    // Header/Topbar colors - AZURE BLUE (from actual Azure Portal)
+    headerBackground: '#0078d4',    // Azure blue topbar (NOT light gray!)
+    headerText: '#ffffff',          // White text on blue
+    headerBorder: '#005a9e',        // Darker blue border
 
-    // Text colors
-    text: '#323130',           // Primary text (dark gray)
-    textSecondary: '#605e5c',  // Secondary text
-    textTertiary: '#8a8886',   // Tertiary text (lighter)
-    textInverse: '#ffffff',    // Text on dark backgrounds
+    // Text colors (from Azure Portal)
+    text: '#323130',           // Primary text (Azure Portal uses #323130 or #201f1e)
+    textSecondary: '#605e5c',  // Medium gray
+    textTertiary: '#8a8886',   // Light gray
+    textInverse: '#ffffff',    // White text
 
-    // Border colors
-    border: '#e1dfdd',
-    borderLight: '#edebe9',
+    // Border colors - From Azure Portal
+    border: '#e1dfdd',        // Azure Portal primary border (--colorContainerBorderPrimary)
+    borderLight: '#f3f2f1',   // Azure Portal secondary border
     borderDark: '#d2d0ce',
 
-    // Message/Alert colors - Azure Portal standard
-    info: '#0078d4',
-    infoBackground: '#cfe4fa',
+    // Message/Alert colors - From actual Azure Portal CSS variables
+    info: '#015cda',              // Azure Portal info icon color
+    infoBackground: '#dae4ff',    // Azure Portal info background
     infoText: '#004578',
 
-    warning: '#ffa500',
-    warningBackground: '#fff4ce',
-    warningText: '#333333',
+    warning: '#ffb900',           // Azure Portal warning (unchanged)
+    warningBackground: '#ffdfb8', // Azure Portal warning background
+    warningText: '#8a5100',
 
-    error: '#a80000',
-    errorBackground: '#fde7e9',
+    error: '#a4262c',             // Azure Portal error color
+    errorBackground: '#fdd8db',   // Azure Portal error background
     errorText: '#a80000',
 
-    success: '#107c10',
-    successBackground: '#dff6dd',
-    successText: '#107c10',
+    success: '#57a300',           // Azure Portal success color
+    successBackground: '#e6ffcc', // Azure Portal success background
+    successText: '#094509',
   },
 
   typography: {
     fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif",
 
-    // Font sizes
+    // Font sizes - Azure Portal uses specific sizes
     fontSizeH1: '28px',
     fontSizeH2: '20px',
     fontSizeH3: '16px',
@@ -101,17 +101,17 @@ export const azureTheme: Theme = {
   },
 
   shadows: {
-    card: '0 1px 2px rgba(0, 0, 0, 0.1)',
-    cardHover: '0 4px 8px rgba(0, 0, 0, 0.15)',
-    dropdown: '0 6px 12px rgba(0, 0, 0, 0.18)',
-    modal: '0 8px 16px rgba(0, 0, 0, 0.2)',
+    card: '0 0.3px 0.9px rgba(0, 0, 0, 0.108), 0 1.6px 3.6px rgba(0, 0, 0, 0.132)',
+    cardHover: '0 3.2px 7.2px rgba(0, 0, 0, 0.132), 0 12.8px 28.8px rgba(0, 0, 0, 0.108)',
+    dropdown: '0 6.4px 14.4px rgba(0, 0, 0, 0.132), 0 25.6px 57.6px rgba(0, 0, 0, 0.108)',
+    modal: '0 25.6px 57.6px rgba(0, 0, 0, 0.22), 0 4.8px 14.4px rgba(0, 0, 0, 0.18)',
   },
 
   layout: {
-    headerHeight: '48px',
+    headerHeight: '50px',
     sidebarWidth: '220px',
     sidebarCollapsedWidth: '48px',
-    borderRadius: '4px',
+    borderRadius: '2px',
     borderWidth: '1px',
   },
 };
