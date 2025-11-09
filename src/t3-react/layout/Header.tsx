@@ -113,17 +113,17 @@ const useStyles = makeStyles({
   toolbarContainer: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '8px 16px',
-    minHeight: '48px',
-    gap: '16px',
-    backgroundColor: 'var(--t3-color-background-secondary)',
+    justifyContent: 'flex-start', // Align left
+    padding: '2px 8px', // Even smaller padding
+    minHeight: '36px', // Reduced from 48px
+    gap: '4px', // Small gap
+    backgroundColor: '#fff', // White background
     borderBottom: '1px solid var(--t3-color-border)',
   },
   toolbarSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '0px', // No gap between toolbar items
   },
   userSection: {
     display: 'flex',
@@ -363,7 +363,14 @@ export const Header: React.FC = () => {
                   disabled={item.disabled}
                   onClick={() => handleToolbarClick(item.windowId, item.dialog)}
                   title={item.tooltip || item.label}
-                  style={{ color: theme.colors.text }}
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: '11px', // Smaller font
+                    fontWeight: '400', // Thinner/normal weight
+                    padding: '1px 4px', // Even smaller padding
+                    minHeight: '24px', // Smaller height
+                    minWidth: 'auto', // Remove minimum width
+                  }}
                 >
                   {item.label}
                 </ToolbarButton>
