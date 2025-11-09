@@ -54,6 +54,14 @@ import {
   LightbulbRegular,
   BugRegular,
   CommentRegular,
+  PlayRegular,
+  StopRegular,
+  PowerRegular,
+  AlertRegular,
+  FullScreenMaximizeRegular,
+  PanelLeftRegular,
+  PlugConnectedRegular,
+  ShareScreenStartRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -185,6 +193,20 @@ export const Header: React.FC = () => {
       'Bug': BugRegular,
       'Comment': CommentRegular,
       'Info': InfoRegular,
+      'Play': PlayRegular,
+      'Stop': StopRegular,
+      'Power': PowerRegular,
+      'PowerOff': PowerRegular,
+      'AlertCheck': AlertRegular,
+      'AlertOff': AlertRegular,
+      'RecordStart': PlayRegular,
+      'RecordStop': StopRegular,
+      'FullScreen': FullScreenMaximizeRegular,
+      'TreeView': PanelLeftRegular,
+      'ToolbarSettings': SettingsRegular,
+      'StatusBar': PanelLeftRegular,
+      'DataConnection': PlugConnectedRegular,
+      'Network': ShareScreenStartRegular,
     };
     return iconMap[icon];
   };

@@ -187,6 +187,7 @@ const viewMenu: MenuItem = {
       type: 'checkbox',
       action: MenuAction.ToggleTreePanel,
       checked: true,
+      icon: 'TreeView',
     },
     {
       id: 'view-toolbar',
@@ -194,6 +195,7 @@ const viewMenu: MenuItem = {
       type: 'checkbox',
       action: MenuAction.ToggleToolbar,
       checked: true,
+      icon: 'ToolbarSettings',
     },
     {
       id: 'view-status-bar',
@@ -201,6 +203,7 @@ const viewMenu: MenuItem = {
       type: 'checkbox',
       action: MenuAction.ToggleStatusBar,
       checked: true,
+      icon: 'StatusBar',
     },
     {
       id: 'view-divider-2',
@@ -212,6 +215,7 @@ const viewMenu: MenuItem = {
       type: 'item',
       action: MenuAction.ToggleFullScreen,
       shortcut: 'F11',
+      icon: 'FullScreen',
     },
   ],
 };
@@ -283,12 +287,14 @@ const controlMenu: MenuItem = {
       label: 'Enable All Outputs',
       type: 'item',
       action: MenuAction.EnableAllOutputs,
+      icon: 'Power',
     },
     {
       id: 'control-disable-all',
       label: 'Disable All Outputs',
       type: 'item',
       action: MenuAction.DisableAllOutputs,
+      icon: 'PowerOff',
     },
     {
       id: 'control-divider-1',
@@ -299,12 +305,14 @@ const controlMenu: MenuItem = {
       label: 'Start All Programs',
       type: 'item',
       action: MenuAction.StartAllPrograms,
+      icon: 'Play',
     },
     {
       id: 'control-stop-programs',
       label: 'Stop All Programs',
       type: 'item',
       action: MenuAction.StopAllPrograms,
+      icon: 'Stop',
     },
     {
       id: 'control-divider-2',
@@ -315,12 +323,14 @@ const controlMenu: MenuItem = {
       label: 'Start Trend Logging',
       type: 'item',
       action: MenuAction.StartTrendLogging,
+      icon: 'RecordStart',
     },
     {
       id: 'control-stop-logging',
       label: 'Stop Trend Logging',
       type: 'item',
       action: MenuAction.StopTrendLogging,
+      icon: 'RecordStop',
     },
     {
       id: 'control-divider-3',
@@ -331,12 +341,14 @@ const controlMenu: MenuItem = {
       label: 'Acknowledge All Alarms',
       type: 'item',
       action: MenuAction.AcknowledgeAllAlarms,
+      icon: 'AlertCheck',
     },
     {
       id: 'control-clear-alarms',
       label: 'Clear All Alarms',
       type: 'item',
       action: MenuAction.ClearAllAlarms,
+      icon: 'AlertOff',
     },
   ],
 };
@@ -361,12 +373,14 @@ const miscMenu: MenuItem = {
       label: 'Modbus Configuration',
       type: 'item',
       action: MenuAction.ModbusConfig,
+      icon: 'DataConnection',
     },
     {
       id: 'misc-bacnet-config',
       label: 'BACnet Configuration',
       type: 'item',
       action: MenuAction.BacnetConfig,
+      icon: 'Network',
     },
     {
       id: 'misc-divider-1',
