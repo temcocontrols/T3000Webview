@@ -27,6 +27,7 @@ import styles from './TreePanel.module.css';
  */
 export const TreePanel: React.FC = () => {
   const { fetchDevices, isLoading, error, devices, treeData } = useDeviceTreeStore();
+  const [showFilter, setShowFilter] = React.useState(false);
 
   // Background services
   // Status monitor: polls device status every 30s (C++ m_pCheck_net_device_online)
@@ -40,13 +41,17 @@ export const TreePanel: React.FC = () => {
     fetchDevices();
   }, [fetchDevices]);
 
+  const toggleFilter = () => {
+    setShowFilter(!showFilter);
+  };
+
   return (
     <div className={styles.container}>
       {/* Toolbar with actions */}
-      <TreeToolbar />
+      <TreeToolbar showFilter={showFilter} onToggleFilter={toggleFilter} />
 
-      {/* Filter controls */}
-      <TreeFilter />
+      {/* Filter controls - collapsible */}
+      {showFilter && <TreeFilter />}
 
       {/* Tree content area */}
       <div className={styles.treeContainer}>

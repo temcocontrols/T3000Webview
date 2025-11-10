@@ -15,20 +15,36 @@ import {
 import {
   ChevronDoubleDown20Regular,
   ChevronDoubleUp20Regular,
+  Filter20Regular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../../../store/deviceTreeStore';
 import styles from './TreeToolbar.module.css';
 
 /**
+ * TreeToolbar Component Props
+ */
+interface TreeToolbarProps {
+  showFilter: boolean;
+  onToggleFilter: () => void;
+}
+
+/**
  * TreeToolbar Component
  */
-export const TreeToolbar: React.FC = () => {
+export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
   const { expandAll, collapseAll } = useDeviceTreeStore();
 
   return (
     <div className={styles.container}>
       <div className={styles.title}>Devices</div>
       <Toolbar aria-label="Device tree toolbar" size="small">
+        <ToolbarButton
+          aria-label="Toggle filter"
+          icon={<Filter20Regular />}
+          onClick={onToggleFilter}
+          appearance={showFilter ? 'primary' : 'subtle'}
+        />
+
         <ToolbarButton
           aria-label="Expand all nodes"
           icon={<ChevronDoubleDown20Regular />}
