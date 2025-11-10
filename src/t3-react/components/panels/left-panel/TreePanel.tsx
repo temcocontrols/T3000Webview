@@ -56,24 +56,9 @@ export const TreePanel: React.FC = () => {
       {/* Tree content area */}
       <div className={styles.treeContainer}>
         {/* Loading state */}
-        {isLoading && !error && (
+        {isLoading && (
           <div className={styles.loadingContainer}>
             <Spinner size="medium" label="Loading devices..." />
-          </div>
-        )}
-
-        {/* Error state */}
-        {error && (
-          <div className={styles.errorContainer}>
-            <div className={styles.errorIcon}>⚠️</div>
-            <div className={styles.errorTitle}>Error Loading Devices</div>
-            <div className={styles.errorMessage}>{error}</div>
-            <button
-              className={styles.retryButton}
-              onClick={() => fetchDevices()}
-            >
-              Retry
-            </button>
           </div>
         )}
 
@@ -106,7 +91,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Tree with devices */}
-        {!isLoading && !error && treeData.length > 0 && <DeviceTree />}
+        {!isLoading && treeData.length > 0 && <DeviceTree />}
       </div>
     </div>
   );

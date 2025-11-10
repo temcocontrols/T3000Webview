@@ -25,6 +25,7 @@ import type {
 } from '../types/device';
 import { DeviceApiService } from '../services/deviceApi';
 import { buildTreeFromDevices } from '../components/panels/left-panel/utils/treeBuilder';
+import { useStatusBarStore } from './statusBarStore';
 
 /**
  * Device Tree State Interface
@@ -131,11 +132,19 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             lastSyncTime: new Date(),
           });
           get().buildTreeStructure();
+
+          // Update status bar with success message
+          useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch devices';
           set({
-            error: error instanceof Error ? error.message : 'Failed to fetch devices',
+            error: errorMessage,
             isLoading: false,
           });
+
+          // Send error to status bar instead of inline display
+          useStatusBarStore.getState().setMessage(`Error: ${errorMessage}`);
+          console.error('Device fetch error:', errorMessage);
         }
       },
 

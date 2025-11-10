@@ -34,8 +34,17 @@ export class DeviceApiService {
     try {
       const response = await fetch(`${this.baseUrl}/devices`);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON response but got ${contentType || 'unknown'}: ${text.substring(0, 100)}`);
+      }
+
       return await response.json();
     } catch (error) {
       console.error('Failed to fetch devices:', error);
