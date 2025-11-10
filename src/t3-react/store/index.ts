@@ -39,3 +39,7 @@ export type { AuthState } from './authStore';
 // Status Bar Store
 export { useStatusBarStore } from './statusBarStore';
 export type { StatusBarState } from './statusBarStore';
+
+// Device Tree Store
+export { useDeviceTreeStore } from './deviceTreeStore';
+export type { default as DeviceTreeState } from './deviceTreeStore';
