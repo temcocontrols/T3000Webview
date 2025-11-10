@@ -8,11 +8,28 @@
 }
 
 .searchBox {
-  width: 100%;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.searchBox > div {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .dropdown {
-  width: 100%;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  flex-shrink: 1;
+}
+
+.dropdown > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .checkbox {
