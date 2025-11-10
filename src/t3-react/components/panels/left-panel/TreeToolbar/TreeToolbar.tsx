@@ -1,19 +1,18 @@
 /**
  * TreeToolbar Component
  *
- * Toolbar with device tree actions
- * Maps to C++ toolbar buttons
+ * Compact toolbar with essential device tree actions
+ * - Removed: Refresh (auto-refresh every 60s handles this)
+ * - Removed: Scan (moved to empty state CTA button)
+ * - Kept: Expand/Collapse (icon-only for compact width)
  */
 
 import React from 'react';
 import {
   Toolbar,
   ToolbarButton,
-  ToolbarDivider,
 } from '@fluentui/react-components';
 import {
-  ArrowSync20Regular,
-  Scan20Regular,
   ChevronDoubleDown20Regular,
   ChevronDoubleUp20Regular,
 } from '@fluentui/react-icons';
@@ -24,68 +23,25 @@ import styles from './TreeToolbar.module.css';
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC = () => {
-  const {
-    refreshDevices,
-    scanForDevices,
-    expandAll,
-    collapseAll,
-    isLoading,
-  } = useDeviceTreeStore();
-
-  const handleRefresh = () => {
-    refreshDevices();
-  };
-
-  const handleScan = () => {
-    scanForDevices();
-  };
-
-  const handleExpandAll = () => {
-    expandAll();
-  };
-
-  const handleCollapseAll = () => {
-    collapseAll();
-  };
+  const { expandAll, collapseAll } = useDeviceTreeStore();
 
   return (
     <div className={styles.container}>
+      <div className={styles.title}>Devices</div>
       <Toolbar aria-label="Device tree toolbar" size="small">
         <ToolbarButton
-          aria-label="Refresh devices"
-          icon={<ArrowSync20Regular />}
-          onClick={handleRefresh}
-          disabled={isLoading}
-        >
-          Refresh
-        </ToolbarButton>
-
-        <ToolbarButton
-          aria-label="Scan for devices"
-          icon={<Scan20Regular />}
-          onClick={handleScan}
-          disabled={isLoading}
-        >
-          Scan
-        </ToolbarButton>
-
-        <ToolbarDivider />
-
-        <ToolbarButton
-          aria-label="Expand all"
+          aria-label="Expand all nodes"
           icon={<ChevronDoubleDown20Regular />}
-          onClick={handleExpandAll}
-        >
-          Expand All
-        </ToolbarButton>
+          onClick={expandAll}
+          appearance="subtle"
+        />
 
         <ToolbarButton
-          aria-label="Collapse all"
+          aria-label="Collapse all nodes"
           icon={<ChevronDoubleUp20Regular />}
-          onClick={handleCollapseAll}
-        >
-          Collapse All
-        </ToolbarButton>
+          onClick={collapseAll}
+          appearance="subtle"
+        />
       </Toolbar>
     </div>
   );
