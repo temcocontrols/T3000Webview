@@ -20,33 +20,3 @@
   color: #323130;
   line-height: 1;
 }
-
-.errorIndicator {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border: none;
-  border-radius: 4px;
-  background-color: #fde7e9;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.errorIndicator:hover {
-  background-color: #f4d5d8;
-}
-
-.errorIndicator:active {
-  background-color: #ecc3c7;
-}
-
-.errorIcon {
-  color: #d13438;
-  font-size: 16px;
-}
-
-.retryIcon {
-  color: #605e5c;
-  font-size: 14px;
-}

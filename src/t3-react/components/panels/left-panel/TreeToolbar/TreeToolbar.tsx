@@ -11,14 +11,11 @@ import React from 'react';
 import {
   Toolbar,
   ToolbarButton,
-  Tooltip,
 } from '@fluentui/react-components';
 import {
   ChevronDoubleDown20Regular,
   ChevronDoubleUp20Regular,
   Filter20Regular,
-  ErrorCircle20Regular,
-  ArrowClockwise20Regular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../../../store/deviceTreeStore';
 import styles from './TreeToolbar.module.css';
@@ -35,24 +32,12 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, error, fetchDevices } = useDeviceTreeStore();
+  const { expandAll, collapseAll } = useDeviceTreeStore();
 
   return (
     <div className={styles.container}>
       <div className={styles.leftSection}>
         <div className={styles.title}>Devices</div>
-        {error && (
-          <Tooltip content={`Error: ${error}. Click to retry.`} relationship="label">
-            <button
-              className={styles.errorIndicator}
-              onClick={() => fetchDevices()}
-              aria-label="Error occurred, click to retry"
-            >
-              <ErrorCircle20Regular className={styles.errorIcon} />
-              <ArrowClockwise20Regular className={styles.retryIcon} />
-            </button>
-          </Tooltip>
-        )}
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
         <ToolbarButton

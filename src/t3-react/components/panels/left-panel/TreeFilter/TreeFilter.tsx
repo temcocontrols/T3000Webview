@@ -60,6 +60,7 @@ export const TreeFilter: React.FC = () => {
         onChange={(_, data) => setFilterText(data.value)}
         className={styles.searchBox}
         size="small"
+        style={{ width: '100%', minWidth: 0 }}
       />
 
       {/* Protocol filter */}
@@ -70,6 +71,7 @@ export const TreeFilter: React.FC = () => {
         onOptionSelect={(_, data) => setFilterProtocol(data.optionValue as string)}
         className={styles.dropdown}
         size="small"
+        style={{ width: '100%', minWidth: 0 }}
       >
         {protocols.map((protocol) => (
           <Option key={protocol} value={protocol}>
@@ -86,6 +88,7 @@ export const TreeFilter: React.FC = () => {
         onOptionSelect={(_, data) => setFilterBuilding(data.optionValue as string)}
         className={styles.dropdown}
         size="small"
+        style={{ width: '100%', minWidth: 0 }}
       >
         {buildingNames.map((building) => (
           <Option key={building} value={building}>

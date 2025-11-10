@@ -14,6 +14,7 @@
 
 import React, { useEffect } from 'react';
 import { Spinner } from '@fluentui/react-components';
+import { ArrowClockwise16Regular } from '@fluentui/react-icons';
 import { DeviceTree } from './DeviceTree/DeviceTree';
 import { TreeToolbar } from './TreeToolbar/TreeToolbar';
 import { TreeFilter } from './TreeFilter/TreeFilter';
@@ -45,6 +46,10 @@ export const TreePanel: React.FC = () => {
     setShowFilter(!showFilter);
   };
 
+  const handleRetry = () => {
+    fetchDevices();
+  };
+
   return (
     <div className={styles.container}>
       {/* Toolbar with actions */}
@@ -61,6 +66,23 @@ export const TreePanel: React.FC = () => {
             <Spinner size="medium" label="Loading devices..." />
           </div>
         )}
+
+        {/* Error state */}
+              {!isLoading && error && (
+        <div className={styles.errorContainer}>
+          <div className={styles.errorTitle}>No devices to display</div>
+          <div className={styles.errorMessage}>
+            There was a problem connecting to the server. Please check your connection and try again.
+          </div>
+          <button
+            className={styles.retryButton}
+            onClick={handleRetry}
+          >
+            <ArrowClockwise16Regular className={styles.buttonIcon} />
+            Refresh
+          </button>
+        </div>
+      )}
 
         {/* Empty state - no devices at all */}
         {!isLoading && !error && devices.length === 0 && (
@@ -91,7 +113,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Tree with devices */}
-        {!isLoading && treeData.length > 0 && <DeviceTree />}
+        {!isLoading && !error && treeData.length > 0 && <DeviceTree />}
       </div>
     </div>
   );
