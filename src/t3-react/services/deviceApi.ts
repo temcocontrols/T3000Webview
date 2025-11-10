@@ -17,7 +17,7 @@ import type {
   ScanOptions,
 } from '../types/device';
 
-const API_BASE_URL = '/api/t3_device';
+const API_BASE_URL = '/api';
 
 /**
  * Device API Service
