@@ -13,10 +13,11 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
-import { TreePanel } from './TreePanel';
+import { TreePanel } from '../features/devices/components/TreePanel';
 import { StatusBar } from './StatusBar';
-import { GlobalMessageBar } from '@t3-react/components';
-import { useUIStore, useStatusBarStore } from '@t3-react/store';
+import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
+import { useUIStore } from '../store/uiStore';
+import { useStatusBarStore } from '../store/statusBarStore';
 
 const useStyles = makeStyles({
   container: {

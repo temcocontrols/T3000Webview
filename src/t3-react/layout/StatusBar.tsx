@@ -8,7 +8,7 @@
 import React from 'react';
 import { makeStyles, mergeClasses, Tooltip } from '@fluentui/react-components';
 import { Info16Regular } from '@fluentui/react-icons';
-import type { MessageType } from '../store/statusBarStore';
+import type { MessageType } from '@store/statusBarStore';
 
 const useStyles = makeStyles({
   statusBar: {

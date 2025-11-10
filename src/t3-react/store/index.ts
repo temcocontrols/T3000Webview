@@ -4,42 +4,39 @@
  * Re-exports all stores and selectors for easy importing
  */
 
-// Device Store
-export { useDeviceStore, deviceSelectors } from './deviceStore';
-export type { DeviceState } from './deviceStore';
+// Device Stores (from features/devices)
+export { useDeviceStore, deviceSelectors } from '../features/devices/store/deviceStore';
+export type { DeviceState } from '../features/devices/store/deviceStore';
 
-// Tree Store
+export { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
+export type { default as DeviceTreeState } from '../features/devices/store/deviceTreeStore';
+
+// Tree Store (shared navigation)
 export { useTreeStore, treeSelectors } from './treeStore';
 export type { TreeState } from './treeStore';
 
-// BACnet Store
-export { useBacnetStore, bacnetSelectors } from './bacnetStore';
-export type { BacnetState } from './bacnetStore';
+// BACnet Store (from features/bacnet)
+export { useBacnetStore, bacnetSelectors } from '../features/bacnet/store/bacnetStore';
+export type { BacnetState } from '../features/bacnet/store/bacnetStore';
 
-// UI Store
+// Modbus Store (from features/modbus)
+export { useModbusStore, modbusSelectors } from '../features/modbus/store/modbusStore';
+export type { ModbusState } from '../features/modbus/store/modbusStore';
+
+// Alarm Store (from features/alarms)
+export { useAlarmStore, alarmSelectors } from '../features/alarms/store/alarmStore';
+export type { AlarmState } from '../features/alarms/store/alarmStore';
+
+// Trend Store (from features/trends)
+export { useTrendStore, trendSelectors } from '../features/trends/store/trendStore';
+export type { TrendState } from '../features/trends/store/trendStore';
+
+// Global UI Stores (remain in store/)
 export { useUIStore, uiSelectors } from './uiStore';
 export type { UiState } from './uiStore';
 
-// Modbus Store
-export { useModbusStore, modbusSelectors } from './modbusStore';
-export type { ModbusState } from './modbusStore';
-
-// Alarm Store
-export { useAlarmStore, alarmSelectors } from './alarmStore';
-export type { AlarmState } from './alarmStore';
-
-// Trend Store
-export { useTrendStore, trendSelectors } from './trendStore';
-export type { TrendState } from './trendStore';
-
-// Auth Store
 export { useAuthStore, authSelectors } from './authStore';
 export type { AuthState } from './authStore';
 
-// Status Bar Store
 export { useStatusBarStore } from './statusBarStore';
 export type { StatusBarState } from './statusBarStore';
-
-// Device Tree Store
-export { useDeviceTreeStore } from './deviceTreeStore';
-export type { default as DeviceTreeState } from './deviceTreeStore';
