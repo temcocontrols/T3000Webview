@@ -6,7 +6,9 @@
  */
 
 import React from 'react';
-import { makeStyles } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, Tooltip } from '@fluentui/react-components';
+import { Info16Regular } from '@fluentui/react-icons';
+import type { MessageType } from '../store/statusBarStore';
 
 const useStyles = makeStyles({
   statusBar: {
@@ -21,6 +23,15 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     userSelect: 'none',
   },
+  statusBarError: {
+    backgroundColor: '#fde7e9',
+  },
+  statusBarSuccess: {
+    backgroundColor: '#dff6dd',
+  },
+  statusBarWarning: {
+    backgroundColor: '#fff4ce',
+  },
   pane: {
     padding: '0 8px',
     borderRight: '1px solid #d1d1d1',
@@ -34,19 +45,53 @@ const useStyles = makeStyles({
   rxTxPane: {
     width: '140px',
     minWidth: '140px',
+    flexShrink: 0,
   },
   connectionPane: {
     width: '200px',
     minWidth: '200px',
+    flexShrink: 0,
   },
   protocolPane: {
     width: '180px',
     minWidth: '180px',
+    flexShrink: 0,
   },
   messagePane: {
     flex: 1,
-    minWidth: '300px',
-    borderRight: 'none',
+    minWidth: 0,
+    gap: '6px',
+    padding: '0 8px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: 'flex',
+    alignItems: 'center',
+    height: '100%',
+  },
+  messageText: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+  },
+  infoIcon: {
+    cursor: 'help',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  messagePaneError: {
+    color: '#a4262c',
+    fontWeight: 600,
+  },
+  messagePaneSuccess: {
+    color: '#0e700e',
+    fontWeight: 600,
+  },
+  messagePaneWarning: {
+    color: '#8a5d00',
+    fontWeight: 600,
   },
   label: {
     fontWeight: 600,
@@ -62,6 +107,7 @@ export interface StatusBarProps {
   protocol?: string;
   connectionType?: string;
   message?: string;
+  messageType?: MessageType;
 }
 
 /**
@@ -76,8 +122,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   protocol = '',
   connectionType = '',
   message = 'Ready',
+  messageType = 'info',
 }) => {
   const styles = useStyles();
+
+  // Check if message is long (more than 100 characters)
+  const isLongMessage = message.length > 100;
 
   // Format connection info
   const connectionInfo = React.useMemo(() => {
@@ -103,8 +153,36 @@ export const StatusBar: React.FC<StatusBarProps> = ({
     return 'Not connected';
   }, [protocol, connectionType]);
 
+  // Get message pane class based on message type
+  const messagePaneClass = React.useMemo(() => {
+    switch (messageType) {
+      case 'error':
+        return mergeClasses(styles.messagePane, styles.messagePaneError);
+      case 'success':
+        return mergeClasses(styles.messagePane, styles.messagePaneSuccess);
+      case 'warning':
+        return mergeClasses(styles.messagePane, styles.messagePaneWarning);
+      default:
+        return styles.messagePane;
+    }
+  }, [messageType, styles]);
+
+  // Get status bar class based on message type (for full-width background)
+  const statusBarClass = React.useMemo(() => {
+    switch (messageType) {
+      case 'error':
+        return mergeClasses(styles.statusBar, styles.statusBarError);
+      case 'success':
+        return mergeClasses(styles.statusBar, styles.statusBarSuccess);
+      case 'warning':
+        return mergeClasses(styles.statusBar, styles.statusBarWarning);
+      default:
+        return styles.statusBar;
+    }
+  }, [messageType, styles]);
+
   return (
-    <div className={styles.statusBar}>
+    <div className={statusBarClass}>
       {/* Pane 0: RX/TX Statistics */}
       <div className={`${styles.pane} ${styles.rxTxPane}`}>
         <span className={styles.label}>RX:</span>
@@ -123,9 +201,20 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         {protocolInfo}
       </div>
 
-      {/* Pane 3: Messages */}
-      <div className={`${styles.pane} ${styles.messagePane}`}>
-        {message}
+      {/* Pane 3: Messages - colored based on type */}
+      <div className={messagePaneClass}>
+        <span className={styles.messageText}>{message}</span>
+        {isLongMessage && (
+          <Tooltip
+            content={message}
+            relationship="description"
+            positioning="above-start"
+          >
+            <span className={styles.infoIcon}>
+              <Info16Regular />
+            </span>
+          </Tooltip>
+        )}
       </div>
     </div>
   );

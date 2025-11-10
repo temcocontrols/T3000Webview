@@ -106,6 +106,7 @@ export const MainLayout: React.FC = () => {
   const protocol = useStatusBarStore((state) => state.protocol);
   const connectionType = useStatusBarStore((state) => state.connectionType);
   const statusMessage = useStatusBarStore((state) => state.message);
+  const statusMessageType = useStatusBarStore((state) => state.messageType);
 
   console.log('🏗️ MainLayout rendering...', {
     isLeftPanelVisible,
@@ -225,6 +226,7 @@ export const MainLayout: React.FC = () => {
           protocol={protocol}
           connectionType={connectionType}
           message={statusMessage}
+          messageType={statusMessageType}
         />
       </div>
     </div>

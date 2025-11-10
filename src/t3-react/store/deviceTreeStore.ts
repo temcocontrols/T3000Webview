@@ -134,7 +134,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           get().buildTreeStructure();
 
           // Update status bar with success message
-          useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`);
+          useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to fetch devices';
           set({
@@ -143,7 +143,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           });
 
           // Send error to status bar instead of inline display
-          useStatusBarStore.getState().setMessage(`Error: ${errorMessage}`);
+          useStatusBarStore.getState().setMessage(`Error: ${errorMessage}`, 'error');
           console.error('Device fetch error:', errorMessage);
         }
       },
