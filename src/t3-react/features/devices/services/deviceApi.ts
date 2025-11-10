@@ -45,11 +45,74 @@ export class DeviceApiService {
         throw new Error(`Expected JSON response but got ${contentType || 'unknown'}: ${text.substring(0, 100)}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Transform API response to match frontend interface
+      // C++ shows: Show_Label_Name (if not empty) OR Product_Name
+      const devices = data.devices.map((device: any) => ({
+        ...device,
+        // Map display name with proper fallback (matches C++ logic)
+        nameShowOnTree: (device.showLabelName?.trim() && device.showLabelName.trim() !== '')
+          ? device.showLabelName.trim()
+          : (device.productName || 'Unknown Device'),
+
+        // Ensure productClassId has default (0 = unknown device)
+        productClassId: device.productClassId ?? 0,
+
+        // Infer protocol from connection type and port info
+        protocol: this.inferProtocol(device),
+
+        // Map status string to DeviceStatus type
+        status: this.mapStatus(device.status),
+
+        // Initialize status history
+        statusHistory: [device.status === 'Online'],
+      }));
+
+      return {
+        devices,
+        total: data.total,
+        message: data.message
+      };
     } catch (error) {
       console.error('Failed to fetch devices:', error);
       throw error;
     }
+  }
+
+  /**
+   * Infer protocol from device connection information
+   */
+  private static inferProtocol(device: any): 'BACnet' | 'Modbus' | 'Native' {
+    // Check for BACnet indicators
+    if (device.bacnetIpPort && device.bacnetIpPort !== 0) {
+      return 'BACnet';
+    }
+    if (device.bacnetMstpMacId !== null && device.bacnetMstpMacId !== undefined) {
+      return 'BACnet';
+    }
+
+    // Check for Modbus indicators
+    if (device.modbusPort && device.modbusPort !== 0) {
+      return 'Modbus';
+    }
+    if (device.modbusAddress !== null && device.modbusAddress !== undefined) {
+      return 'Modbus';
+    }
+
+    // Default to Native (Temco protocol)
+    return 'Native';
+  }
+
+  /**
+   * Map status string to DeviceStatus type
+   */
+  private static mapStatus(status: string | undefined): 'online' | 'offline' | 'unknown' {
+    if (!status) return 'unknown';
+    const statusLower = status.toLowerCase();
+    if (statusLower === 'online') return 'online';
+    if (statusLower === 'offline') return 'offline';
+    return 'unknown';
   }
 
   /**

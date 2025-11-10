@@ -31,23 +31,15 @@ function sortDevices(a: DeviceInfo, b: DeviceInfo): number {
 /**
  * Group devices by building/subnet
  * Maps to C++ SortByParent logic
+ * C++ uses ALL_NODE.Building_Name for grouping
  */
 export function groupByBuilding(devices: DeviceInfo[]): Map<string, DeviceInfo[]> {
   const buildingMap = new Map<string, DeviceInfo[]>();
 
   devices.forEach((device) => {
-    // Determine building key
-    // Priority: mainBuildingName > buildingName > protocol-based group
-    let buildingKey: string;
-
-    if (device.mainBuildingName) {
-      buildingKey = device.mainBuildingName;
-    } else if (device.buildingName) {
-      buildingKey = device.buildingName;
-    } else {
-      // Group by protocol if no building info
-      buildingKey = `${device.protocol} Devices`;
-    }
+    // Use buildingName directly (matches C++ ALL_NODE.Building_Name)
+    // If no building name, use "Local View" (matches C++ default for TCP devices)
+    let buildingKey: string = device.buildingName || 'Local View';
 
     if (!buildingMap.has(buildingKey)) {
       buildingMap.set(buildingKey, []);
@@ -65,34 +57,57 @@ export function groupByBuilding(devices: DeviceInfo[]): Map<string, DeviceInfo[]
 
 /**
  * Get device icon name based on product class ID
- * Maps to C++ CImageList icon constants
- * Reference: LEFT_PANEL_CPP_DESIGN.md Section 8
+ * Maps to C++ CImageList icon constants (MainFrm.cpp:2048-2150)
+ * Reference: T3000.h PM_* constants
  */
-export function getDeviceIcon(productClassId: number): string {
-  switch (productClassId) {
-    case 1: return 'Thermostat';           // PM_TSTAT
-    case 2: return 'LightBulb';            // LED
-    case 3: return 'LightBulb';            // LC
-    case 4: return 'LightBulb';            // LCP
-    case 5: return 'Box';                  // CM5
-    case 6: return 'Box';                  // IOMOD
-    case 10: return 'Server';              // T3000
-    case 19: return 'Plug';                // T38AI8AO6DO
-    case 20: return 'Plug';                // T322AI
-    case 21: return 'Plug';                // T38I13O
-    case 22: return 'Box';                 // T332AI
-    case 23: return 'Box';                 // T3PT12
-    case 25: return 'Box';                 // T3IOA
-    case 26: return 'Thermostat';          // TSTAT10
-    case 27: return 'Power';               // TSTAT_AQ
-    case 28: return 'Box';                 // TSTAT_WIFI
-    case 29: return 'Plug';                // T34AO
-    case 30: return 'Plug';                // T36CTA
-    case 31: return 'Plug';                // T36CT
-    case 48: return 'Box';                 // T3PT10
-    case 51: return 'Thermostat';          // TEMCO_TSTAT
-    default: return 'CircleSmall';         // Unknown device
+export function getDeviceIcon(productClassId: number | null | undefined): string {
+  // Default to generic device icon if null/undefined
+  if (productClassId === null || productClassId === undefined) {
+    return 'Devices3';
   }
+
+  // Comprehensive mapping of all PM_* constants from C++
+  const iconMap: Record<number, string> = {
+    // Thermostats
+    1: 'Thermostat',           // PM_TSTAT (original)
+    26: 'Thermostat',          // PM_TSTAT10
+    27: 'Thermostat',          // PM_TSTAT_AQ (with air quality)
+    51: 'Thermostat',          // PM_TEMCO_TSTAT
+
+    // Lighting Controllers
+    2: 'LightBulb',            // LED
+    3: 'LightBulb',            // LC (Lighting Controller)
+    4: 'LightBulb',            // LCP
+
+    // Controllers and Panels
+    5: 'Box',                  // PM_CM5
+    34: 'Box',                 // PM_MINIPANEL
+    35: 'Box',                 // PM_MINIPANEL_ARM
+
+    // T3 I/O Modules
+    6: 'Plug',                 // IOMOD
+    19: 'Plug',                // PM_T38AI8AO6DO (T3-8AI-8AO-6DO)
+    20: 'Plug',                // PM_T322AI (T3-22AI)
+    21: 'Plug',                // PM_T38I13O (T3-8I-13O)
+    22: 'Plug',                // PM_T332AI (T3-32AI)
+    23: 'Plug',                // PM_T3PT12 (T3-PT12)
+    25: 'Plug',                // PM_T3IOA (T3-IOA)
+    29: 'Plug',                // PM_T34AO (T3-4AO)
+    30: 'Plug',                // PM_T36CTA (T3-6CTA)
+    31: 'Plug',                // PM_T36CT (T3-6CT)
+    48: 'Plug',                // PM_T3PT10 (T3-PT10)
+
+    // WiFi/Network Devices
+    28: 'WifiEthernet',        // PM_TSTAT_WIFI
+
+    // Servers/Gateway
+    10: 'Server',              // T3000 Server
+
+    // Generic/Unknown
+    0: 'Devices3',             // Unknown/Default
+  };
+
+  return iconMap[productClassId] || 'Devices3'; // Default to generic device icon
 }
 
 /**

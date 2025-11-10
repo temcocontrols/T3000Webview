@@ -34,17 +34,17 @@ export interface DeviceInfo {
 
   // Hierarchy
   mainBuildingName?: string;         // MainBuilding_Name
-  buildingName?: string;             // Building_Name
+  buildingName?: string;             // Building_Name (used for grouping in tree)
   floorName?: string;                // Floor_Name
   roomName?: string;                 // Room_Name
 
   // Device information
   productName: string;               // Product_Name
-  productClassId: number;            // Product_Class_ID (1=Tstat, 2=LED, etc.)
-  productId: number;                 // Product_ID
+  productClassId: number | null;     // Product_Class_ID (0=Unknown, 1=Tstat, 5=CM5, etc.)
+  productId: number | null;          // Product_ID
 
   // Network configuration
-  protocol: DeviceProtocol;
+  protocol: DeviceProtocol;          // Inferred from connection type
   ipAddress?: string;                // IP_Address
   port?: number;                     // Port
   bacnetMstpMacId?: number;          // BACnet_MSTP_MAC_ID
@@ -52,24 +52,25 @@ export interface DeviceInfo {
   pcIpAddress?: string;              // PC_IP_Address
   modbusPort?: number;               // Modbus_Port
   bacnetIpPort?: number;             // BACnet_IP_Port
-  baudrate?: string;                 // Bautrate
+  baudrate?: string;                 // Bautrate (typo from original C++ field name)
   comPort?: number;                  // Com_Port
-  connectionType?: string;           // Connection_Type
+  connectionType?: string;           // Connection_Type (DHCP, Static, etc.)
 
   // Device status
-  status: DeviceStatus;
+  status: DeviceStatus;              // online/offline/unknown
   statusHistory: boolean[];          // Last 5 connection attempts
 
   // Device details
-  hardwareVersion?: number;
-  softwareVersion?: number;
+  hardwareVersion?: number;          // Hardware_Ver
+  softwareVersion?: number;          // Software_Ver
   objectInstance?: number;           // BACnet object instance
 
   // Display
-  nameShowOnTree: string;            // Show_Label_Name or Product_Name
+  nameShowOnTree: string;            // Show_Label_Name OR Product_Name (C++ fallback logic)
   custom?: string;                   // Custom label
   description?: string;              // Description
-  imgPathName?: string;              // Icon path
+  imgPathName?: string;              // Background_imgID (icon path)
+  showLabelName?: string;            // Show_Label_Name (raw value from DB)
 
   // Hierarchy relationships
   noteParentSerialNumber?: number;   // Parent device serial number
