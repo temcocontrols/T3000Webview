@@ -13,6 +13,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
+import { PageHeader } from './PageHeader';
 import { TreePanel } from '../features/devices/components/TreePanel';
 import { StatusBar } from './StatusBar';
 import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
@@ -26,72 +27,64 @@ const useStyles = makeStyles({
     height: '100vh',
     width: '100%',
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
-    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif",
+    backgroundColor: '#f5f5f5',
+    fontFamily: 'var(--t3-font-family)',
   },
   topArea: {
     flexShrink: 0,
-    boxShadow: '0 0.3px 0.9px rgba(0, 0, 0, 0.108), 0 1.6px 3.6px rgba(0, 0, 0, 0.132)',
-    zIndex: 100,
+    // borderBottom: '1px solid #d1d1d1',
   },
   middleArea: {
     display: 'flex',
     flex: 1,
     overflow: 'hidden',
     backgroundColor: '#ffffff',
+    borderBottom: '1px solid #d1d1d1',
   },
   leftPanel: {
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
-    minWidth: '220px',
-    maxWidth: '480px',
-    borderRight: '1px solid #edebe9',
-    backgroundColor: '#ffffff',
-    boxShadow: '1px 0 2px rgba(0, 0, 0, 0.06)',
+    overflow: 'auto',
+    minWidth: '200px',
+    maxWidth: '500px',
+    borderRight: '1px solid #e1e1e1',
+    backgroundColor: '#fafafa',
   },
   resizer: {
-    width: '1px',
+    width: '4px',
     cursor: 'col-resize',
-    backgroundColor: '#edebe9',
-    transition: 'all 0.1s ease-in-out',
+    backgroundColor: '#e1e1e1',
+    transition: 'background-color 0.2s',
     flexShrink: 0,
-    position: 'relative',
     '&:hover': {
       backgroundColor: '#0078d4',
-      width: '3px',
-    },
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      top: 0,
-      left: '-2px',
-      right: '-2px',
-      bottom: 0,
     },
   },
   mainContent: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'auto',
-    padding: '20px 24px',
+    overflow: 'hidden',
     minWidth: 0,
     backgroundColor: '#ffffff',
+  },
+  mainContentBody: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '16px',
   },
   rightPanel: {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    borderLeft: '1px solid #edebe9',
-    backgroundColor: '#ffffff',
-    minWidth: '220px',
-    maxWidth: '480px',
-    boxShadow: '-1px 0 2px rgba(0, 0, 0, 0.06)',
+    borderLeft: '1px solid #e1e1e1',
+    backgroundColor: '#fafafa',
+    minWidth: '200px',
+    maxWidth: '500px',
   },
   rightPanelContent: {
-    padding: '20px',
-    color: '#201f1e',
+    padding: '16px',
+    color: '#323130',
   },
   bottomArea: {
     flexShrink: 0,
@@ -205,7 +198,10 @@ export const MainLayout: React.FC = () => {
 
         {/* Main Content Area */}
         <div className={styles.mainContent}>
-          <Outlet />
+          <PageHeader />
+          <div className={styles.mainContentBody}>
+            <Outlet />
+          </div>
         </div>
 
         {/* Right Panel - Properties/Details */}
