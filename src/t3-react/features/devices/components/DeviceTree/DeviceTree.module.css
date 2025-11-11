@@ -12,7 +12,6 @@
   border-left: 2px solid #0078d4;
   border-radius: 0;
   transition: all 0.1s ease-in-out;
-  margin: 0 4px;
   padding-left: 6px;
 }
 
@@ -22,7 +21,6 @@
   border-left: 2px solid transparent;
   border-radius: 0;
   transition: all 0.1s ease-in-out;
-  margin: 0 4px;
   padding-left: 6px;
 }
 
@@ -49,6 +47,12 @@
   font-size: 13px !important;
   color: #201f1e !important;
   border-radius: 0 !important;
+  padding-left: calc(var(--tree-level, 0) * 20px) !important;
+}
+
+/* Add extra margin to leaf nodes to align with branch content (for missing expand icon) */
+:global(.fui-TreeItem[itemtype="leaf"] .fui-TreeItemLayout__main) {
+  margin-left: 44px !important;
 }
 
 :global(.fui-TreeItemLayout:hover) {

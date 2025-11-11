@@ -111,34 +111,32 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
 
   const isSelected = selectedNodeId === node.id;
 
-  // Building/subnet node (branch with children)
-  if (node.type === 'building') {
+  // Building/subnet node
+  if (node.type === 'building' && node.children) {
     return (
       <TreeItem
         itemType="branch"
         value={node.id}
         open={node.expanded}
         onOpenChange={handleOpenChange}
-        style={{ paddingLeft: `${level * 20}px` }}
       >
         <TreeItemLayout
           onClick={handleClick}
           className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
+          style={{ '--tree-level': level } as React.CSSProperties}
         >
           {node.label}
         </TreeItemLayout>
-        {node.children && (
-          <Tree>
-            {node.children.map((child) => (
-              <TreeNodeItem key={child.id} node={child} level={level + 1} />
-            ))}
-          </Tree>
-        )}
+        <Tree>
+          {node.children.map((child) => (
+            <TreeNodeItem key={child.id} node={child} level={level + 1} />
+          ))}
+        </Tree>
       </TreeItem>
     );
   }
 
-  // Device leaf node with context menu (always a leaf, never has children)
+  // Device leaf node with context menu
   return (
     <TreeContextMenu
       device={node.data || null}
@@ -150,12 +148,12 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
       <TreeItem
         itemType="leaf"
         value={node.id}
-        style={{ paddingLeft: `${level * 20}px` }}
       >
         <TreeItemLayout
           onClick={handleClick}
           aside={node.status ? <StatusIcon status={node.status} /> : undefined}
           className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
+          style={{ '--tree-level': level } as React.CSSProperties}
         >
           {node.label}
         </TreeItemLayout>
