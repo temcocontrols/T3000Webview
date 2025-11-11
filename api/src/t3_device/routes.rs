@@ -1145,6 +1145,9 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id/input-points", get(get_input_points))
         .route("/devices/:id/output-points", get(get_output_points))
         .route("/devices/:id/variable-points", get(get_variable_points))
+        .route("/points/:id/inputs", get(get_input_points))        // Alias for simpler path
+        .route("/points/:id/outputs", get(get_output_points))      // Alias for simpler path
+        .route("/points/:id/variables", get(get_variable_points))  // Alias for simpler path
         .route("/input-points", post(create_input_point))
         .route("/output-points", post(create_output_point))
         .route("/variable-points", post(create_variable_point))
