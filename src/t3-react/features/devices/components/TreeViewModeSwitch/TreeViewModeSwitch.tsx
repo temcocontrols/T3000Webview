@@ -28,9 +28,7 @@ export const TreeViewModeSwitch: React.FC = () => {
       onClick={handleToggle}
       className={styles.switchButton}
       title={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
-    >
-      {isProjectMode ? 'Project View' : 'Equipment View'}
-    </Button>
+    />
   );
 };
 

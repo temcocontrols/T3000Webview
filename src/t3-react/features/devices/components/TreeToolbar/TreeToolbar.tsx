@@ -16,9 +16,10 @@ import {
   ChevronDoubleDown20Regular,
   ChevronDoubleUp20Regular,
   Filter20Regular,
+  BuildingRegular,
+  DatabaseRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
-import { TreeViewModeSwitch } from '../TreeViewModeSwitch';
 import styles from './TreeToolbar.module.css';
 
 /**
@@ -33,15 +34,28 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode } = useDeviceTreeStore();
+
+  const handleToggleViewMode = () => {
+    const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
+    setViewMode(newMode);
+  };
+
+  const isProjectMode = viewMode === 'projectPoint';
 
   return (
     <div className={styles.container}>
       <div className={styles.leftSection}>
         <div className={styles.title}>Devices</div>
-        <TreeViewModeSwitch />
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
+        <ToolbarButton
+          aria-label={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
+          icon={isProjectMode ? <DatabaseRegular /> : <BuildingRegular />}
+          onClick={handleToggleViewMode}
+          appearance="subtle"
+        />
+
         <ToolbarButton
           aria-label="Toggle filter"
           icon={<Filter20Regular />}
