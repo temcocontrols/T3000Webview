@@ -28,16 +28,24 @@ import { TreeContextMenu } from '../TreeContextMenu/TreeContextMenu';
 import styles from './DeviceTree.module.css';
 
 /**
- * Status icon component
+ * Status icon component - Azure Portal style
  */
 const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown' }> = ({ status }) => {
+  const iconStyle = {
+    width: '16px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+
   switch (status) {
     case 'online':
-      return <Checkmark20Regular style={{ color: '#107C10' }} />;
+      return <Checkmark20Regular style={{ ...iconStyle, color: '#107C10' }} />;
     case 'offline':
-      return <Dismiss20Regular style={{ color: '#D13438' }} />;
+      return <Dismiss20Regular style={{ ...iconStyle, color: '#a80000' }} />;
     default:
-      return <QuestionCircle20Regular style={{ color: '#8A8886' }} />;
+      return <QuestionCircle20Regular style={{ ...iconStyle, color: '#605e5c' }} />;
   }
 };
 
