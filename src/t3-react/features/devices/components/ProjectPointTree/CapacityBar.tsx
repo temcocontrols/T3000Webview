@@ -23,10 +23,8 @@ export const CapacityBar: React.FC<CapacityBarProps> = ({ used, total, percentag
     return styles.normal;  // Green - Normal
   };
 
-  const tooltipText = `${used} of ${total} used (${percentage.toFixed(1)}%)`;
-
   return (
-    <div className={styles.container} title={tooltipText}>
+    <div className={styles.container}>
       <div className={styles.barBackground}>
         <div
           className={`${styles.barFill} ${getColor()}`}

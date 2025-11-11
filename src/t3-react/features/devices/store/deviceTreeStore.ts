@@ -40,6 +40,11 @@ interface DeviceTreeState {
   expandedNodes: Set<string>;
   deviceStatuses: Map<number, DeviceStatus>;
 
+  // View Mode (Equipment View vs Project Point View)
+  viewMode: 'equipment' | 'projectPoint';
+  projectTreeData: TreeNode | null;
+  deviceCapacities: Map<string, any>;
+
   // UI State
   isLoading: boolean;
   error: string | null;
@@ -53,6 +58,11 @@ interface DeviceTreeState {
   lastSyncTime: Date | null;
   syncInterval: number | null;
   statusMonitorInterval: number | null;
+
+  // Actions: View Mode
+  setViewMode: (mode: 'equipment' | 'projectPoint') => void;
+  fetchProjectPointTree: () => Promise<void>;
+  fetchDeviceCapacity: (serialNumber: string) => Promise<void>;
 
   // Actions: Data fetching
   fetchDevices: () => Promise<void>;
@@ -108,6 +118,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       selectedNodeId: null,
       expandedNodes: new Set<string>(),
       deviceStatuses: new Map<number, DeviceStatus>(),
+
+      // View Mode state
+      viewMode: (localStorage.getItem('t3000-tree-view-mode') as 'equipment' | 'projectPoint') || 'equipment',
+      projectTreeData: null,
+      deviceCapacities: new Map<string, any>(),
 
       isLoading: false,
       error: null,
@@ -464,6 +479,54 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       // Error handling
       setError: (error: string | null) => set({ error }),
       clearError: () => set({ error: null }),
+
+      // View Mode actions
+      setViewMode: (mode: 'equipment' | 'projectPoint') => {
+        localStorage.setItem('t3000-tree-view-mode', mode);
+        set({ viewMode: mode });
+
+        // If switching to project point view, fetch the tree data
+        if (mode === 'projectPoint') {
+          get().fetchProjectPointTree();
+        }
+      },
+
+      fetchProjectPointTree: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await fetch('/api/t3_device/tree/project-view');
+          if (!response.ok) {
+            throw new Error('Failed to fetch project point tree');
+          }
+          const data = await response.json();
+          set({
+            projectTreeData: data,
+            isLoading: false,
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch project point tree';
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+          useStatusBarStore.getState().setMessage(errorMessage, 'error');
+        }
+      },
+
+      fetchDeviceCapacity: async (serialNumber: string) => {
+        try {
+          const response = await fetch(`/api/t3_device/devices/${serialNumber}/capacity`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch device capacity');
+          }
+          const data = await response.json();
+          const { deviceCapacities } = get();
+          deviceCapacities.set(serialNumber, data);
+          set({ deviceCapacities: new Map(deviceCapacities) });
+        } catch (error) {
+          console.error('Error fetching device capacity:', error);
+        }
+      },
     }),
     { name: 'DeviceTreeStore' }
   )

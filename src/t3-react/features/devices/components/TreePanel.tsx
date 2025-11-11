@@ -16,6 +16,7 @@ import React, { useEffect } from 'react';
 import { Spinner } from '@fluentui/react-components';
 import { ArrowClockwise16Regular } from '@fluentui/react-icons';
 import { DeviceTree } from './DeviceTree/DeviceTree';
+import { ProjectPointTree } from './ProjectPointTree';
 import { TreeToolbar } from './TreeToolbar/TreeToolbar';
 import { TreeFilter } from './TreeFilter/TreeFilter';
 import { useDeviceTreeStore } from '../store/deviceTreeStore';
@@ -27,7 +28,7 @@ import styles from './TreePanel.module.css';
  * TreePanel Component
  */
 export const TreePanel: React.FC = () => {
-  const { fetchDevices, isLoading, error, devices, treeData } = useDeviceTreeStore();
+  const { viewMode, fetchDevices, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
 
   // Background services
@@ -113,7 +114,11 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Tree with devices */}
-        {!isLoading && !error && treeData.length > 0 && <DeviceTree />}
+        {!isLoading && !error && treeData.length > 0 && (
+          <>
+            {viewMode === 'equipment' ? <DeviceTree /> : <ProjectPointTree />}
+          </>
+        )}
       </div>
     </div>
   );

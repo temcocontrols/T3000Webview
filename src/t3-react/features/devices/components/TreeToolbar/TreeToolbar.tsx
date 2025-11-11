@@ -18,6 +18,7 @@ import {
   Filter20Regular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
+import { TreeViewModeSwitch } from '../TreeViewModeSwitch';
 import styles from './TreeToolbar.module.css';
 
 /**
@@ -38,6 +39,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     <div className={styles.container}>
       <div className={styles.leftSection}>
         <div className={styles.title}>Devices</div>
+        <TreeViewModeSwitch />
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
         <ToolbarButton
