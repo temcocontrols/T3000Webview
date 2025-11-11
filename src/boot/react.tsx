@@ -41,7 +41,7 @@ export function initializeReactApp() {
 
   try {
     // Lazy load React app (code splitting)
-    import('@t3-react/App').then(({ App }) => {
+    import('../t3-react/app/App').then(({ App }) => {
       console.log('📦 React App module loaded, rootElement:', rootElement);
       console.log('📦 rootElement innerHTML before mount:', rootElement.innerHTML);
       console.log('📦 rootElement parent:', rootElement.parentElement);

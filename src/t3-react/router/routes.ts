@@ -7,23 +7,23 @@ import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 
 // Lazy load page components for code splitting
-const HomePage = lazy(() => import('../pages').then(m => ({ default: m.HomePage })));
-const DashboardPage = lazy(() => import('../pages').then(m => ({ default: m.DashboardPage })));
-const InputsPage = lazy(() => import('../pages').then(m => ({ default: m.InputsPage })));
-const OutputsPage = lazy(() => import('../pages').then(m => ({ default: m.OutputsPage })));
-const VariablesPage = lazy(() => import('../pages').then(m => ({ default: m.VariablesPage })));
-const ProgramsPage = lazy(() => import('../pages').then(m => ({ default: m.ProgramsPage })));
-const ControllersPage = lazy(() => import('../pages').then(m => ({ default: m.ControllersPage })));
-const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.GraphicsPage })));
-const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
-const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
-const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
-const AlarmsPage = lazy(() => import('../pages').then(m => ({ default: m.AlarmsPage })));
-const NetworkPage = lazy(() => import('../pages').then(m => ({ default: m.NetworkPage })));
-const ArrayPage = lazy(() => import('../pages').then(m => ({ default: m.ArrayPage })));
-const SettingsPage = lazy(() => import('../pages').then(m => ({ default: m.SettingsPage })));
-const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
-const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
+const HomePage = lazy(() => import('../app/pages').then(m => ({ default: m.HomePage })));
+const DashboardPage = lazy(() => import('../app/pages').then(m => ({ default: m.DashboardPage })));
+const InputsPage = lazy(() => import('../app/pages').then(m => ({ default: m.InputsPage })));
+const OutputsPage = lazy(() => import('../app/pages').then(m => ({ default: m.OutputsPage })));
+const VariablesPage = lazy(() => import('../app/pages').then(m => ({ default: m.VariablesPage })));
+const ProgramsPage = lazy(() => import('../app/pages').then(m => ({ default: m.ProgramsPage })));
+const ControllersPage = lazy(() => import('../app/pages').then(m => ({ default: m.ControllersPage })));
+const GraphicsPage = lazy(() => import('../app/pages').then(m => ({ default: m.GraphicsPage })));
+const SchedulesPage = lazy(() => import('../app/pages').then(m => ({ default: m.SchedulesPage })));
+const HolidaysPage = lazy(() => import('../app/pages').then(m => ({ default: m.HolidaysPage })));
+const TrendLogsPage = lazy(() => import('../app/pages').then(m => ({ default: m.TrendLogsPage })));
+const AlarmsPage = lazy(() => import('../app/pages').then(m => ({ default: m.AlarmsPage })));
+const NetworkPage = lazy(() => import('../app/pages').then(m => ({ default: m.NetworkPage })));
+const ArrayPage = lazy(() => import('../app/pages').then(m => ({ default: m.ArrayPage })));
+const SettingsPage = lazy(() => import('../app/pages').then(m => ({ default: m.SettingsPage })));
+const DiscoverPage = lazy(() => import('../app/pages').then(m => ({ default: m.DiscoverPage })));
+const BuildingsPage = lazy(() => import('../app/pages').then(m => ({ default: m.BuildingsPage })));
 
 /**
  * Route configuration with metadata

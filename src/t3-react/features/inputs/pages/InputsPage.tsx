@@ -47,7 +47,7 @@ import {
   ArrowDownloadRegular,
   FilterRegular,
 } from '@fluentui/react-icons';
-import { useDeviceStore } from '../../devices/store/deviceStore';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -134,7 +134,7 @@ const useStyles = makeStyles({
 
 export const InputsPage: React.FC = () => {
   const classes = useStyles();
-  const { selectedDevice } = useDeviceStore();
+  const { selectedDevice } = useDeviceTreeStore();
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -143,23 +143,30 @@ export const InputsPage: React.FC = () => {
 
   // Fetch inputs for selected device
   const fetchInputs = useCallback(async () => {
-    if (!selectedDevice || !selectedDevice.deviceInfo) {
+    console.log('[InputsPage] fetchInputs called, selectedDevice:', selectedDevice);
+
+    if (!selectedDevice) {
+      console.log('[InputsPage] No device selected');
       setInputs([]);
       return;
     }
 
+    console.log('[InputsPage] Fetching inputs for device:', selectedDevice.serialNumber);
     setLoading(true);
     setError(null);
 
     try {
       // Use devices route instead of points alias
-      const response = await fetch(`/api/t3_device/devices/${selectedDevice.deviceInfo.serialNumber}/input-points`);
+      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
+      console.log('[InputsPage] Fetching from:', url);
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch inputs: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('[InputsPage] Received data:', data);
       setInputs(data.input_points || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load inputs';
@@ -322,7 +329,7 @@ export const InputsPage: React.FC = () => {
         <div>
           <Text className={classes.title}>Inputs</Text>
           <Text size={300}>
-            {selectedDevice.name} - {inputs.length} input{inputs.length !== 1 ? 's' : ''}
+            {selectedDevice.nameShowOnTree} - {inputs.length} input{inputs.length !== 1 ? 's' : ''}
           </Text>
         </div>
       </div>

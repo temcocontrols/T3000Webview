@@ -1,0 +1,46 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 120px;
+  margin-left: auto;
+}
+
+.barBackground {
+  flex: 1;
+  height: 4px;
+  background-color: #edebe9;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  transition: width 0.3s ease-in-out, background-color 0.2s;
+  border-radius: 2px;
+}
+
+.normal {
+  background-color: #107C10;  /* Green */
+}
+
+.moderate {
+  background-color: #F7630C;  /* Orange/Yellow */
+}
+
+.warning {
+  background-color: #F7630C;  /* Orange */
+}
+
+.critical {
+  background-color: #a80000;  /* Red */
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 400;
+  color: #605e5c;
+  min-width: 32px;
+  text-align: right;
+}

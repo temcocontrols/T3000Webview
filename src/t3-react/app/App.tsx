@@ -8,23 +8,21 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
+import { ThemeProvider } from '../theme/ThemeProvider';
 import { MainLayout } from '../layout/MainLayout';
 
 // Lazy load pages from features
-const HomePage = React.lazy(() =>
-  import('@t3-react/pages').then((m) => ({ default: m.HomePage }))
-);
 const DashboardPage = React.lazy(() =>
   import('../features/dashboard/pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
 );
 const InputsPage = React.lazy(() =>
-  import('../features/points/inputs/InputsPage').then((m) => ({ default: m.InputsPage }))
+  import('../features/inputs/pages/InputsPage').then((m) => ({ default: m.InputsPage }))
 );
 const OutputsPage = React.lazy(() =>
-  import('../features/points/outputs/OutputsPage').then((m) => ({ default: m.OutputsPage }))
+  import('../features/outputs/pages/OutputsPage').then((m) => ({ default: m.OutputsPage }))
 );
 const VariablesPage = React.lazy(() =>
-  import('../features/points/variables/VariablesPage').then((m) => ({ default: m.VariablesPage }))
+  import('../features/variables/pages/VariablesPage').then((m) => ({ default: m.VariablesPage }))
 );
 const ProgramsPage = React.lazy(() =>
   import('../features/programs/pages/ProgramsPage').then((m) => ({ default: m.ProgramsPage }))
@@ -88,10 +86,11 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '100vh', background: '#ffffff' }}>
-      <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
-        <ErrorBoundary>
-          <HashRouter>
-            <Routes>
+      <ThemeProvider>
+        <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
+          <ErrorBoundary>
+            <HashRouter>
+              <Routes>
                   {/* T3000 Routes - All protected with MainLayout wrapper */}
                   <Route
                     path="/t3000"
@@ -246,6 +245,7 @@ export const App: React.FC = () => {
           </HashRouter>
         </ErrorBoundary>
       </FluentProvider>
+      </ThemeProvider>
     </div>
   );
 };
