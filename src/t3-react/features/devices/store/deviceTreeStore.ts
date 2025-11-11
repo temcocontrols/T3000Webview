@@ -146,6 +146,24 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             isLoading: false,
             lastSyncTime: new Date(),
           });
+
+          // Auto-expand root building and subnet nodes on first load
+          const { expandedNodes } = get();
+          if (expandedNodes.size === 0) {
+            // Get unique root building names, auto-expand all levels
+            const nodesToExpand = new Set<string>();
+            response.devices.forEach((device) => {
+              const rootBuilding = device.mainBuildingName || 'Default_Building';
+
+              // Add root building node
+              nodesToExpand.add(`building-${rootBuilding}`);
+
+              // Add subnet node - ALWAYS "Local View" (hardcoded like C++)
+              nodesToExpand.add(`subnet-${rootBuilding}-Local View`);
+            });
+            set({ expandedNodes: nodesToExpand });
+          }
+
           get().buildTreeStructure();
 
           // Update status bar with success message

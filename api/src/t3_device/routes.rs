@@ -1190,6 +1190,10 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/trendlog-data/realtime/batch", post(save_realtime_trendlog_batch))
         .route("/devices/:device_id/trendlog-data/cleanup", delete(cleanup_old_trendlog_data))
 
+        // Project Point View endpoints
+        .route("/devices/:serial_number/capacity", get(get_device_capacity))
+        .route("/tree/project-view", get(get_project_point_tree))
+
         // Data Collection endpoints - TEMPORARILY DISABLED
         // .route("/collection/start", post(start_data_collection))
         // .route("/collection/stop", post(stop_data_collection))
@@ -1639,3 +1643,401 @@ async fn cleanup_old_trendlog_data(
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
+
+// ============================================================================
+// PROJECT POINT VIEW ENDPOINTS
+// ============================================================================
+
+/// Device capacity information for Project Point View
+#[derive(Serialize)]
+pub struct DeviceCapacity {
+    pub serial_number: String,
+    pub device_name: String,
+    pub inputs: CapacityInfo,
+    pub outputs: CapacityInfo,
+    pub variables: CapacityInfo,
+    pub programs: CapacityInfo,
+    pub schedules: CapacityInfo,
+    pub holidays: CapacityInfo,
+    pub pid_controllers: CapacityInfo,
+    pub graphics: CapacityInfo,
+    pub trendlogs: CapacityInfo,
+}
+
+#[derive(Serialize)]
+pub struct CapacityInfo {
+    pub used: i32,
+    pub total: i32,
+    pub percentage: f32,
+}
+
+/// Get device capacity and usage information
+async fn get_device_capacity(
+    State(state): State<T3AppState>,
+    Path(serial_number): Path<String>,
+) -> Result<Json<DeviceCapacity>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Get device information
+    let device_query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        format!("SELECT Product_name, Product_class_ID FROM DEVICES WHERE Serial_ID = '{}'", serial_number)
+    );
+
+    let device_result = db.query_one(device_query).await
+        .map_err(|_| StatusCode::NOT_FOUND)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let device_name: String = device_result.try_get("", "Product_name")
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let product_class_id: i32 = device_result.try_get("", "Product_class_ID")
+        .unwrap_or(0);
+
+    // Get capacity totals based on product type
+    let (input_total, output_total, var_total) = match product_class_id {
+        74 | 88 => (64, 64, 128),  // T3-TB, T3-LB
+        35 => (32, 32, 64),         // T3-8O
+        _ => (64, 64, 128),         // Default
+    };
+
+    // Count used inputs
+    let input_count_query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        format!("SELECT COUNT(*) as count FROM INPUTS WHERE Panel_Number = '{}' AND Label != ''", serial_number)
+    );
+    let input_count = db.query_one(input_count_query).await
+        .ok()
+        .and_then(|r| r)
+        .and_then(|r| r.try_get::<i32>("", "count").ok())
+        .unwrap_or(0);
+
+    // Count used outputs
+    let output_count_query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        format!("SELECT COUNT(*) as count FROM OUTPUTS WHERE Panel_Number = '{}' AND Label != ''", serial_number)
+    );
+    let output_count = db.query_one(output_count_query).await
+        .ok()
+        .and_then(|r| r)
+        .and_then(|r| r.try_get::<i32>("", "count").ok())
+        .unwrap_or(0);
+
+    // Count used variables
+    let var_count_query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        format!("SELECT COUNT(*) as count FROM VARIABLES WHERE Panel_Number = '{}' AND Label != ''", serial_number)
+    );
+    let var_count = db.query_one(var_count_query).await
+        .ok()
+        .and_then(|r| r)
+        .and_then(|r| r.try_get::<i32>("", "count").ok())
+        .unwrap_or(0);
+
+    // Count used programs, schedules, holidays, etc.
+    let program_count = count_records(&*db, "PROGRAMS", &serial_number).await;
+    let schedule_count = count_records(&*db, "SCHEDULES", &serial_number).await;
+    let holiday_count = count_records(&*db, "HOLIDAYS", &serial_number).await;
+    let pid_count = count_records_with_desc(&*db, "PID_TABLE", &serial_number).await;
+    let graphic_count = count_records(&*db, "GRAPHICS", &serial_number).await;
+    let trendlog_count = count_records(&*db, "TRENDLOGS", &serial_number).await;
+
+    // Calculate percentages
+    let calc_percentage = |used: i32, total: i32| -> f32 {
+        if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
+    };
+
+    Ok(Json(DeviceCapacity {
+        serial_number: serial_number.clone(),
+        device_name,
+        inputs: CapacityInfo {
+            used: input_count,
+            total: input_total,
+            percentage: calc_percentage(input_count, input_total),
+        },
+        outputs: CapacityInfo {
+            used: output_count,
+            total: output_total,
+            percentage: calc_percentage(output_count, output_total),
+        },
+        variables: CapacityInfo {
+            used: var_count,
+            total: var_total,
+            percentage: calc_percentage(var_count, var_total),
+        },
+        programs: CapacityInfo {
+            used: program_count,
+            total: 16,
+            percentage: calc_percentage(program_count, 16),
+        },
+        schedules: CapacityInfo {
+            used: schedule_count,
+            total: 8,
+            percentage: calc_percentage(schedule_count, 8),
+        },
+        holidays: CapacityInfo {
+            used: holiday_count,
+            total: 4,
+            percentage: calc_percentage(holiday_count, 4),
+        },
+        pid_controllers: CapacityInfo {
+            used: pid_count,
+            total: 16,
+            percentage: calc_percentage(pid_count, 16),
+        },
+        graphics: CapacityInfo {
+            used: graphic_count,
+            total: 16,
+            percentage: calc_percentage(graphic_count, 16),
+        },
+        trendlogs: CapacityInfo {
+            used: trendlog_count,
+            total: 12,
+            percentage: calc_percentage(trendlog_count, 12),
+        },
+    }))
+}
+
+// Helper function to count records with Label field
+async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
+    let query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        format!("SELECT COUNT(*) as count FROM {} WHERE Panel_Number = '{}' AND Label != ''", table, serial)
+    );
+    db.query_one(query).await
+        .ok()
+        .and_then(|r| r)
+        .and_then(|r| r.try_get::<i32>("", "count").ok())
+        .unwrap_or(0)
+}
+
+// Helper function for PID_TABLE which uses Description field
+async fn count_records_with_desc(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
+    let query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        format!("SELECT COUNT(*) as count FROM {} WHERE Panel_Number = '{}' AND Description != ''", table, serial)
+    );
+    db.query_one(query).await
+        .ok()
+        .and_then(|r| r)
+        .and_then(|r| r.try_get::<i32>("", "count").ok())
+        .unwrap_or(0)
+}
+
+/// Project Point Tree View node
+#[derive(Serialize)]
+pub struct ProjectTreeNode {
+    pub name: String,
+    pub node_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serial_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub point_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub used: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percentage: Option<f32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    pub children: Vec<ProjectTreeNode>,
+}
+
+/// Get project point view tree structure
+async fn get_project_point_tree(
+    State(state): State<T3AppState>,
+) -> Result<Json<ProjectTreeNode>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Get all devices
+    let devices_query = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        "SELECT Serial_ID, Product_name, Online_Status, Product_class_ID FROM DEVICES ORDER BY Product_name".to_string()
+    );
+
+    let devices_result = db.query_all(devices_query).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Build device nodes with capacity info
+    let mut device_nodes = Vec::new();
+
+    for device in devices_result {
+        let serial_number: String = device.try_get("", "Serial_ID")
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let device_name: String = device.try_get("", "Product_name")
+            .unwrap_or_else(|_| format!("Device {}", serial_number));
+        let online_status: i32 = device.try_get("", "Online_Status").unwrap_or(0);
+        let product_class_id: i32 = device.try_get("", "Product_class_ID").unwrap_or(0);
+
+        let status = if online_status == 1 { "online" } else { "offline" };
+
+        // Get capacity totals
+        let (input_total, output_total, var_total) = match product_class_id {
+            74 | 88 => (64, 64, 128),
+            35 => (32, 32, 64),
+            _ => (64, 64, 128),
+        };
+
+        // Count used points for this device
+        let input_count = count_records(&*db, "INPUTS", &serial_number).await;
+        let output_count = count_records(&*db, "OUTPUTS", &serial_number).await;
+        let var_count = count_records(&*db, "VARIABLES", &serial_number).await;
+        let program_count = count_records(&*db, "PROGRAMS", &serial_number).await;
+        let schedule_count = count_records(&*db, "SCHEDULES", &serial_number).await;
+        let holiday_count = count_records(&*db, "HOLIDAYS", &serial_number).await;
+        let pid_count = count_records_with_desc(&*db, "PID_TABLE", &serial_number).await;
+        let graphic_count = count_records(&*db, "GRAPHICS", &serial_number).await;
+        let trendlog_count = count_records(&*db, "TRENDLOGS", &serial_number).await;
+
+        let calc_percentage = |used: i32, total: i32| -> f32 {
+            if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
+        };
+
+        // Build point type children nodes
+        let point_children = vec![
+            ProjectTreeNode {
+                name: format!("Output ({}/{})", output_count, output_total),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("outputs".to_string()),
+                used: Some(output_count),
+                total: Some(output_total),
+                percentage: Some(calc_percentage(output_count, output_total)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Input ({}/{})", input_count, input_total),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("inputs".to_string()),
+                used: Some(input_count),
+                total: Some(input_total),
+                percentage: Some(calc_percentage(input_count, input_total)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Variable ({}/{})", var_count, var_total),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("variables".to_string()),
+                used: Some(var_count),
+                total: Some(var_total),
+                percentage: Some(calc_percentage(var_count, var_total)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Pid ({}/16)", pid_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("pid".to_string()),
+                used: Some(pid_count),
+                total: Some(16),
+                percentage: Some(calc_percentage(pid_count, 16)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Schedule ({}/8)", schedule_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("schedules".to_string()),
+                used: Some(schedule_count),
+                total: Some(8),
+                percentage: Some(calc_percentage(schedule_count, 8)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Holiday ({}/4)", holiday_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("holidays".to_string()),
+                used: Some(holiday_count),
+                total: Some(4),
+                percentage: Some(calc_percentage(holiday_count, 4)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Program ({}/16)", program_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("programs".to_string()),
+                used: Some(program_count),
+                total: Some(16),
+                percentage: Some(calc_percentage(program_count, 16)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Graphic ({}/16)", graphic_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("graphics".to_string()),
+                used: Some(graphic_count),
+                total: Some(16),
+                percentage: Some(calc_percentage(graphic_count, 16)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Trendlog ({}/12)", trendlog_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("trendlogs".to_string()),
+                used: Some(trendlog_count),
+                total: Some(12),
+                percentage: Some(calc_percentage(trendlog_count, 12)),
+                children: vec![],
+            },
+        ];
+
+        // Build device node
+        device_nodes.push(ProjectTreeNode {
+            name: device_name,
+            node_type: "device".to_string(),
+            serial_number: Some(serial_number),
+            status: Some(status.to_string()),
+            point_type: None,
+            used: None,
+            total: None,
+            percentage: None,
+            children: point_children,
+        });
+    }
+
+    // Build "System List" node
+    let system_list_node = ProjectTreeNode {
+        name: "System List".to_string(),
+        node_type: "system".to_string(),
+        serial_number: None,
+        status: None,
+        point_type: None,
+        used: None,
+        total: None,
+        percentage: None,
+        children: device_nodes,
+    };
+
+    // Build root "Point List" node
+    let root_node = ProjectTreeNode {
+        name: "Point List".to_string(),
+        node_type: "root".to_string(),
+        serial_number: None,
+        status: None,
+        point_type: None,
+        used: None,
+        total: None,
+        percentage: None,
+        children: vec![system_list_node],
+    };
+
+    Ok(Json(root_node))
+}
+

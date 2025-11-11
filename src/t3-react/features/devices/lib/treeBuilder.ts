@@ -29,30 +29,43 @@ function sortDevices(a: DeviceInfo, b: DeviceInfo): number {
 }
 
 /**
- * Group devices by building/subnet
+ * Group devices by building/subnet (3-level hierarchy)
  * Maps to C++ SortByParent logic
- * C++ uses ALL_NODE.Building_Name for grouping
+ * Level 1: mainBuildingName (root, e.g., "Default_Building")
+ * Level 2: ALWAYS "Local View" (hardcoded for all TCP devices, ignore buildingName from DB)
+ * Level 3: devices
  */
-export function groupByBuilding(devices: DeviceInfo[]): Map<string, DeviceInfo[]> {
-  const buildingMap = new Map<string, DeviceInfo[]>();
+export function groupByBuilding(devices: DeviceInfo[]): Map<string, Map<string, DeviceInfo[]>> {
+  const rootMap = new Map<string, Map<string, DeviceInfo[]>>();
 
   devices.forEach((device) => {
-    // Use buildingName directly (matches C++ ALL_NODE.Building_Name)
-    // If no building name, use "Local View" (matches C++ default for TCP devices)
-    let buildingKey: string = device.buildingName || 'Local View';
+    // Level 1: Root building (mainBuildingName)
+    const rootBuilding = device.mainBuildingName || 'Default_Building';
 
-    if (!buildingMap.has(buildingKey)) {
-      buildingMap.set(buildingKey, []);
+    // Level 2: ALWAYS hardcode "Local View" (ignore buildingName from database)
+    // This matches C++ logic: strNetWrokName = _T("Local View");
+    const subnet = 'Local View';
+
+    if (!rootMap.has(rootBuilding)) {
+      rootMap.set(rootBuilding, new Map<string, DeviceInfo[]>());
     }
-    buildingMap.get(buildingKey)!.push(device);
+
+    const subnetMap = rootMap.get(rootBuilding)!;
+    if (!subnetMap.has(subnet)) {
+      subnetMap.set(subnet, []);
+    }
+
+    subnetMap.get(subnet)!.push(device);
   });
 
-  // Sort devices within each building
-  buildingMap.forEach((deviceList) => {
-    deviceList.sort(sortDevices);
+  // Sort devices within each subnet
+  rootMap.forEach((subnetMap) => {
+    subnetMap.forEach((deviceList) => {
+      deviceList.sort(sortDevices);
+    });
   });
 
-  return buildingMap;
+  return rootMap;
 }
 
 /**
@@ -120,29 +133,7 @@ export function getBuildingIcon(protocol: string): string {
 }
 
 /**
- * Create tree node from device
- */
-function createDeviceNode(
-  device: DeviceInfo,
-  expandedNodes: Set<string>,
-  deviceStatuses: Map<number, DeviceStatus>
-): TreeNode {
-  const nodeId = `device-${device.serialNumber}`;
-
-  return {
-    id: nodeId,
-    type: 'device',
-    label: device.nameShowOnTree,
-    icon: getDeviceIcon(device.productClassId),
-    data: device,
-    status: deviceStatuses.get(device.serialNumber) || device.status || 'unknown',
-    expanded: expandedNodes.has(nodeId),
-    level: 1,
-  };
-}
-
-/**
- * Create building/subnet node
+ * Create building/subnet node with device children
  */
 function createBuildingNode(
   buildingName: string,
@@ -158,10 +149,6 @@ function createBuildingNode(
     createDeviceNode(device, expandedNodes, deviceStatuses)
   );
 
-  // Calculate status summary (for future use in tooltips/badges)
-  // const onlineCount = childNodes.filter((n) => n.status === 'online').length;
-  // const offlineCount = childNodes.filter((n) => n.status === 'offline').length;
-
   return {
     id: nodeId,
     type: 'building',
@@ -169,13 +156,116 @@ function createBuildingNode(
     icon: getBuildingIcon(protocol),
     children: childNodes,
     expanded: expandedNodes.has(nodeId),
-    level: 0,
+    level: 0,  // Top level
+  };
+}
+
+/**
+ * Create subnet node (Level 2: e.g., "Local View")
+ */
+function createSubnetNode(
+  subnetName: string,
+  devices: DeviceInfo[],
+  expandedNodes: Set<string>,
+  deviceStatuses: Map<number, DeviceStatus>,
+  parentBuilding: string
+): TreeNode {
+  const nodeId = `subnet-${parentBuilding}-${subnetName}`;
+  const protocol = devices[0]?.protocol || 'Unknown';
+
+  // Create child device nodes
+  const childNodes = devices.map((device) =>
+    createDeviceNode(device, expandedNodes, deviceStatuses)
+  );
+
+  return {
+    id: nodeId,
+    type: 'building',
+    label: `${subnetName} (${devices.length})`,
+    icon: getBuildingIcon(protocol),
+    children: childNodes,
+    expanded: expandedNodes.has(nodeId),
+    level: 1,  // Level 1: Subnet (under root building)
+  };
+}
+
+/**
+ * Create root building node (Level 1: e.g., "Default_Building")
+ */
+function createRootBuildingNode(
+  buildingName: string,
+  subnetMap: Map<string, DeviceInfo[]>,
+  expandedNodes: Set<string>,
+  deviceStatuses: Map<number, DeviceStatus>
+): TreeNode {
+  const nodeId = `building-${buildingName}`;
+
+  // Create subnet nodes
+  const subnetNodes: TreeNode[] = [];
+  const sortedSubnets = Array.from(subnetMap.keys()).sort();
+
+  sortedSubnets.forEach((subnetName) => {
+    const devicesInSubnet = subnetMap.get(subnetName)!;
+    const subnetNode = createSubnetNode(
+      subnetName,
+      devicesInSubnet,
+      expandedNodes,
+      deviceStatuses,
+      buildingName
+    );
+    subnetNodes.push(subnetNode);
+  });
+
+  // Count total devices
+  const totalDevices = Array.from(subnetMap.values()).reduce(
+    (sum, devices) => sum + devices.length,
+    0
+  );
+
+  return {
+    id: nodeId,
+    type: 'building',
+    label: `${buildingName} (${totalDevices})`,
+    icon: 'Home',
+    children: subnetNodes,
+    expanded: expandedNodes.has(nodeId),
+    level: 0,  // Level 0: Root building
+  };
+}
+
+/**
+ * Create device leaf node (Level 3)
+ */
+function createDeviceNode(
+  device: DeviceInfo,
+  expandedNodes: Set<string>,
+  deviceStatuses: Map<number, DeviceStatus>
+): TreeNode {
+  const nodeId = `device-${device.serialNumber}`;
+
+  // Device nodes are always leaf nodes - never have children
+  return {
+    id: nodeId,
+    type: 'device',
+    label: device.nameShowOnTree,
+    icon: getDeviceIcon(device.productClassId),
+    data: device,
+    status: deviceStatuses.get(device.serialNumber) || device.status || 'unknown',
+    expanded: expandedNodes.has(nodeId),
+    level: 2,  // Level 2: Device (under subnet)
+    // Explicitly set children to undefined to ensure it's a leaf
+    children: undefined,
   };
 }
 
 /**
  * Build tree structure from flat device list
  * Main entry point - maps to C++ CImageTreeCtrl::BuildTree
+ *
+ * Creates 3-level hierarchy:
+ * 1. Root Building (mainBuildingName, e.g., "Default_Building")
+ * 2. Subnet/Floor (buildingName, e.g., "Local View" - hardcoded for TCP)
+ * 3. Devices (e.g., "T3-TB", "T3-XX-ESP")
  *
  * @param devices - Flat list of devices
  * @param expandedNodes - Set of expanded node IDs
@@ -191,24 +281,24 @@ export function buildTreeFromDevices(
     return [];
   }
 
-  // Group devices by building
-  const buildingMap = groupByBuilding(devices);
+  // Group devices by building (3-level: root building → subnet → devices)
+  const rootMap = groupByBuilding(devices);
 
-  // Create building nodes with children
+  // Create root building nodes with subnet children
   const treeNodes: TreeNode[] = [];
 
-  // Sort buildings alphabetically
-  const sortedBuildings = Array.from(buildingMap.keys()).sort();
+  // Sort root buildings alphabetically
+  const sortedBuildings = Array.from(rootMap.keys()).sort();
 
   sortedBuildings.forEach((buildingName) => {
-    const devicesInBuilding = buildingMap.get(buildingName)!;
-    const buildingNode = createBuildingNode(
+    const subnetMap = rootMap.get(buildingName)!;
+    const rootNode = createRootBuildingNode(
       buildingName,
-      devicesInBuilding,
+      subnetMap,
       expandedNodes,
       deviceStatuses
     );
-    treeNodes.push(buildingNode);
+    treeNodes.push(rootNode);
   });
 
   return treeNodes;

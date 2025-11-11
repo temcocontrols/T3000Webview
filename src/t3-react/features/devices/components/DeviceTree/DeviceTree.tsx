@@ -111,8 +111,8 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
 
   const isSelected = selectedNodeId === node.id;
 
-  // Building/subnet node
-  if (node.type === 'building' && node.children) {
+  // Building/subnet node (branch with children)
+  if (node.type === 'building') {
     return (
       <TreeItem
         itemType="branch"
@@ -127,16 +127,18 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
         >
           {node.label}
         </TreeItemLayout>
-        <Tree>
-          {node.children.map((child) => (
-            <TreeNodeItem key={child.id} node={child} level={level + 1} />
-          ))}
-        </Tree>
+        {node.children && (
+          <Tree>
+            {node.children.map((child) => (
+              <TreeNodeItem key={child.id} node={child} level={level + 1} />
+            ))}
+          </Tree>
+        )}
       </TreeItem>
     );
   }
 
-  // Device leaf node with context menu
+  // Device leaf node with context menu (always a leaf, never has children)
   return (
     <TreeContextMenu
       device={node.data || null}

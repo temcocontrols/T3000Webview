@@ -1,15 +1,15 @@
 /**
  * TreeContextMenu Component
  *
- * Context menu for device tree nodes
+ * Context menu for device tree nodes (right-click to open)
  * Maps to C++ DisplayContextMenu
  *
  * C++ Reference (LEFT_PANEL_CPP_DESIGN.md Section 10):
- * - DisplayContextMenu() �?TreeContextMenu
+ * - DisplayContextMenu() → TreeContextMenu
  * - Actions: Open, Delete, Edit Label, Copy IP, Ping
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Menu,
   MenuItem,
@@ -51,20 +51,25 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
   onCheckStatus,
   children,
 }) => {
+  const [open, setOpen] = useState(false);
+
   if (!device) {
     return children;
   }
 
   const handleOpen = () => {
     onOpen?.(device);
+    setOpen(false);
   };
 
   const handleDelete = () => {
     onDelete?.(device);
+    setOpen(false);
   };
 
   const handleEdit = () => {
     onEdit?.(device);
+    setOpen(false);
   };
 
   const handleCopyIP = () => {
@@ -72,44 +77,65 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
       navigator.clipboard.writeText(device.ipAddress);
     }
     onCopyIP?.(device);
+    setOpen(false);
   };
 
   const handleCheckStatus = () => {
     onCheckStatus?.(device);
+    setOpen(false);
+  };
+
+  // Handle right-click to open menu
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(true);
   };
 
   return (
-    <Menu>
-      <MenuTrigger disableButtonEnhancement>
+    <>
+      <div
+        onContextMenu={handleContextMenu}
+        style={{ width: '100%', height: '100%' }}
+      >
         {children}
-      </MenuTrigger>
+      </div>
 
-      <MenuPopover>
-        <MenuList>
-          <MenuItem icon={<Open20Regular />} onClick={handleOpen}>
-            Open Device
-          </MenuItem>
+      <Menu
+        open={open}
+        onOpenChange={(_e, data) => setOpen(data.open)}
+      >
+        <MenuTrigger disableButtonEnhancement>
+          <div style={{ display: 'none' }} />
+        </MenuTrigger>
 
-          <MenuItem icon={<Edit20Regular />} onClick={handleEdit}>
-            Edit Label
-          </MenuItem>
-
-          {device.ipAddress && (
-            <MenuItem icon={<Copy20Regular />} onClick={handleCopyIP}>
-              Copy IP Address
+        <MenuPopover>
+          <MenuList>
+            <MenuItem icon={<Open20Regular />} onClick={handleOpen}>
+              Open Device
             </MenuItem>
-          )}
 
-          <MenuItem icon={<WifiSettings20Regular />} onClick={handleCheckStatus}>
-            Check Status
-          </MenuItem>
+            <MenuItem icon={<Edit20Regular />} onClick={handleEdit}>
+              Edit Label
+            </MenuItem>
 
-          <MenuItem icon={<Delete20Regular />} onClick={handleDelete}>
-            Delete Device
-          </MenuItem>
-        </MenuList>
-      </MenuPopover>
-    </Menu>
+            {device.ipAddress && (
+              <MenuItem icon={<Copy20Regular />} onClick={handleCopyIP}>
+                Copy IP Address
+              </MenuItem>
+            )}
+
+            <MenuItem icon={<WifiSettings20Regular />} onClick={handleCheckStatus}>
+              Check Status
+            </MenuItem>
+
+            <MenuItem icon={<Delete20Regular />} onClick={handleDelete}>
+              Delete Device
+            </MenuItem>
+          </MenuList>
+        </MenuPopover>
+      </Menu>
+    </>
   );
 };
 
