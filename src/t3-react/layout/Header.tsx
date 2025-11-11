@@ -125,6 +125,12 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '0px', // No gap between toolbar items
   },
+  activeToolbarButton: {
+    color: '#0078d4 !important',
+    '& svg': {
+      color: '#0078d4 !important',
+    },
+  },
   userSection: {
     display: 'flex',
     alignItems: 'center',
@@ -360,6 +366,9 @@ export const Header: React.FC = () => {
                 ? getIconComponent(item.icon)
                 : item.icon;
 
+              // Check if this button is active (current route matches)
+              const isActive = item.route && location.pathname === item.route;
+
               return (
                 <ToolbarButton
                   key={item.id}
@@ -368,6 +377,7 @@ export const Header: React.FC = () => {
                   disabled={item.disabled}
                   onClick={() => handleToolbarClick(item)}
                   title={item.tooltip || item.label}
+                  className={isActive ? styles.activeToolbarButton : ''}
                   style={{
                     color: theme.colors.text,
                     fontSize: '11px', // Smaller font

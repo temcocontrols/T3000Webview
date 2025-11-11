@@ -35,10 +35,21 @@ interface TreeToolbarProps {
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
   const { expandAll, collapseAll, viewMode, setViewMode } = useDeviceTreeStore();
+  const [isExpanded, setIsExpanded] = React.useState(false);
 
   const handleToggleViewMode = () => {
     const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
     setViewMode(newMode);
+  };
+
+  const handleToggleExpandCollapse = () => {
+    if (isExpanded) {
+      collapseAll();
+      setIsExpanded(false);
+    } else {
+      expandAll();
+      setIsExpanded(true);
+    }
   };
 
   const isProjectMode = viewMode === 'projectPoint';
@@ -54,27 +65,23 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           icon={isProjectMode ? <DatabaseRegular /> : <BuildingRegular />}
           onClick={handleToggleViewMode}
           appearance="subtle"
+          className={isProjectMode ? styles.activeButton : ''}
         />
 
         <ToolbarButton
           aria-label="Toggle filter"
           icon={<Filter20Regular />}
           onClick={onToggleFilter}
-          appearance={showFilter ? 'primary' : 'subtle'}
+          appearance="subtle"
+          className={showFilter ? styles.activeButton : ''}
         />
 
         <ToolbarButton
-          aria-label="Expand all nodes"
-          icon={<ChevronDoubleDown20Regular />}
-          onClick={expandAll}
+          aria-label={isExpanded ? 'Collapse all nodes' : 'Expand all nodes'}
+          icon={isExpanded ? <ChevronDoubleUp20Regular /> : <ChevronDoubleDown20Regular />}
+          onClick={handleToggleExpandCollapse}
           appearance="subtle"
-        />
-
-        <ToolbarButton
-          aria-label="Collapse all nodes"
-          icon={<ChevronDoubleUp20Regular />}
-          onClick={collapseAll}
-          appearance="subtle"
+          className={isExpanded ? styles.activeButton : ''}
         />
       </Toolbar>
     </div>
