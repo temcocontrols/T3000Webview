@@ -21,6 +21,7 @@ import {
   Checkmark20Regular,
   Dismiss20Regular,
   QuestionCircle20Regular,
+  Desktop20Regular,
 } from '@fluentui/react-icons';
 import type { TreeNode } from '../../../../types/device';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
@@ -151,6 +152,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
       >
         <TreeItemLayout
           onClick={handleClick}
+          iconBefore={<Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />}
           aside={node.status ? <StatusIcon status={node.status} /> : undefined}
           className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
           style={{ '--tree-level': level } as React.CSSProperties}
