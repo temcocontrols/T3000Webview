@@ -1,5 +1,29 @@
 /* RangeSelectionDrawer styles - Single page layout matching C++ dialog */
 
+.drawerHeader {
+  padding: 8px 16px !important;
+  min-height: unset !important;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.drawerTitle {
+  font-size: 14px;
+  color: #323130;
+  font-weight: 600;
+}
+
+.inputLabelHeader {
+  color: #605e5c;
+  font-weight: normal;
+  font-size: 12px;
+}
+
 .drawerBody {
   display: flex;
   flex-direction: column;
@@ -10,42 +34,50 @@
 
 /* Top section with manual input */
 .topSection {
-  padding: 12px;
-  background-color: #f3f2f1;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-.inputRow {
+  padding: 12px 16px;
+  background-color: #faf9f8;
+  border: 1px solid #edebe9;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
 }
 
 .inputLabel {
-  font-size: 14px;
-  font-weight: 600;
-  min-width: 140px;
-}
-
-.numberInput {
-  width: 80px;
-}
-
-.okButton {
-  min-width: 60px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #323130;
+  white-space: nowrap;
 }
 
 .currentLabel {
-  flex: 1;
-  padding: 8px 12px;
+  padding: 6px 12px;
   background-color: white;
   border: 1px solid #d1d1d1;
   border-radius: 4px;
-  color: #d13438;
-  font-size: 14px;
+  color: #0078d4;
+  font-size: 13px;
   font-weight: 600;
-  text-align: center;
+  border-left: 3px solid #0078d4;
+  flex: 1;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.actionButtons button {
+  font-size: 12px;
+  height: 28px;
+  padding: 0 12px;
+}
+
+.saveButton {
+  min-width: 60px;
 }
 
 /* Main content - 3 column layout */
@@ -53,44 +85,60 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .mainContent > div:first-child {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr 1fr 0.5fr;
+  gap: 20px;
+  min-height: 350px;
 }
 
 .column {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .sectionTitle {
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #d1d1d1;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #d1d1d1;
   color: #323130;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .subTitle {
   margin-bottom: 8px;
+  margin-top: 4px;
   color: #323130;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .rangeGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 350px;
 }
 
 .rangeOption {
-  padding: 4px 0;
+  padding: 3px 0;
 }
 
 .rangeOption label {
   font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background-color 0.1s ease;
 }
 
 .rangeOption label:hover {
@@ -101,10 +149,11 @@
   align-self: flex-start;
   font-size: 12px;
   padding: 4px 12px;
+  margin-top: 8px;
 }
 
 .multiStateSection {
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 /* Bottom section - Input Analog Units */
@@ -112,6 +161,7 @@
   margin-top: 16px;
   padding-top: 16px;
   border-top: 2px solid #d1d1d1;
+  flex-shrink: 0;
 }
 
 .analogGroup {
@@ -134,6 +184,28 @@
 .rangeGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 6px;
   margin-top: 8px;
+}
+
+/* Scrollbar styling */
+.rangeGroup::-webkit-scrollbar,
+.mainContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rangeGroup::-webkit-scrollbar-track,
+.mainContent::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.rangeGroup::-webkit-scrollbar-thumb,
+.mainContent::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.rangeGroup::-webkit-scrollbar-thumb:hover,
+.mainContent::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

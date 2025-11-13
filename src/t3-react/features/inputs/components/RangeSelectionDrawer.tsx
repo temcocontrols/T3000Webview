@@ -76,9 +76,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       open={isOpen}
       onOpenChange={(_, { open }) => !open && handleCancel()}
       position="end"
-      size="small"
+      size="large"
+      style={{ width: '900px', maxWidth: '90vw' }}
     >
-      <DrawerHeader>
+      <DrawerHeader className={styles.drawerHeader}>
         <DrawerHeaderTitle
           action={
             <Button
@@ -89,40 +90,34 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             />
           }
         >
-          <span style={{ fontSize: '14px' }}>Select Range Number</span>
-          {inputLabel && (
-            <Text size={200} style={{ display: 'block', color: '#605e5c', fontWeight: 'normal', marginTop: '4px' }}>
-              {inputLabel}
-            </Text>
-          )}
+          <div className={styles.headerContent}>
+            <Text size={300} weight="semibold" className={styles.drawerTitle}>Select Range Number</Text>
+            {inputLabel && (
+              <Text size={200} className={styles.inputLabelHeader}>
+                {inputLabel}
+              </Text>
+            )}
+          </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
         {/* Top section: Manual input */}
         <div className={styles.topSection}>
-          <div className={styles.inputRow}>
-            <Label htmlFor="rangeInput" className={styles.inputLabel}>
-              Enter Units Number:
-            </Label>
-            <Input
-              id="rangeInput"
-              type="number"
-              value={manualInput}
-              onChange={(_, data) => handleManualInputChange(data.value)}
-              className={styles.numberInput}
-              min={0}
-              max={64}
-            />
-            <Button appearance="primary" onClick={handleSave} className={styles.okButton}>
+          <Label className={styles.inputLabel}>
+            Enter Range Number (0-64):
+          </Label>
+          <Text size={200} weight="semibold" style={{ color: '#605e5c' }}>Current Selection:</Text>
+          <div className={styles.currentLabel}>
+            {currentRangeLabel}
+          </div>
+          <div className={styles.actionButtons}>
+            <Button appearance="primary" onClick={handleSave} className={styles.saveButton}>
               OK
             </Button>
             <Button appearance="secondary" onClick={handleCancel}>
               Cancel
             </Button>
-            <div className={styles.currentLabel}>
-              {currentRangeLabel}
-            </div>
           </div>
         </div>
 
