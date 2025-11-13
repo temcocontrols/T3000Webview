@@ -62,8 +62,8 @@
 }
 
 .activeButton {
-  background-color: #eff6fc !important;
-  border-color: #c7e0f4 !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
   color: #0078d4 !important;
 }
 
