@@ -1,24 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Drawer,
   DrawerHeader,
   DrawerHeaderTitle,
   DrawerBody,
   Button,
-  SearchBox,
+  Input,
   Radio,
   RadioGroup,
-  Tab,
-  TabList,
   Text,
+  Label,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
 import {
   INPUT_ANALOG_RANGES,
   DIGITAL_RANGES,
-  BAC_UNITS_ANALOG,
-  BAC_UNITS_DIGITAL,
-  type RangeOption,
+  getRangeLabel,
 } from '../data/rangeData';
 import styles from './RangeSelectionDrawer.module.css';
 
@@ -39,44 +36,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   onSave,
   inputLabel,
 }) => {
-  // Determine initial tab based on digitalAnalog
-  const initialTab = digitalAnalog === BAC_UNITS_DIGITAL ? 'digital' : 'analog';
-
-  const [selectedTab, setSelectedTab] = useState<'analog' | 'digital'>(initialTab);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
-
-  // Get current range options based on selected tab
-  const currentRangeOptions = selectedTab === 'digital' ? DIGITAL_RANGES : INPUT_ANALOG_RANGES;
-
-  // Filter ranges based on search query
-  const filteredRanges = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return currentRangeOptions;
-    }
-
-    const query = searchQuery.toLowerCase();
-    return currentRangeOptions.filter(
-      (range) =>
-        range.label.toLowerCase().includes(query) ||
-        range.unit?.toLowerCase().includes(query) ||
-        range.category?.toLowerCase().includes(query) ||
-        range.value.toString().includes(query)
-    );
-  }, [currentRangeOptions, searchQuery]);
-
-  // Group ranges by category
-  const groupedRanges = useMemo(() => {
-    const groups: { [key: string]: RangeOption[] } = {};
-    filteredRanges.forEach((range) => {
-      const category = range.category || 'Other';
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(range);
-    });
-    return groups;
-  }, [filteredRanges]);
+  const [manualInput, setManualInput] = useState<string>(currentRange.toString());
 
   const handleSave = () => {
     onSave(selectedRange);
@@ -85,17 +46,28 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
   const handleCancel = () => {
     setSelectedRange(currentRange); // Reset to original
+    setManualInput(currentRange.toString());
     onClose();
   };
 
-  // Reset tab and selection when drawer opens
+  const handleManualInputChange = (value: string) => {
+    setManualInput(value);
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 64) {
+      setSelectedRange(numValue);
+    }
+  };
+
+  // Reset selection when drawer opens
   React.useEffect(() => {
     if (isOpen) {
-      setSelectedTab(initialTab);
       setSelectedRange(currentRange);
-      setSearchQuery('');
+      setManualInput(currentRange.toString());
     }
-  }, [isOpen, initialTab, currentRange]);
+  }, [isOpen, currentRange]);
+
+  // Get current range label
+  const currentRangeLabel = getRangeLabel(selectedRange, digitalAnalog);
 
   return (
     <Drawer
@@ -104,7 +76,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       open={isOpen}
       onOpenChange={(_, { open }) => !open && handleCancel()}
       position="end"
-      size="medium"
+      size="large"
     >
       <DrawerHeader>
         <DrawerHeaderTitle
@@ -117,9 +89,9 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             />
           }
         >
-          Select Range
+          Select Range Number
           {inputLabel && (
-            <Text size={200} style={{ display: 'block', color: '#605e5c', fontWeight: 'normal' }}>
+            <Text size={200} style={{ display: 'block', color: '#605e5c', fontWeight: 'normal', marginTop: '4px' }}>
               {inputLabel}
             </Text>
           )}
@@ -127,80 +99,188 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
-        {/* Tabs for Analog/Digital */}
-        <TabList
-          selectedValue={selectedTab}
-          onTabSelect={(_, data) => setSelectedTab(data.value as 'analog' | 'digital')}
-          className={styles.tabList}
-        >
-          <Tab value="analog">Analog ({INPUT_ANALOG_RANGES.length})</Tab>
-          <Tab value="digital">Digital ({DIGITAL_RANGES.length})</Tab>
-        </TabList>
+        {/* Top section: Manual input */}
+        <div className={styles.topSection}>
+          <div className={styles.inputRow}>
+            <Label htmlFor="rangeInput" className={styles.inputLabel}>
+              Enter Units Number:
+            </Label>
+            <Input
+              id="rangeInput"
+              type="number"
+              value={manualInput}
+              onChange={(_, data) => handleManualInputChange(data.value)}
+              className={styles.numberInput}
+              min={0}
+              max={64}
+            />
+            <Button appearance="primary" onClick={handleSave} className={styles.okButton}>
+              OK
+            </Button>
+            <Button appearance="secondary" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <div className={styles.currentLabel}>
+              {currentRangeLabel}
+            </div>
+          </div>
+        </div>
 
-        {/* Search Box */}
-        <SearchBox
-          placeholder="Search ranges..."
-          value={searchQuery}
-          onChange={(_, data) => setSearchQuery(data.value)}
-          className={styles.searchBox}
-        />
-
-        {/* Range Options */}
-        <div className={styles.rangeList}>
+        {/* Main content: 3-column layout */}
+        <div className={styles.mainContent}>
           <RadioGroup
             value={selectedRange.toString()}
             onChange={(_, data) => setSelectedRange(Number(data.value))}
           >
-            {Object.keys(groupedRanges).map((category) => (
-              <div key={category} className={styles.categoryGroup}>
-                <Text weight="semibold" size={300} className={styles.categoryTitle}>
-                  {category}
-                </Text>
-                {groupedRanges[category].map((range) => (
+            {/* Left column: Digital Units */}
+            <div className={styles.column}>
+              <Text weight="semibold" size={400} className={styles.sectionTitle}>
+                Digital Units
+              </Text>
+              <div className={styles.rangeGroup}>
+                {DIGITAL_RANGES.filter(r => r.value >= 0 && r.value <= 22).map((range) => (
                   <div key={range.value} className={styles.rangeOption}>
                     <Radio
                       value={range.value.toString()}
-                      label={
-                        <div className={styles.rangeLabel}>
-                          <span className={styles.rangeValue}>{range.value}</span>
-                          <span className={styles.rangeName}>{range.label}</span>
-                          {range.unit && (
-                            <span className={styles.rangeUnit}>({range.unit})</span>
-                          )}
-                        </div>
-                      }
+                      label={`${range.value}. ${range.label}`}
                     />
                   </div>
                 ))}
               </div>
-            ))}
+            </div>
 
-            {filteredRanges.length === 0 && (
-              <div className={styles.noResults}>
-                <Text>No ranges found matching "{searchQuery}"</Text>
+            {/* Middle column: Custom Digital Units */}
+            <div className={styles.column}>
+              <Text weight="semibold" size={400} className={styles.sectionTitle}>
+                Custom Digital Units
+              </Text>
+              <div className={styles.rangeGroup}>
+                {DIGITAL_RANGES.filter(r => r.value >= 23 && r.value <= 30).map((range) => (
+                  <div key={range.value} className={styles.rangeOption}>
+                    <Radio
+                      value={range.value.toString()}
+                      label={`${range.value}. ${range.label}`}
+                    />
+                  </div>
+                ))}
               </div>
-            )}
+              <Button appearance="secondary" className={styles.editButton} style={{ marginTop: '8px' }}>
+                Edit
+              </Button>
+
+              {/* Multi State section */}
+              <div className={styles.multiStateSection}>
+                <Text weight="semibold" size={400} className={styles.sectionTitle}>
+                  Multi State
+                </Text>
+                <div className={styles.rangeGroup}>
+                  {/* Placeholder for multi-state values */}
+                  <Radio value="100" label="" disabled />
+                  <Radio value="101" label="" disabled />
+                  <Radio value="102" label="" disabled />
+                  <Radio value="103" label="" disabled />
+                </div>
+                <Button appearance="secondary" className={styles.editButton} style={{ marginTop: '8px' }}>
+                  Edit
+                </Button>
+              </div>
+            </div>
+
+            {/* Right spacer - will be filled by bottom section */}
+            <div className={styles.column}>
+            </div>
           </RadioGroup>
-        </div>
 
-        {/* Custom Tables Button */}
-        {((selectedTab === 'analog' && selectedRange >= 20 && selectedRange <= 24) ||
-          (selectedTab === 'digital' && selectedRange >= 23 && selectedRange <= 30)) && (
-          <div className={styles.customButtonContainer}>
-            <Button appearance="secondary" className={styles.customButton}>
-              Edit Custom {selectedTab === 'analog' ? 'Table' : 'Digital'}...
-            </Button>
+          {/* Bottom section: Input Analog Units (full width) */}
+          <div className={styles.bottomSection}>
+            <RadioGroup
+              value={selectedRange.toString()}
+              onChange={(_, data) => setSelectedRange(Number(data.value))}
+            >
+              <Text weight="semibold" size={400} className={styles.sectionTitle}>
+                Input Analog Units
+              </Text>
+
+              {/* Temperature Sensors */}
+              <div className={styles.analogGroup}>
+                <Text weight="semibold" size={300} className={styles.subTitle}>
+                  Temp Sensors
+                </Text>
+                <div className={styles.tempSensors}>
+                  <div>
+                    <Radio value="55" label="°C" />
+                    <Radio value="56" label="°F" />
+                  </div>
+                  <div>
+                    <Radio value="1" label="3K YSI 44005" />
+                  </div>
+                  <div>
+                    <Radio value="3" label="10K Type2" />
+                  </div>
+                  <div>
+                    <Radio value="7" label="10K Type3" />
+                  </div>
+                  <div>
+                    <Radio value="5" label="3K Allerton/ASI" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Voltage/Current ranges */}
+              <div className={styles.analogGroup}>
+                <div className={styles.rangeGrid}>
+                  {INPUT_ANALOG_RANGES.filter(r => r.value >= 11 && r.value <= 14 || r.value === 19).map((range) => (
+                    <div key={range.value} className={styles.rangeOption}>
+                      <Radio
+                        value={range.value.toString()}
+                        label={`${range.value}. ${range.label}`}
+                      />
+                    </div>
+                  ))}
+                  <div className={styles.rangeOption}>
+                    <Radio value="15" label="15. Pulse Count (Slow 1Hz)" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Range */}
+              <div className={styles.analogGroup}>
+                <Text weight="semibold" size={300} className={styles.subTitle}>
+                  Custom Range
+                </Text>
+                <div className={styles.rangeGrid}>
+                  {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
+                    <div key={range.value} className={styles.rangeOption}>
+                      <Radio
+                        value={range.value.toString()}
+                        label={`${range.value}. ${range.label}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Button appearance="secondary" className={styles.editButton} style={{ marginTop: '8px' }}>
+                  Edit
+                </Button>
+              </div>
+
+              {/* Environmental sensors */}
+              <div className={styles.analogGroup}>
+                <div className={styles.rangeGrid}>
+                  {INPUT_ANALOG_RANGES.filter(r => r.value >= 27 && r.value <= 34).map((range) => (
+                    <div key={range.value} className={styles.rangeOption}>
+                      <Radio
+                        value={range.value.toString()}
+                        label={`${range.value}. ${range.label}`}
+                      />
+                    </div>
+                  ))}
+                  <div className={styles.rangeOption}>
+                    <Radio value="25" label="25. Pulse Count (Fast 100Hz)" disabled />
+                  </div>
+                </div>
+              </div>
+            </RadioGroup>
           </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className={styles.actionButtons}>
-          <Button appearance="primary" onClick={handleSave}>
-            Save
-          </Button>
-          <Button appearance="secondary" onClick={handleCancel}>
-            Cancel
-          </Button>
         </div>
       </DrawerBody>
     </Drawer>
