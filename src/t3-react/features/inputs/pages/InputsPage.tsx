@@ -45,6 +45,8 @@ import {
   ArrowSortRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
+import { getRangeLabel } from '../data/rangeData';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -57,11 +59,13 @@ interface InputPoint {
   autoManual?: string;
   fValue?: string;
   units?: string;
+  range?: string;
   rangeField?: string;
   calibration?: string;
   sign?: string;
   filterField?: string;
   status?: string;
+  signalType?: string;
   digitalAnalog?: string;
   label?: string;
   typeField?: string;
@@ -212,6 +216,34 @@ export const InputsPage: React.FC = () => {
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; inputIndex: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Range drawer state
+  const [rangeDrawerOpen, setRangeDrawerOpen] = useState(false);
+  const [selectedInputForRange, setSelectedInputForRange] = useState<InputPoint | null>(null);
+
+  // Range selection handlers
+  const handleRangeClick = (item: InputPoint) => {
+    setSelectedInputForRange(item);
+    setRangeDrawerOpen(true);
+  };
+
+  const handleRangeSave = (newRange: number) => {
+    if (!selectedInputForRange) return;
+
+    // Update local state optimistically
+    setInputs(prevInputs =>
+      prevInputs.map(input =>
+        input.serialNumber === selectedInputForRange.serialNumber &&
+        input.inputIndex === selectedInputForRange.inputIndex
+          ? { ...input, range: newRange.toString() }
+          : input
+      )
+    );
+
+    console.log('Range updated:', selectedInputForRange.serialNumber, selectedInputForRange.inputIndex, newRange);
+    // TODO: Call API to update range value
+    // Example: await updateInputRange(selectedInputForRange.serialNumber, selectedInputForRange.inputIndex, newRange);
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -429,11 +461,24 @@ export const InputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          <Text wrap={false}>{item.rangeField || 'Not Set'}</Text>
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        // Parse range value and digital_analog type
+        const rangeValue = item.range ? parseInt(item.range) : 0;
+        const digitalAnalog = item.signalType === 'Digital' ? 1 : 0; // Assume analog if not digital
+        const rangeLabel = getRangeLabel(rangeValue, digitalAnalog);
+
+        return (
+          <TableCellLayout>
+            <div
+              onClick={() => handleRangeClick(item)}
+              style={{ cursor: 'pointer', color: '#0078d4' }}
+              title="Click to change range"
+            >
+              <Text wrap={false}>{rangeLabel}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
     // 8. Calibration
     createTableColumn<InputPoint>({
@@ -802,6 +847,18 @@ export const InputsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Range Selection Drawer */}
+      {selectedInputForRange && (
+        <RangeSelectionDrawer
+          isOpen={rangeDrawerOpen}
+          onClose={() => setRangeDrawerOpen(false)}
+          currentRange={selectedInputForRange.range ? parseInt(selectedInputForRange.range) : 0}
+          digitalAnalog={selectedInputForRange.signalType === 'Digital' ? 1 : 0}
+          onSave={handleRangeSave}
+          inputLabel={`Input ${selectedInputForRange.inputIndex || selectedInputForRange.inputId} - ${selectedInputForRange.fullLabel || 'Unnamed'}`}
+        />
+      )}
     </div>
   );
 };

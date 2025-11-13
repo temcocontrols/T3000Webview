@@ -1,0 +1,97 @@
+/* RangeSelectionDrawer styles */
+
+.drawerBody {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  gap: 16px;
+}
+
+.tabList {
+  border-bottom: 1px solid #edebe9;
+  margin-bottom: 8px;
+}
+
+.searchBox {
+  width: 100%;
+}
+
+.rangeList {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.categoryGroup {
+  margin-bottom: 24px;
+}
+
+.categoryTitle {
+  color: #323130;
+  margin-bottom: 8px;
+  display: block;
+  padding: 4px 0;
+  border-bottom: 1px solid #f3f2f1;
+}
+
+.rangeOption {
+  padding: 8px 0;
+  border-bottom: 1px solid #faf9f8;
+}
+
+.rangeOption:hover {
+  background-color: #f3f2f1;
+  border-radius: 4px;
+  padding: 8px 8px;
+  margin: 0 -8px;
+}
+
+.rangeLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.rangeValue {
+  color: #0078d4;
+  font-weight: 600;
+  min-width: 32px;
+  font-family: 'Consolas', monospace;
+}
+
+.rangeName {
+  color: #323130;
+  flex: 1;
+}
+
+.rangeUnit {
+  color: #605e5c;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.noResults {
+  text-align: center;
+  padding: 32px;
+  color: #605e5c;
+}
+
+.customButtonContainer {
+  padding: 12px 0;
+  border-top: 1px solid #edebe9;
+  border-bottom: 1px solid #edebe9;
+}
+
+.customButton {
+  width: 100%;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #edebe9;
+}
