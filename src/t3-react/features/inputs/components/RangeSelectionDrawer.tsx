@@ -77,7 +77,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       onOpenChange={(_, { open }) => !open && handleCancel()}
       position="end"
       size="large"
-      style={{ width: '900px', maxWidth: '90vw' }}
+      style={{ width: '1200px', maxWidth: '95vw' }}
     >
       <DrawerHeader className={styles.drawerHeader}>
         <DrawerHeaderTitle
@@ -146,68 +146,84 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
           </RadioGroup>
         </div>
 
+        {/* Digital section divider */}
+        <div className={styles.sectionDivider}>
+          <span className={styles.dividerText}>Digital</span>
+        </div>
+
         {/* Main content: 3-column layout */}
         <div className={styles.mainContent}>
           <RadioGroup
             value={selectedRange.toString()}
             onChange={(_, data) => setSelectedRange(Number(data.value))}
           >
-            {/* Left column: Digital Units */}
-            <div className={styles.column}>
-              <Text weight="semibold" size={400} className={styles.sectionTitle}>
-                Digital Units
-              </Text>
-              <div className={styles.rangeGroup}>
-                {DIGITAL_RANGES.filter(r => r.value >= 0 && r.value <= 22).map((range) => (
-                  <div key={range.value} className={styles.rangeOption}>
-                    <Radio
-                      value={range.value.toString()}
-                      label={`${range.value}. ${range.label}`}
-                    />
-                  </div>
-                ))}
+            <div className={styles.digitalSection}>
+              {/* Left column: Digital Units */}
+              <div className={styles.column}>
+                <div className={styles.sectionHeader}>
+                  <Text weight="semibold" size={300} className={styles.sectionTitle}>
+                    Digital Units
+                  </Text>
+                  <Button appearance="secondary" className={styles.editButton}>
+                    Edit
+                  </Button>
+                </div>
+                <div className={styles.rangeGroupTwoColumn}>
+                  {DIGITAL_RANGES.filter(r => r.value >= 1 && r.value <= 22).map((range) => (
+                    <div key={range.value} className={styles.rangeOption}>
+                      <Radio
+                        value={range.value.toString()}
+                        label={`${range.value}. ${range.label}`}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Middle column: Custom Digital Units */}
-            <div className={styles.column}>
-              <Text weight="semibold" size={400} className={styles.sectionTitle}>
-                Custom Digital Units
-              </Text>
-              <div className={styles.rangeGroup}>
-                {DIGITAL_RANGES.filter(r => r.value >= 23 && r.value <= 30).map((range) => (
-                  <div key={range.value} className={styles.rangeOption}>
-                    <Radio
-                      value={range.value.toString()}
-                      label={`${range.value}. ${range.label}`}
-                    />
-                  </div>
-                ))}
+              {/* Middle column: Custom Digital Units */}
+              <div className={styles.column}>
+                <div className={styles.sectionHeader}>
+                  <Text weight="semibold" size={300} className={styles.sectionTitle}>
+                    Custom Digital Units
+                  </Text>
+                  <Button appearance="secondary" className={styles.editButton}>
+                    Edit
+                  </Button>
+                </div>
+                <div className={styles.rangeGroup}>
+                  {DIGITAL_RANGES.filter(r => r.value >= 23 && r.value <= 30).map((range) => (
+                    <div key={range.value} className={styles.rangeOption}>
+                      <Radio
+                        value={range.value.toString()}
+                        label={`${range.value}. ${range.label}`}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Button appearance="secondary" className={styles.editButton} style={{ marginTop: '8px' }}>
-                Edit
-              </Button>
 
-              {/* Multi State section */}
-              <div className={styles.multiStateSection}>
-                <Text weight="semibold" size={400} className={styles.sectionTitle}>
-                  Multi State
-                </Text>
+              {/* Right column: Multi State section */}
+              <div className={styles.column}>
+                <div className={styles.sectionHeader}>
+                  <Text weight="semibold" size={300} className={styles.sectionTitle}>
+                    Multi State
+                  </Text>
+                  <Button appearance="secondary" className={styles.editButton}>
+                    Edit
+                  </Button>
+                </div>
                 <div className={styles.rangeGroup}>
                   {/* Placeholder for multi-state values */}
-                  <Radio value="100" label="" disabled />
-                  <Radio value="101" label="" disabled />
-                  <Radio value="102" label="" disabled />
-                  <Radio value="103" label="" disabled />
+                  <Radio value="100" label="Custom 1" disabled />
+                  <Radio value="101" label="Custom 2" disabled />
+                  <Radio value="102" label="Custom 3" disabled />
+                  <Radio value="103" label="Custom 4" disabled />
+                  <Radio value="104" label="Custom 5" disabled />
+                  <Radio value="105" label="Custom 6" disabled />
+                  <Radio value="106" label="Custom 7" disabled />
+                  <Radio value="107" label="Custom 8" disabled />
                 </div>
-                <Button appearance="secondary" className={styles.editButton} style={{ marginTop: '8px' }}>
-                  Edit
-                </Button>
               </div>
-            </div>
-
-            {/* Right spacer - will be filled by bottom section */}
-            <div className={styles.column}>
             </div>
           </RadioGroup>
 

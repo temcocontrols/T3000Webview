@@ -182,6 +182,18 @@
   font-size: 12px;
 }
 
+/* Digital section - 3 columns horizontal */
+.digitalSection {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1fr;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #fafafa;
+  border-radius: 4px;
+  width: 100%;
+}
+
 /* Main content - 3 column layout */
 .mainContent {
   display: flex;
@@ -190,13 +202,11 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  width: 100%;
 }
 
 .mainContent > div:first-child {
-  display: grid;
-  grid-template-columns: 1fr 1fr 0.5fr;
-  gap: 20px;
-  min-height: 350px;
+  width: 100%;
 }
 
 .column {
@@ -205,13 +215,24 @@
   min-width: 0;
 }
 
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e1dfdd;
+  min-height: 20px;
+}
+
 .sectionTitle {
-  margin-bottom: 12px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid #d1d1d1;
-  color: #323130;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
+  color: #323130;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  line-height: 1.4;
 }
 
 .subTitle {
@@ -225,21 +246,42 @@
 .rangeGroup {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0px;
   overflow-y: auto;
-  max-height: 350px;
+  max-height: 400px;
+}
+
+.rangeGroupTwoColumn {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(8, auto);
+  gap: 0px 8px;
+  overflow-y: visible;
+  max-height: none;
 }
 
 .rangeOption {
-  padding: 3px 0;
+  padding: 0;
+  margin: 0;
+}
+
+.rangeOption :global(.fui-Radio) {
+  padding: 1px 0;
+  margin: 0;
+}
+
+.rangeOption :global(.fui-Radio__label) {
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .rangeOption label {
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 2px;
   transition: background-color 0.1s ease;
 }
 
@@ -249,9 +291,11 @@
 
 .editButton {
   align-self: flex-start;
-  font-size: 12px;
-  padding: 4px 12px;
-  margin-top: 8px;
+  font-size: 11px;
+  height: 22px;
+  padding: 0 10px;
+  min-width: 50px;
+  margin-top: 6px;
 }
 
 .multiStateSection {
