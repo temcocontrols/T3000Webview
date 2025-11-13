@@ -76,7 +76,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       open={isOpen}
       onOpenChange={(_, { open }) => !open && handleCancel()}
       position="end"
-      size="large"
+      size="small"
     >
       <DrawerHeader>
         <DrawerHeaderTitle
@@ -89,7 +89,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             />
           }
         >
-          Select Range Number
+          <span style={{ fontSize: '14px' }}>Select Range Number</span>
           {inputLabel && (
             <Text size={200} style={{ display: 'block', color: '#605e5c', fontWeight: 'normal', marginTop: '4px' }}>
               {inputLabel}
