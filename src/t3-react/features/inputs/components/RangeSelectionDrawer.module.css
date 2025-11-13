@@ -69,7 +69,6 @@
   padding-bottom: 12px;
   background-color: transparent;
   border: none;
-  border-bottom: 1px solid #edebe9;
   border-radius: 0;
   margin-bottom: 12px;
   flex-shrink: 0;
@@ -171,6 +170,16 @@
 .saveButton {
   min-width: 90px;
   width: 90px;
+}
+
+/* Default section */
+.defaultSection {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.defaultSection :global(.fui-Radio__label) {
+  font-size: 12px;
 }
 
 /* Main content - 3 column layout */

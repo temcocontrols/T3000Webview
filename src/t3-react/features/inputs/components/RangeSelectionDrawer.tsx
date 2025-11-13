@@ -133,6 +133,19 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
           </div>
         </div>
 
+        {/* Default section */}
+        <div className={styles.sectionDivider}>
+          <span className={styles.dividerText}>Default</span>
+        </div>
+        <div className={styles.defaultSection}>
+          <RadioGroup
+            value={selectedRange.toString()}
+            onChange={(_, data) => setSelectedRange(Number(data.value))}
+          >
+            <Radio value="0" label="0. Unused" />
+          </RadioGroup>
+        </div>
+
         {/* Main content: 3-column layout */}
         <div className={styles.mainContent}>
           <RadioGroup
