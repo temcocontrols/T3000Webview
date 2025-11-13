@@ -144,7 +144,74 @@ export const InputsPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
+  // Inline editing handlers
+  const handleCellDoubleClick = (item: InputPoint, field: string, currentValue: string) => {
+    setEditingCell({ serialNumber: item.serialNumber, inputIndex: item.inputIndex || '', field });
+    setEditValue(currentValue || '');
+  };
+
+  const handleEditSave = async () => {
+    if (!editingCell) {
+      setEditingCell(null);
+      return;
+    }
+
+    // For value field, allow empty/zero values
+    if (editingCell.field !== 'fValue' && !editValue.trim()) {
+      setEditingCell(null);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // TODO: Replace with actual API call to update the backend
+      // if (editingCell.field === 'fullLabel') {
+      //   await updateInputLabel(editingCell.serialNumber, editingCell.inputIndex, editValue);
+      // } else if (editingCell.field === 'fValue') {
+      //   await updateInputValue(editingCell.serialNumber, editingCell.inputIndex, editValue);
+      // }
+
+      // Update local state optimistically
+      setInputs(prevInputs =>
+        prevInputs.map(input =>
+          input.serialNumber === editingCell.serialNumber &&
+          input.inputIndex === editingCell.inputIndex
+            ? { ...input, [editingCell.field]: editValue }
+            : input
+        )
+      );
+
+      console.log('Updated', editingCell.field, ':', editValue, 'for', editingCell);
+      setEditingCell(null);
+    } catch (error) {
+      console.error('Failed to update:', error);
+      // Optionally show error message to user
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleEditSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleEditCancel();
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{ serialNumber: number; inputIndex: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -209,11 +276,38 @@ export const InputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.inputIndex === item.inputIndex &&
+                          editingCell?.field === 'fullLabel';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <input
+                type="text"
+                className={styles.editInput}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleEditSave}
+                onKeyDown={handleEditKeyDown}
+                autoFocus
+                disabled={isSaving}
+                placeholder="Enter label"
+                aria-label="Edit full label"
+              />
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
+                title="Double-click to edit"
+              >
+                <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
     // 4. Auto/Man
     createTableColumn<InputPoint>({
@@ -227,12 +321,35 @@ export const InputsPage: React.FC = () => {
         // Check if Auto: value could be 'auto', 'Auto', or '1' (Manual is '0')
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
+
+        const handleToggle = () => {
+          const newValue = !isAuto ? '1' : '0';
+          console.log('Auto/Man toggled:', item.serialNumber, item.inputIndex, newValue);
+
+          // Update local state optimistically
+          setInputs(prevInputs =>
+            prevInputs.map(input =>
+              input.serialNumber === item.serialNumber && input.inputIndex === item.inputIndex
+                ? { ...input, autoManual: newValue }
+                : input
+            )
+          );
+
+          // TODO: Call API to update Auto/Man value
+          // Example: updateInputAutoManual(item.serialNumber, item.inputIndex, newValue);
+        };
+
         return (
           <TableCellLayout>
-            <Switch
-              checked={isAuto}
-              style={{ transform: 'scale(0.8)' }}
-            />
+            <div
+              onClick={handleToggle}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <Switch
+                checked={isAuto}
+                style={{ transform: 'scale(0.8)' }}
+              />
+            </div>
           </TableCellLayout>
         );
       },
@@ -250,7 +367,39 @@ export const InputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.fValue || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.inputIndex === item.inputIndex &&
+                          editingCell?.field === 'fValue';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <input
+                type="number"
+                step="0.01"
+                className={styles.editInput}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleEditSave}
+                onKeyDown={handleEditKeyDown}
+                autoFocus
+                disabled={isSaving}
+                placeholder="Enter value"
+                aria-label="Edit value"
+              />
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
+                title="Double-click to edit"
+              >
+                <Text size={200} weight="regular">{item.fValue || '---'}</Text>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
     // 6. Units
     createTableColumn<InputPoint>({
