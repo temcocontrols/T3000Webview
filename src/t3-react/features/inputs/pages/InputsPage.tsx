@@ -474,7 +474,7 @@ export const InputsPage: React.FC = () => {
               style={{ cursor: 'pointer', color: '#0078d4' }}
               title="Click to change range"
             >
-              <Text wrap={false}>{rangeLabel}</Text>
+              <Text size={200} weight="regular">{rangeLabel}</Text>
             </div>
           </TableCellLayout>
         );

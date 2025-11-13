@@ -17,8 +17,11 @@ import {
   BreadcrumbButton,
   BreadcrumbDivider,
   makeStyles,
+  Divider,
+  Text,
 } from '@fluentui/react-components';
 import { ChevronRight20Regular } from '@fluentui/react-icons';
+import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 
 const useStyles = makeStyles({
   container: {
@@ -34,6 +37,23 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+  },
+  deviceInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    paddingLeft: '12px',
+    marginLeft: '12px',
+    borderLeft: '1px solid #d1d1d1',
+  },
+  deviceLabel: {
+    fontSize: '12px',
+    color: '#605e5c',
+  },
+  deviceName: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#323130',
   },
   pageTitle: {
     fontSize: '14px',
@@ -73,6 +93,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
   const styles = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
+  const { selectedDevice } = useDeviceTreeStore();
 
   // Get breadcrumb info from route
   const breadcrumbInfo = routeToBreadcrumb[location.pathname];
@@ -117,9 +138,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
             </React.Fragment>
           ))}
         </Breadcrumb>
-      </div>
-      <div className={styles.pageTitle}>
-        {pageTitle}
+        {selectedDevice && (
+          <div className={styles.deviceInfo}>
+            <Text className={styles.deviceLabel}>Device:</Text>
+            <Text className={styles.deviceName}>
+              {selectedDevice.nameShowOnTree || selectedDevice.panelName || `SN: ${selectedDevice.serialNumber}`}
+            </Text>
+          </div>
+        )}
       </div>
     </div>
   );
