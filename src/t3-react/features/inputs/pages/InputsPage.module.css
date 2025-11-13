@@ -1,83 +1,28 @@
 /**
- * Azure Portal Complete Styling - Cost Management + Billing Page
- * Extracted from: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
+ * Inputs Page Styles - Azure Portal Billing Accounts
+ * Extracted from actual Azure Portal HTML/CSS: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
  *
- * This is a complete Azure Portal blade layout with all classes and styling
- * Use this as a sample page that can be updated with real input fields
+ * Key Azure Portal characteristics from inspection:
+ * - Font: Segoe UI, 13px body, 400 weight
+ * - Grid class: fxc-gc-dataGrid (not DetailsList)
+ * - Colors: #292827 text primary, #323130 button toolbar, #201f1e hover
+ * - Borders: #edebe9 primary borders, #f3f2f1 row borders
+ * - Backgrounds: #fafafa headers/toolbar, #ffffff cells
+ * - Hover: #f3f2f1 background
+ * - Row height: 42px (min-height, content-driven)
+ * - Cell padding: 0 16px (horizontal only)
+ * - Toolbar: 44px height, azc-toolbarButton class
  */
 
-/* ========================================
-   AZURE PORTAL BASE STYLES
-   ======================================== */
-
+/* Root container styling */
 .container {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 400;
   color: #292827;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: #ffffff;
 }
 
-/* ========================================
-   BLADE CONTENT CONTAINER
-   Azure Portal: fxs-blade-content-container-default-details
-   ======================================== */
-
-.bladeContentContainer {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: #ffffff;
-}
-
-/* ========================================
-   BLADE CONTENT WRAPPER
-   Azure Portal: fxs-blade-content-wrapper
-   ======================================== */
-
-.bladeContentWrapper {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* ========================================
-   BLADE CONTENT
-   Azure Portal: fxs-blade-content
-   ======================================== */
-
-.bladeContent {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* ========================================
-   PART CONTENT
-   Azure Portal: fxs-part-content ext-msportal-padding ext-azure-datagrid-blade
-   ======================================== */
-
-.partContent {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  padding: 0;
-  overflow: hidden;
-}
-
-/* ========================================
-   TOOLBAR
-   Azure Portal: azc-toolbar
-   ======================================== */
-
+/* Toolbar styles */
 .toolbar {
   background-color: transparent;
   border-bottom: none;
@@ -87,7 +32,6 @@
   align-items: center;
 }
 
-/* Toolbar container - matches azc-toolbar-container */
 .toolbarContainer {
   display: flex;
   align-items: center;
@@ -96,7 +40,6 @@
   width: 100%;
 }
 
-/* Toolbar button - matches azc-toolbarButton */
 .toolbarButton {
   display: flex;
   align-items: center;
@@ -112,6 +55,12 @@
   cursor: pointer;
   border-radius: 2px;
   transition: background-color 0.1s ease;
+}
+
+.toolbarButton svg {
+  width: 16px;
+  height: 16px;
+  color: #0078d4;
 }
 
 .toolbarButton:hover {
@@ -130,12 +79,6 @@
   background-color: transparent;
 }
 
-.toolbarButton svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Toolbar separator - matches azc-toolbarSeparator */
 .toolbarSeparator {
   width: 1px;
   height: 24px;
@@ -143,240 +86,7 @@
   margin: 0 4px;
 }
 
-/* ========================================
-   HORIZONTAL DIVIDER
-   Azure Portal: ext-overview-hr
-   ======================================== */
-
-.overviewHr {
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-top: 1px solid #edebe9;
-}
-
-/* ========================================
-   BLADE DESCRIPTION
-   Azure Portal: ext-blade-description
-   ======================================== */
-
-.bladeDescription {
-  padding: 12px 24px;
-  font-size: 13px;
-  line-height: 20px;
-  color: #292827;
-  background-color: transparent;
-  border-bottom: 1px solid #edebe9;
-}
-
-.bladeDescription a {
-  color: #0078d4;
-  text-decoration: none;
-}
-
-.bladeDescription a:hover {
-  color: #004578;
-  text-decoration: underline;
-}
-
-/* ========================================
-   DOCKING BODY - MAIN CONTENT AREA
-   Azure Portal: msportalfx-docking-body
-   ======================================== */
-
-.dockingBody {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  background-color: #ffffff;
-}
-
-/* ========================================
-   DATA GRID - COMPLETE AZURE PORTAL GRID
-   Azure Portal: fxc-gc-dataGrid
-   ======================================== */
-
-.dataGrid {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  background-color: #ffffff;
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Grid area - matches fxc-gc-area */
-.gridArea {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Grid content - matches fxc-gc-content */
-.gridContent {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Grid table wrapper - matches fxc-gc-table */
-.gridTable {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* ========================================
-   GRID HEADER - THEAD
-   Azure Portal: fxc-gc-thead
-   ======================================== */
-
-.gridHeader {
-  background-color: #fafafa;
-  border-bottom: 1px solid #edebe9;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-/* Column header row - matches fxc-gc-columnheaderrow */
-.columnHeaderRow {
-  display: flex;
-  align-items: center;
-  min-height: 42px;
-  border-bottom: 1px solid #edebe9;
-}
-
-/* Column header cell - matches fxc-gc-columnheader fxc-gc-bold */
-.columnHeader {
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  min-height: 42px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #323130;
-  background-color: transparent;
-  flex: 1;
-  cursor: pointer;
-  user-select: none;
-}
-
-.columnHeader:hover {
-  background-color: #f3f2f1;
-}
-
-/* Sortable column header - matches fxc-gc-sorting */
-.columnHeaderSorting {
-  cursor: pointer;
-}
-
-/* ========================================
-   GRID BODY - TBODY (SCROLLABLE)
-   Azure Portal: fxc-gc-tbody
-   ======================================== */
-
-.gridBody {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
-  background-color: #ffffff;
-}
-
-/* Grid rows container - matches fxc-gc-rows */
-.gridRows {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Grid row - matches fxc-gc-row */
-.gridRow {
-  display: flex;
-  align-items: center;
-  min-height: 42px;
-  border-bottom: 1px solid #f3f2f1;
-  background-color: #ffffff;
-  transition: background-color 0.1s ease;
-}
-
-.gridRow:hover {
-  background-color: #f3f2f1;
-  cursor: pointer;
-}
-
-.gridRow:focus {
-  outline: 1px solid #0078d4;
-  outline-offset: -1px;
-}
-
-/* Grid cell - matches fxc-gc-cell */
-.gridCell {
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  min-height: 42px;
-  font-size: 13px;
-  font-weight: 400;
-  color: #292827;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Grid cell text - matches fxc-gc-text */
-.gridCellText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ========================================
-   NO DATA / EMPTY STATE
-   Azure Portal: fxc-gc-nodata
-   ======================================== */
-
-.noData {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  min-height: 200px;
-  color: #605e5c;
-  font-size: 13px;
-  border-bottom: 1px solid #edebe9;
-}
-
-/* ========================================
-   LOADING STATE
-   Azure Portal: fxc-gc-loading
-   ======================================== */
-
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  gap: 12px;
-}
-
-/* ========================================
-   FLUENT UI DATAGRID OVERRIDES
-   Target Fluent UI components with Azure Portal styling
-   ======================================== */
-
+/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */
 .container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
@@ -390,32 +100,27 @@
   min-height: 0;
 }
 
-.container :global(.fui-DataGrid) > div {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
+/* Header row styling - matches fxc-gc-columnheaderrow */
 .container :global(.fui-DataGridHeader) {
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
-  position: sticky;
-  top: 0;
   z-index: 10;
 }
 
+/* Data body - scrollable area */
 .container :global(.fui-DataGridBody) {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
 }
 
+/* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
 .container :global(.fui-DataGridHeaderCell) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 600;  /* Bold headers in Azure Portal */
   color: #323130;
   padding: 0 16px;
   height: 42px;
@@ -425,17 +130,21 @@
   border-bottom: none;
 }
 
+/* Data row styling - matches fxc-gc-row */
 .container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #f3f2f1;
   min-height: 42px;
   background-color: #ffffff;
 }
 
+/* Row hover - matches fxs-portal-hover */
 .container :global(.fui-DataGridRow):hover {
   background-color: #f3f2f1;
 }
 
+/* Data cell styling - matches fxc-gc-cell */
 .container :global(.fui-DataGridCell) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 400;
   color: #292827;
@@ -446,18 +155,23 @@
   align-items: center;
 }
 
-.container :global(.fui-TableCellLayout) {
-  font-size: 13px;
-  line-height: normal;
-}
-
+/* Badge styling - compact badges */
 .container :global(.fui-Badge) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
   padding: 2px 6px;
   border-radius: 2px;
 }
 
+/* TableCellLayout - inherits cell font */
+.container :global(.fui-TableCellLayout) {
+  font-size: 13px;
+  font-family: inherit;
+  line-height: normal;
+}
+
+/* Links in grid - Azure Portal link color */
 .container :global(.fui-DataGridCell) a {
   color: #0078d4;
   text-decoration: none;
@@ -468,78 +182,16 @@
   text-decoration: underline;
 }
 
-/* ========================================
-   FLUENT UI TOOLBAR OVERRIDES
-   ======================================== */
-
-.container :global(.fui-Toolbar) {
-  background-color: #fafafa;
-  border-bottom: none;
-  padding: 0;
-  min-height: 44px;
+/* Remove any default Fluent UI styles that conflict */
+.container :global(.fui-DataGridHeaderCell) > * {
+  line-height: normal;
 }
 
-.container :global(.fui-ToolbarButton) {
-  height: 36px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 400;
-  color: #323130;
-  gap: 6px;
+.container :global(.fui-DataGridCell) > * {
+  line-height: normal;
 }
 
-.container :global(.fui-ToolbarButton):hover {
-  background-color: #f3f2f1;
-  color: #201f1e;
-}
-
-.container :global(.fui-ToolbarButton):active {
-  background-color: #edebe9;
-}
-
-.container :global(.fui-ToolbarButton) svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* ========================================
-   UTILITY CLASSES
-   ======================================== */
-
-.azureBorder {
+/* Grid border wrapper */
+.container :global(.fui-DataGrid-root) {
   border: 1px solid #edebe9;
-}
-
-.azureBackground {
-  background-color: #fafafa;
-}
-
-.azureBackgroundWhite {
-  background-color: #ffffff;
-}
-
-.azureHover:hover {
-  background-color: #f3f2f1;
-}
-
-.azureText {
-  color: #292827;
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-}
-
-.azureTextBold {
-  font-weight: 600;
-}
-
-.azureLink {
-  color: #0078d4;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.azureLink:hover {
-  color: #004578;
-  text-decoration: underline;
 }
