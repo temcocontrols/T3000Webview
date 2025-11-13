@@ -162,55 +162,52 @@ export const InputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching Azure Portal grid
+  // Column definitions matching the sequence: Input, Panel, Full Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Label, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
+    // 1. Input (Index/ID)
     createTableColumn<InputPoint>({
-      columnId: 'index',
+      columnId: 'input',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('index')}>
-          <span>Index</span>
-          {sortColumn === 'index' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('input')}>
+          <span>Input</span>
+          {sortColumn === 'input' && (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           )}
         </div>
       ),
-      renderCell: (_item) => {
-        const index = inputs.findIndex(inp => inp.serialNumber === _item.serialNumber && inp.inputIndex === _item.inputIndex);
-        return <TableCellLayout>{index + 1}</TableCellLayout>;
-      },
+      renderCell: (item) => <TableCellLayout>{item.inputId || item.inputIndex || '---'}</TableCellLayout>,
     }),
+    // 2. Panel
     createTableColumn<InputPoint>({
-      columnId: 'inputName',
+      columnId: 'panel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('inputName')}>
-          <span>Input Name</span>
-          {sortColumn === 'inputName' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+          <span>Panel</span>
+          {sortColumn === 'panel' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+    }),
+    // 3. Full Label
+    createTableColumn<InputPoint>({
+      columnId: 'fullLabel',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+          <span>Full Label</span>
+          {sortColumn === 'fullLabel' && (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           )}
         </div>
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200} weight="regular">{item.fullLabel || item.label || 'Unnamed'}</Text>
+          <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
         </TableCellLayout>
       ),
     }),
-    createTableColumn<InputPoint>({
-      columnId: 'value',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
-        </div>
-      ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {item.fValue || '---'} {item.units || ''}
-        </TableCellLayout>
-      ),
-    }),
+    // 4. Auto/Man
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -235,26 +232,33 @@ export const InputsPage: React.FC = () => {
         );
       },
     }),
+    // 5. Value
     createTableColumn<InputPoint>({
-      columnId: 'calibration',
+      columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('calibration')}>
-          <span>Calibration</span>
-          {sortColumn === 'calibration' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+          <span>Value</span>
+          {sortColumn === 'value' && (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           )}
         </div>
       ),
-      renderCell: (item) => {
-        const cal = item.calibration || '0';
-        const sign = item.sign || '';
-        return (
-          <TableCellLayout>
-            {sign}{cal}
-          </TableCellLayout>
-        );
-      },
+      renderCell: (item) => <TableCellLayout>{item.fValue || '---'}</TableCellLayout>,
     }),
+    // 6. Units
+    createTableColumn<InputPoint>({
+      columnId: 'units',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
+          <span>Units</span>
+          {sortColumn === 'units' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.units || '---'}</TableCellLayout>,
+    }),
+    // 7. Range
     createTableColumn<InputPoint>({
       columnId: 'range',
       renderHeaderCell: () => (
@@ -271,12 +275,103 @@ export const InputsPage: React.FC = () => {
         </TableCellLayout>
       ),
     }),
+    // 8. Calibration
     createTableColumn<InputPoint>({
-      columnId: 'digitalAnalog',
+      columnId: 'calibration',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('digitalAnalog')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('calibration')}>
+          <span>Calibration</span>
+          {sortColumn === 'calibration' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.calibration || '0'}</TableCellLayout>,
+    }),
+    // 9. Sign
+    createTableColumn<InputPoint>({
+      columnId: 'sign',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('sign')}>
+          <span>Sign</span>
+          {sortColumn === 'sign' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.sign || '+'}</TableCellLayout>,
+    }),
+    // 10. Filter
+    createTableColumn<InputPoint>({
+      columnId: 'filter',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('filter')}>
+          <span>Filter</span>
+          {sortColumn === 'filter' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.filterField || '0'}</TableCellLayout>,
+    }),
+    // 11. Status
+    createTableColumn<InputPoint>({
+      columnId: 'status',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
+          <span>Status</span>
+          {sortColumn === 'status' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => {
+        const isOnline = item.status?.toLowerCase() === 'online';
+        return (
+          <TableCellLayout>
+            <Badge
+              appearance="filled"
+              color={isOnline ? 'success' : 'danger'}
+            >
+              {item.status || 'Unknown'}
+            </Badge>
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 12. Signal Type (keep empty for now)
+    createTableColumn<InputPoint>({
+      columnId: 'signalType',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('signalType')}>
+          <span>Signal Type</span>
+          {sortColumn === 'signalType' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: () => <TableCellLayout>---</TableCellLayout>,
+    }),
+    // 13. Label (short label)
+    createTableColumn<InputPoint>({
+      columnId: 'label',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+          <span>Label</span>
+          {sortColumn === 'label' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
+    }),
+    // 14. Type (Digital/Analog)
+    createTableColumn<InputPoint>({
+      columnId: 'type',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('type')}>
           <span>Type</span>
-          {sortColumn === 'digitalAnalog' && (
+          {sortColumn === 'type' && (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           )}
         </div>
@@ -460,33 +555,61 @@ export const InputsPage: React.FC = () => {
                     sortable
                     resizableColumns
                     columnSizingOptions={{
-                      index: {
-                        minWidth: 50,
-                        defaultWidth: 60,
+                      input: {
+                        minWidth: 60,
+                        defaultWidth: 80,
                       },
-                      inputName: {
-                        minWidth: 150,
+                      panel: {
+                        minWidth: 60,
+                        defaultWidth: 75,
+                      },
+                      fullLabel: {
+                        minWidth: 180,
                         defaultWidth: 250,
-                      },
-                      value: {
-                        minWidth: 100,
-                        defaultWidth: 150,
                       },
                       autoManual: {
                         minWidth: 80,
                         defaultWidth: 100,
                       },
+                      value: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      units: {
+                        minWidth: 80,
+                        defaultWidth: 110,
+                      },
+                      range: {
+                        minWidth: 120,
+                        defaultWidth: 150,
+                      },
                       calibration: {
                         minWidth: 80,
                         defaultWidth: 100,
                       },
-                      range: {
-                        minWidth: 120,
-                        defaultWidth: 180,
+                      sign: {
+                        minWidth: 50,
+                        defaultWidth: 60,
                       },
-                      digitalAnalog: {
+                      filter: {
+                        minWidth: 60,
+                        defaultWidth: 80,
+                      },
+                      status: {
                         minWidth: 80,
                         defaultWidth: 100,
+                      },
+                      signalType: {
+                        minWidth: 90,
+                        defaultWidth: 110,
+                      },
+                      label: {
+                        minWidth: 130,
+                        defaultWidth: 170,
+                      },
+                      type: {
+                        minWidth: 60,
+                        defaultWidth: 75,
                       },
                     }}
                   >
