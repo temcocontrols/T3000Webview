@@ -102,12 +102,24 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
+        {/* Section divider */}
+        <div className={styles.sectionDivider}>
+          <span className={styles.dividerText}>Selection</span>
+        </div>
+
         {/* Top section: Manual input */}
         <div className={styles.topSection}>
           <Label className={styles.inputLabel}>
             Enter Range Number (0-64):
           </Label>
-          <Text size={200} weight="semibold" style={{ color: '#605e5c' }}>Current Selection:</Text>
+          <Input
+            type="number"
+            value={manualInput}
+            onChange={(_, data) => handleManualInputChange(data.value)}
+            className={styles.numberInput}
+            min={0}
+            max={64}
+          />
           <div className={styles.currentLabel}>
             {currentRangeLabel}
           </div>
