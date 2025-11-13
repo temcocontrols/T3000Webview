@@ -33,14 +33,16 @@ import {
   Spinner,
   Text,
   Badge,
+  Switch,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
-  PersonFeedbackRegular,
+  SettingsRegular,
   SearchRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
+  ArrowSortRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './InputsPage.module.css';
@@ -138,8 +140,8 @@ export const InputsPage: React.FC = () => {
     console.log('Export inputs to CSV');
   };
 
-  const handleFeedback = () => {
-    console.log('Feedback clicked');
+  const handleSettings = () => {
+    console.log('Settings clicked');
   };
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,8 +172,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('input')}>
           <span>Input</span>
-          {sortColumn === 'input' && (
+          {sortColumn === 'input' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -183,8 +187,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
           <span>Panel</span>
-          {sortColumn === 'panel' && (
+          {sortColumn === 'panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -196,8 +202,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
-          {sortColumn === 'fullLabel' && (
+          {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -211,23 +219,20 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('autoManual')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>Auto/Man</span>
-          {sortColumn === 'autoManual' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
         </div>
       ),
       renderCell: (item) => {
-        const isAuto = item.autoManual?.toLowerCase() === 'auto';
+        // Check if Auto: value could be 'auto', 'Auto', or '1' (Manual is '0')
+        const value = item.autoManual?.toString().toLowerCase();
+        const isAuto = value === 'auto' || value === '1';
         return (
           <TableCellLayout>
-            <Badge
-              appearance={isAuto ? 'filled' : 'outline'}
-              color={isAuto ? 'success' : 'warning'}
-            >
-              {item.autoManual || 'Auto'}
-            </Badge>
+            <Switch
+              checked={isAuto}
+              style={{ transform: 'scale(0.8)' }}
+            />
           </TableCellLayout>
         );
       },
@@ -238,8 +243,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
           <span>Value</span>
-          {sortColumn === 'value' && (
+          {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -251,8 +258,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
           <span>Units</span>
-          {sortColumn === 'units' && (
+          {sortColumn === 'units' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -264,8 +273,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
           <span>Range</span>
-          {sortColumn === 'range' && (
+          {sortColumn === 'range' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -279,11 +290,8 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'calibration',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('calibration')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>Calibration</span>
-          {sortColumn === 'calibration' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.calibration || '0'}</TableCellLayout>,
@@ -292,11 +300,8 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'sign',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('sign')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>Sign</span>
-          {sortColumn === 'sign' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.sign || '+'}</TableCellLayout>,
@@ -305,11 +310,8 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'filter',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('filter')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>Filter</span>
-          {sortColumn === 'filter' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.filterField || '0'}</TableCellLayout>,
@@ -320,20 +322,38 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
           <span>Status</span>
-          {sortColumn === 'status' && (
+          {sortColumn === 'status' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
       renderCell: (item) => {
-        const isOnline = item.status?.toLowerCase() === 'online';
+        // Map status codes to readable text
+        // Common status codes: 0 = Normal/OK, 64 = Normal, other values may indicate errors
+        let statusText = 'Normal';
+        let statusColor: 'success' | 'danger' | 'warning' = 'success';
+
+        const statusValue = item.status?.toString();
+        if (statusValue === '0' || statusValue === '64') {
+          statusText = 'Normal';
+          statusColor = 'success';
+        } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
+          statusText = `Code ${statusValue}`;
+          statusColor = 'warning';
+        } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
+          statusText = 'Normal';
+          statusColor = 'success';
+        }
+
         return (
           <TableCellLayout>
             <Badge
               appearance="filled"
-              color={isOnline ? 'success' : 'danger'}
+              color={statusColor}
             >
-              {item.status || 'Unknown'}
+              {statusText}
             </Badge>
           </TableCellLayout>
         );
@@ -343,11 +363,8 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('signalType')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>Signal Type</span>
-          {sortColumn === 'signalType' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
         </div>
       ),
       renderCell: () => <TableCellLayout>---</TableCellLayout>,
@@ -358,8 +375,10 @@ export const InputsPage: React.FC = () => {
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
           <span>Label</span>
-          {sortColumn === 'label' && (
+          {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
@@ -369,11 +388,8 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('type')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>Type</span>
-          {sortColumn === 'type' && (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          )}
         </div>
       ),
       renderCell: (item) => {
@@ -467,15 +483,15 @@ export const InputsPage: React.FC = () => {
                   {/* Toolbar Separator */}
                   <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* Feedback Button */}
+                  {/* Settings Button */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleFeedback}
-                    title="Feedback"
-                    aria-label="Feedback"
+                    onClick={handleSettings}
+                    title="Settings"
+                    aria-label="Settings"
                   >
-                    <PersonFeedbackRegular />
-                    <span>Feedback</span>
+                    <SettingsRegular />
+                    <span>Settings</span>
                   </button>
 
                   {/* Search Input Box */}
@@ -568,16 +584,16 @@ export const InputsPage: React.FC = () => {
                         defaultWidth: 250,
                       },
                       autoManual: {
-                        minWidth: 80,
-                        defaultWidth: 100,
+                        minWidth: 90,
+                        defaultWidth: 120,
                       },
                       value: {
                         minWidth: 80,
                         defaultWidth: 100,
                       },
                       units: {
-                        minWidth: 80,
-                        defaultWidth: 110,
+                        minWidth: 90,
+                        defaultWidth: 130,
                       },
                       range: {
                         minWidth: 120,
