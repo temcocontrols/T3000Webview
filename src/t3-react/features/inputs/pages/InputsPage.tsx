@@ -39,6 +39,8 @@ import {
   ArrowDownloadRegular,
   PersonFeedbackRegular,
   SearchRegular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './InputsPage.module.css';
@@ -147,11 +149,31 @@ export const InputsPage: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('ascending');
+    }
+  };
+
   // Column definitions matching Azure Portal grid
   const columns: TableColumnDefinition<InputPoint>[] = [
     createTableColumn<InputPoint>({
       columnId: 'index',
-      renderHeaderCell: () => '#',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('index')}>
+          <span>Index</span>
+          {sortColumn === 'index' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (_item) => {
         const index = inputs.findIndex(inp => inp.serialNumber === _item.serialNumber && inp.inputIndex === _item.inputIndex);
         return <TableCellLayout>{index + 1}</TableCellLayout>;
@@ -159,16 +181,30 @@ export const InputsPage: React.FC = () => {
     }),
     createTableColumn<InputPoint>({
       columnId: 'inputName',
-      renderHeaderCell: () => 'Input Name',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('inputName')}>
+          <span>Input Name</span>
+          {sortColumn === 'inputName' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout>
-          <Text weight="semibold">{item.fullLabel || item.label || 'Unnamed'}</Text>
+          <Text size={200} weight="regular">{item.fullLabel || item.label || 'Unnamed'}</Text>
         </TableCellLayout>
       ),
     }),
     createTableColumn<InputPoint>({
       columnId: 'value',
-      renderHeaderCell: () => 'Value',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+          <span>Value</span>
+          {sortColumn === 'value' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout>
           {item.fValue || '---'} {item.units || ''}
@@ -177,7 +213,14 @@ export const InputsPage: React.FC = () => {
     }),
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
-      renderHeaderCell: () => 'Auto/Man',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('autoManual')}>
+          <span>Auto/Man</span>
+          {sortColumn === 'autoManual' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (item) => {
         const isAuto = item.autoManual?.toLowerCase() === 'auto';
         return (
@@ -194,7 +237,14 @@ export const InputsPage: React.FC = () => {
     }),
     createTableColumn<InputPoint>({
       columnId: 'calibration',
-      renderHeaderCell: () => 'Calibration',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('calibration')}>
+          <span>Calibration</span>
+          {sortColumn === 'calibration' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (item) => {
         const cal = item.calibration || '0';
         const sign = item.sign || '';
@@ -207,7 +257,14 @@ export const InputsPage: React.FC = () => {
     }),
     createTableColumn<InputPoint>({
       columnId: 'range',
-      renderHeaderCell: () => 'Range',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
+          <span>Range</span>
+          {sortColumn === 'range' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout>
           <Text wrap={false}>{item.rangeField || 'Not Set'}</Text>
@@ -216,7 +273,14 @@ export const InputsPage: React.FC = () => {
     }),
     createTableColumn<InputPoint>({
       columnId: 'digitalAnalog',
-      renderHeaderCell: () => 'Type',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('digitalAnalog')}>
+          <span>Type</span>
+          {sortColumn === 'digitalAnalog' && (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          )}
+        </div>
+      ),
       renderCell: (item) => {
         const isDigital = item.digitalAnalog === '0';
         return (

@@ -164,7 +164,7 @@
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */
 .container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   color: #292827;
   border: none;
@@ -194,22 +194,38 @@
 /* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
 .container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;  /* Bold headers in Azure Portal */
   color: #323130;
-  padding: 0 16px;
-  height: 42px;
-  line-height: 42px;
+  padding: 0 12px;
+  height: 32px;
+  line-height: 32px;
   background-color: transparent;
   border-right: none;
   border-bottom: none;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+/* Header cell hover - Azure Portal style */
+.container :global(.fui-DataGridHeaderCell):hover {
+  background-color: #edebe9;
+}
+
+/* Sort icon styling */
+.container :global(.fui-DataGridHeaderCell) svg {
+  width: 12px;
+  height: 12px;
+  color: #605e5c;
+  flex-shrink: 0;
 }
 
 /* Data row styling - matches fxc-gc-row */
 .container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #f3f2f1;
-  min-height: 42px;
+  min-height: 32px;
   background-color: #ffffff;
+  transition: background-color 0.1s ease;
 }
 
 /* Row hover - matches fxs-portal-hover */
@@ -220,11 +236,11 @@
 /* Data cell styling - matches fxc-gc-cell */
 .container :global(.fui-DataGridCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   color: #292827;
-  padding: 0 16px;
-  min-height: 42px;
+  padding: 0 12px;
+  min-height: 32px;
   border-right: none;
   display: flex;
   align-items: center;
@@ -233,15 +249,15 @@
 /* Badge styling - compact badges */
 .container :global(.fui-Badge) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 2px;
 }
 
 /* TableCellLayout - inherits cell font */
 .container :global(.fui-TableCellLayout) {
-  font-size: 13px;
+  font-size: 12px;
   font-family: inherit;
   line-height: normal;
 }
