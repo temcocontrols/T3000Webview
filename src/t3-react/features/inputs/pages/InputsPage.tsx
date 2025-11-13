@@ -81,6 +81,18 @@ const useStyles = makeStyles({
     borderBottom: '1px solid #edebe9',
     ...shorthands.padding('4px', '8px'),
     minHeight: '32px',
+    fontSize: '12px',
+    fontWeight: '400',
+  },
+  toolbarDivider: {
+    paddingBottom: '5px',
+  },
+  toolbarHr: {
+    borderWidth: '0',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderColor: '#edebe9',
+    margin: '0',
   },
   gridContainer: {
     ...shorthands.flex(1),
@@ -366,6 +378,11 @@ export const InputsPage: React.FC = () => {
           </ToolbarButton>
         </Tooltip>
       </Toolbar>
+
+      {/* Azure Portal style horizontal divider */}
+      <div className={classes.toolbarDivider}>
+        <hr className={classes.toolbarHr} />
+      </div>
 
       {/* Error message */}
       {error && (
