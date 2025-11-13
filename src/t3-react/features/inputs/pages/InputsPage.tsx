@@ -38,6 +38,7 @@ import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
   PersonFeedbackRegular,
+  SearchRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './InputsPage.module.css';
@@ -137,6 +138,13 @@ export const InputsPage: React.FC = () => {
 
   const handleFeedback = () => {
     console.log('Feedback clicked');
+  };
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    console.log('Search query:', e.target.value);
   };
 
   // Column definitions matching Azure Portal grid
@@ -241,6 +249,34 @@ export const InputsPage: React.FC = () => {
             <div className={styles.partContent}>
 
               {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ padding: '12px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '2px' }}>
+                    <Text style={{ color: '#d13438' }} weight="semibold">Error loading inputs</Text>
+                    <br />
+                    <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================
+                  BLADE DESCRIPTION
+                  Matches: ext-blade-description
+                  ======================================== */}
+              {selectedDevice && (
+                <div className={styles.bladeDescription}>
+                  <span>
+                    Showing input points for <b>{selectedDevice.panelName || `Device ${selectedDevice.serialNumber}`}</b>.
+                    {' '}This table displays all configured input points including digital and analog sensors, their current values,
+                    calibration settings, and operational status.
+                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+                  </span>
+                </div>
+              )}
+
+              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -282,6 +318,21 @@ export const InputsPage: React.FC = () => {
                     <PersonFeedbackRegular />
                     <span>Feedback</span>
                   </button>
+
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search inputs..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search inputs"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -292,21 +343,6 @@ export const InputsPage: React.FC = () => {
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
-
-              {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing input points for <b>{selectedDevice.panelName || `Device ${selectedDevice.serialNumber}`}</b>.
-                    {' '}This table displays all configured input points including digital and analog sensors, their current values,
-                    calibration settings, and operational status.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -329,21 +365,6 @@ export const InputsPage: React.FC = () => {
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={300}>Please select a device from the tree to view inputs</Text>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error State */}
-                {error && (
-                  <div className={styles.noData}>
-                    <div style={{ textAlign: 'center', color: '#d13438' }}>
-                      <Text size={500} weight="semibold">Error loading inputs</Text>
-                      <br />
-                      <Text size={300}>{error}</Text>
-                      <br /><br />
-                      <Button appearance="primary" onClick={handleRefresh}>
-                        Try Again
-                      </Button>
                     </div>
                   </div>
                 )}

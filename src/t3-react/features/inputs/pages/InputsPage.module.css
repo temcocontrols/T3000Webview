@@ -86,6 +86,53 @@
   margin: 0 4px;
 }
 
+/* Search Input - Azure Portal Style */
+.searchInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  color: #605e5c;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.searchInput {
+  height: 28px;
+  padding: 0 8px 0 28px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  background-color: #ffffff;
+  color: #323130;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  outline: none;
+  min-width: 300px;
+  transition: border-color 0.1s ease;
+  box-shadow: none;
+}
+
+.searchInput::placeholder {
+  color: #605e5c;
+}
+
+.searchInput:hover {
+  border-color: #323130;
+}
+
+.searchInput:focus {
+  border-color: #0078d4;
+  box-shadow: none;
+  outline: none;
+}
+
 /* Blade Description */
 .bladeDescription {
   padding: 0;
