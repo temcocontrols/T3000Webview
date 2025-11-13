@@ -592,8 +592,8 @@ export const InputsPage: React.FC = () => {
                         defaultWidth: 100,
                       },
                       units: {
-                        minWidth: 90,
-                        defaultWidth: 130,
+                        minWidth: 100,
+                        defaultWidth: 150,
                       },
                       range: {
                         minWidth: 120,
