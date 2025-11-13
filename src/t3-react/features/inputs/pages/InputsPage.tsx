@@ -28,7 +28,6 @@ import {
   TableColumnDefinition,
   createTableColumn,
   makeStyles,
-  tokens,
   Button,
   Spinner,
   Text,
@@ -48,6 +47,7 @@ import {
   FilterRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -73,39 +73,26 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap(tokens.spacingVerticalM),
-    ...shorthands.padding(tokens.spacingVerticalL, tokens.spacingHorizontalL),
     height: '100%',
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: tokens.fontSizeHero700,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground1,
+    backgroundColor: '#ffffff',
   },
   toolbar: {
-    backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.padding(tokens.spacingVerticalS),
+    backgroundColor: '#fafafa',
+    borderBottom: '1px solid #edebe9',
+    ...shorthands.padding('4px', '8px'),
+    minHeight: '32px',
   },
   gridContainer: {
     ...shorthands.flex(1),
     ...shorthands.overflow('auto'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    backgroundColor: '#ffffff',
   },
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shorthands.gap(tokens.spacingVerticalM),
+    ...shorthands.gap('12px'),
     height: '400px',
   },
   emptyState: {
@@ -113,33 +100,58 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shorthands.gap(tokens.spacingVerticalM),
+    ...shorthands.gap('12px'),
     height: '400px',
-    color: tokens.colorNeutralForeground3,
-  },
-  statusBadge: {
-    minWidth: '60px',
-  },
-  valueCell: {
-    fontFamily: tokens.fontFamilyMonospace,
-    fontWeight: tokens.fontWeightSemibold,
-  },
-  autoCell: {
-    color: tokens.colorPaletteLightGreenForeground1,
-  },
-  manualCell: {
-    color: tokens.colorPaletteYellowForeground1,
+    color: '#605e5c',
+    fontSize: '13px',
   },
 });
 
 export const InputsPage: React.FC = () => {
   const classes = useStyles();
-  const { selectedDevice } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Auto-select first device on page load if no device is selected
+  // Navigate tree structure to find first actual device (may be nested under subnet nodes)
+  useEffect(() => {
+    console.log('[InputsPage] Auto-select useEffect triggered');
+    console.log('[InputsPage] selectedDevice:', selectedDevice);
+    console.log('[InputsPage] treeData.length:', treeData.length);
+
+    if (!selectedDevice && treeData.length > 0) {
+      console.log('[InputsPage] Searching for first device...');
+
+      // Recursive function to find first device node in tree
+      const findFirstDevice = (nodes: any[]): any => {
+        for (const node of nodes) {
+          // If this node has device data, return it
+          if (node.data) {
+            return node;
+          }
+          // Otherwise, search its children recursively
+          if (node.children && node.children.length > 0) {
+            const found = findFirstDevice(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const firstDeviceNode = findFirstDevice(treeData);
+
+      if (firstDeviceNode?.data) {
+        console.log('[InputsPage] Auto-selecting first device:', firstDeviceNode.data);
+        selectDevice(firstDeviceNode.data);
+      } else {
+        console.log('[InputsPage] No device found in tree');
+      }
+    }
+  }, [selectedDevice, treeData, selectDevice]);
 
   // Fetch inputs for selected device
   const fetchInputs = useCallback(async () => {
@@ -222,7 +234,7 @@ export const InputsPage: React.FC = () => {
       columnId: 'value',
       renderHeaderCell: () => 'Value',
       renderCell: (item) => (
-        <TableCellLayout className={classes.valueCell}>
+        <TableCellLayout>
           {item.fValue || '---'} {item.units || ''}
         </TableCellLayout>
       ),
@@ -237,7 +249,6 @@ export const InputsPage: React.FC = () => {
             <Badge
               appearance={isAuto ? 'filled' : 'outline'}
               color={isAuto ? 'success' : 'warning'}
-              className={classes.statusBadge}
             >
               {item.autoManual || 'Auto'}
             </Badge>
@@ -297,9 +308,9 @@ export const InputsPage: React.FC = () => {
   if (loading && inputs.length === 0) {
     return (
       <div className={classes.container}>
-        <div className={classes.header}>
-          <Text className={classes.title}>Inputs</Text>
-        </div>
+        <Toolbar className={classes.toolbar}>
+          <Text size={400} weight="semibold">Inputs</Text>
+        </Toolbar>
         <div className={classes.loadingContainer}>
           <Spinner size="large" label="Loading inputs..." />
         </div>
@@ -311,11 +322,11 @@ export const InputsPage: React.FC = () => {
   if (!selectedDevice) {
     return (
       <div className={classes.container}>
-        <div className={classes.header}>
-          <Text className={classes.title}>Inputs</Text>
-        </div>
+        <Toolbar className={classes.toolbar}>
+          <Text size={400} weight="semibold">Inputs</Text>
+        </Toolbar>
         <div className={classes.emptyState}>
-          <Text size={500}>No device selected</Text>
+          <Text size={400}>No device selected</Text>
           <Text size={300}>Please select a device from the tree to view inputs</Text>
         </div>
       </div>
@@ -324,15 +335,37 @@ export const InputsPage: React.FC = () => {
 
   return (
     <div className={classes.container}>
-      {/* Header */}
-      <div className={classes.header}>
-        <div>
-          <Text className={classes.title}>Inputs</Text>
-          <Text size={300}>
-            {selectedDevice.nameShowOnTree} - {inputs.length} input{inputs.length !== 1 ? 's' : ''}
-          </Text>
-        </div>
-      </div>
+      {/* Toolbar - matches Azure Portal Resource Manager */}
+      <Toolbar className={classes.toolbar}>
+        <Tooltip content="Refresh inputs from device" relationship="label">
+          <ToolbarButton
+            icon={<ArrowSyncRegular />}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            appearance="subtle"
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </ToolbarButton>
+        </Tooltip>
+
+        <Tooltip content="Export to CSV" relationship="label">
+          <ToolbarButton
+            icon={<ArrowDownloadRegular />}
+            onClick={handleExport}
+            appearance="subtle"
+          >
+            Export to CSV
+          </ToolbarButton>
+        </Tooltip>
+
+        <ToolbarDivider />
+
+        <Tooltip content="Filter inputs" relationship="label">
+          <ToolbarButton icon={<FilterRegular />} appearance="subtle">
+            Filter
+          </ToolbarButton>
+        </Tooltip>
+      </Toolbar>
 
       {/* Error message */}
       {error && (
@@ -343,38 +376,6 @@ export const InputsPage: React.FC = () => {
           </MessageBarBody>
         </MessageBar>
       )}
-
-      {/* Toolbar - matches C++ dialog buttons */}
-      <Toolbar className={classes.toolbar}>
-        <Tooltip content="Refresh inputs from device" relationship="label">
-          <ToolbarButton
-            icon={<ArrowSyncRegular />}
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </ToolbarButton>
-        </Tooltip>
-
-        <ToolbarDivider />
-
-        <Tooltip content="Export to CSV" relationship="label">
-          <ToolbarButton
-            icon={<ArrowDownloadRegular />}
-            onClick={handleExport}
-          >
-            Export
-          </ToolbarButton>
-        </Tooltip>
-
-        <ToolbarDivider />
-
-        <Tooltip content="Filter inputs" relationship="label">
-          <ToolbarButton icon={<FilterRegular />}>
-            Filter
-          </ToolbarButton>
-        </Tooltip>
-      </Toolbar>
 
       {/* Data Grid */}
       <div className={classes.gridContainer}>
