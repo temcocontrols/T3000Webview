@@ -9,8 +9,8 @@
 .treeItemSelected {
   font-weight: 400;
   color: #0078d4;
-  background-color: transparent;
-  border-left: 2px solid transparent;
+  background-color: #e1dfdd;
+  border-left: 2px solid #0078d4;
   border-radius: 0;
   transition: all 0.1s ease-in-out;
   padding-left: 6px;
@@ -50,6 +50,20 @@
   color: #201f1e !important;
   border-radius: 0 !important;
   padding-left: calc(var(--tree-level, 0) * 20px) !important;
+}
+
+/* Selected tree item styling */
+.treeItemSelected :global(.fui-TreeItemLayout) {
+  color: #0078d4 !important;
+}
+
+.treeItemSelected :global(.fui-TreeItemLayout__main) {
+  color: #0078d4 !important;
+}
+
+.treeItemSelected :global(.fui-TreeItemLayout__iconBefore) svg,
+.treeItemSelected :global(.fui-TreeItemLayout__expandIcon) svg {
+  color: #0078d4 !important;
 }
 
 /* Add extra margin to leaf nodes to align with branch content (for missing expand icon) */

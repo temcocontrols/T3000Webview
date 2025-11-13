@@ -32,7 +32,7 @@ import styles from './DeviceTree.module.css';
 /**
  * Status icon component - Azure Portal style
  */
-const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown' }> = ({ status }) => {
+const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown'; isSelected?: boolean }> = ({ status, isSelected }) => {
   const iconStyle = {
     width: '16px',
     height: '16px',
@@ -41,13 +41,15 @@ const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown' }> = ({ st
     justifyContent: 'center',
   };
 
+  const color = isSelected ? '#0078d4' : undefined;
+
   switch (status) {
     case 'online':
-      return <Checkmark20Regular style={{ ...iconStyle, color: '#107C10' }} />;
+      return <Checkmark20Regular style={{ ...iconStyle, color: color || '#107C10' }} />;
     case 'offline':
-      return <Dismiss20Regular style={{ ...iconStyle, color: '#a80000' }} />;
+      return <Dismiss20Regular style={{ ...iconStyle, color: color || '#a80000' }} />;
     default:
-      return <QuestionCircle20Regular style={{ ...iconStyle, color: '#605e5c' }} />;
+      return <QuestionCircle20Regular style={{ ...iconStyle, color: color || '#605e5c' }} />;
   }
 };
 
@@ -154,7 +156,7 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
         <TreeItemLayout
           onClick={handleClick}
           iconBefore={<Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />}
-          aside={isSelected && node.status ? <StatusIcon status={node.status} /> : undefined}
+          aside={isSelected && node.status ? <StatusIcon status={node.status} isSelected={isSelected} /> : undefined}
           className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
           style={{ '--tree-level': level } as React.CSSProperties}
         >
