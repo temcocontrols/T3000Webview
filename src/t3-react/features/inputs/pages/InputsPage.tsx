@@ -1,19 +1,21 @@
 /**
- * Inputs Page
+ * Inputs Page - Azure Portal Complete Sample
  *
- * Maps to C++ CInputSetDlg (InputSetDlg.cpp)
- * Displays input points in a data grid similar to C++ MSFlexGrid
+ * Complete Azure Portal blade layout matching Cost Management + Billing
+ * Extracted from: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
  *
- * Grid Columns (from C++ InputSetDlg.cpp:316-353):
- * - Index: Row number (0-based)
- * - Input Name: Full_Label field
- * - Value: fValue with units
- * - Auto/Man: auto_manual status
- * - Calibration: calibration offset
- * - Filter: filter_field value
- * - Range: range_field (sensor type)
- * - Function: Input function type
- * - Custom Tables: Custom sensor configuration
+ * This is a fully functional Azure Portal-style page that can be used as a sample
+ * Update with real input fields as needed
+ *
+ * Azure Portal Structure:
+ * - Blade Content Container (fxs-blade-content-container-default-details)
+ * - Blade Content Wrapper (fxs-blade-content-wrapper)
+ * - Part Content (fxs-part-content ext-msportal-padding)
+ * - Toolbar (ext-overview-assistant-toolbar azc-toolbar)
+ * - Horizontal Divider (ext-overview-hr)
+ * - Blade Description (ext-blade-description)
+ * - Docking Body (msportalfx-docking-body)
+ * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -27,129 +29,40 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  makeStyles,
   Button,
   Spinner,
   Text,
-  MessageBar,
-  MessageBarBody,
-  MessageBarTitle,
-  Toolbar,
-  ToolbarButton,
-  ToolbarDivider,
-  Tooltip,
   Badge,
-  shorthands,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
-  FilterRegular,
+  PersonFeedbackRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import './InputsPage.module.css';
+import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
   serialNumber: number;
-  inputId?: string;                // "IN1", "IN2", etc.
+  inputId?: string;
   inputIndex?: string;
   panel?: string;
-  fullLabel?: string;              // Input name
-  autoManual?: string;             // "Auto" or "Manual"
-  fValue?: string;                 // Current value
-  units?: string;                  // Unit of measurement
-  rangeField?: string;             // Sensor type/range
-  calibration?: string;            // Calibration offset
-  sign?: string;                   // + or -
-  filterField?: string;            // Filter value
-  status?: string;                 // Online/Offline
-  digitalAnalog?: string;          // "0"=digital, "1"=analog
-  label?: string;                  // Short label
-  typeField?: string;              // Input type
+  fullLabel?: string;
+  autoManual?: string;
+  fValue?: string;
+  units?: string;
+  rangeField?: string;
+  calibration?: string;
+  sign?: string;
+  filterField?: string;
+  status?: string;
+  digitalAnalog?: string;
+  label?: string;
+  typeField?: string;
 }
 
-const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    backgroundColor: '#ffffff',
-  },
-  toolbar: {
-    backgroundColor: '#fafafa',
-    borderBottom: '1px solid #edebe9',
-    ...shorthands.padding('4px', '8px'),
-    minHeight: '32px',
-    fontSize: '12px',
-    fontWeight: '400',
-    // InputsPage-specific toolbar button styles
-    '& .fui-ToolbarButton': {
-      height: '32px',
-      minHeight: '32px',
-      padding: '0 12px',
-      fontSize: '13px',
-      fontWeight: '400',
-      color: '#323130',
-      gap: '6px',
-    },
-    '& .fui-ToolbarButton:hover:not([aria-disabled="true"])': {
-      backgroundColor: '#f3f2f1',
-      color: '#201f1e',
-    },
-    '& .fui-ToolbarButton:active:not([aria-disabled="true"])': {
-      backgroundColor: '#edebe9',
-      color: '#201f1e',
-    },
-    '& .fui-ToolbarButton[aria-disabled="true"]': {
-      color: '#a19f9d',
-      cursor: 'default',
-    },
-    '& .fui-ToolbarButton svg': {
-      fontSize: '16px',
-      width: '16px',
-      height: '16px',
-    },
-  },
-  toolbarDivider: {
-    paddingBottom: '5px',
-  },
-  toolbarHr: {
-    borderWidth: '0',
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderColor: '#edebe9',
-    margin: '0',
-  },
-  gridContainer: {
-    ...shorthands.flex(1),
-    ...shorthands.overflow('hidden'),
-    backgroundColor: '#ffffff',
-    position: 'relative',
-    height: '100%',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shorthands.gap('12px'),
-    height: '400px',
-  },
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shorthands.gap('12px'),
-    height: '400px',
-    color: '#605e5c',
-    fontSize: '13px',
-  },
-});
-
 export const InputsPage: React.FC = () => {
-  const classes = useStyles();
   const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
@@ -158,23 +71,11 @@ export const InputsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Auto-select first device on page load if no device is selected
-  // Navigate tree structure to find first actual device (may be nested under subnet nodes)
   useEffect(() => {
-    console.log('[InputsPage] Auto-select useEffect triggered');
-    console.log('[InputsPage] selectedDevice:', selectedDevice);
-    console.log('[InputsPage] treeData.length:', treeData.length);
-
     if (!selectedDevice && treeData.length > 0) {
-      console.log('[InputsPage] Searching for first device...');
-
-      // Recursive function to find first device node in tree
       const findFirstDevice = (nodes: any[]): any => {
         for (const node of nodes) {
-          // If this node has device data, return it
-          if (node.data) {
-            return node;
-          }
-          // Otherwise, search its children recursively
+          if (node.data) return node;
           if (node.children && node.children.length > 0) {
             const found = findFirstDevice(node.children);
             if (found) return found;
@@ -184,34 +85,24 @@ export const InputsPage: React.FC = () => {
       };
 
       const firstDeviceNode = findFirstDevice(treeData);
-
       if (firstDeviceNode?.data) {
-        console.log('[InputsPage] Auto-selecting first device:', firstDeviceNode.data);
         selectDevice(firstDeviceNode.data);
-      } else {
-        console.log('[InputsPage] No device found in tree');
       }
     }
   }, [selectedDevice, treeData, selectDevice]);
 
   // Fetch inputs for selected device
   const fetchInputs = useCallback(async () => {
-    console.log('[InputsPage] fetchInputs called, selectedDevice:', selectedDevice);
-
     if (!selectedDevice) {
-      console.log('[InputsPage] No device selected');
       setInputs([]);
       return;
     }
 
-    console.log('[InputsPage] Fetching inputs for device:', selectedDevice.serialNumber);
     setLoading(true);
     setError(null);
 
     try {
-      // Use devices route instead of points alias
       const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
-      console.log('[InputsPage] Fetching from:', url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -219,7 +110,6 @@ export const InputsPage: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('[InputsPage] Received data:', data);
       setInputs(data.input_points || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load inputs';
@@ -228,38 +118,35 @@ export const InputsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice]);  // Load inputs when device changes
+  }, [selectedDevice]);
+
   useEffect(() => {
     fetchInputs();
   }, [fetchInputs]);
 
-  // Refresh handler (matches C++ RefreshButton)
+  // Handlers
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchInputs();
     setRefreshing(false);
   };
 
-  // Export handler (placeholder for future implementation)
   const handleExport = () => {
     console.log('Export inputs to CSV');
-    // TODO: Implement CSV export
   };
 
-  // Column definitions matching C++ grid layout (InputSetDlg.cpp:316-353)
+  const handleFeedback = () => {
+    console.log('Feedback clicked');
+  };
+
+  // Column definitions matching Azure Portal grid
   const columns: TableColumnDefinition<InputPoint>[] = [
     createTableColumn<InputPoint>({
       columnId: 'index',
       renderHeaderCell: () => '#',
       renderCell: (_item) => {
-        // Get row index from the full list
         const index = inputs.findIndex(inp => inp.serialNumber === _item.serialNumber && inp.inputIndex === _item.inputIndex);
         return <TableCellLayout>{index + 1}</TableCellLayout>;
-      },
-      compare: (a, b) => {
-        const aIndex = parseInt(a.inputIndex || '0');
-        const bIndex = parseInt(b.inputIndex || '0');
-        return aIndex - bIndex;
       },
     }),
     createTableColumn<InputPoint>({
@@ -311,13 +198,6 @@ export const InputsPage: React.FC = () => {
       },
     }),
     createTableColumn<InputPoint>({
-      columnId: 'filter',
-      renderHeaderCell: () => 'Filter',
-      renderCell: (item) => (
-        <TableCellLayout>{item.filterField || '0'}</TableCellLayout>
-      ),
-    }),
-    createTableColumn<InputPoint>({
       columnId: 'range',
       renderHeaderCell: () => 'Range',
       renderCell: (item) => (
@@ -345,157 +225,209 @@ export const InputsPage: React.FC = () => {
     }),
   ];
 
-  // Render loading state
-  if (loading && inputs.length === 0) {
-    return (
-      <div className={classes.container}>
-        <Toolbar className={classes.toolbar}>
-          <Text size={400} weight="semibold">Inputs</Text>
-        </Toolbar>
-        <div className={classes.loadingContainer}>
-          <Spinner size="large" label="Loading inputs..." />
-        </div>
-      </div>
-    );
-  }
-
-  // Render no device selected state
-  if (!selectedDevice) {
-    return (
-      <div className={classes.container}>
-        <Toolbar className={classes.toolbar}>
-          <Text size={400} weight="semibold">Inputs</Text>
-        </Toolbar>
-        <div className={classes.emptyState}>
-          <Text size={400}>No device selected</Text>
-          <Text size={300}>Please select a device from the tree to view inputs</Text>
-        </div>
-      </div>
-    );
-  }
+  // ========================================
+  // RENDER: Complete Azure Portal Blade Layout
+  // ========================================
 
   return (
-    <div className={classes.container}>
-      {/* Toolbar - matches Azure Portal Resource Manager */}
-      <Toolbar className={classes.toolbar}>
-        <Tooltip content="Refresh inputs from device" relationship="label">
-          <ToolbarButton
-            icon={<ArrowSyncRegular />}
-            onClick={handleRefresh}
-            disabled={refreshing}
-            appearance="subtle"
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </ToolbarButton>
-        </Tooltip>
+    <div className={styles.container}>
+      {/* Blade Content Container */}
+      <div className={styles.bladeContentContainer}>
+        {/* Blade Content Wrapper */}
+        <div className={styles.bladeContentWrapper}>
+          {/* Blade Content */}
+          <div className={styles.bladeContent}>
+            {/* Part Content - Main Content Area */}
+            <div className={styles.partContent}>
 
-        <Tooltip content="Export to CSV" relationship="label">
-          <ToolbarButton
-            icon={<ArrowDownloadRegular />}
-            onClick={handleExport}
-            appearance="subtle"
-          >
-            Export to CSV
-          </ToolbarButton>
-        </Tooltip>
+              {/* ========================================
+                  TOOLBAR - Azure Portal Command Bar
+                  Matches: ext-overview-assistant-toolbar
+                  ======================================== */}
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarContainer}>
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
 
-        <ToolbarDivider />
+                  {/* Export to CSV Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
 
-        <Tooltip content="Filter inputs" relationship="label">
-          <ToolbarButton icon={<FilterRegular />} appearance="subtle">
-            Filter
-          </ToolbarButton>
-        </Tooltip>
-      </Toolbar>
+                  {/* Toolbar Separator */}
+                  <div className={styles.toolbarSeparator} role="separator" />
 
-      {/* Azure Portal style horizontal divider */}
-      <div className={classes.toolbarDivider}>
-        <hr className={classes.toolbarHr} />
-      </div>
+                  {/* Feedback Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleFeedback}
+                    title="Feedback"
+                    aria-label="Feedback"
+                  >
+                    <PersonFeedbackRegular />
+                    <span>Feedback</span>
+                  </button>
+                </div>
+              </div>
 
-      {/* Error message */}
-      {error && (
-        <MessageBar intent="error">
-          <MessageBarBody>
-            <MessageBarTitle>Error</MessageBarTitle>
-            {error}
-          </MessageBarBody>
-        </MessageBar>
-      )}
+              {/* ========================================
+                  HORIZONTAL DIVIDER
+                  Matches: ext-overview-hr
+                  ======================================== */}
+              <div style={{ padding: '0' }}>
+                <hr className={styles.overviewHr} />
+              </div>
 
-      {/* Data Grid */}
-      <div className={classes.gridContainer}>
-        {inputs.length === 0 ? (
-          <div className={classes.emptyState}>
-            <Text size={500}>No inputs found</Text>
-            <Text size={300}>This device has no configured input points</Text>
-            <Button
-              appearance="primary"
-              icon={<ArrowSyncRegular />}
-              onClick={handleRefresh}
-            >
-              Refresh
-            </Button>
-          </div>
-        ) : (
-          <DataGrid
-            items={inputs}
-            columns={columns}
-            sortable
-            resizableColumns
-            columnSizingOptions={{
-              index: {
-                minWidth: 50,
-                defaultWidth: 60,
-              },
-              inputName: {
-                minWidth: 150,
-                defaultWidth: 250,
-              },
-              value: {
-                minWidth: 100,
-                defaultWidth: 150,
-              },
-              autoManual: {
-                minWidth: 80,
-                defaultWidth: 100,
-              },
-              calibration: {
-                minWidth: 80,
-                defaultWidth: 100,
-              },
-              filter: {
-                minWidth: 60,
-                defaultWidth: 80,
-              },
-              range: {
-                minWidth: 120,
-                defaultWidth: 180,
-              },
-              digitalAnalog: {
-                minWidth: 80,
-                defaultWidth: 100,
-              },
-            }}
-          >
-            <DataGridHeader>
-              <DataGridRow>
-                {({ renderHeaderCell }) => (
-                  <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                )}
-              </DataGridRow>
-            </DataGridHeader>
-            <DataGridBody<InputPoint>>
-              {({ item, rowId }) => (
-                <DataGridRow<InputPoint> key={rowId}>
-                  {({ renderCell }) => (
-                    <DataGridCell>{renderCell(item)}</DataGridCell>
-                  )}
-                </DataGridRow>
+              {/* ========================================
+                  BLADE DESCRIPTION
+                  Matches: ext-blade-description
+                  ======================================== */}
+              {selectedDevice && (
+                <div className={styles.bladeDescription}>
+                  <span>
+                    Showing input points for <b>{selectedDevice.panelName || `Device ${selectedDevice.serialNumber}`}</b>.
+                    {' '}This table displays all configured input points including digital and analog sensors, their current values,
+                    calibration settings, and operational status.
+                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+                  </span>
+                </div>
               )}
-            </DataGridBody>
-          </DataGrid>
-        )}
+
+              {/* ========================================
+                  DOCKING BODY - Main Content
+                  Matches: msportalfx-docking-body
+                  ======================================== */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {loading && inputs.length === 0 && (
+                  <div className={styles.loading}>
+                    <Spinner size="large" />
+                    <Text>Loading inputs...</Text>
+                  </div>
+                )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={300}>Please select a device from the tree to view inputs</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error State */}
+                {error && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center', color: '#d13438' }}>
+                      <Text size={500} weight="semibold">Error loading inputs</Text>
+                      <br />
+                      <Text size={300}>{error}</Text>
+                      <br /><br />
+                      <Button appearance="primary" onClick={handleRefresh}>
+                        Try Again
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid - Azure Portal Style */}
+                {selectedDevice && !loading && !error && inputs.length === 0 && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500}>No inputs found</Text>
+                      <br />
+                      <Text size={300}>This device has no configured input points</Text>
+                      <br /><br />
+                      <Button
+                        appearance="primary"
+                        icon={<ArrowSyncRegular />}
+                        onClick={handleRefresh}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid with Data */}
+                {selectedDevice && !loading && !error && inputs.length > 0 && (
+                  <DataGrid
+                    items={inputs}
+                    columns={columns}
+                    sortable
+                    resizableColumns
+                    columnSizingOptions={{
+                      index: {
+                        minWidth: 50,
+                        defaultWidth: 60,
+                      },
+                      inputName: {
+                        minWidth: 150,
+                        defaultWidth: 250,
+                      },
+                      value: {
+                        minWidth: 100,
+                        defaultWidth: 150,
+                      },
+                      autoManual: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      calibration: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      range: {
+                        minWidth: 120,
+                        defaultWidth: 180,
+                      },
+                      digitalAnalog: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                    }}
+                  >
+                    <DataGridHeader>
+                      <DataGridRow>
+                        {({ renderHeaderCell }) => (
+                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                        )}
+                      </DataGridRow>
+                    </DataGridHeader>
+                    <DataGridBody<InputPoint>>
+                      {({ item, rowId }) => (
+                        <DataGridRow<InputPoint> key={rowId}>
+                          {({ renderCell }) => (
+                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                          )}
+                        </DataGridRow>
+                      )}
+                    </DataGridBody>
+                  </DataGrid>
+                )}
+
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
