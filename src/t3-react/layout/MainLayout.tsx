@@ -71,7 +71,7 @@ const useStyles = makeStyles({
   mainContentBody: {
     flex: 1,
     overflow: 'auto',
-    padding: '16px',
+    padding: '10px',
   },
   rightPanel: {
     display: 'flex',

@@ -177,7 +177,7 @@
   line-height: 20px;
   color: #292827;
   background-color: transparent;
-  margin: 12px 0;
+  /* margin: 12px 0; */
   flex-shrink: 0;
 }
 
