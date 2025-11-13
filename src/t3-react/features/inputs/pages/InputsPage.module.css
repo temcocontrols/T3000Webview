@@ -22,24 +22,38 @@
   color: #292827;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling */
-:global(.fui-DataGrid) {
+/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */
+.container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 400;
   color: #292827;
   border: none;
   background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 /* Header row styling - matches fxc-gc-columnheaderrow */
-:global(.fui-DataGridHeader) {
+.container :global(.fui-DataGridHeader) {
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* Data body - scrollable area */
+.container :global(.fui-DataGridBody) {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 /* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
-:global(.fui-DataGridHeaderCell) {
+.container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 600;  /* Bold headers in Azure Portal */
@@ -53,19 +67,19 @@
 }
 
 /* Data row styling - matches fxc-gc-row */
-:global(.fui-DataGridRow) {
+.container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #f3f2f1;
   min-height: 42px;
   background-color: #ffffff;
 }
 
 /* Row hover - matches fxs-portal-hover */
-:global(.fui-DataGridRow):hover {
+.container :global(.fui-DataGridRow):hover {
   background-color: #f3f2f1;
 }
 
 /* Data cell styling - matches fxc-gc-cell */
-:global(.fui-DataGridCell) {
+.container :global(.fui-DataGridCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 400;
@@ -77,48 +91,8 @@
   align-items: center;
 }
 
-/* Toolbar button styling - matches azc-toolbarButton */
-:global(.fui-ToolbarButton) {
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: #323130;
-  padding: 0 12px;
-  height: 32px;
-  min-height: 32px;
-  background-color: transparent;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Toolbar button hover - matches fxs-portal-hover */
-:global(.fui-ToolbarButton):hover:not([aria-disabled='true']) {
-  background-color: #f3f2f1;
-  color: #201f1e;
-}
-
-:global(.fui-ToolbarButton):active:not([aria-disabled='true']) {
-  background-color: #edebe9;
-  color: #201f1e;
-}
-
-:global(.fui-ToolbarButton[aria-disabled='true']) {
-  color: #a19f9d;
-  cursor: default;
-}
-
-/* Icon sizing - 16px in Azure Portal */
-:global(.fui-ToolbarButton) svg,
-:global(.fui-ToolbarButton) i {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-}
-
 /* Badge styling - compact badges */
-:global(.fui-Badge) {
+.container :global(.fui-Badge) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -127,52 +101,33 @@
 }
 
 /* TableCellLayout - inherits cell font */
-:global(.fui-TableCellLayout) {
+.container :global(.fui-TableCellLayout) {
   font-size: 13px;
   font-family: inherit;
   line-height: normal;
 }
 
-/* Toolbar styling - matches fxc-toolbar azc-toolbar */
-:global(.fui-Toolbar) {
-  background: none;
-  border-bottom: none;
-  min-height: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-}
-
-/* Toolbar divider - matches azc-toolbarSeparator */
-:global(.fui-ToolbarDivider) {
-  width: 1px;
-  height: 24px;
-  background-color: #c8c6c4;
-  margin: 0 8px;
-  flex-shrink: 0;
-}
-
 /* Links in grid - Azure Portal link color */
-:global(.fui-DataGridCell) a {
+.container :global(.fui-DataGridCell) a {
   color: #0078d4;
   text-decoration: none;
 }
 
-:global(.fui-DataGridCell) a:hover {
+.container :global(.fui-DataGridCell) a:hover {
   color: #004578;
   text-decoration: underline;
 }
 
 /* Remove any default Fluent UI styles that conflict */
-:global(.fui-DataGridHeaderCell) > * {
+.container :global(.fui-DataGridHeaderCell) > * {
   line-height: normal;
 }
 
-:global(.fui-DataGridCell) > * {
+.container :global(.fui-DataGridCell) > * {
   line-height: normal;
 }
 
 /* Grid border wrapper */
-:global(.fui-DataGrid-root) {
+.container :global(.fui-DataGrid-root) {
   border: 1px solid #edebe9;
 }

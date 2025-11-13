@@ -83,6 +83,33 @@ const useStyles = makeStyles({
     minHeight: '32px',
     fontSize: '12px',
     fontWeight: '400',
+    // InputsPage-specific toolbar button styles
+    '& .fui-ToolbarButton': {
+      height: '32px',
+      minHeight: '32px',
+      padding: '0 12px',
+      fontSize: '13px',
+      fontWeight: '400',
+      color: '#323130',
+      gap: '6px',
+    },
+    '& .fui-ToolbarButton:hover:not([aria-disabled="true"])': {
+      backgroundColor: '#f3f2f1',
+      color: '#201f1e',
+    },
+    '& .fui-ToolbarButton:active:not([aria-disabled="true"])': {
+      backgroundColor: '#edebe9',
+      color: '#201f1e',
+    },
+    '& .fui-ToolbarButton[aria-disabled="true"]': {
+      color: '#a19f9d',
+      cursor: 'default',
+    },
+    '& .fui-ToolbarButton svg': {
+      fontSize: '16px',
+      width: '16px',
+      height: '16px',
+    },
   },
   toolbarDivider: {
     paddingBottom: '5px',
@@ -96,8 +123,10 @@ const useStyles = makeStyles({
   },
   gridContainer: {
     ...shorthands.flex(1),
-    ...shorthands.overflow('auto'),
+    ...shorthands.overflow('hidden'),
     backgroundColor: '#ffffff',
+    position: 'relative',
+    height: '100%',
   },
   loadingContainer: {
     display: 'flex',

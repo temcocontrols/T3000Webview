@@ -114,7 +114,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-start', // Align left
-    padding: '2px 8px 2px 12px', // Left padding 12px
+    padding: '2px 8px', // All padding 8px
     minHeight: '36px', // Reduced from 48px
     gap: '4px', // Small gap
     backgroundColor: '#fff', // White background
