@@ -20,6 +20,43 @@
   font-size: 13px;
   font-weight: 400;
   color: #292827;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Blade Content Container */
+.bladeContentContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bladeContentWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bladeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.partContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Toolbar styles */
@@ -141,6 +178,7 @@
   color: #292827;
   background-color: transparent;
   margin: 12px 0;
+  flex-shrink: 0;
 }
 
 .bladeDescription a {
@@ -152,6 +190,14 @@
   text-decoration: underline;
 }
 
+/* Horizontal Divider */
+.overviewHr {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-top: 1px solid #edebe9;
+}
+
 /* Docking Body */
 .dockingBody {
   flex: 1;
@@ -159,6 +205,16 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+}
+
+/* Loading and No Data States */
+.loading,
+.noData {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */
