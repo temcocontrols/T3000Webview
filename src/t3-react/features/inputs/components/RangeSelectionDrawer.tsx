@@ -216,14 +216,30 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </div>
                 <div className={styles.rangeGroup}>
                   {/* Placeholder for multi-state values */}
-                  <Radio value="100" label="Custom 1" disabled />
-                  <Radio value="101" label="Custom 2" disabled />
-                  <Radio value="102" label="Custom 3" disabled />
-                  <Radio value="103" label="Custom 4" disabled />
-                  <Radio value="104" label="Custom 5" disabled />
-                  <Radio value="105" label="Custom 6" disabled />
-                  <Radio value="106" label="Custom 7" disabled />
-                  <Radio value="107" label="Custom 8" disabled />
+                  <div className={styles.rangeOption}>
+                    <Radio value="100" label="Custom 1" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="101" label="Custom 2" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="102" label="Custom 3" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="103" label="Custom 4" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="104" label="Custom 5" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="105" label="Custom 6" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="106" label="Custom 7" disabled />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="107" label="Custom 8" disabled />
+                  </div>
                 </div>
               </div>
             </div>
