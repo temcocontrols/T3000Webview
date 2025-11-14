@@ -282,26 +282,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               </div>
             </div>
 
-            {/* Column 2: Custom Range */}
-            <div className={styles.column}>
-              <div className={styles.sectionHeader}>
-                <Text weight="semibold" size={300} className={styles.sectionTitle}>
-                  Custom Range
-                </Text>
-              </div>
-              <div className={styles.rangeGroup}>
-                {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
-                  <div key={range.value} className={styles.rangeOption}>
-                    <Radio
-                      value={range.value.toString()}
-                      label={`${range.value}. ${range.label}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Column 3: Other Options */}
+            {/* Column 2: Other Options */}
             <div className={styles.column}>
               <div className={styles.sectionHeader}>
                 <Text weight="semibold" size={300} className={styles.sectionTitle}>
@@ -331,6 +312,25 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <div className={styles.rangeOption}>
                   <Radio value="25" label="25. Pulse Count (Fast 100Hz)" />
                 </div>
+              </div>
+            </div>
+
+            {/* Column 3: Custom Range */}
+            <div className={styles.column}>
+              <div className={styles.sectionHeader}>
+                <Text weight="semibold" size={300} className={styles.sectionTitle}>
+                  Custom Range
+                </Text>
+              </div>
+              <div className={styles.rangeGroup}>
+                {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
+                  <div key={range.value} className={styles.rangeOption}>
+                    <Radio
+                      value={range.value.toString()}
+                      label={`${range.value}. ${range.label}`}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </RadioGroup>
