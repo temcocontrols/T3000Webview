@@ -39,6 +39,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 }) => {
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
   const [manualInput, setManualInput] = useState<string>(currentRange.toString());
+  const [tempUnit, setTempUnit] = useState<string>('55'); // Default to °C
 
   const handleSave = () => {
     onSave(selectedRange);
@@ -250,7 +251,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </Button>
               </div>
               <div className={styles.tempSensorsColumn}>
-                <RadioGroup>
+                <RadioGroup
+                  value={tempUnit}
+                  onChange={(_, data) => setTempUnit(data.value)}
+                >
                   <div className={styles.tempTypeRow}>
                     <Radio value="55" label="°C" />
                     <Radio value="56" label="°F" />
