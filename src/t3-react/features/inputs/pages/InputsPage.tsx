@@ -637,7 +637,7 @@ export const InputsPage: React.FC = () => {
               {selectedDevice && (
                 <div className={styles.bladeDescription}>
                   <span>
-                    Showing input points for <b>{selectedDevice.panelName || `Device ${selectedDevice.serialNumber}`}</b>.
+                    Showing input points for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
                     {' '}This table displays all configured input points including digital and analog sensors, their current values,
                     calibration settings, and operational status.
                     {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
