@@ -104,10 +104,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
-        <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
-        >
         {/* Combined Default and Selection section */}
         <div className={styles.topCombinedSection}>
           {/* Column 1: Default */}
@@ -116,7 +112,12 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               <span className={styles.dividerText}>Default</span>
             </div>
             <div className={styles.defaultSection}>
-              <Radio value="0" label="0. Unused" />
+              <RadioGroup
+                value={selectedRange.toString()}
+                onChange={(_, data) => setSelectedRange(Number(data.value))}
+              >
+                <Radio value="0" label="0. Unused" />
+              </RadioGroup>
             </div>
           </div>
 
@@ -157,6 +158,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
           <span className={styles.dividerText}>Digital</span>
         </div>
 
+        <RadioGroup
+          value={selectedRange.toString()}
+          onChange={(_, data) => setSelectedRange(Number(data.value))}
+        >
         {/* Main content: 3-column layout */}
         <div className={styles.mainContent}>
             <div className={styles.digitalSection}>
@@ -245,11 +250,18 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               </div>
             </div>
 
+        </div>
+        </RadioGroup>
+
         {/* Input Analog Units section divider */}
         <div className={styles.sectionDivider}>
           <span className={styles.dividerText}>Input Analog Units</span>
         </div>
 
+        <RadioGroup
+          value={selectedRange.toString()}
+          onChange={(_, data) => setSelectedRange(Number(data.value))}
+        >
         {/* Input Analog Units section - 3 columns like Digital */}
         <div className={styles.analogSection}>
           <div className={styles.analogColumns}>
@@ -379,7 +391,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               </div>
             </div>
           </div>
-        </div>
         </div>
         </RadioGroup>
       </DrawerBody>

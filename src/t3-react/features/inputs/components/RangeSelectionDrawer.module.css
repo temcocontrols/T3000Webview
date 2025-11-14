@@ -63,8 +63,11 @@
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  margin-top: 10px;
+  margin-top: 16px;
   color: #605e5c;
+  position: relative;
+  z-index: 1;
+  background-color: white;
 }
 
 .sectionDivider::before {

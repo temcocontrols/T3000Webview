@@ -113,7 +113,58 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
  * Get range label by value and type
  */
 export function getRangeLabel(value: number, digitalAnalog: number): string {
+  // Hardcoded mappings for custom and remapped values
+  const customMappings: { [key: number]: string } = {
+    // Digital Custom (23-30)
+    23: '9/9',
+    24: '/',
+    25: '/',
+    26: '/',
+    27: '/',
+    28: '/',
+    29: '/',
+    30: '/',
+    // Analog - Other Options (41-49, 55-65)
+    41: '0.0 to 5.0 Volts',
+    42: '0.0 to 100 Amps',
+    43: '4.0 to 20 ma',
+    44: '0.0 to 20 psi',
+    45: 'Pulse Count (Slow 1Hz)',
+    46: '0 to 100 % (0-10V)',
+    47: '0 to 100 % (0-5V)',
+    48: '0 to 100 % (4-20ma)',
+    49: '0.0 to 10.0 Volts',
+    50: 'Table 1',
+    51: 'Table 2',
+    52: 'Table 3',
+    53: 'Table 4',
+    54: 'Table 5',
+    55: 'Pulse Count (Fast 100Hz)',
+    56: 'Hz',
+    57: 'Humidity %',
+    58: 'CO2 PPM',
+    59: 'Revolutions Per Minute',
+    60: 'TVOC PPB',
+    61: 'ug/m3',
+    62: '#/cm3',
+    63: 'dB',
+    64: 'Lux',
+    65: 'Reserved',
+    // Multi State (100-103)
+    100: '',
+    101: '',
+    102: '',
+    103: '',
+  };
+
+  // Check custom mappings first
+  if (customMappings.hasOwnProperty(value)) {
+    return customMappings[value];
+  }
+
+  // Fall back to standard ranges
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);
   return range ? range.label : 'Unknown';
 }
+
