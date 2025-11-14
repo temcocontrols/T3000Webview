@@ -194,13 +194,31 @@
   width: 100%;
 }
 
-/* Analog section - similar to digital */
+/* Analog section - 3 columns like Digital section */
 .analogSection {
   padding: 16px;
   background-color: #fafafa;
   border-radius: 4px;
   width: 100%;
   margin-bottom: 20px;
+}
+
+.analogSection > :global(.fui-RadioGroup) {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+}
+
+.tempSensorsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+}
+
+.tempTypeRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
 }
 
 /* Main content - 3 column layout */

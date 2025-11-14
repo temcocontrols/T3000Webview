@@ -232,92 +232,87 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
           <span className={styles.dividerText}>Input Analog Units</span>
         </div>
 
-          {/* Input Analog Units section */}
-          <div className={styles.analogSection}>
-            <RadioGroup
-              value={selectedRange.toString()}
-              onChange={(_, data) => setSelectedRange(Number(data.value))}
-            >
-              {/* Temperature Sensors */}
-              <div className={styles.analogGroup}>
-                <Text weight="semibold" size={300} className={styles.subTitle}>
+        {/* Input Analog Units section - 3 columns like Digital */}
+        <div className={styles.analogSection}>
+          <RadioGroup
+            value={selectedRange.toString()}
+            onChange={(_, data) => setSelectedRange(Number(data.value))}
+          >
+            {/* Column 1: Temperature Sensors */}
+            <div className={styles.column}>
+              <div className={styles.sectionHeader}>
+                <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Temp Sensors
                 </Text>
-                <div className={styles.tempSensors}>
-                  <div>
-                    <Radio value="55" label="°C" />
-                    <Radio value="56" label="°F" />
-                  </div>
-                  <div>
-                    <Radio value="1" label="3K YSI 44005" />
-                  </div>
-                  <div>
-                    <Radio value="3" label="10K Type2" />
-                  </div>
-                  <div>
-                    <Radio value="7" label="10K Type3" />
-                  </div>
-                  <div>
-                    <Radio value="5" label="3K Allerton/ASI" />
-                  </div>
-                </div>
               </div>
-
-              {/* Voltage/Current ranges */}
-              <div className={styles.analogGroup}>
-                <div className={styles.rangeGrid}>
-                  {INPUT_ANALOG_RANGES.filter(r => r.value >= 11 && r.value <= 14 || r.value === 19).map((range) => (
-                    <div key={range.value} className={styles.rangeOption}>
-                      <Radio
-                        value={range.value.toString()}
-                        label={`${range.value}. ${range.label}`}
-                      />
-                    </div>
-                  ))}
-                  <div className={styles.rangeOption}>
-                    <Radio value="15" label="15. Pulse Count (Slow 1Hz)" />
-                  </div>
+              <div className={styles.tempSensorsColumn}>
+                <div className={styles.tempTypeRow}>
+                  <Radio value="55" label="°C" />
+                  <Radio value="56" label="°F" />
                 </div>
+                <Radio value="1" label="3K YSI 44005" />
+                <Radio value="3" label="10K Type2" />
+                <Radio value="7" label="10K Type3" />
+                <Radio value="5" label="3K Allerton/ASI" />
               </div>
+            </div>
 
-              {/* Custom Range */}
-              <div className={styles.analogGroup}>
-                <Text weight="semibold" size={300} className={styles.subTitle}>
+            {/* Column 2: Custom Range */}
+            <div className={styles.column}>
+              <div className={styles.sectionHeader}>
+                <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Custom Range
                 </Text>
-                <div className={styles.rangeGrid}>
-                  {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
-                    <div key={range.value} className={styles.rangeOption}>
-                      <Radio
-                        value={range.value.toString()}
-                        label={`${range.value}. ${range.label}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <Button appearance="secondary" className={styles.editButton} style={{ marginTop: '8px' }}>
+                <Button appearance="secondary" className={styles.editButton}>
                   Edit
                 </Button>
               </div>
-
-              {/* Environmental sensors */}
-              <div className={styles.analogGroup}>
-                <div className={styles.rangeGrid}>
-                  {INPUT_ANALOG_RANGES.filter(r => r.value >= 27 && r.value <= 34).map((range) => (
-                    <div key={range.value} className={styles.rangeOption}>
-                      <Radio
-                        value={range.value.toString()}
-                        label={`${range.value}. ${range.label}`}
-                      />
-                    </div>
-                  ))}
-                  <div className={styles.rangeOption}>
-                    <Radio value="25" label="25. Pulse Count (Fast 100Hz)" disabled />
+              <div className={styles.rangeGroup}>
+                {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
+                  <div key={range.value} className={styles.rangeOption}>
+                    <Radio
+                      value={range.value.toString()}
+                      label={`${range.value}. ${range.label}`}
+                    />
                   </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Column 3: Other Options */}
+            <div className={styles.column}>
+              <div className={styles.sectionHeader}>
+                <Text weight="semibold" size={300} className={styles.sectionTitle}>
+                  Other Options
+                </Text>
+              </div>
+              <div className={styles.rangeGroup}>
+                {INPUT_ANALOG_RANGES.filter(r => (r.value >= 11 && r.value <= 14) || r.value === 19).map((range) => (
+                  <div key={range.value} className={styles.rangeOption}>
+                    <Radio
+                      value={range.value.toString()}
+                      label={`${range.value}. ${range.label}`}
+                    />
+                  </div>
+                ))}
+                <div className={styles.rangeOption}>
+                  <Radio value="15" label="15. Pulse Count (Slow 1Hz)" />
+                </div>
+                {INPUT_ANALOG_RANGES.filter(r => r.value >= 27 && r.value <= 34).map((range) => (
+                  <div key={range.value} className={styles.rangeOption}>
+                    <Radio
+                      value={range.value.toString()}
+                      label={`${range.value}. ${range.label}`}
+                    />
+                  </div>
+                ))}
+                <div className={styles.rangeOption}>
+                  <Radio value="25" label="25. Pulse Count (Fast 100Hz)" disabled />
                 </div>
               </div>
-            </RadioGroup>
-          </div>
+            </div>
+          </RadioGroup>
+        </div>
         </div>
       </DrawerBody>
     </Drawer>
