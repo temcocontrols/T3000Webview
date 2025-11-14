@@ -77,7 +77,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       onOpenChange={(_, { open }) => !open && handleCancel()}
       position="end"
       size="large"
-      style={{ width: '1200px', maxWidth: '95vw' }}
+      style={{ width: '1000px', maxWidth: '90vw' }}
     >
       <DrawerHeader className={styles.drawerHeader}>
         <DrawerHeaderTitle
@@ -227,16 +227,17 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
           </RadioGroup>
 
-          {/* Bottom section: Input Analog Units (full width) */}
-          <div className={styles.bottomSection}>
+        {/* Input Analog Units section divider */}
+        <div className={styles.sectionDivider}>
+          <span className={styles.dividerText}>Input Analog Units</span>
+        </div>
+
+          {/* Input Analog Units section */}
+          <div className={styles.analogSection}>
             <RadioGroup
               value={selectedRange.toString()}
               onChange={(_, data) => setSelectedRange(Number(data.value))}
             >
-              <Text weight="semibold" size={400} className={styles.sectionTitle}>
-                Input Analog Units
-              </Text>
-
               {/* Temperature Sensors */}
               <div className={styles.analogGroup}>
                 <Text weight="semibold" size={300} className={styles.subTitle}>
