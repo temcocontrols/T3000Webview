@@ -205,7 +205,7 @@
 
 .analogSection > :global(.fui-RadioGroup) {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 0.5fr 0.8fr 1.7fr;
   gap: 24px;
 }
 
@@ -215,10 +215,20 @@
   gap: 0px;
 }
 
+.tempSensorsColumn :global(.fui-Radio__label) {
+  font-size: 10px;
+}
+
 .tempTypeRow {
   display: flex;
   gap: 16px;
   margin-bottom: 8px;
+}
+
+.otherOptionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0px 8px;
 }
 
 /* Main content - 3 column layout */
@@ -299,7 +309,7 @@
 }
 
 .rangeOption :global(.fui-Radio__label) {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.3;
 }
 

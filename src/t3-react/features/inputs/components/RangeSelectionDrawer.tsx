@@ -10,6 +10,7 @@ import {
   RadioGroup,
   Text,
   Label,
+  Checkbox,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
 import {
@@ -244,12 +245,17 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Temp Sensors
                 </Text>
+                <Button appearance="secondary" className={styles.editButton}>
+                  Edit
+                </Button>
               </div>
               <div className={styles.tempSensorsColumn}>
-                <div className={styles.tempTypeRow}>
-                  <Radio value="55" label="°C" />
-                  <Radio value="56" label="°F" />
-                </div>
+                <RadioGroup>
+                  <div className={styles.tempTypeRow}>
+                    <Radio value="55" label="°C" />
+                    <Radio value="56" label="°F" />
+                  </div>
+                </RadioGroup>
                 <Radio value="1" label="3K YSI 44005" />
                 <Radio value="3" label="10K Type2" />
                 <Radio value="7" label="10K Type3" />
@@ -285,8 +291,11 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Other Options
                 </Text>
+                <Button appearance="secondary" className={styles.editButton}>
+                  Edit
+                </Button>
               </div>
-              <div className={styles.rangeGroup}>
+              <div className={styles.otherOptionsGrid}>
                 {INPUT_ANALOG_RANGES.filter(r => (r.value >= 11 && r.value <= 14) || r.value === 19).map((range) => (
                   <div key={range.value} className={styles.rangeOption}>
                     <Radio
