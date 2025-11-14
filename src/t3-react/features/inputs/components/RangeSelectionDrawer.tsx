@@ -217,28 +217,28 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <div className={styles.rangeGroup}>
                   {/* Placeholder for multi-state values */}
                   <div className={styles.rangeOption}>
-                    <Radio value="100" label="Custom 1" disabled />
+                    <Radio value="100" label="Custom 1" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="101" label="Custom 2" disabled />
+                    <Radio value="101" label="Custom 2" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="102" label="Custom 3" disabled />
+                    <Radio value="102" label="Custom 3" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="103" label="Custom 4" disabled />
+                    <Radio value="103" label="Custom 4" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="104" label="Custom 5" disabled />
+                    <Radio value="104" label="Custom 5" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="105" label="Custom 6" disabled />
+                    <Radio value="105" label="Custom 6" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="106" label="Custom 7" disabled />
+                    <Radio value="106" label="Custom 7" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="107" label="Custom 8" disabled />
+                    <Radio value="107" label="Custom 8" />
                   </div>
                 </div>
               </div>
@@ -336,7 +336,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                   </div>
                 ))}
                 <div className={styles.rangeOption}>
-                  <Radio value="25" label="25. Pulse Count (Fast 100Hz)" disabled />
+                  <Radio value="25" label="25. Pulse Count (Fast 100Hz)" />
                 </div>
               </div>
             </div>
