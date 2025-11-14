@@ -30,14 +30,20 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: auto;
+  padding-bottom: 10px;
 }
 
 /* Combined Default and Selection section - 2 columns */
 .topCombinedSection {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 24px;
   width: 100%;
+  padding-bottom: 16px;
 }
 
 .defaultColumn {
@@ -219,7 +225,7 @@
   width: 100%;
 }
 
-.analogSection > :global(.fui-RadioGroup) {
+.analogColumns {
   display: grid;
   grid-template-columns: 0.7fr 1.5fr 0.8fr;
   gap: 24px;
@@ -239,6 +245,20 @@
   display: flex;
   gap: 16px;
   margin-bottom: 8px;
+}
+
+.tempCheckbox {
+  font-size: 11px;
+}
+
+.tempCheckbox :global(.fui-Checkbox__label) {
+  font-size: 11px;
+}
+
+.tempCheckbox :global(.fui-Checkbox__indicator) {
+  width: 14px;
+  height: 14px;
+  font-size: 10px;
 }
 
 .otherOptionsGrid {
@@ -373,6 +393,7 @@
 .editButton {
   align-self: flex-start;
   font-size: 11px;
+  font-weight: normal;
   height: 22px;
   padding: 0 10px;
   min-width: 50px;

@@ -104,6 +104,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
+        <RadioGroup
+          value={selectedRange.toString()}
+          onChange={(_, data) => setSelectedRange(Number(data.value))}
+        >
         {/* Combined Default and Selection section */}
         <div className={styles.topCombinedSection}>
           {/* Column 1: Default */}
@@ -112,12 +116,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               <span className={styles.dividerText}>Default</span>
             </div>
             <div className={styles.defaultSection}>
-              <RadioGroup
-                value={selectedRange.toString()}
-                onChange={(_, data) => setSelectedRange(Number(data.value))}
-              >
-                <Radio value="0" label="0. Unused" />
-              </RadioGroup>
+              <Radio value="0" label="0. Unused" />
             </div>
           </div>
 
@@ -160,10 +159,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
         {/* Main content: 3-column layout */}
         <div className={styles.mainContent}>
-          <RadioGroup
-            value={selectedRange.toString()}
-            onChange={(_, data) => setSelectedRange(Number(data.value))}
-          >
             <div className={styles.digitalSection}>
               {/* Left column: Digital Units */}
               <div className={styles.column}>
@@ -190,7 +185,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                   <Text weight="semibold" size={300} className={styles.sectionTitle}>
                     Custom Digital Units
                   </Text>
-                  <Button appearance="secondary" className={styles.editButton}>
+                  <Button appearance="primary" className={styles.editButton}>
                     Edit
                   </Button>
                 </div>
@@ -228,7 +223,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                   <Text weight="semibold" size={300} className={styles.sectionTitle}>
                     Multi State
                   </Text>
-                  <Button appearance="secondary" className={styles.editButton}>
+                  <Button appearance="primary" className={styles.editButton}>
                     Edit
                   </Button>
                 </div>
@@ -249,7 +244,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </div>
               </div>
             </div>
-          </RadioGroup>
 
         {/* Input Analog Units section divider */}
         <div className={styles.sectionDivider}>
@@ -258,10 +252,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 
         {/* Input Analog Units section - 3 columns like Digital */}
         <div className={styles.analogSection}>
-          <RadioGroup
-            value={selectedRange.toString()}
-            onChange={(_, data) => setSelectedRange(Number(data.value))}
-          >
+          <div className={styles.analogColumns}>
             {/* Column 1: Temperature Sensors */}
             <div className={styles.column}>
               <div className={styles.sectionHeader}>
@@ -270,15 +261,20 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </Text>
               </div>
               <div className={styles.tempSensorsColumn}>
-                <RadioGroup
-                  value={tempUnit}
-                  onChange={(_, data) => setTempUnit(data.value)}
-                >
-                  <div className={styles.tempTypeRow}>
-                    <Radio value="55" label="°C" />
-                    <Radio value="56" label="°F" />
-                  </div>
-                </RadioGroup>
+                <div className={styles.tempTypeRow}>
+                  <Checkbox
+                    checked={tempUnit === '55'}
+                    onChange={() => setTempUnit('55')}
+                    label="°C"
+                    className={styles.tempCheckbox}
+                  />
+                  <Checkbox
+                    checked={tempUnit === '56'}
+                    onChange={() => setTempUnit('56')}
+                    label="°F"
+                    className={styles.tempCheckbox}
+                  />
+                </div>
                 <Radio value="1" label="3K YSI 44005" />
                 <Radio value="3" label="10K Type2" />
                 <Radio value="7" label="10K Type3" />
@@ -382,9 +378,10 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </div>
               </div>
             </div>
-          </RadioGroup>
+          </div>
         </div>
         </div>
+        </RadioGroup>
       </DrawerBody>
     </Drawer>
   );
