@@ -68,8 +68,18 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     }
   }, [isOpen, currentRange]);
 
-  // Get current range label
-  const currentRangeLabel = getRangeLabel(selectedRange, digitalAnalog);
+  // Determine the type based on selected value
+  const getDigitalAnalogForValue = (value: number): number => {
+    // Digital ranges: 1-30, 100-103
+    if ((value >= 1 && value <= 30) || (value >= 100 && value <= 103)) {
+      return 1; // BAC_UNITS_DIGITAL
+    }
+    // Everything else is analog
+    return 0; // BAC_UNITS_ANALOG
+  };
+
+  // Get current range label with correct type
+  const currentRangeLabel = getRangeLabel(selectedRange, getDigitalAnalogForValue(selectedRange));
 
   return (
     <Drawer
