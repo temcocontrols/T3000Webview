@@ -56,6 +56,7 @@
   display: flex;
   align-items: center;
   margin-bottom: 12px;
+  margin-top: 10px;
   color: #605e5c;
 }
 
@@ -198,15 +199,14 @@
 }
 
 .defaultSection :global(.fui-Radio__label) {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* Digital section - 3 columns horizontal */
 .digitalSection {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1fr;
+  grid-template-columns: 2.2fr 1fr 1fr;
   gap: 24px;
-  margin-bottom: 20px;
   padding: 16px;
   background-color: #fafafa;
   border-radius: 4px;
@@ -219,7 +219,6 @@
   background-color: #fafafa;
   border-radius: 4px;
   width: 100%;
-  margin-bottom: 20px;
 }
 
 .analogSection > :global(.fui-RadioGroup) {
@@ -235,7 +234,7 @@
 }
 
 .tempSensorsColumn :global(.fui-Radio__label) {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .tempTypeRow {
@@ -254,7 +253,7 @@
 .mainContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  /* gap: 16px; */
   flex: 1;
   overflow-y: auto;
   min-height: 0;
@@ -341,7 +340,7 @@
 }
 
 .rangeOption :global(.fui-Radio__label) {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.3;
 }
 
