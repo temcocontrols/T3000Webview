@@ -171,9 +171,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                   <Text weight="semibold" size={300} className={styles.sectionTitle}>
                     Digital Units
                   </Text>
-                  <Button appearance="secondary" className={styles.editButton}>
-                    Edit
-                  </Button>
                 </div>
                 <div className={styles.rangeGroupTwoColumn}>
                   {DIGITAL_RANGES.filter(r => r.value >= 1 && r.value <= 22).map((range) => (
@@ -267,9 +264,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Temp Sensors
                 </Text>
-                <Button appearance="secondary" className={styles.editButton}>
-                  Edit
-                </Button>
               </div>
               <div className={styles.tempSensorsColumn}>
                 <RadioGroup
@@ -294,9 +288,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Custom Range
                 </Text>
-                <Button appearance="secondary" className={styles.editButton}>
-                  Edit
-                </Button>
               </div>
               <div className={styles.rangeGroup}>
                 {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
@@ -316,9 +307,6 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <Text weight="semibold" size={300} className={styles.sectionTitle}>
                   Other Options
                 </Text>
-                <Button appearance="secondary" className={styles.editButton}>
-                  Edit
-                </Button>
               </div>
               <div className={styles.otherOptionsGrid}>
                 {INPUT_ANALOG_RANGES.filter(r => (r.value >= 11 && r.value <= 14) || r.value === 19).map((range) => (
