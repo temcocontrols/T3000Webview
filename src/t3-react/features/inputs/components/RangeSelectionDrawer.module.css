@@ -244,6 +244,8 @@
 .otherOptionsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(10, auto);
   gap: 0px 8px;
 }
 

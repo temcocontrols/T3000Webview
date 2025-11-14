@@ -195,14 +195,30 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                   </Button>
                 </div>
                 <div className={styles.rangeGroup}>
-                  {DIGITAL_RANGES.filter(r => r.value >= 23 && r.value <= 30).map((range) => (
-                    <div key={range.value} className={styles.rangeOption}>
-                      <Radio
-                        value={range.value.toString()}
-                        label={`${range.value}. ${range.label}`}
-                      />
-                    </div>
-                  ))}
+                  <div className={styles.rangeOption}>
+                    <Radio value="23" label="23. 9/9" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="24" label="24. /" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="25" label="25. /" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="26" label="26. /" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="27" label="27. /" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="28" label="28. /" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="29" label="29. /" />
+                  </div>
+                  <div className={styles.rangeOption}>
+                    <Radio value="30" label="30. /" />
+                  </div>
                 </div>
               </div>
 
@@ -219,28 +235,16 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 <div className={styles.rangeGroup}>
                   {/* Placeholder for multi-state values */}
                   <div className={styles.rangeOption}>
-                    <Radio value="100" label="Custom 1" />
+                    <Radio value="100" label="" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="101" label="Custom 2" />
+                    <Radio value="101" label="" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="102" label="Custom 3" />
+                    <Radio value="102" label="" />
                   </div>
                   <div className={styles.rangeOption}>
-                    <Radio value="103" label="Custom 4" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="104" label="Custom 5" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="105" label="Custom 6" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="106" label="Custom 7" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="107" label="Custom 8" />
+                    <Radio value="103" label="" />
                   </div>
                 </div>
               </div>
@@ -290,27 +294,65 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </Text>
               </div>
               <div className={styles.otherOptionsGrid}>
-                {INPUT_ANALOG_RANGES.filter(r => (r.value >= 11 && r.value <= 14) || r.value === 19).map((range) => (
-                  <div key={range.value} className={styles.rangeOption}>
-                    <Radio
-                      value={range.value.toString()}
-                      label={`${range.value}. ${range.label}`}
-                    />
-                  </div>
-                ))}
                 <div className={styles.rangeOption}>
-                  <Radio value="15" label="15. Pulse Count (Slow 1Hz)" />
+                  <Radio value="41" label="41. 0.0 to 5.0 Volts" />
                 </div>
-                {INPUT_ANALOG_RANGES.filter(r => r.value >= 27 && r.value <= 34).map((range) => (
-                  <div key={range.value} className={styles.rangeOption}>
-                    <Radio
-                      value={range.value.toString()}
-                      label={`${range.value}. ${range.label}`}
-                    />
-                  </div>
-                ))}
                 <div className={styles.rangeOption}>
-                  <Radio value="25" label="25. Pulse Count (Fast 100Hz)" />
+                  <Radio value="42" label="42. 0.0 to 100 Amps" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="43" label="43. 4.0 to 20 ma" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="44" label="44. 0.0 to 20 psi" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="45" label="45. Pulse Count (Slow 1Hz)" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="46" label="46. 0 to 100 % (0-10V)" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="47" label="47. 0 to 100 % (0-5V)" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="48" label="48. 0 to 100 % (4-20ma)" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="49" label="49. 0.0 to 10.0 Volts" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="65" label="65. Reserved" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="55" label="55. Pulse Count (Fast 100Hz)" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="56" label="56. Hz" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="57" label="57. Humidity %" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="58" label="58. CO2 PPM" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="59" label="59. Revolutions Per Minute" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="60" label="60. TVOC PPB" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="61" label="61. ug/m3" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="62" label="62. #/cm3" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="63" label="63. dB" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="64" label="64. Lux" />
                 </div>
               </div>
             </div>
@@ -323,14 +365,21 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </Text>
               </div>
               <div className={styles.rangeGroup}>
-                {INPUT_ANALOG_RANGES.filter(r => r.value >= 20 && r.value <= 24).map((range) => (
-                  <div key={range.value} className={styles.rangeOption}>
-                    <Radio
-                      value={range.value.toString()}
-                      label={`${range.value}. ${range.label}`}
-                    />
-                  </div>
-                ))}
+                <div className={styles.rangeOption}>
+                  <Radio value="50" label="50. Table 1" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="51" label="51. Table 2" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="52" label="52. Table 3" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="53" label="53. Table 4" />
+                </div>
+                <div className={styles.rangeOption}>
+                  <Radio value="54" label="54. Table 5" />
+                </div>
               </div>
             </div>
           </RadioGroup>
