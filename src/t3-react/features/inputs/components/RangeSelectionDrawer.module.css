@@ -32,6 +32,28 @@
   overflow-y: auto;
 }
 
+/* Combined Default and Selection section - 2 columns */
+.topCombinedSection {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e1dfdd;
+}
+
+.defaultColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+}
+
+.selectionColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 /* Section divider with text */
 .sectionDivider {
   display: flex;

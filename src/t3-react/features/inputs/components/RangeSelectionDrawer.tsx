@@ -104,48 +104,53 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
       </DrawerHeader>
 
       <DrawerBody className={styles.drawerBody}>
-        {/* Section divider */}
-        <div className={styles.sectionDivider}>
-          <span className={styles.dividerText}>Selection</span>
-        </div>
-
-        {/* Top section: Manual input */}
-        <div className={styles.topSection}>
-          <Label className={styles.inputLabel}>
-            Enter Range Number (0-64):
-          </Label>
-          <Input
-            type="number"
-            value={manualInput}
-            onChange={(_, data) => handleManualInputChange(data.value)}
-            className={styles.numberInput}
-            min={0}
-            max={64}
-          />
-          <div className={styles.currentLabel}>
-            {currentRangeLabel}
+        {/* Combined Default and Selection section */}
+        <div className={styles.topCombinedSection}>
+          {/* Column 1: Default */}
+          <div className={styles.defaultColumn}>
+            <div className={styles.sectionDivider}>
+              <span className={styles.dividerText}>Default</span>
+            </div>
+            <div className={styles.defaultSection}>
+              <RadioGroup
+                value={selectedRange.toString()}
+                onChange={(_, data) => setSelectedRange(Number(data.value))}
+              >
+                <Radio value="0" label="0. Unused" />
+              </RadioGroup>
+            </div>
           </div>
-          <div className={styles.actionButtons}>
-            <Button appearance="primary" onClick={handleSave} className={styles.saveButton}>
-              OK
-            </Button>
-            <Button appearance="secondary" onClick={handleCancel}>
-              Cancel
-            </Button>
-          </div>
-        </div>
 
-        {/* Default section */}
-        <div className={styles.sectionDivider}>
-          <span className={styles.dividerText}>Default</span>
-        </div>
-        <div className={styles.defaultSection}>
-          <RadioGroup
-            value={selectedRange.toString()}
-            onChange={(_, data) => setSelectedRange(Number(data.value))}
-          >
-            <Radio value="0" label="0. Unused" />
-          </RadioGroup>
+          {/* Column 2: Selection */}
+          <div className={styles.selectionColumn}>
+            <div className={styles.sectionDivider}>
+              <span className={styles.dividerText}>Selection</span>
+            </div>
+            <div className={styles.topSection}>
+              <Label className={styles.inputLabel}>
+                Enter Range Number (0-64):
+              </Label>
+              <Input
+                type="number"
+                value={manualInput}
+                onChange={(_, data) => handleManualInputChange(data.value)}
+                className={styles.numberInput}
+                min={0}
+                max={64}
+              />
+              <div className={styles.currentLabel}>
+                {currentRangeLabel}
+              </div>
+              <div className={styles.actionButtons}>
+                <Button appearance="primary" onClick={handleSave} className={styles.saveButton}>
+                  OK
+                </Button>
+                <Button appearance="secondary" onClick={handleCancel}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Digital section divider */}
