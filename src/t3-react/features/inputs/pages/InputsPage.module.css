@@ -227,8 +227,7 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  min-height: fit-content;
   min-width: max-content;
 }
 
@@ -237,13 +236,14 @@
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
   z-index: 10;
 }
 
 /* Data body - scrollable area */
 .container :global(.fui-DataGridBody) {
   flex: 1 1 auto;
-  overflow: visible;
   min-height: 0;
 }
 
