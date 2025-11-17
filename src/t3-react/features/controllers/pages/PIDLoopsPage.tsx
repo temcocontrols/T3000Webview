@@ -19,15 +19,17 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
-  ArrowClockwise24Regular,
-  Save24Regular,
-  Dismiss24Regular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
+  ArrowSyncRegular,
   ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
+  ArrowSortRegular,
+  ErrorCircleRegular,
+  ArrowClockwise24Regular,
+  Save24Regular,
+  Dismiss24Regular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './PIDLoopsPage.module.css';
@@ -433,20 +435,15 @@ const PIDLoopsPage: React.FC = () => {
     <div className={styles.pidLoopsPage}>
       {/* Azure Portal Blade Content */}
       <div className={styles.bladeContent}>
-        {/* Error Banner */}
+        {/* ========================================
+            ERROR MESSAGE (if any)
+            ======================================== */}
         {error && (
-          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading PID loops</Text>
-                <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-              </div>
-            </div>
+          <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+            <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+              {error}
+            </Text>
           </div>
         )}
 

@@ -35,6 +35,7 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './SchedulesPage.module.css';
@@ -325,44 +326,24 @@ export const SchedulesPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* ========================================
-          AZURE PORTAL BLADE - FULL WIDTH LAYOUT
-          Matches: ext-blade
-          ======================================== */}
-      <div className={styles.blade}>
-        <div className={styles.bladeContent}>
-          {/* ========================================
-              BLADE HEADER - Title & Toolbar
-              Matches: ext-blade-header
-              ======================================== */}
-          <div className={styles.bladeHeader}>
-            <div className={styles.titleContainer}>
-              <h1 className={styles.title}>Schedules</h1>
-            </div>
-          </div>
-
-          {/* ========================================
-              PART CONTAINER - Main Content Wrapper
-              Matches: fxs-part-container
-              ======================================== */}
-          <div className={styles.partContainer}>
+      {/* Blade Content Container */}
+      <div className={styles.bladeContentContainer}>
+        {/* Blade Content Wrapper */}
+        <div className={styles.bladeContentWrapper}>
+          {/* Blade Content */}
+          <div className={styles.bladeContent}>
             {/* Part Content - Main Content Area */}
             <div className={styles.partContent}>
 
-              {/* ERROR MESSAGE */}
+              {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
               {error && (
-                <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
-                      </svg>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading schedules</Text>
-                      <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-                    </div>
-                  </div>
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
                 </div>
               )}
 
@@ -377,31 +358,37 @@ export const SchedulesPage: React.FC = () => {
                 </div>
               )}
 
-              {/* TOOLBAR */}
+              {/* ========================================
+                  TOOLBAR - Azure Portal Command Bar
+                  Matches: ext-overview-assistant-toolbar
+                  ======================================== */}
               <div className={styles.toolbar}>
-                <div className={styles.toolbarLeft}>
+                <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
                   <button
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
-                    disabled={loading || refreshing}
+                    disabled={refreshing}
                     title="Refresh"
                     aria-label="Refresh"
                   >
                     <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
-                  {/* Export Button */}
+                  {/* Export to CSV Button */}
                   <button
                     className={styles.toolbarButton}
                     onClick={handleExport}
-                    title="Export"
-                    aria-label="Export"
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
                   >
                     <ArrowDownloadRegular />
-                    <span>Export</span>
+                    <span>Export to CSV</span>
                   </button>
+
+                  {/* Toolbar Separator */}
+                  <div className={styles.toolbarSeparator} role="separator" />
 
                   {/* Settings Button */}
                   <button
@@ -431,12 +418,18 @@ export const SchedulesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* HORIZONTAL DIVIDER */}
+              {/* ========================================
+                  HORIZONTAL DIVIDER
+                  Matches: ext-overview-hr
+                  ======================================== */}
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
 
-              {/* DOCKING BODY */}
+              {/* ========================================
+                  DOCKING BODY - Main Content
+                  Matches: msportalfx-docking-body
+                  ======================================== */}
               <div className={styles.dockingBody}>
 
                 {/* Loading State */}
@@ -458,7 +451,7 @@ export const SchedulesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* No Schedules Found */}
+                {/* Data Grid - Azure Portal Style */}
                 {selectedDevice && !loading && !error && schedules.length === 0 && (
                   <div style={{ marginTop: '40px' }}>
                     <div style={{ textAlign: 'center', padding: '0 20px' }}>

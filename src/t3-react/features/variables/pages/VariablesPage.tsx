@@ -39,6 +39,7 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -520,12 +521,11 @@ export const VariablesPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ padding: '12px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '2px' }}>
-                    <Text style={{ color: '#d13438' }} weight="semibold">Error loading variables</Text>
-                    <br />
-                    <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-                  </div>
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
                 </div>
               )}
 
