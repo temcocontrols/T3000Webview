@@ -1,18 +1,18 @@
 /**
- * Holidays Page - Azure Portal Complete Sample
+ * Trendlogs Page - Azure Portal Complete Sample
  *
  * Complete Azure Portal blade layout matching Programs/Schedules pattern
- * Based on C++ BacnetAnnualRoutine.cpp structure:
- * - 5 columns: NUM, Full Label, Auto/Manual, Value, Label
- * - Auto/Manual toggle
+ * Based on C++ BacnetMonitor.cpp structure:
+ * - 5 columns: NUM, Label, Interval, Status, Data Size (KB)
  * - Inline editing for labels
+ * - Status display
  *
- * C++ Reference: T3000-Source/T3000/BacnetAnnualRoutine.cpp
- * - Column 0: ANNUAL_ROUTINE_NUM (checkbox)
- * - Column 1: ANNUAL_ROUTINE_FULL_LABEL (edit)
- * - Column 2: ANNUAL_ROUTINE_AUTO_MANUAL (combobox)
- * - Column 3: ANNUAL_ROUTINE_VALUE (combobox)
- * - Column 4: ANNUAL_ROUTINE_LABLE (edit)
+ * C++ Reference: T3000-Source/T3000/BacnetMonitor.cpp
+ * - Column 0: MONITOR_NUM (checkbox)
+ * - Column 1: MONITOR_LABEL (edit)
+ * - Column 2: MONITOR_INTERVAL (readonly)
+ * - Column 3: MONITOR_STATUS (readonly)
+ * - Column 4: MONITOR_DATA_SIZE (readonly)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -29,8 +29,8 @@ import {
   Button,
   Spinner,
   Text,
-  Switch,
   Input,
+  Badge,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -42,27 +42,27 @@ import {
   ArrowSortRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import styles from './HolidaysPage.module.css';
+import styles from './TrendlogsPage.module.css';
 
-// Types based on C++ BacnetAnnualRoutine structure
-interface HolidayPoint {
+// Types based on C++ BacnetMonitor structure
+interface TrendlogPoint {
   serialNumber: number;
-  holidayId?: string;
-  fullLabel?: string;
-  autoManual?: string;
-  value?: string;
+  monitorId?: string;
   label?: string;
+  interval?: string;
+  status?: string;
+  dataSize?: string;
 }
 
-export const HolidaysPage: React.FC = () => {
+export const TrendlogsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
 
-  const [holidays, setHolidays] = useState<HolidayPoint[]>([]);
+  const [trendlogs, setTrendlogs] = useState<TrendlogPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingCell, setEditingCell] = useState<{ serialNumber: number; holidayId: string; field: string } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ serialNumber: number; monitorId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -89,10 +89,10 @@ export const HolidaysPage: React.FC = () => {
     }
   }, [selectedDevice, treeData, selectDevice]);
 
-  // Fetch holidays for selected device
-  const fetchHolidays = useCallback(async () => {
+  // Fetch trendlogs for selected device
+  const fetchTrendlogs = useCallback(async () => {
     if (!selectedDevice) {
-      setHolidays([]);
+      setTrendlogs([]);
       return;
     }
 
@@ -100,37 +100,37 @@ export const HolidaysPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/table/ANNUAL_TABLE`;
+      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch holidays: ${response.statusText}`);
+        throw new Error(`Failed to fetch trendlogs: ${response.statusText}`);
       }
 
       const data = await response.json();
-      setHolidays(data.data || []);
+      setTrendlogs(data.trendlogs || []);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load holidays';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
       setError(errorMessage);
-      console.error('Error fetching holidays:', err);
+      console.error('Error fetching trendlogs:', err);
     } finally {
       setLoading(false);
     }
   }, [selectedDevice]);
 
   useEffect(() => {
-    fetchHolidays();
-  }, [fetchHolidays]);
+    fetchTrendlogs();
+  }, [fetchTrendlogs]);
 
   // Handlers
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchHolidays();
+    await fetchTrendlogs();
     setRefreshing(false);
   };
 
   const handleExport = () => {
-    console.log('Export holidays to CSV');
+    console.log('Export trendlogs to CSV');
   };
 
   const handleSettings = () => {
@@ -151,8 +151,8 @@ export const HolidaysPage: React.FC = () => {
   };
 
   // Inline editing handlers
-  const handleCellDoubleClick = (item: HolidayPoint, field: string, currentValue: string) => {
-    setEditingCell({ serialNumber: item.serialNumber, holidayId: item.holidayId || '', field });
+  const handleCellDoubleClick = (item: TrendlogPoint, field: string, currentValue: string) => {
+    setEditingCell({ serialNumber: item.serialNumber, monitorId: item.monitorId || '', field });
     setEditValue(currentValue || '');
   };
 
@@ -168,11 +168,11 @@ export const HolidaysPage: React.FC = () => {
       console.log('Saving:', editingCell, editValue);
 
       // Update local state
-      setHolidays(prevHolidays =>
-        prevHolidays.map(holiday =>
-          holiday.serialNumber === editingCell.serialNumber && holiday.holidayId === editingCell.holidayId
-            ? { ...holiday, [editingCell.field]: editValue }
-            : holiday
+      setTrendlogs(prevTrendlogs =>
+        prevTrendlogs.map(trendlog =>
+          trendlog.serialNumber === editingCell.serialNumber && trendlog.monitorId === editingCell.monitorId
+            ? { ...trendlog, [editingCell.field]: editValue }
+            : trendlog
         )
       );
 
@@ -192,127 +192,26 @@ export const HolidaysPage: React.FC = () => {
     }
   };
 
-  // Auto/Manual toggle
-  const handleAutoManualToggle = async (item: HolidayPoint) => {
-    const newValue = item.autoManual === '1' ? '0' : '1';
-
-    setHolidays(prevHolidays =>
-      prevHolidays.map(holiday =>
-        holiday.serialNumber === item.serialNumber && holiday.holidayId === item.holidayId
-          ? { ...holiday, autoManual: newValue }
-          : holiday
-      )
-    );
-
-    console.log('Toggle Auto/Manual:', item.holidayId, newValue);
-    // TODO: Call API to update
-  };
-
-  // Column definitions matching C++ BacnetAnnualRoutine: NUM, Full Label, Auto/Manual, Value, Label
-  const columns: TableColumnDefinition<HolidayPoint>[] = [
-    // 1. NUM (Holiday ID)
-    createTableColumn<HolidayPoint>({
-      columnId: 'holidayId',
+  // Column definitions matching C++ BacnetMonitor: NUM, Label, Interval, Status, Data Size
+  const columns: TableColumnDefinition<TrendlogPoint>[] = [
+    // 1. NUM (Monitor ID)
+    createTableColumn<TrendlogPoint>({
+      columnId: 'monitorId',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holidayId')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('monitorId')}>
           <span>NUM</span>
-          {sortColumn === 'holidayId' ? (
+          {sortColumn === 'monitorId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular style={{ opacity: 0.5 }} />
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.holidayId || '---'}</TableCellLayout>,
+      renderCell: (item) => <TableCellLayout>{item.monitorId || '---'}</TableCellLayout>,
     }),
 
-    // 2. Full Label (editable)
-    createTableColumn<HolidayPoint>({
-      columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.holidayId === item.holidayId &&
-                          editingCell?.field === 'fullLabel';
-
-        return (
-          <TableCellLayout>
-            {isEditing ? (
-              <Input
-                value={editValue}
-                onChange={(e, data) => setEditValue(data.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                size="small"
-                style={{ width: '100%' }}
-              />
-            ) : (
-              <div
-                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                style={{ cursor: 'text', minHeight: '20px' }}
-              >
-                <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
-              </div>
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
-
-    // 3. Auto/Manual (toggle)
-    createTableColumn<HolidayPoint>({
-      columnId: 'autoManual',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Auto/Manual</span>
-        </div>
-      ),
-      renderCell: (item) => {
-        const isAuto = item.autoManual === '1' || item.autoManual?.toLowerCase() === 'auto';
-
-        return (
-          <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Switch
-                checked={isAuto}
-                onChange={() => handleAutoManualToggle(item)}
-              />
-              <Text size={200}>{isAuto ? 'Auto' : 'Manual'}</Text>
-            </div>
-          </TableCellLayout>
-        );
-      },
-    }),
-
-    // 4. Value (editable)
-    createTableColumn<HolidayPoint>({
-      columnId: 'value',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.value || '---'}</TableCellLayout>,
-    }),
-
-    // 5. Label (editable)
-    createTableColumn<HolidayPoint>({
+    // 2. Label (editable)
+    createTableColumn<TrendlogPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
@@ -326,7 +225,7 @@ export const HolidaysPage: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.holidayId === item.holidayId &&
+                          editingCell?.monitorId === item.monitorId &&
                           editingCell?.field === 'label';
 
         return (
@@ -347,17 +246,74 @@ export const HolidaysPage: React.FC = () => {
                 onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
                 style={{ cursor: 'text', minHeight: '20px' }}
               >
-                <Text size={200}>{item.label || '---'}</Text>
+                <Text size={200}>{item.label || 'Unnamed'}</Text>
               </div>
             )}
           </TableCellLayout>
         );
       },
     }),
+
+    // 3. Interval (readonly)
+    createTableColumn<TrendlogPoint>({
+      columnId: 'interval',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('interval')}>
+          <span>Interval</span>
+          {sortColumn === 'interval' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.interval || '---'}</TableCellLayout>,
+    }),
+
+    // 4. Status (readonly with badge)
+    createTableColumn<TrendlogPoint>({
+      columnId: 'status',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Status</span>
+        </div>
+      ),
+      renderCell: (item) => {
+        const isActive = item.status?.toLowerCase() === 'active' || item.status === '1';
+
+        return (
+          <TableCellLayout>
+            <Badge
+              appearance={isActive ? 'filled' : 'outline'}
+              color={isActive ? 'success' : 'subtle'}
+              size="small"
+            >
+              {isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          </TableCellLayout>
+        );
+      },
+    }),
+
+    // 5. Data Size (KB) (readonly)
+    createTableColumn<TrendlogPoint>({
+      columnId: 'dataSize',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('dataSize')}>
+          <span>Data Size (KB)</span>
+          {sortColumn === 'dataSize' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.dataSize || '0'}</TableCellLayout>,
+    }),
   ];
 
   return (
-    <div className={styles.holidaysPage}>
+    <div className={styles.trendlogsPage}>
       {/* Azure Portal Blade Container */}
       <div className={styles.bladeContainer}>
         {/* Blade Wrapper */}
@@ -374,7 +330,7 @@ export const HolidaysPage: React.FC = () => {
                     </svg>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading holidays</Text>
+                    <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading trendlogs</Text>
                     <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
                   </div>
                 </div>
@@ -385,8 +341,8 @@ export const HolidaysPage: React.FC = () => {
             {selectedDevice && (
               <div className={styles.bladeDescription}>
                 <span>
-                  Showing holidays for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                  {' '}This table displays all configured annual routine/holiday schedules including labels, auto/manual modes, and values.
+                  Showing trendlog monitors for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
+                  {' '}This table displays all configured trendlog/monitor data collection points including status, intervals, and data sizes.
                   {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
                 </span>
               </div>
@@ -433,12 +389,12 @@ export const HolidaysPage: React.FC = () => {
                   <input
                     className={styles.searchInput}
                     type="text"
-                    placeholder="Search holidays..."
+                    placeholder="Search trendlogs..."
                     value={searchQuery}
                     onChange={handleSearchChange}
                     spellCheck="false"
                     role="searchbox"
-                    aria-label="Search holidays"
+                    aria-label="Search trendlogs"
                   />
                 </div>
               </div>
@@ -452,10 +408,10 @@ export const HolidaysPage: React.FC = () => {
             {/* DOCKING BODY */}
             <div className={styles.dockingBody}>
 
-              {loading && holidays.length === 0 && (
+              {loading && trendlogs.length === 0 && (
                 <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Spinner size="large" />
-                  <Text style={{ marginLeft: '12px' }}>Loading holidays...</Text>
+                  <Text style={{ marginLeft: '12px' }}>Loading trendlogs...</Text>
                 </div>
               )}
 
@@ -464,21 +420,21 @@ export const HolidaysPage: React.FC = () => {
                   <div style={{ textAlign: 'center' }}>
                     <Text size={500} weight="semibold">No device selected</Text>
                     <br />
-                    <Text size={300}>Please select a device from the tree to view holidays</Text>
+                    <Text size={300}>Please select a device from the tree to view trendlogs</Text>
                   </div>
                 </div>
               )}
 
-              {selectedDevice && !loading && !error && holidays.length === 0 && (
+              {selectedDevice && !loading && !error && trendlogs.length === 0 && (
                 <div style={{ marginTop: '40px' }}>
                   <div style={{ textAlign: 'center', padding: '0 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
                         <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                       </svg>
-                      <Text size={500} weight="semibold">No holidays found</Text>
+                      <Text size={500} weight="semibold">No trendlogs found</Text>
                     </div>
-                    <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured holidays</Text>
+                    <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured trendlog monitors</Text>
                     <Button
                       appearance="subtle"
                       icon={<ArrowSyncRegular />}
@@ -491,32 +447,32 @@ export const HolidaysPage: React.FC = () => {
                 </div>
               )}
 
-              {selectedDevice && !loading && !error && holidays.length > 0 && (
+              {selectedDevice && !loading && !error && trendlogs.length > 0 && (
                 <DataGrid
-                  items={holidays}
+                  items={trendlogs}
                   columns={columns}
                   sortable
                   resizableColumns
                   columnSizingOptions={{
-                    holidayId: {
+                    monitorId: {
                       minWidth: 60,
                       defaultWidth: 80,
                     },
-                    fullLabel: {
-                      minWidth: 150,
+                    label: {
+                      minWidth: 160,
                       defaultWidth: 200,
                     },
-                    autoManual: {
+                    interval: {
                       minWidth: 100,
                       defaultWidth: 120,
                     },
-                    value: {
+                    status: {
                       minWidth: 80,
                       defaultWidth: 100,
                     },
-                    label: {
-                      minWidth: 90,
-                      defaultWidth: 120,
+                    dataSize: {
+                      minWidth: 100,
+                      defaultWidth: 130,
                     },
                   }}
                 >
@@ -527,9 +483,9 @@ export const HolidaysPage: React.FC = () => {
                       )}
                     </DataGridRow>
                   </DataGridHeader>
-                  <DataGridBody<HolidayPoint>>
+                  <DataGridBody<TrendlogPoint>>
                     {({ item, rowId }) => (
-                      <DataGridRow<HolidayPoint> key={rowId}>
+                      <DataGridRow<TrendlogPoint> key={rowId}>
                         {({ renderCell }) => (
                           <DataGridCell>{renderCell(item)}</DataGridCell>
                         )}
@@ -546,3 +502,5 @@ export const HolidaysPage: React.FC = () => {
     </div>
   );
 };
+
+export default TrendlogsPage;

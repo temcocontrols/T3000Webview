@@ -25,6 +25,9 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ArrowDownloadRegular,
+  SettingsRegular,
+  SearchRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './PIDLoopsPage.module.css';
@@ -65,6 +68,8 @@ const PIDLoopsPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -91,14 +96,20 @@ const PIDLoopsPage: React.FC = () => {
   const fetchControllers = useCallback(async () => {
     if (!selectedDevice) return;
 
+    console.log('Fetching PID loops for device:', selectedDevice.serialNumber);
     setIsLoading(true);
     setError(null);
     try {
       // Using generic table API since no specific PID endpoint exists yet
-      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/PID_TABLE`);
+      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/table/PID_TABLE`;
+      console.log('Fetching from URL:', url);
+      const response = await fetch(url);
+      console.log('Response status:', response.status);
       if (!response.ok) throw new Error('Failed to fetch controllers');
 
       const result = await response.json();
+      console.log('API response:', result);
+      console.log('Data array:', result.data);
       setControllers(result.data || []);
     } catch (error) {
       console.error('Error fetching controllers:', error);
@@ -145,10 +156,34 @@ const PIDLoopsPage: React.FC = () => {
     }
   };
 
-  // Discard changes
+  // Discard all changes
   const handleDiscardChanges = () => {
     setEditedValues({});
     setHasChanges(false);
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchControllers();
+    setRefreshing(false);
+  };
+
+  // Handle export
+  const handleExport = () => {
+    console.log('Export PID loops to CSV');
+    // TODO: Implement CSV export
+  };
+
+  // Handle settings
+  const handleSettings = () => {
+    console.log('Settings clicked');
+    // TODO: Implement settings dialog
+  };
+
+  // Handle search
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
 
   // Toggle Auto/Manual
@@ -398,41 +433,109 @@ const PIDLoopsPage: React.FC = () => {
     <div className={styles.pidLoopsPage}>
       {/* Azure Portal Blade Content */}
       <div className={styles.bladeContent}>
+        {/* Error Banner */}
+        {error && (
+          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading PID loops</Text>
+                <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Blade Description */}
+        {selectedDevice && (
+          <div className={styles.bladeDescription}>
+            <span>
+              Showing PID loops for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
+              {' '}This table displays all PID controller configurations including inputs, outputs, setpoints, and tuning parameters.
+              {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+            </span>
+          </div>
+        )}
+
         {/* Toolbar Section */}
         <div className={styles.toolbar}>
-          <button
-            className={styles.toolbarButton}
-            onClick={fetchControllers}
-            disabled={isLoading}
-            title="Refresh"
-            aria-label="Refresh"
-          >
-            <ArrowClockwise24Regular />
-            <span>Refresh</span>
-          </button>
-          {hasChanges && (
-            <>
-              <button
-                className={styles.toolbarButton}
-                onClick={handleDiscardChanges}
-                title="Discard Changes"
-                aria-label="Discard Changes"
-              >
-                <Dismiss24Regular />
-                <span>Discard</span>
-              </button>
-              <button
-                className={`${styles.toolbarButton} ${styles.toolbarButtonPrimary}`}
-                onClick={handleSaveAll}
-                disabled={isSaving}
-                title="Save All"
-                aria-label="Save All"
-              >
-                <Save24Regular />
-                <span>{isSaving ? 'Saving...' : 'Save All'}</span>
-              </button>
-            </>
-          )}
+          <div className={styles.toolbarContainer}>
+            <button
+              className={styles.toolbarButton}
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Refresh"
+              aria-label="Refresh"
+            >
+              <ArrowClockwise24Regular />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+
+            <button
+              className={styles.toolbarButton}
+              onClick={handleExport}
+              title="Export to CSV"
+              aria-label="Export to CSV"
+            >
+              <ArrowDownloadRegular />
+              <span>Export to CSV</span>
+            </button>
+
+            <div className={styles.toolbarSeparator} role="separator" />
+
+            <button
+              className={styles.toolbarButton}
+              onClick={handleSettings}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <SettingsRegular />
+              <span>Settings</span>
+            </button>
+
+            <div className={styles.searchInputWrapper}>
+              <SearchRegular className={styles.searchIcon} />
+              <input
+                className={styles.searchInput}
+                type="text"
+                placeholder="Search PID loops..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                spellCheck="false"
+                role="searchbox"
+                aria-label="Search PID loops"
+              />
+            </div>
+
+            {hasChanges && (
+              <>
+                <div className={styles.toolbarSeparator} role="separator" />
+                <button
+                  className={styles.toolbarButton}
+                  onClick={handleDiscardChanges}
+                  title="Discard Changes"
+                  aria-label="Discard Changes"
+                >
+                  <Dismiss24Regular />
+                  <span>Discard</span>
+                </button>
+                <button
+                  className={`${styles.toolbarButton} ${styles.toolbarButtonPrimary}`}
+                  onClick={handleSaveAll}
+                  disabled={isSaving}
+                  title="Save All"
+                  aria-label="Save All"
+                >
+                  <Save24Regular />
+                  <span>{isSaving ? 'Saving...' : 'Save All'}</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Horizontal Divider */}
@@ -444,47 +547,24 @@ const PIDLoopsPage: React.FC = () => {
         <div className={styles.dockingBody}>
         {/* Loading State */}
         {isLoading && controllers.length === 0 && (
-          <div className={styles.loadingContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Spinner size="large" />
-            <Text style={{ marginLeft: '12px' }}>Loading controllers...</Text>
+            <Text style={{ marginLeft: '12px' }}>Loading PID loops...</Text>
           </div>
         )}
 
         {/* No Device Selected */}
         {!selectedDevice && !isLoading && (
-          <div className={styles.emptyState}>
+          <div className={styles.noData}>
             <div style={{ textAlign: 'center' }}>
               <Text size={500} weight="semibold">No device selected</Text>
               <br />
-              <Text size={300}>Please select a device from the tree to view controllers</Text>
+              <Text size={300}>Please select a device from the tree to view PID loops</Text>
             </div>
           </div>
         )}
 
-        {/* Error State */}
-        {error && (
-          <div style={{ marginTop: '40px' }}>
-            <div style={{ textAlign: 'center', padding: '0 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#d13438"/>
-                </svg>
-                <Text size={500} weight="semibold">Unable to load controllers</Text>
-              </div>
-              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>{error}</Text>
-              <Button
-                appearance="subtle"
-                icon={<ArrowClockwise24Regular />}
-                onClick={fetchControllers}
-                style={{ minWidth: '120px', fontWeight: 'normal' }}
-              >
-                Refresh
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* No Controllers Found */}
+        {/* No PID Loops Found */}
         {selectedDevice && !isLoading && !error && controllers.length === 0 && (
           <div style={{ marginTop: '40px' }}>
             <div style={{ textAlign: 'center', padding: '0 20px' }}>
@@ -492,13 +572,13 @@ const PIDLoopsPage: React.FC = () => {
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
                   <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                 </svg>
-                <Text size={500} weight="semibold">No controllers found</Text>
+                <Text size={500} weight="semibold">No PID loops found</Text>
               </div>
-              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no PID controllers configured</Text>
+              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no PID loops configured</Text>
               <Button
                 appearance="subtle"
                 icon={<ArrowClockwise24Regular />}
-                onClick={fetchControllers}
+                onClick={handleRefresh}
                 style={{ minWidth: '120px', fontWeight: 'normal' }}
               >
                 Refresh
