@@ -28,13 +28,13 @@ const ProgramsPage = React.lazy(() =>
   import('../features/programs/pages/ProgramsPage').then((m) => ({ default: m.ProgramsPage }))
 );
 const ControllersPage = React.lazy(() =>
-  import('../features/controllers/pages/ControllersPage').then((m) => ({ default: m.ControllersPage }))
+  import('../features/controllers/pages/ControllersPage')
 );
 const GraphicsPage = React.lazy(() =>
   import('../features/graphics/pages/GraphicsPage').then((m) => ({ default: m.GraphicsPage }))
 );
 const SchedulesPage = React.lazy(() =>
-  import('../features/schedules/pages/SchedulesPage').then((m) => ({ default: m.SchedulesPage }))
+  import('../features/schedules/pages/SchedulesPage')
 );
 const HolidaysPage = React.lazy(() =>
   import('../features/schedules/pages/HolidaysPage').then((m) => ({ default: m.HolidaysPage }))
@@ -43,16 +43,16 @@ const TrendLogsPage = React.lazy(() =>
   import('../features/trends/pages/TrendLogsPage').then((m) => ({ default: m.TrendLogsPage }))
 );
 const AlarmsPage = React.lazy(() =>
-  import('../features/alarms/pages/AlarmsPage').then((m) => ({ default: m.AlarmsPage }))
+  import('../features/alarms/pages/AlarmsPage')
 );
 const NetworkPage = React.lazy(() =>
   import('../features/network/pages/NetworkPage').then((m) => ({ default: m.NetworkPage }))
 );
 const ArrayPage = React.lazy(() =>
-  import('../features/controllers/pages/ArrayPage').then((m) => ({ default: m.ArrayPage }))
+  import('../features/controllers/pages/ArrayPage')
 );
 const SettingsPage = React.lazy(() =>
-  import('../features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+  import('../features/settings/pages/SettingsPage')
 );
 const DiscoverPage = React.lazy(() =>
   import('../features/network/pages/DiscoverPage').then((m) => ({ default: m.DiscoverPage }))

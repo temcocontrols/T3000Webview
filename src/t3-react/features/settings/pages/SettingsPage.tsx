@@ -16,7 +16,6 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { SaveRegular, SettingsRegular } from '@fluentui/react-icons';
-import { useNotification } from '@t3-react/components';
 
 const useStyles = makeStyles({
   container: {
@@ -58,7 +57,6 @@ const useStyles = makeStyles({
 
 export const SettingsPage: React.FC = () => {
   const styles = useStyles();
-  const { success, error } = useNotification();
 
   const [settings, setSettings] = useState({
     apiUrl: 'http://localhost:3000/api',
@@ -73,9 +71,9 @@ export const SettingsPage: React.FC = () => {
     try {
       // TODO: Save settings via API
       await new Promise((resolve) => setTimeout(resolve, 500));
-      success('Settings saved successfully');
+      console.log('Settings saved successfully');
     } catch (err) {
-      error('Failed to save settings');
+      console.error('Failed to save settings:', err);
     }
   };
 
@@ -175,3 +173,5 @@ export const SettingsPage: React.FC = () => {
     </div>
   );
 };
+
+export default SettingsPage;

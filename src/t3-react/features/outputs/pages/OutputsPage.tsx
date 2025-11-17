@@ -57,6 +57,7 @@ interface OutputPoint {
   panel?: string;
   fullLabel?: string;
   autoManual?: string;
+  hwSwitchStatus?: string;  // HOA Switch: 0=MAN-OFF, 1=AUTO, 2=MAN-ON
   fValue?: string;
   units?: string;
   range?: string;
@@ -263,7 +264,7 @@ export const OutputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Output, Panel, Full Label, Auto/Man, Value, Units, Range, Low Voltage, High Voltage, PWM Period, Status, Signal Type, Label
+  // Column definitions matching the sequence: Output, Panel, Full Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type, Label
   const columns: TableColumnDefinition<OutputPoint>[] = [
     // 1. Output (Index/ID)
     createTableColumn<OutputPoint>({
@@ -386,7 +387,41 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 5. Value
+    // 5. HOA Switch
+    createTableColumn<OutputPoint>({
+      columnId: 'hoaSwitch',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>HOA Switch</span>
+        </div>
+      ),
+      renderCell: (item) => {
+        // HOA Switch values: 0=MAN-OFF, 1=AUTO, 2=MAN-ON
+        const switchValue = item.hwSwitchStatus?.toString() || '1';
+        let switchText = 'AUTO';
+        let badgeColor: 'success' | 'warning' | 'danger' = 'success';
+
+        if (switchValue === '0') {
+          switchText = 'MAN-OFF';
+          badgeColor = 'danger';
+        } else if (switchValue === '2') {
+          switchText = 'MAN-ON';
+          badgeColor = 'warning';
+        } else {
+          switchText = 'AUTO';
+          badgeColor = 'success';
+        }
+
+        return (
+          <TableCellLayout>
+            <Badge appearance="filled" color={badgeColor} size="small">
+              {switchText}
+            </Badge>
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 6. Value
     createTableColumn<OutputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
@@ -433,7 +468,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 6. Units
+    // 7. Units
     createTableColumn<OutputPoint>({
       columnId: 'units',
       renderHeaderCell: () => (
@@ -480,12 +515,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 8. Low Voltage
+    // 8. Low V
     createTableColumn<OutputPoint>({
       columnId: 'lowVoltage',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('lowVoltage')}>
-          <span>Low Voltage</span>
+          <span>Low V</span>
           {sortColumn === 'lowVoltage' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -527,12 +562,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 9. High Voltage
+    // 9. High V
     createTableColumn<OutputPoint>({
       columnId: 'highVoltage',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('highVoltage')}>
-          <span>High Voltage</span>
+          <span>High V</span>
           {sortColumn === 'highVoltage' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -664,12 +699,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 12. Signal Type (Digital/Analog)
+    // 12. Type (Digital/Analog)
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Signal Type</span>
+          <span>Type</span>
         </div>
       ),
       renderCell: (item) => {
