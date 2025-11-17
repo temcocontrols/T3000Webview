@@ -95,7 +95,7 @@ const PIDLoopsPage: React.FC = () => {
     setError(null);
     try {
       // Using generic table API since no specific PID endpoint exists yet
-      const response = await fetch(`/api/t3_device/devices/${selectedDevice.id}/table/PID_TABLE`);
+      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/PID_TABLE`);
       if (!response.ok) throw new Error('Failed to fetch controllers');
 
       const result = await response.json();
