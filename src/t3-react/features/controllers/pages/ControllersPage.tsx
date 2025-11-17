@@ -392,49 +392,56 @@ const ControllersPage: React.FC = () => {
         </TableCellLayout>
       ),
     }),
-  ], [editedValues]);
+  ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue]);
 
   return (
     <div className={styles.controllersPage}>
-      {/* Azure Portal Blade Header */}
-      <div className={styles.bladeHeader}>
-        <div className={styles.bladeTitle}>
-          <h1 className={styles.titleText}>PID Controllers</h1>
-          <span className={styles.subtitleText}>{selectedDevice ? `Device ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber})` : 'No device selected'}</span>
-        </div>
-        <div className={styles.bladeActions}>
-          <Button
-            appearance="secondary"
-            icon={<ArrowClockwise24Regular />}
+      {/* Azure Portal Blade Content */}
+      <div className={styles.bladeContent}>
+        {/* Toolbar Section */}
+        <div className={styles.toolbar}>
+          <button
+            className={styles.toolbarButton}
             onClick={fetchControllers}
             disabled={isLoading}
+            title="Refresh"
+            aria-label="Refresh"
           >
-            Refresh
-          </Button>
+            <ArrowClockwise24Regular />
+            <span>Refresh</span>
+          </button>
           {hasChanges && (
             <>
-              <Button
-                appearance="secondary"
-                icon={<Dismiss24Regular />}
+              <button
+                className={styles.toolbarButton}
                 onClick={handleDiscardChanges}
+                title="Discard Changes"
+                aria-label="Discard Changes"
               >
-                Discard
-              </Button>
-              <Button
-                appearance="primary"
-                icon={<Save24Regular />}
+                <Dismiss24Regular />
+                <span>Discard</span>
+              </button>
+              <button
+                className={`${styles.toolbarButton} ${styles.toolbarButtonPrimary}`}
                 onClick={handleSaveAll}
                 disabled={isSaving}
+                title="Save All"
+                aria-label="Save All"
               >
-                {isSaving ? 'Saving...' : 'Save All'}
-              </Button>
+                <Save24Regular />
+                <span>{isSaving ? 'Saving...' : 'Save All'}</span>
+              </button>
             </>
           )}
         </div>
-      </div>
 
-      {/* Azure Portal Blade Content */}
-      <div className={styles.bladeContent}>
+        {/* Horizontal Divider */}
+        <div style={{ padding: '0' }}>
+          <hr className={styles.overviewHr} />
+        </div>
+
+        {/* Docking Body - Main Content */}
+        <div className={styles.dockingBody}>
         {/* Loading State */}
         {isLoading && controllers.length === 0 && (
           <div className={styles.loadingContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -456,17 +463,23 @@ const ControllersPage: React.FC = () => {
 
         {/* Error State */}
         {error && (
-          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
+          <div style={{ marginTop: '40px' }}>
+            <div style={{ textAlign: 'center', padding: '0 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#d13438"/>
                 </svg>
+                <Text size={500} weight="semibold">Unable to load controllers</Text>
               </div>
-              <div style={{ flex: 1 }}>
-                <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading controllers</Text>
-                <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-              </div>
+              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>{error}</Text>
+              <Button
+                appearance="subtle"
+                icon={<ArrowClockwise24Regular />}
+                onClick={fetchControllers}
+                style={{ minWidth: '120px', fontWeight: 'normal' }}
+              >
+                Refresh
+              </Button>
             </div>
           </div>
         )}
@@ -530,22 +543,6 @@ const ControllersPage: React.FC = () => {
             </DataGrid>
           </div>
         )}
-      </div>
-
-      {/* Azure Portal Blade Footer with Stats */}
-      <div className={styles.bladeFooter}>
-        <div className={styles.statsContainer}>
-          <div className={styles.statItem}>
-            <span className={styles.statLabel}>Total Controllers:</span>
-            <span className={styles.statValue}>{controllers.length}</span>
-          </div>
-          {hasChanges && (
-            <div className={styles.statItem}>
-              <Badge appearance="important" className={styles.changesBadge}>
-                Unsaved Changes
-              </Badge>
-            </div>
-          )}
         </div>
       </div>
     </div>
