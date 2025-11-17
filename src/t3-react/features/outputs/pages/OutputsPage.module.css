@@ -239,6 +239,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  width: 100%;
 }
 
 /* Data body - scrollable area */

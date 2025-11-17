@@ -1012,8 +1012,8 @@ export const OutputsPage: React.FC = () => {
                         defaultWidth: 100,
                       },
                       signalType: {
-                        minWidth: 50,
-                        defaultWidth: 70,
+                        minWidth: 60,
+                        defaultWidth: 80,
                       },
                       label: {
                         minWidth: 130,
