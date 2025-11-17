@@ -354,7 +354,32 @@ export const InputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {editingCell?.serialNumber === item.serialNumber && editingCell?.inputIndex === item.inputIndex && editingCell?.field === 'label' ? (
+            <input
+              type="text"
+              className={styles.editInput}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleEditSave}
+              onKeyDown={handleEditKeyDown}
+              autoFocus
+              disabled={isSaving}
+              placeholder="Enter label"
+              aria-label="Edit label"
+            />
+          ) : (
+            <div
+              className={styles.editableCell}
+              onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+              title="Double-click to edit"
+            >
+              <Text size={200} weight="regular">{item.label || '---'}</Text>
+            </div>
+          )}
+        </TableCellLayout>
+      ),
     }),
     // 5. Auto/Man
     createTableColumn<InputPoint>({
@@ -745,7 +770,7 @@ export const InputsPage: React.FC = () => {
                 )}
 
                 {/* Data Grid - Azure Portal Style */}
-                {true && (
+                {selectedDevice && !loading && !error && inputs.length === 0 && (
                   <div style={{ marginTop: '40px' }}>
                     <div style={{ textAlign: 'center', padding: '0 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>

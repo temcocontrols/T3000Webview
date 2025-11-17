@@ -937,7 +937,7 @@ export const OutputsPage: React.FC = () => {
                 )}
 
                 {/* Data Grid - Azure Portal Style */}
-                {true && (
+                {selectedDevice && !loading && !error && outputs.length === 0 && (
                   <div style={{ marginTop: '40px' }}>
                     <div style={{ textAlign: 'center', padding: '0 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
