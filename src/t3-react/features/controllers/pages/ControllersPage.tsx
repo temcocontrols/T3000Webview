@@ -89,22 +89,24 @@ const ControllersPage: React.FC = () => {
 
   // Fetch PID controllers data
   const fetchControllers = useCallback(async () => {
-    if (!deviceId) return;
+    if (!selectedDevice) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       // Using generic table API since no specific PID endpoint exists yet
-      const response = await fetch(`/api/t3_device/devices/${deviceId}/table/PID_TABLE`);
+      const response = await fetch(`/api/t3_device/devices/${selectedDevice.id}/table/PID_TABLE`);
       if (!response.ok) throw new Error('Failed to fetch controllers');
 
       const result = await response.json();
       setControllers(result.data || []);
     } catch (error) {
       console.error('Error fetching controllers:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load controllers');
     } finally {
       setIsLoading(false);
     }
-  }, [deviceId]);
+  }, [selectedDevice]);
 
   useEffect(() => {
     fetchControllers();

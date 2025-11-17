@@ -13,14 +13,19 @@ import {
   Badge,
   Button,
   Input,
+  Spinner,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {
   ArrowClockwise24Regular,
   Save24Regular,
   Dismiss24Regular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
+  ArrowSortRegular,
 } from '@fluentui/react-icons';
-import { useParams } from 'react-router-dom';
+import { useDeviceTreeStore } from '@t3-react/store';
 import styles from './ArrayPage.module.css';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
@@ -32,31 +37,42 @@ interface ArrayItem {
 }
 
 const ArrayPage: React.FC = () => {
-  const { deviceId } = useParams<{ deviceId: string }>();
+  const { selectedDevice, devices, selectDevice } = useDeviceTreeStore();
   const [arrays, setArrays] = useState<ArrayItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editedValues, setEditedValues] = useState<Record<string, Partial<ArrayItem>>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [sortState, setSortState] = useState<{ columnId: string; direction: 'ascending' | 'descending' }>({ columnId: 'item', direction: 'ascending' });
+
+  // Auto-select first device on page load if none selected
+  useEffect(() => {
+    if (!selectedDevice && devices.length > 0) {
+      selectDevice(devices[0].id);
+    }
+  }, [selectedDevice, devices, selectDevice]);
 
   // Fetch array data
   const fetchArrays = useCallback(async () => {
-    if (!deviceId) return;
+    if (!selectedDevice) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       // Using generic table API (ARRAY table doesn't have entity yet)
-      const response = await fetch(`/api/t3_device/devices/${deviceId}/table/ARRAY_TABLE`);
+      const response = await fetch(`/api/t3_device/devices/${selectedDevice.id}/table/ARRAY_TABLE`);
       if (!response.ok) throw new Error('Failed to fetch arrays');
 
       const result = await response.json();
       setArrays(result.data || []);
     } catch (error) {
       console.error('Error fetching arrays:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load arrays');
     } finally {
       setIsLoading(false);
     }
-  }, [deviceId]);
+  }, [selectedDevice]);
 
   useEffect(() => {
     fetchArrays();
@@ -101,13 +117,32 @@ const ArrayPage: React.FC = () => {
     setHasChanges(false);
   };
 
+  // Handle sort
+  const handleSort = (columnId: string) => {
+    setSortState((prev) => ({
+      columnId,
+      direction: prev.columnId === columnId && prev.direction === 'ascending' ? 'descending' : 'ascending',
+    }));
+  };
+
+  // Get sort icon
+  const getSortIcon = (columnId: string) => {
+    if (sortState.columnId !== columnId) return <ArrowSortRegular />;
+    return sortState.direction === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />;
+  };
+
   // Column definitions based on C++ CBacnetArray.cpp (4 columns)
   const columns: TableColumnDefinition<ArrayItem>[] = useMemo(() => [
     // Column 0: Item #
     createTableColumn<ArrayItem>({
       columnId: 'item',
       compare: (a, b) => Number(a.item) - Number(b.item),
-      renderHeaderCell: () => <div className={styles.headerText}>Item</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('item')}>
+          <div className={styles.headerText}>Item</div>
+          {getSortIcon('item')}
+        </div>
+      ),
       renderCell: (arrayItem) => (
         <TableCellLayout className={styles.numCell}>
           {arrayItem.item}
@@ -167,7 +202,11 @@ const ArrayPage: React.FC = () => {
       <div className={styles.bladeHeader}>
         <div className={styles.bladeTitle}>
           <h1 className={styles.titleText}>Arrays</h1>
-          <span className={styles.subtitleText}>Device {deviceId}</span>
+          {selectedDevice && (
+            <span className={styles.subtitleText}>
+              {selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})
+            </span>
+          )}
         </div>
         <div className={styles.bladeActions}>
           <Button
@@ -202,19 +241,55 @@ const ArrayPage: React.FC = () => {
 
       {/* Azure Portal Blade Content */}
       <div className={styles.bladeContent}>
-        {isLoading ? (
-          <div className={styles.loadingContainer}>
-            <div className={styles.loadingSpinner}>Loading arrays...</div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className={styles.loadingContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Spinner size="large" />
+            <Text style={{ marginLeft: '12px' }}>Loading arrays...</Text>
           </div>
-        ) : arrays.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyStateIcon}>📊</div>
-            <h2 className={styles.emptyStateTitle}>No Arrays</h2>
-            <p className={styles.emptyStateText}>
-              This device has no arrays configured.
-            </p>
+        )}
+
+        {/* No Device Selected */}
+        {!selectedDevice && !isLoading && (
+          <div style={{ textAlign: 'center' }}>
+            <Text>Please select a device from the tree to view arrays.</Text>
           </div>
-        ) : (
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 13C9.44772 13 9 12.5523 9 12C9 11.4477 9.44772 11 10 11C10.5523 11 11 11.4477 11 12C11 12.5523 10.5523 13 10 13ZM11 9C11 9.55228 10.5523 10 10 10C9.44772 10 9 9.55228 9 9V6C9 5.44772 9.44772 5 10 5C10.5523 5 11 5.44772 11 6V9Z" fill="#d13438"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Text weight="semibold" style={{ color: '#d13438', display: 'block', marginBottom: '4px' }}>Error loading arrays</Text>
+                <Text style={{ color: '#605e5c' }}>{error}</Text>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* No Data State */}
+        {selectedDevice && !isLoading && !error && arrays.length === 0 && (
+          <div style={{ marginTop: '40px' }}>
+            <div style={{ textAlign: 'center', padding: '0 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                  <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" fill="currentColor"/>
+                </svg>
+              </div>
+              <Text size={500} weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>No Arrays</Text>
+              <Text style={{ color: '#605e5c' }}>This device has no arrays configured.</Text>
+            </div>
+          </div>
+        )}
+
+        {/* Data Grid with Data */}
+        {selectedDevice && !isLoading && !error && arrays.length > 0 && (
           <div className={styles.gridContainer}>
             <DataGrid
               items={arrays}
