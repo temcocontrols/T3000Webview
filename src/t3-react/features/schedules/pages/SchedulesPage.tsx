@@ -1,369 +1,550 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+/**
+ * Schedules Page - Azure Portal Complete Sample
+ *
+ * Complete Azure Portal blade layout matching Inputs/Outputs/Variables/Programs pattern
+ * Based on C++ BacnetWeeklyRoutine.cpp structure and Rust SCHEDULES entity:
+ * - Columns: Schedule, Auto/Manual, Output, Variable, Holiday1, Status1, Holiday2, Status2
+ * - Auto/Manual toggle
+ * - Inline editing for fields
+ *
+ * C++ Reference: T3000-Source/T3000/BacnetWeeklyRoutine.cpp
+ * Rust Entity: api/src/entity/t3_device/schedules.rs
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   DataGrid,
-  DataGridProps,
-  DataGridBody,
-  DataGridRow,
   DataGridHeader,
+  DataGridRow,
   DataGridHeaderCell,
+  DataGridBody,
   DataGridCell,
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  Badge,
   Button,
+  Spinner,
+  Text,
   Switch,
-  Input,
-  Checkbox,
-  tokens,
 } from '@fluentui/react-components';
 import {
-  ArrowClockwise24Regular,
-  Save24Regular,
-  Dismiss24Regular,
+  ArrowSyncRegular,
+  ArrowDownloadRegular,
+  SettingsRegular,
+  SearchRegular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
+  ArrowSortRegular,
 } from '@fluentui/react-icons';
-import { useParams } from 'react-router-dom';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './SchedulesPage.module.css';
 
-// Schedule interface matching SCHEDULES entity and C++ BacnetWeeklyRoutine (9 columns)
-interface Schedule {
-  schedule_id: string;           // NUM (Column 0 - CheckBox)
-  auto_manual: string;           // Auto/Manual (Column 2 - ComboBox)
-  output_field: string;          // Output (Column 3 - ComboBox)
-  holiday1: string;              // Holiday1 (Column 4 - ComboBox)
-  status1: string;               // State1 (Column 5 - Normal)
-  holiday2: string;              // Holiday2 (Column 6 - ComboBox)
-  status2: string;               // State2 (Column 7 - Normal)
-  // Additional fields from entity
-  variable_field?: string;
-  interval_field?: string;
-  schedule_time?: string;
-  monday_time?: string;
-  tuesday_time?: string;
-  wednesday_time?: string;
-  thursday_time?: string;
-  friday_time?: string;
+// Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
+interface SchedulePoint {
+  serialNumber: number;
+  scheduleId?: string;
+  autoManual?: string;
+  outputField?: string;
+  variableField?: string;
+  holiday1?: string;
+  status1?: string;
+  holiday2?: string;
+  status2?: string;
+  intervalField?: string;
+  scheduleTime?: string;
+  mondayTime?: string;
+  tuesdayTime?: string;
+  wednesdayTime?: string;
+  thursdayTime?: string;
+  fridayTime?: string;
 }
 
+export const SchedulesPage: React.FC = () => {
+  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
 
-const SchedulesPage: React.FC = () => {
-  const { deviceId } = useParams<{ deviceId: string }>();
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editedValues, setEditedValues] = useState<Record<string, Partial<Schedule>>>({});
-  const [hasChanges, setHasChanges] = useState(false);
-  const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set());
+  const [schedules, setSchedules] = useState<SchedulePoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortColumn, setSortColumn] = useState<string>('scheduleId');
+  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
 
-  // Fetch schedules data
+  // Auto-select first device on page load if no device is selected
+  useEffect(() => {
+    if (!selectedDevice && treeData.length > 0) {
+      const findFirstDevice = (nodes: any[]): any => {
+        for (const node of nodes) {
+          if (node.data) return node;
+          if (node.children && node.children.length > 0) {
+            const found = findFirstDevice(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const firstDeviceNode = findFirstDevice(treeData);
+      if (firstDeviceNode?.data) {
+        selectDevice(firstDeviceNode.data);
+      }
+    }
+  }, [selectedDevice, treeData, selectDevice]);
+
+  // Fetch schedules for selected device
   const fetchSchedules = useCallback(async () => {
-    if (!deviceId) return;
+    if (!selectedDevice) {
+      setSchedules([]);
+      return;
+    }
 
-    setIsLoading(true);
+    setLoading(true);
+    setError(null);
+
     try {
-      const response = await fetch(`/api/t3_device/devices/${deviceId}/table/SCHEDULES`);
-      if (!response.ok) throw new Error('Failed to fetch schedules');
+      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/SCHEDULES`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
-      setSchedules(result.data || []);
-    } catch (error) {
-      console.error('Error fetching schedules:', error);
+      console.log('Schedules API response:', result);
+
+      if (result.data && Array.isArray(result.data)) {
+        setSchedules(result.data);
+      } else {
+        console.warn('Unexpected response format:', result);
+        setSchedules([]);
+      }
+    } catch (err) {
+      console.error('Error fetching schedules:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch schedules');
+      setSchedules([]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [deviceId]);
+  }, [selectedDevice]);
 
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Handle field edit
-  const handleFieldEdit = (scheduleId: string, field: keyof Schedule, value: string) => {
-    setEditedValues(prev => ({
-      ...prev,
-      [scheduleId]: {
-        ...(prev[scheduleId] || {}),
-        [field]: value,
-      },
-    }));
-    setHasChanges(true);
+  // Refresh handler
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchSchedules();
   };
 
-  // Get current value
-  const getCurrentValue = (schedule: Schedule, field: keyof Schedule): string => {
-    const scheduleId = schedule.schedule_id;
-    return editedValues[scheduleId]?.[field] ?? schedule[field] ?? '';
+  // Export handler
+  const handleExport = () => {
+    console.log('Export schedules clicked');
   };
 
-  // Save all changes
-  const handleSaveAll = async () => {
-    setIsSaving(true);
-    try {
-      console.log('Saving changes:', editedValues);
-      setEditedValues({});
-      setHasChanges(false);
-    } catch (error) {
-      console.error('Error saving changes:', error);
-    } finally {
-      setIsSaving(false);
+  // Settings handler
+  const handleSettings = () => {
+    console.log('Settings clicked');
+  };
+
+  // Search handler
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  // Sort handler
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('ascending');
     }
   };
 
-  // Discard changes
-  const handleDiscardChanges = () => {
-    setEditedValues({});
-    setHasChanges(false);
+  // Auto/Manual toggle handler
+  const handleAutoManualToggle = async (item: SchedulePoint) => {
+    const newValue = item.autoManual === '1' ? '0' : '1';
+
+    // Optimistic update
+    setSchedules(prevSchedules =>
+      prevSchedules.map(schedule =>
+        schedule.serialNumber === item.serialNumber && schedule.scheduleId === item.scheduleId
+          ? { ...schedule, autoManual: newValue }
+          : schedule
+      )
+    );
+
+    console.log('Toggle Auto/Manual:', item.scheduleId, newValue);
+    // TODO: Call API to update auto_manual value
   };
 
-  // Toggle Auto/Manual
-  const handleAutoManualToggle = (schedule: Schedule) => {
-    const currentValue = getCurrentValue(schedule, 'auto_manual');
-    const newValue = currentValue === 'AUTO' ? 'MANUAL' : 'AUTO';
-    handleFieldEdit(schedule.schedule_id, 'auto_manual', newValue);
-  };
-
-  // Toggle schedule selection (checkbox)
-  const handleCheckboxToggle = (scheduleId: string) => {
-    setSelectedSchedules(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(scheduleId)) {
-        newSet.delete(scheduleId);
-      } else {
-        newSet.add(scheduleId);
-      }
-      return newSet;
-    });
-  };
-
-  // Column definitions based on C++ BacnetWeeklyRoutine.cpp (9 columns)
-  const columns: TableColumnDefinition<Schedule>[] = useMemo(() => [
-    // Column 0: NUM (CheckBox)
-    createTableColumn<Schedule>({
-      columnId: 'schedule_id',
-      compare: (a, b) => Number(a.schedule_id) - Number(b.schedule_id),
-      renderHeaderCell: () => <div className={styles.headerText}>NUM</div>,
-      renderCell: (schedule) => (
-        <TableCellLayout>
-          <div className={styles.checkboxCell}>
-            <Checkbox
-              checked={selectedSchedules.has(schedule.schedule_id)}
-              onChange={() => handleCheckboxToggle(schedule.schedule_id)}
-            />
-            <span className={styles.numText}>{schedule.schedule_id}</span>
-          </div>
-        </TableCellLayout>
+  // Column definitions matching C++ BacnetWeeklyRoutine.cpp
+  const columns: TableColumnDefinition<SchedulePoint>[] = [
+    // 1. Schedule ID
+    createTableColumn<SchedulePoint>({
+      columnId: 'scheduleId',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('scheduleId')}>
+          <span>Schedule</span>
+          {sortColumn === 'scheduleId' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
       ),
+      renderCell: (item) => <TableCellLayout>{item.scheduleId || '---'}</TableCellLayout>,
     }),
 
-    // Column 1: Full Label (from WEEKLY_ROUTINE_FULL_LABLE - EditBox) - Not in entity, skipping
-
-    // Column 2: Auto/Manual
-    createTableColumn<Schedule>({
-      columnId: 'auto_manual',
-      compare: (a, b) => (a.auto_manual || '').localeCompare(b.auto_manual || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Auto/Manual</div>,
-      renderCell: (schedule) => {
-        const isAuto = getCurrentValue(schedule, 'auto_manual') === 'AUTO';
+    // 2. Auto/Manual
+    createTableColumn<SchedulePoint>({
+      columnId: 'autoManual',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Auto/Man</span>
+        </div>
+      ),
+      renderCell: (item) => {
+        const isAuto = item.autoManual === '1';
         return (
           <TableCellLayout>
-            <div className={styles.autoManualContainer}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Switch
                 checked={isAuto}
-                onChange={() => handleAutoManualToggle(schedule)}
-                className={styles.autoManualSwitch}
+                onChange={() => handleAutoManualToggle(item)}
               />
-              <span className={styles.autoManualLabel}>
-                {isAuto ? 'AUTO' : 'MAN'}
-              </span>
+              <Text size={200}>{isAuto ? 'AUTO' : 'MAN'}</Text>
             </div>
           </TableCellLayout>
         );
       },
     }),
 
-    // Column 3: Output
-    createTableColumn<Schedule>({
-      columnId: 'output_field',
-      compare: (a, b) => (a.output_field || '').localeCompare(b.output_field || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Output</div>,
-      renderCell: (schedule) => (
-        <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(schedule, 'output_field')}
-            onChange={(e, data) => handleFieldEdit(schedule.schedule_id, 'output_field', data.value)}
-          />
-        </TableCellLayout>
+    // 3. Output
+    createTableColumn<SchedulePoint>({
+      columnId: 'outputField',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('outputField')}>
+          <span>Output</span>
+          {sortColumn === 'outputField' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
       ),
+      renderCell: (item) => <TableCellLayout>{item.outputField || '---'}</TableCellLayout>,
     }),
 
-    // Column 4: Holiday1
-    createTableColumn<Schedule>({
+    // 4. Variable
+    createTableColumn<SchedulePoint>({
+      columnId: 'variableField',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('variableField')}>
+          <span>Variable</span>
+          {sortColumn === 'variableField' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.variableField || '---'}</TableCellLayout>,
+    }),
+
+    // 5. Holiday1
+    createTableColumn<SchedulePoint>({
       columnId: 'holiday1',
-      compare: (a, b) => (a.holiday1 || '').localeCompare(b.holiday1 || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Holiday1</div>,
-      renderCell: (schedule) => (
-        <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(schedule, 'holiday1')}
-            onChange={(e, data) => handleFieldEdit(schedule.schedule_id, 'holiday1', data.value)}
-          />
-        </TableCellLayout>
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holiday1')}>
+          <span>Holiday1</span>
+          {sortColumn === 'holiday1' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
       ),
+      renderCell: (item) => <TableCellLayout>{item.holiday1 || '---'}</TableCellLayout>,
     }),
 
-    // Column 5: State1
-    createTableColumn<Schedule>({
+    // 6. Status1
+    createTableColumn<SchedulePoint>({
       columnId: 'status1',
-      compare: (a, b) => (a.status1 || '').localeCompare(b.status1 || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>State1</div>,
-      renderCell: (schedule) => (
-        <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(schedule, 'status1')}
-        </TableCellLayout>
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Status1</span>
+        </div>
       ),
+      renderCell: (item) => <TableCellLayout>{item.status1 || '---'}</TableCellLayout>,
     }),
 
-    // Column 6: Holiday2
-    createTableColumn<Schedule>({
+    // 7. Holiday2
+    createTableColumn<SchedulePoint>({
       columnId: 'holiday2',
-      compare: (a, b) => (a.holiday2 || '').localeCompare(b.holiday2 || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Holiday2</div>,
-      renderCell: (schedule) => (
-        <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(schedule, 'holiday2')}
-            onChange={(e, data) => handleFieldEdit(schedule.schedule_id, 'holiday2', data.value)}
-          />
-        </TableCellLayout>
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holiday2')}>
+          <span>Holiday2</span>
+          {sortColumn === 'holiday2' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
       ),
+      renderCell: (item) => <TableCellLayout>{item.holiday2 || '---'}</TableCellLayout>,
     }),
 
-    // Column 7: State2
-    createTableColumn<Schedule>({
+    // 8. Status2
+    createTableColumn<SchedulePoint>({
       columnId: 'status2',
-      compare: (a, b) => (a.status2 || '').localeCompare(b.status2 || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>State2</div>,
-      renderCell: (schedule) => (
-        <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(schedule, 'status2')}
-        </TableCellLayout>
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Status2</span>
+        </div>
       ),
+      renderCell: (item) => <TableCellLayout>{item.status2 || '---'}</TableCellLayout>,
     }),
+  ];
 
-    // Column 8: Label (from WEEKLY_ROUTINE_LABEL - EditBox) - Not in entity, skipping
-  ], [editedValues, selectedSchedules]);
+  // Filtered and sorted schedules
+  const filteredSchedules = schedules.filter(schedule =>
+    searchQuery === '' ||
+    schedule.scheduleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    schedule.outputField?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    schedule.variableField?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedSchedules = [...filteredSchedules].sort((a, b) => {
+    const aValue = (a[sortColumn as keyof SchedulePoint] || '').toString();
+    const bValue = (b[sortColumn as keyof SchedulePoint] || '').toString();
+    const comparison = aValue.localeCompare(bValue);
+    return sortDirection === 'ascending' ? comparison : -comparison;
+  });
 
   return (
-    <div className={styles.schedulesPage}>
-      {/* Azure Portal Blade Header */}
-      <div className={styles.bladeHeader}>
-        <div className={styles.bladeTitle}>
-          <h1 className={styles.titleText}>Schedules</h1>
-          <span className={styles.subtitleText}>Device {deviceId}</span>
-        </div>
-        <div className={styles.bladeActions}>
-          <Button
-            appearance="secondary"
-            icon={<ArrowClockwise24Regular />}
-            onClick={fetchSchedules}
-            disabled={isLoading}
-          >
-            Refresh
-          </Button>
-          {hasChanges && (
-            <>
-              <Button
-                appearance="secondary"
-                icon={<Dismiss24Regular />}
-                onClick={handleDiscardChanges}
-              >
-                Discard
-              </Button>
-              <Button
-                appearance="primary"
-                icon={<Save24Regular />}
-                onClick={handleSaveAll}
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save All'}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Azure Portal Blade Content */}
-      <div className={styles.bladeContent}>
-        {isLoading ? (
-          <div className={styles.loadingContainer}>
-            <div className={styles.loadingSpinner}>Loading schedules...</div>
-          </div>
-        ) : schedules.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyStateIcon}>📅</div>
-            <h2 className={styles.emptyStateTitle}>No Schedules</h2>
-            <p className={styles.emptyStateText}>
-              This device has no schedules configured.
-            </p>
-          </div>
-        ) : (
-          <div className={styles.gridContainer}>
-            <DataGrid
-              items={schedules}
-              columns={columns}
-              sortable
-              resizableColumns
-              className={styles.dataGrid}
-            >
-              <DataGridHeader>
-                <DataGridRow>
-                  {({ renderHeaderCell }) => (
-                    <DataGridHeaderCell className={styles.headerCell}>
-                      {renderHeaderCell()}
-                    </DataGridHeaderCell>
-                  )}
-                </DataGridRow>
-              </DataGridHeader>
-              <DataGridBody<Schedule>>
-                {({ item, rowId }) => (
-                  <DataGridRow<Schedule>
-                    key={rowId}
-                    className={styles.dataRow}
-                  >
-                    {({ renderCell }) => (
-                      <DataGridCell className={styles.dataCell}>
-                        {renderCell(item)}
-                      </DataGridCell>
-                    )}
-                  </DataGridRow>
-                )}
-              </DataGridBody>
-            </DataGrid>
-          </div>
-        )}
-      </div>
-
-      {/* Azure Portal Blade Footer with Stats */}
-      <div className={styles.bladeFooter}>
-        <div className={styles.statsContainer}>
-          <div className={styles.statItem}>
-            <span className={styles.statLabel}>Total Schedules:</span>
-            <span className={styles.statValue}>{schedules.length}</span>
-          </div>
-          <div className={styles.statItem}>
-            <span className={styles.statLabel}>Selected:</span>
-            <span className={styles.statValue}>{selectedSchedules.size}</span>
-          </div>
-          {hasChanges && (
-            <div className={styles.statItem}>
-              <Badge appearance="important" className={styles.changesBadge}>
-                Unsaved Changes
-              </Badge>
+    <div className={styles.container}>
+      {/* ========================================
+          AZURE PORTAL BLADE - FULL WIDTH LAYOUT
+          Matches: ext-blade
+          ======================================== */}
+      <div className={styles.blade}>
+        <div className={styles.bladeContent}>
+          {/* ========================================
+              BLADE HEADER - Title & Toolbar
+              Matches: ext-blade-header
+              ======================================== */}
+          <div className={styles.bladeHeader}>
+            <div className={styles.titleContainer}>
+              <h1 className={styles.title}>Schedules</h1>
             </div>
-          )}
+          </div>
+
+          {/* ========================================
+              PART CONTAINER - Main Content Wrapper
+              Matches: fxs-part-container
+              ======================================== */}
+          <div className={styles.partContainer}>
+            {/* Part Content - Main Content Area */}
+            <div className={styles.partContent}>
+
+              {/* ERROR MESSAGE */}
+              {error && (
+                <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading schedules</Text>
+                      <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* BLADE DESCRIPTION */}
+              {selectedDevice && (
+                <div className={styles.bladeDescription}>
+                  <span>
+                    Showing schedule points for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
+                    {' '}This table displays all configured weekly routine schedules including holidays, outputs, and status information.
+                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+                  </span>
+                </div>
+              )}
+
+              {/* TOOLBAR */}
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarLeft}>
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={loading || refreshing}
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>Refresh</span>
+                  </button>
+
+                  {/* Export Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export"
+                    aria-label="Export"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export</span>
+                  </button>
+
+                  {/* Settings Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleSettings}
+                    title="Settings"
+                    aria-label="Settings"
+                  >
+                    <SettingsRegular />
+                    <span>Settings</span>
+                  </button>
+
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search schedules..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search schedules"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* HORIZONTAL DIVIDER */}
+              <div style={{ padding: '0' }}>
+                <hr className={styles.overviewHr} />
+              </div>
+
+              {/* DOCKING BODY */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {loading && schedules.length === 0 && (
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Spinner size="large" />
+                    <Text style={{ marginLeft: '12px' }}>Loading schedules...</Text>
+                  </div>
+                )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={300}>Please select a device from the tree to view schedules</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* No Schedules Found */}
+                {selectedDevice && !loading && !error && schedules.length === 0 && (
+                  <div style={{ marginTop: '40px' }}>
+                    <div style={{ textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={500} weight="semibold">No schedules found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured schedule points</Text>
+                      <Button
+                        appearance="subtle"
+                        icon={<ArrowSyncRegular />}
+                        onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid with Data */}
+                {selectedDevice && !loading && !error && schedules.length > 0 && (
+                  <DataGrid
+                    items={sortedSchedules}
+                    columns={columns}
+                    sortable
+                    resizableColumns
+                    columnSizingOptions={{
+                      scheduleId: {
+                        minWidth: 70,
+                        defaultWidth: 90,
+                      },
+                      autoManual: {
+                        minWidth: 100,
+                        defaultWidth: 120,
+                      },
+                      outputField: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      variableField: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      holiday1: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      status1: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      holiday2: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      status2: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                    }}
+                  >
+                    <DataGridHeader>
+                      <DataGridRow>
+                        {({ renderHeaderCell }) => (
+                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                        )}
+                      </DataGridRow>
+                    </DataGridHeader>
+                    <DataGridBody<SchedulePoint>>
+                      {({ item, rowId }) => (
+                        <DataGridRow<SchedulePoint> key={rowId}>
+                          {({ renderCell }) => (
+                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                          )}
+                        </DataGridRow>
+                      )}
+                    </DataGridBody>
+                  </DataGrid>
+                )}
+
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

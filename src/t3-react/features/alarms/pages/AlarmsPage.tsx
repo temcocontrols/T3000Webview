@@ -13,6 +13,8 @@ import {
   Badge,
   Button,
   Input,
+  Spinner,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -21,8 +23,11 @@ import {
   Dismiss24Regular,
   CheckmarkCircle24Regular,
   ErrorCircle24Regular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
+  ArrowSortRegular,
 } from '@fluentui/react-icons';
-import { useParams } from 'react-router-dom';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './AlarmsPage.module.css';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
@@ -48,31 +53,61 @@ interface Alarm {
 
 
 const AlarmsPage: React.FC = () => {
-  const { deviceId } = useParams<{ deviceId: string }>();
+  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
   const [alarms, setAlarms] = useState<Alarm[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editedValues, setEditedValues] = useState<Record<string, Partial<Alarm>>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+
+  // Auto-select first device on page load if no device is selected
+  useEffect(() => {
+    if (!selectedDevice && treeData.length > 0) {
+      const findFirstDevice = (nodes: any[]): any => {
+        for (const node of nodes) {
+          if (node.data) return node;
+          if (node.children && node.children.length > 0) {
+            const found = findFirstDevice(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const firstDeviceNode = findFirstDevice(treeData);
+      if (firstDeviceNode?.data) {
+        selectDevice(firstDeviceNode.data);
+      }
+    }
+  }, [selectedDevice, treeData, selectDevice]);
 
   // Fetch alarms data
   const fetchAlarms = useCallback(async () => {
-    if (!deviceId) return;
+    if (!selectedDevice) {
+      setAlarms([]);
+      return;
+    }
 
     setIsLoading(true);
+    setError(null);
     try {
       // Using generic table API
-      const response = await fetch(`/api/t3_device/devices/${deviceId}/table/ALARMS`);
+      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/ALARMS`);
       if (!response.ok) throw new Error('Failed to fetch alarms');
 
       const result = await response.json();
       setAlarms(result.data || []);
-    } catch (error) {
-      console.error('Error fetching alarms:', error);
+    } catch (err) {
+      console.error('Error fetching alarms:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch alarms');
+      setAlarms([]);
     } finally {
       setIsLoading(false);
     }
-  }, [deviceId]);
+  }, [selectedDevice]);
 
   useEffect(() => {
     fetchAlarms();
@@ -130,13 +165,32 @@ const AlarmsPage: React.FC = () => {
     console.log('Delete alarm:', alarm.alarm_id);
   };
 
+  // Sort handler
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('ascending');
+    }
+  };
+
   // Column definitions based on C++ BacnetAlarmLog.cpp (7 columns)
   const columns: TableColumnDefinition<Alarm>[] = useMemo(() => [
     // Column 1: NUM (Alarm ID)
     createTableColumn<Alarm>({
       columnId: 'alarm_id',
       compare: (a, b) => Number(a.alarm_id) - Number(b.alarm_id),
-      renderHeaderCell: () => <div className={styles.headerText}>NUM</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('alarm_id')}>
+          <span>NUM</span>
+          {sortColumn === 'alarm_id' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (alarm) => (
         <TableCellLayout className={styles.numCell}>
           {alarm.alarm_id}
@@ -288,19 +342,67 @@ const AlarmsPage: React.FC = () => {
 
       {/* Azure Portal Blade Content */}
       <div className={styles.bladeContent}>
-        {isLoading ? (
-          <div className={styles.loadingContainer}>
-            <div className={styles.loadingSpinner}>Loading alarms...</div>
+        {/* Loading State */}
+        {isLoading && alarms.length === 0 && (
+          <div className={styles.loadingContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Spinner size="large" />
+            <Text style={{ marginLeft: '12px' }}>Loading alarms...</Text>
           </div>
-        ) : alarms.length === 0 ? (
+        )}
+
+        {/* No Device Selected */}
+        {!selectedDevice && !isLoading && (
           <div className={styles.emptyState}>
-            <div className={styles.emptyStateIcon}>🔔</div>
-            <h2 className={styles.emptyStateTitle}>No Alarms</h2>
-            <p className={styles.emptyStateText}>
-              This device has no alarm records.
-            </p>
+            <div style={{ textAlign: 'center' }}>
+              <Text size={500} weight="semibold">No device selected</Text>
+              <br />
+              <Text size={300}>Please select a device from the tree to view alarms</Text>
+            </div>
           </div>
-        ) : (
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading alarms</Text>
+                <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* No Alarms Found */}
+        {selectedDevice && !isLoading && !error && alarms.length === 0 && (
+          <div style={{ marginTop: '40px' }}>
+            <div style={{ textAlign: 'center', padding: '0 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                </svg>
+                <Text size={500} weight="semibold">No alarms found</Text>
+              </div>
+              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no alarm records</Text>
+              <Button
+                appearance="subtle"
+                icon={<ArrowClockwise24Regular />}
+                onClick={fetchAlarms}
+                style={{ minWidth: '120px', fontWeight: 'normal' }}
+              >
+                Refresh
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Data Grid with Data */}
+        {selectedDevice && !isLoading && !error && alarms.length > 0 && (
           <div className={styles.gridContainer}>
             <DataGrid
               items={alarms}
