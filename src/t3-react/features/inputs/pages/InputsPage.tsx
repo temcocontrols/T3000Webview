@@ -621,11 +621,17 @@ export const InputsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ padding: '12px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '2px' }}>
-                    <Text style={{ color: '#d13438' }} weight="semibold">Error loading inputs</Text>
-                    <br />
-                    <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
+                <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading inputs</Text>
+                      <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
+                    </div>
                   </div>
                 </div>
               )}
@@ -721,9 +727,9 @@ export const InputsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && inputs.length === 0 && (
-                  <div className={styles.loading}>
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Spinner size="large" />
-                    <Text>Loading inputs...</Text>
+                    <Text style={{ marginLeft: '12px' }}>Loading inputs...</Text>
                   </div>
                 )}
 
@@ -739,17 +745,21 @@ export const InputsPage: React.FC = () => {
                 )}
 
                 {/* Data Grid - Azure Portal Style */}
-                {selectedDevice && !loading && !error && inputs.length === 0 && (
-                  <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500}>No inputs found</Text>
-                      <br />
-                      <Text size={300}>This device has no configured input points</Text>
-                      <br /><br />
+                {true && (
+                  <div style={{ marginTop: '40px' }}>
+                    <div style={{ textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={500} weight="semibold">No inputs found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured input points</Text>
                       <Button
-                        appearance="primary"
+                        appearance="subtle"
                         icon={<ArrowSyncRegular />}
                         onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
                       >
                         Refresh
                       </Button>

@@ -29,7 +29,6 @@ import {
   Button,
   Spinner,
   Text,
-  Badge,
   Switch,
 } from '@fluentui/react-components';
 import {
@@ -217,7 +216,7 @@ export const VariablesPage: React.FC = () => {
   const [selectedVariableForRange, setSelectedVariableForRange] = useState<VariablePoint | null>(null);
 
   // Range selection handlers
-  const handleRangeClick = (item: VariablePoint) => {
+  const handleUnitsClick = (item: VariablePoint) => {
     setSelectedVariableForRange(item);
     setRangeDrawerOpen(true);
   };
@@ -258,7 +257,7 @@ export const VariablesPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Variable, Panel, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Type
+  // Column definitions matching the sequence: Variable, Panel, Full Label, Label, Auto/Manual, Value, Units
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Variable (Index/ID)
     createTableColumn<VariablePoint>({
@@ -336,7 +335,7 @@ export const VariablesPage: React.FC = () => {
         );
       },
     }),
-    // 4. Label (short label)
+    // 3. Label (short label)
     createTableColumn<VariablePoint>({
       columnId: 'label',
       renderHeaderCell: () => (
@@ -351,12 +350,12 @@ export const VariablesPage: React.FC = () => {
       ),
       renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
     }),
-    // 5. Auto/Man
+    // 4. Auto/Manual
     createTableColumn<VariablePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Auto/Man</span>
+          <span>Auto/Manual</span>
         </div>
       ),
       renderCell: (item) => {
@@ -443,28 +442,13 @@ export const VariablesPage: React.FC = () => {
         );
       },
     }),
-    // 6. Units
+    // 7. Units
     createTableColumn<VariablePoint>({
       columnId: 'units',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
           <span>Units</span>
           {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.units || '---'}</TableCellLayout>,
-    }),
-    // 7. Range
-    createTableColumn<VariablePoint>({
-      columnId: 'range',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
-          <span>Range</span>
-          {sortColumn === 'range' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular style={{ opacity: 0.5 }} />
@@ -480,106 +464,12 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             <div
-              onClick={() => handleRangeClick(item)}
+              onClick={() => handleUnitsClick(item)}
               style={{ cursor: 'pointer', color: '#0078d4' }}
-              title="Click to change range"
+              title="Click to change range/units"
             >
               <Text size={200} weight="regular">{rangeLabel}</Text>
             </div>
-          </TableCellLayout>
-        );
-      },
-    }),
-    // 8. Calibration
-    createTableColumn<VariablePoint>({
-      columnId: 'calibration',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Calibration</span>
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.calibration || '0'}</TableCellLayout>,
-    }),
-    // 9. Sign
-    createTableColumn<VariablePoint>({
-      columnId: 'sign',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Sign</span>
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.sign || '+'}</TableCellLayout>,
-    }),
-    // 10. Filter
-    createTableColumn<VariablePoint>({
-      columnId: 'filter',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Filter</span>
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.filterField || '0'}</TableCellLayout>,
-    }),
-    // 11. Status
-    createTableColumn<VariablePoint>({
-      columnId: 'status',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
-          <span>Status</span>
-          {sortColumn === 'status' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        // Map status codes to readable text
-        let statusText = 'Normal';
-        let statusColor: 'success' | 'danger' | 'warning' = 'success';
-
-        const statusValue = item.status?.toString();
-        if (statusValue === '0' || statusValue === '64') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
-          statusText = `Code ${statusValue}`;
-          statusColor = 'warning';
-        } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        }
-
-        return (
-          <TableCellLayout>
-            <Badge
-              appearance="filled"
-              color={statusColor}
-            >
-              {statusText}
-            </Badge>
-          </TableCellLayout>
-        );
-      },
-    }),
-    // 12. Type (Digital/Analog)
-    createTableColumn<VariablePoint>({
-      columnId: 'type',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Type</span>
-        </div>
-      ),
-      renderCell: (item) => {
-        const isDigital = item.digitalAnalog === '1';
-        return (
-          <TableCellLayout>
-            <Badge
-              appearance="outline"
-              color={isDigital ? 'informative' : 'brand'}
-            >
-              {isDigital ? 'Digital' : 'Analog'}
-            </Badge>
           </TableCellLayout>
         );
       },
@@ -705,9 +595,9 @@ export const VariablesPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && variables.length === 0 && (
-                  <div className={styles.loading}>
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Spinner size="large" />
-                    <Text>Loading variables...</Text>
+                    <Text style={{ marginLeft: '12px' }}>Loading variables...</Text>
                   </div>
                 )}
 
@@ -723,17 +613,21 @@ export const VariablesPage: React.FC = () => {
                 )}
 
                 {/* Data Grid - Azure Portal Style */}
-                {selectedDevice && !loading && !error && variables.length === 0 && (
-                  <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500}>No variables found</Text>
-                      <br />
-                      <Text size={300}>This device has no configured variable points</Text>
-                      <br /><br />
+                {true && (
+                  <div style={{ marginTop: '40px' }}>
+                    <div style={{ textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={500} weight="semibold">No variables found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured variable points</Text>
                       <Button
-                        appearance="primary"
+                        appearance="subtle"
                         icon={<ArrowSyncRegular />}
                         onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
                       >
                         Refresh
                       </Button>
@@ -761,6 +655,10 @@ export const VariablesPage: React.FC = () => {
                         minWidth: 180,
                         defaultWidth: 250,
                       },
+                      label: {
+                        minWidth: 130,
+                        defaultWidth: 170,
+                      },
                       autoManual: {
                         minWidth: 90,
                         defaultWidth: 120,
@@ -772,34 +670,6 @@ export const VariablesPage: React.FC = () => {
                       units: {
                         minWidth: 100,
                         defaultWidth: 150,
-                      },
-                      range: {
-                        minWidth: 120,
-                        defaultWidth: 150,
-                      },
-                      calibration: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      sign: {
-                        minWidth: 50,
-                        defaultWidth: 60,
-                      },
-                      filter: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 170,
-                      },
-                      type: {
-                        minWidth: 60,
-                        defaultWidth: 75,
                       },
                     }}
                   >
@@ -832,11 +702,14 @@ export const VariablesPage: React.FC = () => {
       {selectedVariableForRange && (
         <RangeSelectionDrawer
           isOpen={rangeDrawerOpen}
-          onClose={() => setRangeDrawerOpen(false)}
+          onClose={() => {
+            setRangeDrawerOpen(false);
+            setSelectedVariableForRange(null);
+          }}
           currentRange={selectedVariableForRange.rangeField ? parseInt(selectedVariableForRange.rangeField) : 0}
           digitalAnalog={selectedVariableForRange.digitalAnalog === '1' ? 1 : 0}
           onSave={handleRangeSave}
-          inputLabel={`Variable ${selectedVariableForRange.variableIndex || selectedVariableForRange.variableId} - ${selectedVariableForRange.fullLabel || 'Unnamed'}`}
+          inputLabel={selectedVariableForRange.fullLabel || 'Variable'}
         />
       )}
     </div>
