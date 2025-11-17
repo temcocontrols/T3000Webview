@@ -13,7 +13,7 @@ const InputsPage = lazy(() => import('../app/pages').then(m => ({ default: m.Inp
 const OutputsPage = lazy(() => import('../app/pages').then(m => ({ default: m.OutputsPage })));
 const VariablesPage = lazy(() => import('../app/pages').then(m => ({ default: m.VariablesPage })));
 const ProgramsPage = lazy(() => import('../app/pages').then(m => ({ default: m.ProgramsPage })));
-const ControllersPage = lazy(() => import('../app/pages').then(m => ({ default: m.ControllersPage })));
+const PIDLoopsPage = lazy(() => import('../app/pages').then(m => ({ default: m.PIDLoopsPage })));
 const GraphicsPage = lazy(() => import('../app/pages').then(m => ({ default: m.GraphicsPage })));
 const SchedulesPage = lazy(() => import('../app/pages').then(m => ({ default: m.SchedulesPage })));
 const HolidaysPage = lazy(() => import('../app/pages').then(m => ({ default: m.HolidaysPage })));
@@ -101,9 +101,9 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
-    path: '/t3000/controllers',
-    element: ControllersPage,
-    title: 'Controllers',
+    path: '/t3000/pidloops',
+    element: PIDLoopsPage,
+    title: 'PID Loops',
     windowId: 7, // WINDOW_CONTROLLER
     shortcut: 'Alt+L',
     requiresDevice: true,

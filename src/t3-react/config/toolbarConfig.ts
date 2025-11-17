@@ -96,13 +96,13 @@ export const toolbarConfig: ToolbarButton[] = [
     shortcut: 'Alt+P',
   },
   {
-    id: 'toolbar-controllers',
+    id: 'toolbar-pidloops',
     icon: SettingsRegular,
-    label: 'Controllers',
-    tooltip: 'PID Controllers (Alt+L)',
+    label: 'PID Loops',
+    tooltip: 'PID Loops (Alt+L)',
     action: 'openWindow',
     windowId: WINDOW_CONTROLLER,
-    route: '/t3000/controllers',
+    route: '/t3000/pidloops',
     shortcut: 'Alt+L',
   },
   {

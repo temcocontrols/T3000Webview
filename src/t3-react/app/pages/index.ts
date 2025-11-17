@@ -14,7 +14,7 @@ export { VariablesPage } from '../features/variables/pages/VariablesPage';
 
 // Programming
 export { ProgramsPage } from '../features/programs/pages/ProgramsPage';
-export { default as ControllersPage } from '../features/controllers/pages/ControllersPage';
+export { default as PIDLoopsPage } from '../features/controllers/pages/PIDLoopsPage';
 
 // Time & Scheduling
 export { default as SchedulesPage } from '../features/schedules/pages/SchedulesPage';

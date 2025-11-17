@@ -76,7 +76,7 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/outputs': { label: 'Outputs', segments: ['T3000', 'Outputs'] },
   '/t3000/variables': { label: 'Variables', segments: ['T3000', 'Variables'] },
   '/t3000/programs': { label: 'Programs', segments: ['T3000', 'Programs'] },
-  '/t3000/controllers': { label: 'Controllers', segments: ['T3000', 'Controllers'] },
+  '/t3000/pidloops': { label: 'PID Loops', segments: ['T3000', 'PID Loops'] },
   '/t3000/graphics': { label: 'Graphics', segments: ['T3000', 'Graphics'] },
   '/t3000/schedules': { label: 'Schedules', segments: ['T3000', 'Schedules'] },
   '/t3000/holidays': { label: 'Holidays', segments: ['T3000', 'Holidays'] },

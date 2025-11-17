@@ -27,8 +27,8 @@ const VariablesPage = React.lazy(() =>
 const ProgramsPage = React.lazy(() =>
   import('../features/programs/pages/ProgramsPage').then((m) => ({ default: m.ProgramsPage }))
 );
-const ControllersPage = React.lazy(() =>
-  import('../features/controllers/pages/ControllersPage')
+const PIDLoopsPage = React.lazy(() =>
+  import('../features/controllers/pages/PIDLoopsPage')
 );
 const GraphicsPage = React.lazy(() =>
   import('../features/graphics/pages/GraphicsPage').then((m) => ({ default: m.GraphicsPage }))
@@ -150,10 +150,10 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="controllers"
+                  path="pidloops"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
-                      <ControllersPage />
+                      <PIDLoopsPage />
                     </React.Suspense>
                   }
                 />

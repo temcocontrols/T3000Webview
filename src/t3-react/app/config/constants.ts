@@ -61,7 +61,7 @@ export const routes = {
   outputs: '/t3000/outputs',
   variables: '/t3000/variables',
   programs: '/t3000/programs',
-  controllers: '/t3000/controllers',
+  pidloops: '/t3000/pidloops',
   graphics: '/t3000/graphics',
   schedules: '/t3000/schedules',
   holidays: '/t3000/holidays',
