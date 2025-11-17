@@ -258,7 +258,7 @@ export const VariablesPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Variable, Panel, Full Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Label, Type
+  // Column definitions matching the sequence: Variable, Panel, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Type
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Variable (Index/ID)
     createTableColumn<VariablePoint>({
@@ -336,7 +336,22 @@ export const VariablesPage: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Man
+    // 4. Label (short label)
+    createTableColumn<VariablePoint>({
+      columnId: 'label',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+          <span>Label</span>
+          {sortColumn === 'label' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
+    }),
+    // 5. Auto/Man
     createTableColumn<VariablePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -547,22 +562,7 @@ export const VariablesPage: React.FC = () => {
         );
       },
     }),
-    // 12. Label (short label)
-    createTableColumn<VariablePoint>({
-      columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
-    }),
-    // 13. Type (Digital/Analog)
+    // 12. Type (Digital/Analog)
     createTableColumn<VariablePoint>({
       columnId: 'type',
       renderHeaderCell: () => (

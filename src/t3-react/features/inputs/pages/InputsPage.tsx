@@ -263,7 +263,7 @@ export const InputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Input, Panel, Full Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Label, Type
+  // Column definitions matching the sequence: Input, Panel, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
     // 1. Input (Index/ID)
     createTableColumn<InputPoint>({
@@ -341,7 +341,22 @@ export const InputsPage: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Man
+    // 4. Label (short label)
+    createTableColumn<InputPoint>({
+      columnId: 'label',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+          <span>Label</span>
+          {sortColumn === 'label' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
+    }),
+    // 5. Auto/Man
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -563,22 +578,7 @@ export const InputsPage: React.FC = () => {
       ),
       renderCell: () => <TableCellLayout>---</TableCellLayout>,
     }),
-    // 13. Label (short label)
-    createTableColumn<InputPoint>({
-      columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
-    }),
-    // 14. Type (Digital/Analog)
+    // 13. Type (Digital/Analog)
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (

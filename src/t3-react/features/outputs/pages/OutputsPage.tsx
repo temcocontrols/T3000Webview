@@ -264,7 +264,7 @@ export const OutputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Output, Panel, Full Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type, Label
+  // Column definitions matching the sequence: Output, Panel, Full Label, Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type
   const columns: TableColumnDefinition<OutputPoint>[] = [
     // 1. Output (Index/ID)
     createTableColumn<OutputPoint>({
@@ -342,7 +342,53 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Man
+    // 4. Label (short label)
+    createTableColumn<OutputPoint>({
+      columnId: 'label',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+          <span>Label</span>
+          {sortColumn === 'label' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => {
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.outputIndex === item.outputIndex &&
+                          editingCell?.field === 'label';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <input
+                type="text"
+                className={styles.editInput}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleEditSave}
+                onKeyDown={handleEditKeyDown}
+                autoFocus
+                disabled={isSaving}
+                placeholder="Enter label"
+                aria-label="Edit label"
+              />
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                title="Double-click to edit"
+              >
+                <Text size={200} weight="regular">{item.label || '---'}</Text>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 5. Auto/Man
     createTableColumn<OutputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -387,7 +433,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 5. HOA Switch
+    // 6. HOA Switch
     createTableColumn<OutputPoint>({
       columnId: 'hoaSwitch',
       renderHeaderCell: () => (
@@ -421,7 +467,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 6. Value
+    // 7. Value
     createTableColumn<OutputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
@@ -468,7 +514,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 7. Units
+    // 8. Units
     createTableColumn<OutputPoint>({
       columnId: 'units',
       renderHeaderCell: () => (
@@ -486,6 +532,11 @@ export const OutputsPage: React.FC = () => {
     // 7. Range
     createTableColumn<OutputPoint>({
       columnId: 'range',
+      compare: (a, b) => {
+        const aVal = a.range || '';
+        const bVal = b.range || '';
+        return aVal.localeCompare(bVal);
+      },
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
           <span>Range</span>
@@ -506,7 +557,7 @@ export const OutputsPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={() => handleRangeClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4' }}
+              style={{ cursor: 'pointer', color: '#0078d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               title="Click to change range"
             >
               <Text size={200} weight="regular">{rangeLabel}</Text>
@@ -515,7 +566,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 8. Low V
+    // 10. Low V
     createTableColumn<OutputPoint>({
       columnId: 'lowVoltage',
       renderHeaderCell: () => (
@@ -562,7 +613,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 9. High V
+    // 11. High V
     createTableColumn<OutputPoint>({
       columnId: 'highVoltage',
       renderHeaderCell: () => (
@@ -609,17 +660,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 10. PWM Period
+    // 12. PWM Period
     createTableColumn<OutputPoint>({
       columnId: 'pwmPeriod',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('pwmPeriod')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>PWM Period</span>
-          {sortColumn === 'pwmPeriod' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
         </div>
       ),
       renderCell: (item) => {
@@ -656,7 +702,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 11. Status
+    // 13. Status
     createTableColumn<OutputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
@@ -699,7 +745,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 12. Type (Digital/Analog)
+    // 14. Type
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
@@ -708,61 +754,46 @@ export const OutputsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
-        const isDigital = item.digitalAnalog === '0';
-        return (
-          <TableCellLayout>
-            <Badge
-              appearance="outline"
-              color={isDigital ? 'informative' : 'brand'}
-            >
-              {isDigital ? 'Digital' : 'Analog'}
-            </Badge>
-          </TableCellLayout>
-        );
-      },
-    }),
-    // 13. Label (short label)
-    createTableColumn<OutputPoint>({
-      columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'label';
+        // Type values: 0=Virtual, 1=Digital, 2=Analog, 3=Extend Digital, 4=Extend Analog, 5=Internal
+        const typeValue = item.typeField || '0';
+        let typeText = 'Virtual';
+        let badgeColor: 'success' | 'informative' | 'brand' | 'warning' = 'success';
+
+        switch (typeValue) {
+          case '0':
+            typeText = 'Virtual';
+            badgeColor = 'success';
+            break;
+          case '1':
+            typeText = 'Digital';
+            badgeColor = 'informative';
+            break;
+          case '2':
+            typeText = 'Analog';
+            badgeColor = 'brand';
+            break;
+          case '3':
+            typeText = 'Extend Digital';
+            badgeColor = 'informative';
+            break;
+          case '4':
+            typeText = 'Extend Analog';
+            badgeColor = 'brand';
+            break;
+          case '5':
+            typeText = 'Internal';
+            badgeColor = 'warning';
+            break;
+          default:
+            typeText = 'Virtual';
+            badgeColor = 'success';
+        }
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit label"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.label || '---'}</Text>
-              </div>
-            )}
+            <Badge appearance="outline" color={badgeColor}>
+              {typeText}
+            </Badge>
           </TableCellLayout>
         );
       },
@@ -948,6 +979,10 @@ export const OutputsPage: React.FC = () => {
                         minWidth: 90,
                         defaultWidth: 120,
                       },
+                      hoaSwitch: {
+                        minWidth: 80,
+                        defaultWidth: 120,
+                      },
                       value: {
                         minWidth: 80,
                         defaultWidth: 100,
@@ -957,28 +992,28 @@ export const OutputsPage: React.FC = () => {
                         defaultWidth: 150,
                       },
                       range: {
-                        minWidth: 120,
-                        defaultWidth: 150,
+                        minWidth: 80,
+                        defaultWidth: 120,
                       },
                       lowVoltage: {
-                        minWidth: 90,
-                        defaultWidth: 110,
+                        minWidth: 80,
+                        defaultWidth: 100,
                       },
                       highVoltage: {
-                        minWidth: 90,
-                        defaultWidth: 110,
+                        minWidth: 80,
+                        defaultWidth: 100,
                       },
                       pwmPeriod: {
                         minWidth: 90,
-                        defaultWidth: 110,
+                        defaultWidth: 120,
                       },
                       status: {
                         minWidth: 80,
                         defaultWidth: 100,
                       },
                       signalType: {
-                        minWidth: 90,
-                        defaultWidth: 110,
+                        minWidth: 50,
+                        defaultWidth: 70,
                       },
                       label: {
                         minWidth: 130,
