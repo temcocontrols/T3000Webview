@@ -4,7 +4,7 @@
  */
 
 /* Root container styling */
-.holidaysPage {
+.container {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 400;
@@ -16,7 +16,7 @@
 }
 
 /* Blade Content Container */
-.bladeContainer {
+.bladeContentContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -24,7 +24,7 @@
   min-height: 0;
 }
 
-.bladeWrapper {
+.bladeContentWrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -33,6 +33,14 @@
 }
 
 .bladeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.partContent {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -198,8 +206,8 @@
   padding: 24px;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to HolidaysPage only */
-.holidaysPage :global(.fui-DataGrid) {
+/* Azure Portal Grid - fxc-gc-dataGrid styling */
+.container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -209,27 +217,28 @@
   display: flex;
   flex-direction: column;
   min-height: fit-content;
-  min-height: 0;
+  min-width: max-content;
 }
 
 /* Header row styling - matches fxc-gc-columnheaderrow */
-.holidaysPage :global(.fui-DataGridHeader) {
+.container :global(.fui-DataGridHeader) {
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
   z-index: 10;
+  width: 100%;
 }
 
 /* Data body - scrollable area */
-.holidaysPage :global(.fui-DataGridBody) {
+.container :global(.fui-DataGridBody) {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
   min-height: 0;
 }
 
 /* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
-.holidaysPage :global(.fui-DataGridHeaderCell) {
+.container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 600;  /* Bold headers in Azure Portal */
@@ -245,12 +254,12 @@
 }
 
 /* Header cell hover - Azure Portal style */
-.holidaysPage :global(.fui-DataGridHeaderCell):hover {
+.container :global(.fui-DataGridHeaderCell):hover {
   background-color: #edebe9;
 }
 
 /* Sort icon styling */
-.holidaysPage :global(.fui-DataGridHeaderCell) svg {
+.container :global(.fui-DataGridHeaderCell) svg {
   width: 12px;
   height: 12px;
   color: #605e5c;
@@ -258,7 +267,7 @@
 }
 
 /* Data row styling - matches fxc-gc-row */
-.holidaysPage :global(.fui-DataGridRow) {
+.container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #f3f2f1;
   min-height: 32px;
   background-color: #ffffff;
@@ -266,12 +275,12 @@
 }
 
 /* Row hover - matches fxs-portal-hover */
-.holidaysPage :global(.fui-DataGridRow):hover {
+.container :global(.fui-DataGridRow):hover {
   background-color: #f3f2f1;
 }
 
 /* Data cell styling - matches fxc-gc-cell */
-.holidaysPage :global(.fui-DataGridCell) {
+.container :global(.fui-DataGridCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -284,7 +293,7 @@
 }
 
 /* Badge styling - compact badges */
-.holidaysPage :global(.fui-Badge) {
+.container :global(.fui-Badge) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 11px;
   font-weight: 400;
@@ -293,34 +302,34 @@
 }
 
 /* TableCellLayout - inherits cell font */
-.holidaysPage :global(.fui-TableCellLayout) {
+.container :global(.fui-TableCellLayout) {
   font-size: 12px;
   font-family: inherit;
   line-height: normal;
 }
 
 /* Links in grid - Azure Portal link color */
-.holidaysPage :global(.fui-DataGridCell) a {
+.container :global(.fui-DataGridCell) a {
   color: #0078d4;
   text-decoration: none;
 }
 
-.holidaysPage :global(.fui-DataGridCell) a:hover {
+.container :global(.fui-DataGridCell) a:hover {
   color: #004578;
   text-decoration: underline;
 }
 
 /* Remove any default Fluent UI styles that conflict */
-.holidaysPage :global(.fui-DataGridHeaderCell) > * {
+.container :global(.fui-DataGridHeaderCell) > * {
   line-height: normal;
 }
 
-.holidaysPage :global(.fui-DataGridCell) > * {
+.container :global(.fui-DataGridCell) > * {
   line-height: normal;
 }
 
 /* Grid border wrapper */
-.holidaysPage :global(.fui-DataGrid-root) {
+.container :global(.fui-DataGrid-root) {
   border: 1px solid #edebe9;
 }
 
