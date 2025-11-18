@@ -1,5 +1,5 @@
 /**
- * Variables Page Styles - Azure Portal Billing Accounts
+ * PID Loops Page Styles - Azure Portal Billing Accounts
  * Extracted from actual Azure Portal HTML/CSS: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
  *
  * Key Azure Portal characteristics from inspection:
@@ -13,14 +13,6 @@
  * - Cell padding: 0 16px (horizontal only)
  * - Toolbar: 44px height, azc-toolbarButton class
  */
-
-/* Root PID Loops Page Container */
-.pidLoopsPage {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
 
 /* Root container styling */
 .container {
@@ -211,7 +203,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   min-height: 0;
 }
 
@@ -225,7 +217,7 @@
   padding: 24px;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to VariablesPage only */
+/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to PIDLoopsPage only */
 .container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
@@ -235,8 +227,8 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  min-height: fit-content;
+  min-width: max-content;
 }
 
 /* Header row styling - matches fxc-gc-columnheaderrow */
@@ -244,14 +236,15 @@
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
   z-index: 10;
+  width: 100%;
 }
 
 /* Data body - scrollable area */
 .container :global(.fui-DataGridBody) {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
   min-height: 0;
 }
 

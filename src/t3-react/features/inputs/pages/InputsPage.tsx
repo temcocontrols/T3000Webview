@@ -763,51 +763,29 @@ export const InputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Azure Portal Style */}
-                {selectedDevice && !loading && !error && inputs.length === 0 && (
-                  <div style={{ marginTop: '40px' }}>
-                    <div style={{ textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                        </svg>
-                        <Text size={500} weight="semibold">No inputs found</Text>
-                      </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured input points</Text>
-                      <Button
-                        appearance="subtle"
-                        icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
-                        style={{ minWidth: '120px', fontWeight: 'normal' }}
-                      >
-                        Refresh
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Data Grid with Data */}
-                {selectedDevice && !loading && !error && inputs.length > 0 && (
-                  <DataGrid
-                    items={inputs}
-                    columns={columns}
-                    sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      input: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      panel: {
-                        minWidth: 60,
-                        defaultWidth: 75,
-                      },
-                      fullLabel: {
-                        minWidth: 180,
-                        defaultWidth: 250,
-                      },
-                      autoManual: {
-                        minWidth: 90,
+                {/* Data Grid - Always show with header */}
+                {selectedDevice && !loading && !error && (
+                  <>
+                    <DataGrid
+                      items={inputs}
+                      columns={columns}
+                      sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        input: {
+                          minWidth: 60,
+                          defaultWidth: 80,
+                        },
+                        panel: {
+                          minWidth: 60,
+                          defaultWidth: 75,
+                        },
+                        fullLabel: {
+                          minWidth: 180,
+                          defaultWidth: 250,
+                        },
+                        autoManual: {
+                          minWidth: 90,
                         defaultWidth: 120,
                       },
                       value: {
@@ -869,6 +847,28 @@ export const InputsPage: React.FC = () => {
                       )}
                     </DataGridBody>
                   </DataGrid>
+
+                  {/* No Data Message - Show below grid when empty */}
+                  {inputs.length === 0 && (
+                    <div style={{ marginTop: '40px', textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={500} weight="semibold">No inputs found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured input points</Text>
+                      <Button
+                        appearance="subtle"
+                        icon={<ArrowSyncRegular />}
+                        onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  )}
+                  </>
                 )}
 
               </div>

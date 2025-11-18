@@ -222,7 +222,7 @@ const PIDLoopsPage: React.FC = () => {
         </div>
       ),
       renderCell: (controller) => (
-        <TableCellLayout className={styles.numCell}>
+        <TableCellLayout>
           {controller.loop_field}
         </TableCellLayout>
       ),
@@ -232,7 +232,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'input_field',
       compare: (a, b) => (a.input_field || '').localeCompare(b.input_field || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Input</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Input</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -248,7 +252,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'input_value',
       compare: (a, b) => Number(a.input_value || 0) - Number(b.input_value || 0),
-      renderHeaderCell: () => <div className={styles.headerText}>Value</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Value</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -277,7 +285,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'auto_manual',
       compare: (a, b) => (a.auto_manual || '').localeCompare(b.auto_manual || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>A/M</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>A/M</span>
+        </div>
+      ),
       renderCell: (controller) => {
         const isAuto = getCurrentValue(controller, 'auto_manual') === 'AUTO';
         return (
@@ -301,7 +313,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'output_field',
       compare: (a, b) => (a.output_field || '').localeCompare(b.output_field || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Output</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Output</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -317,7 +333,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'set_value',
       compare: (a, b) => Number(a.set_value || 0) - Number(b.set_value || 0),
-      renderHeaderCell: () => <div className={styles.headerText}>Setpoint</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Setpoint</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -350,7 +370,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'action_field',
       compare: (a, b) => (a.action_field || '').localeCompare(b.action_field || ''),
-      renderHeaderCell: () => <div className={styles.headerText}>Action</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Action</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
           {getCurrentValue(controller, 'action_field')}
@@ -362,7 +386,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'proportional',
       compare: (a, b) => Number(a.proportional || 0) - Number(b.proportional || 0),
-      renderHeaderCell: () => <div className={styles.headerText}>Prop</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Prop</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -379,7 +407,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'reset_field',
       compare: (a, b) => Number(a.reset_field || 0) - Number(b.reset_field || 0),
-      renderHeaderCell: () => <div className={styles.headerText}>Int</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Int</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -400,7 +432,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'rate',
       compare: (a, b) => Number(a.rate || 0) - Number(b.rate || 0),
-      renderHeaderCell: () => <div className={styles.headerText}>Der</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Der</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -417,7 +453,11 @@ const PIDLoopsPage: React.FC = () => {
     createTableColumn<PIDController>({
       columnId: 'bias',
       compare: (a, b) => Number(a.bias || 0) - Number(b.bias || 0),
-      renderHeaderCell: () => <div className={styles.headerText}>Bias</div>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>Bias</span>
+        </div>
+      ),
       renderCell: (controller) => (
         <TableCellLayout>
           <Input
@@ -432,9 +472,15 @@ const PIDLoopsPage: React.FC = () => {
   ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue]);
 
   return (
-    <div className={styles.pidLoopsPage}>
-      {/* Azure Portal Blade Content */}
-      <div className={styles.bladeContent}>
+    <div className={styles.container}>
+      {/* Blade Content Container */}
+      <div className={styles.bladeContentContainer}>
+        {/* Blade Content Wrapper */}
+        <div className={styles.bladeContentWrapper}>
+          {/* Blade Content */}
+          <div className={styles.bladeContent}>
+            {/* Part Content - Main Content Area */}
+            <div className={styles.partContent}>
         {/* ========================================
             ERROR MESSAGE (if any)
             ======================================== */}
@@ -561,65 +607,113 @@ const PIDLoopsPage: React.FC = () => {
           </div>
         )}
 
-        {/* No PID Loops Found */}
-        {selectedDevice && !isLoading && !error && controllers.length === 0 && (
-          <div style={{ marginTop: '40px' }}>
-            <div style={{ textAlign: 'center', padding: '0 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                </svg>
-                <Text size={500} weight="semibold">No PID loops found</Text>
-              </div>
-              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no PID loops configured</Text>
-              <Button
-                appearance="subtle"
-                icon={<ArrowClockwise24Regular />}
-                onClick={handleRefresh}
-                style={{ minWidth: '120px', fontWeight: 'normal' }}
-              >
-                Refresh
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Data Grid with Data */}
-        {selectedDevice && !isLoading && !error && controllers.length > 0 && (
-          <div className={styles.gridContainer}>
+        {/* Data Grid - Always show with header */}
+        {selectedDevice && !isLoading && !error && (
+          <>
             <DataGrid
               items={controllers}
               columns={columns}
               sortable
               resizableColumns
-              className={styles.dataGrid}
+              columnSizingOptions={{
+                loop_field: {
+                  minWidth: 60,
+                  defaultWidth: 80,
+                },
+                input_field: {
+                  minWidth: 100,
+                  defaultWidth: 150,
+                },
+                input_value: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                units: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                auto_manual: {
+                  minWidth: 100,
+                  defaultWidth: 120,
+                },
+                output_field: {
+                  minWidth: 100,
+                  defaultWidth: 150,
+                },
+                output_value: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                setpoint_field: {
+                  minWidth: 100,
+                  defaultWidth: 150,
+                },
+                setpoint_value: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                prop_band: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                integral: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                derivative: {
+                  minWidth: 80,
+                  defaultWidth: 100,
+                },
+                sample_time: {
+                  minWidth: 90,
+                  defaultWidth: 110,
+                },
+              }}
             >
               <DataGridHeader>
                 <DataGridRow>
                   {({ renderHeaderCell }) => (
-                    <DataGridHeaderCell className={styles.headerCell}>
-                      {renderHeaderCell()}
-                    </DataGridHeaderCell>
+                    <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                   )}
                 </DataGridRow>
               </DataGridHeader>
               <DataGridBody<PIDController>>
                 {({ item, rowId }) => (
-                  <DataGridRow<PIDController>
-                    key={rowId}
-                    className={styles.dataRow}
-                  >
+                  <DataGridRow<PIDController> key={rowId}>
                     {({ renderCell }) => (
-                      <DataGridCell className={styles.dataCell}>
-                        {renderCell(item)}
-                      </DataGridCell>
+                      <DataGridCell>{renderCell(item)}</DataGridCell>
                     )}
                   </DataGridRow>
                 )}
               </DataGridBody>
             </DataGrid>
-          </div>
+
+            {/* No Data Message - Show below grid when empty */}
+            {controllers.length === 0 && (
+              <div style={{ marginTop: '40px', textAlign: 'center', padding: '0 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                  </svg>
+                  <Text size={500} weight="semibold">No PID loops found</Text>
+                </div>
+                <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no PID loops configured</Text>
+                <Button
+                  appearance="subtle"
+                  icon={<ArrowClockwise24Regular />}
+                  onClick={handleRefresh}
+                  style={{ minWidth: '120px', fontWeight: 'normal' }}
+                >
+                  Refresh
+                </Button>
+              </div>
+            )}
+          </>
         )}
+
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
