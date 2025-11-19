@@ -192,7 +192,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   min-height: 0;
 }
 
@@ -207,7 +207,7 @@
 }
 
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to TrendlogsPage only */
-.trendlogsPage :global(.fui-DataGrid) {
+.container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -216,28 +216,29 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  min-height: fit-content;
+  min-width: max-content;
 }
 
 /* Header row styling - matches fxc-gc-columnheaderrow */
-.trendlogsPage :global(.fui-DataGridHeader) {
+.container :global(.fui-DataGridHeader) {
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
   z-index: 10;
+  width: 100%;
 }
 
 /* Data body - scrollable area */
-.trendlogsPage :global(.fui-DataGridBody) {
+.container :global(.fui-DataGridBody) {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
   min-height: 0;
 }
 
 /* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
-.trendlogsPage :global(.fui-DataGridHeaderCell) {
+.container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 600;  /* Bold headers in Azure Portal */
@@ -253,12 +254,12 @@
 }
 
 /* Header cell hover - Azure Portal style */
-.trendlogsPage :global(.fui-DataGridHeaderCell):hover {
+.container :global(.fui-DataGridHeaderCell):hover {
   background-color: #edebe9;
 }
 
 /* Sort icon styling */
-.trendlogsPage :global(.fui-DataGridHeaderCell) svg {
+.container :global(.fui-DataGridHeaderCell) svg {
   width: 12px;
   height: 12px;
   color: #605e5c;
@@ -266,7 +267,7 @@
 }
 
 /* Data row styling - matches fxc-gc-row */
-.trendlogsPage :global(.fui-DataGridRow) {
+.container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #f3f2f1;
   min-height: 32px;
   background-color: #ffffff;
@@ -274,12 +275,12 @@
 }
 
 /* Row hover - matches fxs-portal-hover */
-.trendlogsPage :global(.fui-DataGridRow):hover {
+.container :global(.fui-DataGridRow):hover {
   background-color: #f3f2f1;
 }
 
 /* Data cell styling - matches fxc-gc-cell */
-.trendlogsPage :global(.fui-DataGridCell) {
+.container :global(.fui-DataGridCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -292,7 +293,7 @@
 }
 
 /* Badge styling - compact badges */
-.trendlogsPage :global(.fui-Badge) {
+.container :global(.fui-Badge) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 11px;
   font-weight: 400;
@@ -301,34 +302,34 @@
 }
 
 /* TableCellLayout - inherits cell font */
-.trendlogsPage :global(.fui-TableCellLayout) {
+.container :global(.fui-TableCellLayout) {
   font-size: 12px;
   font-family: inherit;
   line-height: normal;
 }
 
 /* Links in grid - Azure Portal link color */
-.trendlogsPage :global(.fui-DataGridCell) a {
+.container :global(.fui-DataGridCell) a {
   color: #0078d4;
   text-decoration: none;
 }
 
-.trendlogsPage :global(.fui-DataGridCell) a:hover {
+.container :global(.fui-DataGridCell) a:hover {
   color: #004578;
   text-decoration: underline;
 }
 
 /* Remove any default Fluent UI styles that conflict */
-.trendlogsPage :global(.fui-DataGridHeaderCell) > * {
+.container :global(.fui-DataGridHeaderCell) > * {
   line-height: normal;
 }
 
-.trendlogsPage :global(.fui-DataGridCell) > * {
+.container :global(.fui-DataGridCell) > * {
   line-height: normal;
 }
 
 /* Grid border wrapper */
-.trendlogsPage :global(.fui-DataGrid-root) {
+.container :global(.fui-DataGrid-root) {
   border: 1px solid #edebe9;
 }
 

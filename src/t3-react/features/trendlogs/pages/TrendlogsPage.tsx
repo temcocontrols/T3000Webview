@@ -1,18 +1,23 @@
 /**
  * Trendlogs Page - Azure Portal Complete Sample
  *
- * Complete Azure Portal blade layout matching Programs/Schedules pattern
- * Based on C++ BacnetMonitor.cpp structure:
- * - 5 columns: NUM, Label, Interval, Status, Data Size (KB)
- * - Inline editing for labels
- * - Status display
+ * Complete Azure Portal blade layout matching Cost Management + Billing
+ * Extracted from: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
  *
- * C++ Reference: T3000-Source/T3000/BacnetMonitor.cpp
- * - Column 0: MONITOR_NUM (checkbox)
- * - Column 1: MONITOR_LABEL (edit)
- * - Column 2: MONITOR_INTERVAL (readonly)
- * - Column 3: MONITOR_STATUS (readonly)
- * - Column 4: MONITOR_DATA_SIZE (readonly)
+ * Based on C++ BacnetMonitor.cpp structure and Rust entity (trendlogs.rs):
+ * - 5 columns: ID, Label, Interval, Status, Data Size (KB)
+ * - Status display with badges
+ * - Read-only data display
+ *
+ * Azure Portal Structure:
+ * - Blade Content Container (fxs-blade-content-container-default-details)
+ * - Blade Content Wrapper (fxs-blade-content-wrapper)
+ * - Part Content (fxs-part-content ext-msportal-padding)
+ * - Toolbar (ext-overview-assistant-toolbar azc-toolbar)
+ * - Horizontal Divider (ext-overview-hr)
+ * - Blade Description (ext-blade-description)
+ * - Docking Body (msportalfx-docking-body)
+ * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -26,10 +31,8 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  Button,
   Spinner,
   Text,
-  Input,
   Badge,
 } from '@fluentui/react-components';
 import {
@@ -37,22 +40,19 @@ import {
   ArrowDownloadRegular,
   SettingsRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './TrendlogsPage.module.css';
 
-// Types based on C++ BacnetMonitor structure
+// Types based on Rust entity (trendlogs.rs)
 interface TrendlogPoint {
   serialNumber: number;
-  monitorId?: string;
-  label?: string;
-  interval?: string;
+  trendlogId?: string;
+  trendlogLabel?: string;
+  intervalSeconds?: number;
   status?: string;
-  dataSize?: string;
+  dataSizeKb?: string;
 }
 
 export const TrendlogsPage: React.FC = () => {
@@ -62,12 +62,6 @@ export const TrendlogsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [editingCell, setEditingCell] = useState<{ serialNumber: number; monitorId: string; field: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -138,147 +132,48 @@ export const TrendlogsPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    console.log('Search query:', e.target.value);
   };
 
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
-    } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
-    }
-  };
-
-  // Inline editing handlers
-  const handleCellDoubleClick = (item: TrendlogPoint, field: string, currentValue: string) => {
-    setEditingCell({ serialNumber: item.serialNumber, monitorId: item.monitorId || '', field });
-    setEditValue(currentValue || '');
-  };
-
-  const handleEditSave = async () => {
-    if (!editingCell || !editValue.trim()) {
-      setEditingCell(null);
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      // TODO: Implement API call to save
-      console.log('Saving:', editingCell, editValue);
-
-      // Update local state
-      setTrendlogs(prevTrendlogs =>
-        prevTrendlogs.map(trendlog =>
-          trendlog.serialNumber === editingCell.serialNumber && trendlog.monitorId === editingCell.monitorId
-            ? { ...trendlog, [editingCell.field]: editValue }
-            : trendlog
-        )
-      );
-
-      setEditingCell(null);
-    } catch (error) {
-      console.error('Error saving:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleEditSave();
-    } else if (e.key === 'Escape') {
-      setEditingCell(null);
-    }
-  };
-
-  // Column definitions matching C++ BacnetMonitor: NUM, Label, Interval, Status, Data Size
+  // Column definitions based on Rust entity (5 columns)
   const columns: TableColumnDefinition<TrendlogPoint>[] = [
-    // 1. NUM (Monitor ID)
+    // Column 0: Trendlog ID
     createTableColumn<TrendlogPoint>({
-      columnId: 'monitorId',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('monitorId')}>
-          <span>NUM</span>
-          {sortColumn === 'monitorId' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.monitorId || '---'}</TableCellLayout>,
+      columnId: 'trendlogId',
+      renderHeaderCell: () => <span>ID</span>,
+      renderCell: (item) => <TableCellLayout>{item.trendlogId || '---'}</TableCellLayout>,
     }),
 
-    // 2. Label (editable)
+    // Column 1: Label
     createTableColumn<TrendlogPoint>({
-      columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
+      columnId: 'trendlogLabel',
+      renderHeaderCell: () => <span>Label</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.trendlogLabel || 'Unnamed'}
+        </TableCellLayout>
       ),
-      renderCell: (item) => {
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.monitorId === item.monitorId &&
-                          editingCell?.field === 'label';
-
-        return (
-          <TableCellLayout>
-            {isEditing ? (
-              <Input
-                value={editValue}
-                onChange={(e, data) => setEditValue(data.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                size="small"
-                style={{ width: '100%' }}
-              />
-            ) : (
-              <div
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                style={{ cursor: 'text', minHeight: '20px' }}
-              >
-                <Text size={200}>{item.label || 'Unnamed'}</Text>
-              </div>
-            )}
-          </TableCellLayout>
-        );
-      },
     }),
 
-    // 3. Interval (readonly)
+    // Column 2: Interval (seconds)
     createTableColumn<TrendlogPoint>({
-      columnId: 'interval',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('interval')}>
-          <span>Interval</span>
-          {sortColumn === 'interval' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
+      columnId: 'intervalSeconds',
+      renderHeaderCell: () => <span>Interval (s)</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.intervalSeconds ?? '---'}
+        </TableCellLayout>
       ),
-      renderCell: (item) => <TableCellLayout>{item.interval || '---'}</TableCellLayout>,
     }),
 
-    // 4. Status (readonly with badge)
+    // Column 3: Status
     createTableColumn<TrendlogPoint>({
       columnId: 'status',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Status</span>
-        </div>
-      ),
+      renderHeaderCell: () => <span>Status</span>,
       renderCell: (item) => {
         const isActive = item.status?.toLowerCase() === 'active' || item.status === '1';
 
@@ -296,22 +191,21 @@ export const TrendlogsPage: React.FC = () => {
       },
     }),
 
-    // 5. Data Size (KB) (readonly)
+    // Column 4: Data Size (KB)
     createTableColumn<TrendlogPoint>({
-      columnId: 'dataSize',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('dataSize')}>
-          <span>Data Size (KB)</span>
-          {sortColumn === 'dataSize' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
+      columnId: 'dataSizeKb',
+      renderHeaderCell: () => <span>Data Size (KB)</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.dataSizeKb || '0'}
+        </TableCellLayout>
       ),
-      renderCell: (item) => <TableCellLayout>{item.dataSize || '0'}</TableCellLayout>,
     }),
   ];
+
+  // ========================================
+  // RENDER: Complete Azure Portal Blade Layout
+  // ========================================
 
   return (
     <div className={styles.container}>
@@ -323,6 +217,7 @@ export const TrendlogsPage: React.FC = () => {
           <div className={styles.bladeContent}>
             {/* Part Content - Main Content Area */}
             <div className={styles.partContent}>
+
               {/* ========================================
                   ERROR MESSAGE (if any)
                   ======================================== */}
@@ -335,7 +230,10 @@ export const TrendlogsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* BLADE DESCRIPTION */}
+              {/* ========================================
+                  BLADE DESCRIPTION
+                  Matches: ext-blade-description
+                  ======================================== */}
               {selectedDevice && (
                 <div className={styles.bladeDescription}>
                   <span>
@@ -346,114 +244,130 @@ export const TrendlogsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* TOOLBAR */}
+              {/* ========================================
+                  TOOLBAR - Azure Portal Command Bar
+                  Matches: ext-overview-assistant-toolbar
+                  ======================================== */}
               <div className={styles.toolbar}>
-              <div className={styles.toolbarContainer}>
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  title="Refresh"
-                  aria-label="Refresh"
-                >
-                  <ArrowSyncRegular />
-                  <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-                </button>
+                <div className={styles.toolbarContainer}>
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
 
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleExport}
-                  title="Export to CSV"
-                  aria-label="Export to CSV"
-                >
-                  <ArrowDownloadRegular />
-                  <span>Export to CSV</span>
-                </button>
+                  {/* Export to CSV Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
 
-                <div className={styles.toolbarSeparator} role="separator" />
+                  {/* Toolbar Separator */}
+                  <div className={styles.toolbarSeparator} role="separator" />
 
-                <button
-                  className={styles.toolbarButton}
-                  onClick={handleSettings}
-                  title="Settings"
-                  aria-label="Settings"
-                >
-                  <SettingsRegular />
-                  <span>Settings</span>
-                </button>
+                  {/* Settings Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleSettings}
+                    title="Settings"
+                    aria-label="Settings"
+                  >
+                    <SettingsRegular />
+                    <span>Settings</span>
+                  </button>
 
-                <div className={styles.searchInputWrapper}>
-                  <SearchRegular className={styles.searchIcon} />
-                  <input
-                    className={styles.searchInput}
-                    type="text"
-                    placeholder="Search trendlogs..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    spellCheck="false"
-                    role="searchbox"
-                    aria-label="Search trendlogs"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* HORIZONTAL DIVIDER */}
-            <div style={{ padding: '0' }}>
-              <hr className={styles.overviewHr} />
-            </div>
-
-            {/* DOCKING BODY */}
-            <div className={styles.dockingBody}>
-
-              {loading && trendlogs.length === 0 && (
-                <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Spinner size="large" />
-                  <Text style={{ marginLeft: '12px' }}>Loading trendlogs...</Text>
-                </div>
-              )}
-
-              {!selectedDevice && !loading && (
-                <div className={styles.noData}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Text size={500} weight="semibold">No device selected</Text>
-                    <br />
-                    <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search trendlogs..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search trendlogs"
+                    />
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Data Grid - Always show with header when device is selected */}
-              {selectedDevice && !loading && !error && (
-                <>
-                  <DataGrid
-                    items={trendlogs}
-                    columns={columns}
-                    sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      monitorId: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      label: {
-                        minWidth: 160,
-                        defaultWidth: 200,
-                      },
-                      interval: {
-                        minWidth: 100,
-                        defaultWidth: 120,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      dataSize: {
-                        minWidth: 100,
-                        defaultWidth: 130,
-                      },
-                    }}
-                  >
+              {/* ========================================
+                  HORIZONTAL DIVIDER
+                  Matches: ext-overview-hr
+                  ======================================== */}
+              <div style={{ padding: '0' }}>
+                <hr className={styles.overviewHr} />
+              </div>
+
+              {/* ========================================
+                  DOCKING BODY - Main Content
+                  Matches: msportalfx-docking-body
+                  ======================================== */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {loading && trendlogs.length === 0 && (
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Spinner size="large" />
+                    <Text style={{ marginLeft: '12px' }}>Loading trendlogs...</Text>
+                  </div>
+                )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid - Always show with header */}
+                {selectedDevice && !loading && !error && (
+                  <>
+                    <DataGrid
+                      items={trendlogs}
+                      columns={columns}
+                      sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        trendlogId: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        trendlogLabel: {
+                          minWidth: 150,
+                          defaultWidth: 200,
+                        },
+                        intervalSeconds: {
+                          minWidth: 100,
+                          defaultWidth: 120,
+                        },
+                        status: {
+                          minWidth: 100,
+                          defaultWidth: 120,
+                        },
+                        dataSizeKb: {
+                          minWidth: 120,
+                          defaultWidth: 150,
+                        },
+                      }}
+                    >
                     <DataGridHeader>
                       <DataGridRow>
                         {({ renderHeaderCell }) => (
@@ -482,19 +396,12 @@ export const TrendlogsPage: React.FC = () => {
                         <Text size={400} weight="semibold">No trendlogs found</Text>
                       </div>
                       <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured trendlog monitors</Text>
-                      <Button
-                        appearance="subtle"
-                        icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
-                        style={{ minWidth: '120px', fontWeight: 'normal' }}
-                      >
-                        Refresh
-                      </Button>
                     </div>
                   )}
-                </>
-              )}
+                  </>
+                )}
 
+              </div>
             </div>
           </div>
         </div>
