@@ -1,130 +1,347 @@
 /**
- * Buildings Page
+ * Buildings Page - Azure Portal Pattern
  *
- * Building management and configuration interface
+ * Building configuration management interface matching C++ BuildingConfigration.cpp
+ * Displays list of buildings with protocol, connection settings and paths
+ * Based on standardized InputsPage structure
  */
 
-import React from 'react';
-import { makeStyles, Title1, Button, Card, Text, DataGrid, DataGridHeader, DataGridRow, DataGridHeaderCell, DataGridBody, DataGridCell, TableColumnDefinition, createTableColumn } from '@fluentui/react-components';
-import { AddRegular, BuildingRegular } from '@fluentui/react-icons';
+import React, { useState, useCallback } from 'react';
+import {
+  DataGrid,
+  DataGridHeader,
+  DataGridRow,
+  DataGridHeaderCell,
+  DataGridBody,
+  DataGridCell,
+  TableCellLayout,
+  TableColumnDefinition,
+  createTableColumn,
+  Spinner,
+  Text,
+} from '@fluentui/react-components';
+import {
+  ArrowSyncRegular,
+  AddRegular,
+  DeleteRegular,
+  SearchRegular,
+} from '@fluentui/react-icons';
+import styles from './BuildingsPage.module.css';
 
-const useStyles = makeStyles({
-  container: {
-    padding: '24px',
-    height: '100%',
-    overflowY: 'auto',
-  },
-  header: {
-    marginBottom: '20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  content: {
-    marginTop: '20px',
-  },
-  card: {
-    padding: '20px',
-  },
-  addButton: {
-    minWidth: '120px',
-  },
-});
-
+// Types based on C++ Building_Config struct
 interface Building {
-  id: string;
-  name: string;
-  location: string;
-  devices: number;
-  status: string;
+  id?: number;
+  buildingName?: string;
+  protocol?: string;
+  ipAddress?: string;
+  ipPort?: string;
+  comPort?: string;
+  baudRate?: string;
+  buildingPath?: string;
 }
 
-/**
- * Buildings Page Component
- */
 export const BuildingsPage: React.FC = () => {
-  const styles = useStyles();
-  const [buildings] = React.useState<Building[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Fetch buildings
+  const fetchBuildings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const url = `/api/buildings`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch buildings: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setBuildings(data.buildings || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load buildings';
+      setError(errorMessage);
+      console.error('Error fetching buildings:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Handlers
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchBuildings();
+    setRefreshing(false);
+  };
+
+  const handleAdd = () => {
+    console.log('Add building');
+  };
+
+  const handleDelete = () => {
+    console.log('Delete building');
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    console.log('Search query:', e.target.value);
+  };
+
+  // Columns definition - matches C++ BuildingConfigration columns
   const columns: TableColumnDefinition<Building>[] = [
     createTableColumn<Building>({
-      columnId: 'name',
-      renderHeaderCell: () => 'Building Name',
-      renderCell: (item) => item.name,
+      columnId: 'id',
+      compare: (a, b) => (a.id || 0) - (b.id || 0),
+      renderHeaderCell: () => 'Item',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.id || '-'}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<Building>({
-      columnId: 'location',
-      renderHeaderCell: () => 'Location',
-      renderCell: (item) => item.location,
+      columnId: 'buildingName',
+      compare: (a, b) => (a.buildingName || '').localeCompare(b.buildingName || ''),
+      renderHeaderCell: () => 'Building',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.buildingName || '-'}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<Building>({
-      columnId: 'devices',
-      renderHeaderCell: () => 'Devices',
-      renderCell: (item) => item.devices,
+      columnId: 'protocol',
+      compare: (a, b) => (a.protocol || '').localeCompare(b.protocol || ''),
+      renderHeaderCell: () => 'Protocol',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.protocol || '-'}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<Building>({
-      columnId: 'status',
-      renderHeaderCell: () => 'Status',
-      renderCell: (item) => item.status,
+      columnId: 'ipAddress',
+      compare: (a, b) => (a.ipAddress || '').localeCompare(b.ipAddress || ''),
+      renderHeaderCell: () => 'IP/Domain/Tel#/SerialNumber',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.ipAddress || '-'}
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<Building>({
+      columnId: 'ipPort',
+      compare: (a, b) => (a.ipPort || '').localeCompare(b.ipPort || ''),
+      renderHeaderCell: () => 'Modbus TCP Port',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.ipPort || '-'}
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<Building>({
+      columnId: 'comPort',
+      compare: (a, b) => (a.comPort || '').localeCompare(b.comPort || ''),
+      renderHeaderCell: () => 'COM Port',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.comPort || '-'}
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<Building>({
+      columnId: 'baudRate',
+      compare: (a, b) => (a.baudRate || '').localeCompare(b.baudRate || ''),
+      renderHeaderCell: () => 'Baud Rate',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.baudRate || '-'}
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<Building>({
+      columnId: 'buildingPath',
+      compare: (a, b) => (a.buildingPath || '').localeCompare(b.buildingPath || ''),
+      renderHeaderCell: () => 'Building Path',
+      renderCell: (item) => (
+        <TableCellLayout>
+          {item.buildingPath || '-'}
+        </TableCellLayout>
+      ),
     }),
   ];
 
-  const handleAddBuilding = () => {
-    console.log('Add building clicked');
-  };
-
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <Title1>Buildings</Title1>
-          <Text>Manage buildings and their associated devices</Text>
-        </div>
-        <Button
-          className={styles.addButton}
-          appearance="primary"
-          icon={<AddRegular />}
-          onClick={handleAddBuilding}
-        >
-          Add Building
-        </Button>
-      </div>
+      {/* ========================================
+          BLADE CONTENT CONTAINER
+          Matches: fxs-blade-content-container-default-details
+          ======================================== */}
+      <div className={styles.bladeContentContainer}>
+        <div className={styles.bladeContentWrapper}>
+          <div className={styles.bladeContent}>
+            <div className={styles.partContent}>
 
-      <div className={styles.content}>
-        {buildings.length === 0 ? (
-          <Card className={styles.card}>
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <BuildingRegular style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }} />
-              <Text>No buildings configured. Click "Add Building" to get started.</Text>
-            </div>
-          </Card>
-        ) : (
-          <Card className={styles.card}>
-            <DataGrid
-              items={buildings}
-              columns={columns}
-              sortable
-              getRowId={(item) => item.id}
-            >
-              <DataGridHeader>
-                <DataGridRow>
-                  {({ renderHeaderCell }) => (
-                    <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                  )}
-                </DataGridRow>
-              </DataGridHeader>
-              <DataGridBody<Building>>
-                {({ item, rowId }) => (
-                  <DataGridRow<Building> key={rowId}>
-                    {({ renderCell }) => (
-                      <DataGridCell>{renderCell(item)}</DataGridCell>
-                    )}
-                  </DataGridRow>
+              {/* ========================================
+                  TOOLBAR - Top Actions Bar
+                  Matches: ext-overview-assistant-toolbar azc-toolbar
+                  ======================================== */}
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarContainer}>
+                  {/* Refresh Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    aria-label="Refresh"
+                  >
+                    <ArrowSyncRegular />
+                    <span>Refresh</span>
+                  </button>
+
+                  {/* Add Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleAdd}
+                    aria-label="Add Building"
+                  >
+                    <AddRegular />
+                    <span>Add Building</span>
+                  </button>
+
+                  {/* Delete Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleDelete}
+                    aria-label="Delete Building"
+                  >
+                    <DeleteRegular />
+                    <span>Delete Building</span>
+                  </button>
+
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search buildings..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search buildings"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ========================================
+                  HORIZONTAL DIVIDER
+                  Matches: ext-overview-hr
+                  ======================================== */}
+              <div style={{ padding: '0' }}>
+                <hr className={styles.overviewHr} />
+              </div>
+
+              {/* ========================================
+                  DOCKING BODY - Main Content
+                  Matches: msportalfx-docking-body
+                  ======================================== */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {loading && buildings.length === 0 && (
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Spinner size="large" />
+                    <Text style={{ marginLeft: '12px' }}>Loading buildings...</Text>
+                  </div>
                 )}
-              </DataGridBody>
-            </DataGrid>
-          </Card>
-        )}
+
+                {/* Data Grid */}
+                {!loading && (
+                  <>
+                    <DataGrid
+                      items={buildings}
+                      columns={columns}
+                      sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        id: {
+                          minWidth: 60,
+                          defaultWidth: 80,
+                        },
+                        buildingName: {
+                          minWidth: 120,
+                          defaultWidth: 150,
+                        },
+                        protocol: {
+                          minWidth: 100,
+                          defaultWidth: 120,
+                        },
+                        ipAddress: {
+                          minWidth: 150,
+                          defaultWidth: 200,
+                        },
+                        ipPort: {
+                          minWidth: 100,
+                          defaultWidth: 120,
+                        },
+                        comPort: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        baudRate: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        buildingPath: {
+                          minWidth: 200,
+                          defaultWidth: 400,
+                        },
+                      }}
+                    >
+                      <DataGridHeader>
+                        <DataGridRow>
+                          {({ renderHeaderCell }) => (
+                            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                          )}
+                        </DataGridRow>
+                      </DataGridHeader>
+                      <DataGridBody<Building>>
+                        {({ item, rowId }) => (
+                          <DataGridRow<Building> key={rowId}>
+                            {({ renderCell }) => (
+                              <DataGridCell>{renderCell(item)}</DataGridCell>
+                            )}
+                          </DataGridRow>
+                        )}
+                      </DataGridBody>
+                    </DataGrid>
+
+                    {/* No Data Message */}
+                    {buildings.length === 0 && (
+                      <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                          </svg>
+                          <Text size={400} weight="semibold">No buildings found</Text>
+                        </div>
+                        <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>No buildings configured in the system</Text>
+                      </div>
+                    )}
+                  </>
+                )}
+
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
