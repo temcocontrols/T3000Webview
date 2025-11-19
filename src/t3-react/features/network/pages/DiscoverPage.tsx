@@ -385,8 +385,8 @@ export const DiscoverPage: React.FC = () => {
                 {/* Loading State */}
                 {loading && (
                   <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading devices...</Text>
+                    <Spinner size="small" />
+                    <Text size={300} style={{ marginLeft: '8px' }}>Loading devices...</Text>
                   </div>
                 )}
 
