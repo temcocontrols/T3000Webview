@@ -48,6 +48,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)
@@ -113,7 +114,7 @@ export const OutputsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/output-points`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/output-points`;
       const response = await fetch(url);
 
       if (!response.ok) {

@@ -46,6 +46,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './ProgramsPage.module.css';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
@@ -101,7 +102,7 @@ export const ProgramsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/programs`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/programs`;
       const response = await fetch(url);
 
       if (!response.ok) {

@@ -23,6 +23,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
 } from '@fluentui/react-icons';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './DiscoverPage.module.css';
 
 // Device interface matching C++ Scan dialog structure
@@ -54,7 +55,7 @@ export const DiscoverPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/discover/devices');
+      const response = await fetch(`${API_BASE_URL}/api/discover/devices`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

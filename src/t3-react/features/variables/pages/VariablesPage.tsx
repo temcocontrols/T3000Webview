@@ -44,6 +44,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './VariablesPage.module.css';
 
 // Types based on Rust entity (variable_points.rs)
@@ -106,7 +107,7 @@ export const VariablesPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/variable-points`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/variable-points`;
       const response = await fetch(url);
 
       if (!response.ok) {

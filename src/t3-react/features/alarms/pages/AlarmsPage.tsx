@@ -32,6 +32,7 @@ import {
   ArrowSortRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './AlarmsPage.module.css';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
@@ -113,7 +114,7 @@ const AlarmsPage: React.FC = () => {
     setError(null);
     try {
       // Using generic table API
-      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/ALARMS`);
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/ALARMS`);
       if (!response.ok) throw new Error('Failed to fetch alarms');
 
       const result = await response.json();

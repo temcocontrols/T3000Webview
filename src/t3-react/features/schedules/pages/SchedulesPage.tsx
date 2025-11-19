@@ -38,6 +38,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './SchedulesPage.module.css';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
@@ -103,7 +104,7 @@ export const SchedulesPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/SCHEDULES`);
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/SCHEDULES`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

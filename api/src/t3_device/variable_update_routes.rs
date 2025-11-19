@@ -53,11 +53,11 @@ pub struct ApiResponse {
 /// Creates and returns the variable update API routes
 pub fn create_variable_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/api/t3-device/variables/:serial/:index", axum::routing::put(update_variable_full))
+        .route("/variables/:serial/:index", axum::routing::put(update_variable_full))
 }
 
 /// Update full variable record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/variables/:serial/:index
+/// PUT /api/t3-device/variables/:serial/:index (via parent router)
 pub async fn update_variable_full(
     State(state): State<T3AppState>,
     Path((serial, index_str)): Path<(i32, String)>,

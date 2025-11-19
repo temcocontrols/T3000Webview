@@ -26,6 +26,7 @@ import {
   DeleteRegular,
   SearchRegular,
 } from '@fluentui/react-icons';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './BuildingsPage.module.css';
 
 // Types based on C++ Building_Config struct

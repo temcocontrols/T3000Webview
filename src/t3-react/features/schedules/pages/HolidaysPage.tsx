@@ -43,6 +43,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './HolidaysPage.module.css';
 
 // Types based on C++ BacnetAnnualRoutine structure
@@ -101,7 +102,7 @@ export const HolidaysPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/table/ANNUAL_TABLE`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/ANNUAL_TABLE`;
       const response = await fetch(url);
 
       if (!response.ok) {

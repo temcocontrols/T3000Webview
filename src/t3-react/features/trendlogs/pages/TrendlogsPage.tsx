@@ -43,6 +43,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './TrendlogsPage.module.css';
 
 // Types based on Rust entity (trendlogs.rs)
@@ -97,7 +98,7 @@ export const TrendlogsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -140,7 +141,7 @@ export const TrendlogsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${monitor.trendlogId}/inputs`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${monitor.trendlogId}/inputs`;
       const response = await fetch(url);
 
       if (response.ok) {

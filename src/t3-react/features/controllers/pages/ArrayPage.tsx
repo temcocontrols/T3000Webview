@@ -20,6 +20,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './ArrayPage.module.css';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
@@ -70,7 +71,7 @@ const ArrayPage: React.FC = () => {
 
     try {
       // Using generic table API (ARRAY table doesn't have entity yet)
-      const response = await fetch(`/api/t3_device/devices/${selectedDevice.serialNumber}/table/ARRAY_TABLE`);
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/ARRAY_TABLE`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch arrays: ${response.statusText}`);

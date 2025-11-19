@@ -32,6 +32,7 @@ import {
   Dismiss24Regular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './PIDLoopsPage.module.css';
 
 // PID Controller interface matching PID_TABLE entity
@@ -103,7 +104,7 @@ const PIDLoopsPage: React.FC = () => {
     setError(null);
     try {
       // Using generic table API since no specific PID endpoint exists yet
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/table/PID_TABLE`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/PID_TABLE`;
       console.log('Fetching from URL:', url);
       const response = await fetch(url);
       console.log('Response status:', response.status);

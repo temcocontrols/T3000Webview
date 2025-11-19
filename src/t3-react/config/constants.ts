@@ -3,6 +3,9 @@
  * Re-export window constants, routes, and other shared constants
  */
 
+// API Configuration
+export const API_BASE_URL = 'http://localhost:9103';
+
 // Re-export window constants
 export {
   WINDOW_INPUT,

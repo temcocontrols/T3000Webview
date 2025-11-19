@@ -1870,7 +1870,7 @@ async fn get_device_capacity(
 async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        format!("SELECT COUNT(*) as count FROM {} WHERE Panel_Number = '{}' AND Label != ''", table, serial)
+        format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Label != ''", table, serial)
     );
     db.query_one(query).await
         .ok()
@@ -1883,7 +1883,7 @@ async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &s
 async fn count_records_with_desc(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        format!("SELECT COUNT(*) as count FROM {} WHERE Panel_Number = '{}' AND Description != ''", table, serial)
+        format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Description != ''", table, serial)
     );
     db.query_one(query).await
         .ok()
@@ -1923,7 +1923,7 @@ async fn get_project_point_tree(
     // Get all devices
     let devices_query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        "SELECT Serial_ID, Product_name, Online_Status, Product_class_ID FROM DEVICES ORDER BY Product_name".to_string()
+        "SELECT SerialNumber, Product_Name, Product_Class_ID FROM DEVICES ORDER BY Product_Name".to_string()
     );
 
     let devices_result = db.query_all(devices_query).await
@@ -1933,12 +1933,14 @@ async fn get_project_point_tree(
     let mut device_nodes = Vec::new();
 
     for device in devices_result {
-        let serial_number: String = device.try_get("", "Serial_ID")
+        let serial_number: i32 = device.try_get("", "SerialNumber")
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let device_name: String = device.try_get("", "Product_name")
-            .unwrap_or_else(|_| format!("Device {}", serial_number));
-        let online_status: i32 = device.try_get("", "Online_Status").unwrap_or(0);
-        let product_class_id: i32 = device.try_get("", "Product_class_ID").unwrap_or(0);
+        let serial_str = serial_number.to_string();
+        let device_name: String = device.try_get("", "Product_Name")
+            .unwrap_or_else(|_| format!("Device {}", serial_str));
+        // Note: Online_Status column doesn't exist, default to offline for now
+        let online_status: i32 = 0; // TODO: Add online status detection
+        let product_class_id: i32 = device.try_get("", "Product_Class_ID").unwrap_or(0);
 
         let status = if online_status == 1 { "online" } else { "offline" };
 
@@ -1950,15 +1952,15 @@ async fn get_project_point_tree(
         };
 
         // Count used points for this device
-        let input_count = count_records(&*db, "INPUTS", &serial_number).await;
-        let output_count = count_records(&*db, "OUTPUTS", &serial_number).await;
-        let var_count = count_records(&*db, "VARIABLES", &serial_number).await;
-        let program_count = count_records(&*db, "PROGRAMS", &serial_number).await;
-        let schedule_count = count_records(&*db, "SCHEDULES", &serial_number).await;
-        let holiday_count = count_records(&*db, "HOLIDAYS", &serial_number).await;
-        let pid_count = count_records_with_desc(&*db, "PID_TABLE", &serial_number).await;
-        let graphic_count = count_records(&*db, "GRAPHICS", &serial_number).await;
-        let trendlog_count = count_records(&*db, "TRENDLOGS", &serial_number).await;
+        let input_count = count_records(&*db, "INPUTS", &serial_str).await;
+        let output_count = count_records(&*db, "OUTPUTS", &serial_str).await;
+        let var_count = count_records(&*db, "VARIABLES", &serial_str).await;
+        let program_count = count_records(&*db, "PROGRAMS", &serial_str).await;
+        let schedule_count = count_records(&*db, "SCHEDULES", &serial_str).await;
+        let holiday_count = count_records(&*db, "HOLIDAYS", &serial_str).await;
+        let pid_count = count_records_with_desc(&*db, "PID_TABLE", &serial_str).await;
+        let graphic_count = count_records(&*db, "GRAPHICS", &serial_str).await;
+        let trendlog_count = count_records(&*db, "TRENDLOGS", &serial_str).await;
 
         let calc_percentage = |used: i32, total: i32| -> f32 {
             if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
@@ -2071,7 +2073,7 @@ async fn get_project_point_tree(
         device_nodes.push(ProjectTreeNode {
             name: device_name,
             node_type: "device".to_string(),
-            serial_number: Some(serial_number),
+            serial_number: Some(serial_str),
             status: Some(status.to_string()),
             point_type: None,
             used: None,

@@ -59,11 +59,11 @@ pub struct ApiResponse {
 /// Creates and returns the input update API routes
 pub fn create_input_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/api/t3-device/inputs/:serial/:index", axum::routing::put(update_input_full))
+        .route("/inputs/:serial/:index", axum::routing::put(update_input_full))
 }
 
 /// Update full input record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/inputs/:serial/:index
+/// PUT /api/t3-device/inputs/:serial/:index (via parent router)
 pub async fn update_input_full(
     State(state): State<T3AppState>,
     Path((serial, index_str)): Path<(i32, String)>,

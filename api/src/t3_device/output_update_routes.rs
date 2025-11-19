@@ -55,11 +55,11 @@ pub struct ApiResponse {
 /// Creates and returns the output update API routes
 pub fn create_output_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/api/t3-device/outputs/:serial/:index", axum::routing::put(update_output_full))
+        .route("/outputs/:serial/:index", axum::routing::put(update_output_full))
 }
 
 /// Update full output record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/outputs/:serial/:index
+/// PUT /api/t3-device/outputs/:serial/:index (via parent router)
 pub async fn update_output_full(
     State(state): State<T3AppState>,
     Path((serial, index_str)): Path<(i32, String)>,

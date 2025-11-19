@@ -49,6 +49,7 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -113,7 +114,8 @@ export const InputsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
+      console.log('[InputsPage] Fetching from:', url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -216,7 +218,7 @@ export const InputsPage: React.FC = () => {
       console.log('[Action 16] Full payload:', payload);
 
       const response = await fetch(
-        `/api/t3-device/inputs/${serialNumber}/${inputIndex}`,
+        `${API_BASE_URL}/api/t3_device/inputs/${serialNumber}/${inputIndex}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
