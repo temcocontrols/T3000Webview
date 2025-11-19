@@ -44,6 +44,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ErrorCircleRegular,
+  SaveRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -317,18 +318,42 @@ export const InputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit full label"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit full label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  style={{
+                    padding: '4px 6px',
+                    border: 'none',
+                    background: '#0078d4',
+                    color: 'white',
+                    borderRadius: '2px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: isSaving ? 0.6 : 1,
+                  }}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '14px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}

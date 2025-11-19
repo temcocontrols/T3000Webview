@@ -63,6 +63,7 @@ enum WebViewMessageType {
     BIND_DEVICE = 13,
     SAVE_NEW_LIBRARY_DATA = 14,
     LOGGING_DATA = 15, // Used for full device data sync
+    UPDATE_WEBVIEW_LIST = 16, // Used for updating full records (inputs/outputs/variables)
 }
 
 // Global function pointers - will be loaded from T3000.exe at runtime

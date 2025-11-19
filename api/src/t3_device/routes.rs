@@ -18,6 +18,9 @@ use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogReque
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest, SmartTrendlogRequest};
 use crate::t3_device::trendlog_enhanced_routes::create_trendlog_enhanced_routes;
 use crate::t3_device::trendlog_webmsg_routes::create_trendlog_webmsg_routes;
+use crate::t3_device::input_update_routes::create_input_update_routes;
+use crate::t3_device::output_update_routes::create_output_update_routes;
+use crate::t3_device::variable_update_routes::create_variable_update_routes;
 
 // Helper function to check if T3000 device database is available
 #[allow(dead_code)]
@@ -271,6 +274,66 @@ async fn delete_record(
         "message": format!("Delete operation for table {} record {} received", table, id),
         "status": "pending_implementation"
     })))
+}
+
+// Get table data for a specific device by serial number
+async fn get_device_table_data(
+    State(state): State<T3AppState>,
+    Path((serial, table)): Path<(String, String)>,
+) -> Result<Json<QueryResult>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Validate table name to prevent SQL injection
+    let valid_tables = get_valid_table_names();
+
+    if !valid_tables.contains(&table.as_str()) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // Query table data filtered by SerialNumber
+    let query = format!(
+        "SELECT * FROM {} WHERE SerialNumber = '{}'",
+        table, serial
+    );
+
+    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let results = db.query_all(statement).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Get column names for the table
+    let columns_query = format!("PRAGMA table_info({})", table);
+    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    let column_results = db.query_all(column_statement).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut column_names = Vec::new();
+    for column_row in column_results {
+        if let Ok(column_name) = column_row.try_get::<String>("", "name") {
+            column_names.push(column_name);
+        }
+    }
+
+    let mut data = Vec::new();
+    for row in results {
+        let mut row_data = serde_json::Map::new();
+
+        // Extract all columns dynamically using index
+        for (index, column_name) in column_names.iter().enumerate() {
+            if let Ok(value) = row.try_get_by_index::<Option<String>>(index) {
+                row_data.insert(column_name.clone(), json!(value));
+            } else if let Ok(int_value) = row.try_get_by_index::<Option<i32>>(index) {
+                row_data.insert(column_name.clone(), json!(int_value));
+            }
+        }
+
+        data.push(Value::Object(row_data));
+    }
+
+    let data_len = data.len();
+    Ok(Json(QueryResult {
+        data,
+        message: format!("Retrieved {} records from {} for device {}", data_len, table, serial),
+    }))
 }
 
 // Export table data (simplified version)
@@ -1140,6 +1203,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id", delete(delete_device))
         .route("/devices/:id/points", get(get_device_with_points))
         .route("/devices/:id/all-points", get(get_all_points_by_device))
+        .route("/devices/:serial/table/:table", get(get_device_table_data))  // Generic table query by serial number
 
         // T3000 Points endpoints
         .route("/devices/:id/input-points", get(get_input_points))
@@ -1207,6 +1271,11 @@ pub fn t3_device_routes() -> Router<T3AppState> {
 
         // 🟢 TrendLog WebMsg Routes (WORKING HandleWebViewMsg approach)
         .merge(create_trendlog_webmsg_routes())
+
+        // 🆕 Point Update Routes (UPDATE_WEBVIEW_LIST Action 16)
+        .merge(create_input_update_routes())
+        .merge(create_output_update_routes())
+        .merge(create_variable_update_routes())
 }
 
 // ============================================================================
