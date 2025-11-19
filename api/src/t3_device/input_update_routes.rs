@@ -12,9 +12,8 @@ use serde_json::{json, Value};
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info};
 use winapi::um::libloaderapi::GetProcAddress;
-use winapi::shared::minwindef::HINSTANCE;
 
 use crate::app_state::AppState;
 use crate::db_connection::establish_t3_device_connection;

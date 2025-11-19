@@ -14,7 +14,6 @@ use std::os::raw::c_char;
 use std::sync::Arc;
 use tracing::{error, info};
 use winapi::um::libloaderapi::GetProcAddress;
-use winapi::shared::minwindef::HINSTANCE;
 
 use crate::app_state::AppState;
 use crate::db_connection::establish_t3_device_connection;
@@ -252,7 +251,11 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
         buffer[input_bytes.len()] = 0; // Null terminator
 
         // Call the private FFI wrapper through winapi
+        use winapi::shared::minwindef::HINSTANCE;
+
         unsafe {
+            use winapi::shared::minwindef::HINSTANCE;
+
             // Get function pointer (assumes already loaded by service)
             let current_module = std::ptr::null_mut();
             let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();

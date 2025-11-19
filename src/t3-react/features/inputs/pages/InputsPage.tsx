@@ -156,6 +156,88 @@ export const InputsPage: React.FC = () => {
     setEditValue(currentValue || '');
   };
 
+  // Test function: Update full label using UPDATE_ENTRY (Action 3 - single field)
+  // COMMENTED OUT: Action 3 does NOT support fullLabel! It only supports: control, value, auto_manual
+  // Keeping the function code for reference but not using it
+  /*
+  const updateFullLabelUsingAction3 = async (serialNumber: number, inputIndex: string, newLabel: string) => {
+    try {
+      console.log(`[Action 3] Attempting to update full label for Input ${inputIndex} (SN: ${serialNumber})`);
+      console.warn('[Action 3] WARNING: fullLabel is NOT supported by Action 3 in C++!');
+      console.warn('[Action 3] C++ only supports: control, value, auto_manual');
+
+      const response = await fetch(
+        `/api/t3-device/inputs/${serialNumber}/${inputIndex}/field/fullLabel`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: newLabel })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 3] Response:', result);
+      console.warn('[Action 3] The API may return success, but C++ did NOT update the field!');
+      return result;
+    } catch (error) {
+      console.error('[Action 3] Failed (Expected!):', error);
+      throw error;
+    }
+  };
+  */
+
+  // Test function: Update full label using UPDATE_WEBVIEW_LIST (Action 16 - full record)
+  // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
+  const updateFullLabelUsingAction16 = async (serialNumber: number, inputIndex: string, newLabel: string, currentInput: InputPoint) => {
+    try {
+      console.log(`[Action 16] Updating full label for Input ${inputIndex} (SN: ${serialNumber})`);
+
+      // Action 16 requires ALL fields, so we send current values + the new label
+      const payload = {
+        fullLabel: newLabel, // New value
+        label: currentInput.label || '',
+        value: parseFloat(currentInput.fValue || '0'),
+        range: parseInt(currentInput.range || '0'),
+        autoManual: parseInt(currentInput.autoManual || '0'),
+        control: 0, // Not in UI, use default
+        filter: parseInt(currentInput.filterField || '0'),
+        digitalAnalog: currentInput.digitalAnalog === '0' ? 0 : 1,
+        calibrationSign: parseInt(currentInput.sign || '0'),
+        calibrationH: 0, // Not in UI, use default
+        calibrationL: 0, // Not in UI, use default
+        decom: 0, // Not in UI, use default
+      };
+
+      console.log('[Action 16] Full payload:', payload);
+
+      const response = await fetch(
+        `/api/t3-device/inputs/${serialNumber}/${inputIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 16] Success:', result);
+      return result;
+    } catch (error) {
+      console.error('[Action 16] Failed:', error);
+      throw error;
+    }
+  };
+
   const handleEditSave = async () => {
     if (!editingCell) {
       setEditingCell(null);
@@ -170,12 +252,31 @@ export const InputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call to update the backend
-      // if (editingCell.field === 'fullLabel') {
-      //   await updateInputLabel(editingCell.serialNumber, editingCell.inputIndex, editValue);
-      // } else if (editingCell.field === 'fValue') {
-      //   await updateInputValue(editingCell.serialNumber, editingCell.inputIndex, editValue);
-      // }
+      // Test both methods for fullLabel field
+      if (editingCell.field === 'fullLabel' && selectedDevice) {
+        console.log('=== Updating Full Label ===');
+        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Label: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST) - the only method that supports fullLabel');
+
+        // Find the current input data to pass all fields for Action 16
+        const currentInput = inputs.find(
+          input => input.serialNumber === editingCell.serialNumber && input.inputIndex === editingCell.inputIndex
+        );
+
+        if (!currentInput) {
+          throw new Error('Current input data not found');
+        }
+
+        // Use Action 16 (UPDATE_WEBVIEW_LIST) - This is the ONLY way to update fullLabel
+        await updateFullLabelUsingAction16(
+          selectedDevice.serialNumber,
+          editingCell.inputIndex,
+          editValue,
+          currentInput
+        );
+
+        console.log('✅ Full label updated successfully!');
+      }
 
       // Update local state optimistically
       setInputs(prevInputs =>
@@ -191,7 +292,7 @@ export const InputsPage: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       console.error('Failed to update:', error);
-      // Optionally show error message to user
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
