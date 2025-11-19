@@ -181,14 +181,6 @@ module.exports = configure(function (/* ctx */) {
       // https: true
       port: 3003,
       open: true, // opens browser window automatically
-      proxy: {
-        // Proxy API requests to Rust backend server
-        '/api': {
-          target: 'http://localhost:9103',
-          changeOrigin: true,
-          secure: false,
-        }
-      }
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#framework
