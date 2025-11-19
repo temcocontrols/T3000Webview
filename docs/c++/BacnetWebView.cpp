@@ -37,7 +37,7 @@ using namespace Microsoft::WRL;
 size_t thread_local BacnetWebViewAppWindow::s_appInstances = 0;
 char* base64_decode(char const* base64Str, char* debase64Str, int encodeStrLen);
 extern int Read_Webview_Data_Special(int panelid, UINT nserialnumber, int nscreenindex);
-extern int Write_Webview_Data_Special(int panelid, UINT nserialnumber, int nscreenindex,int element_count);
+extern int Write_Webview_Data_Special(int panelid, UINT nserialnumber, int nscreenindex, int element_count);
 //enum WEBVIEW_MESSAGE_TYPE
 //{
 //    READ_VARIABLES = 0,
@@ -113,8 +113,8 @@ void DeleteDirectoryRecursive(const std::wstring& dir_path) {
 }
 
 extern CBacnetProgram* Program_Window;
-extern BacnetWeeklyRoutine* WeeklyRoutine_Window ;
-extern BacnetAnnualRoutine* AnnualRoutine_Window ;
+extern BacnetWeeklyRoutine* WeeklyRoutine_Window;
+extern BacnetAnnualRoutine* AnnualRoutine_Window;
 BacnetWebViewAppWindow::BacnetWebViewAppWindow(
 	UINT creationModeId,
 	std::wstring initialUri,
@@ -194,10 +194,10 @@ PCWSTR BacnetWebViewAppWindow::GetWindowClass()
 			GetSystemMetrics(SM_CYSMICON),
 			LR_DEFAULTCOLOR);
 
-		// Register the window class. 
+		// Register the window class.
 		RegisterClassEx(&wcx);
 		return windowClass.c_str();
-	}();
+		}();
 
 	return windowClass;
 }
@@ -285,7 +285,7 @@ bool BacnetWebViewAppWindow::HandleWindowMessage(
 	{
 		if (Device_Basic_Setting.reg.pro_info.firmware0_rev_main * 10 + Device_Basic_Setting.reg.pro_info.firmware0_rev_sub >= WEBVIEW_JSON_FEATURE) //643 版本会有这个功能
 		{
-				::PostMessage(m_screen_dlg_hwnd, HANDLE_JSON_DATA, NULL, NULL);
+			::PostMessage(m_screen_dlg_hwnd, HANDLE_JSON_DATA, NULL, NULL);
 		}
 
 		int retValue = 0;
@@ -543,7 +543,7 @@ void BacnetWebViewAppWindow::CloseWebView(bool cleanupUserDataFolder)
 		// creation, they would need to pass in that explicit value here.
 		// For more information about userDataFolder:
 		// https://docs.microsoft.com/microsoft-edge/webview2/reference/win32/webview2-idl#createcorewebview2environmentwithoptions
-		/* 
+		/*
 		PWSTR userDataPath;
 		HRESULT hrfolder = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &userDataPath);
 		std::wstring userDataFolder(userDataPath);
@@ -681,7 +681,8 @@ HRESULT BacnetWebViewAppWindow::OnCreateCoreWebView2ControllerCompleted(
 		if (hashPos != std::wstring::npos) {
 			baseUrl = cacheBustUri.substr(0, hashPos);
 			hashFragment = cacheBustUri.substr(hashPos);
-		} else {
+		}
+		else {
 			baseUrl = cacheBustUri;
 			hashFragment = L"";
 		}
@@ -689,7 +690,8 @@ HRESULT BacnetWebViewAppWindow::OnCreateCoreWebView2ControllerCompleted(
 		// Add timestamp parameter to base URL
 		if (baseUrl.find(L'?') != std::wstring::npos) {
 			baseUrl += L"&ts=" + std::to_wstring(GetTickCount64());
-		} else {
+		}
+		else {
 			baseUrl += L"?ts=" + std::to_wstring(GetTickCount64());
 		}
 
@@ -840,7 +842,7 @@ void WriteHandleWebViewMsgLog(const CString& messageType, const CString& outmsg,
 
 #include <mutex>
 std::mutex handleWebViewMsgMutex;
-void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
+void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 {
 	// 使用 std::lock_guard 来锁定互斥锁
 	std::lock_guard<std::mutex> lock(handleWebViewMsgMutex);
@@ -868,7 +870,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 	CString image_fordor = g_strExePth + CString("Database\\Buildings\\") + pFrame->m_strCurMainBuildingName + _T("\\image");
 	CString temp_item;
 	CString temp_item_zip;
-	
+
 #endif
 
 	// append msgId
@@ -876,7 +878,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		std::string msgId = json["msgId"].asString();
 		tempjson["msgId"] = msgId;
 	}
-	
+
 	CString temp_action;
 	temp_action.Format(_T("action value = %d\r\n"), action);
 	DFTrace(temp_action);
@@ -923,7 +925,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			CString temp_message;
 			temp_message.Format(_T("Panel %d is offline!\r\n"), npanel_id);
 			TRACE(temp_message);
-            WrapErrorMessage(builder, tempjson, outmsg, temp_message);
+			WrapErrorMessage(builder, tempjson, outmsg, temp_message);
 			break;
 		}
 		else if (npanel_id == 0)
@@ -984,7 +986,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			tempjson["data"][p_i]["control"] = g_Output_data[npanel_id].at(i).control;
 			tempjson["data"][p_i]["digital_analog"] = g_Output_data[npanel_id].at(i).digital_analog;
 			tempjson["data"][p_i]["hw_switch_status"] = g_Output_data[npanel_id].at(i).hw_switch_status;
-			tempjson["data"][p_i]["decom"] = g_Output_data[npanel_id].at(i).decom; //for output   0 "Normal"    1"Alarm"  
+			tempjson["data"][p_i]["decom"] = g_Output_data[npanel_id].at(i).decom; //for output   0 "Normal"    1"Alarm"
 			p_i++;
 		}
 
@@ -1184,7 +1186,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				for (int i = 0; i < 8; i++)
 				{
 					tempjson["data"][r_i]["time"][j][i]["minutes"] = g_Schedual_Time_data[npanel_id].at(k).Schedual_Day_Time[i][j].time_minutes;
-					tempjson["data"][r_i]["time"][j][i]["hours"] = g_Schedual_Time_data[npanel_id].at(k).Schedual_Day_Time[i][j].time_hours ;
+					tempjson["data"][r_i]["time"][j][i]["hours"] = g_Schedual_Time_data[npanel_id].at(k).Schedual_Day_Time[i][j].time_hours;
 					tempjson["data"][r_i]["time"][j][i]["flag"] = g_Schedual_time_flag[npanel_id].at(weekly_list_line).Time_flag[i][j];
 				}
 			}
@@ -1200,7 +1202,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			tempjson["data"][r_i]["index"] = k; //第几个 holiday
 			tempjson["data"][r_i]["id"] = "HOL" + to_string(k + 1);
 			tempjson["data"][r_i]["command"] = to_string(npanel_id) + "CAL" + to_string(k + 1);
-			for(int m = 0 ; m < ANNUAL_CODE_SIZE; m++)
+			for (int m = 0; m < ANNUAL_CODE_SIZE; m++)
 			{
 				tempjson["data"][r_i]["data"][m] = gp_DayState[npanel_id][k][m];
 			}
@@ -1224,10 +1226,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		int panel_id;
 		if (msg_source == 0)//来自T3000按键点击
 		{
-			grp_serial_number = g_selected_serialnumber; 
+			grp_serial_number = g_selected_serialnumber;
 			panel_id = bac_gloab_panel;
 			// 判断是否存在 "viewitem" 字段
-			if (json.isMember("viewitem") && !json["viewitem"].isNull()) 
+			if (json.isMember("viewitem") && !json["viewitem"].isNull())
 			{
 				// 存在 "viewitem" 字段且不为 null
 				grp_index = json.get("viewitem", Json::nullValue).asInt(); //这里如果是按键点进来的，要用T3000的index ，如果是 浏览器的 要浏览器的index
@@ -1261,7 +1263,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				}
 			}
 		}
-		else if(msg_source == 1)//来自浏览器
+		else if (msg_source == 1)//来自浏览器
 		{
 			panel_id = json.get("panelId", Json::nullValue).asInt(); //这里要根据panelId来判断是那个序列号的设备，进而确定保存的文件名
 			grp_index = json.get("viewitem", Json::nullValue).asInt(); //这里如果是按键点进来的，要用T3000的index ，如果是 浏览器的 要浏览器的index
@@ -1275,7 +1277,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 
 			if ((panel_id <= 0) || (panel_id > 254))
 			{
-				if (action == GET_INITIAL_DATA) 
+				if (action == GET_INITIAL_DATA)
 				{
 					tempjson["action"] = "GET_INITIAL_DATA_RES";
 				}
@@ -1301,7 +1303,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				WrapErrorMessage(builder, tempjson, outmsg, _T("Message Source Error."));
 				break;
 			}
-			int n_read_result = Read_Webview_Data_Special(panel_id, grp_serial_number, grp_index );
+			int n_read_result = Read_Webview_Data_Special(panel_id, grp_serial_number, grp_index);
 			if (n_read_result < 0)
 			{
 				if (action == GET_INITIAL_DATA)
@@ -1474,7 +1476,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		int panelId = json.get("panelId", Json::nullValue).asInt(); //这里要根据panelId来判断是那个序列号的设备，进而确定保存的文件名
 		int save_grp_index = -1;
 
-		
+
 		if (msg_source == 0)//来自T3000按键点击
 		{
 			grp_serial_number = g_selected_serialnumber; //暂时用这个代替
@@ -1507,7 +1509,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			WrapErrorMessage(builder, tempjson, outmsg, _T("Message Source Error."));
 			break;
 		}
-		
+
 		if ((save_grp_index < 0) || (save_grp_index > 7))
 		{
 			if (msg_source == 0)
@@ -1515,7 +1517,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			WrapErrorMessage(builder, tempjson, outmsg, _T("Viewitem out of range."));
 			break;
 		}
-		
+
 
 		temp_item.Format(_T("%u_%d.txt"), grp_serial_number, save_grp_index);
 		temp_item_zip.Format(_T("%u_%d.zip"), grp_serial_number, save_grp_index);
@@ -1584,7 +1586,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 
 		//这里涉及到写设备的动作 发消息放到线程中去做。避免界面卡死，以及影响其他消息收发;
 		//这里要根据不同的panel 对不同设备进行保存 .
-		int n_write_result =  Write_Webview_Data_Special(panelId, grp_serial_number, save_grp_index, temp_elementcount);
+		int n_write_result = Write_Webview_Data_Special(panelId, grp_serial_number, save_grp_index, temp_elementcount);
 		if (n_write_result == -3)
 		{
 			if (msg_source == 0)
@@ -1592,7 +1594,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			WrapErrorMessage(builder, tempjson, outmsg, _T("Write too often. Ignore this request!"));
 			break;
 		}
-		else if(n_write_result < 0)
+		else if (n_write_result < 0)
 		{
 			if (msg_source == 0)
 				SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("Failed to store data!"));
@@ -1600,7 +1602,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			break;
 		}
 
-		
+
 
 		break;
 	}
@@ -1611,11 +1613,21 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		int entry_type = json.get("entryType", Json::nullValue).asInt();
 		int entry_index = json.get("entryIndex", Json::nullValue).asInt();
 
+		// Log incoming request
+		CString logMsg;
+		logMsg.Format(_T("UPDATE_WEBVIEW_LIST: PanelId=%d, SerialNumber=%d, EntryType=%d, Index=%d"),
+			temp_panel_id, temp_serial_number, entry_type, entry_index);
+		WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), logMsg, 1);
+
 		if ((temp_panel_id == 0) || (temp_panel_id >= 255))
 		{
 			if (msg_source == 0)
 				SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("Panel is invalid ."));
 			WrapErrorMessage(builder, tempjson, outmsg, _T("Panel is invalid ."));
+
+			CString errorLog;
+			errorLog.Format(_T("ERROR: Invalid panel_id=%d"), temp_panel_id);
+			WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), errorLog, 0);
 			break;
 		}
 
@@ -1629,12 +1641,26 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				if (msg_source == 0)
 					SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("Index is invalid."));
 				WrapErrorMessage(builder, tempjson, outmsg, _T("Index is invalid."));
+
+				CString errorLog;
+				errorLog.Format(_T("ERROR: Invalid entry_index=%d (max=%d)"), entry_index, BAC_INPUT_ITEM_COUNT);
+				WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), errorLog, 0);
 				break;
 			}
 
+			// Log field values before update
+			CString beforeLog;
+			beforeLog.Format(_T("INPUT[%d] BEFORE: description='%s', label='%s', value=%d, range=%d"),
+				entry_index,
+				(LPCTSTR)CString((char*)g_Input_data[temp_panel_id].at(entry_index).description),
+				(LPCTSTR)CString((char*)g_Input_data[temp_panel_id].at(entry_index).label),
+				g_Input_data[temp_panel_id].at(entry_index).value,
+				g_Input_data[temp_panel_id].at(entry_index).range);
+			WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), beforeLog, 0);
+
 			g_Input_data[temp_panel_id].at(entry_index).control = json["control"].asInt();
 			g_Input_data[temp_panel_id].at(entry_index).value = json["value"].asFloat() * 1000;
-			strncpy((char *)g_Input_data[temp_panel_id].at(entry_index).description, json["description"].asCString(), STR_IN_DESCRIPTION_LENGTH);
+			strncpy((char*)g_Input_data[temp_panel_id].at(entry_index).description, json["description"].asCString(), STR_IN_DESCRIPTION_LENGTH);
 			strncpy((char*)g_Input_data[temp_panel_id].at(entry_index).label, json["label"].asCString(), STR_IN_LABEL);
 			g_Input_data[temp_panel_id].at(entry_index).range = json["range"].asInt();
 			g_Input_data[temp_panel_id].at(entry_index).auto_manual = json["auto_manual"].asInt();
@@ -1646,23 +1672,50 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			g_Input_data[temp_panel_id].at(entry_index).calibration_l = json["calibration_l"].asInt();
 			g_Input_data[temp_panel_id].at(entry_index).decom = json["decom"].asInt();
 
+			// Log field values after update
+			CString afterLog;
+			afterLog.Format(_T("INPUT[%d] AFTER: description='%s', label='%s', value=%d, range=%d"),
+				entry_index,
+				(LPCTSTR)CString((char*)g_Input_data[temp_panel_id].at(entry_index).description),
+				(LPCTSTR)CString((char*)g_Input_data[temp_panel_id].at(entry_index).label),
+				g_Input_data[temp_panel_id].at(entry_index).value,
+				g_Input_data[temp_panel_id].at(entry_index).range);
+			WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), afterLog, 0);
+
 			if (g_Device_Basic_Setting[temp_panel_id].reg.n_serial_number != temp_serial_number)
 			{
 				if (msg_source == 0)
 					SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("The serial number does not match the panel."));
 				WrapErrorMessage(builder, tempjson, outmsg, _T("The serial number does not match the panel."));
+
+				CString errorLog;
+				errorLog.Format(_T("ERROR: Serial mismatch - Expected=%d, Got=%d"),
+					g_Device_Basic_Setting[temp_panel_id].reg.n_serial_number, temp_serial_number);
+				WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), errorLog, 0);
 				break;
 			}
 			unsigned int temp_objectinstance = g_Device_Basic_Setting[temp_panel_id].reg.object_instance;
 
-			int ret_results = WritePrivateData_Blocking(temp_objectinstance,WRITEINPUT_T3000, entry_index,entry_index, 4, (char*)&g_Input_data[temp_panel_id].at(entry_index));
+			// Log write attempt
+			CString writeLog;
+			writeLog.Format(_T("Writing to device: ObjectInstance=%d, Type=INPUT, Index=%d"),
+				temp_objectinstance, entry_index);
+			WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), writeLog, 0);
+
+			int ret_results = WritePrivateData_Blocking(temp_objectinstance, WRITEINPUT_T3000, entry_index, entry_index, 4, (char*)&g_Input_data[temp_panel_id].at(entry_index));
 			if (ret_results > 0)
 			{
-
+				CString successLog;
+				successLog.Format(_T("SUCCESS: Write completed for INPUT[%d]"), entry_index);
+				WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), successLog, 1);
 			}
 			else
 			{
 				WrapErrorMessage(builder, tempjson, outmsg, _T("Write data timeout."));
+
+				CString errorLog;
+				errorLog.Format(_T("ERROR: WritePrivateData_Blocking failed for INPUT[%d]"), entry_index);
+				WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), errorLog, 0);
 				break;
 			}
 			break;
@@ -1674,9 +1727,9 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		default:
 			break;
 		}
-	
+
 		tempjson["action"] = "UPDATE_WEBVIEW_LIST";
-		tempjson["data"]["status"] = true; 
+		tempjson["data"]["status"] = true;
 		const std::string output = Json::writeString(builder, tempjson);
 		CString temp_cs(output.c_str());
 		outmsg = temp_cs;
@@ -1982,7 +2035,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 
 
 		}
-			break;
+		break;
 		case BAC_AR_Y:
 		{
 			if ((entry_index >= 0) && entry_index + 1 > BAC_HOLIDAY_COUNT)
@@ -2011,7 +2064,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 			}
 
 		}
-			break;
+		break;
 
 		}
 		tempjson["action"] = "UPDATE_ENTRY_RES";
@@ -2035,10 +2088,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["panel_number"] = g_bacnet_panel_info.at(i).panel_number;
 				tempjson["data"][send_index]["object_instance"] = g_bacnet_panel_info.at(i).object_instance;
 				tempjson["data"][send_index]["serial_number"] = g_bacnet_panel_info.at(i).nseiral_number;
-				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
+				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0
 				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;
 				tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
-				send_index++; 
+				send_index++;
 			}
 			else
 			{
@@ -2053,10 +2106,10 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 				tempjson["data"][send_index]["panel_number"] = temp_panel;
 				tempjson["data"][send_index]["object_instance"] = g_Device_Basic_Setting[temp_panel].reg.object_instance;
 				tempjson["data"][send_index]["serial_number"] = g_Device_Basic_Setting[temp_panel].reg.n_serial_number;
-				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
+				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0
 				tempjson["data"][send_index]["pid"] = g_Device_Basic_Setting[temp_panel].reg.panel_type;
 				tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
-				send_index++; 
+				send_index++;
 			}
 		}
 		const std::string output = Json::writeString(builder, tempjson);
@@ -2154,7 +2207,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 					tempjson["data"][i]["control"] = g_Output_data[npanel_id].at(entry_index).control;
 					tempjson["data"][i]["digital_analog"] = g_Output_data[npanel_id].at(entry_index).digital_analog;
 					tempjson["data"][i]["hw_switch_status"] = g_Output_data[npanel_id].at(entry_index).hw_switch_status;
-					tempjson["data"][i]["decom"] = g_Output_data[npanel_id].at(entry_index).decom; //for output   0 "Normal"    1"Alarm"  
+					tempjson["data"][i]["decom"] = g_Output_data[npanel_id].at(entry_index).decom; //for output   0 "Normal"    1"Alarm"
 
 				}
 				else if (entry_type == BAC_VAR)
@@ -2313,7 +2366,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 						tempjson["data"][i]["range"][m] = g_monitor_data[npanel_id].at(i).range[m]; //14个input对应的range
 						//例如 例子1  111OUT45          panel = 111 , sub_panel = 0 . point_type = 0 ，number = 45 , network 默认为0
 						//例如 例子2  123.45.MB_REG67   panel = 123 , sub_panel = 45, point_type = 2 , number = 67 , network 默认为0
-						//例子3		  45678AV90         
+						//例子3		  45678AV90
 						tempjson["data"][i]["input"][m]["panel"] = g_monitor_data[npanel_id].at(i).inputs[m].panel;
 						tempjson["data"][i]["input"][m]["sub_panel"] = g_monitor_data[npanel_id].at(i).inputs[m].sub_panel;
 						tempjson["data"][i]["input"][m]["point_type"] = g_monitor_data[npanel_id].at(i).inputs[m].point_type;
@@ -2572,7 +2625,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		//temp_panel_id = 144; //test
 		//temp_serial_number = 240488;
 		//break;
-		// 
+		//
 		// LOG INPUT PARAMETERS for debugging
 		CString debugLog;
 		debugLog.Format(_T("📥 LOGGING_DATA RECEIVED - panelId: %d, serialNumber: %d\n"), temp_panel_id, temp_serial_number);
@@ -2581,7 +2634,7 @@ void HandleWebViewMsg(CString msg ,CString &outmsg, int msg_source = 0)
 		//15分钟内收到这个命令直接break;
 		static DWORD last_logging_time = 0;
 		DWORD current_time = GetTickCount();
-		if (current_time - last_logging_time <  60 * 1000) // 15 minutes in milliseconds
+		if (current_time - last_logging_time < 60 * 1000) // 15 minutes in milliseconds
 		{
 			CString skipLog;
 			skipLog.Format(_T("⏭️ LOGGING_DATA SKIPPED - within 1 minute cooldown (panelId: %d, serialNumber: %d)\n"), temp_panel_id, temp_serial_number);
@@ -2731,7 +2784,7 @@ void BacnetWebViewAppWindow::ProcessWebviewMsg(CString msg)
 {
 	CString outmsg;
 	HandleWebViewMsg(msg, outmsg);
-	if(!outmsg.IsEmpty())
+	if (!outmsg.IsEmpty())
 		m_webView->PostWebMessageAsJson(outmsg);
 }
 
@@ -2878,7 +2931,7 @@ void BacnetWebViewAppWindow::get_png_image_dimensions(CString& file_path, unsign
 //	}
 //}
 
-//void setup_console() 
+//void setup_console()
 //{
 //	AllocConsole();
 //	freopen("CONOUT$", "w", stdout);
@@ -2918,7 +2971,7 @@ int webview_run_server() {
 
 	RustError result = run_server();
 	if (result != RustError::Ok) {
-		
+
 		SetPaneString(BAC_SHOW_MISSION_RESULTS, L"Couldn't run the webview API server");
 		return 1;
 	}
