@@ -11,12 +11,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::ffi::CString;
 use std::os::raw::c_char;
-use std::sync::Arc;
 use tracing::{error, info};
-use winapi::um::libloaderapi::GetProcAddress;
 
-use crate::app_state::AppState;
-use crate::db_connection::establish_t3_device_connection;
+use crate::app_state::T3AppState;
 use crate::entity::t3_device::devices;
 use sea_orm::*;
 
@@ -53,101 +50,68 @@ pub struct ApiResponse {
     pub data: Option<Value>,
 }
 
-/// Create router for variable update endpoints
-pub fn create_variable_update_routes() -> Router<Arc<AppState>> {
+/// Creates and returns the variable update API routes
+pub fn create_variable_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route(
-            "/variables/:serial/:index/field/:field_name",
-            axum::routing::put(update_variable_field),
-        )
-        .route(
-            "/variables/:serial/:index",
-            axum::routing::put(update_variable_full),
-        )
-}
-
-/// Update a single field of a variable point using UPDATE_ENTRY action (Action 3)
-/// PUT /api/t3-device/variables/:serial/:index/field/:field_name
-async fn update_variable_field(
-    State(_state): State<Arc<AppState>>,
-    Path((serial, index, field_name)): Path<(i32, i32, String)>,
-    Json(payload): Json<UpdateVariableFieldRequest>,
-) -> Result<Json<ApiResponse>, (StatusCode, String)> {
-    info!(
-        "UPDATE_ENTRY: Updating variable field - Serial: {}, Index: {}, Field: {}, Value: {:?}",
-        serial, index, field_name, payload.value
-    );
-
-    // Find panel_id by serial number
-    let panel_id = match find_panel_by_serial(serial).await {
-        Ok(pid) => pid,
-        Err(e) => {
-            error!("Failed to find panel by serial {}: {}", serial, e);
-            return Err((
-                StatusCode::NOT_FOUND,
-                format!("Device with serial number {} not found", serial),
-            ));
-        }
-    };
-
-    // Prepare input JSON for UPDATE_ENTRY action
-    let input_json = json!({
-        "action": 3,  // UPDATE_ENTRY
-        "panelId": panel_id,
-        "entryIndex": index,
-        "entryType": BAC_VAR,  // 2 = VARIABLE
-        "field": field_name,
-        "value": payload.value
-    });
-
-    // Call FFI function
-    match call_update_ffi(3, input_json).await {
-        Ok(_response) => {
-            info!("✅ Variable field updated successfully");
-            Ok(Json(ApiResponse {
-                success: true,
-                message: format!("Field '{}' updated successfully", field_name),
-                data: Some(json!({
-                    "serialNumber": serial,
-                    "variableIndex": index,
-                    "field": field_name,
-                    "newValue": payload.value
-                })),
-            }))
-        }
-        Err(e) => {
-            error!("❌ Failed to update variable field: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to update field: {}", e),
-            ))
-        }
-    }
+        .route("/api/t3-device/variables/:serial/:index", axum::routing::put(update_variable_full))
 }
 
 /// Update full variable record using UPDATE_WEBVIEW_LIST action (Action 16)
 /// PUT /api/t3-device/variables/:serial/:index
-async fn update_variable_full(
-    State(_state): State<Arc<AppState>>,
-    Path((serial, index)): Path<(i32, i32)>,
+pub async fn update_variable_full(
+    State(state): State<T3AppState>,
+    Path((serial, index_str)): Path<(i32, String)>,
     Json(payload): Json<UpdateVariableFullRequest>,
-) -> Result<Json<ApiResponse>, (StatusCode, String)> {
-    info!(
-        "UPDATE_WEBVIEW_LIST: Updating full variable record - Serial: {}, Index: {}",
-        serial, index
-    );
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let index = index_str.parse::<i32>().unwrap_or(0);
+    info!("UPDATE_WEBVIEW_LIST: Updating full variable record - Serial: {}, Index: {}", serial, index);
 
-    // Find panel_id by serial number
-    let panel_id = match find_panel_by_serial(serial).await {
-        Ok(pid) => pid,
-        Err(e) => {
-            error!("Failed to find panel by serial {}: {}", serial, e);
-            return Err((
-                StatusCode::NOT_FOUND,
-                format!("Device with serial number {} not found", serial),
-            ));
+    // Get database connection from state
+    let db_connection = match &state.t3_device_conn {
+        Some(conn) => conn.lock().await.clone(),
+        None => {
+            error!("❌ T3000 device database unavailable");
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
         }
     };
+
+    // Find panel_id from devices table
+    let panel_id = match devices::Entity::find()
+        .filter(devices::Column::SerialNumber.eq(serial))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(device)) => device.panel_id.unwrap_or(0),
+        Ok(None) => {
+            error!("Device not found for serial: {}", serial);
+            return Err((StatusCode::NOT_FOUND, format!("Device with serial {} not found", serial)));
+        }
+        Err(e) => {
+            error!("Database error querying device: {:?}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+        }
+    };
+
+    // Collect updated field names before moving payload
+    let mut updated_fields = Vec::new();
+    if payload.full_label.is_some() {
+        updated_fields.push("fullLabel");
+    }
+    if payload.label.is_some() {
+        updated_fields.push("label");
+    }
+    if payload.value.is_some() {
+        updated_fields.push("value");
+    }
+    if payload.range.is_some() {
+        updated_fields.push("range");
+    }
+    if payload.auto_manual.is_some() {
+        updated_fields.push("autoManual");
+    }
+    if payload.control.is_some() {
+        updated_fields.push("control");
+    }
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
     let input_json = json!({
@@ -170,38 +134,16 @@ async fn update_variable_full(
     match call_update_ffi(16, input_json).await {
         Ok(_response) => {
             info!("✅ Full variable record updated successfully");
-
-            // Collect updated field names
-            let mut updated_fields = Vec::new();
-            if payload.full_label.is_some() {
-                updated_fields.push("fullLabel");
-            }
-            if payload.label.is_some() {
-                updated_fields.push("label");
-            }
-            if payload.value.is_some() {
-                updated_fields.push("value");
-            }
-            if payload.range.is_some() {
-                updated_fields.push("range");
-            }
-            if payload.auto_manual.is_some() {
-                updated_fields.push("autoManual");
-            }
-            if payload.control.is_some() {
-                updated_fields.push("control");
-            }
-
-            Ok(Json(ApiResponse {
-                success: true,
-                message: "Variable point updated successfully".to_string(),
-                data: Some(json!({
+            Ok(Json(json!({
+                "success": true,
+                "message": "Variable point updated successfully",
+                "data": {
                     "serialNumber": serial,
                     "variableIndex": index,
                     "updatedFields": updated_fields,
                     "timestamp": chrono::Utc::now().to_rfc3339()
-                })),
-            }))
+                }
+            })))
         }
         Err(e) => {
             error!("❌ Failed to update full variable record: {}", e);
@@ -213,23 +155,7 @@ async fn update_variable_full(
     }
 }
 
-/// Helper function to find panel_id by serial number
-async fn find_panel_by_serial(serial_number: i32) -> Result<i32, String> {
-    let db = establish_t3_device_connection()
-        .await
-        .map_err(|e| format!("Database connection failed: {}", e))?;
-
-    let device = devices::Entity::find()
-        .filter(devices::Column::SerialNumber.eq(serial_number))
-        .one(&db)
-        .await
-        .map_err(|e| format!("Database query failed: {}", e))?
-        .ok_or_else(|| format!("Device with serial {} not found", serial_number))?;
-
-    Ok(device.panel_id.unwrap_or(1))
-}
-
-/// Call FFI function for update operations
+/// Helper function to call C++ FFI for update operations
 async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, String> {
     let input_str = input_json.to_string();
 
@@ -251,9 +177,8 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
         buffer[input_bytes.len()] = 0; // Null terminator
 
         // Call the private FFI wrapper through winapi
-        use winapi::shared::minwindef::HINSTANCE;
-
         unsafe {
+            use winapi::um::libloaderapi::GetProcAddress;
             use winapi::shared::minwindef::HINSTANCE;
 
             // Get function pointer (assumes already loaded by service)
