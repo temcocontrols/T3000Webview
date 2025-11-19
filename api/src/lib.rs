@@ -6,6 +6,7 @@ pub mod app_state;
 pub mod auth;
 pub mod constants;
 pub mod db_connection;
+pub mod db_schema;  // NEW: Embedded SQL schema for dynamic database creation
 pub mod entity;
 pub mod error;
 pub mod file;
@@ -152,8 +153,9 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     use crate::logger::{write_structured_log_with_level, LogLevel};
     let _ = write_structured_log_with_level("T3_Webview_Initialize", &startup_msg, LogLevel::Info);
 
-    // Try to initialize T3000 device database (webview_t3_device.db)
-    if let Err(e) = crate::utils::start_database_service().await {
+    // Initialize T3000 device database (webview_t3_device.db)
+    // Automatically switches between Option 1 (copy) and Option 2 (dynamic) based on USE_DYNAMIC_DATABASE_CREATION constant
+    if let Err(e) = crate::utils::initialize_t3_device_database().await {
         let error_msg = format!("T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue", e);
         let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
         println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");

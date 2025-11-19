@@ -1,0 +1,124 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   DATABASE CREATION OPTIONS - QUICK REFERENCE              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 🔧 HOW TO SWITCH BETWEEN OPTIONS                                           │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  Location: api/src/utils.rs
+
+  Line ~18:
+  pub const USE_DYNAMIC_DATABASE_CREATION: bool = false;
+                                                   ↑
+                                          Change this value
+
+  false → Option 1 (Copy from ResourceFile) - PRODUCTION
+  true  → Option 2 (Dynamic from SQL)       - DEVELOPMENT
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 📊 COMPARISON TABLE                                                         │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  ┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
+  ┃ Feature       ┃ Option 1 (Copy)        ┃ Option 2 (Dynamic)     ┃
+  ┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
+  │ Status        │ ✅ Production Active   │ ✅ Implemented, Ready  │
+  │ Speed         │ ⚡ Fast (file copy)    │ 🐢 Slower (SQL exec)   │
+  │ Deployment    │ Need .db file          │ Self-contained binary  │
+  │ Schema Update │ Manual rebuild .db     │ Automatic on rebuild   │
+  │ File Size     │ ~700KB+ database       │ ~100KB SQL embedded    │
+  │ Dependencies  │ ResourceFile folder    │ None                   │
+  │ Best For      │ Production releases    │ Dev/Testing            │
+  └───────────────┴────────────────────────┴────────────────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 🚀 RELEASE CHECKLIST                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  Production Release (Recommended):
+  ☐ 1. Edit api/src/utils.rs
+  ☐ 2. Set: USE_DYNAMIC_DATABASE_CREATION = false
+  ☐ 3. Build: cargo build --release
+  ☐ 4. Deploy: Include ResourceFile/webview_t3_device.db
+  ☐ 5. Test: Verify database initialization logs
+
+  Development Build:
+  ☐ 1. Edit api/src/utils.rs
+  ☐ 2. Set: USE_DYNAMIC_DATABASE_CREATION = true
+  ☐ 3. Build: cargo build
+  ☐ 4. Test: Delete Database/webview_t3_device.db and restart
+  ☐ 5. Verify: Check logs for "created from embedded schema"
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 📝 IMPLEMENTATION SUMMARY                                                   │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  New Files:
+    ✅ api/src/db_schema.rs              (Embedded SQL module)
+    ✅ docs/database/database-creation-options.md
+
+  Modified Files:
+    ✅ api/src/utils.rs                  (Added Option 2 + switch)
+    ✅ api/src/lib.rs                    (Use unified initialization)
+
+  Unchanged (Option 1 fully intact):
+    ✅ api/Database/webview_t3_device.db
+    ✅ All original Option 1 functions
+    ✅ ResourceFile folder structure
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 🔍 LOG MESSAGES TO WATCH                                                    │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  Option 1 (Copy):
+    "🔧 Using Option 1: Copy pre-built database from ResourceFile"
+    "📂 Starting T3000 Device Database Service..."
+    "✅ T3000 device database ready"
+
+  Option 2 (Dynamic):
+    "🔧 Using Option 2: Dynamic database creation from embedded SQL"
+    "📦 Creating T3000 device database dynamically from embedded SQL schema"
+    "Schema version: January 25, 2025"
+    "✅ Database created successfully from embedded schema"
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ 🛠️ KEY FUNCTIONS                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  Unified Entry Point:
+    initialize_t3_device_database()  → Auto-switches based on constant
+
+  Option 1 Functions (Unchanged):
+    copy_t3_device_database_if_not_exists()
+    start_database_service()
+
+  Option 2 Functions (New):
+    create_t3_device_database_from_embedded_sql()
+    start_database_service_dynamic()
+
+  Embedded Schema:
+    crate::db_schema::EMBEDDED_SCHEMA     → Full SQL content
+    crate::db_schema::get_embedded_schema_version()  → Version string
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ ⚠️ IMPORTANT NOTES                                                          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  1. Option 1 code is COMPLETELY UNCHANGED - no regression risk
+  2. Both options use the same database schema (single source of truth)
+  3. Schema updates should be made in: migration/sql/webview_t3_device_schema.sql
+  4. Current setting: false (Option 1 - Production)
+  5. No environment variables needed - pure compile-time configuration
+  6. SQL is embedded at compile time (zero runtime overhead)
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║  For detailed documentation, see: docs/database/database-creation-options.md
+╚════════════════════════════════════════════════════════════════════════════╝

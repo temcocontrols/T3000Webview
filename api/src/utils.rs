@@ -5,6 +5,19 @@ use tokio::sync::{mpsc, Mutex};
 
 use crate::db_connection::establish_connection;
 
+// ============================================================================
+// DATABASE CREATION MODE CONFIGURATION
+// ============================================================================
+// This constant controls which database initialization method to use:
+// - false: Option 1 (Current) - Copy pre-built database from ResourceFile
+// - true:  Option 2 (Dynamic) - Create database from embedded SQL schema
+//
+// 🔧 CHANGE THIS VALUE WHEN DOING RELEASE:
+// For production: Set to `false` (use pre-built database - faster, tested)
+// For development/testing: Set to `true` (dynamic creation - clean state)
+// ============================================================================
+pub const USE_DYNAMIC_DATABASE_CREATION: bool = false;
+
 // Define static references for environment variables using lazy_static.
 lazy_static! {
     // DATABASE_URL is set from environment variable or defaults to a local SQLite database.
@@ -155,7 +168,98 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+// ============================================================================
+// OPTION 2: DYNAMIC DATABASE CREATION FROM EMBEDDED SQL
+// ============================================================================
+
+/// Create T3000 device database dynamically from embedded SQL schema
+/// This is Option 2 - creates database from SQL embedded in the binary
+/// SQL is embedded at compile time from migration/sql/webview_t3_device_schema.sql
+pub fn create_t3_device_database_from_embedded_sql() -> Result<(), Box<dyn std::error::Error>> {
+    let destination_db_path = Path::new(
+        T3_DEVICE_DATABASE_URL
+            .strip_prefix("sqlite://")
+            .ok_or("Invalid webview_t3_device database url")?,
+    );
+
+    t3_enhanced_logging(&format!("📦 Creating T3000 device database dynamically from embedded SQL schema"));
+    t3_enhanced_logging(&format!("  Destination: {:?}", destination_db_path));
+
+    // Create destination directory if it doesn't exist
+    let destination_dir = destination_db_path
+        .parent()
+        .ok_or("Invalid destination webview_t3_device database path")?;
+
+    if !destination_dir.exists() {
+        fs::create_dir_all(destination_dir)?;
+        t3_enhanced_logging(&format!("  Created destination directory: {:?}", destination_dir));
+    }
+
+    // Check if database already exists
+    if destination_db_path.exists() {
+        t3_enhanced_logging(&format!("  ✅ Database already exists at: {:?}", destination_db_path));
+        return Ok(());
+    }
+
+    // Create new database and execute embedded schema
+    t3_enhanced_logging("  Creating new database file...");
+    let conn = rusqlite::Connection::open(&destination_db_path)?;
+
+    t3_enhanced_logging("  Executing embedded SQL schema...");
+    let schema_version = crate::db_schema::get_embedded_schema_version();
+    t3_enhanced_logging(&format!("  Schema version: {}", schema_version));
+
+    // Execute the embedded SQL (all CREATE TABLE, CREATE INDEX statements)
+    conn.execute_batch(crate::db_schema::EMBEDDED_SCHEMA)?;
+
+    t3_enhanced_logging(&format!("  ✅ Database created successfully from embedded schema"));
+    t3_enhanced_logging(&format!("  Database location: {:?}", destination_db_path));
+
+    Ok(())
+}
+
+/// Dynamic database service startup (Option 2)
+/// Creates database from embedded SQL schema instead of copying pre-built file
+pub async fn start_database_service_dynamic() -> Result<(), Box<dyn std::error::Error>> {
+    t3_enhanced_logging("📂 Starting T3000 Device Database Service (Dynamic Creation Mode)...");
+
+    match create_t3_device_database_from_embedded_sql() {
+        Ok(_) => {
+            t3_enhanced_logging("✅ T3000 device database ready (created from embedded schema)");
+            Ok(())
+        }
+        Err(e) => {
+            let error_msg = format!("❌ T3000 device database dynamic creation failed: {}", e);
+            t3_enhanced_logging(&error_msg);
+
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("T3000 device database dynamic creation failed: {}", e)
+            )))
+        }
+    }
+}
+
+// ============================================================================
+// UNIFIED DATABASE INITIALIZATION - SWITCHES BETWEEN OPTION 1 AND OPTION 2
+// ============================================================================
+
+/// Unified database initialization function
+/// Automatically selects Option 1 (copy) or Option 2 (dynamic) based on USE_DYNAMIC_DATABASE_CREATION
+pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::Error>> {
+    if USE_DYNAMIC_DATABASE_CREATION {
+        // Option 2: Dynamic creation from embedded SQL
+        t3_enhanced_logging("🔧 Using Option 2: Dynamic database creation from embedded SQL");
+        start_database_service_dynamic().await
+    } else {
+        // Option 1: Copy pre-built database from ResourceFile
+        t3_enhanced_logging("🔧 Using Option 1: Copy pre-built database from ResourceFile");
+        start_database_service().await
+    }
+}
+
 /// Abstracted database service startup orchestration
+/// NOTE: This is Option 1 (Copy pre-built database) - KEPT UNCHANGED
 pub async fn start_database_service() -> Result<(), Box<dyn std::error::Error>> {
     t3_enhanced_logging("📂 Starting T3000 Device Database Service...");
 
