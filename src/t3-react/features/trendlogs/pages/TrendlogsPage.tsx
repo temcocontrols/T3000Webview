@@ -62,6 +62,8 @@ export const TrendlogsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedMonitor, setSelectedMonitor] = useState<TrendlogPoint | null>(null);
+  const [monitorInputs, setMonitorInputs] = useState<string[]>(Array(12).fill(''));
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -131,6 +133,28 @@ export const TrendlogsPage: React.FC = () => {
   const handleSettings = () => {
     console.log('Settings clicked');
   };
+
+  const handleMonitorSelect = useCallback(async (monitor: TrendlogPoint) => {
+    setSelectedMonitor(monitor);
+    // Fetch monitor inputs for the selected monitor
+    if (!selectedDevice) return;
+
+    try {
+      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${monitor.trendlogId}/inputs`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data = await response.json();
+        setMonitorInputs(data.inputs || Array(12).fill(''));
+      } else {
+        // If API not implemented yet, use empty inputs
+        setMonitorInputs(Array(12).fill(''));
+      }
+    } catch (err) {
+      console.error('Error fetching monitor inputs:', err);
+      setMonitorInputs(Array(12).fill(''));
+    }
+  }, [selectedDevice]);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -313,7 +337,7 @@ export const TrendlogsPage: React.FC = () => {
               </div>
 
               {/* ========================================
-                  DOCKING BODY - Main Content
+                  DOCKING BODY - Main Content (Dual Grid Layout)
                   Matches: msportalfx-docking-body
                   ======================================== */}
               <div className={styles.dockingBody}>
@@ -337,68 +361,93 @@ export const TrendlogsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
+                {/* Dual Grid Layout - Main Grid (80%) + Input Grid (20%) */}
                 {selectedDevice && !loading && !error && (
-                  <>
-                    <DataGrid
-                      items={trendlogs}
-                      columns={columns}
-                      sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        trendlogId: {
-                          minWidth: 80,
-                          defaultWidth: 100,
-                        },
-                        trendlogLabel: {
-                          minWidth: 150,
-                          defaultWidth: 200,
-                        },
-                        intervalSeconds: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        status: {
-                          minWidth: 100,
-                          defaultWidth: 120,
-                        },
-                        dataSizeKb: {
-                          minWidth: 120,
-                          defaultWidth: 150,
-                        },
-                      }}
-                    >
-                    <DataGridHeader>
-                      <DataGridRow>
-                        {({ renderHeaderCell }) => (
-                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                        )}
-                      </DataGridRow>
-                    </DataGridHeader>
-                    <DataGridBody<TrendlogPoint>>
-                      {({ item, rowId }) => (
-                        <DataGridRow<TrendlogPoint> key={rowId}>
-                          {({ renderCell }) => (
-                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                  <div className={styles.gridContainer}>
+                    {/* Main Monitor List - Left Side (80%) */}
+                    <div className={styles.mainGrid}>
+                      <DataGrid
+                        items={trendlogs}
+                        columns={columns}
+                        sortable
+                        resizableColumns
+                        columnSizingOptions={{
+                          trendlogId: {
+                            minWidth: 80,
+                            defaultWidth: 100,
+                          },
+                          trendlogLabel: {
+                            minWidth: 150,
+                            defaultWidth: 200,
+                          },
+                          intervalSeconds: {
+                            minWidth: 100,
+                            defaultWidth: 120,
+                          },
+                          status: {
+                            minWidth: 100,
+                            defaultWidth: 120,
+                          },
+                          dataSizeKb: {
+                            minWidth: 120,
+                            defaultWidth: 150,
+                          },
+                        }}
+                      >
+                        <DataGridHeader>
+                          <DataGridRow>
+                            {({ renderHeaderCell }) => (
+                              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                            )}
+                          </DataGridRow>
+                        </DataGridHeader>
+                        <DataGridBody<TrendlogPoint>>
+                          {({ item, rowId }) => (
+                            <DataGridRow<TrendlogPoint>
+                              key={rowId}
+                              onClick={() => handleMonitorSelect(item)}
+                              style={{
+                                cursor: 'pointer',
+                                backgroundColor: selectedMonitor?.trendlogId === item.trendlogId ? '#e6f2ff' : undefined
+                              }}
+                            >
+                              {({ renderCell }) => (
+                                <DataGridCell>{renderCell(item)}</DataGridCell>
+                              )}
+                            </DataGridRow>
                           )}
-                        </DataGridRow>
-                      )}
-                    </DataGridBody>
-                  </DataGrid>
+                        </DataGridBody>
+                      </DataGrid>
 
-                  {/* No Data Message - Show below grid when empty */}
-                  {trendlogs.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                        </svg>
-                        <Text size={400} weight="semibold">No trendlogs found</Text>
-                      </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured trendlog monitors</Text>
+                      {/* No Data Message - Show below main grid when empty */}
+                      {trendlogs.length === 0 && (
+                        <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                            </svg>
+                            <Text size={400} weight="semibold">No trendlogs found</Text>
+                          </div>
+                          <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured trendlog monitors</Text>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  </>
+
+                    {/* Monitor Input List - Right Side (20%) */}
+                    <div className={styles.subGrid}>
+                      <div className={styles.subGridHeader}>
+                        <Text size={300} weight="semibold">Monitor Inputs</Text>
+                      </div>
+                      <div className={styles.subGridBody}>
+                        {monitorInputs.map((input, index) => (
+                          <div key={index} className={styles.inputRow}>
+                            <div className={styles.inputNum}>{index + 1}</div>
+                            <div className={styles.inputValue}>{input || '-'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
               </div>

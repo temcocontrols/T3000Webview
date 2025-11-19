@@ -196,6 +196,97 @@
   min-height: 0;
 }
 
+/* Dual Grid Container - 80% / 20% split like C++ BacnetMonitor */
+.gridContainer {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+/* Main Grid (Left) - 80% width */
+.mainGrid {
+  flex: 0 0 78%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Sub Grid (Right) - 20% width - matches height of main grid */
+.subGrid {
+  flex: 0 0 18%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid #edebe9;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.subGridHeader {
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.subGridBody {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.inputRow {
+  display: flex;
+  border-bottom: 1px solid #f3f2f1;
+  min-height: 32px;
+  align-items: center;
+  transition: background-color 0.1s ease;
+}
+
+.inputRow:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.inputRow:hover {
+  background-color: #f3f2f1;
+}
+
+.inputNum {
+  flex: 0 0 40px;
+  text-align: center;
+  font-size: 11px;
+  color: #605e5c;
+  border-right: 1px solid #edebe9;
+  padding: 6px;
+}
+
+.inputValue {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #292827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subGridEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  color: #605e5c;
+}
+
 /* Loading and No Data States */
 .loading,
 .noData {
