@@ -40,6 +40,7 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './TrendlogsPage.module.css';
@@ -313,43 +314,40 @@ export const TrendlogsPage: React.FC = () => {
   ];
 
   return (
-    <div className={styles.trendlogsPage}>
-      {/* Azure Portal Blade Container */}
-      <div className={styles.bladeContainer}>
-        {/* Blade Wrapper */}
-        <div className={styles.bladeWrapper}>
+    <div className={styles.container}>
+      {/* Blade Content Container */}
+      <div className={styles.bladeContentContainer}>
+        {/* Blade Content Wrapper */}
+        <div className={styles.bladeContentWrapper}>
           {/* Blade Content */}
           <div className={styles.bladeContent}>
-            {/* ERROR BANNER */}
-            {error && (
-              <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading trendlogs</Text>
-                    <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-                  </div>
+            {/* Part Content - Main Content Area */}
+            <div className={styles.partContent}>
+              {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* BLADE DESCRIPTION */}
-            {selectedDevice && (
-              <div className={styles.bladeDescription}>
-                <span>
-                  Showing trendlog monitors for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                  {' '}This table displays all configured trendlog/monitor data collection points including status, intervals, and data sizes.
-                  {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                </span>
-              </div>
-            )}
+              {/* BLADE DESCRIPTION */}
+              {selectedDevice && (
+                <div className={styles.bladeDescription}>
+                  <span>
+                    Showing trendlog monitors for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
+                    {' '}This table displays all configured trendlog/monitor data collection points including status, intervals, and data sizes.
+                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+                  </span>
+                </div>
+              )}
 
-            {/* TOOLBAR */}
-            <div className={styles.toolbar}>
+              {/* TOOLBAR */}
+              <div className={styles.toolbar}>
               <div className={styles.toolbarContainer}>
                 <button
                   className={styles.toolbarButton}
@@ -425,74 +423,76 @@ export const TrendlogsPage: React.FC = () => {
                 </div>
               )}
 
-              {selectedDevice && !loading && !error && trendlogs.length === 0 && (
-                <div style={{ marginTop: '40px' }}>
-                  <div style={{ textAlign: 'center', padding: '0 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                      </svg>
-                      <Text size={500} weight="semibold">No trendlogs found</Text>
-                    </div>
-                    <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no configured trendlog monitors</Text>
-                    <Button
-                      appearance="subtle"
-                      icon={<ArrowSyncRegular />}
-                      onClick={handleRefresh}
-                      style={{ minWidth: '120px', fontWeight: 'normal' }}
-                    >
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {selectedDevice && !loading && !error && trendlogs.length > 0 && (
-                <DataGrid
-                  items={trendlogs}
-                  columns={columns}
-                  sortable
-                  resizableColumns
-                  columnSizingOptions={{
-                    monitorId: {
-                      minWidth: 60,
-                      defaultWidth: 80,
-                    },
-                    label: {
-                      minWidth: 160,
-                      defaultWidth: 200,
-                    },
-                    interval: {
-                      minWidth: 100,
-                      defaultWidth: 120,
-                    },
-                    status: {
-                      minWidth: 80,
-                      defaultWidth: 100,
-                    },
-                    dataSize: {
-                      minWidth: 100,
-                      defaultWidth: 130,
-                    },
-                  }}
-                >
-                  <DataGridHeader>
-                    <DataGridRow>
-                      {({ renderHeaderCell }) => (
-                        <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                      )}
-                    </DataGridRow>
-                  </DataGridHeader>
-                  <DataGridBody<TrendlogPoint>>
-                    {({ item, rowId }) => (
-                      <DataGridRow<TrendlogPoint> key={rowId}>
-                        {({ renderCell }) => (
-                          <DataGridCell>{renderCell(item)}</DataGridCell>
+              {/* Data Grid - Always show with header when device is selected */}
+              {selectedDevice && !loading && !error && (
+                <>
+                  <DataGrid
+                    items={trendlogs}
+                    columns={columns}
+                    sortable
+                    resizableColumns
+                    columnSizingOptions={{
+                      monitorId: {
+                        minWidth: 60,
+                        defaultWidth: 80,
+                      },
+                      label: {
+                        minWidth: 160,
+                        defaultWidth: 200,
+                      },
+                      interval: {
+                        minWidth: 100,
+                        defaultWidth: 120,
+                      },
+                      status: {
+                        minWidth: 80,
+                        defaultWidth: 100,
+                      },
+                      dataSize: {
+                        minWidth: 100,
+                        defaultWidth: 130,
+                      },
+                    }}
+                  >
+                    <DataGridHeader>
+                      <DataGridRow>
+                        {({ renderHeaderCell }) => (
+                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                         )}
                       </DataGridRow>
-                    )}
-                  </DataGridBody>
-                </DataGrid>
+                    </DataGridHeader>
+                    <DataGridBody<TrendlogPoint>>
+                      {({ item, rowId }) => (
+                        <DataGridRow<TrendlogPoint> key={rowId}>
+                          {({ renderCell }) => (
+                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                          )}
+                        </DataGridRow>
+                      )}
+                    </DataGridBody>
+                  </DataGrid>
+
+                  {/* No Data Message - Show below grid when empty */}
+                  {trendlogs.length === 0 && (
+                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={400} weight="semibold">No trendlogs found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured trendlog monitors</Text>
+                      <Button
+                        appearance="subtle"
+                        icon={<ArrowSyncRegular />}
+                        onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
 
             </div>

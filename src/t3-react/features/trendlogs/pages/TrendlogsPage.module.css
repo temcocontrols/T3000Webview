@@ -1,10 +1,10 @@
 /**
  * Trendlogs Page Styles - Azure Portal Pattern
- * Based on ProgramsPage.module.css
+ * Based on standard InputsPage.module.css
  */
 
 /* Root container styling */
-.trendlogsPage {
+.container {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 13px;
   font-weight: 400;
@@ -16,7 +16,7 @@
 }
 
 /* Blade Content Container */
-.bladeContainer {
+.bladeContentContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -24,7 +24,7 @@
   min-height: 0;
 }
 
-.bladeWrapper {
+.bladeContentWrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -33,6 +33,14 @@
 }
 
 .bladeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.partContent {
   flex: 1;
   display: flex;
   flex-direction: column;

@@ -18,11 +18,15 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
+  ArrowSyncRegular,
+  ArrowDownloadRegular,
+  SettingsRegular,
+  SearchRegular,
   ArrowClockwise24Regular,
   Save24Regular,
   Dismiss24Regular,
   CheckmarkCircle24Regular,
-  ErrorCircle24Regular,
+  ErrorCircleRegular,
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
@@ -62,6 +66,20 @@ const AlarmsPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleExport = () => {
+    console.log('Export alarms to CSV');
+  };
+
+  const handleSettings = () => {
+    console.log('Settings clicked');
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -302,169 +320,232 @@ const AlarmsPage: React.FC = () => {
   const resolvedAlarms = alarms.length - activeAlarms;
 
   return (
-    <div className={styles.alarmsPage}>
-      {/* Azure Portal Blade Header */}
-      <div className={styles.bladeHeader}>
-        <div className={styles.bladeTitle}>
-          <h1 className={styles.titleText}>Alarm Log</h1>
-          <span className={styles.subtitleText}>Device {deviceId}</span>
-        </div>
-        <div className={styles.bladeActions}>
-          <Button
-            appearance="secondary"
-            icon={<ArrowClockwise24Regular />}
-            onClick={fetchAlarms}
-            disabled={isLoading}
-          >
-            Refresh
-          </Button>
-          {hasChanges && (
-            <>
-              <Button
-                appearance="secondary"
-                icon={<Dismiss24Regular />}
-                onClick={handleDiscardChanges}
-              >
-                Discard
-              </Button>
-              <Button
-                appearance="primary"
-                icon={<Save24Regular />}
-                onClick={handleSaveAll}
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save All'}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+    <div className={styles.container}>
+      {/* Blade Content Container */}
+      <div className={styles.bladeContentContainer}>
+        {/* Blade Content Wrapper */}
+        <div className={styles.bladeContentWrapper}>
+          {/* Blade Content */}
+          <div className={styles.bladeContent}>
+            {/* Part Content - Main Content Area */}
+            <div className={styles.partContent}>
+              {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
+                </div>
+              )}
 
-      {/* Azure Portal Blade Content */}
-      <div className={styles.bladeContent}>
-        {/* Loading State */}
-        {isLoading && alarms.length === 0 && (
-          <div className={styles.loadingContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Spinner size="large" />
-            <Text style={{ marginLeft: '12px' }}>Loading alarms...</Text>
-          </div>
-        )}
+              {/* ========================================
+                  BLADE DESCRIPTION
+                  ======================================== */}
+              {selectedDevice && (
+                <div className={styles.bladeDescription}>
+                  <span>
+                    Showing alarm log for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
+                    {' '}This table displays all alarm records including active and resolved alarms.
+                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+                  </span>
+                </div>
+              )}
 
-        {/* No Device Selected */}
-        {!selectedDevice && !isLoading && (
-          <div className={styles.emptyState}>
-            <div style={{ textAlign: 'center' }}>
-              <Text size={500} weight="semibold">No device selected</Text>
-              <br />
-              <Text size={300}>Please select a device from the tree to view alarms</Text>
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 6C10.5523 6 11 6.44772 11 7V10C11 10.5523 10.5523 11 10 11C9.44772 11 9 10.5523 9 10V7C9 6.44772 9.44772 6 10 6ZM10 14C9.44772 14 9 13.5523 9 13C9 12.4477 9.44772 12 10 12C10.5523 12 11 12.4477 11 13C11 13.5523 10.5523 14 10 14Z" fill="#d13438"/>
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Text style={{ color: '#d13438', display: 'block', marginBottom: '4px' }} weight="semibold">Error loading alarms</Text>
-                <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* No Alarms Found */}
-        {selectedDevice && !isLoading && !error && alarms.length === 0 && (
-          <div style={{ marginTop: '40px' }}>
-            <div style={{ textAlign: 'center', padding: '0 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                </svg>
-                <Text size={500} weight="semibold">No alarms found</Text>
-              </div>
-              <Text size={300} style={{ display: 'block', marginBottom: '24px', color: '#605e5c', textAlign: 'center' }}>This device has no alarm records</Text>
-              <Button
-                appearance="subtle"
-                icon={<ArrowClockwise24Regular />}
-                onClick={fetchAlarms}
-                style={{ minWidth: '120px', fontWeight: 'normal' }}
-              >
-                Refresh
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Data Grid with Data */}
-        {selectedDevice && !isLoading && !error && alarms.length > 0 && (
-          <div className={styles.gridContainer}>
-            <DataGrid
-              items={alarms}
-              columns={columns}
-              sortable
-              resizableColumns
-              className={styles.dataGrid}
-            >
-              <DataGridHeader>
-                <DataGridRow>
-                  {({ renderHeaderCell }) => (
-                    <DataGridHeaderCell className={styles.headerCell}>
-                      {renderHeaderCell()}
-                    </DataGridHeaderCell>
-                  )}
-                </DataGridRow>
-              </DataGridHeader>
-              <DataGridBody<Alarm>>
-                {({ item, rowId }) => (
-                  <DataGridRow<Alarm>
-                    key={rowId}
-                    className={styles.dataRow}
+              {/* ========================================
+                  TOOLBAR - Azure Portal Command Bar
+                  ======================================== */}
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarContainer}>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={fetchAlarms}
+                    disabled={isLoading}
+                    title="Refresh"
+                    aria-label="Refresh"
                   >
-                    {({ renderCell }) => (
-                      <DataGridCell className={styles.dataCell}>
-                        {renderCell(item)}
-                      </DataGridCell>
-                    )}
-                  </DataGridRow>
-                )}
-              </DataGridBody>
-            </DataGrid>
-          </div>
-        )}
-      </div>
+                    <ArrowSyncRegular />
+                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
 
-      {/* Azure Portal Blade Footer with Stats */}
-      <div className={styles.bladeFooter}>
-        <div className={styles.statsContainer}>
-          <div className={styles.statItem}>
-            <span className={styles.statLabel}>Total Alarms:</span>
-            <span className={styles.statValue}>{alarms.length}</span>
-          </div>
-          <div className={styles.statItem}>
-            <span className={styles.statLabel}>Active:</span>
-            <Badge appearance="important" className={styles.statBadge}>
-              {activeAlarms}
-            </Badge>
-          </div>
-          <div className={styles.statItem}>
-            <span className={styles.statLabel}>Resolved:</span>
-            <Badge appearance="success" className={styles.statBadge}>
-              {resolvedAlarms}
-            </Badge>
-          </div>
-          {hasChanges && (
-            <div className={styles.statItem}>
-              <Badge appearance="important" className={styles.changesBadge}>
-                Unsaved Changes
-              </Badge>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    title="Export to CSV"
+                    aria-label="Export to CSV"
+                  >
+                    <ArrowDownloadRegular />
+                    <span>Export to CSV</span>
+                  </button>
+
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleSettings}
+                    title="Settings"
+                    aria-label="Settings"
+                  >
+                    <SettingsRegular />
+                    <span>Settings</span>
+                  </button>
+
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search alarms..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search alarms"
+                    />
+                  </div>
+
+                  {hasChanges && (
+                    <>
+                      <div className={styles.toolbarSeparator} role="separator" />
+                      <button
+                        className={styles.toolbarButton}
+                        onClick={handleDiscardChanges}
+                        title="Discard Changes"
+                        aria-label="Discard Changes"
+                      >
+                        <Dismiss24Regular />
+                        <span>Discard</span>
+                      </button>
+                      <button
+                        className={`${styles.toolbarButton} ${styles.toolbarButtonPrimary}`}
+                        onClick={handleSaveAll}
+                        disabled={isSaving}
+                        title="Save All"
+                        aria-label="Save All"
+                      >
+                        <Save24Regular />
+                        <span>{isSaving ? 'Saving...' : 'Save All'}</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* ========================================
+                  HORIZONTAL DIVIDER
+                  ======================================== */}
+              <div style={{ padding: '0' }}>
+                <hr className={styles.overviewHr} />
+              </div>
+
+              {/* ========================================
+                  DOCKING BODY - Main Content
+                  ======================================== */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {isLoading && alarms.length === 0 && (
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Spinner size="large" />
+                    <Text style={{ marginLeft: '12px' }}>Loading alarms...</Text>
+                  </div>
+                )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !isLoading && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={300}>Please select a device from the tree to view alarms</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid - Always show with header when device is selected */}
+                {selectedDevice && !isLoading && !error && (
+                  <>
+                    <DataGrid
+                      items={alarms}
+                      columns={columns}
+                      sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        alarm_id: {
+                          minWidth: 60,
+                          defaultWidth: 80,
+                        },
+                        panel: {
+                          minWidth: 100,
+                          defaultWidth: 120,
+                        },
+                        message: {
+                          minWidth: 200,
+                          defaultWidth: 300,
+                        },
+                        time_stamp: {
+                          minWidth: 140,
+                          defaultWidth: 180,
+                        },
+                        acknowledged: {
+                          minWidth: 100,
+                          defaultWidth: 120,
+                        },
+                        status: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        actions: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                      }}
+                    >
+                      <DataGridHeader>
+                        <DataGridRow>
+                          {({ renderHeaderCell }) => (
+                            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                          )}
+                        </DataGridRow>
+                      </DataGridHeader>
+                      <DataGridBody<Alarm>>
+                        {({ item, rowId }) => (
+                          <DataGridRow<Alarm> key={rowId}>
+                            {({ renderCell }) => (
+                              <DataGridCell>{renderCell(item)}</DataGridCell>
+                            )}
+                          </DataGridRow>
+                        )}
+                      </DataGridBody>
+                    </DataGrid>
+
+                    {/* No Data Message - Show below grid when empty */}
+                    {alarms.length === 0 && (
+                      <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                          </svg>
+                          <Text size={400} weight="semibold">No alarms found</Text>
+                        </div>
+                        <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no alarm logs</Text>
+                        <Button
+                          appearance="subtle"
+                          icon={<ArrowSyncRegular />}
+                          onClick={fetchAlarms}
+                          style={{ minWidth: '120px', fontWeight: 'normal' }}
+                        >
+                          Refresh
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
