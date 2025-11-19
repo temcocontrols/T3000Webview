@@ -441,20 +441,10 @@ export const InputsPage: React.FC = () => {
                     handleEditSave();
                   }}
                   disabled={isSaving}
-                  style={{
-                    padding: '4px 6px',
-                    border: 'none',
-                    background: '#0078d4',
-                    color: 'white',
-                    borderRadius: '2px',
-                    cursor: isSaving ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    opacity: isSaving ? 0.6 : 1,
-                  }}
+                  className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '14px' }} />
+                  <SaveRegular style={{ fontSize: '18px' }} />
                 </button>
               </div>
             ) : (
@@ -483,32 +473,52 @@ export const InputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {editingCell?.serialNumber === item.serialNumber && editingCell?.inputIndex === item.inputIndex && editingCell?.field === 'label' ? (
-            <input
-              type="text"
-              className={styles.editInput}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleEditSave}
-              onKeyDown={handleEditKeyDown}
-              autoFocus
-              disabled={isSaving}
-              placeholder="Enter label"
-              aria-label="Edit label"
-            />
-          ) : (
-            <div
-              className={styles.editableCell}
-              onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-              title="Double-click to edit"
-            >
-              <Text size={200} weight="regular">{item.label || '---'}</Text>
-            </div>
-          )}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.inputIndex === item.inputIndex &&
+                          editingCell?.field === 'label';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                title="Double-click to edit"
+              >
+                <Text size={200} weight="regular">{item.label || '---'}</Text>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
     // 5. Auto/Man
     createTableColumn<InputPoint>({
@@ -576,19 +586,33 @@ export const InputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter value"
-                aria-label="Edit value"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter value"
+                  aria-label="Edit value"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -917,16 +941,16 @@ export const InputsPage: React.FC = () => {
                         defaultWidth: 120,
                       },
                       value: {
-                        minWidth: 80,
-                        defaultWidth: 100,
+                        minWidth: 120,
+                        defaultWidth: 180,
                       },
                       units: {
                         minWidth: 100,
                         defaultWidth: 150,
                       },
                       range: {
-                        minWidth: 120,
-                        defaultWidth: 150,
+                        minWidth: 80,
+                        defaultWidth: 100,
                       },
                       calibration: {
                         minWidth: 80,
