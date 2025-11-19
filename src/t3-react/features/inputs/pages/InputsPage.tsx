@@ -383,7 +383,33 @@ export const InputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.inputId || item.inputIndex || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const handleRefreshRow = async () => {
+          console.log('Refreshing input:', item.serialNumber, item.inputIndex);
+          // TODO: Implement single row refresh from backend
+          // For now, just refresh the entire inputs list
+          await fetchInputs();
+        };
+
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshRow();
+                }}
+                className={styles.saveButton}
+                title="Refresh this row"
+                style={{ padding: '2px 4px' }}
+              >
+                <ArrowSyncRegular style={{ fontSize: '14px' }} />
+              </button>
+              <Text size={200} weight="regular">{item.inputId || item.inputIndex || '---'}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
     // 2. Panel
     createTableColumn<InputPoint>({
@@ -533,21 +559,67 @@ export const InputsPage: React.FC = () => {
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
 
-        const handleToggle = () => {
+        const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
           console.log('Auto/Man toggled:', item.serialNumber, item.inputIndex, newValue);
 
-          // Update local state optimistically
-          setInputs(prevInputs =>
-            prevInputs.map(input =>
-              input.serialNumber === item.serialNumber && input.inputIndex === item.inputIndex
-                ? { ...input, autoManual: newValue }
-                : input
-            )
-          );
+          try {
+            // Find the current input data to pass all fields for Action 16
+            const currentInput = inputs.find(
+              input => input.serialNumber === item.serialNumber && input.inputIndex === item.inputIndex
+            );
 
-          // TODO: Call API to update Auto/Man value
-          // Example: updateInputAutoManual(item.serialNumber, item.inputIndex, newValue);
+            if (!currentInput) {
+              throw new Error('Current input data not found');
+            }
+
+            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
+            const payload = {
+              fullLabel: currentInput.fullLabel || '',
+              label: currentInput.label || '',
+              value: parseFloat(currentInput.fValue || '0'),
+              range: parseInt(currentInput.range || '0'),
+              autoManual: parseInt(newValue),
+              control: 0,
+              filter: parseInt(currentInput.filterField || '0'),
+              digitalAnalog: currentInput.digitalAnalog === '0' ? 0 : 1,
+              calibrationSign: parseInt(currentInput.sign || '0'),
+              calibrationH: 0,
+              calibrationL: 0,
+              decom: 0,
+            };
+
+            console.log('[Action 16] Updating Auto/Man:', payload);
+
+            const response = await fetch(
+              `${API_BASE_URL}/api/t3_device/inputs/${item.serialNumber}/${item.inputIndex}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              }
+            );
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('[Action 16] Auto/Man updated successfully:', result);
+
+            // Update local state optimistically
+            setInputs(prevInputs =>
+              prevInputs.map(input =>
+                input.serialNumber === item.serialNumber && input.inputIndex === item.inputIndex
+                  ? { ...input, autoManual: newValue }
+                  : input
+              )
+            );
+          } catch (error) {
+            console.error('Failed to update Auto/Man:', error);
+            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         };
 
         return (
@@ -833,11 +905,11 @@ export const InputsPage: React.FC = () => {
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title="Refresh All"
+                    aria-label="Refresh All"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>
                   </button>
 
                   {/* Export to CSV Button */}
