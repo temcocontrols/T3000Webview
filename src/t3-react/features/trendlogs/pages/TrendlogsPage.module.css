@@ -1,17 +1,6 @@
 /**
- * Inputs Page Styles - Azure Portal Billing Accounts
- * Extracted from actual Azure Portal HTML/CSS: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
- *
- * Key Azure Portal characteristics from inspection:
- * - Font: Segoe UI, 13px body, 400 weight
- * - Grid class: fxc-gc-dataGrid (not DetailsList)
- * - Colors: #292827 text primary, #323130 button toolbar, #201f1e hover
- * - Borders: #edebe9 primary borders, #f3f2f1 row borders
- * - Backgrounds: #fafafa headers/toolbar, #ffffff cells
- * - Hover: #f3f2f1 background
- * - Row height: 42px (min-height, content-driven)
- * - Cell padding: 0 16px (horizontal only)
- * - Toolbar: 44px height, azc-toolbarButton class
+ * Trendlogs Page Styles - Azure Portal Pattern
+ * Based on standard InputsPage.module.css
  */
 
 /* Root container styling */
@@ -207,6 +196,97 @@
   min-height: 0;
 }
 
+/* Dual Grid Container - 80% / 20% split like C++ BacnetMonitor */
+.gridContainer {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+/* Main Grid (Left) - 80% width */
+.mainGrid {
+  flex: 0 0 78%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Sub Grid (Right) - 20% width - matches height of main grid */
+.subGrid {
+  flex: 0 0 18%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid #edebe9;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.subGridHeader {
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.subGridBody {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.inputRow {
+  display: flex;
+  border-bottom: 1px solid #f3f2f1;
+  min-height: 32px;
+  align-items: center;
+  transition: background-color 0.1s ease;
+}
+
+.inputRow:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.inputRow:hover {
+  background-color: #f3f2f1;
+}
+
+.inputNum {
+  flex: 0 0 40px;
+  text-align: center;
+  font-size: 11px;
+  color: #605e5c;
+  border-right: 1px solid #edebe9;
+  padding: 6px;
+}
+
+.inputValue {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #292827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subGridEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  color: #605e5c;
+}
+
 /* Loading and No Data States */
 .loading,
 .noData {
@@ -217,7 +297,7 @@
   padding: 24px;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */
+/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to TrendlogsPage only */
 .container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;

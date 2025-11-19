@@ -16,15 +16,14 @@ import type {
   DevicesResponse,
   ScanOptions,
 } from '../../../types/device';
-
-const API_BASE_URL = '/api/t3_device';
+import { API_BASE_URL } from '../../../config/constants';
 
 /**
  * Device API Service
  * Implements all device-related API calls
  */
 export class DeviceApiService {
-  private static baseUrl = API_BASE_URL;
+  private static baseUrl = `${API_BASE_URL}/api/t3_device`;
 
   /**
    * Get all devices from database

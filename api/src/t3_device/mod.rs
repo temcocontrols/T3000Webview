@@ -17,4 +17,7 @@ pub mod t3_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sy
 pub mod t3_ffi_api_service;     // ✅ T3000 FFI API Service - HTTP API endpoints with FFI integration (same JSON as WebSocket)
 pub mod trendlog_webmsg_service; // ✅ T3000 TrendLog via HandleWebViewMsg (working approach instead of direct FFI)
 pub mod trendlog_webmsg_routes;  // ✅ T3000 TrendLog WebMsg API Routes (working HandleWebViewMsg endpoints)
+pub mod input_update_routes;    // ✅ T3000 Input Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
+pub mod output_update_routes;   // ✅ T3000 Output Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
+pub mod variable_update_routes; // ✅ T3000 Variable Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod websocket_handler;

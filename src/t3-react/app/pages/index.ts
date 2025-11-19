@@ -14,20 +14,20 @@ export { VariablesPage } from '../features/variables/pages/VariablesPage';
 
 // Programming
 export { ProgramsPage } from '../features/programs/pages/ProgramsPage';
-export { ControllersPage } from '../features/controllers/pages/ControllersPage';
+export { default as PIDLoopsPage } from '../features/controllers/pages/PIDLoopsPage';
 
 // Time & Scheduling
-export { SchedulesPage } from '../features/schedules/pages/SchedulesPage';
-export { HolidaysPage } from '../features/holidays/pages/HolidaysPage';
+export { default as SchedulesPage } from '../features/schedules/pages/SchedulesPage';
+export { HolidaysPage } from '../features/schedules/pages/HolidaysPage';
 
 // Monitoring
 export { TrendLogsPage } from '../features/trends/pages/TrendLogsPage';
-export { AlarmsPage } from '../features/alarms/pages/AlarmsPage';
+export { default as AlarmsPage } from '../features/alarms/pages/AlarmsPage';
 
 // Configuration
 export { SettingsPage } from '../features/settings/pages/SettingsPage';
 export { NetworkPage } from '../features/network/pages/NetworkPage';
-export { ArrayPage } from '../features/array/pages/ArrayPage';
+export { default as ArrayPage } from '../features/controllers/pages/ArrayPage';
 
 // Graphics
 export { GraphicsPage } from '../features/graphics/pages/GraphicsPage';

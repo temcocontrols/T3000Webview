@@ -18,6 +18,9 @@ use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogReque
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, CreateTrendlogDataRequest, SmartTrendlogRequest};
 use crate::t3_device::trendlog_enhanced_routes::create_trendlog_enhanced_routes;
 use crate::t3_device::trendlog_webmsg_routes::create_trendlog_webmsg_routes;
+use crate::t3_device::input_update_routes::create_input_update_routes;
+use crate::t3_device::output_update_routes::create_output_update_routes;
+use crate::t3_device::variable_update_routes::create_variable_update_routes;
 
 // Helper function to check if T3000 device database is available
 #[allow(dead_code)]
@@ -271,6 +274,66 @@ async fn delete_record(
         "message": format!("Delete operation for table {} record {} received", table, id),
         "status": "pending_implementation"
     })))
+}
+
+// Get table data for a specific device by serial number
+async fn get_device_table_data(
+    State(state): State<T3AppState>,
+    Path((serial, table)): Path<(String, String)>,
+) -> Result<Json<QueryResult>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Validate table name to prevent SQL injection
+    let valid_tables = get_valid_table_names();
+
+    if !valid_tables.contains(&table.as_str()) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // Query table data filtered by SerialNumber
+    let query = format!(
+        "SELECT * FROM {} WHERE SerialNumber = '{}'",
+        table, serial
+    );
+
+    let statement = Statement::from_string(DatabaseBackend::Sqlite, query);
+    let results = db.query_all(statement).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Get column names for the table
+    let columns_query = format!("PRAGMA table_info({})", table);
+    let column_statement = Statement::from_string(DatabaseBackend::Sqlite, columns_query);
+    let column_results = db.query_all(column_statement).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut column_names = Vec::new();
+    for column_row in column_results {
+        if let Ok(column_name) = column_row.try_get::<String>("", "name") {
+            column_names.push(column_name);
+        }
+    }
+
+    let mut data = Vec::new();
+    for row in results {
+        let mut row_data = serde_json::Map::new();
+
+        // Extract all columns dynamically using index
+        for (index, column_name) in column_names.iter().enumerate() {
+            if let Ok(value) = row.try_get_by_index::<Option<String>>(index) {
+                row_data.insert(column_name.clone(), json!(value));
+            } else if let Ok(int_value) = row.try_get_by_index::<Option<i32>>(index) {
+                row_data.insert(column_name.clone(), json!(int_value));
+            }
+        }
+
+        data.push(Value::Object(row_data));
+    }
+
+    let data_len = data.len();
+    Ok(Json(QueryResult {
+        data,
+        message: format!("Retrieved {} records from {} for device {}", data_len, table, serial),
+    }))
 }
 
 // Export table data (simplified version)
@@ -1140,6 +1203,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id", delete(delete_device))
         .route("/devices/:id/points", get(get_device_with_points))
         .route("/devices/:id/all-points", get(get_all_points_by_device))
+        .route("/devices/:serial/table/:table", get(get_device_table_data))  // Generic table query by serial number
 
         // T3000 Points endpoints
         .route("/devices/:id/input-points", get(get_input_points))
@@ -1207,6 +1271,11 @@ pub fn t3_device_routes() -> Router<T3AppState> {
 
         // 🟢 TrendLog WebMsg Routes (WORKING HandleWebViewMsg approach)
         .merge(create_trendlog_webmsg_routes())
+
+        // 🆕 Point Update Routes (UPDATE_WEBVIEW_LIST Action 16)
+        .merge(create_input_update_routes())
+        .merge(create_output_update_routes())
+        .merge(create_variable_update_routes())
 }
 
 // ============================================================================
@@ -1801,7 +1870,7 @@ async fn get_device_capacity(
 async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        format!("SELECT COUNT(*) as count FROM {} WHERE Panel_Number = '{}' AND Label != ''", table, serial)
+        format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Label != ''", table, serial)
     );
     db.query_one(query).await
         .ok()
@@ -1814,7 +1883,7 @@ async fn count_records(db: &sea_orm::DatabaseConnection, table: &str, serial: &s
 async fn count_records_with_desc(db: &sea_orm::DatabaseConnection, table: &str, serial: &str) -> i32 {
     let query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        format!("SELECT COUNT(*) as count FROM {} WHERE Panel_Number = '{}' AND Description != ''", table, serial)
+        format!("SELECT COUNT(*) as count FROM {} WHERE SerialNumber = '{}' AND Description != ''", table, serial)
     );
     db.query_one(query).await
         .ok()
@@ -1854,7 +1923,7 @@ async fn get_project_point_tree(
     // Get all devices
     let devices_query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        "SELECT Serial_ID, Product_name, Online_Status, Product_class_ID FROM DEVICES ORDER BY Product_name".to_string()
+        "SELECT SerialNumber, Product_Name, Product_Class_ID FROM DEVICES ORDER BY Product_Name".to_string()
     );
 
     let devices_result = db.query_all(devices_query).await
@@ -1864,12 +1933,14 @@ async fn get_project_point_tree(
     let mut device_nodes = Vec::new();
 
     for device in devices_result {
-        let serial_number: String = device.try_get("", "Serial_ID")
+        let serial_number: i32 = device.try_get("", "SerialNumber")
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let device_name: String = device.try_get("", "Product_name")
-            .unwrap_or_else(|_| format!("Device {}", serial_number));
-        let online_status: i32 = device.try_get("", "Online_Status").unwrap_or(0);
-        let product_class_id: i32 = device.try_get("", "Product_class_ID").unwrap_or(0);
+        let serial_str = serial_number.to_string();
+        let device_name: String = device.try_get("", "Product_Name")
+            .unwrap_or_else(|_| format!("Device {}", serial_str));
+        // Note: Online_Status column doesn't exist, default to offline for now
+        let online_status: i32 = 0; // TODO: Add online status detection
+        let product_class_id: i32 = device.try_get("", "Product_Class_ID").unwrap_or(0);
 
         let status = if online_status == 1 { "online" } else { "offline" };
 
@@ -1881,15 +1952,15 @@ async fn get_project_point_tree(
         };
 
         // Count used points for this device
-        let input_count = count_records(&*db, "INPUTS", &serial_number).await;
-        let output_count = count_records(&*db, "OUTPUTS", &serial_number).await;
-        let var_count = count_records(&*db, "VARIABLES", &serial_number).await;
-        let program_count = count_records(&*db, "PROGRAMS", &serial_number).await;
-        let schedule_count = count_records(&*db, "SCHEDULES", &serial_number).await;
-        let holiday_count = count_records(&*db, "HOLIDAYS", &serial_number).await;
-        let pid_count = count_records_with_desc(&*db, "PID_TABLE", &serial_number).await;
-        let graphic_count = count_records(&*db, "GRAPHICS", &serial_number).await;
-        let trendlog_count = count_records(&*db, "TRENDLOGS", &serial_number).await;
+        let input_count = count_records(&*db, "INPUTS", &serial_str).await;
+        let output_count = count_records(&*db, "OUTPUTS", &serial_str).await;
+        let var_count = count_records(&*db, "VARIABLES", &serial_str).await;
+        let program_count = count_records(&*db, "PROGRAMS", &serial_str).await;
+        let schedule_count = count_records(&*db, "SCHEDULES", &serial_str).await;
+        let holiday_count = count_records(&*db, "HOLIDAYS", &serial_str).await;
+        let pid_count = count_records_with_desc(&*db, "PID_TABLE", &serial_str).await;
+        let graphic_count = count_records(&*db, "GRAPHICS", &serial_str).await;
+        let trendlog_count = count_records(&*db, "TRENDLOGS", &serial_str).await;
 
         let calc_percentage = |used: i32, total: i32| -> f32 {
             if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
@@ -2002,7 +2073,7 @@ async fn get_project_point_tree(
         device_nodes.push(ProjectTreeNode {
             name: device_name,
             node_type: "device".to_string(),
-            serial_number: Some(serial_number),
+            serial_number: Some(serial_str),
             status: Some(status.to_string()),
             point_type: None,
             used: None,

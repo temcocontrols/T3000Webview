@@ -43,10 +43,12 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)
@@ -57,6 +59,7 @@ interface OutputPoint {
   panel?: string;
   fullLabel?: string;
   autoManual?: string;
+  hwSwitchStatus?: string;  // HOA Switch: 0=MAN-OFF, 1=AUTO, 2=MAN-ON
   fValue?: string;
   units?: string;
   range?: string;
@@ -111,7 +114,7 @@ export const OutputsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/output-points`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/output-points`;
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -263,7 +266,7 @@ export const OutputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Output, Panel, Full Label, Auto/Man, Value, Units, Range, Low Voltage, High Voltage, PWM Period, Status, Signal Type, Label
+  // Column definitions matching the sequence: Output, Panel, Full Label, Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type
   const columns: TableColumnDefinition<OutputPoint>[] = [
     // 1. Output (Index/ID)
     createTableColumn<OutputPoint>({
@@ -341,7 +344,53 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Man
+    // 4. Label (short label)
+    createTableColumn<OutputPoint>({
+      columnId: 'label',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+          <span>Label</span>
+          {sortColumn === 'label' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => {
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.outputIndex === item.outputIndex &&
+                          editingCell?.field === 'label';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <input
+                type="text"
+                className={styles.editInput}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleEditSave}
+                onKeyDown={handleEditKeyDown}
+                autoFocus
+                disabled={isSaving}
+                placeholder="Enter label"
+                aria-label="Edit label"
+              />
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                title="Double-click to edit"
+              >
+                <Text size={200} weight="regular">{item.label || '---'}</Text>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 5. Auto/Man
     createTableColumn<OutputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -386,7 +435,41 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 5. Value
+    // 6. HOA Switch
+    createTableColumn<OutputPoint>({
+      columnId: 'hoaSwitch',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>HOA Switch</span>
+        </div>
+      ),
+      renderCell: (item) => {
+        // HOA Switch values: 0=MAN-OFF, 1=AUTO, 2=MAN-ON
+        const switchValue = item.hwSwitchStatus?.toString() || '1';
+        let switchText = 'AUTO';
+        let badgeColor: 'success' | 'warning' | 'danger' = 'success';
+
+        if (switchValue === '0') {
+          switchText = 'MAN-OFF';
+          badgeColor = 'danger';
+        } else if (switchValue === '2') {
+          switchText = 'MAN-ON';
+          badgeColor = 'warning';
+        } else {
+          switchText = 'AUTO';
+          badgeColor = 'success';
+        }
+
+        return (
+          <TableCellLayout>
+            <Badge appearance="filled" color={badgeColor} size="small">
+              {switchText}
+            </Badge>
+          </TableCellLayout>
+        );
+      },
+    }),
+    // 7. Value
     createTableColumn<OutputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
@@ -433,7 +516,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 6. Units
+    // 8. Units
     createTableColumn<OutputPoint>({
       columnId: 'units',
       renderHeaderCell: () => (
@@ -451,6 +534,11 @@ export const OutputsPage: React.FC = () => {
     // 7. Range
     createTableColumn<OutputPoint>({
       columnId: 'range',
+      compare: (a, b) => {
+        const aVal = a.range || '';
+        const bVal = b.range || '';
+        return aVal.localeCompare(bVal);
+      },
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
           <span>Range</span>
@@ -471,7 +559,7 @@ export const OutputsPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={() => handleRangeClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4' }}
+              style={{ cursor: 'pointer', color: '#0078d4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               title="Click to change range"
             >
               <Text size={200} weight="regular">{rangeLabel}</Text>
@@ -480,12 +568,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 8. Low Voltage
+    // 10. Low V
     createTableColumn<OutputPoint>({
       columnId: 'lowVoltage',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('lowVoltage')}>
-          <span>Low Voltage</span>
+          <span>Low V</span>
           {sortColumn === 'lowVoltage' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -527,12 +615,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 9. High Voltage
+    // 11. High V
     createTableColumn<OutputPoint>({
       columnId: 'highVoltage',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('highVoltage')}>
-          <span>High Voltage</span>
+          <span>High V</span>
           {sortColumn === 'highVoltage' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -574,17 +662,12 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 10. PWM Period
+    // 12. PWM Period
     createTableColumn<OutputPoint>({
       columnId: 'pwmPeriod',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('pwmPeriod')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span>PWM Period</span>
-          {sortColumn === 'pwmPeriod' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
         </div>
       ),
       renderCell: (item) => {
@@ -621,7 +704,7 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 11. Status
+    // 13. Status
     createTableColumn<OutputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
@@ -664,70 +747,55 @@ export const OutputsPage: React.FC = () => {
         );
       },
     }),
-    // 12. Signal Type (Digital/Analog)
+    // 14. Type
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Signal Type</span>
+          <span>Type</span>
         </div>
       ),
       renderCell: (item) => {
-        const isDigital = item.digitalAnalog === '0';
-        return (
-          <TableCellLayout>
-            <Badge
-              appearance="outline"
-              color={isDigital ? 'informative' : 'brand'}
-            >
-              {isDigital ? 'Digital' : 'Analog'}
-            </Badge>
-          </TableCellLayout>
-        );
-      },
-    }),
-    // 13. Label (short label)
-    createTableColumn<OutputPoint>({
-      columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'label';
+        // Type values: 0=Virtual, 1=Digital, 2=Analog, 3=Extend Digital, 4=Extend Analog, 5=Internal
+        const typeValue = item.typeField || '0';
+        let typeText = 'Virtual';
+        let badgeColor: 'success' | 'informative' | 'brand' | 'warning' = 'success';
+
+        switch (typeValue) {
+          case '0':
+            typeText = 'Virtual';
+            badgeColor = 'success';
+            break;
+          case '1':
+            typeText = 'Digital';
+            badgeColor = 'informative';
+            break;
+          case '2':
+            typeText = 'Analog';
+            badgeColor = 'brand';
+            break;
+          case '3':
+            typeText = 'Extend Digital';
+            badgeColor = 'informative';
+            break;
+          case '4':
+            typeText = 'Extend Analog';
+            badgeColor = 'brand';
+            break;
+          case '5':
+            typeText = 'Internal';
+            badgeColor = 'warning';
+            break;
+          default:
+            typeText = 'Virtual';
+            badgeColor = 'success';
+        }
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit label"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.label || '---'}</Text>
-              </div>
-            )}
+            <Badge appearance="outline" color={badgeColor}>
+              {typeText}
+            </Badge>
           </TableCellLayout>
         );
       },
@@ -753,12 +821,11 @@ export const OutputsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ padding: '12px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '2px' }}>
-                    <Text style={{ color: '#d13438' }} weight="semibold">Error loading outputs</Text>
-                    <br />
-                    <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-                  </div>
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
                 </div>
               )}
 
@@ -853,9 +920,9 @@ export const OutputsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && outputs.length === 0 && (
-                  <div className={styles.loading}>
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Spinner size="large" />
-                    <Text>Loading outputs...</Text>
+                    <Text style={{ marginLeft: '12px' }}>Loading outputs...</Text>
                   </div>
                 )}
 
@@ -870,104 +937,112 @@ export const OutputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Azure Portal Style */}
-                {selectedDevice && !loading && !error && outputs.length === 0 && (
-                  <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500}>No outputs found</Text>
-                      <br />
-                      <Text size={300}>This device has no configured output points</Text>
-                      <br /><br />
-                      <Button
-                        appearance="primary"
-                        icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
-                      >
-                        Refresh
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Data Grid with Data */}
-                {selectedDevice && !loading && !error && outputs.length > 0 && (
-                  <DataGrid
-                    items={outputs}
-                    columns={columns}
-                    sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      output: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      panel: {
-                        minWidth: 60,
-                        defaultWidth: 75,
-                      },
-                      fullLabel: {
-                        minWidth: 180,
-                        defaultWidth: 250,
-                      },
-                      autoManual: {
-                        minWidth: 90,
-                        defaultWidth: 120,
-                      },
-                      value: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      units: {
-                        minWidth: 100,
-                        defaultWidth: 150,
-                      },
-                      range: {
-                        minWidth: 120,
-                        defaultWidth: 150,
-                      },
-                      lowVoltage: {
-                        minWidth: 90,
-                        defaultWidth: 110,
-                      },
-                      highVoltage: {
-                        minWidth: 90,
-                        defaultWidth: 110,
-                      },
-                      pwmPeriod: {
-                        minWidth: 90,
-                        defaultWidth: 110,
-                      },
-                      status: {
-                        minWidth: 80,
-                        defaultWidth: 100,
-                      },
-                      signalType: {
-                        minWidth: 90,
-                        defaultWidth: 110,
-                      },
-                      label: {
-                        minWidth: 130,
-                        defaultWidth: 170,
-                      },
-                    }}
-                  >
-                    <DataGridHeader>
-                      <DataGridRow>
-                        {({ renderHeaderCell }) => (
-                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                        )}
-                      </DataGridRow>
-                    </DataGridHeader>
-                    <DataGridBody<OutputPoint>>
-                      {({ item, rowId }) => (
-                        <DataGridRow<OutputPoint> key={rowId}>
-                          {({ renderCell }) => (
-                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                {/* Data Grid - Always show with header */}
+                {selectedDevice && !loading && !error && (
+                  <>
+                    <DataGrid
+                      items={outputs}
+                      columns={columns}
+                      sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        output: {
+                          minWidth: 60,
+                          defaultWidth: 80,
+                        },
+                        panel: {
+                          minWidth: 60,
+                          defaultWidth: 75,
+                        },
+                        fullLabel: {
+                          minWidth: 180,
+                          defaultWidth: 250,
+                        },
+                        autoManual: {
+                          minWidth: 90,
+                          defaultWidth: 120,
+                        },
+                        hoaSwitch: {
+                          minWidth: 80,
+                          defaultWidth: 120,
+                        },
+                        value: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        units: {
+                          minWidth: 100,
+                          defaultWidth: 150,
+                        },
+                        range: {
+                          minWidth: 80,
+                          defaultWidth: 120,
+                        },
+                        lowVoltage: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        highVoltage: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        pwmPeriod: {
+                          minWidth: 90,
+                          defaultWidth: 120,
+                        },
+                        status: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        signalType: {
+                          minWidth: 60,
+                          defaultWidth: 80,
+                        },
+                        label: {
+                          minWidth: 130,
+                          defaultWidth: 170,
+                        },
+                      }}
+                    >
+                      <DataGridHeader>
+                        <DataGridRow>
+                          {({ renderHeaderCell }) => (
+                            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                           )}
                         </DataGridRow>
-                      )}
-                    </DataGridBody>
-                  </DataGrid>
+                      </DataGridHeader>
+                      <DataGridBody<OutputPoint>>
+                        {({ item, rowId }) => (
+                          <DataGridRow<OutputPoint> key={rowId}>
+                            {({ renderCell }) => (
+                              <DataGridCell>{renderCell(item)}</DataGridCell>
+                            )}
+                          </DataGridRow>
+                        )}
+                      </DataGridBody>
+                    </DataGrid>
+
+                    {/* No Data Message - Show below grid when empty */}
+                    {outputs.length === 0 && (
+                      <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                          </svg>
+                          <Text size={400} weight="semibold">No outputs found</Text>
+                        </div>
+                        <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured output points</Text>
+                        <Button
+                          appearance="subtle"
+                          icon={<ArrowSyncRegular />}
+                          onClick={handleRefresh}
+                          style={{ minWidth: '120px', fontWeight: 'normal' }}
+                        >
+                          Refresh
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
 
               </div>

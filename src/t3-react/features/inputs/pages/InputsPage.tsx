@@ -43,10 +43,13 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ErrorCircleRegular,
+  SaveRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -111,7 +114,8 @@ export const InputsPage: React.FC = () => {
     setError(null);
 
     try {
-      const url = `/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
+      console.log('[InputsPage] Fetching from:', url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -154,6 +158,88 @@ export const InputsPage: React.FC = () => {
     setEditValue(currentValue || '');
   };
 
+  // Test function: Update full label using UPDATE_ENTRY (Action 3 - single field)
+  // COMMENTED OUT: Action 3 does NOT support fullLabel! It only supports: control, value, auto_manual
+  // Keeping the function code for reference but not using it
+  /*
+  const updateFullLabelUsingAction3 = async (serialNumber: number, inputIndex: string, newLabel: string) => {
+    try {
+      console.log(`[Action 3] Attempting to update full label for Input ${inputIndex} (SN: ${serialNumber})`);
+      console.warn('[Action 3] WARNING: fullLabel is NOT supported by Action 3 in C++!');
+      console.warn('[Action 3] C++ only supports: control, value, auto_manual');
+
+      const response = await fetch(
+        `/api/t3-device/inputs/${serialNumber}/${inputIndex}/field/fullLabel`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: newLabel })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 3] Response:', result);
+      console.warn('[Action 3] The API may return success, but C++ did NOT update the field!');
+      return result;
+    } catch (error) {
+      console.error('[Action 3] Failed (Expected!):', error);
+      throw error;
+    }
+  };
+  */
+
+  // Test function: Update full label using UPDATE_WEBVIEW_LIST (Action 16 - full record)
+  // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
+  const updateFullLabelUsingAction16 = async (serialNumber: number, inputIndex: string, newLabel: string, currentInput: InputPoint) => {
+    try {
+      console.log(`[Action 16] Updating full label for Input ${inputIndex} (SN: ${serialNumber})`);
+
+      // Action 16 requires ALL fields, so we send current values + the new label
+      const payload = {
+        fullLabel: newLabel, // New value
+        label: currentInput.label || '',
+        value: parseFloat(currentInput.fValue || '0'),
+        range: parseInt(currentInput.range || '0'),
+        autoManual: parseInt(currentInput.autoManual || '0'),
+        control: 0, // Not in UI, use default
+        filter: parseInt(currentInput.filterField || '0'),
+        digitalAnalog: currentInput.digitalAnalog === '0' ? 0 : 1,
+        calibrationSign: parseInt(currentInput.sign || '0'),
+        calibrationH: 0, // Not in UI, use default
+        calibrationL: 0, // Not in UI, use default
+        decom: 0, // Not in UI, use default
+      };
+
+      console.log('[Action 16] Full payload:', payload);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/inputs/${serialNumber}/${inputIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 16] Success:', result);
+      return result;
+    } catch (error) {
+      console.error('[Action 16] Failed:', error);
+      throw error;
+    }
+  };
+
   const handleEditSave = async () => {
     if (!editingCell) {
       setEditingCell(null);
@@ -168,12 +254,31 @@ export const InputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call to update the backend
-      // if (editingCell.field === 'fullLabel') {
-      //   await updateInputLabel(editingCell.serialNumber, editingCell.inputIndex, editValue);
-      // } else if (editingCell.field === 'fValue') {
-      //   await updateInputValue(editingCell.serialNumber, editingCell.inputIndex, editValue);
-      // }
+      // Test both methods for fullLabel field
+      if (editingCell.field === 'fullLabel' && selectedDevice) {
+        console.log('=== Updating Full Label ===');
+        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Label: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST) - the only method that supports fullLabel');
+
+        // Find the current input data to pass all fields for Action 16
+        const currentInput = inputs.find(
+          input => input.serialNumber === editingCell.serialNumber && input.inputIndex === editingCell.inputIndex
+        );
+
+        if (!currentInput) {
+          throw new Error('Current input data not found');
+        }
+
+        // Use Action 16 (UPDATE_WEBVIEW_LIST) - This is the ONLY way to update fullLabel
+        await updateFullLabelUsingAction16(
+          selectedDevice.serialNumber,
+          editingCell.inputIndex,
+          editValue,
+          currentInput
+        );
+
+        console.log('✅ Full label updated successfully!');
+      }
 
       // Update local state optimistically
       setInputs(prevInputs =>
@@ -189,7 +294,7 @@ export const InputsPage: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       console.error('Failed to update:', error);
-      // Optionally show error message to user
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -263,7 +368,7 @@ export const InputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Input, Panel, Full Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Label, Type
+  // Column definitions matching the sequence: Input, Panel, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
     // 1. Input (Index/ID)
     createTableColumn<InputPoint>({
@@ -316,18 +421,42 @@ export const InputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit full label"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit full label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  style={{
+                    padding: '4px 6px',
+                    border: 'none',
+                    background: '#0078d4',
+                    color: 'white',
+                    borderRadius: '2px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: isSaving ? 0.6 : 1,
+                  }}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '14px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -341,7 +470,47 @@ export const InputsPage: React.FC = () => {
         );
       },
     }),
-    // 4. Auto/Man
+    // 4. Label (short label)
+    createTableColumn<InputPoint>({
+      columnId: 'label',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+          <span>Label</span>
+          {sortColumn === 'label' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => (
+        <TableCellLayout>
+          {editingCell?.serialNumber === item.serialNumber && editingCell?.inputIndex === item.inputIndex && editingCell?.field === 'label' ? (
+            <input
+              type="text"
+              className={styles.editInput}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleEditSave}
+              onKeyDown={handleEditKeyDown}
+              autoFocus
+              disabled={isSaving}
+              placeholder="Enter label"
+              aria-label="Edit label"
+            />
+          ) : (
+            <div
+              className={styles.editableCell}
+              onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+              title="Double-click to edit"
+            >
+              <Text size={200} weight="regular">{item.label || '---'}</Text>
+            </div>
+          )}
+        </TableCellLayout>
+      ),
+    }),
+    // 5. Auto/Man
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
@@ -563,22 +732,7 @@ export const InputsPage: React.FC = () => {
       ),
       renderCell: () => <TableCellLayout>---</TableCellLayout>,
     }),
-    // 13. Label (short label)
-    createTableColumn<InputPoint>({
-      columnId: 'label',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.label || '---'}</TableCellLayout>,
-    }),
-    // 14. Type (Digital/Analog)
+    // 13. Type (Digital/Analog)
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (
@@ -621,12 +775,11 @@ export const InputsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ padding: '12px', backgroundColor: '#fef0f1', border: '1px solid #d13438', borderRadius: '2px' }}>
-                    <Text style={{ color: '#d13438' }} weight="semibold">Error loading inputs</Text>
-                    <br />
-                    <Text style={{ color: '#d13438' }} size={300}>{error}</Text>
-                  </div>
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
                 </div>
               )}
 
@@ -721,9 +874,9 @@ export const InputsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && inputs.length === 0 && (
-                  <div className={styles.loading}>
+                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Spinner size="large" />
-                    <Text>Loading inputs...</Text>
+                    <Text style={{ marginLeft: '12px' }}>Loading inputs...</Text>
                   </div>
                 )}
 
@@ -738,47 +891,29 @@ export const InputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Azure Portal Style */}
-                {selectedDevice && !loading && !error && inputs.length === 0 && (
-                  <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Text size={500}>No inputs found</Text>
-                      <br />
-                      <Text size={300}>This device has no configured input points</Text>
-                      <br /><br />
-                      <Button
-                        appearance="primary"
-                        icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
-                      >
-                        Refresh
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Data Grid with Data */}
-                {selectedDevice && !loading && !error && inputs.length > 0 && (
-                  <DataGrid
-                    items={inputs}
-                    columns={columns}
-                    sortable
-                    resizableColumns
-                    columnSizingOptions={{
-                      input: {
-                        minWidth: 60,
-                        defaultWidth: 80,
-                      },
-                      panel: {
-                        minWidth: 60,
-                        defaultWidth: 75,
-                      },
-                      fullLabel: {
-                        minWidth: 180,
-                        defaultWidth: 250,
-                      },
-                      autoManual: {
-                        minWidth: 90,
+                {/* Data Grid - Always show with header */}
+                {selectedDevice && !loading && !error && (
+                  <>
+                    <DataGrid
+                      items={inputs}
+                      columns={columns}
+                      sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        input: {
+                          minWidth: 60,
+                          defaultWidth: 80,
+                        },
+                        panel: {
+                          minWidth: 60,
+                          defaultWidth: 75,
+                        },
+                        fullLabel: {
+                          minWidth: 180,
+                          defaultWidth: 250,
+                        },
+                        autoManual: {
+                          minWidth: 90,
                         defaultWidth: 120,
                       },
                       value: {
@@ -840,6 +975,28 @@ export const InputsPage: React.FC = () => {
                       )}
                     </DataGridBody>
                   </DataGrid>
+
+                  {/* No Data Message - Show below grid when empty */}
+                  {inputs.length === 0 && (
+                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
+                        </svg>
+                        <Text size={400} weight="semibold">No inputs found</Text>
+                      </div>
+                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured input points</Text>
+                      <Button
+                        appearance="subtle"
+                        icon={<ArrowSyncRegular />}
+                        onClick={handleRefresh}
+                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  )}
+                  </>
                 )}
 
               </div>

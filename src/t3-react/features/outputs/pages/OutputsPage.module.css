@@ -203,7 +203,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   min-height: 0;
 }
 
@@ -227,8 +227,8 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  min-height: fit-content;
+  min-width: max-content;
 }
 
 /* Header row styling - matches fxc-gc-columnheaderrow */
@@ -236,14 +236,15 @@
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
   z-index: 10;
+  width: 100%;
 }
 
 /* Data body - scrollable area */
 .container :global(.fui-DataGridBody) {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
   min-height: 0;
 }
 
@@ -261,6 +262,7 @@
   border-bottom: none;
   cursor: pointer;
   transition: background-color 0.1s ease;
+  white-space: nowrap;
 }
 
 /* Header cell hover - Azure Portal style */
@@ -309,6 +311,7 @@
   font-weight: 400;
   padding: 1px 5px;
   border-radius: 2px;
+  white-space: nowrap;
 }
 
 /* TableCellLayout - inherits cell font */
@@ -316,6 +319,7 @@
   font-size: 12px;
   font-family: inherit;
   line-height: normal;
+  white-space: nowrap;
 }
 
 /* Links in grid - Azure Portal link color */

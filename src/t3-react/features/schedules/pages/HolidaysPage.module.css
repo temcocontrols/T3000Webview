@@ -1,17 +1,6 @@
 /**
- * Inputs Page Styles - Azure Portal Billing Accounts
- * Extracted from actual Azure Portal HTML/CSS: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
- *
- * Key Azure Portal characteristics from inspection:
- * - Font: Segoe UI, 13px body, 400 weight
- * - Grid class: fxc-gc-dataGrid (not DetailsList)
- * - Colors: #292827 text primary, #323130 button toolbar, #201f1e hover
- * - Borders: #edebe9 primary borders, #f3f2f1 row borders
- * - Backgrounds: #fafafa headers/toolbar, #ffffff cells
- * - Hover: #f3f2f1 background
- * - Row height: 42px (min-height, content-driven)
- * - Cell padding: 0 16px (horizontal only)
- * - Toolbar: 44px height, azc-toolbarButton class
+ * Holidays Page Styles - Azure Portal Pattern
+ * Based on ProgramsPage.module.css
  */
 
 /* Root container styling */
@@ -217,7 +206,7 @@
   padding: 24px;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */
+/* Azure Portal Grid - fxc-gc-dataGrid styling */
 .container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;

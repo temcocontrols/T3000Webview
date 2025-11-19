@@ -26,6 +26,7 @@ import type {
 import { DeviceApiService } from '../services/deviceApi';
 import { buildTreeFromDevices } from '../lib/treeBuilder';
 import { useStatusBarStore } from '../../../store/statusBarStore';
+import { API_BASE_URL } from '../../../config/constants';
 
 /**
  * Device Tree State Interface
@@ -512,7 +513,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       fetchProjectPointTree: async () => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch('/api/t3_device/tree/project-view');
+          const response = await fetch(`${API_BASE_URL}/api/t3_device/tree/project-view`);
           if (!response.ok) {
             throw new Error('Failed to fetch project point tree');
           }
@@ -533,7 +534,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       fetchDeviceCapacity: async (serialNumber: string) => {
         try {
-          const response = await fetch(`/api/t3_device/devices/${serialNumber}/capacity`);
+          const response = await fetch(`${API_BASE_URL}/api/t3_device/devices/${serialNumber}/capacity`);
           if (!response.ok) {
             throw new Error('Failed to fetch device capacity');
           }
