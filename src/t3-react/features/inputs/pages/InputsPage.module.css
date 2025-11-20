@@ -396,7 +396,7 @@
 
 /* Save button for inline editing */
 .saveButton {
-  padding: 6px 8px;
+  padding: 2px 4px;
   border: none;
   background: transparent;
   color: #0078d4;
@@ -404,7 +404,9 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   transition: background-color 0.15s ease;
+  flex-shrink: 0;
 }
 
 .saveButton:hover {

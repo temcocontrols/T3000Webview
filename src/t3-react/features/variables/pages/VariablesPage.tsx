@@ -40,6 +40,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ErrorCircleRegular,
+  SaveRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -274,7 +275,33 @@ export const VariablesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.variableId || item.variableIndex || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const handleRefreshRow = async () => {
+          console.log('Refreshing variable:', item.serialNumber, item.variableIndex);
+          // TODO: Implement single row refresh from backend
+          // For now, just refresh the entire variables list
+          await fetchVariables();
+        };
+
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshRow();
+                }}
+                className={styles.saveButton}
+                title="Refresh this row"
+                style={{ padding: '2px 4px' }}
+              >
+                <ArrowSyncRegular style={{ fontSize: '14px' }} />
+              </button>
+              <Text size={200} weight="regular">{item.variableId || item.variableIndex || '---'}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
     // 2. Panel
     createTableColumn<VariablePoint>({
@@ -312,18 +339,32 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit full label"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit full label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -350,32 +391,52 @@ export const VariablesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => (
-        <TableCellLayout>
-          {editingCell?.serialNumber === item.serialNumber && editingCell?.variableIndex === item.variableIndex && editingCell?.field === 'label' ? (
-            <input
-              type="text"
-              className={styles.editInput}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleEditSave}
-              onKeyDown={handleEditKeyDown}
-              autoFocus
-              disabled={isSaving}
-              placeholder="Enter label"
-              aria-label="Edit label"
-            />
-          ) : (
-            <div
-              className={styles.editableCell}
-              onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-              title="Double-click to edit"
-            >
-              <Text size={200} weight="regular">{item.label || '---'}</Text>
-            </div>
-          )}
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        const isEditing = editingCell?.serialNumber === item.serialNumber &&
+                          editingCell?.variableIndex === item.variableIndex &&
+                          editingCell?.field === 'label';
+
+        return (
+          <TableCellLayout>
+            {isEditing ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={styles.editableCell}
+                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                title="Double-click to edit"
+              >
+                <Text size={200} weight="regular">{item.label || '---'}</Text>
+              </div>
+            )}
+          </TableCellLayout>
+        );
+      },
     }),
     // 4. Auto/Manual
     createTableColumn<VariablePoint>({
@@ -390,21 +451,66 @@ export const VariablesPage: React.FC = () => {
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
 
-        const handleToggle = () => {
+        const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
           console.log('Auto/Man toggled:', item.serialNumber, item.variableIndex, newValue);
 
-          // Update local state optimistically
-          setVariables(prevVariables =>
-            prevVariables.map(variable =>
-              variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
-                ? { ...variable, autoManual: newValue }
-                : variable
-            )
-          );
+          try {
+            // Find the current variable data to pass all fields for Action 16
+            const currentVariable = variables.find(
+              variable => variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
+            );
 
-          // TODO: Call API to update Auto/Man value
-          // Example: updateVariableAutoManual(item.serialNumber, item.variableIndex, newValue);
+            if (!currentVariable) {
+              throw new Error('Current variable data not found');
+            }
+
+            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
+            const payload = {
+              fullLabel: currentVariable.fullLabel || '',
+              label: currentVariable.label || '',
+              value: parseFloat(currentVariable.fValue || '0'),
+              range: parseInt(currentVariable.rangeField || '0'),
+              autoManual: parseInt(newValue),
+              control: 0,
+              filter: parseInt(currentVariable.filterField || '0'),
+              digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+              calibrationSign: parseInt(currentVariable.sign || '0'),
+              calibrationH: 0,
+              calibrationL: 0,
+            };
+
+            console.log('[Action 16] Updating Auto/Man:', payload);
+
+            const response = await fetch(
+              `${API_BASE_URL}/api/t3_device/variables/${item.serialNumber}/${item.variableIndex}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              }
+            );
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('[Action 16] Auto/Man updated successfully:', result);
+
+            // Update local state optimistically
+            setVariables(prevVariables =>
+              prevVariables.map(variable =>
+                variable.serialNumber === item.serialNumber && variable.variableIndex === item.variableIndex
+                  ? { ...variable, autoManual: newValue }
+                  : variable
+              )
+            );
+          } catch (error) {
+            console.error('Failed to update Auto/Man:', error);
+            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         };
 
         return (
@@ -443,19 +549,33 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter value"
-                aria-label="Edit value"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter value"
+                  aria-label="Edit value"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -556,11 +676,11 @@ export const VariablesPage: React.FC = () => {
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title="Refresh All"
+                    aria-label="Refresh All"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>
                   </button>
 
                   {/* Export to CSV Button */}
@@ -668,8 +788,8 @@ export const VariablesPage: React.FC = () => {
                         defaultWidth: 120,
                       },
                       value: {
-                        minWidth: 80,
-                        defaultWidth: 100,
+                        minWidth: 120,
+                        defaultWidth: 180,
                       },
                       units: {
                         minWidth: 100,

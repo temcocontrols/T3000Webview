@@ -44,6 +44,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ErrorCircleRegular,
+  SaveRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -281,7 +282,33 @@ export const OutputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.outputId || item.outputIndex || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const handleRefreshRow = async () => {
+          console.log('Refreshing output:', item.serialNumber, item.outputIndex);
+          // TODO: Implement single row refresh from backend
+          // For now, just refresh the entire outputs list
+          await fetchOutputs();
+        };
+
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshRow();
+                }}
+                className={styles.saveButton}
+                title="Refresh this row"
+                style={{ padding: '2px 4px' }}
+              >
+                <ArrowSyncRegular style={{ fontSize: '14px' }} />
+              </button>
+              <Text size={200} weight="regular">{item.outputId || item.outputIndex || '---'}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
     // 2. Panel
     createTableColumn<OutputPoint>({
@@ -319,18 +346,32 @@ export const OutputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit full label"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit full label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -365,18 +406,32 @@ export const OutputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="text"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter label"
-                aria-label="Edit label"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter label"
+                  aria-label="Edit label"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -403,21 +458,64 @@ export const OutputsPage: React.FC = () => {
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
 
-        const handleToggle = () => {
+        const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
           console.log('Auto/Man toggled:', item.serialNumber, item.outputIndex, newValue);
 
-          // Update local state optimistically
-          setOutputs(prevOutputs =>
-            prevOutputs.map(output =>
-              output.serialNumber === item.serialNumber && output.outputIndex === item.outputIndex
-                ? { ...output, autoManual: newValue }
-                : output
-            )
-          );
+          try {
+            // Find the current output data to pass all fields for Action 16
+            const currentOutput = outputs.find(
+              output => output.serialNumber === item.serialNumber && output.outputIndex === item.outputIndex
+            );
 
-          // TODO: Call API to update Auto/Man value
-          // Example: updateOutputAutoManual(item.serialNumber, item.outputIndex, newValue);
+            if (!currentOutput) {
+              throw new Error('Current output data not found');
+            }
+
+            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
+            const payload = {
+              fullLabel: currentOutput.fullLabel || '',
+              label: currentOutput.label || '',
+              value: parseFloat(currentOutput.fValue || '0'),
+              range: parseInt(currentOutput.range || '0'),
+              autoManual: parseInt(newValue),
+              control: 0,
+              lowVoltage: parseFloat(currentOutput.lowVoltage || '0'),
+              highVoltage: parseFloat(currentOutput.highVoltage || '0'),
+              pwmPeriod: parseInt(currentOutput.pwmPeriod || '0'),
+            };
+
+            console.log('[Action 16] Updating Auto/Man:', payload);
+
+            const response = await fetch(
+              `${API_BASE_URL}/api/t3_device/outputs/${item.serialNumber}/${item.outputIndex}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              }
+            );
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('[Action 16] Auto/Man updated successfully:', result);
+
+            // Update local state optimistically
+            setOutputs(prevOutputs =>
+              prevOutputs.map(output =>
+                output.serialNumber === item.serialNumber && output.outputIndex === item.outputIndex
+                  ? { ...output, autoManual: newValue }
+                  : output
+              )
+            );
+          } catch (error) {
+            console.error('Failed to update Auto/Man:', error);
+            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         };
 
         return (
@@ -490,19 +588,33 @@ export const OutputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter value"
-                aria-label="Edit value"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter value"
+                  aria-label="Edit value"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSave();
+                  }}
+                  disabled={isSaving}
+                  className={styles.saveButton}
+                  title="Save"
+                >
+                  <SaveRegular style={{ fontSize: '18px' }} />
+                </button>
+              </div>
             ) : (
               <div
                 className={styles.editableCell}
@@ -855,11 +967,11 @@ export const OutputsPage: React.FC = () => {
                     className={styles.toolbarButton}
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title="Refresh All"
+                    aria-label="Refresh All"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>
                   </button>
 
                   {/* Export to CSV Button */}
@@ -955,8 +1067,8 @@ export const OutputsPage: React.FC = () => {
                           defaultWidth: 75,
                         },
                         fullLabel: {
-                          minWidth: 180,
-                          defaultWidth: 250,
+                          minWidth: 150,
+                          defaultWidth: 200,
                         },
                         autoManual: {
                           minWidth: 90,
@@ -967,8 +1079,8 @@ export const OutputsPage: React.FC = () => {
                           defaultWidth: 120,
                         },
                         value: {
-                          minWidth: 80,
-                          defaultWidth: 100,
+                          minWidth: 100,
+                          defaultWidth: 140,
                         },
                         units: {
                           minWidth: 100,

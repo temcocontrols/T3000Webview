@@ -396,3 +396,34 @@
   color: #a19f9d;
   cursor: not-allowed;
 }
+
+/* Save button for inline editing */
+.saveButton {
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: #0078d4;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.saveButton:hover {
+  background-color: #f3f2f1;
+  color: #106ebe;
+}
+
+.saveButton:active {
+  background-color: #edebe9;
+}
+
+.saveButton:disabled {
+  color: #a19f9d;
+  cursor: not-allowed;
+  background-color: transparent;
+  opacity: 0.6;
+}
