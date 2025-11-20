@@ -358,6 +358,7 @@ const AlarmsPage: React.FC = () => {
               {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   ======================================== */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   <button
@@ -433,6 +434,7 @@ const AlarmsPage: React.FC = () => {
                   )}
                 </div>
               </div>
+              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -448,9 +450,9 @@ const AlarmsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {isLoading && alarms.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading alarms...</Text>
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading alarms...</Text>
                   </div>
                 )}
 

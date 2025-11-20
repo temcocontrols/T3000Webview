@@ -212,9 +212,23 @@
 .noData {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
+  padding-top: 48px;
+}
+
+/* Loading Bar - Info Bar Style */
+.loadingBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background-color: #f0f6ff;
+  border: none;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #323130;
 }
 
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to VariablesPage only */

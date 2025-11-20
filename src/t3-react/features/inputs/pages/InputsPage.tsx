@@ -898,6 +898,7 @@ export const InputsPage: React.FC = () => {
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -953,6 +954,7 @@ export const InputsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -970,9 +972,9 @@ export const InputsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && inputs.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading inputs...</Text>
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading inputs...</Text>
                   </div>
                 )}
 

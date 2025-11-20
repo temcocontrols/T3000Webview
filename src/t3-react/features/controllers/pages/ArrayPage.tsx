@@ -199,6 +199,7 @@ const ArrayPage: React.FC = () => {
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -254,6 +255,7 @@ const ArrayPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -271,9 +273,9 @@ const ArrayPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && arrays.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading arrays...</Text>
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading arrays...</Text>
                   </div>
                 )}
 

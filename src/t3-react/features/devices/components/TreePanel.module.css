@@ -31,9 +31,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 200px;
-  padding: 16px;
+  justify-content: flex-start;
+  padding-top: 24px;
+}
+
+.loadingSpinner {
+  font-size: 12px;
+}
+
+.loadingSpinner :global(.fui-Spinner) {
+  width: 20px;
+  height: 20px;
+}
+
+.loadingSpinner :global(.fui-Label) {
+  font-size: 12px;
+  color: #605e5c;
 }
 
 /* Error state */

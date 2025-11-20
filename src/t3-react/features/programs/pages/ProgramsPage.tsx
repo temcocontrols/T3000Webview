@@ -471,6 +471,7 @@ export const ProgramsPage: React.FC = () => {
               )}
 
               {/* TOOLBAR */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   <button
@@ -521,6 +522,7 @@ export const ProgramsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* HORIZONTAL DIVIDER */}
               <div style={{ padding: '0' }}>
@@ -531,9 +533,9 @@ export const ProgramsPage: React.FC = () => {
               <div className={styles.dockingBody}>
 
                 {loading && programs.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading programs...</Text>
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading programs...</Text>
                   </div>
                 )}
 

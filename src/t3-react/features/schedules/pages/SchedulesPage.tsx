@@ -363,6 +363,7 @@ export const SchedulesPage: React.FC = () => {
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -418,6 +419,7 @@ export const SchedulesPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -435,9 +437,9 @@ export const SchedulesPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && schedules.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading schedules...</Text>
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading schedules...</Text>
                   </div>
                 )}
 

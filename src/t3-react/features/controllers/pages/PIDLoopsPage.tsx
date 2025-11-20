@@ -506,6 +506,7 @@ const PIDLoopsPage: React.FC = () => {
         )}
 
         {/* Toolbar Section */}
+        {selectedDevice && (
         <div className={styles.toolbar}>
           <div className={styles.toolbarContainer}>
             <button
@@ -581,6 +582,7 @@ const PIDLoopsPage: React.FC = () => {
             )}
           </div>
         </div>
+        )}
 
         {/* Horizontal Divider */}
         <div style={{ padding: '0' }}>
@@ -590,10 +592,10 @@ const PIDLoopsPage: React.FC = () => {
         {/* Docking Body - Main Content */}
         <div className={styles.dockingBody}>
         {/* Loading State */}
-        {isLoading && controllers.length === 0 && (
-          <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Spinner size="large" />
-            <Text style={{ marginLeft: '12px' }}>Loading PID loops...</Text>
+        {isLoading && pidLoops.length === 0 && (
+          <div className={styles.loadingBar}>
+            <Spinner size="tiny" />
+            <Text>Loading PID loops...</Text>
           </div>
         )}
 

@@ -11,6 +11,7 @@ import React from 'react';
 import {
   Toolbar,
   ToolbarButton,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ChevronDoubleDown20Regular,
@@ -62,29 +63,35 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
         <div className={styles.title}>Devices</div>
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
-        <ToolbarButton
-          aria-label={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
-          icon={isProjectMode ? <DatabaseRegular /> : <BuildingRegular />}
-          onClick={handleToggleViewMode}
-          appearance="subtle"
-          className={isProjectMode ? styles.activeButton : ''}
-        />
+        <Tooltip content={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'} relationship="label">
+          <ToolbarButton
+            aria-label={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
+            icon={isProjectMode ? <DatabaseRegular /> : <BuildingRegular />}
+            onClick={handleToggleViewMode}
+            appearance="subtle"
+            className={isProjectMode ? styles.activeButton : ''}
+          />
+        </Tooltip>
 
-        <ToolbarButton
-          aria-label="Toggle filter"
-          icon={<Filter20Regular />}
-          onClick={onToggleFilter}
-          appearance="subtle"
-          className={showFilter ? styles.activeButton : ''}
-        />
+        <Tooltip content={showFilter ? 'Hide Filter' : 'Show Filter'} relationship="label">
+          <ToolbarButton
+            aria-label="Toggle filter"
+            icon={<Filter20Regular />}
+            onClick={onToggleFilter}
+            appearance="subtle"
+            className={showFilter ? styles.activeButton : ''}
+          />
+        </Tooltip>
 
-        <ToolbarButton
-          aria-label={isExpanded ? 'Collapse all nodes' : 'Expand all nodes'}
-          icon={isExpanded ? <ChevronDoubleUp20Regular /> : <ChevronDoubleDown20Regular />}
-          onClick={handleToggleExpandCollapse}
-          appearance="subtle"
-          className={isExpanded ? styles.activeButton : ''}
-        />
+        <Tooltip content={isExpanded ? 'Collapse All' : 'Expand All'} relationship="label">
+          <ToolbarButton
+            aria-label={isExpanded ? 'Collapse all nodes' : 'Expand all nodes'}
+            icon={isExpanded ? <ChevronDoubleUp20Regular /> : <ChevronDoubleDown20Regular />}
+            onClick={handleToggleExpandCollapse}
+            appearance="subtle"
+            className={isExpanded ? styles.activeButton : ''}
+          />
+        </Tooltip>
       </Toolbar>
     </div>
   );

@@ -64,7 +64,12 @@ export const TreePanel: React.FC = () => {
         {/* Loading state */}
         {isLoading && (
           <div className={styles.loadingContainer}>
-            <Spinner size="medium" label="Loading devices..." />
+            <Spinner
+              size="tiny"
+              label="Loading devices..."
+              labelPosition="after"
+              className={styles.loadingSpinner}
+            />
           </div>
         )}
 

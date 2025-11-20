@@ -398,6 +398,7 @@ export const HolidaysPage: React.FC = () => {
                 TOOLBAR - Azure Portal Command Bar
                 Matches: ext-overview-assistant-toolbar azc-toolbar
                 ======================================== */}
+            {selectedDevice && (
             <div className={styles.toolbar}>
               <div className={styles.toolbarContainer}>
                 <button
@@ -448,6 +449,7 @@ export const HolidaysPage: React.FC = () => {
                 </div>
               </div>
             </div>
+            )}
 
             {/* HORIZONTAL DIVIDER */}
             <div style={{ padding: '0' }}>
@@ -458,9 +460,9 @@ export const HolidaysPage: React.FC = () => {
             <div className={styles.dockingBody}>
 
               {loading && holidays.length === 0 && (
-                <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Spinner size="large" />
-                  <Text style={{ marginLeft: '12px' }}>Loading holidays...</Text>
+                <div className={styles.loadingBar}>
+                  <Spinner size="tiny" />
+                  <Text>Loading holidays...</Text>
                 </div>
               )}
 

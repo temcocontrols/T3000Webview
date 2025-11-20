@@ -273,6 +273,7 @@ export const TrendlogsPage: React.FC = () => {
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -328,6 +329,7 @@ export const TrendlogsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -345,9 +347,9 @@ export const TrendlogsPage: React.FC = () => {
 
                 {/* Loading State */}
                 {loading && trendlogs.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading trendlogs...</Text>
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading trendlogs...</Text>
                   </div>
                 )}
 
