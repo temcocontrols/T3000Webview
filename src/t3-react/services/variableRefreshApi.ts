@@ -10,7 +10,7 @@
  * - Updates database with fresh values
  */
 
-const API_BASE_URL = '/api/t3-device';
+import { API_BASE_URL } from '../config/constants';
 
 export interface RefreshVariableRequest {
   index?: number; // Optional: omit for refresh all, include for single item
@@ -36,7 +36,7 @@ export interface SaveResponse {
  * Implements REFRESH_WEBVIEW_LIST action for variable points
  */
 export class VariableRefreshApiService {
-  private static baseUrl = API_BASE_URL;
+  private static baseUrl = `${API_BASE_URL}/api/t3_device`;
 
   /**
    * Refresh single variable from device

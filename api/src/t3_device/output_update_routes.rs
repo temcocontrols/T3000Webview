@@ -9,12 +9,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::ffi::CString;
-use std::os::raw::c_char;
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::devices;
+use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
@@ -117,7 +116,7 @@ pub async fn update_output_full(
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
     let input_json = json!({
-        "action": 16,  // UPDATE_WEBVIEW_LIST
+        "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_OUT,  // 0 = OUTPUT
@@ -135,7 +134,7 @@ pub async fn update_output_full(
     });
 
     // Call FFI function
-    match call_update_ffi(16, input_json).await {
+    match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
             info!("✅ Full output record updated successfully");
             Ok(Json(json!({
@@ -161,13 +160,27 @@ pub async fn update_output_full(
 
 /// Helper function to call C++ FFI for update operations
 async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, String> {
-    let input_str = input_json.to_string();
+    use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
-    info!("📤 Sending to C++: {}", input_str);
+    let input_str = input_json.to_string();
+    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+
+    // Ensure T3000 functions are loaded
+    tokio::task::spawn_blocking(|| {
+        unsafe {
+            if !load_t3000_function() {
+                return Err("T3000 functions not loaded".to_string());
+            }
+        }
+        Ok(())
+    }).await
+    .map_err(|e| format!("Failed to check T3000 functions: {}", e))?
+    .map_err(|e| e)?;
 
     // Run FFI call in blocking task
-    let result = tokio::task::spawn_blocking(move || {
-        // Prepare buffer for response
+    tokio::task::spawn_blocking(move || {
+        use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
+
         const BUFFER_SIZE: usize = 1048576; // 1MB buffer
         let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
 
@@ -180,44 +193,30 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
         buffer[..input_bytes.len()].copy_from_slice(input_bytes);
         buffer[input_bytes.len()] = 0; // Null terminator
 
-        // Call the private FFI wrapper through winapi
         unsafe {
-            use winapi::um::libloaderapi::GetProcAddress;
-            use winapi::shared::minwindef::HINSTANCE;
+            if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
+                let result = func(
+                    action,
+                    buffer.as_mut_ptr() as *mut std::os::raw::c_char,
+                    buffer.len() as i32,
+                );
 
-            // Get function pointer (assumes already loaded by service)
-            let current_module = std::ptr::null_mut();
-            let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();
-            let func_ptr = GetProcAddress(current_module as HINSTANCE, func_name.as_ptr());
-
-            if func_ptr.is_null() {
-                return Err("BacnetWebView_HandleWebViewMsg not found".to_string());
-            }
-
-            type FfiFunc = unsafe extern "C" fn(i32, *mut c_char, i32) -> i32;
-            let ffi_func: FfiFunc = std::mem::transmute(func_ptr);
-
-            let result = ffi_func(
-                action,
-                buffer.as_mut_ptr() as *mut c_char,
-                buffer.len() as i32,
-            );
-
-            match result {
-                0 => {
-                    // Success - read response from buffer
-                    let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
-                    let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                    info!("📥 C++ Response: {}", response);
-                    Ok(response)
+                match result {
+                    0 => {
+                        // Success - read response from buffer
+                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        Ok(response)
+                    }
+                    -2 => Err("MFC application not initialized".to_string()),
+                    code => Err(format!("FFI call failed with code: {}", code)),
                 }
-                -2 => Err("MFC application not initialized".to_string()),
-                code => Err(format!("FFI call failed with code: {}", code)),
+            } else {
+                Err("BacnetWebView_HandleWebViewMsg function not loaded".to_string())
             }
         }
     })
     .await
-    .map_err(|e| format!("Task spawn error: {}", e))??;
-
-    Ok(result)
+    .map_err(|e| format!("Task spawn error: {}", e))?
 }

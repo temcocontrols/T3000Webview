@@ -533,6 +533,32 @@ async fn get_all_points_by_device(
     }
 }
 
+/// Check device online status
+/// GET /api/t3_device/devices/:id/status
+async fn check_device_status(
+    Path(device_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    use crate::t3_device::trendlog_webmsg_service::TrendlogWebMsgService;
+
+    let service = TrendlogWebMsgService::new();
+
+    match service.is_device_online(device_id).await {
+        Ok(online) => {
+            let status = if online { "online" } else { "offline" };
+            Ok(Json(json!({
+                "status": status,
+                "responseTime": if online { Some(100) } else { None::<i32> }
+            })))
+        }
+        Err(_) => {
+            Ok(Json(json!({
+                "status": "offline",
+                "responseTime": None::<i32>
+            })))
+        }
+    }
+}
+
 async fn get_input_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
@@ -1204,6 +1230,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))
+        .route("/devices/:id/status", get(check_device_status))
         .route("/devices/:id/points", get(get_device_with_points))
         .route("/devices/:id/all-points", get(get_all_points_by_device))
         .route("/devices/:serial/table/:table", get(get_device_table_data))  // Generic table query by serial number
