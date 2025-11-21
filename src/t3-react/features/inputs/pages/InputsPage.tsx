@@ -491,15 +491,14 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRefreshSingleInput(inputIndex);
                 }}
-                className={styles.saveButton}
+                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
                 title="Refresh this input from device"
-                style={{ padding: '2px 4px' }}
                 disabled={isRefreshingThis}
               >
                 <ArrowSyncRegular
@@ -1008,11 +1007,11 @@ export const InputsPage: React.FC = () => {
                     className={styles.toolbarButton}
                     onClick={handleRefreshFromDevice}
                     disabled={refreshing}
-                    title="Refresh All from Device"
-                    aria-label="Refresh All from Device"
+                    title="Refresh all inputs from device"
+                    aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
                   {/* Export to CSV Button */}

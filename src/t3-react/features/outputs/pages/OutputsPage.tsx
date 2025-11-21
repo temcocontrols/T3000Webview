@@ -392,18 +392,20 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRefreshSingleOutput(item.outputIndex || '');
                 }}
-                className={`${styles.saveButton} ${isRefreshing ? styles.rotating : ''}`}
+                className={`${styles.refreshIconButton} ${isRefreshing ? styles.isRefreshing : ''}`}
                 title="Refresh this output from device"
-                style={{ padding: '2px 4px' }}
                 disabled={isRefreshing}
               >
-                <ArrowSyncRegular style={{ fontSize: '14px' }} />
+                <ArrowSyncRegular
+                  style={{ fontSize: '14px' }}
+                  className={isRefreshing ? styles.rotating : ''}
+                />
               </button>
               <Text size={200} weight="regular">{item.outputId || item.outputIndex || '---'}</Text>
             </div>

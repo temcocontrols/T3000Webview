@@ -442,6 +442,48 @@
   opacity: 0.6;
 }
 
+/* Refresh icon for each row - hidden by default, shown on hover */
+.refreshIconButton {
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: #0078d4;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-right: 0;
+}
+
+.refreshIconButton:hover {
+  background-color: #f3f2f1;
+  color: #106ebe;
+}
+
+.refreshIconButton:active {
+  background-color: #edebe9;
+}
+
+.refreshIconButton:disabled {
+  color: #a19f9d;
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+/* Show refresh icon on row hover or when refreshing - takes space and pushes text */
+.container :global(.fui-DataGridRow):hover .refreshIconButton,
+.refreshIconButton.isRefreshing {
+  width: auto;
+  opacity: 1;
+  margin-right: 3px;
+}
+
 /* Rotating animation for refresh icons */
 @keyframes rotate {
   from {
