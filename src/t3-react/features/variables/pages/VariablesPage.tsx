@@ -119,11 +119,13 @@ export const VariablesPage: React.FC = () => {
       }
 
       const data = await response.json();
-      setVariables(data.variable_points || []);
+      const fetchedVariables = data.variable_points || [];
+      setVariables(fetchedVariables);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load variables';
       setError(errorMessage);
       console.error('Error fetching variables:', err);
+      // DON'T clear variables on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -859,8 +861,8 @@ export const VariablesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
-                {selectedDevice && !loading && !error && (
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
                   <>
                   <DataGrid
                     items={variables}

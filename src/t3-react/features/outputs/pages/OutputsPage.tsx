@@ -126,11 +126,13 @@ export const OutputsPage: React.FC = () => {
       }
 
       const data = await response.json();
-      setOutputs(data.output_points || []);
+      const fetchedOutputs = data.output_points || [];
+      setOutputs(fetchedOutputs);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load outputs';
       setError(errorMessage);
       console.error('Error fetching outputs:', err);
+      // DON'T clear outputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -1150,8 +1152,8 @@ export const OutputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
-                {selectedDevice && !loading && !error && (
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
                   <>
                     <DataGrid
                       items={outputs}

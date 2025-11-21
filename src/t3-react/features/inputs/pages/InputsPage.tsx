@@ -118,7 +118,6 @@ export const InputsPage: React.FC = () => {
 
     try {
       const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/input-points`;
-      console.log('[InputsPage] Fetching from:', url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -126,11 +125,13 @@ export const InputsPage: React.FC = () => {
       }
 
       const data = await response.json();
-      setInputs(data.input_points || []);
+      const fetchedInputs = data.input_points || [];
+      setInputs(fetchedInputs);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load inputs';
       setError(errorMessage);
       console.error('Error fetching inputs:', err);
+      // DON'T clear inputs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -1090,8 +1091,8 @@ export const InputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
-                {selectedDevice && !loading && !error && (
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
                   <>
                     <DataGrid
                       items={inputs}
