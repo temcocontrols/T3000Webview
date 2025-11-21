@@ -140,6 +140,20 @@ pub async fn refresh_outputs(
                 let error_msg = response_json.get("message")
                     .and_then(|v| v.as_str())
                     .unwrap_or("Unknown error from device");
+
+                // Check if this is an "empty response" indicating unimplemented action
+                let debug_msg = response_json.get("debug")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
+                    error!("❌ Action 17 not implemented in C++: {}", debug_msg);
+                    return Err((
+                        StatusCode::NOT_IMPLEMENTED,
+                        "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
+                    ));
+                }
+
                 error!("❌ Device refresh failed: {}", error_msg);
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, error_msg.to_string()));
             }

@@ -154,13 +154,16 @@ export const InputsPage: React.FC = () => {
         // Save to database
         if (refreshResponse.items && refreshResponse.items.length > 0) {
           await InputRefreshApiService.saveRefreshedInputs(selectedDevice.serialNumber, refreshResponse.items);
+          // Only reload from database if save was successful
+          await fetchInputs();
+        } else {
+          console.warn('[InputsPage] Auto-refresh: No items received, keeping existing data');
         }
-
-        // Reload from database
-        await fetchInputs();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[InputsPage] Auto-refresh failed:', error);
+        // Don't reload from database on error - preserve existing inputs
+        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
     }, 500);
 
@@ -191,13 +194,16 @@ export const InputsPage: React.FC = () => {
           refreshResponse.items
         );
         console.log('[InputsPage] Save response:', saveResponse);
-      }
 
-      // Reload data from database after save
-      await fetchInputs();
+        // Only reload from database if save was successful
+        await fetchInputs();
+      } else {
+        console.warn('[InputsPage] No items received from refresh, keeping existing data');
+      }
     } catch (error) {
       console.error('[InputsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+      // Don't call fetchInputs() on error - preserve existing inputs in UI
     } finally {
       setRefreshing(false);
     }

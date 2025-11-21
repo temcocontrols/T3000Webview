@@ -147,13 +147,16 @@ export const VariablesPage: React.FC = () => {
         // Save to database
         if (refreshResponse.items && refreshResponse.items.length > 0) {
           await VariableRefreshApiService.saveRefreshedVariables(selectedDevice.serialNumber, refreshResponse.items);
+          // Only reload from database if save was successful
+          await fetchVariables();
+        } else {
+          console.warn('[VariablesPage] Auto-refresh: No items received, keeping existing data');
         }
-
-        // Reload from database
-        await fetchVariables();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[VariablesPage] Auto-refresh failed:', error);
+        // Don't reload from database on error - preserve existing variables
+        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
     }, 500);
 
@@ -184,13 +187,16 @@ export const VariablesPage: React.FC = () => {
           refreshResponse.items
         );
         console.log('[VariablesPage] Save response:', saveResponse);
-      }
 
-      // Reload data from database after save
-      await fetchVariables();
+        // Only reload from database if save was successful
+        await fetchVariables();
+      } else {
+        console.warn('[VariablesPage] No items received from refresh, keeping existing data');
+      }
     } catch (error) {
       console.error('[VariablesPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+      // Don't call fetchVariables() on error - preserve existing variables in UI
     } finally {
       setRefreshing(false);
     }
