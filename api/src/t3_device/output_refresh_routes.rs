@@ -163,6 +163,15 @@ pub async fn refresh_outputs(
         }
         Err(e) => {
             error!("❌ Failed to refresh outputs: {}", e);
+
+            // Provide helpful message if C++ hasn't implemented this action yet
+            if e.contains("not implemented") || e.contains("empty response") {
+                return Err((
+                    StatusCode::NOT_IMPLEMENTED,
+                    "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
+                ));
+            }
+
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to refresh outputs: {}", e),
@@ -338,6 +347,12 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
                         info!("📥 C++ Response (Action {}): {}", action, response);
+
+                        // Check if response is empty or minimal (C++ not implemented)
+                        if response.is_empty() || response == "{}" {
+                            return Err("Action not implemented in C++ - empty response".to_string());
+                        }
+
                         Ok(response)
                     }
                     -2 => Err("MFC application not initialized".to_string()),
