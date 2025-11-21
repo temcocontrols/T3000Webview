@@ -50,6 +50,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
+import { InputRefreshApiService } from '../../../services/inputRefreshApi';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -81,6 +82,8 @@ export const InputsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -137,11 +140,103 @@ export const InputsPage: React.FC = () => {
     fetchInputs();
   }, [fetchInputs]);
 
+  // Auto-refresh once after page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    // Wait for initial load to complete, then auto-refresh from device
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[InputsPage] Auto-refreshing from device...');
+        const refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
+        console.log('[InputsPage] Refresh response:', refreshResponse);
+
+        // Save to database
+        if (refreshResponse.items && refreshResponse.items.length > 0) {
+          await InputRefreshApiService.saveRefreshedInputs(selectedDevice.serialNumber, refreshResponse.items);
+        }
+
+        // Reload from database
+        await fetchInputs();
+        setAutoRefreshed(true);
+      } catch (error) {
+        console.error('[InputsPage] Auto-refresh failed:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchInputs]);
+
   // Handlers
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchInputs();
     setRefreshing(false);
+  };
+
+  // Refresh all inputs from device (Trigger #2: Manual "Refresh All" button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[InputsPage] Refreshing all inputs from device...');
+      const refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
+      console.log('[InputsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await InputRefreshApiService.saveRefreshedInputs(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[InputsPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchInputs();
+    } catch (error) {
+      console.error('[InputsPage] Failed to refresh from device:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
+    }
+  };  // Refresh single input from device (Trigger #3: Per-row refresh icon)
+  const handleRefreshSingleInput = async (inputIndex: string) => {
+    if (!selectedDevice) return;
+
+    const index = parseInt(inputIndex, 10);
+    if (isNaN(index)) {
+      console.error('[InputsPage] Invalid input index:', inputIndex);
+      return;
+    }
+
+    setRefreshingItems(prev => new Set(prev).add(inputIndex));
+    try {
+      console.log(`[InputsPage] Refreshing input ${index} from device...`);
+      const refreshResponse = await InputRefreshApiService.refreshInput(selectedDevice.serialNumber, index);
+      console.log('[InputsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await InputRefreshApiService.saveRefreshedInputs(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[InputsPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchInputs();
+    } catch (error) {
+      console.error(`[InputsPage] Failed to refresh input ${index}:`, error);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(inputIndex);
+        return newSet;
+      });
+    }
   };
 
   const handleExport = () => {
@@ -384,12 +479,8 @@ export const InputsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
-        const handleRefreshRow = async () => {
-          console.log('Refreshing input:', item.serialNumber, item.inputIndex);
-          // TODO: Implement single row refresh from backend
-          // For now, just refresh the entire inputs list
-          await fetchInputs();
-        };
+        const inputIndex = item.inputIndex || '';
+        const isRefreshingThis = refreshingItems.has(inputIndex);
 
         return (
           <TableCellLayout>
@@ -397,13 +488,17 @@ export const InputsPage: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleRefreshRow();
+                  handleRefreshSingleInput(inputIndex);
                 }}
                 className={styles.saveButton}
-                title="Refresh this row"
+                title="Refresh this input from device"
                 style={{ padding: '2px 4px' }}
+                disabled={isRefreshingThis}
               >
-                <ArrowSyncRegular style={{ fontSize: '14px' }} />
+                <ArrowSyncRegular
+                  style={{ fontSize: '14px' }}
+                  className={isRefreshingThis ? styles.rotating : ''}
+                />
               </button>
               <Text size={200} weight="regular">{item.inputId || item.inputIndex || '---'}</Text>
             </div>
@@ -901,13 +996,13 @@ export const InputsPage: React.FC = () => {
               {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
-                  {/* Refresh Button */}
+                  {/* Refresh Button - Refresh from Device */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleRefresh}
+                    onClick={handleRefreshFromDevice}
                     disabled={refreshing}
-                    title="Refresh All"
-                    aria-label="Refresh All"
+                    title="Refresh All from Device"
+                    aria-label="Refresh All from Device"
                   >
                     <ArrowSyncRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>

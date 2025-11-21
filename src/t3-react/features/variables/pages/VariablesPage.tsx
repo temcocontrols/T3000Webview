@@ -46,6 +46,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
+import { VariableRefreshApiService } from '../../../services/variableRefreshApi';
 import styles from './VariablesPage.module.css';
 
 // Types based on Rust entity (variable_points.rs)
@@ -75,6 +76,8 @@ export const VariablesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -130,11 +133,105 @@ export const VariablesPage: React.FC = () => {
     fetchVariables();
   }, [fetchVariables]);
 
+  // Auto-refresh once after page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    // Wait for initial load to complete, then auto-refresh from device
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[VariablesPage] Auto-refreshing from device...');
+        const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
+        console.log('[VariablesPage] Refresh response:', refreshResponse);
+
+        // Save to database
+        if (refreshResponse.items && refreshResponse.items.length > 0) {
+          await VariableRefreshApiService.saveRefreshedVariables(selectedDevice.serialNumber, refreshResponse.items);
+        }
+
+        // Reload from database
+        await fetchVariables();
+        setAutoRefreshed(true);
+      } catch (error) {
+        console.error('[VariablesPage] Auto-refresh failed:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchVariables]);
+
   // Handlers
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchVariables();
     setRefreshing(false);
+  };
+
+  // Refresh all variables from device (Trigger #2: Manual "Refresh All" button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[VariablesPage] Refreshing all variables from device...');
+      const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
+      console.log('[VariablesPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await VariableRefreshApiService.saveRefreshedVariables(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[VariablesPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchVariables();
+    } catch (error) {
+      console.error('[VariablesPage] Failed to refresh from device:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single variable from device (Trigger #3: Per-row refresh icon)
+  const handleRefreshSingleVariable = async (variableIndex: string) => {
+    if (!selectedDevice) return;
+
+    const index = parseInt(variableIndex, 10);
+    if (isNaN(index)) {
+      console.error('[VariablesPage] Invalid variable index:', variableIndex);
+      return;
+    }
+
+    setRefreshingItems(prev => new Set(prev).add(variableIndex));
+    try {
+      console.log(`[VariablesPage] Refreshing variable ${index} from device...`);
+      const refreshResponse = await VariableRefreshApiService.refreshVariable(selectedDevice.serialNumber, index);
+      console.log('[VariablesPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await VariableRefreshApiService.saveRefreshedVariables(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[VariablesPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchVariables();
+    } catch (error) {
+      console.error(`[VariablesPage] Failed to refresh variable ${index}:`, error);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variableIndex);
+        return newSet;
+      });
+    }
   };
 
   const handleExport = () => {
@@ -276,12 +373,7 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
-        const handleRefreshRow = async () => {
-          console.log('Refreshing variable:', item.serialNumber, item.variableIndex);
-          // TODO: Implement single row refresh from backend
-          // For now, just refresh the entire variables list
-          await fetchVariables();
-        };
+        const isRefreshing = refreshingItems.has(item.variableIndex || '');
 
         return (
           <TableCellLayout>
@@ -289,11 +381,12 @@ export const VariablesPage: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleRefreshRow();
+                  handleRefreshSingleVariable(item.variableIndex || '');
                 }}
-                className={styles.saveButton}
-                title="Refresh this row"
+                className={`${styles.saveButton} ${isRefreshing ? styles.rotating : ''}`}
+                title="Refresh this variable from device"
                 style={{ padding: '2px 4px' }}
+                disabled={isRefreshing}
               >
                 <ArrowSyncRegular style={{ fontSize: '14px' }} />
               </button>
@@ -675,13 +768,13 @@ export const VariablesPage: React.FC = () => {
                   {/* Refresh Button */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleRefresh}
+                    onClick={handleRefreshFromDevice}
                     disabled={refreshing}
-                    title="Refresh All"
-                    aria-label="Refresh All"
+                    title="Refresh all variables from device"
+                    aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
                   {/* Export to CSV Button */}

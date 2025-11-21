@@ -50,6 +50,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
+import { OutputRefreshApiService } from '../../../services/outputRefreshApi';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)
@@ -82,6 +83,8 @@ export const OutputsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -137,11 +140,105 @@ export const OutputsPage: React.FC = () => {
     fetchOutputs();
   }, [fetchOutputs]);
 
+  // Auto-refresh once after page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    // Wait for initial load to complete, then auto-refresh from device
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[OutputsPage] Auto-refreshing from device...');
+        const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
+        console.log('[OutputsPage] Refresh response:', refreshResponse);
+
+        // Save to database
+        if (refreshResponse.items && refreshResponse.items.length > 0) {
+          await OutputRefreshApiService.saveRefreshedOutputs(selectedDevice.serialNumber, refreshResponse.items);
+        }
+
+        // Reload from database
+        await fetchOutputs();
+        setAutoRefreshed(true);
+      } catch (error) {
+        console.error('[OutputsPage] Auto-refresh failed:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchOutputs]);
+
   // Handlers
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchOutputs();
     setRefreshing(false);
+  };
+
+  // Refresh all outputs from device (Trigger #2: Manual "Refresh All" button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[OutputsPage] Refreshing all outputs from device...');
+      const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
+      console.log('[OutputsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await OutputRefreshApiService.saveRefreshedOutputs(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[OutputsPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchOutputs();
+    } catch (error) {
+      console.error('[OutputsPage] Failed to refresh from device:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single output from device (Trigger #3: Per-row refresh icon)
+  const handleRefreshSingleOutput = async (outputIndex: string) => {
+    if (!selectedDevice) return;
+
+    const index = parseInt(outputIndex, 10);
+    if (isNaN(index)) {
+      console.error('[OutputsPage] Invalid output index:', outputIndex);
+      return;
+    }
+
+    setRefreshingItems(prev => new Set(prev).add(outputIndex));
+    try {
+      console.log(`[OutputsPage] Refreshing output ${index} from device...`);
+      const refreshResponse = await OutputRefreshApiService.refreshOutput(selectedDevice.serialNumber, index);
+      console.log('[OutputsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await OutputRefreshApiService.saveRefreshedOutputs(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[OutputsPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchOutputs();
+    } catch (error) {
+      console.error(`[OutputsPage] Failed to refresh output ${index}:`, error);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(outputIndex);
+        return newSet;
+      });
+    }
   };
 
   const handleExport = () => {
@@ -283,12 +380,7 @@ export const OutputsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
-        const handleRefreshRow = async () => {
-          console.log('Refreshing output:', item.serialNumber, item.outputIndex);
-          // TODO: Implement single row refresh from backend
-          // For now, just refresh the entire outputs list
-          await fetchOutputs();
-        };
+        const isRefreshing = refreshingItems.has(item.outputIndex || '');
 
         return (
           <TableCellLayout>
@@ -296,11 +388,12 @@ export const OutputsPage: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleRefreshRow();
+                  handleRefreshSingleOutput(item.outputIndex || '');
                 }}
-                className={styles.saveButton}
-                title="Refresh this row"
+                className={`${styles.saveButton} ${isRefreshing ? styles.rotating : ''}`}
+                title="Refresh this output from device"
                 style={{ padding: '2px 4px' }}
+                disabled={isRefreshing}
               >
                 <ArrowSyncRegular style={{ fontSize: '14px' }} />
               </button>
@@ -966,13 +1059,13 @@ export const OutputsPage: React.FC = () => {
                   {/* Refresh Button */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleRefresh}
+                    onClick={handleRefreshFromDevice}
                     disabled={refreshing}
-                    title="Refresh All"
-                    aria-label="Refresh All"
+                    title="Refresh all outputs from device"
+                    aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh All'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
                   {/* Export to CSV Button */}
