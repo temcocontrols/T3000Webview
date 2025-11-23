@@ -39,6 +39,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { ScheduleRefreshApiService } from '../../../services/scheduleRefreshApi';
 import styles from './SchedulesPage.module.css';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
@@ -71,6 +72,8 @@ export const SchedulesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string>('scheduleId');
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -133,10 +136,87 @@ export const SchedulesPage: React.FC = () => {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Refresh handler
-  const handleRefresh = () => {
+  // Auto-refresh on page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    const timer = setTimeout(async () => {
+      console.log('🔄 Auto-refreshing schedules from device on page load...');
+      try {
+        const serial = selectedDevice.serialNumber;
+        const response = await ScheduleRefreshApiService.refreshAllSchedules(serial);
+        console.log('✅ Auto-refresh response:', response);
+        if (response && response.items) {
+          await ScheduleRefreshApiService.saveRefreshedSchedules(serial, response.items);
+          await fetchSchedules();
+        }
+        setAutoRefreshed(true);
+      } catch (err) {
+        console.error('❌ Auto-refresh failed:', err);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchSchedules]);
+
+  // Refresh from database (toolbar button)
+  const handleRefreshFromDatabase = () => {
     setRefreshing(true);
     fetchSchedules();
+  };
+
+  // Refresh from device (Trigger #2 - Manual button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+    setRefreshing(true);
+    setError(null);
+
+    try {
+      const serial = selectedDevice.serialNumber;
+      console.log('🔄 Refreshing all schedules from device...');
+      const response = await ScheduleRefreshApiService.refreshAllSchedules(serial);
+      console.log('✅ Device refresh response:', response);
+
+      if (response && response.items) {
+        await ScheduleRefreshApiService.saveRefreshedSchedules(serial, response.items);
+        await fetchSchedules();
+      }
+    } catch (err) {
+      console.error('❌ Refresh from device failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single schedule from device (Trigger #3 - Per-row icon)
+  const handleRefreshSingleSchedule = async (item: SchedulePoint) => {
+    if (!selectedDevice || !item.scheduleId) return;
+
+    const scheduleKey = item.scheduleId;
+    setRefreshingItems(prev => new Set(prev).add(scheduleKey));
+
+    try {
+      const serial = selectedDevice.serialNumber;
+      const scheduleIndex = parseInt(item.scheduleId);
+      console.log(`🔄 Refreshing single schedule from device: ${scheduleIndex}`);
+
+      const response = await ScheduleRefreshApiService.refreshSchedule(serial, scheduleIndex);
+      console.log('✅ Single schedule refresh response:', response);
+
+      if (response && response.items) {
+        await ScheduleRefreshApiService.saveRefreshedSchedules(serial, response.items);
+        await fetchSchedules();
+      }
+    } catch (err) {
+      console.error('❌ Single schedule refresh failed:', err);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(scheduleKey);
+        return newSet;
+      });
+    }
   };
 
   // Export handler
@@ -183,7 +263,7 @@ export const SchedulesPage: React.FC = () => {
 
   // Column definitions matching C++ BacnetWeeklyRoutine.cpp
   const columns: TableColumnDefinition<SchedulePoint>[] = [
-    // 1. Schedule ID
+    // 1. Schedule ID (with refresh icon)
     createTableColumn<SchedulePoint>({
       columnId: 'scheduleId',
       renderHeaderCell: () => (
@@ -196,7 +276,28 @@ export const SchedulesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.scheduleId || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const isRefreshing = item.scheduleId && refreshingItems.has(item.scheduleId);
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshSingleSchedule(item);
+                }}
+                disabled={isRefreshing}
+                title="Refresh this schedule from device"
+                aria-label="Refresh schedule"
+              >
+                <ArrowSyncRegular fontSize={16} />
+              </button>
+              <span>{item.scheduleId || '---'}</span>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
 
     // 2. Auto/Manual
@@ -369,13 +470,13 @@ export const SchedulesPage: React.FC = () => {
                   {/* Refresh Button */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleRefresh}
+                    onClick={handleRefreshFromDevice}
                     disabled={refreshing}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
                   {/* Export to CSV Button */}
@@ -528,7 +629,7 @@ export const SchedulesPage: React.FC = () => {
                       <Button
                         appearance="subtle"
                         icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
+                        onClick={handleRefreshFromDatabase}
                         style={{ minWidth: '120px', fontWeight: 'normal' }}
                       >
                         Refresh

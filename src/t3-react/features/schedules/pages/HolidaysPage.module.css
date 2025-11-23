@@ -427,3 +427,57 @@
   background-color: transparent;
   opacity: 0.6;
 }
+
+/* ========================================
+   REFRESH ICON BUTTON - Per-row refresh
+   Matches InputsPage, OutputsPage, VariablesPage, ProgramsPage, PIDLoopsPage, SchedulesPage pattern
+   ======================================== */
+.refreshIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #0078d4;
+  cursor: pointer;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+/* Show icon on row hover */
+.container :global(.fui-DataGridRow):hover .refreshIconButton {
+  opacity: 1;
+}
+
+.refreshIconButton:hover {
+  background-color: #f3f2f1;
+  color: #106ebe;
+}
+
+.refreshIconButton:active {
+  background-color: #edebe9;
+}
+
+.refreshIconButton:disabled {
+  color: #a19f9d;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Rotating animation for refresh icon */
+@keyframes rotating {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotating {
+  animation: rotating 1s linear infinite;
+}
