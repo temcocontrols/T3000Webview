@@ -115,6 +115,7 @@ export const HolidaysPage: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load holidays';
       setError(errorMessage);
       console.error('Error fetching holidays:', err);
+      // DON'T clear holidays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -476,7 +477,7 @@ export const HolidaysPage: React.FC = () => {
                 </div>
               )}
 
-              {selectedDevice && !loading && !error && (
+              {selectedDevice && !loading && (
                 <>
                   <DataGrid
                     items={holidays}

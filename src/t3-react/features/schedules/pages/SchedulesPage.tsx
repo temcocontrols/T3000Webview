@@ -122,7 +122,7 @@ export const SchedulesPage: React.FC = () => {
     } catch (err) {
       console.error('Error fetching schedules:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch schedules');
-      setSchedules([]);
+      // DON'T clear schedules on database fetch error - preserve what we have
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -454,8 +454,8 @@ export const SchedulesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
-                {selectedDevice && !loading && !error && (
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
                   <>
                   <DataGrid
                     items={sortedSchedules}

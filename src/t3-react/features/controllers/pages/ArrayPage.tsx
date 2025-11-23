@@ -83,6 +83,7 @@ const ArrayPage: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load arrays';
       setError(errorMessage);
       console.error('Error fetching arrays:', err);
+      // DON'T clear arrays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -290,8 +291,8 @@ const ArrayPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
-                {selectedDevice && !loading && !error && (
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
                   <>
                     <DataGrid
                       items={arrays}

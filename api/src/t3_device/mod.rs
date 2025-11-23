@@ -23,4 +23,5 @@ pub mod variable_update_routes; // ✅ T3000 Variable Update API Routes using UP
 pub mod input_refresh_routes;   // ✅ T3000 Input Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod output_refresh_routes;  // ✅ T3000 Output Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod variable_refresh_routes; // ✅ T3000 Variable Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
+pub mod program_refresh_routes; // ✅ T3000 Program Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod websocket_handler;

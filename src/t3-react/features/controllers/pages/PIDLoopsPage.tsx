@@ -63,7 +63,7 @@ interface PIDController {
 
 const PIDLoopsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
-  const [controllers, setControllers] = useState<PIDController[]>([]);
+  const [pidLoops, setPidLoops] = useState<PIDController[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,8 +95,8 @@ const PIDLoopsPage: React.FC = () => {
     }
   }, [selectedDevice, treeData, selectDevice]);
 
-  // Fetch PID controllers data
-  const fetchControllers = useCallback(async () => {
+  // Fetch PID loops data
+  const fetchPidLoops = useCallback(async () => {
     if (!selectedDevice) return;
 
     console.log('Fetching PID loops for device:', selectedDevice.serialNumber);
@@ -108,23 +108,23 @@ const PIDLoopsPage: React.FC = () => {
       console.log('Fetching from URL:', url);
       const response = await fetch(url);
       console.log('Response status:', response.status);
-      if (!response.ok) throw new Error('Failed to fetch controllers');
+      if (!response.ok) throw new Error('Failed to fetch PID loops');
 
       const result = await response.json();
       console.log('API response:', result);
       console.log('Data array:', result.data);
-      setControllers(result.data || []);
+      setPidLoops(result.data || []);
     } catch (error) {
-      console.error('Error fetching controllers:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load controllers');
+      console.error('Error fetching PID loops:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load PID loops');
     } finally {
       setIsLoading(false);
     }
   }, [selectedDevice]);
 
   useEffect(() => {
-    fetchControllers();
-  }, [fetchControllers]);
+    fetchPidLoops();
+  }, [fetchPidLoops]);
 
   // Handle field edit
   const handleFieldEdit = (controllerId: string, field: keyof PIDController, value: string) => {
@@ -168,7 +168,7 @@ const PIDLoopsPage: React.FC = () => {
   // Handle refresh
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchControllers();
+    await fetchPidLoops();
     setRefreshing(false);
   };
 
@@ -509,15 +509,16 @@ const PIDLoopsPage: React.FC = () => {
         {selectedDevice && (
         <div className={styles.toolbar}>
           <div className={styles.toolbarContainer}>
+            {/* Refresh Button - Refresh from Device */}
             <button
               className={styles.toolbarButton}
               onClick={handleRefresh}
               disabled={refreshing}
-              title="Refresh"
-              aria-label="Refresh"
+              title="Refresh all PID loops from device"
+              aria-label="Refresh from Device"
             >
               <ArrowClockwise24Regular />
-              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+              <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
             </button>
 
             <button
@@ -614,7 +615,7 @@ const PIDLoopsPage: React.FC = () => {
         {selectedDevice && !isLoading && !error && (
           <>
             <DataGrid
-              items={controllers}
+              items={pidLoops}
               columns={columns}
               sortable
               resizableColumns
@@ -692,7 +693,7 @@ const PIDLoopsPage: React.FC = () => {
             </DataGrid>
 
             {/* No Data Message - Show below grid when empty */}
-            {controllers.length === 0 && (
+            {pidLoops.length === 0 && (
               <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>

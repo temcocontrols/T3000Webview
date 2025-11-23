@@ -24,6 +24,7 @@ use crate::t3_device::variable_update_routes::create_variable_update_routes;
 use crate::t3_device::input_refresh_routes::create_input_refresh_routes;
 use crate::t3_device::output_refresh_routes::create_output_refresh_routes;
 use crate::t3_device::variable_refresh_routes::create_variable_refresh_routes;
+use crate::t3_device::program_refresh_routes::create_program_refresh_routes;
 
 // Helper function to check if T3000 device database is available
 #[allow(dead_code)]
@@ -1311,6 +1312,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_input_refresh_routes())
         .merge(create_output_refresh_routes())
         .merge(create_variable_refresh_routes())
+        .merge(create_program_refresh_routes())
 }
 
 // ============================================================================
