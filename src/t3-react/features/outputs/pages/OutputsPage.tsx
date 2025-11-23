@@ -50,7 +50,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { OutputRefreshApiService } from '../../../services/outputRefreshApi';
+import { OutputRefreshApiService } from '../services/outputRefreshApi';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)

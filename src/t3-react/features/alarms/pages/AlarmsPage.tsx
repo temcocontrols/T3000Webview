@@ -33,6 +33,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { AlarmRefreshApiService } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
@@ -69,6 +70,8 @@ const AlarmsPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   const handleExport = () => {
     console.log('Export alarms to CSV');
@@ -131,6 +134,83 @@ const AlarmsPage: React.FC = () => {
   useEffect(() => {
     fetchAlarms();
   }, [fetchAlarms]);
+
+  // Auto-refresh on page load (Trigger #1)
+  useEffect(() => {
+    if (isLoading || !selectedDevice || autoRefreshed) return;
+
+    const timer = setTimeout(async () => {
+      console.log('🔄 Auto-refreshing alarms from device on page load...');
+      try {
+        const serial = selectedDevice.serialNumber;
+        const response = await AlarmRefreshApiService.refreshAllAlarms(serial);
+        console.log('✅ Auto-refresh response:', response);
+        if (response && response.items) {
+          await AlarmRefreshApiService.saveRefreshedAlarms(serial, response.items);
+          await fetchAlarms();
+        }
+        setAutoRefreshed(true);
+      } catch (err) {
+        console.error('❌ Auto-refresh failed:', err);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isLoading, selectedDevice, autoRefreshed, fetchAlarms]);
+
+  // Refresh from device (Trigger #2 - Manual button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+    setRefreshing(true);
+    setError(null);
+
+    try {
+      const serial = selectedDevice.serialNumber;
+      console.log('🔄 Refreshing all alarms from device...');
+      const response = await AlarmRefreshApiService.refreshAllAlarms(serial);
+      console.log('✅ Device refresh response:', response);
+
+      if (response && response.items) {
+        await AlarmRefreshApiService.saveRefreshedAlarms(serial, response.items);
+        await fetchAlarms();
+      }
+    } catch (err) {
+      console.error('❌ Refresh from device failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single alarm from device (Trigger #3 - Per-row icon)
+  const handleRefreshSingleAlarm = async (item: Alarm) => {
+    if (!selectedDevice || !item.alarm_id) return;
+
+    const alarmKey = item.alarm_id;
+    setRefreshingItems(prev => new Set(prev).add(alarmKey));
+
+    try {
+      const serial = selectedDevice.serialNumber;
+      const alarmIndex = parseInt(item.alarm_id);
+      console.log(`🔄 Refreshing single alarm from device: ${alarmIndex}`);
+
+      const response = await AlarmRefreshApiService.refreshAlarm(serial, alarmIndex);
+      console.log('✅ Single alarm refresh response:', response);
+
+      if (response && response.items) {
+        await AlarmRefreshApiService.saveRefreshedAlarms(serial, response.items);
+        await fetchAlarms();
+      }
+    } catch (err) {
+      console.error('❌ Single alarm refresh failed:', err);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(alarmKey);
+        return newSet;
+      });
+    }
+  };
 
   // Handle field edit
   const handleFieldEdit = (alarmId: string, field: keyof Alarm, value: string) => {
@@ -196,7 +276,7 @@ const AlarmsPage: React.FC = () => {
 
   // Column definitions based on C++ BacnetAlarmLog.cpp (7 columns)
   const columns: TableColumnDefinition<Alarm>[] = useMemo(() => [
-    // Column 1: NUM (Alarm ID)
+    // Column 1: NUM (Alarm ID with refresh icon)
     createTableColumn<Alarm>({
       columnId: 'alarm_id',
       compare: (a, b) => Number(a.alarm_id) - Number(b.alarm_id),
@@ -210,11 +290,28 @@ const AlarmsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (alarm) => (
-        <TableCellLayout className={styles.numCell}>
-          {alarm.alarm_id}
-        </TableCellLayout>
-      ),
+      renderCell: (alarm) => {
+        const isRefreshing = alarm.alarm_id && refreshingItems.has(alarm.alarm_id);
+        return (
+          <TableCellLayout className={styles.numCell}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshSingleAlarm(alarm);
+                }}
+                disabled={isRefreshing}
+                title="Refresh this alarm from device"
+                aria-label="Refresh alarm"
+              >
+                <ArrowSyncRegular fontSize={16} />
+              </button>
+              <span>{alarm.alarm_id}</span>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
 
     // Column 2: Panel
@@ -363,13 +460,13 @@ const AlarmsPage: React.FC = () => {
                 <div className={styles.toolbarContainer}>
                   <button
                     className={styles.toolbarButton}
-                    onClick={fetchAlarms}
-                    disabled={isLoading}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                    title="Refresh from Device"
+                    aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular />
-                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
                   <button

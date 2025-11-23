@@ -68,7 +68,7 @@ import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
-import { t3000Routes } from '@t3-react/router/routes';
+import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 
 const useStyles = makeStyles({

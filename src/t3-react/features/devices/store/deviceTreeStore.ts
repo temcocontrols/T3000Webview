@@ -22,8 +22,8 @@ import type {
   BuildingInfo,
   ScanOptions,
   DeviceStatus,
-} from '../../../types/device';
-import { DeviceApiService } from '../services/deviceApi';
+} from '../../../shared/types/device';
+import DeviceApiService from '../../../services/deviceApi';
 import { buildTreeFromDevices } from '../lib/treeBuilder';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import { API_BASE_URL } from '../../../config/constants';

@@ -1,6 +1,6 @@
 /**
- * Trendlogs Page Styles - Azure Portal Pattern
- * Based on standard InputsPage.module.css
+ * TrendLogs Page Styles - Azure Portal Pattern
+ * Matching InputsPage styling for consistency
  */
 
 /* Root container styling */
@@ -166,7 +166,6 @@
   line-height: 20px;
   color: #292827;
   background-color: transparent;
-  /* margin: 12px 0; */
   flex-shrink: 0;
 }
 
@@ -196,97 +195,6 @@
   min-height: 0;
 }
 
-/* Dual Grid Container - 80% / 20% split like C++ BacnetMonitor */
-.gridContainer {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  align-items: stretch;
-}
-
-/* Main Grid (Left) - 80% width */
-.mainGrid {
-  flex: 0 0 78%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: auto;
-}
-
-/* Sub Grid (Right) - 20% width - matches height of main grid */
-.subGrid {
-  flex: 0 0 18%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-  border: 1px solid #edebe9;
-  background-color: #ffffff;
-  overflow: hidden;
-}
-
-.subGridHeader {
-  background-color: #fafafa;
-  border-bottom: 1px solid #edebe9;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.subGridBody {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.inputRow {
-  display: flex;
-  border-bottom: 1px solid #f3f2f1;
-  min-height: 32px;
-  align-items: center;
-  transition: background-color 0.1s ease;
-}
-
-.inputRow:nth-child(even) {
-  background-color: #fafafa;
-}
-
-.inputRow:hover {
-  background-color: #f3f2f1;
-}
-
-.inputNum {
-  flex: 0 0 40px;
-  text-align: center;
-  font-size: 11px;
-  color: #605e5c;
-  border-right: 1px solid #edebe9;
-  padding: 6px;
-}
-
-.inputValue {
-  flex: 1;
-  padding: 6px 8px;
-  font-size: 11px;
-  color: #292827;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.subGridEmpty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  text-align: center;
-  color: #605e5c;
-}
-
 /* Loading and No Data States */
 .loading,
 .noData {
@@ -311,7 +219,22 @@
   color: #323130;
 }
 
-/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to TrendlogsPage only */
+/* Error Bar */
+.errorBar {
+  padding: 8px;
+  background-color: #fde7e9;
+  color: #a80000;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+/* Flex container for refresh icon */
+.refreshContainer {
+  display: flex;
+  align-items: center;
+}
+
+/* Azure Portal Grid - SCOPED to TrendLogsPage only */
 .container :global(.fui-DataGrid) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
@@ -325,7 +248,7 @@
   min-width: max-content;
 }
 
-/* Header row styling - matches fxc-gc-columnheaderrow */
+/* Header row styling */
 .container :global(.fui-DataGridHeader) {
   background-color: #fafafa;
   border-bottom: 1px solid #edebe9;
@@ -342,11 +265,11 @@
   min-height: 0;
 }
 
-/* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
+/* Header cell styling */
 .container :global(.fui-DataGridHeaderCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
-  font-weight: 600;  /* Bold headers in Azure Portal */
+  font-weight: 600;
   color: #323130;
   padding: 0 12px;
   height: 32px;
@@ -358,20 +281,12 @@
   transition: background-color 0.1s ease;
 }
 
-/* Header cell hover - Azure Portal style */
+/* Header cell hover */
 .container :global(.fui-DataGridHeaderCell):hover {
   background-color: #edebe9;
 }
 
-/* Sort icon styling */
-.container :global(.fui-DataGridHeaderCell) svg {
-  width: 12px;
-  height: 12px;
-  color: #605e5c;
-  flex-shrink: 0;
-}
-
-/* Data row styling - matches fxc-gc-row */
+/* Data row styling */
 .container :global(.fui-DataGridRow) {
   border-bottom: 1px solid #f3f2f1;
   min-height: 32px;
@@ -379,12 +294,12 @@
   transition: background-color 0.1s ease;
 }
 
-/* Row hover - matches fxs-portal-hover */
+/* Row hover */
 .container :global(.fui-DataGridRow):hover {
   background-color: #f3f2f1;
 }
 
-/* Data cell styling - matches fxc-gc-cell */
+/* Data cell styling */
 .container :global(.fui-DataGridCell) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
@@ -397,7 +312,7 @@
   align-items: center;
 }
 
-/* Badge styling - compact badges */
+/* Badge styling */
 .container :global(.fui-Badge) {
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 11px;
@@ -406,30 +321,10 @@
   border-radius: 2px;
 }
 
-/* TableCellLayout - inherits cell font */
+/* TableCellLayout */
 .container :global(.fui-TableCellLayout) {
   font-size: 12px;
   font-family: inherit;
-  line-height: normal;
-}
-
-/* Links in grid - Azure Portal link color */
-.container :global(.fui-DataGridCell) a {
-  color: #0078d4;
-  text-decoration: none;
-}
-
-.container :global(.fui-DataGridCell) a:hover {
-  color: #004578;
-  text-decoration: underline;
-}
-
-/* Remove any default Fluent UI styles that conflict */
-.container :global(.fui-DataGridHeaderCell) > * {
-  line-height: normal;
-}
-
-.container :global(.fui-DataGridCell) > * {
   line-height: normal;
 }
 
@@ -438,58 +333,8 @@
   border: 1px solid #edebe9;
 }
 
-/* Editable cell styles */
-.editableCell {
-  cursor: text;
-  padding: 0;
-  min-height: 20px;
-  display: flex;
-  align-items: center;
-  outline: none !important;
-  border: none !important;
-}
-
-.editableCell:hover {
-  background-color: transparent;
-}
-
-.editInput {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  border: none !important;
-  border-bottom: 1px solid #0078d4 !important;
-  border-radius: 0;
-  font-size: 12px;
-  font-family: 'Segoe UI', sans-serif;
-  outline: none !important;
-  background: transparent;
-  color: #323130;
-  line-height: 20px;
-  box-sizing: border-box;
-}
-
-.editInput:hover {
-  border-bottom-color: #106ebe !important;
-}
-
-.editInput:focus {
-  border: none !important;
-  border-bottom: 2px solid #0078d4 !important;
-  margin-bottom: -1px;
-  outline: none !important;
-}
-
-.editInput:disabled {
-  background-color: transparent;
-  border-bottom-color: #c8c6c4 !important;
-  color: #a19f9d;
-  cursor: not-allowed;
-}
-
-/* Save button for inline editing */
-.saveButton {
+/* Refresh icon for each row - hidden by default, shown on hover */
+.refreshIconButton {
   padding: 2px 4px;
   border: none;
   background: transparent;
@@ -499,22 +344,115 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-right: 0;
 }
 
-.saveButton:hover {
+.refreshIconButton:hover {
   background-color: #f3f2f1;
   color: #106ebe;
 }
 
-.saveButton:active {
+.refreshIconButton:active {
   background-color: #edebe9;
 }
 
-.saveButton:disabled {
+.refreshIconButton:disabled {
   color: #a19f9d;
   cursor: not-allowed;
   background-color: transparent;
-  opacity: 0.6;
+}
+
+/* Show refresh icon on row hover or when refreshing */
+.container :global(.fui-DataGridRow):hover .refreshIconButton,
+.refreshIconButton.isRefreshing {
+  width: auto;
+  opacity: 1;
+  margin-right: 3px;
+}
+
+/* Rotating animation for refresh icons */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+/* Dual Grid Layout */
+.gridContainer {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.mainGrid {
+  flex: 0 0 80%;
+  min-width: 0;
+  overflow: auto;
+}
+
+.subGrid {
+  flex: 0 0 20%;
+  border: 1px solid #edebe9;
+  border-radius: 2px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: 250px;
+}
+
+.subGridHeader {
+  padding: 8px 12px;
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  font-size: 12px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.subGridBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f3f2f1;
+  font-size: 12px;
+  transition: background-color 0.1s ease;
+}
+
+.inputRow:hover {
+  background-color: #f3f2f1;
+}
+
+.inputNum {
+  width: 24px;
+  flex-shrink: 0;
+  color: #605e5c;
+  font-weight: 600;
+}
+
+.inputValue {
+  flex: 1;
+  color: #292827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

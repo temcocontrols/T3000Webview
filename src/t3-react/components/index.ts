@@ -1,26 +1,26 @@
 /**
  * Components Index
  *
- * Re-exports common components for backward compatibility
- * Note: Most components have been moved to shared/ or features/ folders
+ * Re-exports all shared components for easier imports
+ * All components now live in shared/components/
  */
 
-// Legacy components still in use
-export { DataTable } from './DataTable';
-export type { Column } from './DataTable';
-export { StatusBar } from './StatusBar';
-export { PointEditor } from './PointEditor';
-export { SearchBox } from './SearchBox';
-export { NotificationProvider, useNotification } from './NotificationCenter';
-export type { NotificationType, Notification } from './NotificationCenter';
-
-// Re-export from new locations for backward compatibility
+// Core shared components
+export { DataTable } from '../shared/components/DataTable';
+export type { Column } from '../shared/components/DataTable';
+export { StatusBar } from '../shared/components/StatusBar';
+export { PointEditor } from '../shared/components/PointEditor';
+export { SearchBox } from '../shared/components/SearchBox';
+export { NotificationProvider, useNotification } from '../shared/components/NotificationCenter';
+export type { NotificationType, Notification } from '../shared/components/NotificationCenter';
 export { LoadingSpinner } from '../shared/components/LoadingSpinner';
 export { ErrorBoundary } from '../shared/components/ErrorBoundary';
 export { ConfirmDialog } from '../shared/components/ConfirmDialog';
 export { EmptyState } from '../shared/components/EmptyState';
 export { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
 export type { GlobalMessage } from '../shared/components/GlobalMessageBar';
-export { ChartComponent } from '../features/trends/components/ChartComponent';
-export type { ChartDataSeries } from '../features/trends/components/ChartComponent';
+
+// Feature-specific components
+export { ChartComponent } from '../features/trendlogs/components/ChartComponent';
+export type { ChartDataSeries } from '../features/trendlogs/components/ChartComponent';
 

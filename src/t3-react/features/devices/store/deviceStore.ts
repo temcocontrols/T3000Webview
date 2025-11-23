@@ -12,7 +12,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { TreeNode } from '@common/react/types/device';
 import { DeviceStatus } from '@common/react/types/device';
-import { api } from '@/shared/api/client';
+import DeviceApiService from '../../../services/deviceApi';
 
 export interface DeviceState {
   // State
@@ -74,7 +74,7 @@ export const useDeviceStore = create<DeviceState>()(
         loadDevices: async () => {
           set({ isLoading: true, error: null });
           try {
-            const response = await devicesApi.getDeviceTree();
+            const response = await DeviceApiService.getAllDevices();
             set({
               devices: response.data || [],
               isLoading: false,

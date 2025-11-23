@@ -47,6 +47,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { ProgramRefreshApiService } from '../services/programRefreshApi';
 import styles from './ProgramsPage.module.css';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
@@ -69,6 +70,8 @@ export const ProgramsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -115,6 +118,7 @@ export const ProgramsPage: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load programs';
       setError(errorMessage);
       console.error('Error fetching programs:', err);
+      // DON'T clear programs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -124,11 +128,111 @@ export const ProgramsPage: React.FC = () => {
     fetchPrograms();
   }, [fetchPrograms]);
 
+  // Auto-refresh once after page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    // Wait for initial load to complete, then auto-refresh from device
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[ProgramsPage] Auto-refreshing from device...');
+        const refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
+        console.log('[ProgramsPage] Refresh response:', refreshResponse);
+
+        // Save to database
+        if (refreshResponse.items && refreshResponse.items.length > 0) {
+          await ProgramRefreshApiService.saveRefreshedPrograms(selectedDevice.serialNumber, refreshResponse.items);
+          // Only reload from database if save was successful
+          await fetchPrograms();
+        } else {
+          console.warn('[ProgramsPage] Auto-refresh: No items received, keeping existing data');
+        }
+        setAutoRefreshed(true);
+      } catch (error) {
+        console.error('[ProgramsPage] Auto-refresh failed:', error);
+        // Don't reload from database on error - preserve existing programs
+        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchPrograms]);
+
   // Handlers
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchPrograms();
     setRefreshing(false);
+  };
+
+  // Refresh all programs from device (Trigger #2: Manual "Refresh from Device" button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[ProgramsPage] Refreshing all programs from device...');
+      const refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
+      console.log('[ProgramsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await ProgramRefreshApiService.saveRefreshedPrograms(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[ProgramsPage] Save response:', saveResponse);
+
+        // Only reload from database if save was successful
+        await fetchPrograms();
+      } else {
+        console.warn('[ProgramsPage] No items received from refresh, keeping existing data');
+      }
+    } catch (error) {
+      console.error('[ProgramsPage] Failed to refresh from device:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+      // Don't call fetchPrograms() on error - preserve existing programs in UI
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single program from device (Trigger #3: Per-row refresh icon)
+  const handleRefreshSingleProgram = async (programId: string) => {
+    if (!selectedDevice) return;
+
+    const index = parseInt(programId, 10);
+    if (isNaN(index)) {
+      console.error('[ProgramsPage] Invalid program index:', programId);
+      return;
+    }
+
+    setRefreshingItems(prev => new Set(prev).add(programId));
+    try {
+      console.log(`[ProgramsPage] Refreshing program ${index} from device...`);
+      const refreshResponse = await ProgramRefreshApiService.refreshProgram(selectedDevice.serialNumber, index);
+      console.log('[ProgramsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await ProgramRefreshApiService.saveRefreshedPrograms(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[ProgramsPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchPrograms();
+    } catch (error) {
+      console.error(`[ProgramsPage] Failed to refresh program ${index}:`, error);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(programId);
+        return newSet;
+      });
+    }
   };
 
   const handleExport = () => {
@@ -213,7 +317,7 @@ export const ProgramsPage: React.FC = () => {
 
   // Column definitions matching C++ BacnetProgram: Program, Full Label, Status, Auto/Manual, Size, Execution time, Label
   const columns: TableColumnDefinition<ProgramPoint>[] = [
-    // 1. Program (ID)
+    // 1. Program (ID) with refresh icon
     createTableColumn<ProgramPoint>({
       columnId: 'program',
       renderHeaderCell: () => (
@@ -226,7 +330,32 @@ export const ProgramsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.programId || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const programId = item.programId || '';
+        const isRefreshingThis = refreshingItems.has(programId);
+
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshSingleProgram(programId);
+                }}
+                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
+                title="Refresh this program from device"
+                disabled={isRefreshingThis}
+              >
+                <ArrowSyncRegular
+                  style={{ fontSize: '14px' }}
+                  className={isRefreshingThis ? styles.rotating : ''}
+                />
+              </button>
+              <Text size={200} weight="regular">{item.programId || '---'}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
     // 2. Full Label (editable)
     createTableColumn<ProgramPoint>({
@@ -474,15 +603,16 @@ export const ProgramsPage: React.FC = () => {
               {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
+                  {/* Refresh Button - Refresh from Device */}
                   <button
                     className={styles.toolbarButton}
-                    onClick={handleRefresh}
+                    onClick={handleRefreshFromDevice}
                     disabled={refreshing}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title="Refresh all programs from device"
+                    aria-label="Refresh from Device"
                   >
                     <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
 
                   <button
@@ -549,7 +679,7 @@ export const ProgramsPage: React.FC = () => {
                   </div>
                 )}
 
-                {selectedDevice && !loading && !error && (
+                {selectedDevice && !loading && (
                   <>
                   <DataGrid
                     items={programs}

@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { makeStyles, tokens, Badge } from '@fluentui/react-components';
-import { useDeviceData } from '@t3-react/hooks';
+import { useDeviceData } from '../hooks/useDeviceData';
 import { useAuthStore } from '@t3-react/store';
 
 const useStyles = makeStyles({

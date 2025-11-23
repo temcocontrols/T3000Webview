@@ -44,6 +44,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { HolidayRefreshApiService } from '../services/holidayRefreshApi';
 import styles from './HolidaysPage.module.css';
 
 // Types based on C++ BacnetAnnualRoutine structure
@@ -69,6 +70,8 @@ export const HolidaysPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -115,6 +118,7 @@ export const HolidaysPage: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load holidays';
       setError(errorMessage);
       console.error('Error fetching holidays:', err);
+      // DON'T clear holidays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -124,11 +128,88 @@ export const HolidaysPage: React.FC = () => {
     fetchHolidays();
   }, [fetchHolidays]);
 
-  // Handlers
-  const handleRefresh = async () => {
+  // Auto-refresh on page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    const timer = setTimeout(async () => {
+      console.log('🔄 Auto-refreshing holidays from device on page load...');
+      try {
+        const serial = selectedDevice.serialNumber;
+        const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
+        console.log('✅ Auto-refresh response:', response);
+        if (response && response.items) {
+          await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
+          await fetchHolidays();
+        }
+        setAutoRefreshed(true);
+      } catch (err) {
+        console.error('❌ Auto-refresh failed:', err);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchHolidays]);
+
+  // Refresh from database
+  const handleRefreshFromDatabase = async () => {
     setRefreshing(true);
     await fetchHolidays();
     setRefreshing(false);
+  };
+
+  // Refresh from device (Trigger #2 - Manual button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+    setRefreshing(true);
+    setError(null);
+
+    try {
+      const serial = selectedDevice.serialNumber;
+      console.log('🔄 Refreshing all holidays from device...');
+      const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
+      console.log('✅ Device refresh response:', response);
+
+      if (response && response.items) {
+        await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
+        await fetchHolidays();
+      }
+    } catch (err) {
+      console.error('❌ Refresh from device failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single holiday from device (Trigger #3 - Per-row icon)
+  const handleRefreshSingleHoliday = async (item: HolidayPoint) => {
+    if (!selectedDevice || !item.holidayId) return;
+
+    const holidayKey = item.holidayId;
+    setRefreshingItems(prev => new Set(prev).add(holidayKey));
+
+    try {
+      const serial = selectedDevice.serialNumber;
+      const holidayIndex = parseInt(item.holidayId);
+      console.log(`🔄 Refreshing single holiday from device: ${holidayIndex}`);
+
+      const response = await HolidayRefreshApiService.refreshHoliday(serial, holidayIndex);
+      console.log('✅ Single holiday refresh response:', response);
+
+      if (response && response.items) {
+        await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
+        await fetchHolidays();
+      }
+    } catch (err) {
+      console.error('❌ Single holiday refresh failed:', err);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(holidayKey);
+        return newSet;
+      });
+    }
   };
 
   const handleExport = () => {
@@ -212,7 +293,7 @@ export const HolidaysPage: React.FC = () => {
 
   // Column definitions matching C++ BacnetAnnualRoutine: NUM, Full Label, Auto/Manual, Value, Label
   const columns: TableColumnDefinition<HolidayPoint>[] = [
-    // 1. NUM (Holiday ID)
+    // 1. NUM (Holiday ID with refresh icon)
     createTableColumn<HolidayPoint>({
       columnId: 'holidayId',
       renderHeaderCell: () => (
@@ -225,7 +306,28 @@ export const HolidaysPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.holidayId || '---'}</TableCellLayout>,
+      renderCell: (item) => {
+        const isRefreshing = item.holidayId && refreshingItems.has(item.holidayId);
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshSingleHoliday(item);
+                }}
+                disabled={isRefreshing}
+                title="Refresh this holiday from device"
+                aria-label="Refresh holiday"
+              >
+                <ArrowSyncRegular fontSize={16} />
+              </button>
+              <span>{item.holidayId || '---'}</span>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
 
     // 2. Full Label (editable)
@@ -403,13 +505,13 @@ export const HolidaysPage: React.FC = () => {
               <div className={styles.toolbarContainer}>
                 <button
                   className={styles.toolbarButton}
-                  onClick={handleRefresh}
+                  onClick={handleRefreshFromDevice}
                   disabled={refreshing}
-                  title="Refresh"
-                  aria-label="Refresh"
+                  title="Refresh from Device"
+                  aria-label="Refresh from Device"
                 >
-                  <ArrowSyncRegular />
-                  <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                  <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                  <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                 </button>
 
                 <button
@@ -476,7 +578,7 @@ export const HolidaysPage: React.FC = () => {
                 </div>
               )}
 
-              {selectedDevice && !loading && !error && (
+              {selectedDevice && !loading && (
                 <>
                   <DataGrid
                     items={holidays}
@@ -533,11 +635,11 @@ export const HolidaysPage: React.FC = () => {
                         </svg>
                         <Text size={400} weight="semibold">No holidays found</Text>
                       </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no holidays configured</Text>
+                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured holiday points</Text>
                       <Button
                         appearance="subtle"
                         icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
+                        onClick={handleRefreshFromDatabase}
                         style={{ minWidth: '120px', fontWeight: 'normal' }}
                       >
                         Refresh

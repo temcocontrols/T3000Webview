@@ -46,7 +46,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { VariableRefreshApiService } from '../../../services/variableRefreshApi';
+import { VariableRefreshApiService } from '../services/variableRefreshApi';
 import styles from './VariablesPage.module.css';
 
 // Types based on Rust entity (variable_points.rs)

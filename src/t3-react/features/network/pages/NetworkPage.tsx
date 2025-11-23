@@ -99,6 +99,7 @@ export const NetworkPage: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load networks';
       setError(errorMessage);
       console.error('Error fetching networks:', err);
+      // DON'T clear networks on database fetch error - preserve what we have
     } finally {
       setLoading(false);
     }
@@ -339,8 +340,8 @@ export const NetworkPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header */}
-                {selectedDevice && !loading && !error && (
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
                   <>
                     <DataGrid
                       items={networks}

@@ -15,16 +15,28 @@ import type {
   DeviceInfo,
   DevicesResponse,
   ScanOptions,
-} from '../types/device';
+} from '../shared/types/device';
+import { API_BASE_URL } from '../config/constants';
 
-const API_BASE_URL = '/api/t3_device';
+/**
+ * Transform backend device response to match frontend DeviceInfo interface
+ * Backend returns: showLabelName, productName (camelCase from serde)
+ * Frontend expects: nameShowOnTree (derived from showLabelName or productName)
+ */
+function transformDeviceData(device: any): DeviceInfo {
+  return {
+    ...device,
+    // Compute nameShowOnTree from showLabelName or fallback to productName
+    nameShowOnTree: device.showLabelName || device.productName || `Device ${device.serialNumber}`,
+  };
+}
 
 /**
  * Device API Service
  * Implements all device-related API calls
  */
 export class DeviceApiService {
-  private static baseUrl = API_BASE_URL;
+  private static baseUrl = `${API_BASE_URL}/api/t3_device`;
 
   /**
    * Get all devices from database
@@ -45,7 +57,13 @@ export class DeviceApiService {
         throw new Error(`Expected JSON response but got ${contentType || 'unknown'}: ${text.substring(0, 100)}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Transform devices to match frontend interface
+      const transformedDevices = data.devices.map(transformDeviceData);
+      return {
+        ...data,
+        devices: transformedDevices,
+      };
     } catch (error) {
       console.error('Failed to fetch devices:', error);
       throw error;
@@ -61,7 +79,8 @@ export class DeviceApiService {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      return transformDeviceData(data);
     } catch (error) {
       console.error(`Failed to fetch device ${serialNumber}:`, error);
       throw error;

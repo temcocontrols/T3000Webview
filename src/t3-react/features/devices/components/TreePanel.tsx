@@ -20,8 +20,8 @@ import { ProjectPointTree } from './ProjectPointTree';
 import { TreeToolbar } from './TreeToolbar/TreeToolbar';
 import { TreeFilter } from './TreeFilter/TreeFilter';
 import { useDeviceTreeStore } from '../store/deviceTreeStore';
-import { useDeviceStatusMonitor } from '../hooks/useDeviceStatusMonitor';
-import { useDeviceSyncService } from '../hooks/useDeviceSyncService';
+import { useDeviceStatusMonitor } from '../../../shared/hooks/useDeviceStatusMonitor';
+import { useDeviceSyncService } from '../../../shared/hooks/useDeviceSyncService';
 import styles from './TreePanel.module.css';
 
 /**

@@ -44,9 +44,7 @@
       "@shared/*": ["src/t3-react/shared/*"],
       "@layout/*": ["src/t3-react/layout/*"],
       "@store/*": ["src/t3-react/store/*"],
-      "@theme/*": ["src/t3-react/theme/*"],
-      "@types/*": ["src/t3-react/types/*"],
-      "@utils/*": ["src/t3-react/utils/*"]
+      "@theme/*": ["src/t3-react/theme/*"]
     },
 
     /* Experimental */

@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useDeviceTreeStore } from '../store/deviceTreeStore';
+import { useDeviceTreeStore } from '../../store';
 
 /**
  * Hook configuration

@@ -1,18 +1,18 @@
 /**
- * Input Refresh API Service
+ * Variable Refresh API Service
  *
- * Handles input data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles variable data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
  * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
  *
  * C++ Reference:
  * - REFRESH_WEBVIEW_LIST = 17
- * - Reads input points from device via BACnet
+ * - Reads variable points from device via BACnet
  * - Updates database with fresh values
  */
 
-import { API_BASE_URL } from '../config/constants';
+import { API_BASE_URL } from '../../../config/constants';
 
-export interface RefreshInputRequest {
+export interface RefreshVariableRequest {
   index?: number; // Optional: omit for refresh all, include for single item
 }
 
@@ -32,26 +32,26 @@ export interface SaveResponse {
 }
 
 /**
- * Input Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for input points
+ * Variable Refresh API Service
+ * Implements REFRESH_WEBVIEW_LIST action for variable points
  */
-export class InputRefreshApiService {
+export class VariableRefreshApiService {
   private static baseUrl = `${API_BASE_URL}/api/t3_device`;
 
   /**
-   * Refresh single input from device
-   * POST /api/t3-device/inputs/:serial/refresh
+   * Refresh single variable from device
+   * POST /api/t3-device/variables/:serial/refresh
    * @param serialNumber - Device serial number
-   * @param index - Input index to refresh
+   * @param index - Variable index to refresh
    * @returns Raw data from device (not saved to database yet)
    */
-  static async refreshInput(
+  static async refreshVariable(
     serialNumber: number,
     index: number
   ): Promise<RefreshResponse> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/inputs/${serialNumber}/refresh`,
+        `${this.baseUrl}/variables/${serialNumber}/refresh`,
         {
           method: 'POST',
           headers: {
@@ -71,7 +71,7 @@ export class InputRefreshApiService {
       return await response.json();
     } catch (error) {
       console.error(
-        `Failed to refresh input ${index} for device ${serialNumber}:`,
+        `Failed to refresh variable ${index} for device ${serialNumber}:`,
         error
       );
       throw error;
@@ -79,17 +79,17 @@ export class InputRefreshApiService {
   }
 
   /**
-   * Refresh all inputs from device
-   * POST /api/t3-device/inputs/:serial/refresh
+   * Refresh all variables from device
+   * POST /api/t3-device/variables/:serial/refresh
    * @param serialNumber - Device serial number
    * @returns Raw data from device (not saved to database yet)
    */
-  static async refreshAllInputs(
+  static async refreshAllVariables(
     serialNumber: number
   ): Promise<RefreshResponse> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/inputs/${serialNumber}/refresh`,
+        `${this.baseUrl}/variables/${serialNumber}/refresh`,
         {
           method: 'POST',
           headers: {
@@ -109,7 +109,7 @@ export class InputRefreshApiService {
       return await response.json();
     } catch (error) {
       console.error(
-        `Failed to refresh all inputs for device ${serialNumber}:`,
+        `Failed to refresh all variables for device ${serialNumber}:`,
         error
       );
       throw error;
@@ -118,17 +118,17 @@ export class InputRefreshApiService {
 
   /**
    * Save refreshed data to database
-   * POST /api/t3-device/inputs/:serial/save-refreshed
+   * POST /api/t3-device/variables/:serial/save-refreshed
    * @param serialNumber - Device serial number
-   * @param items - Array of input data from refresh response
+   * @param items - Array of variable data from refresh response
    */
-  static async saveRefreshedInputs(
+  static async saveRefreshedVariables(
     serialNumber: number,
     items: any[]
   ): Promise<SaveResponse> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/inputs/${serialNumber}/save-refreshed`,
+        `${this.baseUrl}/variables/${serialNumber}/save-refreshed`,
         {
           method: 'POST',
           headers: {
@@ -148,7 +148,7 @@ export class InputRefreshApiService {
       return await response.json();
     } catch (error) {
       console.error(
-        `Failed to save refreshed inputs for device ${serialNumber}:`,
+        `Failed to save refreshed variables for device ${serialNumber}:`,
         error
       );
       throw error;
@@ -156,4 +156,4 @@ export class InputRefreshApiService {
   }
 }
 
-export default InputRefreshApiService;
+export default VariableRefreshApiService;

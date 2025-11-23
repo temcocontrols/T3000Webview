@@ -27,9 +27,9 @@ export type { ModbusState } from '../features/modbus/store/modbusStore';
 export { useAlarmStore, alarmSelectors } from '../features/alarms/store/alarmStore';
 export type { AlarmState } from '../features/alarms/store/alarmStore';
 
-// Trend Store (from features/trends)
-export { useTrendStore, trendSelectors } from '../features/trends/store/trendStore';
-export type { TrendState } from '../features/trends/store/trendStore';
+// Trend Store (from features/trendlogs)
+export { useTrendStore, trendSelectors } from '../features/trendlogs/store/trendStore';
+export type { TrendState } from '../features/trendlogs/store/trendStore';
 
 // Global UI Stores (remain in store/)
 export { useUIStore, uiSelectors } from './uiStore';
