@@ -33,6 +33,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { PidLoopRefreshApiService } from '../../../services/pidLoopRefreshApi';
 import styles from './PIDLoopsPage.module.css';
 
 // PID Controller interface matching PID_TABLE entity
@@ -73,6 +74,8 @@ const PIDLoopsPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -126,6 +129,36 @@ const PIDLoopsPage: React.FC = () => {
     fetchPidLoops();
   }, [fetchPidLoops]);
 
+  // Auto-refresh once after page load (Trigger #1)
+  useEffect(() => {
+    if (isLoading || !selectedDevice || autoRefreshed) return;
+
+    // Wait for initial load to complete, then auto-refresh from device
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[PIDLoopsPage] Auto-refreshing from device...');
+        const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
+        console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
+
+        // Save to database
+        if (refreshResponse.items && refreshResponse.items.length > 0) {
+          await PidLoopRefreshApiService.saveRefreshedPidLoops(selectedDevice.serialNumber, refreshResponse.items);
+          // Only reload from database if save was successful
+          await fetchPidLoops();
+        } else {
+          console.warn('[PIDLoopsPage] Auto-refresh: No items received, keeping existing data');
+        }
+        setAutoRefreshed(true);
+      } catch (error) {
+        console.error('[PIDLoopsPage] Auto-refresh failed:', error);
+        // Don't reload from database on error - preserve existing PID loops
+        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops]);
+
   // Handle field edit
   const handleFieldEdit = (controllerId: string, field: keyof PIDController, value: string) => {
     setEditedValues(prev => ({
@@ -172,6 +205,76 @@ const PIDLoopsPage: React.FC = () => {
     setRefreshing(false);
   };
 
+  // Refresh all PID loops from device (Trigger #2: Manual "Refresh from Device" button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[PIDLoopsPage] Refreshing all PID loops from device...');
+      const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
+      console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await PidLoopRefreshApiService.saveRefreshedPidLoops(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[PIDLoopsPage] Save response:', saveResponse);
+
+        // Only reload from database if save was successful
+        await fetchPidLoops();
+      } else {
+        console.warn('[PIDLoopsPage] No items received from refresh, keeping existing data');
+      }
+    } catch (error) {
+      console.error('[PIDLoopsPage] Failed to refresh from device:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+      // Don't call fetchPidLoops() on error - preserve existing PID loops in UI
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh single PID loop from device (Trigger #3: Per-row refresh icon)
+  const handleRefreshSinglePidLoop = async (loopField: string) => {
+    if (!selectedDevice) return;
+
+    const index = parseInt(loopField, 10);
+    if (isNaN(index)) {
+      console.error('[PIDLoopsPage] Invalid loop field:', loopField);
+      return;
+    }
+
+    setRefreshingItems(prev => new Set(prev).add(loopField));
+    try {
+      console.log(`[PIDLoopsPage] Refreshing PID loop ${index} from device...`);
+      const refreshResponse = await PidLoopRefreshApiService.refreshPidLoop(selectedDevice.serialNumber, index);
+      console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
+
+      // Save to database
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await PidLoopRefreshApiService.saveRefreshedPidLoops(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[PIDLoopsPage] Save response:', saveResponse);
+      }
+
+      // Reload data from database after save
+      await fetchPidLoops();
+    } catch (error) {
+      console.error(`[PIDLoopsPage] Failed to refresh PID loop ${index}:`, error);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(loopField);
+        return newSet;
+      });
+    }
+  };
+
   // Handle export
   const handleExport = () => {
     console.log('Export PID loops to CSV');
@@ -208,7 +311,7 @@ const PIDLoopsPage: React.FC = () => {
 
   // Column definitions
   const columns: TableColumnDefinition<PIDController>[] = useMemo(() => [
-    // Column 1: NUM (Controller #)
+    // Column 1: NUM (Controller #) with refresh icon
     createTableColumn<PIDController>({
       columnId: 'loop_field',
       compare: (a, b) => Number(a.loop_field) - Number(b.loop_field),
@@ -222,11 +325,32 @@ const PIDLoopsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (controller) => (
-        <TableCellLayout>
-          {controller.loop_field}
-        </TableCellLayout>
-      ),
+      renderCell: (controller) => {
+        const loopField = controller.loop_field || '';
+        const isRefreshingThis = refreshingItems.has(loopField);
+
+        return (
+          <TableCellLayout>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshSinglePidLoop(loopField);
+                }}
+                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
+                title="Refresh this PID loop from device"
+                disabled={isRefreshingThis}
+              >
+                <ArrowSyncRegular
+                  style={{ fontSize: '14px' }}
+                  className={isRefreshingThis ? styles.rotating : ''}
+                />
+              </button>
+              <Text size={200} weight="regular">{controller.loop_field}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
     }),
 
     // Column 2: Input
@@ -512,7 +636,7 @@ const PIDLoopsPage: React.FC = () => {
             {/* Refresh Button - Refresh from Device */}
             <button
               className={styles.toolbarButton}
-              onClick={handleRefresh}
+              onClick={handleRefreshFromDevice}
               disabled={refreshing}
               title="Refresh all PID loops from device"
               aria-label="Refresh from Device"
