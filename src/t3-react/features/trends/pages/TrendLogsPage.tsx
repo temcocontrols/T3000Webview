@@ -1,171 +1,408 @@
 /**
  * TrendLogsPage Component
  *
- * View and analyze trend log data with charts
+ * Manage trend log configurations with device refresh
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
+  DataGrid,
+  DataGridHeader,
+  DataGridRow,
+  DataGridHeaderCell,
+  DataGridBody,
+  DataGridCell,
+  TableCellLayout,
+  TableColumnDefinition,
+  createTableColumn,
   Button,
-  Checkbox,
-  makeStyles,
-  tokens,
-  Dropdown,
-  Option,
+  Spinner,
+  Text,
+  Badge,
 } from '@fluentui/react-components';
-import { ChartMultipleRegular, ArrowDownloadRegular } from '@fluentui/react-icons';
-import { ChartComponent, ChartDataSeries, LoadingSpinner, EmptyState } from '@t3-react/components';
-import { useDeviceData } from '@t3-react/hooks';
-import { useTrendStore } from '@t3-react/store';
-import type { TrendLog } from '@common/react/types/bacnet';
+import {
+  ArrowSyncRegular,
+  ArrowDownloadRegular,
+  SettingsRegular,
+} from '@fluentui/react-icons';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { TrendlogRefreshApiService } from '../../../services/trendlogRefreshApi';
+import { API_BASE_URL } from '../../../config/constants';
+import styles from './TrendLogsPage.module.css';
 
-const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-  },
-  toolbar: {
-    padding: '16px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-    display: 'flex',
-    overflow: 'hidden',
-  },
-  sidebar: {
-    width: '300px',
-    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '16px',
-    overflow: 'auto',
-  },
-  chart: {
-    flex: 1,
-    padding: '16px',
-  },
-  trendList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-});
+interface TrendLogData {
+  serialNumber: number;
+  trendlogId?: string;
+  trendlogIndex?: string;
+  trendlogLabel?: string;
+  intervalSeconds?: number;
+  bufferSize?: number;
+  autoManual?: string;
+  status?: string;
+}
 
 export const TrendLogsPage: React.FC = () => {
-  const styles = useStyles();
-  const { selectedDevice } = useDeviceData();
-  const trendLogs = useTrendStore((state) => state.trendLogs);
+  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+
+  const [trendLogs, setTrendLogs] = useState<TrendLogData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTrends, setSelectedTrends] = useState<Set<number>>(new Set());
-  const [timeRange, setTimeRange] = useState('24h');
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
+  const [autoRefreshed, setAutoRefreshed] = useState(false);
 
+  // Debug log to verify new component is loading
   useEffect(() => {
-    if (selectedDevice) {
-      loadTrendLogs();
-    }
-  }, [selectedDevice]);
+    console.log('🔍 [TrendLogsPage] NEW DataGrid version loaded!', {
+      selectedDevice: selectedDevice?.serialNumber,
+      trendLogsCount: trendLogs.length
+    });
+  }, [selectedDevice, trendLogs.length]);
 
-  const loadTrendLogs = async () => {
-    if (!selectedDevice) return;
+  // Auto-select first device on page load if no device is selected
+  useEffect(() => {
+    if (!selectedDevice && treeData.length > 0) {
+      const findFirstDevice = (nodes: any[]): any => {
+        for (const node of nodes) {
+          if (node.data) return node;
+          if (node.children && node.children.length > 0) {
+            const found = findFirstDevice(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const firstDeviceNode = findFirstDevice(treeData);
+      if (firstDeviceNode?.data) {
+        selectDevice(firstDeviceNode.data);
+      }
+    }
+  }, [selectedDevice, treeData, selectDevice]);
+
+  // Fetch trendlogs for selected device
+  const fetchTrendLogs = useCallback(async () => {
+    if (!selectedDevice) {
+      setTrendLogs([]);
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+
     try {
-      // TODO: Fetch trend logs
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch trendlogs: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const fetchedTrendLogs = data.trendlogs || [];
+      setTrendLogs(fetchedTrendLogs);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
+      setError(errorMessage);
+      console.error('Error fetching trendlogs:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDevice]);
 
-  const handleToggleTrend = (trendId: number) => {
-    const newSelected = new Set(selectedTrends);
-    if (newSelected.has(trendId)) {
-      newSelected.delete(trendId);
-    } else {
-      newSelected.add(trendId);
+  useEffect(() => {
+    fetchTrendLogs();
+  }, [fetchTrendLogs]);
+
+  // Auto-refresh once after page load (Trigger #1)
+  useEffect(() => {
+    if (loading || !selectedDevice || autoRefreshed) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[TrendLogsPage] Auto-refreshing from device...');
+        const refreshResponse = await TrendlogRefreshApiService.refreshAllTrendlogs(selectedDevice.serialNumber);
+        console.log('[TrendLogsPage] Refresh response:', refreshResponse);
+
+        if (refreshResponse.items && refreshResponse.items.length > 0) {
+          await TrendlogRefreshApiService.saveRefreshedTrendlogs(selectedDevice.serialNumber, refreshResponse.items);
+          await fetchTrendLogs();
+        } else {
+          console.warn('[TrendLogsPage] Auto-refresh: No items received, keeping existing data');
+        }
+        setAutoRefreshed(true);
+      } catch (error) {
+        console.error('[TrendLogsPage] Auto-refresh failed:', error);
+        setAutoRefreshed(true);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [loading, selectedDevice, autoRefreshed, fetchTrendLogs]);
+
+  // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[TrendLogsPage] Refreshing all trendlogs from device...');
+      const refreshResponse = await TrendlogRefreshApiService.refreshAllTrendlogs(selectedDevice.serialNumber);
+      console.log('[TrendLogsPage] Refresh response:', refreshResponse);
+
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await TrendlogRefreshApiService.saveRefreshedTrendlogs(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[TrendLogsPage] Save response:', saveResponse);
+        await fetchTrendLogs();
+      } else {
+        console.warn('[TrendLogsPage] No items received from refresh, keeping existing data');
+      }
+    } catch (error) {
+      console.error('[TrendLogsPage] Failed to refresh from device:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
+    } finally {
+      setRefreshing(false);
     }
-    setSelectedTrends(newSelected);
   };
 
-  // Generate chart data from selected trends
-  const chartSeries: ChartDataSeries[] = trendLogs
-    .filter((trend) => selectedTrends.has(trend.id))
-    .map((trend) => ({
-      name: trend.label,
-      data: trend.data || [],
-      color: trend.color,
-    }));
+  // Refresh single trendlog from device (Trigger #3: Per-row refresh icon)
+  const handleRefreshSingleTrendlog = async (trendlogIndex: string) => {
+    if (!selectedDevice) return;
 
+    const index = parseInt(trendlogIndex, 10);
+    if (isNaN(index)) {
+      console.error('[TrendLogsPage] Invalid trendlog index:', trendlogIndex);
+      return;
+    }
+
+    setRefreshingItems(prev => new Set(prev).add(trendlogIndex));
+    try {
+      console.log(`[TrendLogsPage] Refreshing trendlog ${index} from device...`);
+      const refreshResponse = await TrendlogRefreshApiService.refreshTrendlog(selectedDevice.serialNumber, index);
+      console.log('[TrendLogsPage] Refresh response:', refreshResponse);
+
+      if (refreshResponse.items && refreshResponse.items.length > 0) {
+        const saveResponse = await TrendlogRefreshApiService.saveRefreshedTrendlogs(
+          selectedDevice.serialNumber,
+          refreshResponse.items
+        );
+        console.log('[TrendLogsPage] Save response:', saveResponse);
+      }
+
+      await fetchTrendLogs();
+    } catch (error) {
+      console.error(`[TrendLogsPage] Failed to refresh trendlog ${index}:`, error);
+    } finally {
+      setRefreshingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(trendlogIndex);
+        return newSet;
+      });
+    }
+  };
+
+  const handleExport = () => {
+    console.log('Export trendlogs to CSV');
+  };
+
+  const handleSettings = () => {
+    console.log('Settings clicked');
+  };
+
+  // Column definitions
+  const columns: TableColumnDefinition<TrendLogData>[] = [
+    createTableColumn<TrendLogData>({
+      columnId: 'trendlogId',
+      renderHeaderCell: () => <span>Trendlog ID</span>,
+      renderCell: (item) => {
+        const trendlogIndex = item.trendlogId || item.trendlogIndex || '';
+        const isRefreshingThis = refreshingItems.has(trendlogIndex);
+
+        return (
+          <TableCellLayout>
+            <div className={styles.refreshContainer}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshSingleTrendlog(trendlogIndex);
+                }}
+                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
+                title="Refresh this trendlog from device"
+                disabled={isRefreshingThis}
+              >
+                <ArrowSyncRegular
+                  style={{ fontSize: '14px' }}
+                  className={isRefreshingThis ? styles.rotating : ''}
+                />
+              </button>
+              <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
+            </div>
+          </TableCellLayout>
+        );
+      },
+    }),
+    createTableColumn<TrendLogData>({
+      columnId: 'trendlogLabel',
+      renderHeaderCell: () => <span>Label</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Text size={200}>{item.trendlogLabel || '---'}</Text>
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<TrendLogData>({
+      columnId: 'intervalSeconds',
+      renderHeaderCell: () => <span>Interval (sec)</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Text size={200}>{item.intervalSeconds ?? '---'}</Text>
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<TrendLogData>({
+      columnId: 'bufferSize',
+      renderHeaderCell: () => <span>Buffer Size</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Text size={200}>{item.bufferSize ?? '---'}</Text>
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<TrendLogData>({
+      columnId: 'autoManual',
+      renderHeaderCell: () => <span>Auto/Manual</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Badge appearance={item.autoManual === '1' ? 'filled' : 'outline'} color="informative">
+            {item.autoManual === '1' ? 'Auto' : item.autoManual === '0' ? 'Manual' : '---'}
+          </Badge>
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<TrendLogData>({
+      columnId: 'status',
+      renderHeaderCell: () => <span>Status</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
+            {item.status || 'OFF'}
+          </Badge>
+        </TableCellLayout>
+      ),
+    }),
+  ];
+
+  // Render content
   if (!selectedDevice) {
     return (
       <div className={styles.container}>
-        <EmptyState
-          title="No Device Selected"
-          message="Please select a device from the tree to view trend logs"
-        />
+        <div className={styles.noData}>
+          <Text size={300} weight="semibold">No Device Selected</Text>
+        </div>
       </div>
     );
   }
 
   if (loading) {
-    return <LoadingSpinner message="Loading trend logs..." />;
+    return (
+      <div className={styles.container}>
+        <div className={styles.loading}>
+          <Spinner size="medium" label="Loading trend logs..." />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className={styles.container}>
-      <div className={styles.toolbar}>
-        <ChartMultipleRegular />
-        <span>Trend Logs</span>
-        <div style={{ flex: 1 }} />
-        <Dropdown
-          value={timeRange}
-          onOptionSelect={(_, data) => setTimeRange(data.optionValue || '24h')}
-        >
-          <Option value="1h">Last Hour</Option>
-          <Option value="24h">Last 24 Hours</Option>
-          <Option value="7d">Last 7 Days</Option>
-          <Option value="30d">Last 30 Days</Option>
-        </Dropdown>
-        <Button icon={<ArrowDownloadRegular />}>Export</Button>
-      </div>
+      <div className={styles.bladeContentContainer}>
+        <div className={styles.bladeContentWrapper}>
+          <div className={styles.bladeContent}>
+            <div className={styles.partContent}>
+              {/* Toolbar */}
+              <div className={styles.toolbar}>
+                <div className={styles.toolbarContainer}>
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleRefreshFromDevice}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
+                    <span>Refresh from Device</span>
+                  </button>
+                  <div className={styles.toolbarSeparator} />
+                  <button className={styles.toolbarButton} onClick={handleExport}>
+                    <ArrowDownloadRegular />
+                    <span>Export</span>
+                  </button>
+                  <button className={styles.toolbarButton} onClick={handleSettings}>
+                    <SettingsRegular />
+                    <span>Settings</span>
+                  </button>
+                </div>
+              </div>
 
-      <div className={styles.content}>
-        <div className={styles.sidebar}>
-          <h3>Available Trends</h3>
-          <div className={styles.trendList}>
-            {trendLogs.map((trend) => (
-              <Checkbox
-                key={trend.id}
-                label={trend.label}
-                checked={selectedTrends.has(trend.id)}
-                onChange={() => handleToggleTrend(trend.id)}
-              />
-            ))}
+              <hr className={styles.overviewHr} />
+
+              {/* Description */}
+              <div className={styles.bladeDescription}>
+                <p>
+                  Manage trend log configurations for {selectedDevice.productName || `Device ${selectedDevice.serialNumber}`}.
+                  Click the refresh icon next to each trendlog to sync from the device.
+                </p>
+              </div>
+
+              {/* Loading/Error bars */}
+              {refreshing && (
+                <div className={styles.loadingBar}>
+                  <Spinner size="extra-tiny" />
+                  <span>Refreshing trendlogs from device...</span>
+                </div>
+              )}
+
+              {error && (
+                <div className={styles.errorBar}>
+                  {error}
+                </div>
+              )}
+
+              {/* Data Grid */}
+              <div className={styles.dockingBody}>
+                {trendLogs.length === 0 ? (
+                  <div className={styles.noData}>
+                    <Text size={300}>No trend logs configured</Text>
+                  </div>
+                ) : (
+                  <DataGrid
+                    items={trendLogs}
+                    columns={columns}
+                    sortable
+                    getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}`}
+                  >
+                    <DataGridHeader>
+                      <DataGridRow>
+                        {({ renderHeaderCell }) => (
+                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                        )}
+                      </DataGridRow>
+                    </DataGridHeader>
+                    <DataGridBody<TrendLogData>>
+                      {({ item, rowId }) => (
+                        <DataGridRow<TrendLogData> key={rowId}>
+                          {({ renderCell }) => (
+                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                          )}
+                        </DataGridRow>
+                      )}
+                    </DataGridBody>
+                  </DataGrid>
+                )}
+              </div>
+            </div>
           </div>
-          {trendLogs.length === 0 && (
-            <EmptyState
-              title="No Trends"
-              message="No trend logs configured"
-            />
-          )}
-        </div>
-
-        <div className={styles.chart}>
-          {chartSeries.length > 0 ? (
-            <ChartComponent
-              series={chartSeries}
-              title="Trend Data"
-              height="100%"
-            />
-          ) : (
-            <EmptyState
-              title="No Trends Selected"
-              message="Select one or more trends from the sidebar to display"
-            />
-          )}
         </div>
       </div>
     </div>

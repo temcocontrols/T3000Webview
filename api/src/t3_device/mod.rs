@@ -27,4 +27,6 @@ pub mod program_refresh_routes; // ✅ T3000 Program Refresh API Routes using RE
 pub mod pid_loop_refresh_routes; // ✅ T3000 PID Loop Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod schedule_refresh_routes; // ✅ T3000 Schedule Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod holiday_refresh_routes; // ✅ T3000 Holiday Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
+pub mod alarm_refresh_routes; // ✅ T3000 Alarm Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
+pub mod trendlog_refresh_routes; // ✅ T3000 TrendLog Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod websocket_handler;
