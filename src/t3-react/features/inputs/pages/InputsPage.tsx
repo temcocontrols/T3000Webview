@@ -303,17 +303,17 @@ export const InputsPage: React.FC = () => {
 
       // Action 16 requires ALL fields, so we send current values + the new label
       const payload = {
-        fullLabel: newLabel, // New value
+        fullLabel: newLabel, // New value (maps to "description" in C++)
         label: currentInput.label || '',
         value: parseFloat(currentInput.fValue || '0'),
-        range: parseInt(currentInput.range || '0'),
-        autoManual: parseInt(currentInput.autoManual || '0'),
-        control: 0, // Not in UI, use default
-        filter: parseInt(currentInput.filterField || '0'),
-        digitalAnalog: currentInput.digitalAnalog === '0' ? 0 : 1,
-        calibrationSign: parseInt(currentInput.sign || '0'),
-        calibrationH: 0, // Not in UI, use default
-        calibrationL: 0, // Not in UI, use default
+        range: parseInt(currentInput.rangeField || currentInput.range || '0', 10), // Use rangeField first
+        autoManual: parseInt(currentInput.autoManual || '0', 10),
+        control: parseInt(currentInput.control || '0', 10),
+        filter: parseInt(currentInput.filterField || '0', 10),
+        digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
+        calibrationSign: parseInt(currentInput.sign || '0', 10),
+        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10), // High byte
+        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10), // Low byte
         decom: 0, // Not in UI, use default
       };
 
