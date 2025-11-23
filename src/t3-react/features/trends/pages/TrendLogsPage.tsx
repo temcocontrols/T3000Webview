@@ -24,6 +24,11 @@ import {
   ArrowSyncRegular,
   ArrowDownloadRegular,
   SettingsRegular,
+  SearchRegular,
+  ErrorCircleRegular,
+  ArrowSortUpRegular,
+  ArrowSortDownRegular,
+  ArrowSortRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApiService } from '../../../services/trendlogRefreshApi';
@@ -50,6 +55,11 @@ export const TrendLogsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
+  const [monitorInputs, setMonitorInputs] = useState<string[]>(Array(12).fill(''));
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
 
   // Debug log to verify new component is loading
   useEffect(() => {
@@ -212,11 +222,55 @@ export const TrendLogsPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
+  const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
+    setSelectedMonitor(monitor);
+    // Fetch monitor inputs for the selected monitor
+    if (!selectedDevice) return;
+
+    try {
+      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${monitor.trendlogId}/inputs`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data = await response.json();
+        setMonitorInputs(data.inputs || Array(12).fill(''));
+      } else {
+        // If API not implemented yet, use empty inputs
+        setMonitorInputs(Array(12).fill(''));
+      }
+    } catch (err) {
+      console.error('Error fetching monitor inputs:', err);
+      setMonitorInputs(Array(12).fill(''));
+    }
+  }, [selectedDevice]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('ascending');
+    }
+  };
+
   // Column definitions
   const columns: TableColumnDefinition<TrendLogData>[] = [
     createTableColumn<TrendLogData>({
       columnId: 'trendlogId',
-      renderHeaderCell: () => <span>Trendlog ID</span>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogId')}>
+          <span>Trendlog ID</span>
+          {sortColumn === 'trendlogId' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => {
         const trendlogIndex = item.trendlogId || item.trendlogIndex || '';
         const isRefreshingThis = refreshingItems.has(trendlogIndex);
@@ -246,7 +300,16 @@ export const TrendLogsPage: React.FC = () => {
     }),
     createTableColumn<TrendLogData>({
       columnId: 'trendlogLabel',
-      renderHeaderCell: () => <span>Label</span>,
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogLabel')}>
+          <span>Label</span>
+          {sortColumn === 'trendlogLabel' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
       renderCell: (item) => (
         <TableCellLayout>
           <Text size={200}>{item.trendlogLabel || '---'}</Text>
@@ -297,6 +360,7 @@ export const TrendLogsPage: React.FC = () => {
 
   // Render content
   if (!selectedDevice) {
+    console.log('⚠️ [TrendLogsPage] No device selected - showing empty state');
     return (
       <div className={styles.container}>
         <div className={styles.noData}>
@@ -307,6 +371,7 @@ export const TrendLogsPage: React.FC = () => {
   }
 
   if (loading) {
+    console.log('⏳ [TrendLogsPage] Loading state active');
     return (
       <div className={styles.container}>
         <div className={styles.loading}>
@@ -316,90 +381,199 @@ export const TrendLogsPage: React.FC = () => {
     );
   }
 
+  console.log('✅ [TrendLogsPage] Rendering full page with toolbar', {
+    trendLogsCount: trendLogs.length,
+    refreshing,
+    selectedDevice: selectedDevice.serialNumber
+  });
+
   return (
     <div className={styles.container}>
       <div className={styles.bladeContentContainer}>
         <div className={styles.bladeContentWrapper}>
           <div className={styles.bladeContent}>
             <div className={styles.partContent}>
-              {/* Toolbar */}
+              {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
+                </div>
+              )}
+
+              {/* ========================================
+                  BLADE DESCRIPTION
+                  Matches: ext-blade-description
+                  ======================================== */}
+              {selectedDevice && (
+                <div className={styles.bladeDescription}>
+                  <span>
+                    Showing trend log monitors for <b>{selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: {selectedDevice.serialNumber})</b>.
+                    {' '}This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.
+                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
+                  </span>
+                </div>
+              )}
+
+              {/* ========================================
+                  TOOLBAR - Azure Portal Command Bar
+                  Matches: ext-overview-assistant-toolbar
+                  ======================================== */}
+              {selectedDevice && (
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
+                  {/* Refresh Button - Refresh from Device */}
                   <button
                     className={styles.toolbarButton}
                     onClick={handleRefreshFromDevice}
                     disabled={refreshing}
+                    title="Refresh all trendlogs from device"
+                    aria-label="Refresh from Device"
                   >
-                    {refreshing ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
-                    <span>Refresh from Device</span>
+                    <ArrowSyncRegular />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
                   </button>
-                  <div className={styles.toolbarSeparator} />
-                  <button className={styles.toolbarButton} onClick={handleExport}>
+
+                  {/* Vertical Separator */}
+                  <div className={styles.toolbarSeparator}></div>
+
+                  {/* Export to CSV Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleExport}
+                    disabled={!selectedDevice}
+                    title="Export trendlogs to CSV"
+                    aria-label="Export to CSV"
+                  >
                     <ArrowDownloadRegular />
                     <span>Export</span>
                   </button>
-                  <button className={styles.toolbarButton} onClick={handleSettings}>
+
+                  {/* Settings Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={handleSettings}
+                    disabled={!selectedDevice}
+                    title="Configure trendlog settings"
+                    aria-label="Settings"
+                  >
                     <SettingsRegular />
                     <span>Settings</span>
                   </button>
-                </div>
-              </div>
 
-              <hr className={styles.overviewHr} />
-
-              {/* Description */}
-              <div className={styles.bladeDescription}>
-                <p>
-                  Manage trend log configurations for {selectedDevice.productName || `Device ${selectedDevice.serialNumber}`}.
-                  Click the refresh icon next to each trendlog to sync from the device.
-                </p>
-              </div>
-
-              {/* Loading/Error bars */}
-              {refreshing && (
-                <div className={styles.loadingBar}>
-                  <Spinner size="extra-tiny" />
-                  <span>Refreshing trendlogs from device...</span>
-                </div>
-              )}
-
-              {error && (
-                <div className={styles.errorBar}>
-                  {error}
-                </div>
-              )}
-
-              {/* Data Grid */}
-              <div className={styles.dockingBody}>
-                {trendLogs.length === 0 ? (
-                  <div className={styles.noData}>
-                    <Text size={300}>No trend logs configured</Text>
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search trendlogs..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search trendlogs"
+                    />
                   </div>
-                ) : (
-                  <DataGrid
-                    items={trendLogs}
-                    columns={columns}
-                    sortable
-                    getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}`}
-                  >
-                    <DataGridHeader>
-                      <DataGridRow>
-                        {({ renderHeaderCell }) => (
-                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                        )}
-                      </DataGridRow>
-                    </DataGridHeader>
-                    <DataGridBody<TrendLogData>>
-                      {({ item, rowId }) => (
-                        <DataGridRow<TrendLogData> key={rowId}>
-                          {({ renderCell }) => (
-                            <DataGridCell>{renderCell(item)}</DataGridCell>
-                          )}
-                        </DataGridRow>
-                      )}
-                    </DataGridBody>
-                  </DataGrid>
+                </div>
+              </div>
+              )}
+
+              {/* ========================================
+                  DOCKING BODY - Main Content (Dual Grid Layout)
+                  Matches: msportalfx-docking-body
+                  ======================================== */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {loading && trendLogs.length === 0 && (
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text>Loading trendlogs...</Text>
+                  </div>
                 )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dual Grid Layout - Main Grid (80%) + Input Grid (20%) */}
+                {selectedDevice && !loading && !error && trendLogs.length > 0 && (
+                  <div className={styles.gridContainer}>
+                    {/* Main Monitor List - Left Side (80%) */}
+                    <div className={styles.mainGrid}>
+                      <DataGrid
+                        items={trendLogs}
+                        columns={columns}
+                        sortable
+                        getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}`}
+                      >
+                        <DataGridHeader>
+                          <DataGridRow>
+                            {({ renderHeaderCell }) => (
+                              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                            )}
+                          </DataGridRow>
+                        </DataGridHeader>
+                        <DataGridBody<TrendLogData>>
+                          {({ item, rowId }) => (
+                            <DataGridRow<TrendLogData>
+                              key={rowId}
+                              onClick={() => handleMonitorSelect(item)}
+                              style={{
+                                cursor: 'pointer',
+                                backgroundColor: selectedMonitor?.trendlogId === item.trendlogId ? '#e6f2ff' : undefined
+                              }}
+                            >
+                              {({ renderCell }) => (
+                                <DataGridCell>{renderCell(item)}</DataGridCell>
+                              )}
+                            </DataGridRow>
+                          )}
+                        </DataGridBody>
+                      </DataGrid>
+                    </div>
+
+                    {/* Monitor Input List - Right Side (20%) */}
+                    <div className={styles.subGrid}>
+                      <div className={styles.subGridHeader}>
+                        <Text size={300} weight="semibold">Monitor Inputs</Text>
+                      </div>
+                      <div className={styles.subGridBody}>
+                        {monitorInputs.map((input, index) => (
+                          <div key={index} className={styles.inputRow}>
+                            <div className={styles.inputNum}>{index + 1}</div>
+                            <div className={styles.inputValue}>{input || '-'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* No Data Message - Show when device selected but no trendlogs */}
+                {selectedDevice && !loading && !error && trendLogs.length === 0 && (
+                  <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <Text size={400} weight="semibold">No trendlogs found</Text>
+                    </div>
+                    <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>
+                      This device has no configured trendlog monitors
+                    </Text>
+                  </div>
+                )}
+
               </div>
             </div>
           </div>

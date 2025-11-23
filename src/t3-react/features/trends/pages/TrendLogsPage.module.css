@@ -112,6 +112,53 @@
   margin: 0 4px;
 }
 
+/* Search Input - Azure Portal Style */
+.searchInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  color: #605e5c;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.searchInput {
+  height: 28px;
+  padding: 0 8px 0 28px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  background-color: #ffffff;
+  color: #323130;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  outline: none;
+  min-width: 300px;
+  transition: border-color 0.1s ease;
+  box-shadow: none;
+}
+
+.searchInput::placeholder {
+  color: #605e5c;
+}
+
+.searchInput:hover {
+  border-color: #323130;
+}
+
+.searchInput:focus {
+  border-color: #0078d4;
+  box-shadow: none;
+  outline: none;
+}
+
 /* Blade Description */
 .bladeDescription {
   padding: 0;
@@ -340,4 +387,72 @@
 
 .rotating {
   animation: rotate 1s linear infinite;
+}
+
+/* Dual Grid Layout */
+.gridContainer {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.mainGrid {
+  flex: 0 0 80%;
+  min-width: 0;
+  overflow: auto;
+}
+
+.subGrid {
+  flex: 0 0 20%;
+  border: 1px solid #edebe9;
+  border-radius: 2px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: 250px;
+}
+
+.subGridHeader {
+  padding: 8px 12px;
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  font-size: 12px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.subGridBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f3f2f1;
+  font-size: 12px;
+  transition: background-color 0.1s ease;
+}
+
+.inputRow:hover {
+  background-color: #f3f2f1;
+}
+
+.inputNum {
+  width: 24px;
+  flex-shrink: 0;
+  color: #605e5c;
+  font-weight: 600;
+}
+
+.inputValue {
+  flex: 1;
+  color: #292827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
