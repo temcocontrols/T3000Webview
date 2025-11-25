@@ -51,6 +51,15 @@ const NetworkPage = React.lazy(() =>
 const ArrayPage = React.lazy(() =>
   import('../features/controllers/pages/ArrayPage')
 );
+const TablesPage = React.lazy(() =>
+  import('../features/tables/pages/TablesPage').then((m) => ({ default: m.TablesPage }))
+);
+const UsersPage = React.lazy(() =>
+  import('../features/users/pages/UsersPage').then((m) => ({ default: m.UsersPage }))
+);
+const CustomUnitsPage = React.lazy(() =>
+  import('../features/customUnits/pages/CustomUnitsPage').then((m) => ({ default: m.CustomUnitsPage }))
+);
 const SettingsPage = React.lazy(() =>
   import('../features/settings/pages/SettingsPage')
 );
@@ -210,6 +219,30 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <ArrayPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="tables"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <TablesPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <UsersPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="custom-units"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <CustomUnitsPage />
                     </React.Suspense>
                   }
                 />

@@ -1,0 +1,440 @@
+/**
+ * Variables Page Styles - Azure Portal Billing Accounts
+ * Extracted from actual Azure Portal HTML/CSS: https://portal.azure.com/#view/Microsoft_Azure_GTM/ModernBillingMenuBlade/~/BillingAccounts
+ *
+ * Key Azure Portal characteristics from inspection:
+ * - Font: Segoe UI, 13px body, 400 weight
+ * - Grid class: fxc-gc-dataGrid (not DetailsList)
+ * - Colors: #292827 text primary, #323130 button toolbar, #201f1e hover
+ * - Borders: #edebe9 primary borders, #f3f2f1 row borders
+ * - Backgrounds: #fafafa headers/toolbar, #ffffff cells
+ * - Hover: #f3f2f1 background
+ * - Row height: 42px (min-height, content-driven)
+ * - Cell padding: 0 16px (horizontal only)
+ * - Toolbar: 44px height, azc-toolbarButton class
+ */
+
+/* Root container styling */
+.container {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #292827;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Blade Content Container */
+.bladeContentContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bladeContentWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bladeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.partContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Toolbar styles */
+.toolbar {
+  background-color: transparent;
+  border-bottom: none;
+  padding: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.toolbarContainer {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  background-color: transparent;
+  border: none;
+  color: #323130;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color 0.1s ease;
+}
+
+.toolbarButton svg {
+  width: 16px;
+  height: 16px;
+  color: #0078d4;
+}
+
+.toolbarButton:hover {
+  background-color: #f3f2f1;
+  color: #201f1e;
+}
+
+.toolbarButton:active {
+  background-color: #edebe9;
+  color: #201f1e;
+}
+
+.toolbarButton:disabled {
+  color: #a19f9d;
+  cursor: default;
+  background-color: transparent;
+}
+
+.toolbarSeparator {
+  width: 1px;
+  height: 24px;
+  background-color: #edebe9;
+  margin: 0 4px;
+}
+
+/* Search Input - Azure Portal Style */
+.searchInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  color: #605e5c;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.searchInput {
+  height: 28px;
+  padding: 0 8px 0 28px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  background-color: #ffffff;
+  color: #323130;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  outline: none;
+  min-width: 300px;
+  transition: border-color 0.1s ease;
+  box-shadow: none;
+}
+
+.searchInput::placeholder {
+  color: #605e5c;
+}
+
+.searchInput:hover {
+  border-color: #323130;
+}
+
+.searchInput:focus {
+  border-color: #0078d4;
+  box-shadow: none;
+  outline: none;
+}
+
+/* Blade Description */
+.bladeDescription {
+  padding: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #292827;
+  background-color: transparent;
+  /* margin: 12px 0; */
+  flex-shrink: 0;
+}
+
+.bladeDescription a {
+  color: #0078d4;
+  text-decoration: none;
+}
+
+.bladeDescription a:hover {
+  text-decoration: underline;
+}
+
+/* Horizontal Divider */
+.overviewHr {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-top: 1px solid #edebe9;
+}
+
+/* Docking Body */
+.dockingBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Loading and No Data States */
+.loading,
+.noData {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 48px;
+}
+
+/* Loading Bar - Info Bar Style */
+.loadingBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background-color: #f0f6ff;
+  border: none;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #323130;
+}
+
+/* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to ArrayPage only */
+.container :global(.fui-DataGrid) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #292827;
+  border: none;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  min-height: fit-content;
+  min-width: max-content;
+}
+
+/* Header row styling - matches fxc-gc-columnheaderrow */
+.container :global(.fui-DataGridHeader) {
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  width: 100%;
+}
+
+/* Data body - scrollable area */
+.container :global(.fui-DataGridBody) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
+.container :global(.fui-DataGridHeaderCell) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 12px;
+  font-weight: 600;  /* Bold headers in Azure Portal */
+  color: #323130;
+  padding: 0 12px;
+  height: 32px;
+  line-height: 32px;
+  background-color: transparent;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+/* Header cell hover - Azure Portal style */
+.container :global(.fui-DataGridHeaderCell):hover {
+  background-color: #edebe9;
+}
+
+/* Sort icon styling */
+.container :global(.fui-DataGridHeaderCell) svg {
+  width: 12px;
+  height: 12px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+/* Data row styling - matches fxc-gc-row */
+.container :global(.fui-DataGridRow) {
+  border-bottom: 1px solid #f3f2f1;
+  min-height: 32px;
+  background-color: #ffffff;
+  transition: background-color 0.1s ease;
+}
+
+/* Row hover - matches fxs-portal-hover */
+.container :global(.fui-DataGridRow):hover {
+  background-color: #f3f2f1;
+}
+
+/* Data cell styling - matches fxc-gc-cell */
+.container :global(.fui-DataGridCell) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #292827;
+  padding: 0 12px;
+  min-height: 32px;
+  border-right: none;
+  display: flex;
+  align-items: center;
+}
+
+/* Badge styling - compact badges */
+.container :global(.fui-Badge) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+/* TableCellLayout - inherits cell font */
+.container :global(.fui-TableCellLayout) {
+  font-size: 12px;
+  font-family: inherit;
+  line-height: normal;
+}
+
+/* Links in grid - Azure Portal link color */
+.container :global(.fui-DataGridCell) a {
+  color: #0078d4;
+  text-decoration: none;
+}
+
+.container :global(.fui-DataGridCell) a:hover {
+  color: #004578;
+  text-decoration: underline;
+}
+
+/* Remove any default Fluent UI styles that conflict */
+.container :global(.fui-DataGridHeaderCell) > * {
+  line-height: normal;
+}
+
+.container :global(.fui-DataGridCell) > * {
+  line-height: normal;
+}
+
+/* Grid border wrapper */
+.container :global(.fui-DataGrid-root) {
+  border: 1px solid #edebe9;
+}
+
+/* Editable cell styles */
+.editableCell {
+  cursor: text;
+  padding: 0;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  outline: none !important;
+  border: none !important;
+}
+
+.editableCell:hover {
+  background-color: transparent;
+}
+
+.editInput {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none !important;
+  border-bottom: 1px solid #0078d4 !important;
+  border-radius: 0;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+  outline: none !important;
+  background: transparent;
+  color: #323130;
+  line-height: 20px;
+  box-sizing: border-box;
+}
+
+.editInput:hover {
+  border-bottom-color: #106ebe !important;
+}
+
+.editInput:focus {
+  border: none !important;
+  border-bottom: 2px solid #0078d4 !important;
+  margin-bottom: -1px;
+  outline: none !important;
+}
+
+.editInput:disabled {
+  background-color: transparent;
+  border-bottom-color: #c8c6c4 !important;
+  color: #a19f9d;
+  cursor: not-allowed;
+}
+
+/* Save button for inline editing */
+.saveButton {
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: #0078d4;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.saveButton:hover {
+  background-color: #f3f2f1;
+  color: #106ebe;
+}
+
+.saveButton:active {
+  background-color: #edebe9;
+}
+
+.saveButton:disabled {
+  color: #a19f9d;
+  cursor: not-allowed;
+  background-color: transparent;
+  opacity: 0.6;
+}
