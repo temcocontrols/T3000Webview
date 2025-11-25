@@ -1,5 +1,5 @@
-// Output Update API Routes
-// Provides RESTful endpoints for updating output point data using UPDATE_WEBVIEW_LIST action
+// Schedules Update API Routes
+// Provides RESTful endpoints for updating schedule data using UPDATE_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -12,34 +12,24 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::{devices, output_points};
+use crate::entity::t3_device::{devices, schedules};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_OUT: i32 = 0;
+const BAC_SCH: i32 = 4;
 
-/// Request payload for updating a single output field
+/// Request payload for updating full schedule record
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateOutputFieldRequest {
-    pub value: serde_json::Value,
-}
-
-/// Request payload for updating full output record
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateOutputFullRequest {
-    pub full_label: Option<String>,
-    pub label: Option<String>,
-    pub value: Option<f32>,
-    pub range: Option<i32>,
+pub struct UpdateScheduleFullRequest {
     pub auto_manual: Option<i32>,
-    pub control: Option<i32>,
-    pub digital_analog: Option<i32>,
-    pub decom: Option<i32>,
-    pub low_voltage: Option<f32>,
-    pub high_voltage: Option<f32>,
+    pub output_field: Option<i32>,
+    pub variable_field: Option<i32>,
+    pub holiday1: Option<i32>,
+    pub holiday2: Option<i32>,
+    pub status1: Option<i32>,
+    pub status2: Option<i32>,
 }
 
 /// Standard API response structure
@@ -51,21 +41,20 @@ pub struct ApiResponse {
     pub data: Option<Value>,
 }
 
-/// Creates and returns the output update API routes
-pub fn create_output_update_routes() -> Router<T3AppState> {
+/// Creates and returns the schedule update API routes
+pub fn create_schedules_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/outputs/:serial/:index", axum::routing::put(update_output_full))
+        .route("/schedules/:serial/:index", axum::routing::put(update_schedule_full))
 }
 
-/// Update full output record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/outputs/:serial/:index (via parent router)
-pub async fn update_output_full(
+/// Update full schedule record using UPDATE_WEBVIEW_LIST action (Action 16)
+/// PUT /api/t3-device/schedules/:serial/:index
+pub async fn update_schedule_full(
     State(state): State<T3AppState>,
-    Path((serial, index_str)): Path<(i32, String)>,
-    Json(payload): Json<UpdateOutputFullRequest>,
+    Path((serial, index)): Path<(i32, i32)>,
+    Json(payload): Json<UpdateScheduleFullRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let index = index_str.parse::<i32>().unwrap_or(0);
-    info!("UPDATE_WEBVIEW_LIST: Updating full output record - Serial: {}, Index: {}", serial, index);
+    info!("UPDATE_WEBVIEW_LIST: Updating full schedule record - Serial: {}, Index: {}", serial, index);
 
     // Get database connection from state
     let db_connection = match &state.t3_device_conn {
@@ -93,60 +82,50 @@ pub async fn update_output_full(
         }
     };
 
-    // Collect updated field names before moving payload
+    // Collect updated field names
     let mut updated_fields = Vec::new();
-    if payload.full_label.is_some() {
-        updated_fields.push("fullLabel");
-    }
-    if payload.label.is_some() {
-        updated_fields.push("label");
-    }
-    if payload.value.is_some() {
-        updated_fields.push("value");
-    }
-    if payload.range.is_some() {
-        updated_fields.push("range");
-    }
     if payload.auto_manual.is_some() {
         updated_fields.push("autoManual");
     }
-    if payload.control.is_some() {
-        updated_fields.push("control");
+    if payload.output_field.is_some() {
+        updated_fields.push("outputField");
     }
-
-    // Clone payload fields before they're moved in json! macro
-    let full_label_clone = payload.full_label.clone();
-    let label_clone = payload.label.clone();
+    if payload.variable_field.is_some() {
+        updated_fields.push("variableField");
+    }
+    if payload.holiday1.is_some() {
+        updated_fields.push("holiday1");
+    }
+    if payload.holiday2.is_some() {
+        updated_fields.push("holiday2");
+    }
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
     let input_json = json!({
         "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_OUT,  // 0 = OUTPUT
+        "entryType": BAC_SCH,  // 4 = SCHEDULE
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),
-        "value": payload.value.unwrap_or(0.0),
-        "description": full_label_clone.unwrap_or_default(),
-        "label": label_clone.unwrap_or_default(),
-        "range": payload.range.unwrap_or(0),
         "auto_manual": payload.auto_manual.unwrap_or(0),
-        "digital_analog": payload.digital_analog.unwrap_or(0),
-        "decom": payload.decom.unwrap_or(0),
-        "low_voltage": payload.low_voltage.unwrap_or(0.0),
-        "high_voltage": payload.high_voltage.unwrap_or(0.0),
+        "output": payload.output_field.unwrap_or(0),
+        "variable": payload.variable_field.unwrap_or(0),
+        "holiday1": payload.holiday1.unwrap_or(0),
+        "holiday2": payload.holiday2.unwrap_or(0),
+        "status1": payload.status1.unwrap_or(0),
+        "status2": payload.status2.unwrap_or(0),
     });
 
     // Call FFI function
     let updated_fields_clone = updated_fields.clone();
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full output record updated in device");
+            info!("✅ Full schedule record updated in device");
 
             // Now save to database
-            match save_output_to_db(&db_connection, serial, index, &payload).await {
+            match save_schedule_to_db(&db_connection, serial, index, &payload).await {
                 Ok(_) => {
-                    info!("✅ Output record saved to database");
+                    info!("✅ Schedule record saved to database");
                 }
                 Err(e) => {
                     error!("⚠️ Failed to save to database (device updated successfully): {}", e);
@@ -155,75 +134,76 @@ pub async fn update_output_full(
 
             Ok(Json(json!({
                 "success": true,
-                "message": "Output point updated successfully",
+                "message": "Schedule point updated successfully",
                 "data": {
                     "serialNumber": serial,
-                    "outputIndex": index,
+                    "scheduleIndex": index,
                     "updatedFields": updated_fields_clone,
                     "timestamp": chrono::Utc::now().to_rfc3339()
                 }
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update full output record: {}", e);
+            error!("❌ Failed to update schedule: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to update output record: {}", e),
+                format!("Failed to update schedule record: {}", e),
             ))
         }
     }
 }
 
-/// Save updated output to database
-async fn save_output_to_db(
+/// Save updated schedule to database
+async fn save_schedule_to_db(
     db: &DatabaseConnection,
     serial: i32,
     index: i32,
-    payload: &UpdateOutputFullRequest,
+    payload: &UpdateScheduleFullRequest,
 ) -> Result<(), String> {
-    // Find existing output record
-    let existing_output = output_points::Entity::find()
-        .filter(output_points::Column::SerialNumber.eq(serial))
-        .filter(output_points::Column::OutputIndex.eq(index))
+    // Find existing schedule record
+    let existing_schedule = schedules::Entity::find()
+        .filter(schedules::Column::SerialNumber.eq(serial))
+        .filter(schedules::Column::ScheduleId.eq(index.to_string()))
         .one(db)
         .await
         .map_err(|e| format!("Database query error: {}", e))?;
 
-    if let Some(output_model) = existing_output {
+    if let Some(schedule_model) = existing_schedule {
         // Update existing record
-        let mut active_model: output_points::ActiveModel = output_model.into();
+        let mut active_model: schedules::ActiveModel = schedule_model.into();
 
-        if let Some(val) = &payload.full_label {
-            active_model.full_label = Set(Some(val.clone()));
-        }
-        if let Some(val) = &payload.label {
-            active_model.label = Set(Some(val.clone()));
-        }
-        if let Some(val) = payload.value {
-            active_model.f_value = Set(Some(val.to_string()));
-        }
-        if let Some(val) = payload.range {
-            active_model.range_field = Set(Some(val.to_string()));
-        }
         if let Some(val) = payload.auto_manual {
             active_model.auto_manual = Set(Some(val.to_string()));
         }
-        // Note: control, decom, low_voltage, high_voltage are sent to C++ but not in DB table
-        if let Some(val) = payload.digital_analog {
-            active_model.digital_analog = Set(Some(val.to_string()));
+        if let Some(val) = payload.output_field {
+            active_model.output_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.variable_field {
+            active_model.variable_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.holiday1 {
+            active_model.holiday1 = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.holiday2 {
+            active_model.holiday2 = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.status1 {
+            active_model.status1 = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.status2 {
+            active_model.status2 = Set(Some(val.to_string()));
         }
 
-        // Save to database
         active_model.update(db).await
-            .map_err(|e| format!("Failed to update output in database: {}", e))?;
+            .map_err(|e| format!("Failed to update schedule in database: {}", e))?;
 
         Ok(())
     } else {
-        Err(format!("Output record not found: serial={}, index={}", serial, index))
+        Err(format!("Schedule record not found: serial={}, index={}", serial, index))
     }
 }
 
-/// Helper function to call C++ FFI for update operations
+/// Call FFI function for update operations
 async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, String> {
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
@@ -272,6 +252,11 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
                         info!("📥 C++ Response (Action {}): {}", action, response);
+
+                        if response.is_empty() || response == "{}" {
+                            return Err("Action not implemented in C++ - empty response".to_string());
+                        }
+
                         Ok(response)
                     }
                     -2 => Err("MFC application not initialized".to_string()),
@@ -283,5 +268,5 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
         }
     })
     .await
-    .map_err(|e| format!("Task spawn error: {}", e))?
+    .map_err(|e| format!("Task join error: {}", e))?
 }

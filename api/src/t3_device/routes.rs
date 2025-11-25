@@ -30,6 +30,23 @@ use crate::t3_device::schedule_refresh_routes::create_schedule_refresh_routes;
 use crate::t3_device::holiday_refresh_routes::create_holiday_refresh_routes;
 use crate::t3_device::alarm_refresh_routes::create_alarm_refresh_routes;
 use crate::t3_device::trendlog_refresh_routes::create_trendlog_refresh_routes;
+// 🆕 New feature routes - Arrays, Tables, Users, Custom Units
+use crate::t3_device::arrays_refresh_routes::create_arrays_refresh_routes;
+use crate::t3_device::arrays_update_routes::create_arrays_update_routes;
+use crate::t3_device::tables_refresh_routes::create_tables_refresh_routes;
+use crate::t3_device::tables_update_routes::create_tables_update_routes;
+use crate::t3_device::users_refresh_routes::create_users_refresh_routes;
+use crate::t3_device::users_update_routes::create_users_update_routes;
+use crate::t3_device::custom_units_refresh_routes::create_custom_units_refresh_routes;
+use crate::t3_device::custom_units_update_routes::create_custom_units_update_routes;
+use crate::t3_device::programs_update_routes::create_programs_update_routes;
+use crate::t3_device::schedules_update_routes::create_schedules_update_routes;
+use crate::t3_device::holidays_update_routes::create_holidays_update_routes;
+use crate::t3_device::pid_controllers_update_routes::create_pid_controllers_update_routes;
+use crate::t3_device::graphics_update_routes::create_graphics_update_routes;
+use crate::t3_device::alarms_update_routes::create_alarms_update_routes;
+use crate::t3_device::settings_routes::create_settings_routes;
+use crate::t3_device::specialized_routes::create_specialized_routes;
 
 // Helper function to check if T3000 device database is available
 #[allow(dead_code)]
@@ -1312,6 +1329,22 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_input_update_routes())
         .merge(create_output_update_routes())
         .merge(create_variable_update_routes())
+        .merge(create_arrays_update_routes())
+        .merge(create_tables_update_routes())
+        .merge(create_users_update_routes())
+        .merge(create_custom_units_update_routes())
+        .merge(create_programs_update_routes())
+        .merge(create_schedules_update_routes())
+        .merge(create_holidays_update_routes())
+        .merge(create_pid_controllers_update_routes())
+        .merge(create_graphics_update_routes())
+        .merge(create_alarms_update_routes())
+
+        // 🆕 Settings Routes (device-level configuration)
+        .merge(create_settings_routes())
+
+        // 🆕 Specialized Features Routes (supplementary data tables)
+        .merge(create_specialized_routes())
 
         // 🆕 Point Refresh Routes (REFRESH_WEBVIEW_LIST Action 17)
         .merge(create_input_refresh_routes())
@@ -1323,6 +1356,10 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_holiday_refresh_routes())
         .merge(create_alarm_refresh_routes())
         .merge(create_trendlog_refresh_routes())
+        .merge(create_arrays_refresh_routes())
+        .merge(create_tables_refresh_routes())
+        .merge(create_users_refresh_routes())
+        .merge(create_custom_units_refresh_routes())
 }
 
 // ============================================================================

@@ -1,5 +1,5 @@
-// Variable Update API Routes
-// Provides RESTful endpoints for updating variable point data using UPDATE_WEBVIEW_LIST action
+// Users Update API Routes
+// Provides RESTful endpoints for updating user data using UPDATE_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -12,32 +12,26 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::{devices, variable_points};
+use crate::entity::t3_device::devices;
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_VAR: i32 = 2;
+// ENUM_USER_NAME = 14 (from ud_str.h line 22)
+const BAC_USER: i32 = 14;
 
-/// Request payload for updating a single variable field
+/// Request payload for updating full user record
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateVariableFieldRequest {
-    pub value: serde_json::Value,
-}
-
-/// Request payload for updating full variable record
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateVariableFullRequest {
-    pub full_label: Option<String>,
-    pub label: Option<String>,
-    pub value: Option<f32>,
-    pub range: Option<i32>,
-    pub auto_manual: Option<i32>,
-    pub control: Option<i32>,
-    pub digital_analog: Option<i32>,
-    pub decom: Option<i32>,
+pub struct UpdateUserFullRequest {
+    pub name: Option<String>,
+    pub password: Option<String>,
+    pub access_level: Option<i32>,
+    pub rights_access: Option<i32>,
+    pub default_panel: Option<i32>,
+    pub default_group: Option<i32>,
+    pub screen_right: Option<String>,
+    pub program_right: Option<String>,
 }
 
 /// Standard API response structure
@@ -49,21 +43,21 @@ pub struct ApiResponse {
     pub data: Option<Value>,
 }
 
-/// Creates and returns the variable update API routes
-pub fn create_variable_update_routes() -> Router<T3AppState> {
+/// Creates and returns the user update API routes
+pub fn create_users_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/variables/:serial/:index", axum::routing::put(update_variable_full))
+        .route("/users/:serial/:index", axum::routing::put(update_user_full))
 }
 
-/// Update full variable record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/variables/:serial/:index (via parent router)
-pub async fn update_variable_full(
+/// Update full user record using UPDATE_WEBVIEW_LIST action (Action 16)
+/// PUT /api/t3-device/users/:serial/:index
+pub async fn update_user_full(
     State(state): State<T3AppState>,
     Path((serial, index_str)): Path<(i32, String)>,
-    Json(payload): Json<UpdateVariableFullRequest>,
+    Json(payload): Json<UpdateUserFullRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let index = index_str.parse::<i32>().unwrap_or(0);
-    info!("UPDATE_WEBVIEW_LIST: Updating full variable record - Serial: {}, Index: {}", serial, index);
+    info!("UPDATE_WEBVIEW_LIST: Updating full user record - Serial: {}, Index: {}", serial, index);
 
     // Get database connection from state
     let db_connection = match &state.t3_device_conn {
@@ -93,129 +87,83 @@ pub async fn update_variable_full(
 
     // Collect updated field names before moving payload
     let mut updated_fields = Vec::new();
-    if payload.full_label.is_some() {
-        updated_fields.push("fullLabel");
+    if payload.name.is_some() {
+        updated_fields.push("name");
     }
-    if payload.label.is_some() {
-        updated_fields.push("label");
+    if payload.password.is_some() {
+        updated_fields.push("password");
     }
-    if payload.value.is_some() {
-        updated_fields.push("value");
+    if payload.access_level.is_some() {
+        updated_fields.push("accessLevel");
     }
-    if payload.range.is_some() {
-        updated_fields.push("range");
+    if payload.rights_access.is_some() {
+        updated_fields.push("rightsAccess");
     }
-    if payload.auto_manual.is_some() {
-        updated_fields.push("autoManual");
+    if payload.default_panel.is_some() {
+        updated_fields.push("defaultPanel");
     }
-    if payload.control.is_some() {
-        updated_fields.push("control");
+    if payload.default_group.is_some() {
+        updated_fields.push("defaultGroup");
     }
-
-    // Clone payload fields before they're moved in json! macro
-    let full_label_clone = payload.full_label.clone();
-    let label_clone = payload.label.clone();
+    if payload.screen_right.is_some() {
+        updated_fields.push("screenRight");
+    }
+    if payload.program_right.is_some() {
+        updated_fields.push("programRight");
+    }
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
+    // Note: C++ expects field names matching Str_userlogin_point structure
     let input_json = json!({
         "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_VAR,  // 2 = VARIABLE
+        "entryType": BAC_USER,  // 14 = USER
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),
-        "value": payload.value.unwrap_or(0.0),
-        "description": full_label_clone.unwrap_or_default(),
-        "label": label_clone.unwrap_or_default(),
-        "range": payload.range.unwrap_or(0),
-        "auto_manual": payload.auto_manual.unwrap_or(0),
-        "digital_analog": payload.digital_analog.unwrap_or(0),
-        "decom": payload.decom.unwrap_or(0),
+        "name": payload.name.unwrap_or_default(),
+        "password": payload.password.unwrap_or_default(),
+        "access_level": payload.access_level.unwrap_or(0),
+        "rights_access": payload.rights_access.unwrap_or(0),
+        "default_panel": payload.default_panel.unwrap_or(0),
+        "default_group": payload.default_group.unwrap_or(0),
+        "screen_right": payload.screen_right.unwrap_or_default(),
+        "program_right": payload.program_right.unwrap_or_default(),
     });
 
     // Call FFI function
-    let updated_fields_clone = updated_fields.clone();
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full variable record updated in device");
-
-            // Now save to database
-            match save_variable_to_db(&db_connection, serial, index, payload).await {
-                Ok(_) => {
-                    info!("✅ Variable record saved to database");
-                }
-                Err(e) => {
-                    error!("⚠️ Failed to save to database (device updated successfully): {}", e);
-                }
-            }
-
+            info!("✅ Full user record updated successfully");
             Ok(Json(json!({
                 "success": true,
-                "message": "Variable point updated successfully",
+                "message": "User updated successfully",
                 "data": {
                     "serialNumber": serial,
-                    "variableIndex": index,
-                    "updatedFields": updated_fields_clone,
-                    "timestamp": chrono::Utc::now().to_rfc3339()
+                    "userIndex": index,
+                    "updatedFields": updated_fields,
                 }
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update full variable record: {}", e);
+            error!("❌ Failed to update user: {}", e);
+
+            // Provide helpful message if C++ hasn't implemented this action yet
+            if e.contains("not implemented") || e.contains("empty response") {
+                return Err((
+                    StatusCode::NOT_IMPLEMENTED,
+                    "UPDATE_WEBVIEW_LIST (Action 16) for users is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 16 in T3000.exe".to_string(),
+                ));
+            }
+
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to update variable record: {}", e),
+                format!("Failed to update user: {}", e),
             ))
         }
     }
 }
 
-/// Save updated variable to database
-async fn save_variable_to_db(
-    db: &DatabaseConnection,
-    serial: i32,
-    index: i32,
-    payload: UpdateVariableFullRequest,
-) -> Result<(), String> {
-    let existing_variable = variable_points::Entity::find()
-        .filter(variable_points::Column::SerialNumber.eq(serial))
-        .filter(variable_points::Column::VariableIndex.eq(index))
-        .one(db)
-        .await
-        .map_err(|e| format!("Database query error: {}", e))?;
-
-    if let Some(variable_model) = existing_variable {
-        let mut active_model: variable_points::ActiveModel = variable_model.into();
-
-        if let Some(val) = payload.full_label {
-            active_model.full_label = Set(Some(val));
-        }
-        if let Some(val) = payload.label {
-            active_model.label = Set(Some(val));
-        }
-        if let Some(val) = payload.value {
-            active_model.f_value = Set(Some(val.to_string()));
-        }
-        if let Some(val) = payload.range {
-            active_model.range_field = Set(Some(val.to_string()));
-        }
-        if let Some(val) = payload.auto_manual {
-            active_model.auto_manual = Set(Some(val.to_string()));
-        }
-        if let Some(val) = payload.digital_analog {
-            active_model.digital_analog = Set(Some(val.to_string()));
-        }
-
-        active_model.update(db).await
-            .map_err(|e| format!("Failed to update variable in database: {}", e))?;
-
-        Ok(())
-    } else {
-        Err(format!("Variable record not found: serial={}, index={}", serial, index))
-    }
-}
-
-/// Helper function to call C++ FFI for update operations
+/// Call FFI function for update operations
 async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, String> {
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
@@ -264,6 +212,12 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
                         info!("📥 C++ Response (Action {}): {}", action, response);
+
+                        // Check if response is empty or minimal (C++ not implemented)
+                        if response.is_empty() || response == "{}" {
+                            return Err("Action not implemented in C++ - empty response".to_string());
+                        }
+
                         Ok(response)
                     }
                     -2 => Err("MFC application not initialized".to_string()),

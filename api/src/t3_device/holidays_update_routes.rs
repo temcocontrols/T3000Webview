@@ -1,5 +1,5 @@
-// Output Update API Routes
-// Provides RESTful endpoints for updating output point data using UPDATE_WEBVIEW_LIST action
+// Holidays Update API Routes
+// Provides RESTful endpoints for updating holiday data using UPDATE_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -12,34 +12,23 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::{devices, output_points};
+use crate::entity::t3_device::{devices, holidays};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
-const BAC_OUT: i32 = 0;
+const BAC_HOL: i32 = 5;
 
-/// Request payload for updating a single output field
+/// Request payload for updating full holiday record
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateOutputFieldRequest {
-    pub value: serde_json::Value,
-}
-
-/// Request payload for updating full output record
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateOutputFullRequest {
-    pub full_label: Option<String>,
-    pub label: Option<String>,
-    pub value: Option<f32>,
-    pub range: Option<i32>,
+pub struct UpdateHolidayFullRequest {
     pub auto_manual: Option<i32>,
-    pub control: Option<i32>,
-    pub digital_analog: Option<i32>,
-    pub decom: Option<i32>,
-    pub low_voltage: Option<f32>,
-    pub high_voltage: Option<f32>,
+    pub holiday_value: Option<i32>,
+    pub status: Option<i32>,
+    pub month_field: Option<i32>,
+    pub day_field: Option<i32>,
+    pub year_field: Option<i32>,
 }
 
 /// Standard API response structure
@@ -51,21 +40,20 @@ pub struct ApiResponse {
     pub data: Option<Value>,
 }
 
-/// Creates and returns the output update API routes
-pub fn create_output_update_routes() -> Router<T3AppState> {
+/// Creates and returns the holiday update API routes
+pub fn create_holidays_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/outputs/:serial/:index", axum::routing::put(update_output_full))
+        .route("/holidays/:serial/:index", axum::routing::put(update_holiday_full))
 }
 
-/// Update full output record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/outputs/:serial/:index (via parent router)
-pub async fn update_output_full(
+/// Update full holiday record using UPDATE_WEBVIEW_LIST action (Action 16)
+/// PUT /api/t3-device/holidays/:serial/:index
+pub async fn update_holiday_full(
     State(state): State<T3AppState>,
-    Path((serial, index_str)): Path<(i32, String)>,
-    Json(payload): Json<UpdateOutputFullRequest>,
+    Path((serial, index)): Path<(i32, i32)>,
+    Json(payload): Json<UpdateHolidayFullRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let index = index_str.parse::<i32>().unwrap_or(0);
-    info!("UPDATE_WEBVIEW_LIST: Updating full output record - Serial: {}, Index: {}", serial, index);
+    info!("UPDATE_WEBVIEW_LIST: Updating full holiday record - Serial: {}, Index: {}", serial, index);
 
     // Get database connection from state
     let db_connection = match &state.t3_device_conn {
@@ -93,60 +81,52 @@ pub async fn update_output_full(
         }
     };
 
-    // Collect updated field names before moving payload
+    // Collect updated field names
     let mut updated_fields = Vec::new();
-    if payload.full_label.is_some() {
-        updated_fields.push("fullLabel");
-    }
-    if payload.label.is_some() {
-        updated_fields.push("label");
-    }
-    if payload.value.is_some() {
-        updated_fields.push("value");
-    }
-    if payload.range.is_some() {
-        updated_fields.push("range");
-    }
     if payload.auto_manual.is_some() {
         updated_fields.push("autoManual");
     }
-    if payload.control.is_some() {
-        updated_fields.push("control");
+    if payload.holiday_value.is_some() {
+        updated_fields.push("holidayValue");
     }
-
-    // Clone payload fields before they're moved in json! macro
-    let full_label_clone = payload.full_label.clone();
-    let label_clone = payload.label.clone();
+    if payload.status.is_some() {
+        updated_fields.push("status");
+    }
+    if payload.month_field.is_some() {
+        updated_fields.push("monthField");
+    }
+    if payload.day_field.is_some() {
+        updated_fields.push("dayField");
+    }
+    if payload.year_field.is_some() {
+        updated_fields.push("yearField");
+    }
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
     let input_json = json!({
         "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
-        "entryType": BAC_OUT,  // 0 = OUTPUT
+        "entryType": BAC_HOL,  // 5 = HOLIDAY
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),
-        "value": payload.value.unwrap_or(0.0),
-        "description": full_label_clone.unwrap_or_default(),
-        "label": label_clone.unwrap_or_default(),
-        "range": payload.range.unwrap_or(0),
         "auto_manual": payload.auto_manual.unwrap_or(0),
-        "digital_analog": payload.digital_analog.unwrap_or(0),
-        "decom": payload.decom.unwrap_or(0),
-        "low_voltage": payload.low_voltage.unwrap_or(0.0),
-        "high_voltage": payload.high_voltage.unwrap_or(0.0),
+        "holiday_value": payload.holiday_value.unwrap_or(0),
+        "status": payload.status.unwrap_or(0),
+        "month": payload.month_field.unwrap_or(0),
+        "day": payload.day_field.unwrap_or(0),
+        "year": payload.year_field.unwrap_or(0),
     });
 
     // Call FFI function
     let updated_fields_clone = updated_fields.clone();
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full output record updated in device");
+            info!("✅ Full holiday record updated in device");
 
             // Now save to database
-            match save_output_to_db(&db_connection, serial, index, &payload).await {
+            match save_holiday_to_db(&db_connection, serial, index, &payload).await {
                 Ok(_) => {
-                    info!("✅ Output record saved to database");
+                    info!("✅ Holiday record saved to database");
                 }
                 Err(e) => {
                     error!("⚠️ Failed to save to database (device updated successfully): {}", e);
@@ -155,75 +135,73 @@ pub async fn update_output_full(
 
             Ok(Json(json!({
                 "success": true,
-                "message": "Output point updated successfully",
+                "message": "Holiday point updated successfully",
                 "data": {
                     "serialNumber": serial,
-                    "outputIndex": index,
+                    "holidayIndex": index,
                     "updatedFields": updated_fields_clone,
                     "timestamp": chrono::Utc::now().to_rfc3339()
                 }
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update full output record: {}", e);
+            error!("❌ Failed to update holiday: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to update output record: {}", e),
+                format!("Failed to update holiday record: {}", e),
             ))
         }
     }
 }
 
-/// Save updated output to database
-async fn save_output_to_db(
+/// Save updated holiday to database
+async fn save_holiday_to_db(
     db: &DatabaseConnection,
     serial: i32,
     index: i32,
-    payload: &UpdateOutputFullRequest,
+    payload: &UpdateHolidayFullRequest,
 ) -> Result<(), String> {
-    // Find existing output record
-    let existing_output = output_points::Entity::find()
-        .filter(output_points::Column::SerialNumber.eq(serial))
-        .filter(output_points::Column::OutputIndex.eq(index))
+    // Find existing holiday record
+    let existing_holiday = holidays::Entity::find()
+        .filter(holidays::Column::SerialNumber.eq(serial))
+        .filter(holidays::Column::HolidayId.eq(index.to_string()))
         .one(db)
         .await
         .map_err(|e| format!("Database query error: {}", e))?;
 
-    if let Some(output_model) = existing_output {
+    if let Some(holiday_model) = existing_holiday {
         // Update existing record
-        let mut active_model: output_points::ActiveModel = output_model.into();
+        let mut active_model: holidays::ActiveModel = holiday_model.into();
 
-        if let Some(val) = &payload.full_label {
-            active_model.full_label = Set(Some(val.clone()));
-        }
-        if let Some(val) = &payload.label {
-            active_model.label = Set(Some(val.clone()));
-        }
-        if let Some(val) = payload.value {
-            active_model.f_value = Set(Some(val.to_string()));
-        }
-        if let Some(val) = payload.range {
-            active_model.range_field = Set(Some(val.to_string()));
-        }
         if let Some(val) = payload.auto_manual {
             active_model.auto_manual = Set(Some(val.to_string()));
         }
-        // Note: control, decom, low_voltage, high_voltage are sent to C++ but not in DB table
-        if let Some(val) = payload.digital_analog {
-            active_model.digital_analog = Set(Some(val.to_string()));
+        if let Some(val) = payload.holiday_value {
+            active_model.holiday_value = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.status {
+            active_model.status = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.month_field {
+            active_model.month_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.day_field {
+            active_model.day_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.year_field {
+            active_model.year_field = Set(Some(val.to_string()));
         }
 
-        // Save to database
         active_model.update(db).await
-            .map_err(|e| format!("Failed to update output in database: {}", e))?;
+            .map_err(|e| format!("Failed to update holiday in database: {}", e))?;
 
         Ok(())
     } else {
-        Err(format!("Output record not found: serial={}, index={}", serial, index))
+        Err(format!("Holiday record not found: serial={}, index={}", serial, index))
     }
 }
 
-/// Helper function to call C++ FFI for update operations
+/// Call FFI function for update operations
 async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, String> {
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
@@ -272,6 +250,11 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
                         info!("📥 C++ Response (Action {}): {}", action, response);
+
+                        if response.is_empty() || response == "{}" {
+                            return Err("Action not implemented in C++ - empty response".to_string());
+                        }
+
                         Ok(response)
                     }
                     -2 => Err("MFC application not initialized".to_string()),
@@ -283,5 +266,5 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
         }
     })
     .await
-    .map_err(|e| format!("Task spawn error: {}", e))?
+    .map_err(|e| format!("Task join error: {}", e))?
 }

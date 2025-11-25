@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::devices;
+use crate::entity::t3_device::{devices, input_points};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -118,6 +118,10 @@ pub async fn update_input_full(
         updated_fields.push("control");
     }
 
+    // Clone payload fields before they're moved in json! macro
+    let full_label_clone = payload.full_label.clone();
+    let label_clone = payload.label.clone();
+
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
     // Note: C++ expects field names matching the structure
     let input_json = json!({
@@ -128,8 +132,8 @@ pub async fn update_input_full(
         "entryIndex": index,
         "control": payload.control.unwrap_or(0),
         "value": payload.value.unwrap_or(0.0),
-        "description": payload.full_label.unwrap_or_default(),
-        "label": payload.label.unwrap_or_default(),
+        "description": full_label_clone.unwrap_or_default(),
+        "label": label_clone.unwrap_or_default(),
         "range": payload.range.unwrap_or(0),
         "auto_manual": payload.auto_manual.unwrap_or(0),
         "filter": payload.filter.unwrap_or(0),
@@ -141,16 +145,28 @@ pub async fn update_input_full(
     });
 
     // Call FFI function
+    let updated_fields_clone = updated_fields.clone();
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full input record updated successfully");
+            info!("✅ Full input record updated in device");
+
+            // Now save to database
+            match save_input_to_db(&db_connection, serial, index, payload).await {
+                Ok(_) => {
+                    info!("✅ Input record saved to database");
+                }
+                Err(e) => {
+                    error!("⚠️ Failed to save to database (device updated successfully): {}", e);
+                }
+            }
+
             Ok(Json(json!({
                 "success": true,
                 "message": "Input point updated successfully",
                 "data": {
                     "serialNumber": serial,
                     "inputIndex": index,
-                    "updatedFields": updated_fields,
+                    "updatedFields": updated_fields_clone,
                     "timestamp": chrono::Utc::now().to_rfc3339()
                 }
             })))
@@ -162,6 +178,60 @@ pub async fn update_input_full(
                 format!("Failed to update input record: {}", e),
             ))
         }
+    }
+}
+
+/// Save updated input to database
+async fn save_input_to_db(
+    db: &DatabaseConnection,
+    serial: i32,
+    index: i32,
+    payload: UpdateInputFullRequest,
+) -> Result<(), String> {
+    let existing_input = input_points::Entity::find()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .filter(input_points::Column::InputIndex.eq(index))
+        .one(db)
+        .await
+        .map_err(|e| format!("Database query error: {}", e))?;
+
+    if let Some(input_model) = existing_input {
+        let mut active_model: input_points::ActiveModel = input_model.into();
+
+        if let Some(val) = payload.full_label {
+            active_model.full_label = Set(Some(val));
+        }
+        if let Some(val) = payload.label {
+            active_model.label = Set(Some(val));
+        }
+        if let Some(val) = payload.value {
+            active_model.f_value = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.range {
+            active_model.range_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.auto_manual {
+            active_model.auto_manual = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.filter {
+            active_model.filter_field = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.digital_analog {
+            active_model.digital_analog = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_sign {
+            active_model.sign = Set(Some(val.to_string()));
+        }
+        if let Some(val) = payload.calibration_h {
+            active_model.calibration = Set(Some(val.to_string()));
+        }
+
+        active_model.update(db).await
+            .map_err(|e| format!("Failed to update input in database: {}", e))?;
+
+        Ok(())
+    } else {
+        Err(format!("Input record not found: serial={}, index={}", serial, index))
     }
 }
 
