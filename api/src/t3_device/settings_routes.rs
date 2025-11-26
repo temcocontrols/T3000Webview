@@ -87,6 +87,10 @@ pub fn create_settings_routes() -> Router<T3AppState> {
 
         // Features settings
         .route("/devices/:serial/settings/features", axum::routing::get(get_features_settings))
+
+        // Device control commands
+        .route("/devices/:serial/reboot", axum::routing::post(reboot_device))
+        .route("/devices/:serial/reset-defaults", axum::routing::post(reset_to_defaults))
 }
 
 /// GET /api/t3-device/devices/:serial/settings/network
@@ -453,4 +457,167 @@ async fn get_features_settings(
         Ok(None) => Err((StatusCode::NOT_FOUND, "Features settings not found".to_string())),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e))),
     }
+}
+
+/// POST /api/v1/devices/:serial/reboot
+/// Reboot device (sends special command 77 to register 33)
+async fn reboot_device(
+    State(state): State<T3AppState>,
+    Path(serial): Path<i32>,
+) -> Result<Json<SettingsResponse>, (StatusCode, String)> {
+    info!("Reboot device request for serial: {}", serial);
+
+    // In C++: SPECIAL_COMMAND_REBOOT = 77, RESET_REGISTER = 33
+    // Write 77 to register 33 to reboot the device
+
+    // Create FFI command JSON
+    let command_json = json!({
+        "action": "REBOOT_DEVICE",
+        "serial_number": serial,
+        "register": 33,
+        "value": 77,
+        "command_type": "special_command"
+    });
+
+    let input_str = serde_json::to_string(&command_json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization error: {}", e)))?;
+
+    // Call FFI function
+    let action = 16; // Action 16 = UPDATE (write to device)
+
+    match call_ffi_function(action, input_str).await {
+        Ok(response_str) => {
+            info!("✅ Reboot command sent successfully: {}", response_str);
+            Ok(Json(SettingsResponse {
+                success: true,
+                message: "Reboot command sent successfully. Device will restart in 30 seconds.".to_string(),
+                data: Some(json!({
+                    "serial_number": serial,
+                    "command": "reboot",
+                    "register": 33,
+                    "value": 77,
+                    "estimated_reboot_time_seconds": 30,
+                    "ffi_response": response_str
+                })),
+            }))
+        }
+        Err(e) => {
+            error!("❌ Failed to send reboot command: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to reboot device: {}", e)))
+        }
+    }
+}
+
+/// POST /api/v1/devices/:serial/reset-defaults
+/// Reset device to factory defaults (sends special command 88 to register 33)
+async fn reset_to_defaults(
+    State(state): State<T3AppState>,
+    Path(serial): Path<i32>,
+) -> Result<Json<SettingsResponse>, (StatusCode, String)> {
+    info!("Reset to defaults request for serial: {}", serial);
+
+    // In C++: SPECIAL_COMMAND_RESET_TCP = 88, RESET_REGISTER = 33
+    // Write 88 to register 33 to reset device to factory defaults
+
+    // Create FFI command JSON
+    let command_json = json!({
+        "action": "RESET_TO_DEFAULTS",
+        "serial_number": serial,
+        "register": 33,
+        "value": 88,
+        "command_type": "special_command"
+    });
+
+    let input_str = serde_json::to_string(&command_json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization error: {}", e)))?;
+
+    // Call FFI function
+    let action = 16; // Action 16 = UPDATE (write to device)
+
+    match call_ffi_function(action, input_str).await {
+        Ok(response_str) => {
+            info!("✅ Reset to defaults command sent successfully: {}", response_str);
+            Ok(Json(SettingsResponse {
+                success: true,
+                message: "Device reset to factory defaults successfully. All settings have been reset.".to_string(),
+                data: Some(json!({
+                    "serial_number": serial,
+                    "command": "reset_defaults",
+                    "register": 33,
+                    "value": 88,
+                    "warning": "Device has been reset to factory defaults. All settings will be lost.",
+                    "ffi_response": response_str
+                })),
+            }))
+        }
+        Err(e) => {
+            error!("❌ Failed to send reset command: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to reset device: {}", e)))
+        }
+    }
+}
+
+/// Helper function to call FFI with proper error handling
+async fn call_ffi_function(action: i32, input_str: String) -> Result<String, String> {
+    // Verify T3000 DLL functions are loaded
+    tokio::task::spawn_blocking(move || {
+        use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
+        unsafe {
+            if !load_t3000_function() {
+                return Err("T3000 functions not loaded".to_string());
+            }
+        }
+        Ok(())
+    }).await
+    .map_err(|e| format!("Failed to check T3000 functions: {}", e))?
+    .map_err(|e| e)?;
+
+    // Run FFI call in blocking task
+    tokio::task::spawn_blocking(move || {
+        use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
+
+        const BUFFER_SIZE: usize = 1048576; // 1MB buffer
+        let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+
+        // Write input JSON to buffer
+        let input_bytes = input_str.as_bytes();
+        if input_bytes.len() >= BUFFER_SIZE {
+            return Err("Input JSON too large for buffer".to_string());
+        }
+
+        buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+        buffer[input_bytes.len()] = 0; // Null terminator
+
+        unsafe {
+            if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
+                let result = func(
+                    action,
+                    buffer.as_mut_ptr() as *mut std::os::raw::c_char,
+                    buffer.len() as i32,
+                );
+
+                match result {
+                    0 => {
+                        // Success - read response from buffer
+                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                        info!("📥 C++ Response (Action {}): {}", action, response);
+
+                        // For special commands, even empty response is OK
+                        if response.is_empty() {
+                            return Ok("Command sent successfully".to_string());
+                        }
+
+                        Ok(response)
+                    }
+                    -2 => Err("MFC application not initialized".to_string()),
+                    code => Err(format!("FFI call failed with code: {}", code)),
+                }
+            } else {
+                Err("BacnetWebView_HandleWebViewMsg function not loaded".to_string())
+            }
+        }
+    })
+    .await
+    .map_err(|e| format!("Task spawn error: {}", e))?
 }
