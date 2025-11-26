@@ -470,7 +470,7 @@ impl T3000MainService {
             let mut task_logger = ServiceLogger::ffi()
                 .unwrap_or_else(|_| ServiceLogger::new("fallback_ffi").unwrap());
 
-            // 🆕 DELAY: Wait 10 seconds on first startup to let T3000.exe fully initialize
+            // 🏃 DELAY: Wait 10 seconds on first startup to let T3000.exe fully initialize
             task_logger.info("⏱️ Waiting 10 seconds for T3000.exe to fully initialize...");
             sleep(Duration::from_secs(10)).await;
             task_logger.info("✅ Initialization delay completed, starting sync...");
@@ -3220,7 +3220,27 @@ impl T3000MainService {
 /// Global service management
 impl T3000MainService {
     /// Initialize the global T3000 main service
+    /// If service already exists (e.g., after T3000 restart), reuse it or create new
     pub async fn initialize(config: T3000MainConfig) -> Result<(), AppError> {
+        // Check if service already exists
+        if let Some(existing_service) = MAIN_SERVICE.get() {
+            // Service exists - stop it first, then we'll restart with new config
+            existing_service.is_running.store(false, Ordering::Relaxed);
+            info!("T3000 Main Service already exists - reusing with new config");
+
+            // Update config (can't modify, so we just log it)
+            warn!("Cannot update existing service config - OnceCell limitation");
+            warn!("Service will continue with original configuration");
+
+            // Restart the service if auto_start is true
+            if config.auto_start {
+                existing_service.start_sync_service().await?;
+            }
+
+            return Ok(());
+        }
+
+        // Create new service
         let service = Arc::new(Self::new(config).await?);
 
         MAIN_SERVICE.set(service.clone()).map_err(|_| {
@@ -3239,6 +3259,20 @@ impl T3000MainService {
     /// Get the global T3000 main service instance
     pub fn get_service() -> Option<Arc<T3000MainService>> {
         MAIN_SERVICE.get().cloned()
+    }
+
+    /// Reset the global service (for DLL reload/T3000 restart scenarios)
+    /// This allows re-initialization after T3000.exe restarts
+    pub fn reset_service() {
+        // Stop the service if it's running
+        if let Some(service) = MAIN_SERVICE.get() {
+            service.is_running.store(false, Ordering::Relaxed);
+            info!("T3000 Main Service stopped and reset");
+        }
+
+        // Note: OnceCell doesn't support resetting, so we can't clear MAIN_SERVICE
+        // The workaround is to check if service exists and reuse it, or use a different pattern
+        // For now, we'll make initialize() more tolerant of existing service
     }
 
     /// Enhanced diagnostic logging placeholder - T3000 initialization functions not available in current export library
