@@ -131,35 +131,48 @@
   text-align: center;
 }
 
-.emptyIcon {
-  font-size: 64px;
+.emptyIconWrapper {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 16px;
-  opacity: 0.6;
+  background-color: #f3f2f1;
+  border-radius: 50%;
+}
+
+.emptyIcon {
+  width: 32px;
+  height: 32px;
+  color: #605e5c;
 }
 
 .emptyTitle {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   color: #323130;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .emptyMessage {
-  font-size: 14px;
+  font-size: 12px;
   color: #605e5c;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .scanButton {
-  padding: 10px 20px;
+  padding: 6px 16px;
   border: 1px solid #0078d4;
   border-radius: 4px;
   background-color: #0078d4;
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
+  height: 28px;
+  line-height: 1;
 }
 
 .scanButton:hover {
