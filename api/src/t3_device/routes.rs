@@ -1329,8 +1329,8 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_input_update_routes())
         .merge(create_output_update_routes())
         .merge(create_variable_update_routes())
-        // 🔴 TEST: New tables temporarily disabled for systematic testing
-        // .merge(create_arrays_update_routes())
+        // 🔴 TEST: New tables - testing one by one
+        .merge(create_arrays_update_routes())  // ⬅️ STEP 1: Testing arrays_update
         // .merge(create_tables_update_routes())
         // .merge(create_users_update_routes())
         // .merge(create_custom_units_update_routes())
