@@ -1,5 +1,5 @@
-// Tables Refresh API Routes
-// Provides RESTful endpoints for refreshing table point data using REFRESH_WEBVIEW_LIST action
+// Conversion Tables Refresh API Routes (renamed from Tables to avoid SQL keyword conflict)
+// Provides RESTful endpoints for refreshing conversion table point data using REFRESH_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use tracing::{error, info};
 
 use crate::app_state::T3AppState;
-use crate::entity::t3_device::{devices, tables};
+use crate::entity::t3_device::{devices, conversion_tables};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -20,7 +20,7 @@ use sea_orm::*;
 // ENUM_TBL = 7 (from ud_str.h line 21)
 const BAC_TBL: i32 = 7;
 
-/// Request payload for refreshing a single table (index is optional)
+/// Request payload for refreshing a single conversion table (index is optional)
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefreshTableRequest {
@@ -56,15 +56,15 @@ pub struct SaveResponse {
     pub timestamp: String,
 }
 
-/// Creates and returns the table refresh API routes
-pub fn create_tables_refresh_routes() -> Router<T3AppState> {
+/// Creates and returns the conversion table refresh API routes
+pub fn create_conversion_tables_refresh_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/tables/:serial/refresh", axum::routing::post(refresh_tables))
-        .route("/tables/:serial/save-refreshed", axum::routing::post(save_refreshed_tables))
+        .route("/conversion-tables/:serial/refresh", axum::routing::post(refresh_tables))
+        .route("/conversion-tables/:serial/save-refreshed", axum::routing::post(save_refreshed_tables))
 }
 
-/// Refresh table(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
-/// POST /api/t3-device/tables/:serial/refresh
+/// Refresh conversion table(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
+/// POST /api/t3-device/conversion-tables/:serial/refresh
 /// Body: { "index": 5 } for single item, or {} for all items
 /// Returns the raw data from device without saving to database
 pub async fn refresh_tables(
@@ -257,17 +257,17 @@ async fn save_tables_to_db(
         }
         let table_index = table_index.unwrap();
 
-        // Find existing table record
-        let existing_table = tables::Entity::find()
-            .filter(tables::Column::SerialNumber.eq(serial))
-            .filter(tables::Column::TableIndex.eq(table_index.to_string()))
+        // Find existing conversion table record
+        let existing_table = conversion_tables::Entity::find()
+            .filter(conversion_tables::Column::SerialNumber.eq(serial))
+            .filter(conversion_tables::Column::TableIndex.eq(table_index.to_string()))
             .one(db)
             .await
             .map_err(|e| format!("Database query error: {}", e))?;
 
         if let Some(table_model) = existing_table {
             // Update existing record
-            let mut active_model: tables::ActiveModel = table_model.into();
+            let mut active_model: conversion_tables::ActiveModel = table_model.into();
 
             // Update fields from C++ response
             if let Some(val) = item.get("tableName").or_else(|| item.get("table_name")).and_then(|v| v.as_str()) {
@@ -281,7 +281,7 @@ async fn save_tables_to_db(
             saved_count += 1;
         } else {
             // Create new record if it doesn't exist
-            let new_table = tables::ActiveModel {
+            let new_table = conversion_tables::ActiveModel {
                 serial_number: Set(serial),
                 table_id: Set(None),
                 table_index: Set(Some(table_index.to_string())),
@@ -292,7 +292,7 @@ async fn save_tables_to_db(
             };
 
             new_table.insert(db).await
-                .map_err(|e| format!("Failed to insert table: {}", e))?;
+                .map_err(|e| format!("Failed to insert conversion table: {}", e))?;
 
             saved_count += 1;
         }

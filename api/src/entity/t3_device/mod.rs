@@ -21,7 +21,7 @@ pub mod variable_points;
 
 // 🆕 Extended T3000 Tables (Arrays, Tables, Users, Settings)
 pub mod array_points;
-pub mod tables;
+pub mod conversion_tables;  // Renamed from tables to avoid SQL keyword conflict
 pub mod custom_units;
 pub mod variable_units;
 pub mod users;

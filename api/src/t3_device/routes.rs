@@ -30,11 +30,11 @@ use crate::t3_device::schedule_refresh_routes::create_schedule_refresh_routes;
 use crate::t3_device::holiday_refresh_routes::create_holiday_refresh_routes;
 use crate::t3_device::alarm_refresh_routes::create_alarm_refresh_routes;
 use crate::t3_device::trendlog_refresh_routes::create_trendlog_refresh_routes;
-// 🆕 New feature routes - Arrays, Tables, Users, Custom Units
+// 🆕 New feature routes - Arrays, Conversion Tables, Users, Custom Units
 use crate::t3_device::arrays_refresh_routes::create_arrays_refresh_routes;
 use crate::t3_device::arrays_update_routes::create_arrays_update_routes;
-use crate::t3_device::tables_refresh_routes::create_tables_refresh_routes;
-use crate::t3_device::tables_update_routes::create_tables_update_routes;
+use crate::t3_device::conversion_tables_refresh_routes::create_conversion_tables_refresh_routes;
+use crate::t3_device::conversion_tables_update_routes::create_conversion_tables_update_routes;
 use crate::t3_device::users_refresh_routes::create_users_refresh_routes;
 use crate::t3_device::users_update_routes::create_users_update_routes;
 use crate::t3_device::custom_units_refresh_routes::create_custom_units_refresh_routes;
@@ -1330,7 +1330,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_output_update_routes())
         .merge(create_variable_update_routes())
         .merge(create_arrays_update_routes())  // ✅ PASSED
-        // .merge(create_tables_update_routes())  // ❌ DISABLED - causes log failure
+        .merge(create_conversion_tables_update_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_update_routes())  // ✅ PASSED
         .merge(create_custom_units_update_routes())  // ✅ ENABLED
         .merge(create_programs_update_routes())
@@ -1357,7 +1357,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_alarm_refresh_routes())
         .merge(create_trendlog_refresh_routes())
         .merge(create_arrays_refresh_routes())  // ✅ ENABLED
-        // .merge(create_tables_refresh_routes())  // ❌ DISABLED - tables keyword issue
+        .merge(create_conversion_tables_refresh_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_refresh_routes())  // ✅ ENABLED
         .merge(create_custom_units_refresh_routes())  // ✅ ENABLED
 }

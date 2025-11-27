@@ -1,9 +1,10 @@
-// T3000 TABLES Entity
+// T3000 CONVERSION_TABLES Entity (Custom analog conversion tables)
+// Renamed from TABLES to avoid SQL reserved keyword conflict
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
-#[sea_orm(table_name = "TABLES")]
+#[sea_orm(table_name = "CONVERSION_TABLES")]
 #[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]

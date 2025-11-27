@@ -1,5 +1,5 @@
-// Tables Update API Routes
-// Provides RESTful endpoints for updating table point data using UPDATE_WEBVIEW_LIST action
+// Conversion Tables Update API Routes (renamed from Tables to avoid SQL keyword conflict)
+// Provides RESTful endpoints for updating conversion table point data using UPDATE_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -20,7 +20,7 @@ use sea_orm::*;
 // ENUM_TBL = 7 (from ud_str.h line 21)
 const BAC_TBL: i32 = 7;
 
-/// Request payload for updating full table record
+/// Request payload for updating full conversion table record
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTableFullRequest {
@@ -36,14 +36,14 @@ pub struct ApiResponse {
     pub data: Option<Value>,
 }
 
-/// Creates and returns the table update API routes
-pub fn create_tables_update_routes() -> Router<T3AppState> {
+/// Creates and returns the conversion table update API routes
+pub fn create_conversion_tables_update_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/tables/:serial/:index", axum::routing::put(update_table_full))
+        .route("/conversion-tables/:serial/:index", axum::routing::put(update_table_full))
 }
 
-/// Update full table record using UPDATE_WEBVIEW_LIST action (Action 16)
-/// PUT /api/t3-device/tables/:serial/:index
+/// Update full conversion table record using UPDATE_WEBVIEW_LIST action (Action 16)
+/// PUT /api/t3-device/conversion-tables/:serial/:index
 pub async fn update_table_full(
     State(state): State<T3AppState>,
     Path((serial, index_str)): Path<(i32, String)>,
