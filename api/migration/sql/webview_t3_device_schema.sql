@@ -250,9 +250,10 @@ CREATE TABLE IF NOT EXISTS ARRAYS (
     Status TEXT                                -- C++ Status
 );
 
--- TABLES table (Custom analog conversion tables - Str_table_point)
+-- CONVERSION_TABLES table (Custom analog conversion tables - Str_table_point)
 -- Stores voltage-to-value conversion tables (16 pairs per table)
-CREATE TABLE IF NOT EXISTS TABLES (
+-- Renamed from TABLES to avoid SQL reserved keyword conflict
+CREATE TABLE IF NOT EXISTS CONVERSION_TABLES (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Table_ID TEXT,                             -- C++ Table_ID (e.g., "TBL1", "TBL2")
     Table_Index TEXT,                          -- C++ Table_Index
@@ -921,9 +922,9 @@ CREATE INDEX IF NOT EXISTS IDX_TRENDLOG_INPUTS_ID ON TRENDLOG_INPUTS(Trendlog_ID
 CREATE INDEX IF NOT EXISTS IDX_ARRAYS_SERIAL ON ARRAYS(SerialNumber);
 CREATE INDEX IF NOT EXISTS IDX_ARRAYS_ID ON ARRAYS(Array_ID);
 
--- TABLES indexes
-CREATE INDEX IF NOT EXISTS IDX_TABLES_SERIAL ON TABLES(SerialNumber);
-CREATE INDEX IF NOT EXISTS IDX_TABLES_ID ON TABLES(Table_ID);
+-- CONVERSION_TABLES indexes (renamed from TABLES)
+CREATE INDEX IF NOT EXISTS IDX_CONVERSION_TABLES_SERIAL ON CONVERSION_TABLES(SerialNumber);
+CREATE INDEX IF NOT EXISTS IDX_CONVERSION_TABLES_ID ON CONVERSION_TABLES(Table_ID);
 
 -- CUSTOM_UNITS indexes
 CREATE INDEX IF NOT EXISTS IDX_CUSTOM_UNITS_SERIAL ON CUSTOM_UNITS(SerialNumber);
