@@ -2,9 +2,9 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "USERS")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,
@@ -16,21 +16,21 @@ pub struct Model {
     #[sea_orm(column_name = "Panel")]
     pub panel: Option<String>,
     #[sea_orm(column_name = "Name")]
-    pub name: Option<String>,                   // C++ name[16]
+    pub name: Option<String>,
     #[sea_orm(column_name = "Password")]
-    pub password: Option<String>,               // C++ password[9] - should be hashed
+    pub password: Option<String>,
     #[sea_orm(column_name = "Access_Level")]
-    pub access_level: Option<i32>,              // C++ access_level (0-255)
+    pub access_level: Option<i32>,
     #[sea_orm(column_name = "Rights_Access")]
-    pub rights_access: Option<i32>,             // C++ rights_access (bitfield)
+    pub rights_access: Option<i32>,
     #[sea_orm(column_name = "Default_Panel")]
     pub default_panel: Option<i32>,
     #[sea_orm(column_name = "Default_Group")]
     pub default_group: Option<i32>,
     #[sea_orm(column_name = "Screen_Right")]
-    pub screen_right: Option<String>,           // C++ screen_right[8] (bitfield as TEXT)
+    pub screen_right: Option<String>,
     #[sea_orm(column_name = "Program_Right")]
-    pub program_right: Option<String>,          // C++ program_right[8] (bitfield as TEXT)
+    pub program_right: Option<String>,
     #[sea_orm(column_name = "Status")]
     pub status: Option<String>,
 }

@@ -1,10 +1,10 @@
-// T3000 PROTOCOL_SETTINGS Entity (one-to-one with DEVICES)
+﻿// T3000 PROTOCOL_SETTINGS Entity
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "PROTOCOL_SETTINGS")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,
@@ -18,15 +18,15 @@ pub struct Model {
     #[sea_orm(column_name = "MSTP_Network_Number")]
     pub mstp_network_number: Option<i32>,
     #[sea_orm(column_name = "Max_Master")]
-    pub max_master: Option<i32>,                // max 245
+    pub max_master: Option<i32>,
     #[sea_orm(column_name = "Object_Instance")]
     pub object_instance: Option<i32>,
     #[sea_orm(column_name = "BBMD_Enable")]
-    pub bbmd_enable: Option<i32>,               // 0=disabled, 1=enabled
+    pub bbmd_enable: Option<i32>,
     #[sea_orm(column_name = "Network_Number")]
     pub network_number: Option<i32>,
     #[sea_orm(column_name = "Network_Number_Hi")]
-    pub network_number_hi: Option<i32>,         // high byte
+    pub network_number_hi: Option<i32>,
     #[sea_orm(column_name = "created_at")]
     pub created_at: Option<String>,
     #[sea_orm(column_name = "updated_at")]

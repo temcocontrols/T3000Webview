@@ -1,10 +1,10 @@
-// T3000 COMMUNICATION_SETTINGS Entity (one-to-one with DEVICES)
+﻿// T3000 COMMUNICATION_SETTINGS Entity
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "COMMUNICATION_SETTINGS")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,
@@ -34,7 +34,7 @@ pub struct Model {
     #[sea_orm(column_name = "UART_Stopbit2")]
     pub uart_stopbit2: Option<i32>,
     #[sea_orm(column_name = "Fix_COM_Config")]
-    pub fix_com_config: Option<i32>,            // 0=auto, non-0=fixed
+    pub fix_com_config: Option<i32>,
     #[sea_orm(column_name = "created_at")]
     pub created_at: Option<String>,
     #[sea_orm(column_name = "updated_at")]

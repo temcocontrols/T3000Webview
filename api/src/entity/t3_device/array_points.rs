@@ -2,9 +2,9 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "ARRAYS")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,
@@ -16,9 +16,9 @@ pub struct Model {
     #[sea_orm(column_name = "Panel")]
     pub panel: Option<String>,
     #[sea_orm(column_name = "Label")]
-    pub label: Option<String>,                  // C++ label[9]
+    pub label: Option<String>,
     #[sea_orm(column_name = "Array_Size")]
-    pub array_size: Option<i32>,                // C++ array_size (0-65535)
+    pub array_size: Option<i32>,
     #[sea_orm(column_name = "Status")]
     pub status: Option<String>,
 }

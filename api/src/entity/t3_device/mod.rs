@@ -1,6 +1,7 @@
 // T3000 Device Database Entities Module - Pure T3000 Structure
 pub mod devices;
 pub mod alarms;
+pub mod all_node;
 pub mod graphics;
 pub mod holidays;
 pub mod input_points;
@@ -18,7 +19,7 @@ pub mod trendlog_views;
 pub mod trendlogs;
 pub mod variable_points;
 
-// Additional Feature Entities (Added November 24, 2025)
+// 🆕 Extended T3000 Tables (Arrays, Tables, Users, Settings)
 pub mod array_points;
 pub mod tables;
 pub mod custom_units;
@@ -31,9 +32,6 @@ pub mod tstat_schedules;
 pub mod graphic_labels;
 pub mod msv_data;
 pub mod alarm_settings;
-pub mod remote_tstat_db;
-
-// Device Settings Entities (Split from Str_Setting_Info)
 pub mod network_settings;
 pub mod communication_settings;
 pub mod protocol_settings;
@@ -43,4 +41,5 @@ pub mod hardware_info;
 pub mod feature_flags;
 pub mod wifi_settings;
 pub mod misc_settings;
+pub mod remote_tstat_db;
 

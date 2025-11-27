@@ -17,6 +17,7 @@ pub mod t3_ffi_sync_service;  // ✅ MAIN T3000 SERVICE - Primary T3000 FFI & Sy
 pub mod t3_ffi_api_service;     // ✅ T3000 FFI API Service - HTTP API endpoints with FFI integration (same JSON as WebSocket)
 pub mod trendlog_webmsg_service; // ✅ T3000 TrendLog via HandleWebViewMsg (working approach instead of direct FFI)
 pub mod trendlog_webmsg_routes;  // ✅ T3000 TrendLog WebMsg API Routes (working HandleWebViewMsg endpoints)
+pub mod websocket_handler;  // 🔥 MOVED EARLY - Must initialize before route modules for proper logging
 pub mod input_update_routes;    // ✅ T3000 Input Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod output_update_routes;   // ✅ T3000 Output Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod variable_update_routes; // ✅ T3000 Variable Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
@@ -30,8 +31,8 @@ pub mod holidays_update_routes;     // ✅ T3000 Holidays Update API Routes usin
 pub mod pid_controllers_update_routes; // ✅ T3000 PID Controllers Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod graphics_update_routes;     // ✅ T3000 Graphics Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod alarms_update_routes;       // ✅ T3000 Alarms Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
-pub mod settings_routes;            // ✅ T3000 Settings API Routes (network, communication, time, etc.)
-pub mod specialized_routes;         // ✅ T3000 Specialized Features API Routes (supplementary data tables)
+pub mod settings_routes;            // ✅ T3000 Settings API Routes (network/communication/time/protocol settings)
+pub mod specialized_routes;         // ✅ T3000 Specialized Features API Routes (remote points, email alarms, etc.)
 pub mod input_refresh_routes;   // ✅ T3000 Input Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod output_refresh_routes;  // ✅ T3000 Output Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod variable_refresh_routes; // ✅ T3000 Variable Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
@@ -45,4 +46,3 @@ pub mod arrays_refresh_routes;  // ✅ T3000 Arrays Refresh API Routes using REF
 pub mod tables_refresh_routes;  // ✅ T3000 Tables Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod users_refresh_routes;   // ✅ T3000 Users Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod custom_units_refresh_routes; // ✅ T3000 Custom Units Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
-pub mod websocket_handler;

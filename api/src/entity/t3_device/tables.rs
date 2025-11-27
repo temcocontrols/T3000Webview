@@ -1,10 +1,10 @@
-// T3000 TABLES Entity (Custom analog conversion tables)
+// T3000 TABLES Entity
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "TABLES")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,
@@ -16,9 +16,9 @@ pub struct Model {
     #[sea_orm(column_name = "Panel")]
     pub panel: Option<String>,
     #[sea_orm(column_name = "Table_Name")]
-    pub table_name: Option<String>,             // C++ table_name[9]
+    pub table_name: Option<String>,
     #[sea_orm(column_name = "Table_Data")]
-    pub table_data: Option<String>,             // C++ dat[16] as JSON: [{"volts": 0, "value": 0}, ...]
+    pub table_data: Option<String>,
     #[sea_orm(column_name = "Status")]
     pub status: Option<String>,
 }

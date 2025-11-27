@@ -1,20 +1,18 @@
-// T3000 GRAPHIC_LABELS Entity
+﻿// T3000 GRAPHIC_LABELS Entity
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "GRAPHIC_LABELS")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_name = "SerialNumber")]
     pub serial_number: i32,
 
     #[sea_orm(column_name = "Label_ID")]
-    pub label_id: Option<String>,
+    pub label_id: Option<i32>,
     #[sea_orm(column_name = "Label_Index")]
     pub label_index: Option<i32>,
-    #[sea_orm(column_name = "Panel")]
-    pub panel: Option<String>,
     #[sea_orm(column_name = "Label_Status")]
     pub label_status: Option<i32>,
     #[sea_orm(column_name = "Screen_Index")]
@@ -40,13 +38,17 @@ pub struct Model {
     #[sea_orm(column_name = "Icon_Place")]
     pub icon_place: Option<i32>,
     #[sea_orm(column_name = "Icon_Name_1")]
-    pub icon_name_1: Option<String>,            // C++ icon_name_1[20]
+    pub icon_name_1: Option<String>,
     #[sea_orm(column_name = "Icon_Name_2")]
-    pub icon_name_2: Option<String>,            // C++ icon_name_2[20]
+    pub icon_name_2: Option<String>,
     #[sea_orm(column_name = "Network")]
     pub network: Option<i32>,
-    #[sea_orm(column_name = "Status")]
-    pub status: Option<String>,
+    #[sea_orm(column_name = "Label_Name")]
+    pub label_name: Option<String>,
+    #[sea_orm(column_name = "created_at")]
+    pub created_at: Option<String>,
+    #[sea_orm(column_name = "updated_at")]
+    pub updated_at: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
