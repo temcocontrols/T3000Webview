@@ -501,70 +501,87 @@ export default {
 
 <style scoped>
 .application-settings-panel {
-  padding: 20px;
-  max-width: 1400px;
+  padding: 12px;
+  max-width: 1100px;
   margin: 0 auto;
+  font-size: 14px;
+  color: #222;
 }
 
 .page-header {
-  margin-bottom: 30px;
+  margin-bottom: 16px;
   text-align: center;
 }
 
 .page-header h2 {
-  margin: 0 0 10px 0;
+  margin: 0 0 6px 0;
   color: #1976d2;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.page-header p {
+  margin: 0;
+  color: #555;
+  font-size: 13px;
 }
 
 .filters-row {
   display: flex;
-  gap: 15px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .filter-input {
   flex: 2;
-  min-width: 200px;
+  min-width: 160px;
 }
 
 .filter-select {
   flex: 1;
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .setting-value {
-  max-width: 200px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
 }
 
 .context-info {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .setting-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .context-section {
-  padding: 15px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
+  padding: 10px;
+  background-color: #fafafa;
+  border-radius: 6px;
+}
+
+/* Make dialogs and cards slightly tighter */
+q-card {
+  padding: 8px 0;
 }
 
 @media (max-width: 768px) {
   .application-settings-panel {
-    padding: 10px;
+    padding: 8px;
   }
 
   .filters-row {
     flex-direction: column;
+    gap: 6px;
   }
 
   .filter-input,
