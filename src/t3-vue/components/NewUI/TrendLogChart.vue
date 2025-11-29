@@ -6069,6 +6069,21 @@
   }
 
   const updateCharts = () => {
+    // 🆕 FIX: Check if canvas is available before attempting any updates
+    if (!analogChartCanvas.value) {
+      LogUtil.Debug('⏸️ updateCharts: Canvas not available yet, will retry in 100ms')
+      // Retry after DOM settles
+      setTimeout(() => {
+        if (analogChartCanvas.value) {
+          LogUtil.Info('✅ updateCharts: Canvas now available, proceeding with update')
+          updateCharts()
+        } else {
+          LogUtil.Warn('⚠️ updateCharts: Canvas still not available after retry, giving up')
+        }
+      }, 100)
+      return
+    }
+
     // 🆕 FIX: Prevent multiple concurrent chart updates (critical for C++ WebView)
     if (chartUpdatePending) {
       LogUtil.Debug('⏸️ Chart update already pending, skipping duplicate call')
@@ -6505,19 +6520,28 @@
   }
 
   const resetToDefaultTimebase = () => {
-    timeBase.value = '5m'
-    timeOffset.value = 0 // Reset time navigation as well
-
-    // 🆕 FIX: Reset button should always turn Auto Scroll ON (5m = real-time mode)
-    isRealTime.value = true
-
-    LogUtil.Info('🔄 Reset to default timebase (5m) with Auto Scroll ON', {
-      autoScrollState: isRealTime.value,
-      note: 'Reset button always enables Auto Scroll for 5m timebase'
+    LogUtil.Info('🔄 Reset button clicked - preparing to reset to default timebase', {
+      currentTimeBase: timeBase.value,
+      currentOffset: timeOffset.value,
+      currentAutoScroll: isRealTime.value
     })
 
-    // Reload with real-time + historical data
-    initializeData()
+    // Reset states first
+    timeOffset.value = 0 // Reset time navigation as well
+    isRealTime.value = true // 🆕 FIX: Reset button should always turn Auto Scroll ON
+
+    // Use nextTick to ensure DOM is stable before changing timeBase
+    nextTick(() => {
+      timeBase.value = '5m'
+
+      LogUtil.Info('🔄 Reset to default timebase (5m) with Auto Scroll ON', {
+        autoScrollState: isRealTime.value,
+        note: 'Reset button always enables Auto Scroll for 5m timebase. Data reload handled by timeBase watch.'
+      })
+    })
+
+    // Data reload will be triggered automatically by the timeBase watch
+    // No need to call initializeData() - that would cause double loading
   }
 
   const setView = (viewNumber: number) => {
