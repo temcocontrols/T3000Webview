@@ -476,7 +476,7 @@ impl TrendlogMonitorService {
 
         let mut total_synced = 0;
 
-        for device in all_devices {
+        for device in &all_devices {
             let serial_number = device.serial_number;
             let panel_id = device.panel_id.unwrap_or(device.panel_number.unwrap_or(1));
 
