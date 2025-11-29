@@ -5547,6 +5547,9 @@ const updateChartWithNewData = (validDataItems: any[]) => {
     validDataItems: validDataItems
   })
 
+  // Reset time offset to show latest data (auto-scroll)
+  timeOffset.value = 0
+
   // Update charts if instances exist
   if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
     updateCharts()
