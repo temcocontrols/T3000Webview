@@ -3101,7 +3101,7 @@
             data.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
-                  if (point && typeof point.y === 'number') {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
                     allValues.push(point.y)
                   }
                 })
