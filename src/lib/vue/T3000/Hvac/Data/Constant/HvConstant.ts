@@ -50,8 +50,8 @@ class HvConstant {
    * HvConstant.LogConfig.Debug = false;
    */
   static LogConfig = {
-    Debug: false,
-    Info: false,
+    Debug: true,
+    Info: true,
     Error: true,
   }
 

@@ -545,11 +545,12 @@
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 0px;">
               <a-radio-group v-model:value="ffiSyncConfig.interval_preset" size="small"
                              @change="onFfiIntervalPresetChange" style="display: flex; flex-wrap: wrap; gap: 4px;">
-                <a-radio value="5min">5 min</a-radio>
-                <a-radio value="10min">10 min</a-radio>
+                <!-- <a-radio value="5min">5 min</a-radio> -->
+                <!-- <a-radio value="10min">10 min</a-radio> -->
                 <a-radio value="15min">15 min</a-radio>
                 <a-radio value="20min">20 min</a-radio>
-                <!-- <a-radio value="25min">25 min</a-radio> -->
+                <a-radio value="30min">30 min</a-radio>
+                <a-radio value="60min">60 min</a-radio>
                 <a-radio value="custom">Custom</a-radio>
               </a-radio-group>
 
@@ -1456,7 +1457,7 @@
 
   // Sampling Interval Configuration
   interface FfiSyncConfig {
-    interval_preset: string // '5min', '10min', '15min', '20min', '25min', 'custom'
+    interval_preset: string // '15min', '20min', '30min', '60min', 'custom' (5min/10min removed)
     custom_value: number
     custom_unit: 'minutes' // Only minutes supported
     interval_secs: number // Actual value in seconds
@@ -1465,10 +1466,10 @@
   }
 
   const ffiSyncConfig = ref<FfiSyncConfig>({
-    interval_preset: '5min',
-    custom_value: 5,
+    interval_preset: '15min',
+    custom_value: 15,
     custom_unit: 'minutes',
-    interval_secs: 300, // Default: 5 minutes
+    interval_secs: 900, // Default: 15 minutes
     last_sync: null,
     next_sync_in: 0
   })
@@ -1979,6 +1980,13 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
+    LogUtil.Info('🔔 T3000_Data.panelsData watcher TRIGGERED', {
+      hasNewData: !!newPanelsData,
+      newDataLength: newPanelsData?.length || 0,
+      isRealTime: isRealTime.value,
+      timeBase: timeBase.value
+    })
+
     // Only process panel data updates in real-time mode
     // Skip for custom/historical data to avoid interfering with loaded historical datasets
     if (!isRealTime.value) {
@@ -2002,6 +2010,13 @@
       updateChartWithNewData(chartDataFormat)
 
       // Store real-time data to database if in real-time mode
+      LogUtil.Info('💾 T3000_Data watcher: Checking storage conditions', {
+        isRealTime: isRealTime.value,
+        chartDataLength: chartDataFormat.length,
+        dataSeriesLength: dataSeries.value?.length || 0,
+        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0
+      })
+
       if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0) {
 
         /*
@@ -4907,17 +4922,17 @@
               if (series.id.startsWith('VAR')) {
                 pointType = 'VARIABLE'
                 const match = series.id.match(/VAR(\d+)/)
-                pointIndex = match ? parseInt(match[1]) - 1 : index
+                pointIndex = match ? parseInt(match[1]) : index // Database uses 1-based index
                 pointId = series.id
               } else if (series.id.startsWith('IN')) {
                 pointType = 'INPUT'
                 const match = series.id.match(/IN(\d+)/)
-                pointIndex = match ? parseInt(match[1]) - 1 : index
+                pointIndex = match ? parseInt(match[1]) : index // Database uses 1-based index
                 pointId = series.id
               } else if (series.id.startsWith('OUT')) {
                 pointType = 'OUTPUT'
                 const match = series.id.match(/OUT(\d+)/)
-                pointIndex = match ? parseInt(match[1]) - 1 : index
+                pointIndex = match ? parseInt(match[1]) : index // Database uses 1-based index
                 pointId = series.id
               }
 
@@ -5255,6 +5270,11 @@
  * Store real-time data to database for historical usage
  */
   const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
+    console.log('🔥 storeRealtimeDataToDatabase ENTRY', {
+      itemsCount: validDataItems.length,
+      firstItem: validDataItems[0]
+    })
+
     try {
       LogUtil.Info('🔄 storeRealtimeDataToDatabase called', {
         itemsCount: validDataItems.length,
@@ -5265,7 +5285,17 @@
       // Get current device info for storage
       const panelsList = T3000_Data.value.panelsList || []
       const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
-      const currentSN = panelsList.length > 0 ? panelsList[0].serial_number : 0
+
+      // FIX: Use serial number from URL instead of panelsList (which may have outdated value)
+      const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
+      const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
+
+      console.log('🔍 Serial Number Source Check', {
+        urlSerialNumber,
+        panelsListSN: panelsList.length > 0 ? panelsList[0].serial_number : 'N/A',
+        finalSN: currentSN,
+        source: urlSerialNumber ? 'URL' : 'panelsList'
+      })
 
       LogUtil.Info('📊 Device info for storage', {
         panelsListLength: panelsList.length,
@@ -5334,6 +5364,12 @@
 
       // Store batch to database with detailed logging
       if (realtimeDataPoints.length > 0) {
+        console.log('🔥 About to call saveRealtimeBatch API', {
+          pointsCount: realtimeDataPoints.length,
+          serialNumber: currentSN,
+          firstPoint: realtimeDataPoints[0]
+        })
+
         LogUtil.Info('📤 Sending real-time batch to API', {
           pointsCount: realtimeDataPoints.length,
           serialNumber: currentSN,
@@ -5396,6 +5432,12 @@
    * Update chart with new data from GET_ENTRIES response
    */
   const updateChartWithNewData = (validDataItems: any[]) => {
+    console.log('🔥 updateChartWithNewData CALLED', {
+      itemsCount: validDataItems?.length || 0,
+      hasDataSeries: !!dataSeries.value?.length,
+      isRealTime: isRealTime.value
+    })
+
     if (!dataSeries.value?.length || !Array.isArray(validDataItems) || !validDataItems.length) {
       LogUtil.Debug('📈 TrendLogChart: No data to process', {
         hasSeriesConfig: !!dataSeries.value?.length,
@@ -5519,6 +5561,15 @@
       totalSeries: dataSeries.value,
       validDataItems: validDataItems
     })
+
+    // 💾 Store real-time data to database if in real-time mode
+    if (isRealTime.value && validDataItems.length > 0) {
+      LogUtil.Info('💾 updateChartWithNewData: Storing to database', {
+        isRealTime: isRealTime.value,
+        itemsCount: validDataItems.length
+      })
+      storeRealtimeDataToDatabase(validDataItems)
+    }
 
     // Update charts if instances exist
     if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
@@ -6047,7 +6098,7 @@
         const config = getDigitalChartConfig(series, isLastChart)
         digitalChartInstances[index] = new Chart(ctx, config)
 
-        console.log(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
+        // console.log(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
       } catch (error) {
         console.error(`= TLChart createDigitalCharts - Error creating chart ${index}:`, error)
       }
@@ -9683,15 +9734,14 @@
   // Convert custom value to seconds
   const convertToSeconds = (): number => {
     const presetValues: Record<string, number> = {
-      '5min': 300,
-      '10min': 600,
       '15min': 900,
       '20min': 1200,
-      '25min': 1500
+      '30min': 1800,
+      '60min': 3600
     }
 
     if (ffiSyncConfig.value.interval_preset !== 'custom') {
-      return presetValues[ffiSyncConfig.value.interval_preset] || 300
+      return presetValues[ffiSyncConfig.value.interval_preset] || 900 // Default to 15min
     }
 
     // Custom interval: always in minutes
