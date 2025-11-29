@@ -56,12 +56,12 @@
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
             <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
-              style="display: flex; align-items: center; gap: 2px;">
+              style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
               <ZoomOutOutlined />
               <span>Zoom Out</span>
             </a-button>
             <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
-              style="display: flex; align-items: center; gap: 2px;">
+              style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
               <ZoomInOutlined />
               <span>Zoom In</span>
             </a-button>
@@ -71,7 +71,7 @@
         <!-- Reset Button -->
         <a-flex align="center" class="control-group">
           <a-button @click="resetToDefaultTimebase" size="small" title="Reset to default 5 minutes timebase"
-            style="display: flex; align-items: center; gap: 2px;">
+            style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
             <ReloadOutlined />
             <span>Reset</span>
           </a-button>
@@ -80,20 +80,20 @@
         <!-- View Buttons -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)">
+            <a-button :type="currentView === 1 ? 'primary' : 'default'" @click="setView(1)" style="font-size: 11px;">
               View 1
             </a-button>
-            <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)">
+            <a-button :type="currentView === 2 ? 'primary' : 'default'" @click="setView(2)" style="font-size: 11px;">
               View 2
             </a-button>
-            <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)">
+            <a-button :type="currentView === 3 ? 'primary' : 'default'" @click="setView(3)" style="font-size: 11px;">
               View 3
             </a-button>
           </a-button-group>
 
           <!-- Reconfigure button for View 2 & 3 -->
           <a-button v-if="currentView !== 1 && hasTrackedItems" size="small" @click="showItemSelector = true"
-            class="reconfigure-btn" title="Reconfigure tracked items">
+            class="reconfigure-btn" title="Reconfigure tracked items" style="font-size: 9px;">
             <SettingOutlined />
           </a-button>
         </a-flex>
@@ -119,7 +119,7 @@
 
           <!-- ‚å®Ô∏è Keyboard Navigation Status -->
           <a-tag :color="keyboardEnabled ? 'green' : 'default'" size="small" class="keyboard-status-tag clickable"
-            :title="keyboardEnabled ? 'Keyboard shortcuts:\n‚Ä?1-9, A-E: Toggle items (also removes navigation border)\n‚Ä?‚Ü?‚Ü?Change timebase\n‚Ä?‚Ü?‚Ü?Navigate items + Enter to toggle\n‚Ä?ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
+            :title="keyboardEnabled ? 'Keyboard shortcuts:\nÔøΩ?1-9, A-E: Toggle items (also removes navigation border)\nÔøΩ?ÔøΩ?ÔøΩ?Change timebase\nÔøΩ?ÔøΩ?ÔøΩ?Navigate items + Enter to toggle\nÔøΩ?ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
             @click="toggleKeyboard">
             <template #icon>
               <span class="keyboard-icon">‚å®Ô∏è</span>
@@ -167,7 +167,7 @@
         <!-- Trendlog Configuration -->
         <a-flex align="center" class="control-group">
           <a-button @click="showDatabaseConfig = true" size="small" title="Trendlog Configuration"
-            style="display: flex; align-items: center; gap: 2px;padding:0px 5px;">
+            style="display: flex; align-items: center; gap: 2px; padding: 0px 5px; font-size: 11px;">
             <DatabaseOutlined />
             <span>Config</span>
           </a-button>
@@ -176,7 +176,7 @@
         <!-- Export Options -->
         <a-flex align="center" class="control-group export-options">
           <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center;padding:0px 5px;">
+            <a-button size="small" style="display: flex; align-items: center; padding: 0px 5px; font-size: 11px;">
               <ExportOutlined style="margin-right: 4px;" />
               <span>Export</span>
               <DownOutlined style="margin-left: 4px;" />
@@ -255,7 +255,7 @@
             <div class="header-line-2">
               <div class="left-controls">
                 <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center;">
+                  <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
                     <span>All</span>
                     <DownOutlined style="margin-left: 4px;" />
                   </a-button>
@@ -273,7 +273,7 @@
                   </template>
                 </a-dropdown>
                 <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center;">
+                  <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
                     <span>By Type</span>
                     <DownOutlined style="margin-left: 4px;" />
                   </a-button>
@@ -443,7 +443,7 @@
               <div class="signal-info">
                 <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
                       :style="{ color: series.color }" class="signal-legend">
-                  Ôø?{{ series.name }} ({{ series.unit }})
+                  ÔøΩ?{{ series.name }} ({{ series.unit }})
                   <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
                 </span>
               </div>
@@ -777,7 +777,7 @@
                     ACTIVE
                   </a-tag>
                 </div>
-                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} Ôø?{{ file.records }} records</div> -->
+                <!-- <div style="font-size: 9px; color: #666;">{{ file.size }} ÔøΩ?{{ file.records }} records</div> -->
               </div>
               <a-button size="small" type="text" danger :disabled="file.is_active"
                 @click="deleteDbFile(file.id, file.name)" style="padding: 2px 6px;"
@@ -865,7 +865,7 @@
             <template v-else-if="column.key === 'change'">
               <div style="font-size: 11px;">
                 <span style="color: #ff4d4f;">{{ record.old_value_display }}</span>
-                <span style="margin: 0 4px;">Ôø?/span>
+                <span style="margin: 0 4px;">ÔøΩ?/span>
                 <span style="color: #52c41a;">{{ record.new_value_display }}</span>
               </div>
             </template>
@@ -1672,7 +1672,7 @@ const getDeviceDescription = (panelId: number, pointType: number, pointNumber: n
     return ''
   }
 
-  // Priority order: label Ôø?command Ôø?fullLabel Ôø?description Ôø?id
+  // Priority order: label ÔøΩ?command ÔøΩ?fullLabel ÔøΩ?description ÔøΩ?id
   const description = device.label || device.command || device.fullLabel || device.description || device.id || ''
 
   if (!description) {
@@ -1701,8 +1701,10 @@ const getDigitalAnalogFromPanelData = (panelId: number, pointType: number, point
 
 // Chart series colors for the 14 monitoring points
 const SERIES_COLORS = [
-  '#FF0000', '#0000FF', '#00AA00', '#FF8000', '#AA00AA', '#00AAAA', '#CC6600',
-  '#AA0000', '#0066AA', '#AA6600', '#6600AA', '#006600', '#FF6600', '#0000AA'
+  '#FF0000', '#0000FF', '#00AA00', '#FF8000', '#AA00AA', '#CC6600',
+  '#AA0000', '#0066AA', '#AA6600', '#6600AA', '#006600', '#FF6600', '#0000AA',
+  '#FF00FF', '#008080', '#800080', '#808000', '#FF1493', '#4B0082', '#DC143C',
+  '#00AAAA', '#00CED1', '#8B4513', '#2F4F4F', '#B22222'
 ]
 
 // Chart data - T3000 mixed digital/analog series (filter out demo/placeholder data)
@@ -1865,8 +1867,8 @@ const regenerateDataSeries = () => {
         // UPDATED ITEM: Use latest config but preserve user preferences
         LogUtil.Debug(`üìù Item updated: ${newSeriesItem.name}`, {
           changes: {
-            name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} Ôø?${newSeriesItem.name}` : 'unchanged',
-            unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} Ôø?${newSeriesItem.unitType}` : 'unchanged',
+            name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} ÔøΩ?${newSeriesItem.name}` : 'unchanged',
+            unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} ÔøΩ?${newSeriesItem.unitType}` : 'unchanged',
             description: existingSeries.description !== newSeriesItem.description ? 'changed' : 'unchanged'
           }
         })
@@ -1881,7 +1883,7 @@ const regenerateDataSeries = () => {
         }
       } else {
         // UNCHANGED ITEM: Preserve everything from existing series
-        // LogUtil.Debug(`Ôø?Item unchanged: ${existingSeries.name}`)
+        // LogUtil.Debug(`ÔøΩ?Item unchanged: ${existingSeries.name}`)
 
         return {
           ...existingSeries,  // Keep existing series as-is
@@ -1891,7 +1893,7 @@ const regenerateDataSeries = () => {
       }
     } else {
       // NEW ITEM: Use default settings
-      // LogUtil.Debug(`Ôø?New item added: ${newSeriesItem.name}`)
+      // LogUtil.Debug(`ÔøΩ?New item added: ${newSeriesItem.name}`)
 
       return {
         ...newSeriesItem,  // Use new configuration with defaults
@@ -2155,7 +2157,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
         // Update charts immediately with extended data
         updateCharts()
 
-        LogUtil.Info('‚ú?Seamless timebase transition completed', {
+        LogUtil.Info('ÔøΩ?Seamless timebase transition completed', {
           newTimeBase,
           totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0)
         })
@@ -2181,7 +2183,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
           willLoadHistorical: true
         })
       } else {
-        LogUtil.Debug('‚ú?Existing data found - skipping loading state', {
+        LogUtil.Debug('ÔøΩ?Existing data found - skipping loading state', {
           existingDataPoints: existingDataRange.totalPoints,
           existingTimeRange: {
             start: new Date(existingDataRange.earliest).toISOString(),
@@ -2210,7 +2212,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
           // Step 1: Initialize real-time data series structure
           await initializeRealDataSeries()
         } else {
-          LogUtil.Info('‚ú?Series structure already exists, skipping initializeRealDataSeries', {
+          LogUtil.Info('ÔøΩ?Series structure already exists, skipping initializeRealDataSeries', {
             seriesCount: dataSeries.value.length,
             dataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
           })
@@ -2273,7 +2275,7 @@ watch(timeBase, async (newTimeBase, oldTimeBase) => {
       stopLoading()
     }
 
-    LogUtil.Info('‚ú?Timebase change completed', {
+    LogUtil.Info('ÔøΩ?Timebase change completed', {
       newTimeBase,
       autoScrollState: isRealTime.value,
       dataSeriesCount: dataSeries.value.length,
@@ -2365,17 +2367,17 @@ const getRoundedIntervalSeconds = (intervalSec: number): number => {
 // Get x-axis tick configuration based on timebase
 const getXAxisTickConfig = (timeBase: string) => {
   const configs = {
-    '5m': { stepMinutes: 1, unit: 'minute' },     // Every 1 minute
-    '10m': { stepMinutes: 2, unit: 'minute' },    // Every 2 minutes
-    '30m': { stepMinutes: 5, unit: 'minute' },    // Every 5 minutes
-    '1h': { stepMinutes: 10, unit: 'minute' },    // Every 10 minutes
-    '4h': { stepMinutes: 30, unit: 'minute' },    // Every 30 minutes
-    '12h': { stepMinutes: 60, unit: 'hour' },     // Every 1 hour (60 minutes)
-    '1d': { stepMinutes: 120, unit: 'hour' },     // Every 2 hours (120 minutes)
-    '4d': { stepMinutes: 480, unit: 'hour' }      // Every 8 hours (480 minutes)
+    '5m': { stepMinutes: 1, unit: 'minute' },     // Every 1 minute (6 ticks = 5 divisions)
+    '10m': { stepMinutes: 2, unit: 'minute' },    // Every 2 minutes (6 ticks = 5 divisions)
+    '30m': { stepMinutes: 5, unit: 'minute' },    // Every 5 minutes (7 ticks = 6 divisions)
+    '1h': { stepMinutes: 15, unit: 'minute' },    // Every 15 minutes (5 ticks = 4 divisions) - IMPROVED
+    '4h': { stepMinutes: 60, unit: 'minute' },    // Every 1 hour (5 ticks = 4 divisions) - IMPROVED
+    '12h': { stepMinutes: 120, unit: 'hour' },    // Every 2 hours (7 ticks = 6 divisions) - IMPROVED
+    '1d': { stepMinutes: 240, unit: 'hour' },     // Every 4 hours (7 ticks = 6 divisions) - IMPROVED
+    '4d': { stepMinutes: 960, unit: 'hour' }      // Every 16 hours (7 ticks = 6 divisions) - IMPROVED
   }
 
-  return configs[timeBase] || { stepMinutes: 10, unit: 'minute' }
+  return configs[timeBase] || { stepMinutes: 15, unit: 'minute' }
 }
 
 // Get proper display format based on time range
@@ -2386,7 +2388,7 @@ const getDisplayFormat = (timeBase: string): string => {
 
 // Custom tick formatter:
 // - For ranges > 1 day ('1d', '4d'): show date+time for first and last ticks, time only for middle ticks
-// - For ranges Ôø?1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
+// - For ranges ÔøΩ?1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
 const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
   const date = new Date(value)
   const currentRangeMinutes = getTimeRangeMinutes(timeBase.value)
@@ -2420,7 +2422,7 @@ const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
       return formatTimeOnly() // Show time only for middle ticks
     }
   } else {
-    // For ranges Ôø?1 day: show date+time for first tick, time only for the rest
+    // For ranges ÔøΩ?1 day: show date+time for first tick, time only for the rest
     if (isFirstTick) {
       return formatDateTime() // Show date+time for first tick
     } else {
@@ -2788,7 +2790,7 @@ const startLoadingTimeout = () => {
   loadingTimeout.value = setTimeout(() => {
     showLoadingTimeout.value = true
     stopLoading()
-    LogUtil.Warn('Ôø?Loading timeout reached after 30 seconds')
+    LogUtil.Warn('ÔøΩ?Loading timeout reached after 30 seconds')
   }, loadingTimeoutDuration)
 }
 
@@ -2838,7 +2840,7 @@ const manualRefresh = async () => {
     stopLoading()
 
   } catch (error) {
-    LogUtil.Error('Ôø?Manual refresh failed:', error)
+    LogUtil.Error('ÔøΩ?Manual refresh failed:', error)
     clearLoadingTimeout()
     hasConnectionError.value = true
     stopLoading()
@@ -3089,6 +3091,9 @@ const getAnalogChartConfig = () => ({
             family: 'Inter, Helvetica, Arial, sans-serif'
           },
           padding: 2,
+          count: 10,              // Force 10 tick marks for better granularity
+          maxTicksLimit: 10,      // Ensure 10 ticks displayed
+          autoSkip: false,        // Don't skip ticks automatically
           // Improve precision for small value ranges
           callback: function (value: any) {
             return Number(value).toFixed(2)
@@ -3117,12 +3122,22 @@ const getAnalogChartConfig = () => ({
           const max = Math.max(...allValues)
           const range = max - min
 
-          // If range is very small (like 0.1-0.3), expand the Y-axis for better visibility
-          if (range > 0 && range < 2) {
+          // Enhanced auto-ranging for better visibility
+          if (range === 0) {
+            // All values same - show ¬±10% range
+            scale.min = min * 0.9
+            scale.max = max * 1.1
+          } else if (range < 2) {
+            // If range is very small (like 0.1-0.3), expand 3x for better visibility
             const center = (min + max) / 2
-            const expandedRange = Math.max(range * 2, 1) // At least 1 unit range
+            const expandedRange = Math.max(range * 3, 1) // At least 1 unit range, 3x zoom
             scale.min = center - expandedRange / 2
             scale.max = center + expandedRange / 2
+          } else {
+            // Normal range - add 10% padding top and bottom
+            const padding = range * 0.1
+            scale.min = min - padding
+            scale.max = max + padding
           }
         }
       }
@@ -3352,7 +3367,7 @@ const getMonitorConfigFromT3000Data = async () => {
   })
 
   if (!monitorId) {
-    LogUtil.Warn('Ôø?getMonitorConfigFromT3000Data: No monitor ID available', {
+    LogUtil.Warn('ÔøΩ?getMonitorConfigFromT3000Data: No monitor ID available', {
       currentItemData: currentItemData.value,
       propsItemData: props.itemData
     })
@@ -3360,7 +3375,7 @@ const getMonitorConfigFromT3000Data = async () => {
   }
 
   if (!panelId && panelId !== 0) {
-    LogUtil.Warn('Ôø?getMonitorConfigFromT3000Data: No panel ID available', {
+    LogUtil.Warn('ÔøΩ?getMonitorConfigFromT3000Data: No panel ID available', {
       monitorId,
       panelId,
       currentItemData: currentItemData.value
@@ -3547,7 +3562,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     // Use the reactive monitor config
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Error('Ôø?fetchRealTimeMonitorData: No monitor config available')
+      LogUtil.Error('ÔøΩ?fetchRealTimeMonitorData: No monitor config available')
       stopLoading()
       return []
     }
@@ -3564,7 +3579,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     }
 
     if (!panelsDataReady) {
-      LogUtil.Error('Ôø?fetchRealTimeMonitorData: Timeout waiting for panels data', {
+      LogUtil.Error('ÔøΩ?fetchRealTimeMonitorData: Timeout waiting for panels data', {
         waitTimeout: '5000ms',
         currentPanelsDataLength: T3000_Data.value.panelsData?.length || 0,
         T3000DataExists: !!T3000_Data.value
@@ -3583,7 +3598,7 @@ const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     })
 
     if (!dataClient) {
-      LogUtil.Error('Ôø?fetchRealTimeMonitorData: Failed to initialize data client')
+      LogUtil.Error('ÔøΩ?fetchRealTimeMonitorData: Failed to initialize data client')
       return []
     }
 
@@ -3746,12 +3761,12 @@ const fetchAllItemsDataBatch = async (dataClient: any, monitorConfigData: any, c
         // Send one request with all items
         dataClient.GetEntries(config.panelId, null, batchRequestData)
 
-        LogUtil.Info('Ôø?BATCH GET_ENTRIES request sent successfully', {
+        LogUtil.Info('ÔøΩ?BATCH GET_ENTRIES request sent successfully', {
           panelId: config.panelId,
           itemCount: batchRequestData.length
         })
       } catch (error) {
-        LogUtil.Error('Ôø?Error sending batch GET_ENTRIES request:', error)
+        LogUtil.Error('ÔøΩ?Error sending batch GET_ENTRIES request:', error)
       }
     }
 
@@ -3777,7 +3792,7 @@ const fetchAllItemsDataBatch = async (dataClient: any, monitorConfigData: any, c
     return results
 
   } catch (error) {
-    LogUtil.Error('Ôø?Error in fetchAllItemsDataBatch:', error)
+    LogUtil.Error('ÔøΩ?Error in fetchAllItemsDataBatch:', error)
     return []
   }
 }
@@ -3809,7 +3824,7 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
     // Get panelId from query parameters (most reliable)
     const currentPanelId = getPanelIdFromQuery()
     if (!currentPanelId) {
-      LogUtil.Error('Ôø?sendGetEntitiesForDataSeries: No panelId from query parameters')
+      LogUtil.Error('ÔøΩ?sendGetEntitiesForDataSeries: No panelId from query parameters')
       return
     }
 
@@ -3818,14 +3833,14 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
     const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
 
     if (!currentPanelData || currentPanelData.length === 0) {
-      LogUtil.Debug('Ôø?sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
+      LogUtil.Debug('ÔøΩ?sendGetEntitiesForDataSeries: No panel data available for panelId', { currentPanelId })
       return
     }
 
     // Initialize data client
     const dataClient = initializeDataClients()
     if (!dataClient) {
-      LogUtil.Debug('Ôø?sendGetEntitiesForDataSeries: No data client available')
+      LogUtil.Debug('ÔøΩ?sendGetEntitiesForDataSeries: No data client available')
       return
     }
 
@@ -3860,7 +3875,7 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
     })
 
     if (batchRequestData.length === 0) {
-      LogUtil.Warn('Ôø?sendGetEntitiesForDataSeries: No valid items for batch request')
+      LogUtil.Warn('ÔøΩ?sendGetEntitiesForDataSeries: No valid items for batch request')
       return
     }
 
@@ -3873,10 +3888,10 @@ const sendGetEntitiesForDataSeries = async (): Promise<void> => {
       })
       dataClient.GetEntries(currentPanelId, null, batchRequestData)
     } else {
-      LogUtil.Error('Ôø?sendGetEntitiesForDataSeries: GetEntries method not available')
+      LogUtil.Error('ÔøΩ?sendGetEntitiesForDataSeries: GetEntries method not available')
     }
   } catch (error) {
-    LogUtil.Error('Ôø?sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
+    LogUtil.Error('ÔøΩ?sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
   }
 }
 
@@ -3912,7 +3927,7 @@ const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> =
         })
       } else {
         // CRITICAL ERROR: No panelId available from reliable sources
-        LogUtil.Error('Ôø?sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
+        LogUtil.Error('ÔøΩ?sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
           queryPanelId: route.query.panel_id,
           monitorConfigPid: monitorConfigData.pid,
           hasMonitorConfig: !!monitorConfigData
@@ -4401,16 +4416,16 @@ const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceInd
       // - Your test: GetEntries(undefined, undefined, [testRequest])
       dataClient.GetEntries(panelId, null, requestData)
 
-      LogUtil.Info('Ôø?TrendLogChart: GetEntries request sent with CORRECT format', {
+      LogUtil.Info('ÔøΩ?TrendLogChart: GetEntries request sent with CORRECT format', {
         panelId,
         viewitem: null,
         requestData
       })
     } catch (error) {
-      LogUtil.Error('Ôø?Error calling GetEntries:', error)
+      LogUtil.Error('ÔøΩ?Error calling GetEntries:', error)
     }
   } else {
-    LogUtil.Error('Ôø?GetEntries method not available on data client')
+    LogUtil.Error('ÔøΩ?GetEntries method not available on data client')
   }
 }
 
@@ -4431,7 +4446,7 @@ const sendBatchGetEntriesRequest = async (dataClient: any, requests: Array<{ pan
     // CORRECT FORMAT: GetEntries(panelId?, viewitem?, data?)
     dataClient.GetEntries(primaryPanelId, null, requests)
   } else {
-    LogUtil.Error('Ôø?No GetEntries method available on data client')
+    LogUtil.Error('ÔøΩ?No GetEntries method available on data client')
   }
 }
 
@@ -4542,7 +4557,7 @@ const setupGetEntriesResponseHandlers = (dataClient: any) => {
     }
   }
 
-  LogUtil.Info('Ôø?Custom HandleGetEntriesRes handler setup complete', {
+  LogUtil.Info('ÔøΩ?Custom HandleGetEntriesRes handler setup complete', {
     handlerOverridden: typeof dataClient.HandleGetEntriesRes === 'function',
     hasOriginalHandler: typeof originalHandler === 'function',
     timestamp: new Date().toISOString()
@@ -4583,6 +4598,140 @@ const getExistingDataTimeRange = (): { earliest: number, latest: number, totalPo
 }
 
 /**
+ * üÜï CONTINUOUS MONITORING: Handle page visibility changes
+ * Auto-backfill missing data when user returns to TrendLog page
+ */
+const handleVisibilityChange = async () => {
+  if (document.hidden) {
+    // Page became hidden - user navigated away
+    LogUtil.Info('üëã TrendLogChart: Page hidden - user navigated away', {
+      isRealTime: isRealTime.value,
+      hasData: dataSeries.value.length > 0,
+      timestamp: new Date().toISOString()
+    })
+    return
+  }
+
+  // Page became visible - user returned
+  LogUtil.Info('ÔøΩ?TrendLogChart: Page visible - user returned, checking for data gaps', {
+    isRealTime: isRealTime.value,
+    hasData: dataSeries.value.length > 0,
+    timestamp: new Date().toISOString()
+  })
+
+  // Only backfill if in real-time mode and we have existing data
+  if (!isRealTime.value || dataSeries.value.length === 0) {
+    LogUtil.Info('‚è≠Ô∏è TrendLogChart: Skipping backfill (not in real-time mode or no data)')
+    return
+  }
+
+  try {
+    // Get latest timestamp from existing data
+    const existingRange = getExistingDataTimeRange()
+    if (!existingRange) {
+      LogUtil.Warn('‚ö†Ô∏è TrendLogChart: No existing data range, cannot backfill')
+      return
+    }
+
+    const lastTimestamp = existingRange.latest
+    const now = Date.now()
+    const gapSeconds = Math.floor((now - lastTimestamp) / 1000)
+
+    LogUtil.Info('ÔøΩ?TrendLogChart: Detected data gap', {
+      lastTimestamp: new Date(lastTimestamp).toISOString(),
+      now: new Date(now).toISOString(),
+      gapSeconds,
+      gapMinutes: Math.floor(gapSeconds / 60)
+    })
+
+    // Only backfill if gap is significant (more than 10 seconds)
+    if (gapSeconds < 10) {
+      LogUtil.Info('‚úÖ TrendLogChart: Gap too small, no backfill needed')
+      return
+    }
+
+    // Fetch missing data from database
+    LogUtil.Info('üì• TrendLogChart: Fetching missing data from database...', {
+      fromTimestamp: new Date(lastTimestamp).toISOString(),
+      toTimestamp: new Date(now).toISOString()
+    })
+
+    // Use existing loadHistoricalDataFromDatabase but with time range filter
+    await backfillMissingData(lastTimestamp, now)
+
+    LogUtil.Info('‚úÖ TrendLogChart: Data backfill completed', {
+      newDataPoints: getExistingDataTimeRange()?.totalPoints || 0
+    })
+
+    // Update charts with new data
+    updateCharts()
+
+  } catch (error) {
+    LogUtil.Error('‚ùå TrendLogChart: Error during data backfill', error)
+  }
+}
+
+/**
+ * üÜï CONTINUOUS MONITORING: Backfill missing data for a specific time range
+ */
+const backfillMissingData = async (fromTimestamp: number, toTimestamp: number) => {
+  const deviceParams = extractDeviceParameters()
+  const { sn: currentSN, panel_id: currentPanelId } = deviceParams
+
+  if (!currentSN || !currentPanelId) {
+    LogUtil.Warn('‚ö†Ô∏è backfillMissingData: Missing device parameters')
+    return
+  }
+
+  // Fetch data for each series
+  for (const series of dataSeries.value) {
+    if (!series.id || !series.panelId) continue
+
+    try {
+      const queryOptions = {
+        serial_number: currentSN,
+        panel_id: currentPanelId,
+        point_id: series.id,
+        point_type: series.pointType,
+        from_timestamp: fromTimestamp,
+        to_timestamp: toTimestamp,
+        limit: 10000 // Reasonable limit for backfill
+      }
+
+      const response = await DatabaseQueryAPI.queryTrendlogData(queryOptions)
+
+      if (response && response.data && response.data.length > 0) {
+        // Merge new data into existing series
+        const newDataPoints = response.data.map((item: any) => ({
+          timestamp: item.timestamp,
+          value: item.value
+        }))
+
+        // Append and sort
+        series.data = [...series.data, ...newDataPoints]
+          .sort((a, b) => a.timestamp - b.timestamp)
+
+        // Remove duplicates (keep latest)
+        const uniqueData = new Map()
+        series.data.forEach(point => {
+          uniqueData.set(point.timestamp, point)
+        })
+        series.data = Array.from(uniqueData.values())
+          .sort((a, b) => a.timestamp - b.timestamp)
+
+        LogUtil.Debug('ÔøΩ?Backfilled data for series', {
+          seriesName: series.name,
+          newPoints: newDataPoints.length,
+          totalPoints: series.data.length
+        })
+      }
+    } catch (error) {
+      LogUtil.Error(`‚ùå Error backfilling data for series ${series.name}`, error)
+    }
+  }
+}
+
+/**
  * Load historical data from database based on current timebase
  */
 const loadHistoricalDataFromDatabase = async () => {
@@ -4606,7 +4755,7 @@ const loadHistoricalDataFromDatabase = async () => {
     })
 
     if (!currentSN) {
-      LogUtil.Warn('Ôø?loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+      LogUtil.Warn('ÔøΩ?loadHistoricalDataFromDatabase: No serial number from reliable sources', {
         queryParams: route.query,
         panelsList: T3000_Data.value.panelsList?.length || 0
       })
@@ -4614,7 +4763,7 @@ const loadHistoricalDataFromDatabase = async () => {
     }
 
     if (!currentPanelId) {
-      LogUtil.Warn('Ôø?loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+      LogUtil.Warn('ÔøΩ?loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
         queryParams: route.query,
         panelsList: T3000_Data.value.panelsList?.length || 0
       })
@@ -4634,7 +4783,7 @@ const loadHistoricalDataFromDatabase = async () => {
 
       // If no dataseries either, we can't determine what to load
       if (dataSeries.value.length === 0) {
-        LogUtil.Warn('Ôø?loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
+        LogUtil.Warn('ÔøΩ?loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
         return
       }
     }
@@ -4674,7 +4823,7 @@ const loadHistoricalDataFromDatabase = async () => {
           gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
         })
       } else {
-        LogUtil.Info('‚ú?All requested data already exists in memory - skipping database load', {
+        LogUtil.Info('ÔøΩ?All requested data already exists in memory - skipping database load', {
           requestedStart: offsetStartTime.toISOString(),
           existingStart: new Date(existingDataRange.earliest).toISOString()
         })
@@ -5134,7 +5283,7 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
     })
 
     if (!currentSN) {
-      LogUtil.Warn('Ôø?No serial number available for data storage', {
+      LogUtil.Warn('ÔøΩ?No serial number available for data storage', {
         panelsList: panelsList.slice(0, 2),
         T3000DataExists: !!T3000_Data.value
       })
@@ -5215,7 +5364,7 @@ const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
 
       const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
 
-      LogUtil.Info(`Ôø?Successfully stored ${rowsAffected} real-time data points`, {
+      LogUtil.Info(`ÔøΩ?Successfully stored ${rowsAffected} real-time data points`, {
         pointsCount: realtimeDataPoints.length,
         rowsAffected,
         serialNumber: currentSN,
@@ -5242,7 +5391,7 @@ const validateFilteringResults = (originalCount: number, filteredCount: number, 
     filteredDataCount: filteredCount,
     chartSeriesCount: chartSeriesCount,
     reductionRatio: filteredCount > 0 ? `${((filteredCount / originalCount) * 100).toFixed(1)}%` : '0%',
-    expectedRange: `Ôø?${chartSeriesCount} items`,
+    expectedRange: `ÔøΩ?${chartSeriesCount} items`,
     isReasonableFilter: filteredCount > 0 && filteredCount <= chartSeriesCount && filteredCount < originalCount,
     message: filteredCount === 0 ? 'No matches found - check filtering logic' :
       filteredCount > chartSeriesCount ? 'More items than chart series - check filtering logic' :
@@ -5361,7 +5510,7 @@ const updateChartWithNewData = (validDataItems: any[]) => {
 
     matched++
 
-    LogUtil.Debug(`Ôø?Matched series ${series.name}`, {
+    LogUtil.Debug(`ÔøΩ?Matched series ${series.name}`, {
       matchedItem: {
         id: matchedItem.id,
         pid: matchedItem.pid,
@@ -5405,7 +5554,7 @@ const getTimeRangeMinutes = (range: string): number => {
 const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
   // Only optimize for real-time mode (5m) or when time offset is 0 (current time view)
   if (!isRealTime.value && timeOffset.value !== 0) {
-    LogUtil.Debug('Ôø?Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
+    LogUtil.Debug('ÔøΩ?Cannot optimize: Not real-time and has time offset', { timeOffset: timeOffset.value })
     return false
   }
 
@@ -5414,28 +5563,28 @@ const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: stri
   const newMinutes = getTimeRangeMinutes(newTimeBase)
 
   if (newMinutes <= oldMinutes) {
-    LogUtil.Debug('Ôø?Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
+    LogUtil.Debug('ÔøΩ?Cannot optimize: New timebase is not longer', { oldMinutes, newMinutes })
     return false
   }
 
   // Must have existing data to reuse
   const hasExistingData = dataSeries.value.some(series => series.data && series.data.length > 0)
   if (!hasExistingData) {
-    LogUtil.Debug('Ôø?Cannot optimize: No existing data to reuse')
+    LogUtil.Debug('ÔøΩ?Cannot optimize: No existing data to reuse')
     return false
   }
 
-  // Only optimize for simple progression (e.g., 5mÔø?0m, 10mÔø?0m, 30mÔø?h, etc.)
+  // Only optimize for simple progression (e.g., 5mÔøΩ?0m, 10mÔøΩ?0m, 30mÔøΩ?h, etc.)
   const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
   const oldIndex = timebaseProgression.indexOf(oldTimeBase)
   const newIndex = timebaseProgression.indexOf(newTimeBase)
 
   if (oldIndex === -1 || newIndex === -1 || newIndex !== oldIndex + 1) {
-    LogUtil.Debug('Ôø?Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
+    LogUtil.Debug('ÔøΩ?Cannot optimize: Not a simple progression', { oldTimeBase, newTimeBase, oldIndex, newIndex })
     return false
   }
 
-  LogUtil.Info('Ôø?Data reuse optimization possible', {
+  LogUtil.Info('ÔøΩ?Data reuse optimization possible', {
     oldTimeBase,
     newTimeBase,
     oldMinutes,
@@ -5482,7 +5631,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     const { sn: currentSN, panel_id: currentPanelId } = deviceParams
 
     if (!currentSN || !currentPanelId) {
-      LogUtil.Warn('Ôø?loadHistoricalDataGap: Missing device parameters')
+      LogUtil.Warn('ÔøΩ?loadHistoricalDataGap: Missing device parameters')
       return
     }
 
@@ -5504,7 +5653,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     })
 
     if (specificPoints.length === 0) {
-      LogUtil.Warn('Ôø?loadHistoricalDataGap: No points to load gap for')
+      LogUtil.Warn('ÔøΩ?loadHistoricalDataGap: No points to load gap for')
       return
     }
 
@@ -5547,7 +5696,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
       // Process and prepend gap data to existing series
       processAndPrependGapData(gapDataResponse.data)
 
-      LogUtil.Info('Ôø?Gap data successfully loaded and merged', {
+      LogUtil.Info('ÔøΩ?Gap data successfully loaded and merged', {
         gapDataPoints: gapDataResponse.data.length,
         totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
       })
@@ -5556,7 +5705,7 @@ const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): 
     }
 
   } catch (error) {
-    LogUtil.Error('Ôø?Error loading historical data gap:', error)
+    LogUtil.Error('ÔøΩ?Error loading historical data gap:', error)
     // Don't throw - fall back to showing existing data
   }
 }
@@ -5613,7 +5762,7 @@ const processAndPrependGapData = (gapData: any[]) => {
         })
         series.data = Array.from(uniqueData.values()).sort((a, b) => a.timestamp - b.timestamp)
 
-        LogUtil.Debug(`Ôø?Prepended gap data to ${series.name}`, {
+        LogUtil.Debug(`ÔøΩ?Prepended gap data to ${series.name}`, {
           gapPoints: gapChartData.length,
           totalPointsAfter: series.data.length,
           firstPoint: series.data[0],
@@ -5640,11 +5789,11 @@ const initializeData = async () => {
       startLoading()
 
       // Step 1: Initialize real-time data series structure FIRST (needed for loading historical data)
-      LogUtil.Info('Ôø?Initializing data series structure')
+      LogUtil.Info('ÔøΩ?Initializing data series structure')
       await initializeRealDataSeries()
 
       // Step 2: Load historical data from database to populate the series
-      LogUtil.Info('Ôø?Loading historical data from database for current timebase')
+      LogUtil.Info('ÔøΩ?Loading historical data from database for current timebase')
       await loadHistoricalDataFromDatabase()
 
       // Step 3: Update charts with combined data
@@ -5762,13 +5911,13 @@ const addRealtimeDataPoint = async () => {
 
   // Only add data if we're in real-time mode
   if (!isRealTime.value) {
-    LogUtil.Warn('Ôø?addRealtimeDataPoint: Not in real-time mode')
+    LogUtil.Warn('ÔøΩ?addRealtimeDataPoint: Not in real-time mode')
     return
   }
 
   // Safety check: If no data series exist, skip processing
   if (dataSeries.value.length === 0) {
-    LogUtil.Warn('Ôø?addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
+    LogUtil.Warn('ÔøΩ?addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
 
     // üÜï FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
     if (props.itemData?.t3Entry?.input?.length > 0) {
@@ -5777,11 +5926,11 @@ const addRealtimeDataPoint = async () => {
 
       // If still no data series after regeneration, exit
       if (dataSeries.value.length === 0) {
-        LogUtil.Warn('Ôø?addRealtimeDataPoint: No data series exist after regeneration attempt')
+        LogUtil.Warn('ÔøΩ?addRealtimeDataPoint: No data series exist after regeneration attempt')
         return
       }
     } else {
-      LogUtil.Warn('Ôø?addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
+      LogUtil.Warn('ÔøΩ?addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
       return
     }
   }
@@ -5802,7 +5951,7 @@ const addRealtimeDataPoint = async () => {
   }
 
   if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-    LogUtil.Warn('Ôø?addRealtimeDataPoint: No input items in monitor config')
+    LogUtil.Warn('ÔøΩ?addRealtimeDataPoint: No input items in monitor config')
     return
   }
 
@@ -6051,8 +6200,8 @@ const updateAnalogChart = async () => {
       tickConfig = getXAxisTickConfig(timeBase.value)
       displayFormat = getDisplayFormat(timeBase.value)
       const maxTicksConfigs = {
-        '5m': 6, '10m': 6, '30m': 7, '1h': 7,
-        '4h': 9, '12h': 13, '1d': 13, '4d': 13
+        '5m': 6, '10m': 6, '30m': 7, '1h': 5,
+        '4h': 5, '12h': 7, '1d': 7, '4d': 7
       }
       maxTicks = maxTicksConfigs[timeBase.value] || 7
     }
@@ -6392,18 +6541,18 @@ const setView = (viewNumber: number) => {
 
   // Apply series visibility based on view
   if (viewNumber === 1) {
-    // View 1: Show all items (UNCHANGED LOGIC) Ôø?
+    // View 1: Show all items (UNCHANGED LOGIC) ÔøΩ?
     dataSeries.value.forEach(series => {
       series.visible = true
     })
 
-    LogUtil.Info(`Ôø?Set View: View 1 activated - showing all items`, {
+    LogUtil.Info(`ÔøΩ?Set View: View 1 activated - showing all items`, {
       totalSeries: dataSeries.value.length,
       visibleSeries: dataSeries.value.length,
       behavior: 'AUTO_SHOW_ALL'
     })
   } else {
-    // View 2 & 3: Show only user selected items with FFI persistence Ôø?
+    // View 2 & 3: Show only user selected items with FFI persistence ÔøΩ?
     const trackedItems = viewTrackedSeries.value[viewNumber] || []
 
     LogUtil.Info(`üîç Set View: Processing View ${viewNumber} selections`, {
@@ -6484,7 +6633,7 @@ const setView = (viewNumber: number) => {
       series.visible = activeTrackedItems.includes(series.name)
 
       if (wasVisible !== series.visible) {
-        LogUtil.Debug(`üëÅÔø?Set View: Series visibility changed`, {
+        LogUtil.Debug(`üëÅÔøΩ?Set View: Series visibility changed`, {
           seriesName: series.name,
           from: wasVisible,
           to: series.visible,
@@ -6495,7 +6644,7 @@ const setView = (viewNumber: number) => {
 
     const finalVisibleSeries = dataSeries.value.filter(s => s.visible)
 
-    LogUtil.Info(`Ôø?Set View: View ${viewNumber} applied successfully`, {
+    LogUtil.Info(`ÔøΩ?Set View: View ${viewNumber} applied successfully`, {
       viewNumber,
       selectionSource: ffiTrackedNames.length > 0 ? 'FFI_DATABASE' : 'LOCAL_MEMORY',
       ffiSelectionsCount: ffiSelections.length,
@@ -6566,7 +6715,7 @@ const setView = (viewNumber: number) => {
 // Item tracking functions for View 2 & 3 - üêõ FIXED: Made async to prevent race conditions
 const toggleItemTracking = async (seriesName: string) => {
   if (isSavingSelections.value) {
-    LogUtil.Info(`Ôø?Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
+    LogUtil.Info(`ÔøΩ?Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
     return
   }
 
@@ -6606,7 +6755,7 @@ const toggleItemTracking = async (seriesName: string) => {
 
     afterTracked = viewTrackedSeries.value[currentView.value]
 
-    LogUtil.Info(`Ôø?Toggle Item Tracking: Updated tracking state`, {
+    LogUtil.Info(`ÔøΩ?Toggle Item Tracking: Updated tracking state`, {
       seriesName,
       currentView: currentView.value,
       action: wasTracked ? 'removed' : 'added',
@@ -6624,7 +6773,7 @@ const toggleItemTracking = async (seriesName: string) => {
 
     await saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
 
-    LogUtil.Info(`Ôø?Toggle Item Tracking: Database save completed`, {
+    LogUtil.Info(`ÔøΩ?Toggle Item Tracking: Database save completed`, {
       seriesName,
       currentView: currentView.value,
       dbSaveSuccessful: true
@@ -6634,7 +6783,7 @@ const toggleItemTracking = async (seriesName: string) => {
     setView(currentView.value)
 
   } catch (error) {
-    LogUtil.Error(`Ôø?Toggle Item Tracking: Database save failed`, {
+    LogUtil.Error(`ÔøΩ?Toggle Item Tracking: Database save failed`, {
       seriesName,
       currentView: currentView.value,
       error: error.message,
@@ -6662,7 +6811,7 @@ const clearAllTracking = async () => {
 
   const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
-  LogUtil.Info(`üóëÔø?Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
+  LogUtil.Info(`üóëÔøΩ?Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
     currentView: currentView.value,
     beforeCount,
     action: 'CLEAR_ALL',
@@ -6675,20 +6824,20 @@ const clearAllTracking = async () => {
     viewTrackedSeries.value[currentView.value] = []
 
     await saveViewTracking(currentView.value, [])
-    LogUtil.Info(`Ôø?Clear All Tracking: Database cleared successfully`, {
+    LogUtil.Info(`ÔøΩ?Clear All Tracking: Database cleared successfully`, {
       currentView: currentView.value,
       dbClearSuccessful: true
     })
 
     setView(currentView.value)
 
-    LogUtil.Info(`Ôø?Clear All Tracking: All selections cleared`, {
+    LogUtil.Info(`ÔøΩ?Clear All Tracking: All selections cleared`, {
       currentView: currentView.value,
       clearedCount: beforeCount,
       finalState: []
     })
   } catch (error) {
-    LogUtil.Error(`Ôø?Clear All Tracking: Database clear failed`, {
+    LogUtil.Error(`ÔøΩ?Clear All Tracking: Database clear failed`, {
       currentView: currentView.value,
       error: error.message
     })
@@ -6721,20 +6870,20 @@ const selectAllItems = async () => {
     viewTrackedSeries.value[currentView.value] = [...allSeriesNames]
 
     await saveViewTracking(currentView.value, allSeriesNames)
-    LogUtil.Info(`Ôø?Select All Items: Database save successful`, {
+    LogUtil.Info(`ÔøΩ?Select All Items: Database save successful`, {
       currentView: currentView.value,
       dbSaveSuccessful: true
     })
 
     setView(currentView.value)
 
-    LogUtil.Info(`Ôø?Select All Items: All items selected`, {
+    LogUtil.Info(`ÔøΩ?Select All Items: All items selected`, {
       currentView: currentView.value,
       selectedCount: allSeriesNames.length,
       finalState: allSeriesNames
     })
   } catch (error) {
-    LogUtil.Error(`Ôø?Select All Items: Database save failed`, {
+    LogUtil.Error(`ÔøΩ?Select All Items: Database save failed`, {
       currentView: currentView.value,
       error: error.message
     })
@@ -6773,7 +6922,7 @@ const applyAndCloseDrawer = () => {
   saveViewTracking(currentView.value, viewTrackedSeries.value[currentView.value])
   setView(currentView.value)
 
-  LogUtil.Info(`Ôø?Apply Selection: View ${currentView.value} changes applied successfully`, {
+  LogUtil.Info(`ÔøΩ?Apply Selection: View ${currentView.value} changes applied successfully`, {
     finalSelectedCount: selectedItems.length
   })
 }
@@ -6998,7 +7147,7 @@ const removeFromTracking = async (seriesName: string, event?: Event) => {
   const currentTracked = viewTrackedSeries.value[currentView.value] || []
   const wasTracked = currentTracked.includes(seriesName)
 
-  LogUtil.Info(`üóëÔø?Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
+  LogUtil.Info(`üóëÔøΩ?Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
     seriesName,
     currentView: currentView.value,
     wasTracked,
@@ -7013,7 +7162,7 @@ const removeFromTracking = async (seriesName: string, event?: Event) => {
     viewTrackedSeries.value[currentView.value] = currentTracked.filter(name => name !== seriesName)
     const afterTracked = viewTrackedSeries.value[currentView.value]
 
-    LogUtil.Info(`Ôø?Remove From Tracking: Item removed successfully`, {
+    LogUtil.Info(`ÔøΩ?Remove From Tracking: Item removed successfully`, {
       seriesName,
       currentView: currentView.value,
       afterCount: afterTracked.length,
@@ -7027,7 +7176,7 @@ const removeFromTracking = async (seriesName: string, event?: Event) => {
       // Apply visibility after save
       setView(currentView.value)
     } catch (error) {
-      LogUtil.Error(`Ôø?Remove From Tracking: Failed to save changes`, {
+      LogUtil.Error(`ÔøΩ?Remove From Tracking: Failed to save changes`, {
         seriesName,
         currentView: currentView.value,
         error: error.message
@@ -7057,7 +7206,7 @@ const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => 
       await saveFFIViewSelections(viewNumber)
 
       const saveTime = Date.now() - saveStartTime
-      LogUtil.Info(`Ôø?Save View Tracking: View ${viewNumber} selections saved successfully`, {
+      LogUtil.Info(`ÔøΩ?Save View Tracking: View ${viewNumber} selections saved successfully`, {
         viewNumber,
         trackedSeries,
         count: trackedSeries.length,
@@ -7074,7 +7223,7 @@ const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => 
     }
   } catch (error) {
     const saveTime = Date.now() - saveStartTime
-    LogUtil.Error(`Ôø?Save View Tracking: Failed to save view ${viewNumber} tracking`, {
+    LogUtil.Error(`ÔøΩ?Save View Tracking: Failed to save view ${viewNumber} tracking`, {
       viewNumber,
       trackedSeries,
       error: error.message,
@@ -7091,7 +7240,7 @@ const loadViewTracking = async () => {
     // This function is kept for compatibility but the real loading happens in FFI init
     LogUtil.Info('üìã View tracking loaded via FFI integration during initialization')
   } catch (error) {
-    LogUtil.Error('Ôø?Failed to load view tracking:', error)
+    LogUtil.Error('ÔøΩ?Failed to load view tracking:', error)
   }
 }
 
@@ -7447,7 +7596,7 @@ const startRealTimeUpdates = () => {
   }
 
   // Track when timer starts
-  LogUtil.Info(`Ôø?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
+  LogUtil.Info(`ÔøΩ?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
 
   realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
 }
@@ -7604,7 +7753,7 @@ const getPanelIdFromQuery = (): number | null => {
       return !isNaN(panelId) ? panelId : null
     }
   } catch (error) {
-    LogUtil.Warn('Ôø?getPanelIdFromQuery: Failed to parse panel_id from route', {
+    LogUtil.Warn('ÔøΩ?getPanelIdFromQuery: Failed to parse panel_id from route', {
       error,
       queryPanelId: route.query.panel_id
     })
@@ -8095,7 +8244,7 @@ const initializeWithCompleteFFI = async () => {
   // console.log('üî• FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
   if (!sn || trendlog_id === null || trendlog_id === undefined) {
-    LogUtil.Warn('Ôø?FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
+    LogUtil.Warn('ÔøΩ?FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
     console.log('üî• FFI DEBUG: Early return due to missing parameters')
     return
   }
@@ -8131,7 +8280,7 @@ const initializeWithCompleteFFI = async () => {
       ffiSyncStatus.value.completed = true
       ffiSyncStatus.value.lastSync = new Date().toISOString()
 
-      LogUtil.Info('Ôø?FFI: Complete TrendLog initialization successful', {
+      LogUtil.Info('ÔøΩ?FFI: Complete TrendLog initialization successful', {
         initial_info: completeResult.initial?.trendlog_info,
         ffi_info: completeResult.ffi?.trendlog_info,
         num_points: ffiTrendlogInfo.value?.related_points?.length || 0
@@ -8147,7 +8296,7 @@ const initializeWithCompleteFFI = async () => {
     }
 
   } catch (error) {
-    LogUtil.Error('Ôø?FFI: Sync failed', error)
+    LogUtil.Error('ÔøΩ?FFI: Sync failed', error)
     ffiSyncStatus.value.error = error.message
 
     // Continue with existing logic as fallback
@@ -8222,7 +8371,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
             )
 
             if (matchingSeries) {
-              LogUtil.Debug(`Ôø?FFI Load: Found matching series by type/index`, {
+              LogUtil.Debug(`ÔøΩ?FFI Load: Found matching series by type/index`, {
                 selection,
                 matchedSeries: {
                   name: matchingSeries.name,
@@ -8259,7 +8408,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
 
         viewTrackedSeries.value[viewNum] = trackedNames
 
-        LogUtil.Info(`Ôø?FFI Load API: View ${viewNum} selections processed successfully`, {
+        LogUtil.Info(`ÔøΩ?FFI Load API: View ${viewNum} selections processed successfully`, {
           totalSelections: selections.length,
           selectedCount: selections.filter(s => s.is_selected).length,
           mappedNamesCount: trackedNames.length,
@@ -8282,7 +8431,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
     }
 
     const totalLoadTime = Date.now() - loadStartTime
-    LogUtil.Info(`Ôø?FFI Load API: Completed loading all view selections`, {
+    LogUtil.Info(`ÔøΩ?FFI Load API: Completed loading all view selections`, {
       totalTime: `${totalLoadTime}ms`,
       viewsProcessed: [2, 3],
       finalState: {
@@ -8307,7 +8456,7 @@ const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, 
 
   } catch (error) {
     const totalLoadTime = Date.now() - loadStartTime
-    LogUtil.Error(`Ôø?FFI Load API: Failed to load view selections`, {
+    LogUtil.Error(`ÔøΩ?FFI Load API: Failed to load view selections`, {
       error: error.message,
       errorType: error.constructor.name,
       totalTime: `${totalLoadTime}ms`,
@@ -8467,7 +8616,7 @@ const saveFFIViewSelections = async (viewNumber: number) => {
 
     if (success) {
       viewSelections.value.set(viewNumber, selections)
-      LogUtil.Info(`Ôø?FFI Save API: View ${viewNumber} selections saved successfully`, {
+      LogUtil.Info(`ÔøΩ?FFI Save API: View ${viewNumber} selections saved successfully`, {
         count: selections.length,
         responseTime: `${responseTime}ms`,
         savedSelections: selections.map(s => ({
@@ -8483,7 +8632,7 @@ const saveFFIViewSelections = async (viewNumber: number) => {
     }
   } catch (error) {
     const responseTime = Date.now() - startTime
-    LogUtil.Error(`Ôø?FFI Save API: Failed to save View ${viewNumber} selections`, {
+    LogUtil.Error(`ÔøΩ?FFI Save API: Failed to save View ${viewNumber} selections`, {
       error: error.message,
       errorType: error.constructor.name,
       responseTime: `${responseTime}ms`,
@@ -9222,11 +9371,15 @@ onMounted(async () => {
       timestamp: new Date().toISOString()
     })
 
+    // üÜï CONTINUOUS MONITORING: Listen for page visibility changes to auto-backfill missing data
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    LogUtil.Info('ÔøΩ?TrendLogChart: Continuous monitoring enabled - will backfill data gaps on return')
+
     // üÜï DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
-    LogUtil.Info('üóÑÔø?TrendLogChart: Checking database partitions...')
+    LogUtil.Info('üóÑÔøΩ?TrendLogChart: Checking database partitions...')
     try {
       const partitionResult = await DatabaseConfigAPI.ensurePartitionsOnTrendlogOpen()
-      LogUtil.Info('Ôø?TrendLogChart: Partition check completed', {
+      LogUtil.Info('ÔøΩ?TrendLogChart: Partition check completed', {
         partitionsChecked: partitionResult.partitions_checked,
         partitionsCreated: partitionResult.partitions_created,
         dataMigratedMB: partitionResult.data_migrated_mb,
@@ -9254,7 +9407,7 @@ onMounted(async () => {
       // üÜï FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
       monitorConfig.value = monitorConfigData
 
-      LogUtil.Info('Ôø?TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
+      LogUtil.Info('ÔøΩ?TrendLogChart: Monitor config set, regenerating dataseries for consistency', {
         hasMonitorConfig: !!monitorConfig.value,
         monitorConfigPid: monitorConfig.value?.pid,
         inputItemsCount: monitorConfig.value?.inputItems?.length || 0
@@ -9268,7 +9421,7 @@ onMounted(async () => {
       const ffiInfo = await initializeWithCompleteFFI()
 
       if (ffiInfo) {
-        LogUtil.Info('Ôø?TrendLogChart: FFI integration completed', {
+        LogUtil.Info('ÔøΩ?TrendLogChart: FFI integration completed', {
           ffiInfo,
           hasViewSelections: viewSelections.value.size > 0
         })
@@ -9277,7 +9430,7 @@ onMounted(async () => {
       // Initialize data clients
       initializeDataClients()
 
-      LogUtil.Info('Ôø?TrendLogChart: Initialization completed successfully', {
+      LogUtil.Info('ÔøΩ?TrendLogChart: Initialization completed successfully', {
         finalDataSeriesCount: dataSeries.value.length,
         finalMonitorConfigReady: !!monitorConfig.value,
         finalPanelId: monitorConfig.value?.pid
@@ -9288,7 +9441,7 @@ onMounted(async () => {
       // hasConnectionError.value = true // Removed - keep loading instead
     }
   } catch (error) {
-    LogUtil.Error('Ôø?TrendLogChart: Initialization failed:', error)
+    LogUtil.Error('ÔøΩ?TrendLogChart: Initialization failed:', error)
     // Only show connection error for actual errors, not missing data during startup
     if (error.message && !error.message.includes('timeout')) {
       hasConnectionError.value = true
@@ -9850,6 +10003,10 @@ onUnmounted(() => {
   // ‚å®Ô∏è Cleanup keyboard navigation
   document.removeEventListener('keydown', handleKeydown)
   LogUtil.Info('‚å®Ô∏è Keyboard: Navigation system cleanup completed')
+
+  // ÔøΩ?Cleanup visibility change listener
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  LogUtil.Info('ÔøΩ?Continuous monitoring: Cleanup completed')
 
   // Cleanup FFI countdown timer
   if (ffiCountdownTimer) {
