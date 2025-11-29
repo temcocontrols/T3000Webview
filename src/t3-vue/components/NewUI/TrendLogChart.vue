@@ -2368,17 +2368,17 @@ const getRoundedIntervalSeconds = (intervalSec: number): number => {
 // Get x-axis tick configuration based on timebase
 const getXAxisTickConfig = (timeBase: string) => {
   const configs = {
-    '5m': { stepMinutes: 1, unit: 'minute' },     // Every 1 minute (6 ticks = 5 divisions)
-    '10m': { stepMinutes: 2, unit: 'minute' },    // Every 2 minutes (6 ticks = 5 divisions)
-    '30m': { stepMinutes: 5, unit: 'minute' },    // Every 5 minutes (7 ticks = 6 divisions)
-    '1h': { stepMinutes: 15, unit: 'minute' },    // Every 15 minutes (5 ticks = 4 divisions) - IMPROVED
-    '4h': { stepMinutes: 60, unit: 'minute' },    // Every 1 hour (5 ticks = 4 divisions) - IMPROVED
-    '12h': { stepMinutes: 120, unit: 'hour' },    // Every 2 hours (7 ticks = 6 divisions) - IMPROVED
-    '1d': { stepMinutes: 240, unit: 'hour' },     // Every 4 hours (7 ticks = 6 divisions) - IMPROVED
-    '4d': { stepMinutes: 960, unit: 'hour' }      // Every 16 hours (7 ticks = 6 divisions) - IMPROVED
+    '5m': { stepSize: 1, unit: 'minute' },     // Every 1 minute (6 ticks = 5 divisions)
+    '10m': { stepSize: 2, unit: 'minute' },    // Every 2 minutes (6 ticks = 5 divisions)
+    '30m': { stepSize: 5, unit: 'minute' },    // Every 5 minutes (7 ticks = 6 divisions)
+    '1h': { stepSize: 15, unit: 'minute' },    // Every 15 minutes (5 ticks = 4 divisions) - IMPROVED
+    '4h': { stepSize: 60, unit: 'minute' },    // Every 1 hour (5 ticks = 4 divisions) - IMPROVED
+    '12h': { stepSize: 2, unit: 'hour' },      // Every 2 hours (7 ticks = 6 divisions) - IMPROVED
+    '1d': { stepSize: 4, unit: 'hour' },       // Every 4 hours (7 ticks = 6 divisions) - IMPROVED
+    '4d': { stepSize: 16, unit: 'hour' }       // Every 16 hours (7 ticks = 6 divisions) - IMPROVED
   }
 
-  return configs[timeBase] || { stepMinutes: 15, unit: 'minute' }
+  return configs[timeBase] || { stepSize: 15, unit: 'minute' }
 }
 
 // Get proper display format based on time range
@@ -3105,12 +3105,15 @@ const getAnalogChartConfig = () => ({
           const data = scale.chart.data.datasets
           if (data.length === 0) return
 
-          // Get all data values
+          // Get all data values, filtering out invalid sentinel values
           const allValues: number[] = []
           data.forEach((dataset: any) => {
             if (dataset.data && dataset.data.length > 0) {
               dataset.data.forEach((point: any) => {
-                if (point && typeof point.y === 'number') {
+                if (point && typeof point.y === 'number' &&
+                    isFinite(point.y) &&
+                    point.y > -99999 &&
+                    point.y < 999999) {
                   allValues.push(point.y)
                 }
               })
@@ -5114,7 +5117,7 @@ const populateDataSeriesWithHistoricalData = async (historicalData: any[]) => {
       })
 
       if (seriesHistoricalData.length > 0) {
-        // Convert to data points and sort by timestamp
+        // Convert to data points and sort by timestamp, filter out invalid sentinel values
         const dataPoints = seriesHistoricalData.map(item => ({
           timestamp: new Date(item.time).getTime(),
           value: parseFloat(item.value) || 0,
@@ -5122,7 +5125,11 @@ const populateDataSeriesWithHistoricalData = async (historicalData: any[]) => {
           type: item.point_type,
           digital_analog: item.digital_analog || 1,
           description: `Historical: ${item.point_id}`
-        })).sort((a, b) => a.timestamp - b.timestamp)
+        })).filter(point =>
+          isFinite(point.value) &&
+          point.value > -99999 &&
+          point.value < 999999
+        ).sort((a, b) => a.timestamp - b.timestamp)
 
         // 🆕 MERGE instead of replace - preserves real-time data not yet in database
         const existingDataCount = series.data?.length || 0
@@ -5457,6 +5464,17 @@ const updateChartWithNewData = (validDataItems: any[]) => {
     const rawValue = actualValue || 0
     const scaledValue = scaleValueIfNeeded(rawValue)
 
+    // Filter out invalid sentinel values (HVAC offline/error indicators)
+    if (!isFinite(scaledValue) || scaledValue <= -99999 || scaledValue >= 999999) {
+      LogUtil.Debug(`⚠️ Skipping invalid data point for ${series.name}`, {
+        rawValue,
+        scaledValue,
+        seriesName: series.name,
+        reason: 'Value outside valid range (-99999 to 999999)'
+      })
+      return // Skip this data point
+    }
+
     // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
     if (rawValue >= 1000) {
       LogUtil.Info(`🔍 Value Scaling Analysis for ${series.name}`, {
@@ -5749,7 +5767,13 @@ const processAndPrependGapData = (gapData: any[]) => {
           digital_analog: item.digital_analog,
           description: item.description || ''
         }
-      }).filter(point => !isNaN(point.timestamp) && !isNaN(point.value))
+      }).filter(point =>
+        !isNaN(point.timestamp) &&
+        !isNaN(point.value) &&
+        isFinite(point.value) &&
+        point.value > -99999 &&
+        point.value < 999999
+      )
         .sort((a, b) => a.timestamp - b.timestamp) // Ensure chronological order
 
       // Prepend gap data to existing data (gap data comes before existing data)
@@ -6207,7 +6231,7 @@ const updateAnalogChart = async () => {
         customStartDate.value.toDate(),
         customEndDate.value.toDate()
       )
-      tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+      tickConfig = { unit: customConfig.unit, stepSize: customConfig.stepSize }
       displayFormat = customConfig.displayFormat
       maxTicks = customConfig.maxTicks
     } else {
@@ -6222,7 +6246,7 @@ const updateAnalogChart = async () => {
 
     xScale.time = {
       unit: tickConfig.unit,
-      stepSize: tickConfig.stepMinutes,
+      stepSize: tickConfig.stepSize,
       displayFormats: {
         minute: displayFormat,
         hour: displayFormat,
@@ -6333,7 +6357,7 @@ const updateDigitalCharts = async () => {
           customStartDate.value.toDate(),
           customEndDate.value.toDate()
         )
-        tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+        tickConfig = { unit: customConfig.unit, stepSize: customConfig.stepSize }
         displayFormat = customConfig.displayFormat
         maxTicks = customConfig.maxTicks
       } else {
@@ -6348,7 +6372,7 @@ const updateDigitalCharts = async () => {
 
       xScale.time = {
         unit: tickConfig.unit,
-        stepSize: tickConfig.stepMinutes,
+        stepSize: tickConfig.stepSize,
         displayFormats: {
           minute: displayFormat,
           hour: displayFormat,
