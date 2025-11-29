@@ -128,5 +128,4 @@ cd api && cargo check
 ---
 
 **Rollback Date**: January 25, 2025
-**Approved By**: GitHub Copilot
 **Status**: Ready for Execution

@@ -444,9 +444,3 @@ bool CImageTreeCtrl::ProjectPointView(HTREEITEM hItem) {
 
 ### Priority
 **MEDIUM-HIGH** - This is a major feature in C++ T3000 that power users rely on for system configuration and capacity planning.
-
----
-
-*Analysis Date: November 11, 2025*
-*Analyst: GitHub Copilot*
-*Version: 1.0*
