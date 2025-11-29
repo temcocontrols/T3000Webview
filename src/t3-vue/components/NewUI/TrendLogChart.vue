@@ -6122,13 +6122,6 @@ const updateCharts = () => {
     visibleDigitalCount: visibleDigitalSeries.value.length
   })
 
-  // Debounce: If another update is pending, skip this one to prevent race conditions
-  if (chartUpdatePending) {
-    LogUtil.Info('⏩ updateCharts: Update already in progress, skipping...')
-    return
-  }
-  chartUpdatePending = true
-
   // Ensure analog chart exists if we have visible analog series
   if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
     LogUtil.Info('🔄 updateCharts: Analog chart missing but we have visible series, recreating...')
@@ -6209,12 +6202,6 @@ const updateAnalogChart = async () => {
       pointStyle: 'circle' as const,
       spanGaps: false
     })
-  }
-
-  // Safety check: Ensure chart instance still exists (may be destroyed during rapid timebase changes)
-  if (!analogChartInstance) {
-    console.warn('⚠️ updateAnalogChart: Chart instance destroyed, skipping update')
-    return
   }
 
   // Batch update to minimize reflows
@@ -6360,7 +6347,7 @@ const updateDigitalCharts = async () => {
           customStartDate.value.toDate(),
           customEndDate.value.toDate()
         )
-        tickConfig = { unit: customConfig.unit, stepSize: customConfig.stepSize }
+        tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
         displayFormat = customConfig.displayFormat
         maxTicks = customConfig.maxTicks
       } else {
@@ -6375,7 +6362,7 @@ const updateDigitalCharts = async () => {
 
       xScale.time = {
         unit: tickConfig.unit,
-        stepSize: tickConfig.stepSize,
+        stepSize: tickConfig.stepMinutes,
         displayFormats: {
           minute: displayFormat,
           hour: displayFormat,
@@ -6404,12 +6391,7 @@ const updateDigitalCharts = async () => {
       xScale.max = timeWindow.max
     }
 
-    // Safety check: Ensure chart still exists and canvas is in DOM before updating
-    if (chart && chart.canvas && chart.canvas.isConnected) {
-      chart.update('none')
-    } else {
-      console.warn('⚠️ updateDigitalCharts: Chart or canvas no longer in DOM, skipping update')
-    }
+    chart.update('none')
   } // End of for loop
 }
 
@@ -9713,16 +9695,15 @@ const convertSecondsToCustom = (secs: number) => {
 // Convert custom value to seconds
 const convertToSeconds = (): number => {
   const presetValues: Record<string, number> = {
-    // '5min': 300,   // Commented out
-    // '10min': 600,  // Commented out
+    '5min': 300,
+    '10min': 600,
     '15min': 900,
     '20min': 1200,
-    '30min': 1800,
-    '60min': 3600
+    '25min': 1500
   }
 
   if (ffiSyncConfig.value.interval_preset !== 'custom') {
-    return presetValues[ffiSyncConfig.value.interval_preset] || 900  // Default to 15 min
+    return presetValues[ffiSyncConfig.value.interval_preset] || 300
   }
 
   // Custom interval: always in minutes
