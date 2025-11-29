@@ -103,17 +103,45 @@ const useStyles = makeStyles({
   },
   section: {
     marginBottom: '24px',
+    fontSize: '12px',
+    '& label': {
+      fontSize: '12px',
+    },
   },
   sectionTitle: {
-    fontSize: tokens.fontSizeBase300,
+    fontSize: '13px',
     fontWeight: tokens.fontWeightSemibold,
-    marginBottom: '16px',
+    marginBottom: '12px',
+    paddingLeft: '8px',
+    borderLeft: `3px solid ${tokens.colorBrandForeground1}`,
     color: tokens.colorNeutralForeground1,
+    lineHeight: '1',
+    display: 'flex',
+    alignItems: 'center',
   },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '16px',
+    fontSize: '12px',
+    '& label': {
+      fontSize: '12px',
+    },
+    '& input': {
+      fontSize: '12px',
+    },
+    '& select': {
+      fontSize: '12px',
+    },
+    '& button[role="combobox"]': {
+      fontSize: '12px',
+    },
+    '& [role="option"]': {
+      fontSize: '12px',
+    },
+    '& .fui-Option': {
+      fontSize: '12px',
+    },
   },
   formRow: {
     display: 'flex',
@@ -149,6 +177,24 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '8px',
     fontSize: '12px',
+  },
+  saveButton: {
+    border: 'none !important',
+    outline: 'none',
+    fontSize: '12px',
+    fontWeight: 'normal',
+    color: '#ffffff',
+    backgroundColor: tokens.colorBrandForeground1,
+    ':hover': {
+      backgroundColor: tokens.colorBrandForeground2,
+      border: 'none !important',
+    },
+    ':active': {
+      border: 'none !important',
+    },
+    ':focus': {
+      border: 'none !important',
+    },
   },
   loadingContainer: {
     display: 'flex',
@@ -815,10 +861,10 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated}>
+              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveNetworkValidated} className={styles.saveButton}>
                 Save Network Settings
               </Button>
-              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveCommunication}>
+              <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveCommunication} className={styles.saveButton}>
                 Save Communication Settings
               </Button>
             </div>
@@ -911,7 +957,7 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveTime}>
+            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveTime} className={styles.saveButton}>
               Save Time Settings
             </Button>
           </>
@@ -983,7 +1029,7 @@ export const SettingsPage: React.FC = () => {
               )}
             </div>
 
-            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveDyndns}>
+            <Button appearance="primary" icon={<SaveRegular />} onClick={handleSaveDyndns} className={styles.saveButton}>
               Save DynDNS Settings
             </Button>
           </>
@@ -992,24 +1038,24 @@ export const SettingsPage: React.FC = () => {
       case 'email':
         return (
           <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '16px', color: '#0078d4' }} />
-            <Text>Email alarm configuration is managed through the Email Alarms page.</Text>
+            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
+            <Text style={{ fontSize: '12px' }}>Email alarm configuration is managed through the Email Alarms page.</Text>
           </div>
         );
 
       case 'users':
         return (
           <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '16px', color: '#0078d4' }} />
-            <Text>User login configuration is managed through the Users page.</Text>
+            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
+            <Text style={{ fontSize: '12px' }}>User login configuration is managed through the Users page.</Text>
           </div>
         );
 
       case 'expansion':
         return (
           <div className={styles.infoMessage}>
-            <InfoRegular style={{ fontSize: '16px', color: '#0078d4' }} />
-            <Text>Expansion I/O devices are managed through the dedicated Expansion IO page.</Text>
+            <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
+            <Text style={{ fontSize: '12px' }}>Expansion I/O devices are managed through the dedicated Expansion IO page.</Text>
           </div>
         );
 

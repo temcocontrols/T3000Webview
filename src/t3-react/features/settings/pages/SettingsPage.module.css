@@ -29,3 +29,16 @@
 :global([role="tab"] span) {
   font-size: 12px !important;
 }
+
+/* Override Fluent UI Dropdown/Option font sizes */
+:global(.fui-Option) {
+  font-size: 12px !important;
+}
+
+:global([role="option"]) {
+  font-size: 12px !important;
+}
+
+:global(.fui-Listbox) :global([role="option"]) {
+  font-size: 12px !important;
+}
