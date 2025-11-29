@@ -99,6 +99,40 @@
   color: #201f1e;
 }
 
+/* Message styles matching Settings page */
+.errorMessage {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #fef6f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.successMessage {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #f0f9ff;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.infoMessage {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
 .toolbarButton:disabled {
   color: #a19f9d;
   cursor: default;

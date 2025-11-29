@@ -51,6 +51,7 @@ import {
   WarningRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import cssStyles from './SettingsPage.module.css';
 
 const useStyles = makeStyles({
   container: {
@@ -60,7 +61,7 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
   },
   header: {
-    padding: '16px 24px',
+    padding: '4px 12px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     alignItems: 'center',
@@ -69,8 +70,8 @@ const useStyles = makeStyles({
   },
   headerLeft: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
+    alignItems: 'baseline',
+    gap: '8px',
   },
   headerActions: {
     display: 'flex',
@@ -83,21 +84,28 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   tabList: {
-    padding: '0 24px',
+    padding: '0',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    fontSize: '5px',
+    '& button': {
+      fontSize: '5px',
+    },
+    '& .fui-Tab': {
+      fontSize: '5px',
+    },
   },
   tabContent: {
     flex: 1,
-    padding: '24px',
+    padding: '8px 0 8px 12px',
     overflow: 'auto',
     backgroundColor: tokens.colorNeutralBackground1,
   },
   section: {
-    marginBottom: '32px',
+    marginBottom: '24px',
   },
   sectionTitle: {
-    fontSize: tokens.fontSizeBase400,
+    fontSize: tokens.fontSizeBase300,
     fontWeight: tokens.fontWeightSemibold,
     marginBottom: '16px',
     color: tokens.colorNeutralForeground1,
@@ -113,31 +121,34 @@ const useStyles = makeStyles({
     marginBottom: '16px',
   },
   errorMessage: {
-    marginBottom: '16px',
-    padding: '12px',
+    marginBottom: '12px',
+    padding: '8px 12px',
     backgroundColor: '#fef6f6',
     borderRadius: '4px',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    fontSize: '12px',
   },
   successMessage: {
-    marginBottom: '16px',
-    padding: '12px',
+    marginBottom: '12px',
+    padding: '8px 12px',
     backgroundColor: '#f0f9ff',
     borderRadius: '4px',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    fontSize: '12px',
   },
   infoMessage: {
-    marginBottom: '16px',
-    padding: '12px',
+    marginBottom: '12px',
+    padding: '8px 12px',
     backgroundColor: '#f9f9f9',
     borderRadius: '4px',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    fontSize: '12px',
   },
   loadingContainer: {
     display: 'flex',
@@ -149,6 +160,10 @@ const useStyles = makeStyles({
   noDevice: {
     textAlign: 'center',
     padding: '48px',
+  },
+  tab: {
+    fontSize: '10px',
+    padding: '8px 12px',
   },
 });
 
@@ -227,7 +242,7 @@ interface FeatureFlags {
 
 export const SettingsPage: React.FC = () => {
   const styles = useStyles();
-  const { selectedDevice } = useDeviceTreeStore();
+  const { selectedDevice, devices, selectDevice } = useDeviceTreeStore();
 
   const [selectedTab, setSelectedTab] = useState<TabValue>('basic');
   const [loading, setLoading] = useState(false);
@@ -245,6 +260,13 @@ export const SettingsPage: React.FC = () => {
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({});
+
+  // Auto-select first device if none is selected
+  useEffect(() => {
+    if (!selectedDevice && devices.length > 0) {
+      selectDevice(devices[0]);
+    }
+  }, [selectedDevice, devices, selectDevice]);
 
   // Fetch settings based on selected tab
   const fetchSettings = useCallback(async () => {
@@ -1001,12 +1023,12 @@ export const SettingsPage: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <SettingsRegular style={{ fontSize: '20px' }} />
-          <Text size={500} weight="semibold">
+          <SettingsRegular style={{ fontSize: '16px' }} />
+          <Text size={400} weight="semibold">
             Device Settings
           </Text>
           {selectedDevice && (
-            <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
               {selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})
             </Text>
           )}
@@ -1017,6 +1039,7 @@ export const SettingsPage: React.FC = () => {
             icon={<ArrowResetRegular />}
             onClick={() => setShowResetDialog(true)}
             disabled={loading || !selectedDevice}
+            style={{ fontWeight: 'normal', fontSize: '12px' }}
           >
             Reset to Defaults
           </Button>
@@ -1025,6 +1048,7 @@ export const SettingsPage: React.FC = () => {
             icon={<PowerRegular />}
             onClick={() => setShowRebootDialog(true)}
             disabled={loading || !selectedDevice}
+            style={{ fontWeight: 'normal', fontSize: '12px' }}
           >
             Reboot Device
           </Button>
@@ -1033,6 +1057,7 @@ export const SettingsPage: React.FC = () => {
             icon={<ArrowSyncRegular />}
             onClick={handleRefresh}
             disabled={loading}
+            style={{ fontWeight: 'normal', fontSize: '12px' }}
           >
             Refresh
           </Button>
@@ -1042,14 +1067,14 @@ export const SettingsPage: React.FC = () => {
       {/* Tab Container */}
       <div className={styles.tabContainer}>
         {/* Tab List */}
-        <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={styles.tabList}>
-          <Tab value="basic">Basic Information</Tab>
-          <Tab value="communication">Communication</Tab>
-          <Tab value="time">Time</Tab>
-          <Tab value="dyndns">Dyndns</Tab>
-          <Tab value="email">Email</Tab>
-          <Tab value="users">User Login</Tab>
-          <Tab value="expansion">Expansion IO</Tab>
+        <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={`${styles.tabList} ${cssStyles.customTabList}`} style={{ fontSize: '5px' }}>
+          <Tab value="basic" style={{ fontSize: '5px' }}>Basic Information</Tab>
+          <Tab value="communication" style={{ fontSize: '5px' }}>Communication</Tab>
+          <Tab value="time" style={{ fontSize: '5px' }}>Time</Tab>
+          <Tab value="dyndns" style={{ fontSize: '5px' }}>Dyndns</Tab>
+          <Tab value="email" style={{ fontSize: '5px' }}>Email</Tab>
+          <Tab value="users" style={{ fontSize: '5px' }}>User Login</Tab>
+          <Tab value="expansion" style={{ fontSize: '5px' }}>Expansion IO</Tab>
         </TabList>
 
         {/* Tab Content */}
@@ -1057,16 +1082,16 @@ export const SettingsPage: React.FC = () => {
           {/* Error Message */}
           {error && (
             <div className={styles.errorMessage}>
-              <ErrorCircleRegular style={{ fontSize: '16px', color: '#d13438' }} />
-              <Text style={{ color: '#d13438' }}>{error}</Text>
+              <ErrorCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />
+              <Text style={{ color: '#d13438', fontSize: '12px' }}>{error}</Text>
             </div>
           )}
 
           {/* Success Message */}
           {successMessage && (
             <div className={styles.successMessage}>
-              <InfoRegular style={{ fontSize: '16px', color: '#0078d4' }} />
-              <Text style={{ color: '#0078d4' }}>{successMessage}</Text>
+              <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
+              <Text style={{ color: '#0078d4', fontSize: '12px' }}>{successMessage}</Text>
             </div>
           )}
 

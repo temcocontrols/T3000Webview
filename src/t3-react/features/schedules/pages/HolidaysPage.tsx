@@ -474,9 +474,9 @@ export const HolidaysPage: React.FC = () => {
                 ERROR MESSAGE (if any)
                 ======================================== */}
             {error && (
-              <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+              <div className={styles.errorMessage}>
+                <ErrorCircleRegular style={{ color: '#d13438', fontSize: '14px', flexShrink: 0 }} />
+                <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '12px' }}>
                   {error}
                 </Text>
               </div>
