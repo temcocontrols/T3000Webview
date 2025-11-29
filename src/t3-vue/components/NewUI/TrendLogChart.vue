@@ -544,11 +544,12 @@
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 0px;">
               <a-radio-group v-model:value="ffiSyncConfig.interval_preset" size="small"
                 @change="onFfiIntervalPresetChange" style="display: flex; flex-wrap: wrap; gap: 4px;">
-                <a-radio value="5min">5 min</a-radio>
-                <a-radio value="10min">10 min</a-radio>
+                <!-- <a-radio value="5min">5 min</a-radio> -->
+                <!-- <a-radio value="10min">10 min</a-radio> -->
                 <a-radio value="15min">15 min</a-radio>
                 <a-radio value="20min">20 min</a-radio>
-                <!-- <a-radio value="25min">25 min</a-radio> -->
+                <a-radio value="30min">30 min</a-radio>
+                <a-radio value="60min">60 min</a-radio>
                 <a-radio value="custom">Custom</a-radio>
               </a-radio-group>
 
@@ -1464,7 +1465,7 @@ const databaseConfig = ref<DatabaseConfig>({
 
 // Sampling Interval Configuration
 interface FfiSyncConfig {
-  interval_preset: string // '5min', '10min', '15min', '20min', '25min', 'custom'
+  interval_preset: string // '15min', '20min', '30min', '60min', 'custom' (5min/10min commented out)
   custom_value: number
   custom_unit: 'minutes' // Only minutes supported
   interval_secs: number // Actual value in seconds
@@ -1473,10 +1474,10 @@ interface FfiSyncConfig {
 }
 
 const ffiSyncConfig = ref<FfiSyncConfig>({
-  interval_preset: '5min',
-  custom_value: 5,
+  interval_preset: '15min',
+  custom_value: 15,
   custom_unit: 'minutes',
-  interval_secs: 300, // Default: 5 minutes
+  interval_secs: 900, // Default: 15 minutes
   last_sync: null,
   next_sync_in: 0
 })
@@ -9685,15 +9686,16 @@ const convertSecondsToCustom = (secs: number) => {
 // Convert custom value to seconds
 const convertToSeconds = (): number => {
   const presetValues: Record<string, number> = {
-    '5min': 300,
-    '10min': 600,
+    // '5min': 300,   // Commented out
+    // '10min': 600,  // Commented out
     '15min': 900,
     '20min': 1200,
-    '25min': 1500
+    '30min': 1800,
+    '60min': 3600
   }
 
   if (ffiSyncConfig.value.interval_preset !== 'custom') {
-    return presetValues[ffiSyncConfig.value.interval_preset] || 300
+    return presetValues[ffiSyncConfig.value.interval_preset] || 900  // Default to 15 min
   }
 
   // Custom interval: always in minutes
