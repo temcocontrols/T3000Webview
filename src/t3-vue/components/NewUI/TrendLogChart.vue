@@ -10165,7 +10165,7 @@ onUnmounted(() => {
 .header-line-1 h7 {
   margin: 0;
   color: #262626;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   flex: 1;
   /* Allow title to take available space */
