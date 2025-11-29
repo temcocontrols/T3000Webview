@@ -6094,6 +6094,13 @@ const updateCharts = () => {
     visibleDigitalCount: visibleDigitalSeries.value.length
   })
 
+  // Debounce: If another update is pending, skip this one to prevent race conditions
+  if (chartUpdatePending) {
+    LogUtil.Info('⏩ updateCharts: Update already in progress, skipping...')
+    return
+  }
+  chartUpdatePending = true
+
   // Ensure analog chart exists if we have visible analog series
   if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
     LogUtil.Info('🔄 updateCharts: Analog chart missing but we have visible series, recreating...')
@@ -6174,6 +6181,12 @@ const updateAnalogChart = async () => {
       pointStyle: 'circle' as const,
       spanGaps: false
     })
+  }
+
+  // Safety check: Ensure chart instance still exists (may be destroyed during rapid timebase changes)
+  if (!analogChartInstance) {
+    console.warn('⚠️ updateAnalogChart: Chart instance destroyed, skipping update')
+    return
   }
 
   // Batch update to minimize reflows
@@ -6363,7 +6376,12 @@ const updateDigitalCharts = async () => {
       xScale.max = timeWindow.max
     }
 
-    chart.update('none')
+    // Safety check: Ensure chart still exists and canvas is in DOM before updating
+    if (chart && chart.canvas && chart.canvas.isConnected) {
+      chart.update('none')
+    } else {
+      console.warn('⚠️ updateDigitalCharts: Chart or canvas no longer in DOM, skipping update')
+    }
   } // End of for loop
 }
 
