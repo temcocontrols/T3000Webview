@@ -5690,10 +5690,11 @@
           const pointTypeString = mapPointTypeFromNumber(series.pointType)
           const pointId = generateDeviceId(series.pointType, series.pointNumber)
 
+          // FIX: Frontend uses 0-based pointNumber, but database expects 1-based PointIndex
           specificPoints.push({
             point_id: pointId,
             point_type: pointTypeString,
-            point_index: series.pointNumber,
+            point_index: series.pointNumber + 1, // Convert 0-based to 1-based
             panel_id: currentPanelId
           })
         }
