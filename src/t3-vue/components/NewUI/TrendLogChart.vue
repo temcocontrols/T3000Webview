@@ -4867,10 +4867,12 @@
             const pointTypeString = mapPointTypeFromNumber(series.pointType)
             const pointId = generateDeviceId(series.pointType, series.pointNumber)
 
+            // FIX: Frontend uses 0-based pointNumber, but database expects 1-based PointIndex
+            // So IN1 in frontend (pointNumber=0) maps to PointIndex=1 in database
             specificPoints.push({
               point_id: pointId,
               point_type: pointTypeString,
-              point_index: series.pointNumber,
+              point_index: series.pointNumber + 1, // Convert 0-based to 1-based
               panel_id: currentPanelId
             })
           }
@@ -4888,10 +4890,12 @@
           const pointTypeString = mapPointTypeFromNumber(inputItem.point_type)
           const pointId = generateDeviceId(inputItem.point_type, inputItem.point_number)
 
+          // FIX: Frontend uses 0-based point_number, but database expects 1-based PointIndex
+          // So IN1 in frontend (point_number=0) maps to PointIndex=1 in database
           specificPoints.push({
             point_id: pointId,
             point_type: pointTypeString,
-            point_index: inputItem.point_number,
+            point_index: inputItem.point_number + 1, // Convert 0-based to 1-based
             panel_id: currentPanelId
           })
         })
@@ -9427,6 +9431,16 @@
   // Lifecycle
   onMounted(async () => {
     try {
+      // 🆕 FIX: Clear existing data on page refresh to force reload from database
+      const hasStaleData = dataSeries.value.length > 0 && dataSeries.value.some(s => s.data?.length > 0)
+      if (hasStaleData) {
+        LogUtil.Info('🔄 TrendLogChart: Clearing stale data from previous session on page refresh', {
+          existingSeriesCount: dataSeries.value.length,
+          existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
+        })
+        dataSeries.value = []
+      }
+
       LogUtil.Info('🚀 TrendLogChart: Starting component initialization', {
         hasProps: !!props,
         hasItemData: !!props.itemData,
