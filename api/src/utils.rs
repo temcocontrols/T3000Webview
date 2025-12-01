@@ -172,7 +172,23 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
             t3_enhanced_logging(&format!("   ✅ Removed existing file: {:?}", destination_db_path));
         }
 
-        // Remove all files with prefix "webview_t3_device_" in destination directory
+        // Remove WAL and SHM files for main database
+        let wal_path = destination_db_path.with_extension("db-wal");
+        let shm_path = destination_db_path.with_extension("db-shm");
+        if wal_path.exists() {
+            match fs::remove_file(&wal_path) {
+                Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed WAL file: {:?}", wal_path)),
+                Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove WAL: {}", e)),
+            }
+        }
+        if shm_path.exists() {
+            match fs::remove_file(&shm_path) {
+                Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed SHM file: {:?}", shm_path)),
+                Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove SHM: {}", e)),
+            }
+        }
+
+        // Remove all files with prefix "webview_t3_device_" in destination directory (partition files)
         if let Some(dest_dir) = destination_db_path.parent() {
             if dest_dir.exists() {
                 match fs::read_dir(dest_dir) {
@@ -183,7 +199,7 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
                                 if let Some(name_str) = filename.to_str() {
                                     if name_str.starts_with("webview_t3_device_") {
                                         match fs::remove_file(&path) {
-                                            Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed file with prefix: {:?}", path)),
+                                            Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed partition file: {:?}", path)),
                                             Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove {:?}: {}", path, e)),
                                         }
                                     }
