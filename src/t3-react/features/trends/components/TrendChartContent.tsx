@@ -57,36 +57,25 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 const useStyles = makeStyles({
   container: {
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'row',
     height: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
-    gap: '8px',
-    overflow: 'hidden',
-  },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '8px 12px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    flexWrap: 'wrap',
-    minHeight: '48px',
-  },
-  mainContent: {
-    flex: 1,
-    display: 'flex',
     gap: '12px',
     padding: '12px',
-    minHeight: 0,
     overflow: 'hidden',
   },
   leftPanel: {
-    flex: '0 0 200px',
+    flex: '0 0 220px',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
     minWidth: 0,
+  },
+  seriesPanelHeader: {
+    padding: '8px 12px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   seriesPanel: {
     flex: 1,
@@ -94,20 +83,24 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '6px',
     padding: '8px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: `0 0 ${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium}`,
     overflowY: 'auto',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderTop: 'none',
   },
   seriesItem: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '6px 8px',
-    backgroundColor: tokens.colorNeutralBackground1,
+    padding: '8px',
+    backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusSmall,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     fontSize: '12px',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground2Hover,
+    },
   },
   seriesItemContent: {
     flex: 1,
@@ -119,18 +112,21 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    fontWeight: tokens.fontWeightSemibold,
   },
   seriesItemUnit: {
     display: 'block',
     color: tokens.colorNeutralForeground3,
+    fontSize: '11px',
   },
   colorBox: {
-    width: '12px',
-    height: '12px',
-    borderRadius: '2px',
+    width: '14px',
+    height: '14px',
+    borderRadius: '3px',
     flexShrink: 0,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
-  chartContainer: {
+  chartViewerContainer: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -138,7 +134,32 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '12px',
+    overflow: 'hidden',
+  },
+  chartViewerHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+  },
+  chartTitle: {
+    padding: '12px 16px 8px 16px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    flexWrap: 'wrap',
+    minHeight: '48px',
+  },
+  chartContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    padding: '16px',
   },
   controlGroup: {
     display: 'flex',
@@ -614,227 +635,239 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   return (
     <div className={styles.container}>
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        {/* Time Base */}
-        <div className={styles.controlGroup}>
-          <Text size={200}>Time:</Text>
-          <Dropdown
-            value={timeBase}
-            onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
-            size="small"
-            style={{ minWidth: '120px' }}
-          >
-            <Option value="5m">5 minutes</Option>
-            <Option value="10m">10 minutes</Option>
-            <Option value="30m">30 minutes</Option>
-            <Option value="1h">1 hour</Option>
-            <Option value="4h">4 hours</Option>
-            <Option value="12h">12 hours</Option>
-            <Option value="1d">1 day</Option>
-            <Option value="4d">4 days</Option>
-          </Dropdown>
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Zoom Controls */}
-        <div className={styles.controlGroup}>
-          <ToolbarButton
-            icon={<ZoomOutRegular />}
-            onClick={zoomOut}
-            disabled={!canZoomOut}
-            title="Zoom Out (Longer timebase)"
-          >
-            Zoom Out
-          </ToolbarButton>
-          <ToolbarButton
-            icon={<ZoomInRegular />}
-            onClick={zoomIn}
-            disabled={!canZoomIn}
-            title="Zoom In (Shorter timebase)"
-          >
-            Zoom In
-          </ToolbarButton>
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Reset */}
-        <ToolbarButton
-          icon={<ArrowResetRegular />}
-          onClick={resetTimeBase}
-          title="Reset to default 5 minutes timebase"
-        >
-          Reset
-        </ToolbarButton>
-
-        <ToolbarDivider />
-
-        {/* View Buttons */}
-        <div className={styles.controlGroup}>
-          <Button
-            size="small"
-            appearance={currentView === 1 ? 'primary' : 'secondary'}
-            onClick={() => handleViewChange(1)}
-          >
-            View 1
-          </Button>
-          <Button
-            size="small"
-            appearance={currentView === 2 ? 'primary' : 'secondary'}
-            onClick={() => handleViewChange(2)}
-          >
-            View 2
-          </Button>
-          <Button
-            size="small"
-            appearance={currentView === 3 ? 'primary' : 'secondary'}
-            onClick={() => handleViewChange(3)}
-          >
-            View 3
-          </Button>
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Live Status with timestamp */}
-        {isRealtime && lastUpdate && (
-          <Badge appearance="filled" color="success" size="small">
-            ● Live-{lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g, '')}
-          </Badge>
-        )}
-        {!isRealtime && (
-          <Badge appearance="outline" color="informative" size="small">
-            Historical
-          </Badge>
-        )}
-
-        <ToolbarDivider />
-
-        {/* Keyboard Shortcut Toggle */}
-        <Button
-          size="small"
-          appearance={keyboardEnabled ? 'primary' : 'secondary'}
-          onClick={toggleKeyboard}
-          title={keyboardEnabled ? 'Keyboard shortcuts enabled' : 'Keyboard shortcuts disabled'}
-        >
-          ⌨️ {keyboardEnabled ? 'KB On' : 'KB Off'}
-        </Button>
-
-        <ToolbarDivider />
-
-        {/* Grid Toggle */}
-        <div className={styles.controlGroup}>
-          <Switch checked={showGrid} onChange={(_, data) => setShowGrid(data.checked)} />
-          <Text size={200}>Grid</Text>
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Config Button */}
-        <ToolbarButton
-          icon={<DatabaseRegular />}
-          onClick={() => console.log('Config - Not yet implemented')}
-          title="Trendlog Configuration"
-        >
-          Config
-        </ToolbarButton>
-
-        {/* Export Menu - Simplified as dropdown menu */}
-        <Menu>
-          <MenuTrigger disableButtonEnhancement>
-            <Button
-              size="small"
-              icon={<ArrowDownloadRegular />}
-              iconPosition="before"
-              disabled={series.length === 0}
-            >
-              Export <ChevronDownRegular style={{ fontSize: '12px', marginLeft: '2px' }} />
-            </Button>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              <MenuItem icon={<ImageRegular />} onClick={exportToPNG}>
-                Export as PNG
-              </MenuItem>
-              <MenuItem icon={<DocumentRegular />} onClick={exportToCSV}>
-                Export Data (CSV)
-              </MenuItem>
-              <MenuItem icon={<DocumentRegular />} onClick={exportToJSON}>
-                Export Data (JSON)
-              </MenuItem>
-            </MenuList>
-          </MenuPopover>
-        </Menu>
-
-        <ToolbarDivider />
-
-        {/* Live/Pause & Refresh Controls */}
-        <ToolbarButton
-          icon={isRealtime ? <PauseRegular /> : <PlayRegular />}
-          onClick={() => setIsRealtime(!isRealtime)}
-        >
-          {isRealtime ? 'Pause' : 'Live'}
-        </ToolbarButton>
-
-        <ToolbarButton
-          icon={<ArrowSyncRegular />}
-          onClick={loadHistoricalData}
-          disabled={loading}
-        >
-          Refresh
-        </ToolbarButton>
-
-        <div className={styles.spacer} />
-
-        {loading && <Spinner size="tiny" label="Loading..." />}
-      </div>
-
-      {/* Main Content Area */}
-      <div className={styles.mainContent}>
-        {/* Left Panel - Series List */}
-        <div className={styles.leftPanel}>
-          <Text size={300} weight="semibold" style={{ padding: '0 8px' }}>
+      {/* Left Panel - Series List */}
+      <div className={styles.leftPanel}>
+        <div className={styles.seriesPanelHeader}>
+          <Text size={300} weight="semibold">
             Data Series ({series.filter(s => s.visible !== false).length}/{series.length})
           </Text>
+        </div>
 
-          <div className={styles.seriesPanel}>
-            {series.map((s, index) => (
-              <div key={`${s.pointType}-${s.pointIndex}`} className={styles.seriesItem}>
-                <div className={styles.colorBox} style={{ backgroundColor: s.color }} />
-                <div className={styles.seriesItemContent}>
-                  <Text size={200} weight="semibold" className={styles.seriesItemName}>
-                    {s.name}
-                  </Text>
-                  <Text size={100} className={styles.seriesItemUnit}>
-                    {s.unit || 'N/A'}
-                  </Text>
-                </div>
-                <Switch
-                  checked={s.visible !== false}
-                  onChange={() => toggleSeriesVisibility(index)}
-                  aria-label={`Toggle ${s.name}`}
-                />
-              </div>
-            ))}
-
-            {series.length === 0 && (
-              <div className={styles.emptyState}>
-                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                  No data series configured
+        <div className={styles.seriesPanel}>
+          {series.map((s, index) => (
+            <div key={`${s.pointType}-${s.pointIndex}`} className={styles.seriesItem}>
+              <div className={styles.colorBox} style={{ backgroundColor: s.color }} />
+              <div className={styles.seriesItemContent}>
+                <Text size={200} className={styles.seriesItemName}>
+                  {s.name}
+                </Text>
+                <Text size={100} className={styles.seriesItemUnit}>
+                  {s.unit || 'N/A'}
                 </Text>
               </div>
+              <Switch
+                checked={s.visible !== false}
+                onChange={() => toggleSeriesVisibility(index)}
+                aria-label={`Toggle ${s.name}`}
+              />
+            </div>
+          ))}
+
+          {series.length === 0 && (
+            <div style={{ padding: '24px', textAlign: 'center' }}>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                No data series configured
+              </Text>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel - Trend Chart Viewer */}
+      <div className={styles.chartViewerContainer}>
+        {/* Chart Viewer Header */}
+        <div className={styles.chartViewerHeader}>
+          {/* Title */}
+          <div className={styles.chartTitle}>
+            <Text size={400} weight="semibold">
+              Trend Chart Viewer
+            </Text>
+          </div>
+
+          {/* Toolbar */}
+          <div className={styles.toolbar}>
+            {/* Time Base */}
+            <div className={styles.controlGroup}>
+              <Text size={200}>Time:</Text>
+              <Dropdown
+                value={timeBase}
+                onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
+                size="small"
+                style={{ minWidth: '120px' }}
+              >
+                <Option value="5m">5 minutes</Option>
+                <Option value="10m">10 minutes</Option>
+                <Option value="30m">30 minutes</Option>
+                <Option value="1h">1 hour</Option>
+                <Option value="4h">4 hours</Option>
+                <Option value="12h">12 hours</Option>
+                <Option value="1d">1 day</Option>
+                <Option value="4d">4 days</Option>
+              </Dropdown>
+            </div>
+
+            <ToolbarDivider />
+
+            {/* Zoom Controls */}
+            <div className={styles.controlGroup}>
+              <ToolbarButton
+                icon={<ZoomOutRegular />}
+                onClick={zoomOut}
+                disabled={!canZoomOut}
+                title="Zoom Out (Longer timebase)"
+              >
+                Zoom Out
+              </ToolbarButton>
+              <ToolbarButton
+                icon={<ZoomInRegular />}
+                onClick={zoomIn}
+                disabled={!canZoomIn}
+                title="Zoom In (Shorter timebase)"
+              >
+                Zoom In
+              </ToolbarButton>
+            </div>
+
+            <ToolbarDivider />
+
+            {/* Reset */}
+            <ToolbarButton
+              icon={<ArrowResetRegular />}
+              onClick={resetTimeBase}
+              title="Reset to default 5 minutes timebase"
+            >
+              Reset
+            </ToolbarButton>
+
+            <ToolbarDivider />
+
+            {/* View Buttons */}
+            <div className={styles.controlGroup}>
+              <Button
+                size="small"
+                appearance={currentView === 1 ? 'primary' : 'secondary'}
+                onClick={() => handleViewChange(1)}
+              >
+                View 1
+              </Button>
+              <Button
+                size="small"
+                appearance={currentView === 2 ? 'primary' : 'secondary'}
+                onClick={() => handleViewChange(2)}
+              >
+                View 2
+              </Button>
+              <Button
+                size="small"
+                appearance={currentView === 3 ? 'primary' : 'secondary'}
+                onClick={() => handleViewChange(3)}
+              >
+                View 3
+              </Button>
+            </div>
+
+            <ToolbarDivider />
+
+            {/* Live Status with timestamp */}
+            {isRealtime && lastUpdate && (
+              <Badge appearance="filled" color="success" size="small">
+                ● Live-{lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g, '')}
+              </Badge>
             )}
+            {!isRealtime && (
+              <Badge appearance="outline" color="informative" size="small">
+                Historical
+              </Badge>
+            )}
+
+            <ToolbarDivider />
+
+            {/* Keyboard Shortcut Toggle */}
+            <Button
+              size="small"
+              appearance={keyboardEnabled ? 'primary' : 'secondary'}
+              onClick={toggleKeyboard}
+              title={keyboardEnabled ? 'Keyboard shortcuts enabled' : 'Keyboard shortcuts disabled'}
+            >
+              ⌨️ {keyboardEnabled ? 'KB On' : 'KB Off'}
+            </Button>
+
+            <ToolbarDivider />
+
+            {/* Grid Toggle */}
+            <div className={styles.controlGroup}>
+              <Switch checked={showGrid} onChange={(_, data) => setShowGrid(data.checked)} />
+              <Text size={200}>Grid</Text>
+            </div>
+
+            <ToolbarDivider />
+
+            {/* Config Button */}
+            <ToolbarButton
+              icon={<DatabaseRegular />}
+              onClick={() => console.log('Config - Not yet implemented')}
+              title="Trendlog Configuration"
+            >
+              Config
+            </ToolbarButton>
+
+            {/* Export Menu */}
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button
+                  size="small"
+                  icon={<ArrowDownloadRegular />}
+                  iconPosition="before"
+                  disabled={series.length === 0}
+                >
+                  Export <ChevronDownRegular style={{ fontSize: '12px', marginLeft: '2px' }} />
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  <MenuItem icon={<ImageRegular />} onClick={exportToPNG}>
+                    Export as PNG
+                  </MenuItem>
+                  <MenuItem icon={<DocumentRegular />} onClick={exportToCSV}>
+                    Export Data (CSV)
+                  </MenuItem>
+                  <MenuItem icon={<DocumentRegular />} onClick={exportToJSON}>
+                    Export Data (JSON)
+                  </MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
+
+            <ToolbarDivider />
+
+            {/* Live/Pause & Refresh Controls */}
+            <ToolbarButton
+              icon={isRealtime ? <PauseRegular /> : <PlayRegular />}
+              onClick={() => setIsRealtime(!isRealtime)}
+            >
+              {isRealtime ? 'Pause' : 'Live'}
+            </ToolbarButton>
+
+            <ToolbarButton
+              icon={<ArrowSyncRegular />}
+              onClick={loadHistoricalData}
+              disabled={loading}
+            >
+              Refresh
+            </ToolbarButton>
+
+            <div className={styles.spacer} />
+
+            {loading && <Spinner size="tiny" label="Loading..." />}
           </div>
         </div>
 
-        {/* Right Panel - Chart */}
+        {/* Chart Container */}
         <div className={styles.chartContainer}>
           {series.length > 0 ? (
             <TrendChart series={series} timeBase={timeBase} showGrid={showGrid} />
           ) : (
-            <div className={styles.emptyStateCenter}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
               <Text size={500} weight="semibold">No Data Available</Text>
               <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
                 Please select a device and monitor configuration.
