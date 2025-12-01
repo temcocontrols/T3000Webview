@@ -291,25 +291,13 @@ export const TrendLogsPage: React.FC = () => {
 
   // Column definitions
   const columns: TableColumnDefinition<TrendLogData>[] = [
-    // Actions column - View Chart
-    createTableColumn<TrendLogData>({
-      columnId: 'actions',
-      renderHeaderCell: () => <span>Actions</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          <Button
-            size="small"
-            icon={<ChartMultipleRegular />}
-            onClick={() => handleViewChart(item)}
-            title="View trend chart for this trendlog"
-          >
-            View Chart
-          </Button>
-        </TableCellLayout>
-      ),
-    }),
     createTableColumn<TrendLogData>({
       columnId: 'trendlogId',
+      compare: (a, b) => {
+        const aVal = Number(a.trendlogId || a.trendlogIndex || 0);
+        const bVal = Number(b.trendlogId || b.trendlogIndex || 0);
+        return aVal - bVal;
+      },
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogId')}>
           <span>Trendlog ID</span>
@@ -349,6 +337,7 @@ export const TrendLogsPage: React.FC = () => {
     }),
     createTableColumn<TrendLogData>({
       columnId: 'trendlogLabel',
+      compare: (a, b) => (a.trendlogLabel || '').localeCompare(b.trendlogLabel || ''),
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogLabel')}>
           <span>Label</span>
@@ -382,6 +371,7 @@ export const TrendLogsPage: React.FC = () => {
           <Text size={200}>{item.bufferSize ?? '---'}</Text>
         </TableCellLayout>
       ),
+      compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
     }),
     createTableColumn<TrendLogData>({
       columnId: 'autoManual',
@@ -393,6 +383,7 @@ export const TrendLogsPage: React.FC = () => {
           </Badge>
         </TableCellLayout>
       ),
+      compare: (a, b) => (a.autoManual || '').localeCompare(b.autoManual || ''),
     }),
     createTableColumn<TrendLogData>({
       columnId: 'status',
@@ -402,6 +393,24 @@ export const TrendLogsPage: React.FC = () => {
           <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
             {item.status || 'OFF'}
           </Badge>
+        </TableCellLayout>
+      ),
+      compare: (a, b) => (a.status || '').localeCompare(b.status || ''),
+    }),
+    // Actions column - View Chart (moved to last)
+    createTableColumn<TrendLogData>({
+      columnId: 'actions',
+      renderHeaderCell: () => <span>Actions</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Button
+            size="small"
+            icon={<ChartMultipleRegular style={{ fontSize: '14px' }} />}
+            onClick={() => handleViewChart(item)}
+            title="View trend chart for this trendlog"
+          >
+            View Graphic
+          </Button>
         </TableCellLayout>
       ),
     }),
@@ -566,10 +575,42 @@ export const TrendLogsPage: React.FC = () => {
                         items={trendLogs}
                         columns={columns}
                         sortable
+                        resizableColumns
+                        selectionMode="single"
+                        columnSizingOptions={{
+                          trendlogId: {
+                            minWidth: 120,
+                            defaultWidth: 150,
+                          },
+                          trendlogLabel: {
+                            minWidth: 150,
+                            defaultWidth: 200,
+                          },
+                          intervalSeconds: {
+                            minWidth: 100,
+                            defaultWidth: 120,
+                          },
+                          bufferSize: {
+                            minWidth: 90,
+                            defaultWidth: 110,
+                          },
+                          autoManual: {
+                            minWidth: 100,
+                            defaultWidth: 130,
+                          },
+                          status: {
+                            minWidth: 70,
+                            defaultWidth: 80,
+                          },
+                          actions: {
+                            minWidth: 150,
+                            defaultWidth: 180,
+                          },
+                        }}
                         getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}`}
                       >
                         <DataGridHeader>
-                          <DataGridRow>
+                          <DataGridRow selectionCell={{ renderHeaderCell: () => <span>#</span> }}>
                             {({ renderHeaderCell }) => (
                               <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                             )}

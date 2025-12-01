@@ -358,6 +358,67 @@
   border: 1px solid #edebe9;
 }
 
+/* Column width constraints */
+.container :global([data-column-id="input"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="panel"]) {
+  width: 80px;
+  max-width: 80px;
+  min-width: 80px;
+}
+
+.container :global([data-column-id="autoManual"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="units"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="calibration"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="sign"]) {
+  width: 80px;
+  max-width: 80px;
+  min-width: 80px;
+}
+
+.container :global([data-column-id="filter"]) {
+  width: 80px;
+  max-width: 80px;
+  min-width: 80px;
+}
+
+.container :global([data-column-id="status"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="signalType"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="type"]) {
+  width: 90px;
+  max-width: 90px;
+  min-width: 90px;
+}
+
 /* Editable cell styles */
 .editableCell {
   cursor: text;

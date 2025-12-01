@@ -251,6 +251,7 @@
 /* Header row styling */
 .container :global(.fui-DataGridHeader) {
   background-color: #fafafa;
+  border-top: 1px solid #edebe9;
   border-bottom: 1px solid #edebe9;
   flex-shrink: 0;
   position: sticky;
@@ -284,6 +285,14 @@
 /* Header cell hover */
 .container :global(.fui-DataGridHeaderCell):hover {
   background-color: #edebe9;
+}
+
+/* Sort icon styling */
+.container :global(.fui-DataGridHeaderCell) svg {
+  width: 12px;
+  height: 12px;
+  color: #605e5c;
+  flex-shrink: 0;
 }
 
 /* Data row styling */
@@ -331,6 +340,37 @@
 /* Grid border wrapper */
 .container :global(.fui-DataGrid-root) {
   border: 1px solid #edebe9;
+}
+
+/* Column width constraints */
+.container :global([data-column-id="trendlogId"]) {
+  width: 90px;
+  max-width: 90px;
+  min-width: 90px;
+}
+
+.container :global([data-column-id="bufferSize"]) {
+  width: 110px;
+  max-width: 110px;
+  min-width: 110px;
+}
+
+.container :global([data-column-id="autoManual"]) {
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
+}
+
+.container :global([data-column-id="status"]) {
+  width: 80px;
+  max-width: 80px;
+  min-width: 80px;
+}
+
+.container :global([data-column-id="actions"]) {
+  width: 140px;
+  max-width: 140px;
+  min-width: 140px;
 }
 
 /* Refresh icon for each row - hidden by default, shown on hover */
@@ -399,20 +439,20 @@
 }
 
 .mainGrid {
-  flex: 0 0 80%;
+  flex: 0 0 70%;
   min-width: 0;
   overflow: auto;
 }
 
 .subGrid {
-  flex: 0 0 20%;
+  flex: 0 0 30%;
   border: 1px solid #edebe9;
   border-radius: 2px;
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  min-width: 180px;
-  max-width: 250px;
+  min-width: 200px;
+  max-width: 350px;
 }
 
 .subGridHeader {
