@@ -33,5 +33,5 @@ export { default as ArrayPage } from '../../features/controllers/pages/ArrayPage
 export { GraphicsPage } from '../../features/graphics/pages/GraphicsPage';
 
 // Discovery
-export { DiscoverPage } from '../../features/discover/pages/DiscoverPage';
+export { default as DiscoverPage } from '../../features/discover/pages/DiscoverPage';
 export { BuildingsPage } from '../../features/buildings/pages/BuildingsPage';
