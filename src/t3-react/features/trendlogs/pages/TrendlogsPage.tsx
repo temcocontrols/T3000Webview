@@ -29,10 +29,12 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ChartMultipleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
 import { API_BASE_URL } from '../../../config/constants';
+import { TrendChartDrawer } from '../../trends/components/TrendChartDrawer';
 import styles from './TrendLogsPage.module.css';
 
 interface TrendLogData {
@@ -60,6 +62,36 @@ export const TrendLogsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+
+  // Chart drawer state
+  const [chartDrawerOpen, setChartDrawerOpen] = useState(false);
+  const [chartParams, setChartParams] = useState<{
+    serialNumber?: number;
+    panelId?: number;
+    trendlogId?: string;
+    monitorId?: string;
+  }>({});
+
+  // Handle opening trend chart drawer
+  const handleViewChart = useCallback(
+    (trendlog: TrendLogData) => {
+      if (!selectedDevice) return;
+
+      console.log('📊 [TrendLogsPage] Opening chart drawer:', {
+        trendlog: trendlog.trendlogId,
+        monitor: trendlog.trendlogIndex,
+      });
+
+      setChartParams({
+        serialNumber: selectedDevice.serialNumber,
+        panelId: selectedDevice.panelId || 1,
+        trendlogId: trendlog.trendlogId || '0',
+        monitorId: trendlog.trendlogIndex || '0',
+      });
+      setChartDrawerOpen(true);
+    },
+    [selectedDevice]
+  );
 
   // Debug log to verify new component is loading
   useEffect(() => {
@@ -259,6 +291,23 @@ export const TrendLogsPage: React.FC = () => {
 
   // Column definitions
   const columns: TableColumnDefinition<TrendLogData>[] = [
+    // Actions column - View Chart
+    createTableColumn<TrendLogData>({
+      columnId: 'actions',
+      renderHeaderCell: () => <span>Actions</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Button
+            size="small"
+            icon={<ChartMultipleRegular />}
+            onClick={() => handleViewChart(item)}
+            title="View trend chart for this trendlog"
+          >
+            View Chart
+          </Button>
+        </TableCellLayout>
+      ),
+    }),
     createTableColumn<TrendLogData>({
       columnId: 'trendlogId',
       renderHeaderCell: () => (
@@ -579,6 +628,16 @@ export const TrendLogsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Trend Chart Drawer */}
+      <TrendChartDrawer
+        isOpen={chartDrawerOpen}
+        onClose={() => setChartDrawerOpen(false)}
+        serialNumber={chartParams.serialNumber}
+        panelId={chartParams.panelId}
+        trendlogId={chartParams.trendlogId}
+        monitorId={chartParams.monitorId}
+      />
     </div>
   );
 };
