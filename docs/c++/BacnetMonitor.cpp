@@ -1596,7 +1596,7 @@ void CBacnetMonitor::OnBnClickedBtnMonitorGraphicBeta()
 	{
 		h_create_webview_server_thread = CreateThread(NULL, NULL, CreateWebServerThreadfun, this, NULL, NULL);
 	}
-
+	enable_trendlog_background_read = true; //暂时性的 只有当客户点击了beta版本的 ，才开启后台读取，等稳定后移除此标志;
 	// Get monitor data for title formatting
 	const Str_monitor_point& monitor_data = m_monitor_data.at(monitor_list_line);
 
@@ -1608,7 +1608,7 @@ void CBacnetMonitor::OnBnClickedBtnMonitorGraphicBeta()
 	CString encodedJsonData = UrlEncodeJson(jsonData);
 
 	CString selseted_info;
-	selseted_info.Format(_T("http://localhost:3003/#/trend-log?sn=%d&panel_id=%d&trendlog_id=%d&all_data=%s&mode=beta"), Device_Basic_Setting.reg.n_serial_number,
+	selseted_info.Format(_T("http://localhost:9103/#/trend-log?sn=%d&panel_id=%d&trendlog_id=%d&all_data=%s&mode=beta"), Device_Basic_Setting.reg.n_serial_number,
 		Device_Basic_Setting.reg.panel_number, monitor_list_line, encodedJsonData.GetBuffer());
 
 	CString webviewFolder;
@@ -1659,13 +1659,13 @@ void CBacnetMonitor::OnBnClickedBtnMonitorGraphicBeta()
 	// Create comprehensive title with Beta designation
 	if (labelStr.IsEmpty())
 	{
-		titleString.Format(_T("Trend Log Beta MON%d - Panel: %d - Interval: %s - Status: %s"),
-			monitor_list_line + 1, Device_Basic_Setting.reg.panel_number, intervalStr, statusStr);
+		titleString.Format(_T("Trend Log Beta MON%d - SN: %d - Panel: %d - Interval: %s - Status: %s"),
+			monitor_list_line + 1, Device_Basic_Setting.reg.n_serial_number, Device_Basic_Setting.reg.panel_number, intervalStr, statusStr);
 	}
 	else
 	{
-		titleString.Format(_T("Trend Log Beta: %s (MON%d) - Panel: %d - Interval: %s - Status: %s"),
-			labelStr, monitor_list_line + 1, Device_Basic_Setting.reg.panel_number, intervalStr, statusStr);
+		titleString.Format(_T("Trend Log Beta: %s (MON%d) - SN: %d - Panel: %d - Interval: %s - Status: %s"),
+			labelStr, monitor_list_line + 1, Device_Basic_Setting.reg.n_serial_number, Device_Basic_Setting.reg.panel_number, intervalStr, statusStr);
 	}
 
 	wstring fullpath = webviewFolder;

@@ -72,7 +72,8 @@ enum WEBVIEW_MESSAGE_TYPE
 	BIND_DEVICE = 13,
 	SAVE_NEW_LIBRARY_DATA = 14,
 	LOGGING_DATA = 15,
-	UPDATE_WEBVIEW_LIST = 16
+	UPDATE_WEBVIEW_LIST = 16,
+	REFRESH_WEBVIEW_LIST=17
 };
 
 #define READ_INPUT_VARIABLE  0
@@ -773,7 +774,7 @@ void WrapErrorMessage(Json::StreamWriterBuilder& builder, const Json::Value& tem
 }
 
 // ❌ Set to false to disable all T3WebLog logging
-static bool enable_t3_web_logging = false;
+static bool enable_t3_web_logging = true;
 
 // Helper function to write HandleWebViewMsg logs to T3WebLog directory
 // Creates organized logs in pattern: T3WebLog/YYYY-MM/MMDD/T3_CppMsg_HandWebViewMsg_MMDD_HHMM.txt
@@ -1700,10 +1701,123 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			}
 			unsigned int temp_objectinstance = g_Device_Basic_Setting[temp_panel_id].reg.object_instance;
 
-		
+			// Log write attempt
+			CString writeLog;
+			writeLog.Format(_T("Writing to device: ObjectInstance=%d, Type=INPUT, Index=%d"),
+				temp_objectinstance, entry_index);
+			WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), writeLog, 0);
 
-		break;
+			int ret_results = WritePrivateData_Blocking(temp_objectinstance, WRITEINPUT_T3000, entry_index, entry_index, 4, (char*)&g_Input_data[temp_panel_id].at(entry_index));
+			if (ret_results > 0)
+			{
+
+			}
+			else
+			{
+				WrapErrorMessage(builder, tempjson, outmsg, _T("Write data timeout."));
+				break;
+			}
+			break;
+		}
+		case BAC_OUT:
+		{
+			if ((entry_index >= 0) && entry_index + 1 > BAC_OUTPUT_ITEM_COUNT)
+			{
+				if (msg_source == 0)
+					SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("Index is invalid."));
+				WrapErrorMessage(builder, tempjson, outmsg, _T("Index is invalid."));
+				break;
+			}
+
+			g_Output_data[temp_panel_id].at(entry_index).control = json["control"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).value = json["value"].asFloat() * 1000;
+			strncpy((char*)g_Output_data[temp_panel_id].at(entry_index).description, json["description"].asCString(), STR_OUT_DESCRIPTION_LENGTH);
+			strncpy((char*)g_Output_data[temp_panel_id].at(entry_index).label, json["label"].asCString(), STR_OUT_LABEL);
+			g_Output_data[temp_panel_id].at(entry_index).auto_manual = json["auto_manual"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).low_voltage = json["low_voltage"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).high_voltage = json["high_voltage"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).range = json["range"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).digital_analog = json["digital_analog"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).hw_switch_status = json["hw_switch_status"].asInt();
+			g_Output_data[temp_panel_id].at(entry_index).decom = json["decom"].asInt();  ////for output   0 "Normal"    1"Alarm"  
+			if (g_Device_Basic_Setting[temp_panel_id].reg.n_serial_number != temp_serial_number)
+			{
+				if (msg_source == 0)
+					SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("The serial number does not match the panel."));
+				WrapErrorMessage(builder, tempjson, outmsg, _T("The serial number does not match the panel."));
+				break;
+			}
+			unsigned int temp_objectinstance = g_Device_Basic_Setting[temp_panel_id].reg.object_instance;
+			int ret_results = WritePrivateData_Blocking(temp_objectinstance, WRITEOUTPUT_T3000, entry_index, entry_index, 4, (char*)&g_Output_data[temp_panel_id].at(entry_index));
+			if (ret_results > 0)
+			{
+
+			}
+			else
+			{
+				WrapErrorMessage(builder, tempjson, outmsg, _T("Write data timeout."));
+				break;
+			}
+
+			break;
+		}
+		case BAC_VAR:
+		{
+			if ((entry_index >= 0) && entry_index + 1 > BAC_VARIABLE_ITEM_COUNT)
+			{
+				if (msg_source == 0)
+					SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("Index is invalid."));
+				WrapErrorMessage(builder, tempjson, outmsg, _T("Index is invalid."));
+				break;
+			}
+
+
+			strncpy((char*)g_Variable_data[temp_panel_id].at(entry_index).description, json["description"].asCString(), STR_VARIABLE_DESCRIPTION_LENGTH);
+			strncpy((char*)g_Variable_data[temp_panel_id].at(entry_index).label, json["label"].asCString(), STR_VARIABLE_LABEL);
+			g_Variable_data[temp_panel_id].at(entry_index).auto_manual = json["auto_manual"].asInt();
+			g_Variable_data[temp_panel_id].at(entry_index).value = json["value"].asFloat() * 1000;
+			g_Variable_data[temp_panel_id].at(entry_index).range = json["range"].asInt();
+			g_Variable_data[temp_panel_id].at(entry_index).control = json["control"].asInt();
+			g_Variable_data[temp_panel_id].at(entry_index).digital_analog = json["digital_analog"].asInt();
+
+			if (g_Device_Basic_Setting[temp_panel_id].reg.n_serial_number != temp_serial_number)
+			{
+				if (msg_source == 0)
+					SetPaneString(BAC_SHOW_MISSION_RESULTS, _T("The serial number does not match the panel."));
+				WrapErrorMessage(builder, tempjson, outmsg, _T("The serial number does not match the panel."));
+				break;
+			}
+			unsigned int temp_objectinstance = g_Device_Basic_Setting[temp_panel_id].reg.object_instance;
+
+			int ret_results = WritePrivateData_Blocking(temp_objectinstance, WRITEVARIABLE_T3000, entry_index, entry_index, 4, (char*)&g_Variable_data[temp_panel_id].at(entry_index));
+			if (ret_results > 0)
+			{
+
+			}
+			else
+			{
+				WrapErrorMessage(builder, tempjson, outmsg, _T("Write data timeout."));
+				break;
+			}
+
+			break;
+
+		}
+		default:
+			break;
+		}
+
+		tempjson["action"] = "UPDATE_WEBVIEW_LIST";
+		tempjson["data"]["status"] = true;
+		const std::string output = Json::writeString(builder, tempjson);
+		CString temp_cs(output.c_str());
+		outmsg = temp_cs;
+
+
+
+
 	}
+	break;
 	case WEBVIEW_MESSAGE_TYPE::UPDATE_ENTRY:
 	{
 
@@ -2082,13 +2196,8 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 		//m_webView->PostWebMessageAsJson(temp_cs); 
 
-		bool enable_logging_data_log = true;
-
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		if (enable_logging_data_log) {
-			WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
-		}
-
+		WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
 		break;
 	}
 	case WEBVIEW_MESSAGE_TYPE::GET_ENTRIES:
@@ -2585,6 +2694,10 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 	case LOGGING_DATA:
 	{
 		//release 版本暂时不启用这个功能
+		if (enable_trendlog_background_read == false)
+		{
+			break;
+		}
 		int temp_panel_id = json.get("panelId", Json::nullValue).asInt();
 		int temp_serial_number = json.get("serialNumber", Json::nullValue).asInt();
 		//temp_panel_id = 144; //test
@@ -2607,7 +2720,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			break; // Ignore the command if within 15 minutes
 		}
 		last_logging_time = current_time;
-		 
+
 		Json::Value tempjson;
 		tempjson["action"] = "LOGGING_DATA_RES";
 
@@ -2731,9 +2844,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		if (enable_logging_data_log) { 
-			WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count);
-		} 
+		WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count);
 	}
 	break;
 	default:
