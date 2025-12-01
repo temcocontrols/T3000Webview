@@ -281,11 +281,13 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
             ));
         }
 
-        // If this was a force copy due to version update, mark update as completed in ResourceFile
+        // If this was a force copy due to version update, mark update as completed
         if should_force_copy {
-            t3_enhanced_logging("🔄 Marking database update as completed in ResourceFile...");
+            t3_enhanced_logging("🔄 Marking database update as completed...");
 
-            // Update the update_status in ResourceFile database (source)
+            // Update the update_status in both ResourceFile (source) and destination databases
+
+            // 1. Update ResourceFile database (source)
             if let Ok(conn) = Connection::open(source_db_path) {
                 match conn.execute(
                     "UPDATE APPLICATION_CONFIG SET config_value = '1' WHERE config_key = 'database.update_status'",
@@ -293,8 +295,6 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
                 ) {
                     Ok(_) => {
                         t3_enhanced_logging("   ✅ ResourceFile database update status set to completed");
-                        t3_enhanced_logging(&format!("   Version: {}", db_version));
-                        t3_enhanced_logging("   Next startup will skip force copy");
                     }
                     Err(e) => {
                         t3_enhanced_logging(&format!("   ⚠️  Could not update ResourceFile status: {}", e));
@@ -303,6 +303,25 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
                 }
             } else {
                 t3_enhanced_logging(&format!("   ⚠️  Could not open ResourceFile database: {:?}", source_db_path));
+            }
+
+            // 2. Update destination database (runtime)
+            if let Ok(conn) = Connection::open(destination_db_path) {
+                match conn.execute(
+                    "UPDATE APPLICATION_CONFIG SET config_value = '1' WHERE config_key = 'database.update_status'",
+                    []
+                ) {
+                    Ok(_) => {
+                        t3_enhanced_logging("   ✅ Runtime database update status set to completed");
+                        t3_enhanced_logging(&format!("   Version: {}", db_version));
+                        t3_enhanced_logging("   Next startup will skip force copy");
+                    }
+                    Err(e) => {
+                        t3_enhanced_logging(&format!("   ⚠️  Could not update runtime database status: {}", e));
+                    }
+                }
+            } else {
+                t3_enhanced_logging(&format!("   ⚠️  Could not open runtime database: {:?}", destination_db_path));
             }
         }
     } else {
