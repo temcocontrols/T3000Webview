@@ -363,5 +363,4 @@ The rollback of the m20250122_000000_data_management_schema.rs migration and rel
 
 **Document Version**: 1.0
 **Last Updated**: January 25, 2025
-**Author**: GitHub Copilot
 **Review Status**: Ready for Implementation

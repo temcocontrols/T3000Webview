@@ -1,0 +1,25 @@
+/**
+ * TreeViewModeSwitch Styling
+ * Azure Portal Theme
+ */
+
+.switchButton {
+  font-size: 12px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.switchButton:hover {
+  background-color: #f3f2f1;
+}
+
+.switchButton:active {
+  background-color: #edebe9;
+}

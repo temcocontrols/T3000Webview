@@ -2014,35 +2014,35 @@ This approach gives you the power of TimescaleDB with the simplicity and distrib
 
 ## 🔧 Development Roadmap
 
-### Phase 1: Foundation Setup (Week 1-2)
+### Phase 1: Foundation Setup
 - ✅ **Install TimescaleDB** (Cloud or self-hosted)
 - ✅ **Create database schema** with hypertables
 - ✅ **Setup basic BACnet client** for testing
 - ✅ **Implement simple polling** for proof of concept
 - ✅ **Verify data ingestion** and basic queries
 
-### Phase 2: Block Polling Implementation (Week 3-4)
+### Phase 2: Block Polling Implementation
 - 🔄 **Implement BACnet block reads** using BASC library
 - 🔄 **Create polling optimization** algorithms
 - 🔄 **Build device discovery** and configuration
 - 🔄 **Add error handling** and retry logic
 - 🔄 **Implement data validation** and quality checks
 
-### Phase 3: Performance Optimization (Week 5-6)
+### Phase 3: Performance Optimization
 - 🔄 **Enable compression** and continuous aggregates
 - 🔄 **Implement batch processing** for high-throughput
 - 🔄 **Add connection pooling** and async processing
 - 🔄 **Create monitoring** and alerting
 - 🔄 **Performance testing** with large datasets
 
-### Phase 4: Integration and UI (Week 7-8)
+### Phase 4: Integration and UI
 - 🔄 **Integrate with T3000 frontend**
 - 🔄 **Create real-time dashboards** using continuous aggregates
 - 🔄 **Implement historical trending** and analytics
 - 🔄 **Add data export** functionality
 - 🔄 **Create admin interface** for configuration
 
-### Phase 5: Production Deployment (Week 9-10)
+### Phase 5: Production Deployment
 - 🔄 **Production deployment** and configuration
 - 🔄 **Data migration** from existing trend logs
 - 🔄 **Load testing** and optimization

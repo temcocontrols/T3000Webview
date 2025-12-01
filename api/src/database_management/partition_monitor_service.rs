@@ -65,6 +65,45 @@ pub async fn start_partition_monitor_service() -> Result<()> {
         }
     });
 
+    // Spawn database size monitor task (checks every hour)
+    tokio::spawn(async {
+        use crate::logger::{write_structured_log_with_level, LogLevel};
+
+        // Initial delay to let system stabilize
+        tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
+
+        let _ = write_structured_log_with_level(
+            "T3_DatabaseSizeMonitor",
+            "📊 Starting database size monitor (checks every hour)",
+            LogLevel::Info
+        );
+
+        loop {
+            // Sleep for 1 hour
+            tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+
+            // Check database size and create partition if needed
+            match check_and_partition_by_size().await {
+                Ok(created) => {
+                    if created {
+                        let _ = write_structured_log_with_level(
+                            "T3_DatabaseSizeMonitor",
+                            "✅ Size-based partition created successfully",
+                            LogLevel::Info
+                        );
+                    }
+                }
+                Err(e) => {
+                    let _ = write_structured_log_with_level(
+                        "T3_DatabaseSizeMonitor",
+                        &format!("⚠️ Database size check failed: {}", e),
+                        LogLevel::Error
+                    );
+                }
+            }
+        }
+    });
+
     Ok(())
 }
 
@@ -85,6 +124,21 @@ pub async fn check_startup_migrations() -> Result<()> {
     }
 
     println!("📋 Partition strategy: {:?}", config.strategy);
+
+    // Check database size on startup - handle case where T3000 was off for long time
+    println!("📊 Checking database size on startup...");
+    match check_and_partition_by_size().await {
+        Ok(created) => {
+            if created {
+                println!("✅ Size-based partition created on startup");
+            } else {
+                println!("ℹ️ Database size is within limit");
+            }
+        }
+        Err(e) => {
+            println!("⚠️ Startup size check failed: {}", e);
+        }
+    }
 
     // Get current date
     let current_date = Utc::now().date_naive();
@@ -449,6 +503,33 @@ async fn migrate_single_period(
     // Small delay to ensure connection is fully closed
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
+    // Check if partition has any data - skip if empty
+    if migrated_count == 0 {
+        logger.warn(&format!("⚠️ No data found for period {} - skipping partition creation", partition_id));
+        logger.info("🗑️ Removing empty partition file");
+
+        // Remove the empty partition file
+        if let Err(e) = std::fs::remove_file(&partition_path) {
+            logger.warn(&format!("⚠️ Could not remove empty partition file: {}", e));
+        } else {
+            logger.info("✅ Empty partition file removed");
+        }
+
+        // Also clean up any WAL/SHM files
+        let wal_path = partition_path.with_extension("db-wal");
+        let shm_path = partition_path.with_extension("db-shm");
+
+        if wal_path.exists() {
+            std::fs::remove_file(&wal_path).ok();
+        }
+        if shm_path.exists() {
+            std::fs::remove_file(&shm_path).ok();
+        }
+
+        logger.info("ℹ️ Partition creation skipped - no data for this period");
+        return Ok(0);
+    }
+
     // Get partition file size after VACUUM
     let partition_size = std::fs::metadata(&partition_path)
         .map(|m| m.len())
@@ -640,4 +721,237 @@ fn cleanup_partition_wal_shm_files() {
         let msg = format!("⚠️ Could not read database directory: {}", runtime_path.display());
         let _ = write_structured_log_with_level("T3_PartitionMonitor", &msg, LogLevel::Error);
     }
+}
+
+/// Check database size and create partition if exceeds max_file_size
+async fn check_and_partition_by_size() -> Result<bool> {
+    use crate::logger::{write_structured_log_with_level, LogLevel};
+    use rusqlite::Connection;
+    use chrono::NaiveDateTime;
+
+    let runtime_path = get_t3000_database_path();
+    let db_path = runtime_path.join("webview_t3_device.db");
+
+    // Read max file size from APPLICATION_CONFIG (default 2048 MB)
+    let max_file_size_mb = match Connection::open(&db_path) {
+        Ok(conn) => {
+            match conn.query_row(
+                "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = 'database.max_file_size'",
+                [],
+                |row| row.get::<_, String>(0)
+            ) {
+                Ok(value_str) => value_str.parse::<i64>().unwrap_or(2048),
+                Err(_) => 2048
+            }
+        },
+        Err(_) => 2048
+    };
+
+    // Get current file size in MB
+    let file_size_mb = match std::fs::metadata(&db_path) {
+        Ok(metadata) => (metadata.len() / 1024 / 1024) as i64,
+        Err(e) => {
+            let msg = format!("⚠️ Cannot read database file size: {}", e);
+            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+            return Ok(false);
+        }
+    };
+
+    // Calculate percentage
+    let percentage = (file_size_mb as f64 / max_file_size_mb as f64 * 100.0) as i32;
+
+    // Log size information
+    let msg = format!(
+        "📊 Database size: {} MB / {} MB ({}%)",
+        file_size_mb, max_file_size_mb, percentage
+    );
+    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+
+    // Check if size exceeded
+    if file_size_mb <= max_file_size_mb {
+        if percentage >= 80 {
+            let msg = format!(
+                "⚠️ Database approaching size limit ({}%). Partition will be auto-created at 100%.",
+                percentage
+            );
+            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+        }
+        return Ok(false);
+    }
+
+    // Size exceeded - check if MULTIPLE partitions needed (e.g., 6GB DB needs 3x 2GB partitions)
+    let times_over_limit = (file_size_mb as f64 / max_file_size_mb as f64).ceil() as i32;
+
+    if times_over_limit > 1 {
+        let msg = format!(
+            "⚠️ DATABASE SEVERELY EXCEEDED! {} MB is {}x over {} MB limit. Will create ONE partition per period as per split config.",
+            file_size_mb, times_over_limit, max_file_size_mb
+        );
+        let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+    } else {
+        let msg = format!(
+            "⚠️ DATABASE SIZE EXCEEDED! {} MB > {} MB. Creating partition...",
+            file_size_mb, max_file_size_mb
+        );
+        let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+    }
+
+    // Get database connection and config
+    let db = establish_t3_device_connection().await
+        .map_err(|e| crate::error::Error::ServerError(format!("Database connection failed: {}", e)))?;
+
+    let config = DatabaseConfigService::get_config(&db).await?;
+
+    if !config.is_active {
+        let _ = write_structured_log_with_level(
+            "T3_DatabaseSizeMonitor",
+            "⚠️ Partitioning is disabled. Cannot auto-partition. Please enable partitioning or increase max_file_size.",
+            LogLevel::Warn
+        );
+        return Ok(false);
+    }
+
+    // Determine the base period identifier based on strategy
+    let current_date = Utc::now().date_naive();
+    let base_period_id = match config.strategy {
+        database_partition_config::PartitionStrategy::Monthly => {
+            current_date.format("%Y-%m").to_string()
+        }
+        database_partition_config::PartitionStrategy::Weekly => {
+            format!("{}-W{:02}", current_date.format("%Y"), current_date.iso_week().week())
+        }
+        database_partition_config::PartitionStrategy::Daily => {
+            current_date.format("%Y-%m-%d").to_string()
+        }
+        database_partition_config::PartitionStrategy::Quarterly => {
+            let quarter = (current_date.month() - 1) / 3 + 1;
+            format!("{}-Q{}", current_date.year(), quarter)
+        }
+        _ => current_date.format("%Y-%m").to_string()
+    };
+
+    // Find the next sequence number for this period
+    let existing_partitions = database_files::Entity::find()
+        .filter(database_files::Column::PartitionIdentifier.like(&format!("{}_%", base_period_id)))
+        .all(&db)
+        .await?;
+
+    let next_sequence = if existing_partitions.is_empty() {
+        1
+    } else {
+        // Find max sequence number and increment
+        let max_seq = existing_partitions.iter()
+            .filter_map(|p| {
+                p.partition_identifier.as_ref()
+                    .and_then(|id| id.split('_').last())
+                    .and_then(|seq| seq.parse::<i32>().ok())
+            })
+            .max()
+            .unwrap_or(0);
+        max_seq + 1
+    };
+
+    let partition_id = format!("{}_{:02}", base_period_id, next_sequence);
+    let partition_file_name = format!("webview_t3_device_{}.db", partition_id);
+    let partition_path = runtime_path.join(&partition_file_name);
+
+    let msg = format!(
+        "🔄 Creating size-based partition: {} (sequence {}/{} for this period, size: {} MB)",
+        partition_id, next_sequence, existing_partitions.len() + 1, file_size_mb
+    );
+    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+
+    // Step 1: Copy entire main database to partition file
+    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", "📋 Copying main database to partition file...", LogLevel::Info);
+
+    if let Err(e) = std::fs::copy(&db_path, &partition_path) {
+        let msg = format!("❌ Failed to copy database: {}", e);
+        let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+        return Err(crate::error::Error::ServerError(msg));
+    }
+
+    // Step 2: Get record count and date range from copied partition
+    let (record_count, start_datetime, end_datetime) = match Connection::open(&partition_path) {
+        Ok(conn) => {
+            let count = conn.query_row(
+                "SELECT COUNT(*) FROM TRENDLOG_DATA_DETAIL",
+                [],
+                |row| row.get::<_, i64>(0)
+            ).unwrap_or(0);
+
+            let start = conn.query_row(
+                "SELECT MIN(LoggingTime_Fmt) FROM TRENDLOG_DATA_DETAIL",
+                [],
+                |row| row.get::<_, String>(0)
+            ).ok().and_then(|s| NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S").ok());
+
+            let end = conn.query_row(
+                "SELECT MAX(LoggingTime_Fmt) FROM TRENDLOG_DATA_DETAIL",
+                [],
+                |row| row.get::<_, String>(0)
+            ).ok().and_then(|s| NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S").ok());
+
+            (count, start, end)
+        }
+        Err(_) => (0, None, None)
+    };
+
+    // Step 3: Clear main database (delete child data and sync metadata only)
+    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", "🗑️ Clearing main database (TRENDLOG_DATA_DETAIL & TRENDLOG_DATA_SYNC_METADATA)...", LogLevel::Info);
+
+    match Connection::open(&db_path) {
+        Ok(conn) => {
+            if let Err(e) = conn.execute("DELETE FROM TRENDLOG_DATA_DETAIL", []) {
+                let msg = format!("⚠️ Failed to clear TRENDLOG_DATA_DETAIL table: {}", e);
+                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+            }
+            // Clear sync metadata table
+            if let Err(e) = conn.execute("DELETE FROM TRENDLOG_DATA_SYNC_METADATA", []) {
+                let msg = format!("⚠️ Failed to clear TRENDLOG_DATA_SYNC_METADATA table: {}", e);
+                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+            }
+            // Run VACUUM to reclaim space
+            if let Err(e) = conn.execute("VACUUM", []) {
+                let msg = format!("⚠️ Failed to vacuum database: {}", e);
+                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+            }
+        }
+        Err(e) => {
+            let msg = format!("⚠️ Failed to open main database for clearing: {}", e);
+            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Warn);
+        }
+    }
+
+    // Step 4: Register partition in database_files table
+    let file_size_bytes = match std::fs::metadata(&partition_path) {
+        Ok(metadata) => metadata.len() as i64,
+        Err(_) => 0
+    };
+
+    let new_file = database_files::ActiveModel {
+        file_name: Set(partition_file_name.clone()),
+        file_path: Set(partition_path.to_string_lossy().to_string()),
+        file_size_bytes: Set(file_size_bytes),
+        partition_identifier: Set(Some(partition_id.clone())),
+        start_date: Set(start_datetime),
+        end_date: Set(end_datetime),
+        is_active: Set(false),
+        is_archived: Set(false),
+        record_count: Set(record_count),
+        created_at: Set(Utc::now().naive_utc()),
+        last_accessed_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+
+    database_files::Entity::insert(new_file)
+        .exec(&db)
+        .await?;
+
+    let msg = format!(
+        "✅ Size-based partition created: {} ({} records, {:.2} MB). Main database cleared and ready for new data.",
+        partition_id, record_count, file_size_bytes as f64 / 1024.0 / 1024.0
+    );
+    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+
+    Ok(true)
 }

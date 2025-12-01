@@ -1,0 +1,114 @@
+/**
+ * ProjectPointTree Styling
+ * Azure Portal Theme
+ */
+
+.container {
+  height: 100%;
+  overflow-y: auto;
+  background-color: #ffffff;
+  padding: 0;
+}
+
+/* Tree Item Styling */
+.pointTypeItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: #323130;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+}
+
+.pointTypeName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Icons */
+.icon {
+  width: 16px;
+  height: 16px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+/* Status Icons */
+.statusOnline {
+  width: 16px;
+  height: 16px;
+  color: #107C10;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.statusOffline {
+  width: 16px;
+  height: 16px;
+  color: #a80000;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Loading State */
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  background-color: #ffffff;
+}
+
+.loadingSpinner {
+  font-size: 13px;
+  color: #605e5c;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+}
+
+/* Error State */
+.errorContainer {
+  padding: 24px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.errorTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #a80000;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+}
+
+.errorMessage {
+  font-size: 12px;
+  color: #605e5c;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+}
+
+/* Empty State */
+.emptyContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background-color: #ffffff;
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 14px;
+  color: #605e5c;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+}

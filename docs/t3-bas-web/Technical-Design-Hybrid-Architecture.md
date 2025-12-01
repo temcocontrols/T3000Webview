@@ -1,9 +1,9 @@
 # Technical Design Document: Hybrid Vue + React Architecture
 # T3000 Webview - Dual Framework Implementation
 
-**Version**: 1.0
+**Version**: 1.1
 **Date**: November 5, 2025
-**Status**: PENDING APPROVAL
+**Status**: AWAITING FINAL APPROVAL
 **Author**: Development Team
 **Project**: T3000 Webview Hybrid Architecture
 
@@ -14,8 +14,31 @@
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-11-05 | Dev Team | Initial technical design |
+| 1.1 | 2025-11-05 | Dev Team | **Updated with user decisions: `t3-vue`, `t3-react`, `common` folders + Option B aliases** |
 
-**Approval Required From**:
+---
+
+## ✅ USER DECISIONS CONFIRMED
+
+### Folder Naming (Final):
+- ✅ **Vue folder**: `src/t3-vue/` (clearer than `vue-app`)
+- ✅ **React folder**: `src/t3-react/` (clearer than `react-app`)
+- ✅ **Shared folder**: `src/common/` (clearer than `shared`)
+
+### Import Alias Strategy (Final):
+- ✅ **Option B Selected**: Explicit aliases (`@t3-vue/`, `@t3-react/`, `@common/`)
+- ✅ **Update ~262 Vue files**: Change `@/` → `@t3-vue/` (automated)
+- ✅ **Router guarantee**: Paths stay identical, only import strings change
+
+### Key Benefits of User's Choices:
+1. **Clear naming**: `t3-vue` and `t3-react` show framework ownership
+2. **Explicit imports**: Code is self-documenting
+3. **Better tooling**: IDE autocomplete works perfectly
+4. **Future-proof**: Easy to add more apps later
+
+---
+
+## Approval Required From:
 - [ ] Technical Lead
 - [ ] Product Owner
 - [ ] Development Team Lead
@@ -231,7 +254,7 @@ Only the required framework is loaded per session!
 
 ## 3. Detailed Technical Design
 
-### 3.1 Project Structure (Final)
+### 3.1 Project Structure (Final - With User's Naming)
 
 ```
 T3000Webview5/
@@ -244,7 +267,7 @@ T3000Webview5/
 │   │
 │   ├── main.ts                           # 🎯 CRITICAL: Route dispatcher
 │   │
-│   ├── vue-app/                          # 🔵 Vue 3 Application
+│   ├── t3-vue/                           # 🔵 Vue 3 Application (EXISTING - moved here)
 │   │   ├── main.ts                       # Vue entry point
 │   │   ├── App.vue                       # Vue root component
 │   │   │
@@ -286,61 +309,265 @@ T3000Webview5/
 │   │   │   ├── useDeviceConnection.ts
 │   │   │   └── useDataRefresh.ts
 │   │   │
+│   │   ├── lib/                          # Vue-specific utilities
+│   │   │   ├── demo-data.js              # Demo/mock data
+│   │   │   └── gridColumns.js            # Grid column configs
+│   │   │
 │   │   └── styles/                       # Vue-specific styles
 │   │       └── quasar-overrides.scss
 │   │
-│   ├── react-app/                        # 🟢 React 18 Application (NEW)
+│   ├── t3-react/                         # 🟢 React 18 Application (NEW - T3000 Desktop Layout)
 │   │   ├── main.tsx                      # React entry point
 │   │   ├── App.tsx                       # React root component
 │   │   │
 │   │   ├── router/
 │   │   │   ├── index.tsx                 # React Router instance
-│   │   │   └── routes.tsx                # React routes (/t3000/*)
+│   │   │   └── routes.ts                 # React routes (/t3000/*)
 │   │   │
-│   │   ├── pages/
-│   │   │   └── T3000/                    # T3BASWeb pages
-│   │   │       ├── Tstat/
-│   │   │       │   ├── TstatView.tsx
-│   │   │       │   └── TstatSettings.tsx
-│   │   │       ├── BACnet/
-│   │   │       │   ├── BACnetInput.tsx
-│   │   │       │   ├── BACnetOutput.tsx
-│   │   │       │   ├── BACnetVariable.tsx
-│   │   │       │   └── BACnetSchedule.tsx
-│   │   │       ├── Network/
-│   │   │       │   └── NetworkView.tsx
-│   │   │       ├── Graphics/
-│   │   │       │   └── GraphicView.tsx
-│   │   │       └── TrendLog/
-│   │   │           └── TrendLogView.tsx
+│   │   ├── pages/                        # ⭐ ALL T3000 WINDOWS (from C++ analysis)
+│   │   │   │
+│   │   │   ├── HomePage.tsx              # Home/Dashboard
+│   │   │   │
+│   │   │   ├── inputs/                   # WINDOW_INPUT (Alt-I)
+│   │   │   │   ├── InputsPage.tsx        # Main inputs view
+│   │   │   │   ├── InputsGrid.tsx        # Data grid component
+│   │   │   │   └── InputEditDialog.tsx   # Edit dialog
+│   │   │   │
+│   │   │   ├── outputs/                  # WINDOW_OUTPUT (Alt-O)
+│   │   │   │   ├── OutputsPage.tsx       # Main outputs view
+│   │   │   │   ├── OutputsGrid.tsx       # Data grid component
+│   │   │   │   └── OutputEditDialog.tsx  # Edit dialog
+│   │   │   │
+│   │   │   ├── variables/                # WINDOW_VARIABLE (Alt-V)
+│   │   │   │   ├── VariablesPage.tsx     # Main variables view
+│   │   │   │   ├── VariablesGrid.tsx     # Data grid component
+│   │   │   │   └── VariableEditDialog.tsx
+│   │   │   │
+│   │   │   ├── programs/                 # WINDOW_PROGRAM (Alt-P)
+│   │   │   │   ├── ProgramsPage.tsx      # Main programs view
+│   │   │   │   ├── ProgramEditor.tsx     # Code editor component
+│   │   │   │   ├── ProgramList.tsx       # Program list
+│   │   │   │   └── ProgramDebugger.tsx   # Debugger panel
+│   │   │   │
+│   │   │   ├── controllers/              # WINDOW_CONTROLLER (Alt-L) - PID Loops
+│   │   │   │   ├── ControllersPage.tsx   # Main controllers view
+│   │   │   │   ├── PIDLoopGrid.tsx       # PID loops grid
+│   │   │   │   └── PIDTuningDialog.tsx   # PID tuning dialog
+│   │   │   │
+│   │   │   ├── graphics/                 # WINDOW_SCREEN (Alt-G)
+│   │   │   │   ├── GraphicsPage.tsx      # Main graphics view
+│   │   │   │   ├── GraphicsEditor.tsx    # Canvas editor
+│   │   │   │   ├── GraphicsToolbar.tsx   # Drawing tools
+│   │   │   │   ├── GraphicsLibrary.tsx   # Symbol library
+│   │   │   │   └── GraphicsPreview.tsx   # Preview panel
+│   │   │   │
+│   │   │   ├── schedules/                # WINDOW_WEEKLY (Alt-S)
+│   │   │   │   ├── SchedulesPage.tsx     # Main schedules view
+│   │   │   │   ├── WeeklyScheduleGrid.tsx
+│   │   │   │   ├── ScheduleEditor.tsx    # Schedule editor dialog
+│   │   │   │   └── ScheduleCalendar.tsx  # Calendar view
+│   │   │   │
+│   │   │   ├── holidays/                 # WINDOW_ANNUAL (Alt-H)
+│   │   │   │   ├── HolidaysPage.tsx      # Main holidays view
+│   │   │   │   ├── AnnualRoutineGrid.tsx
+│   │   │   │   ├── HolidayEditor.tsx     # Holiday editor dialog
+│   │   │   │   └── HolidayCalendar.tsx   # Calendar view
+│   │   │   │
+│   │   │   ├── trend-logs/               # WINDOW_MONITOR (Alt-T)
+│   │   │   │   ├── TrendLogsPage.tsx     # Main trend logs view
+│   │   │   │   ├── TrendChart.tsx        # Chart component (ECharts)
+│   │   │   │   ├── TrendConfig.tsx       # Trend configuration
+│   │   │   │   └── TrendExport.tsx       # Export dialog
+│   │   │   │
+│   │   │   ├── alarms/                   # WINDOW_ALARMLOG (Alt-A)
+│   │   │   │   ├── AlarmsPage.tsx        # Main alarms view
+│   │   │   │   ├── AlarmList.tsx         # Alarm list grid
+│   │   │   │   ├── AlarmDetails.tsx      # Alarm details panel
+│   │   │   │   └── AlarmFilters.tsx      # Filter controls
+│   │   │   │
+│   │   │   ├── network/                  # WINDOW_REMOTE_POINT (Alt-N)
+│   │   │   │   ├── NetworkPage.tsx       # Main network/remote points view
+│   │   │   │   ├── NetworkPointsGrid.tsx # Network points grid
+│   │   │   │   ├── ModbusConfig.tsx      # Modbus configuration
+│   │   │   │   ├── BacnetConfig.tsx      # BACnet configuration
+│   │   │   │   └── NetworkScan.tsx       # Network scan dialog
+│   │   │   │
+│   │   │   ├── array/                    # WINDOW_ARRAY
+│   │   │   │   ├── ArrayPage.tsx         # Main array view
+│   │   │   │   ├── ArrayDataGrid.tsx     # Array data grid
+│   │   │   │   └── ArrayEditor.tsx       # Array editor dialog
+│   │   │   │
+│   │   │   └── settings/                 # WINDOW_SETTING (Alt-E)
+│   │   │       ├── SettingsPage.tsx      # Main settings view (tabbed)
+│   │   │       ├── BasicSettings.tsx     # IDD_DIALOG_BACNET_SETTING_BASIC
+│   │   │       ├── TcpIpSettings.tsx     # IDD_DIALOG_BACNET_SETTING_TCPIP
+│   │   │       ├── TimeSettings.tsx      # IDD_DIALOG_BACNET_SETTING_TIME
+│   │   │       ├── DynDnsSettings.tsx    # IDD_DIALOG_BACNET_SETTING_DYNDNS
+│   │   │       ├── LcdSettings.tsx       # IDD_DIALOG_BACNET_SETTING_LCD_PARAMETER
+│   │   │       ├── HealthSettings.tsx    # IDD_DIALOG_BACNET_SETTING_HEALTH
+│   │   │       └── AdvancedSettings.tsx  # IDD_DIALOG_ADVANCED_SETTINGS
 │   │   │
-│   │   ├── components/                   # React components
-│   │   │   └── T3000/
-│   │   │       ├── DeviceTree/
-│   │   │       │   ├── DeviceTree.tsx
-│   │   │       │   ├── TreeNode.tsx
-│   │   │       │   └── tree.types.ts
-│   │   │       ├── DataPointGrid/
-│   │   │       │   └── DataPointGrid.tsx
-│   │   │       ├── RegisterEditor/
-│   │   │       │   └── RegisterEditor.tsx
-│   │   │       └── ScheduleGrid/
-│   │   │           └── ScheduleGrid.tsx
+│   │   ├── components/                   # ⭐ ALL React UI Components
+│   │   │   │
+│   │   │   ├── layout/                   # Layout components (T3000 desktop style)
+│   │   │   │   ├── TopMenuBar.tsx        # Top menu (File, Tools, View, Database, Control, Misc, Help)
+│   │   │   │   ├── ToolIconBar.tsx       # Icon toolbar (16 icons)
+│   │   │   │   ├── LeftTreePanel.tsx     # Left tree navigation panel
+│   │   │   │   ├── TreeNode.tsx          # Tree node component
+│   │   │   │   ├── TreeContextMenu.tsx   # Context menu (5 types)
+│   │   │   │   ├── Breadcrumb.tsx        # Breadcrumb navigation
+│   │   │   │   ├── StatusBar.tsx         # Bottom status bar (4 panes)
+│   │   │   │   └── RightPanel.tsx        # Right content area
+│   │   │   │
+│   │   │   ├── common/                   # Common/shared UI components
+│   │   │   │   ├── DeviceCard.tsx        # Device information card
+│   │   │   │   ├── DataGrid.tsx          # Reusable data grid (Fluent UI)
+│   │   │   │   ├── EditableCell.tsx      # Editable grid cell
+│   │   │   │   ├── LoadingSpinner.tsx    # Loading indicator
+│   │   │   │   ├── ErrorBoundary.tsx     # Error boundary
+│   │   │   │   ├── Toast.tsx             # Toast notification
+│   │   │   │   └── ConfirmDialog.tsx     # Confirmation dialog
+│   │   │   │
+│   │   │   ├── dialogs/                  # Modal dialogs
+│   │   │   │   ├── DiscoverDialog.tsx    # MY_SCAN dialog (device scanning)
+│   │   │   │   ├── BuildingConfigDialog.tsx # Building configuration
+│   │   │   │   ├── AddDeviceDialog.tsx   # Add device dialog
+│   │   │   │   ├── RenameDialog.tsx      # Rename dialog
+│   │   │   │   ├── DeleteConfirmDialog.tsx # Delete confirmation
+│   │   │   │   └── ConnectDialog.tsx     # Connection dialog
+│   │   │   │
+│   │   │   ├── forms/                    # Form components
+│   │   │   │   ├── InputField.tsx        # Input field (Fluent UI)
+│   │   │   │   ├── SelectField.tsx       # Select dropdown
+│   │   │   │   ├── CheckboxField.tsx     # Checkbox
+│   │   │   │   ├── DatePicker.tsx        # Date picker
+│   │   │   │   └── FormValidator.tsx     # Form validation helper
+│   │   │   │
+│   │   │   └── charts/                   # Chart components
+│   │   │       ├── TrendLineChart.tsx    # Line chart (ECharts)
+│   │   │       ├── BarChart.tsx          # Bar chart
+│   │   │       ├── PieChart.tsx          # Pie chart
+│   │   │       └── ChartToolbar.tsx      # Chart controls
 │   │   │
 │   │   ├── layouts/                      # React layouts
-│   │   │   ├── MainLayout.tsx            # Fluent UI main layout
-│   │   │   └── EmptyLayout.tsx
+│   │   │   └── MainLayout.tsx            # Main T3000 desktop layout (Fluent UI)
 │   │   │
-│   │   ├── hooks/                        # React hooks
-│   │   │   ├── useDeviceConnection.ts
-│   │   │   ├── useDataRefresh.ts
-│   │   │   └── useFluentTheme.ts
+│   │   ├── hooks/                        # ⭐ Custom React hooks
+│   │   │   ├── useDeviceData.ts          # Device data hook
+│   │   │   ├── useBacnetApi.ts           # BACnet API hook
+│   │   │   ├── useModbusApi.ts           # Modbus API hook
+│   │   │   ├── useTreeNavigation.ts      # Tree navigation hook
+│   │   │   ├── useContextMenu.ts         # Context menu hook
+│   │   │   ├── useWebSocket.ts           # WebSocket hook
+│   │   │   ├── usePolling.ts             # Data polling hook
+│   │   │   └── useLocalStorage.ts        # LocalStorage hook
 │   │   │
-│   │   ├── store/                        # React state (Zustand)
-│   │   │   ├── deviceStore.ts
-│   │   │   └── dataStore.ts
+│   │   ├── store/                        # ⭐ Zustand stores (React state)
+│   │   │   ├── deviceStore.ts            # Device state
+│   │   │   ├── treeStore.ts              # Tree state (buildings, floors, devices)
+│   │   │   ├── bacnetStore.ts            # BACnet state (inputs, outputs, variables)
+│   │   │   ├── modbusStore.ts            # Modbus state
+│   │   │   ├── alarmStore.ts             # Alarm state
+│   │   │   ├── trendStore.ts             # Trend log state
+│   │   │   ├── uiStore.ts                # UI state (menu, toolbar, dialogs)
+│   │   │   └── authStore.ts              # Authentication state
 │   │   │
 │   │   ├── styles/                       # React-specific styles
+│   │   │   ├── global.css                # Global React styles
+│   │   │   ├── theme.ts                  # Fluent UI theme configuration
+│   │   │   ├── variables.css             # CSS variables (colors, spacing)
+│   │   │   └── layout.css                # T3000 desktop layout styles
+│   │   │
+│   │   ├── config/                       # ⭐ React app configuration
+│   │   │   ├── theme.ts                  # Fluent UI theme config
+│   │   │   ├── menuConfig.ts             # Top menu configuration (7 menus)
+│   │   │   ├── toolbarConfig.ts          # Icon toolbar configuration (16 icons)
+│   │   │   ├── constants.ts              # App constants (WINDOW_*, routes)
+│   │   │   └── contextMenuConfig.ts      # Context menu configurations (5 types)
+│   │   │
+│   │   └── utils/                        # React-specific utilities
+│   │       ├── treeHelpers.ts            # Tree manipulation utilities
+│   │       ├── formatters.ts             # Data formatters
+│   │       └── validators.ts             # Input validators
+│   │
+│   ├── common/                           # ⭐ Shared code (used by both Vue & React)
+│   │   │
+│   │   ├── api/                          # ⭐ Shared API layer (Axios)
+│   │   │   ├── client.ts                 # Axios client (from lib/api.js)
+│   │   │   │
+│   │   │   ├── bacnet/                   # BACnet API endpoints
+│   │   │   │   ├── devices.ts            # Device operations (scan, connect, info)
+│   │   │   │   ├── inputs.ts             # Input operations (read, write)
+│   │   │   │   ├── outputs.ts            # Output operations (read, write)
+│   │   │   │   ├── variables.ts          # Variable operations (read, write)
+│   │   │   │   ├── programs.ts           # Program operations (upload, download, run)
+│   │   │   │   ├── controllers.ts        # Controller/PID operations
+│   │   │   │   ├── schedules.ts          # Schedule operations (weekly, annual)
+│   │   │   │   ├── trends.ts             # Trend log operations
+│   │   │   │   ├── alarms.ts             # Alarm operations
+│   │   │   │   └── graphics.ts           # Graphics operations
+│   │   │   │
+│   │   │   ├── modbus/                   # Modbus API endpoints
+│   │   │   │   ├── devices.ts            # Device operations
+│   │   │   │   ├── registers.ts          # Register read/write operations
+│   │   │   │   └── polling.ts            # Polling operations
+│   │   │   │
+│   │   │   ├── devices.ts                # General device API
+│   │   │   ├── auth.ts                   # Authentication API
+│   │   │   ├── buildings.ts              # Building management API
+│   │   │   └── network.ts                # Network operations API
+│   │   │
+│   │   ├── auth/                         # ⭐ Authentication module
+│   │   │   ├── AuthProvider.ts           # Auth context/provider
+│   │   │   ├── authUtils.ts              # Auth utilities
+│   │   │   ├── permissions.ts            # Permission checks (LOGIN_SUCCESS_*)
+│   │   │   └── types.ts                  # Auth types
+│   │   │
+│   │   ├── state/                        # Shared state management
+│   │   │   ├── SharedState.ts            # Cross-framework state
+│   │   │   └── EventBus.ts               # Event communication (Vue ↔ React)
+│   │   │
+│   │   ├── types/                        # ⭐ Shared TypeScript types (from C++ structs)
+│   │   │   ├── device.ts                 # Device types (tree_product struct)
+│   │   │   ├── bacnet.ts                 # BACnet types
+│   │   │   ├── modbus.ts                 # Modbus types
+│   │   │   ├── tree.ts                   # Tree node types
+│   │   │   ├── menu.ts                   # Menu types
+│   │   │   ├── window.ts                 # Window constants (WINDOW_INPUT, etc.)
+│   │   │   ├── protocol.ts               # Protocol types (PROTOCOL_BACNET_IP, etc.)
+│   │   │   ├── product.ts                # Product types (PM_MINIPANEL, PM_TSTAT10, etc.)
+│   │   │   ├── alarm.ts                  # Alarm types
+│   │   │   ├── trend.ts                  # Trend log types
+│   │   │   ├── schedule.ts               # Schedule types
+│   │   │   └── api.ts                    # API response types
+│   │   │
+│   │   ├── utils/                        # ⭐ Utility functions
+│   │   │   ├── common.ts                 # Common utilities (from lib/common.js)
+│   │   │   ├── format.ts                 # Data formatting
+│   │   │   ├── validation.ts             # Input validation
+│   │   │   ├── constants.ts              # Constants (WINDOW_*, Protocol enum, etc.)
+│   │   │   ├── helpers.ts                # Helper functions
+│   │   │   ├── dateTime.ts               # Date/time utilities
+│   │   │   └── conversion.ts             # Unit conversions (°F ↔ °C, etc.)
+│   │   │
+│   │   ├── T3000/                        # T3000 Business Logic (from lib/T3000/)
+│   │   │   ├── Hvac/                     # HVAC controllers
+│   │   │   ├── Security/                 # Security controllers
+│   │   │   └── T3000.ts                  # Main T3000 logic
+│   │   │
+│   │   └── components/                   # Framework-agnostic logic
+│   │       └── AppSwitcher.ts            # Navigation helper
+│   │
+│   └── assets/                           # Shared assets
+│       ├── images/
+│       │   ├── logo.png
+│       │   ├── device-icons/             # Device type icons (Tstat, BACnet, CO2, etc.)
+│       │   └── backgrounds/
+│       ├── icons/
+│       │   ├── toolbar/                  # Toolbar icons (16 icons)
+│       │   ├── tree/                     # Tree node icons
+│       │   └── menu/                     # Menu icons
+│       └── fonts/
 │   │   │   ├── fluent-theme.ts
 │   │   │   └── main.css
 │   │   │
@@ -348,10 +575,10 @@ T3000Webview5/
 │   │       ├── menu.config.tsx
 │   │       └── routes.config.tsx
 │   │
-│   ├── shared/                           # 🟡 Shared Infrastructure
+│   ├── common/                           # 🟡 Shared Infrastructure
 │   │   │
 │   │   ├── api/                          # API client (framework-agnostic)
-│   │   │   ├── client.ts                 # Axios instance + interceptors
+│   │   │   ├── client.ts                 # Axios instance + interceptors (from lib/api.js)
 │   │   │   ├── device.api.ts             # Device endpoints
 │   │   │   ├── trendlog.api.ts           # Trend log endpoints
 │   │   │   ├── bacnet.api.ts             # BACnet endpoints
@@ -372,10 +599,16 @@ T3000Webview5/
 │   │   │   └── index.ts
 │   │   │
 │   │   ├── utils/                        # Utility functions
+│   │   │   ├── common.ts                 # Common utilities (from lib/common.js)
 │   │   │   ├── format.ts                 # Data formatting
 │   │   │   ├── validation.ts             # Input validation
 │   │   │   ├── constants.ts              # Constants
 │   │   │   └── helpers.ts                # Helper functions
+│   │   │
+│   │   ├── T3000/                        # T3000 Business Logic (from lib/T3000/)
+│   │   │   ├── Hvac/                     # HVAC controllers
+│   │   │   ├── Security/                 # Security controllers
+│   │   │   └── T3000.ts                  # Main T3000 logic
 │   │   │
 │   │   └── components/                   # Framework-agnostic logic
 │   │       └── AppSwitcher.ts            # Navigation helper
@@ -396,9 +629,9 @@ T3000Webview5/
 │       └── ...
 │
 ├── tests/                                # Tests
-│   ├── vue-app/                          # Vue tests
-│   ├── react-app/                        # React tests
-│   └── shared/                           # Shared code tests
+│   ├── t3-vue/                           # Vue tests
+│   ├── t3-react/                         # React tests
+│   └── common/                           # Shared code tests
 │
 ├── package.json                          # Dependencies (Vue + React)
 ├── vite.config.ts                        # Vite config (dual plugins)
@@ -465,7 +698,7 @@ if (currentPath.startsWith('/t3000')) {
 
 ---
 
-#### File 2: `src/vue-app/main.ts` (Vue Entry)
+#### File 2: `src/t3-vue/main.ts` (Vue Entry)
 
 ```typescript
 /**
@@ -515,7 +748,7 @@ export function initVueApp() {
 
 ---
 
-#### File 3: `src/vue-app/router/routes.ts` (Vue Routes)
+#### File 3: `src/t3-vue/router/routes.ts` (Vue Routes)
 
 ```typescript
 /**
@@ -594,7 +827,7 @@ export default routes;
 
 ---
 
-#### File 4: `src/react-app/main.tsx` (React Entry)
+#### File 4: `src/t3-react/main.tsx` (React Entry)
 
 ```typescript
 /**
@@ -638,7 +871,7 @@ export function initReactApp() {
 
 ---
 
-#### File 5: `src/react-app/router/routes.tsx` (React Routes)
+#### File 5: `src/t3-react/router/routes.tsx` (React Routes)
 
 ```typescript
 /**
@@ -722,7 +955,7 @@ export const router = createBrowserRouter([
 
 ---
 
-#### File 6: `src/shared/api/client.ts` (Shared API Client)
+#### File 6: `src/common/api/client.ts` (Shared API Client)
 
 ```typescript
 /**
@@ -798,7 +1031,7 @@ export const apiDelete = <T>(url: string) => api.delete<T>(url).then(res => res.
 
 ---
 
-#### File 7: `src/shared/auth/authService.ts` (Shared Auth)
+#### File 7: `src/common/auth/authService.ts` (Shared Auth)
 
 ```typescript
 /**
@@ -879,10 +1112,10 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@vue-app': resolve(__dirname, 'src/vue-app'),
-      '@react-app': resolve(__dirname, 'src/react-app'),
-      '@shared': resolve(__dirname, 'src/shared'),
+      '@': resolve(__dirname, 'src'),                    // Root src/
+      '@t3-vue': resolve(__dirname, 'src/t3-vue'),       // Vue app (explicit)
+      '@t3-react': resolve(__dirname, 'src/t3-react'),   // React app (explicit)
+      '@common': resolve(__dirname, 'src/common'),       // Shared code
     },
   },
 
@@ -1003,9 +1236,426 @@ export default defineConfig({
 
 ---
 
-## 4. Implementation Plan
+## 4. T3-React Application Design (T3000 Desktop Layout)
 
-### 4.1 Sprint Breakdown (6 weeks total)
+### 4.1 Complete Menu Structure (From C++ Code Analysis)
+
+Based on comprehensive analysis of the T3000 C++ source code (`T3000.rc`, `MainFrm.cpp`, `ImageTreeCtrl.cpp`, `resource.h`), here is the **exact** menu and UI structure to be replicated in T3-React:
+
+#### 4.1.1 Top Menu Bar (7 Main Menus)
+
+**📁 File**
+- New Project
+- Save As... (Ctrl+S)
+- Load File (Ctrl+L)
+- Import... (Ctrl+I)
+- Exit
+
+**🔧 Tools**
+- Connect (Ctrl+C)
+- Change Modbus ID
+- Bacnet Tool
+- Modbus Poll
+- Register Viewer
+- Modbus Register v2 (beta)
+- RegisterList Database Folder
+- Load firmware for a single device (Ctrl+F2)
+- Load firmware for many devices (Ctrl+M)
+- Flash SN
+- Psychrometry
+- PH Chart
+- Options
+- Disconnect the serial port (Ctrl+D)
+- Login my account
+
+**👁️ View**
+- Toolbars and Docking Windows
+  - Tool Bar
+  - Building Pane
+- Status Bar
+- Application Look
+  - Office 2003
+  - Office 2007 (Blue Style, Silver Style)
+- Refresh (F2)
+
+**💾 Database**
+- Building Config Database
+- All Nodes... (Ctrl+N)
+- IONameConfig
+- LogDetail
+
+**⚙️ Control** (Maps to Tool Icon Toolbar)
+- Graphics (Alt-G)
+- Programs (Alt-P)
+- Inputs (Alt-I)
+- Outputs (Alt-O)
+- Variables (Alt-V)
+- Loops (Alt-L) - PID Loops
+- Schedules (Alt-S)
+- Holidays (Alt-H)
+- Trend Logs (Alt-T)
+- Alarms (Alt-A)
+- Network and Panel (Alt-N)
+- Remote Points (Alt-R)
+- Configuration (Alt-E)
+
+**🔀 Miscellaneous**
+- Load Descriptors
+- Write into flash
+- GSM Connection
+
+**❓ Help**
+- Contents
+- Version History
+- About Software...
+- Check For Updates
+
+#### 4.1.2 Tool Menu (Icon Toolbar) - Maps to Windows/Dialogs
+
+The icon toolbar provides quick access to Control menu items. Each button opens a specific view or dialog:
+
+| Icon | Label | Keyboard | Window Constant | Dialog/View Type |
+|------|-------|----------|-----------------|------------------|
+| ℹ️ | **Information** | - | WINDOW_SETTING | Settings Dialog (Device Info) |
+| 📥 | **Inputs** | Alt-I | WINDOW_INPUT | Inputs View (Grid) |
+| 📤 | **Outputs** | Alt-O | WINDOW_OUTPUT | Outputs View (Grid) |
+| 📝 | **Variables** | Alt-V | WINDOW_VARIABLE | Variables View (Grid) |
+| ⚙️ | **Programs** | Alt-P | WINDOW_PROGRAM | Programs View (Code Editor) |
+| 🔄 | **PID Loops** | Alt-L | WINDOW_CONTROLLER | Controllers View (PID Settings) |
+| 🎨 | **Graphics** | Alt-G | WINDOW_SCREEN | Graphics Editor (Canvas) |
+| 📅 | **Schedules** | Alt-S | WINDOW_WEEKLY | Weekly Schedule (Grid) |
+| 🗓️ | **Holidays** | Alt-H | WINDOW_ANNUAL | Annual Routines (Calendar) |
+| 📈 | **Trend Logs** | Alt-T | WINDOW_MONITOR | Trend Monitor (Chart) |
+| 🚨 | **Alarms** | Alt-A | WINDOW_ALARMLOG | Alarm Log (List) |
+| 🌐 | **Array** | - | WINDOW_ARRAY | Array Data Dialog |
+| 🔗 | **Network Points** | Alt-N | WINDOW_REMOTE_POINT | Remote Points (Modbus/BACnet Grid) |
+| 🔧 | **Configuration** | Alt-E | WINDOW_SETTING | Settings Dialog |
+| 🔍 | **Discover** | - | MY_SCAN Dialog | Device Scanning Dialog |
+| 🏢 | **Buildings** | - | - | Building Configuration Dialog |
+| 🔄 | **Refresh Data** | F2 | - | Calls OnViewRefresh() function |
+
+**Important Notes**:
+- **"Information"** icon shows the **Settings Dialog** with device system info (Address, Firmware, Serial Number, Hardware Version)
+- **"Discover"** icon opens the **MY_SCAN Dialog** (device scanning, not the same as Tools → Connect)
+- **"Buildings"** icon opens **Building Configuration Dialog** (not a tree panel toggle)
+- **"Network and Panel"** (Control menu) shows **Array Dialog** (WINDOW_ARRAY)
+- **"Network Points"** toolbar shows **Remote Point Dialog** (WINDOW_REMOTE_POINT)
+- **"Remote Points"** menu item shows the same **Network Points Dialog** (WINDOW_REMOTE_POINT)
+- **"Refresh Data"** refreshes the current active view (calls `OnViewRefresh()`)
+
+#### 4.1.3 Left Panel - Tree View Context Menus
+
+The left tree panel displays a hierarchical structure of buildings, floors, rooms, and devices. **Different context menus** appear based on the clicked node type:
+
+**Context Menu Type 1: Building Root/Empty Area**
+```
+├─ Project Point View
+├─ Sort by Connection
+├─ Sort by Floor
+├─ Add Modbus Device
+├─ Add Remote Device
+└─ Add Virtual Device
+```
+*Source*: `ImageTreeCtrl.cpp` → `DisplayContextOtherMenu()`
+
+**Context Menu Type 2: Building/Device Node**
+```
+├─ Rename (F2)
+├─ Delete (Del)
+├─ Sort By Connection
+├─ Sort By Floor
+├─ Ping
+└─ Add Modbus Device
+```
+*Source*: `ImageTreeCtrl.cpp` → `DisplayContextMenu()`
+
+**Context Menu Type 3: Building Management Mode - Point List Node**
+```
+├─ Rename
+├─ Delete
+├─ Communication
+└─ Add (submenu)
+    ├─ Add Groups
+    ├─ Add Nodes (disabled)
+    ├─ Add Inputs (disabled)
+    ├─ Add Outputs (disabled)
+    └─ Add Variable (disabled)
+```
+*Source*: `ImageTreeCtrl.cpp` → `BMContextMenu()` (TYPE_BM_POINT_LIST)
+
+**Context Menu Type 4: Building Management Mode - Group Node**
+```
+├─ Rename
+├─ Delete
+└─ Add (submenu)
+    ├─ Add Groups (disabled)
+    ├─ Add Nodes
+    ├─ Add Module
+    ├─ Add Inputs (disabled)
+    ├─ Add Outputs (disabled)
+    └─ Add Variable (disabled)
+```
+*Source*: `ImageTreeCtrl.cpp` → `BMContextMenu()` (TYPE_BM_GROUP)
+
+**Context Menu Type 5: Building Management Mode - I/O Node**
+```
+├─ Rename
+├─ Delete
+├─ Map to others
+└─ Add (submenu)
+    ├─ Add Groups (disabled)
+    ├─ Add Nodes (disabled)
+    ├─ Add Inputs
+    ├─ Add Outputs
+    ├─ Add Variable
+    └─ Property Setting
+```
+*Source*: `ImageTreeCtrl.cpp` → `BMContextMenu()` (TYPE_BM_INPUT/OUTPUT/VARIABLE)
+
+#### 4.1.4 MainLayout Design Diagram (T3000 Desktop Style)
+
+The T3-React application follows the **T3000 Desktop** layout pattern (NOT Azure Portal style):
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  TOP MENU BAR (32px) - Light Gray (#F5F5F5)                         │
+│  [File] [Tools] [View] [Database] [Control] [Miscellaneous] [Help] │
+├─────────────────────────────────────────────────────────────────────┤
+│  TOOL MENU (Icon Toolbar - 60px) - Light Gray (#FAFAFA)             │
+│  [ℹ️] [📥] [📤] [📝] [⚙️] [🔄] [🎨] [📅] [🗓️] [📈] [🚨] [🌐] [🔗] [🔧] │
+│                                                     [🔍] [🏢] [🔄]   │
+├──────────────────┬──────────────────────────────────────────────────┤
+│                  │                                                  │
+│  LEFT PANEL      │  RIGHT PANEL (Content Area)                      │
+│  (Tree View)     │                                                  │
+│  250px width     │  ┌────────────────────────────────────────────┐  │
+│  Resizable       │  │ Breadcrumb: Home > Building 1 > Tstat 1    │  │
+│                  │  ├────────────────────────────────────────────┤  │
+│  🏢 Building 1   │  │                                            │  │
+│   ├─📁 Floor 1   │  │  Tabs: [Info] [Inputs] [Outputs] [Vars]   │  │
+│   │ ├─🚪 Room 1 │  │                                            │  │
+│   │ │ └─🌡️ T1  │  │  Main Content Area:                        │  │
+│   │ └─🚪 Room 2 │  │  ┌──────────────────────────────────────┐  │  │
+│   │              │  │  │ Device Information Card              │  │  │
+│   └─📁 Floor 2   │  │  │ ┌────────────────────────────────┐  │  │  │
+│                  │  │  │ │ Address: 192.168.1.100         │  │  │  │
+│  🏢 Building 2   │  │  │ │ Firmware: v2.5.1               │  │  │  │
+│   └─🔌 Subnet 1  │  │  │ │ Serial: 12345678               │  │  │  │
+│     ├─🌡️ Tstat  │  │  │ │ Hardware: v1.2                 │  │  │  │
+│     ├─🔌 BACnet │  │  │ │ Model: PM-TSTAT10              │  │  │  │
+│     └─💨 CO2    │  │  │ │ Status: ● Online               │  │  │  │
+│                  │  │  │ └────────────────────────────────┘  │  │  │
+│  [Right-click]   │  │  └──────────────────────────────────────┘  │  │
+│  • Rename        │  │                                            │  │
+│  • Delete        │  │  Data Grid: Inputs                         │  │
+│  • Sort by Conn. │  │  ┌──────────────────────────────────────┐  │  │
+│  • Add Device    │  │  │ Name        | Value | Unit | Status  │  │  │
+│                  │  │  │ Temperature | 72.5  | °F   | Active  │  │  │
+│                  │  │  │ Input 1     | 45.2  | %    | Active  │  │  │
+│                  │  │  │ Input 2     | 0.0   | V    | Fault   │  │  │
+│                  │  │  └──────────────────────────────────────┘  │  │
+│                  │  │                                            │  │
+│                  │  └────────────────────────────────────────────┘  │
+│                  │                                                  │
+├──────────────────┴──────────────────────────────────────────────────┤
+│  STATUS BAR (24px) - Light Gray (#F5F5F5)                           │
+│  [RX/TX: 200 pkts] [Building: Main] [Protocol: BACnet] [● Online]  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Layout Specifications**:
+- **Top Menu Bar**: 32px height, light gray (#F5F5F5), traditional menu (File, Tools, View, etc.)
+- **Tool Icon Bar**: 60px height, light gray (#FAFAFA), icon buttons with tooltips
+- **Left Panel**: 250px default width, resizable (150px - 400px), white background, tree view
+- **Right Panel**: Flexible width, white background, breadcrumb + tabs + content
+- **Status Bar**: 24px height, light gray (#F5F5F5), 4 panes (RX/TX, Building, Protocol, Status)
+
+**Color Scheme** (Traditional Desktop App):
+- Primary: Light Gray (#F5F5F5, #FAFAFA)
+- Content: White (#FFFFFF)
+- Text: Dark Gray (#333333)
+- Borders: Light Gray (#E0E0E0)
+- Active: Blue (#0078D4)
+- Success: Green (#107C10)
+- Warning: Orange (#FF8C00)
+- Error: Red (#D13438)
+
+### 4.2 Tree View Structure
+
+The left panel tree follows this hierarchical structure:
+
+```
+Root (Application)
+│
+├─ 🏢 Building 1 (Name: "Main Office")
+│  │
+│  ├─ 📁 Floor 1 (Name: "Ground Floor")
+│  │  ├─ 🚪 Room 1 (Name: "Office 101")
+│  │  │  ├─ 🌡️ Tstat 1 (ID: 1, IP: 192.168.1.100, Status: Online)
+│  │  │  └─ 💨 CO2 Sensor (ID: 5, IP: 192.168.1.105, Status: Online)
+│  │  │
+│  │  └─ 🚪 Room 2 (Name: "Office 102")
+│  │     └─ 🌡️ Tstat 2 (ID: 2, IP: 192.168.1.101, Status: Offline)
+│  │
+│  ├─ 📁 Floor 2 (Name: "Second Floor")
+│  │  └─ ...
+│  │
+│  └─ 🔌 Subnet 1 (COM1 / 192.168.1.x)
+│     ├─ 🌡️ Tstat 10 (ID: 10, Serial, Status: Online)
+│     ├─ 🔌 BACnet Device (ID: 2, Object: 200, Status: Online)
+│     └─ 💨 Air Quality Sensor (ID: 7, IP: 192.168.1.107, Status: Fault)
+│
+├─ 🏢 Building 2 (Name: "Warehouse")
+│  └─ ...
+│
+└─ 🏢 Building 3 (Name: "Remote Site")
+   └─ ...
+```
+
+**Node Data Structure** (From C++ `tree_product` struct):
+
+```typescript
+interface TreeNode {
+  id: string;                    // Unique identifier
+  name: string;                  // Display name
+  type: NodeType;                // Building | Floor | Room | Device
+  icon: string;                  // Icon name (building, folder, device, etc.)
+  children?: TreeNode[];         // Child nodes
+
+  // Device-specific fields (if type === Device)
+  deviceInfo?: {
+    serialNumber: string;        // Device serial number
+    productClassId: number;      // Device type (Tstat, BACnet, CO2, etc.)
+    productId: number;           // Specific product ID
+    protocol: Protocol;          // BACnet, Modbus, etc.
+    baudrate?: number;           // Serial baud rate (if serial)
+    firmwareVersion: string;     // e.g., "2.5.1"
+    hardwareVersion: string;     // e.g., "1.2"
+    ipAddress?: string;          // IP address (if network device)
+    comPort?: number;            // COM port number (if serial)
+    objectInstance?: number;     // BACnet object instance
+    status: DeviceStatus;        // Online | Offline | Fault
+    networkCardAddress?: string; // MAC address
+  };
+}
+
+enum NodeType {
+  Building = 'building',
+  Floor = 'floor',
+  Room = 'room',
+  Subnet = 'subnet',
+  Device = 'device'
+}
+
+enum Protocol {
+  BACnetIP = 'bacnet-ip',
+  BACnetMSTP = 'bacnet-mstp',
+  ModbusRTU = 'modbus-rtu',
+  ModbusTCP = 'modbus-tcp'
+}
+
+enum DeviceStatus {
+  Online = 'online',
+  Offline = 'offline',
+  Fault = 'fault'
+}
+```
+
+### 4.3 Component Architecture (Fluent UI)
+
+The T3-React application will use Fluent UI v9 components to match the desktop application aesthetics:
+
+**Main Layout Components**:
+```typescript
+// MainLayout.tsx
+├─ TopMenuBar (Fluent UI: MenuBar)
+├─ ToolIconBar (Fluent UI: Toolbar)
+├─ LeftPanel (Fluent UI: Tree)
+├─ RightPanel
+│  ├─ Breadcrumb (Fluent UI: Breadcrumb)
+│  ├─ TabBar (Fluent UI: TabList)
+│  └─ ContentArea (Fluent UI: Card, DataGrid)
+└─ StatusBar (Custom component)
+```
+
+**Key Fluent UI Components to Use**:
+- **Menu**: Top menu bar (File, Tools, View, etc.)
+- **Toolbar**: Icon toolbar
+- **Tree**: Left panel navigation
+- **Breadcrumb**: Navigation path
+- **TabList**: Content tabs
+- **Card**: Information panels
+- **DataGrid**: Data tables (Inputs, Outputs, Variables)
+- **Dialog**: Modal windows (Discover, Buildings, Settings)
+- **Button**: Action buttons
+- **Icon**: Icon buttons (from @fluentui/react-icons)
+
+---
+
+## 5. Implementation Plan & Tracking
+
+### 5.0 Implementation Task Breakdown (121 Tasks)
+
+**Total Tasks**: 121 organized into 19 phases
+**Estimated Timeline**: 6 weeks (2-3 developers)
+**Current Status**: Ready to begin
+
+#### Task Summary by Phase
+
+| Phase | Tasks | Estimated Days | Description |
+|-------|-------|----------------|-------------|
+| **Phase 0** | 1 task | 0.5 days | Project setup & planning |
+| **Phase 1** | 5 tasks | 1 day | Create folder structure |
+| **Phase 2** | 5 tasks | 2 days | Move Vue code to t3-vue |
+| **Phase 3** | 8 tasks | 2 days | Create TypeScript types |
+| **Phase 4** | 5 tasks | 2 days | Create shared API layer |
+| **Phase 5** | 5 tasks | 1.5 days | Create config files |
+| **Phase 6** | 2 tasks | 0.5 days | Create React Router |
+| **Phase 7** | 5 tasks | 2 days | Create Zustand stores |
+| **Phase 8** | 5 tasks | 2 days | Create custom hooks |
+| **Phase 9** | 9 tasks | 3 days | Create layout components |
+| **Phase 10** | 5 tasks | 2 days | Create common UI components |
+| **Phase 11** | 4 tasks | 1.5 days | Create dialog components |
+| **Phase 12** | 1 task | 0.5 days | Create form components |
+| **Phase 13** | 1 task | 0.5 days | Create chart components |
+| **Phase 14** | 5 tasks | 2 days | Create Inputs page (first page) |
+| **Phase 15** | 13 tasks | 8 days | Create remaining 12 pages |
+| **Phase 16** | 4 tasks | 1 day | Create entry points |
+| **Phase 17** | 14 tasks | 5 days | Testing & debugging |
+| **Phase 18** | 4 tasks | 2 days | Documentation & cleanup |
+| **Phase 19** | 3 tasks | 1 day | Production build & deployment |
+| **TOTAL** | **121 tasks** | **~40 days** | **6 weeks (3 devs)** |
+
+#### Critical Path Tasks (Must Complete First)
+
+1. ✅ **Phase 0-2** (Days 1-3.5): Setup → Folder structure → Move Vue files
+2. ✅ **Phase 3** (Days 4-5): TypeScript types (everything depends on this)
+3. ✅ **Phase 4** (Days 6-7): API layer (pages need this)
+4. ✅ **Phase 5-8** (Days 8-13): Config, routing, stores, hooks (foundation)
+5. ✅ **Phase 9** (Days 14-16): Layout components (shell of the app)
+6. ✅ **Phase 10-13** (Days 17-20): UI components (pages use these)
+7. ✅ **Phase 14** (Days 21-22): First page (Inputs - establishes pattern)
+8. ✅ **Phase 15** (Days 23-30): Remaining pages (parallel work possible)
+9. ✅ **Phase 16-19** (Days 31-40): Integration, testing, deployment
+
+#### Files to Create by Category
+
+| Category | Files | Locations |
+|----------|-------|-----------|
+| **Pages** | ~60 files | `src/t3-react/pages/{13 folders}` |
+| **Components** | ~31 files | `src/t3-react/components/{layout,common,dialogs,forms,charts}` |
+| **Hooks** | 8 files | `src/t3-react/hooks/` |
+| **Stores** | 8 files | `src/t3-react/store/` |
+| **API Modules** | ~20 files | `src/common/api/{bacnet,modbus,etc}` |
+| **Types** | ~12 files | `src/common/types/` |
+| **Utils** | ~10 files | `src/common/utils/` |
+| **Config** | 5 files | `src/t3-react/config/` |
+| **Entry Points** | 4 files | `src/main.ts`, `src/t3-react/{main,App}`, etc. |
+| **TOTAL** | **~158 new files** | Est. 16,100 lines of code |
+
+---
+
+### 5.1 Sprint Breakdown (6 weeks total)
 
 #### **Sprint 0: Planning & Design (Week 0)**
 
@@ -1039,33 +1689,40 @@ export default defineConfig({
 
 - [ ] **Day 3**: Create folder structure
   ```bash
-  mkdir -p src/vue-app src/react-app src/shared
-  mkdir -p src/react-app/{pages,components,layouts,hooks,store,styles,config}
-  mkdir -p src/shared/{api,auth,state,types,utils,components}
+  mkdir -p src/t3-vue src/t3-react src/common
+  mkdir -p src/t3-react/{pages,components,layouts,hooks,store,styles,config}
+  mkdir -p src/common/{api,auth,state,types,utils,components}
   ```
 
 - [ ] **Day 4-5**: Move existing Vue code
   ```bash
-  # Move existing files to vue-app/
-  mv src/App.vue src/vue-app/
-  mv src/pages src/vue-app/
-  mv src/components src/vue-app/
-  mv src/layouts src/vue-app/
-  mv src/router src/vue-app/
+  # Move existing files to t3-vue/
+  mv src/App.vue src/t3-vue/
+  mv src/pages src/t3-vue/
+  mv src/components src/t3-vue/
+  mv src/layouts src/t3-vue/
+  mv src/router src/t3-vue/
 
   # Create shared API layer
-  mv src/lib/api.js src/shared/api/client.ts
-  ```
+  mv src/lib/api.js src/common/api/client.ts
 
-**Week 2 Tasks**:
-- [ ] **Day 1-2**: Create `src/main.ts` (route dispatcher)
-- [ ] **Day 3**: Create `src/vue-app/main.ts` (Vue entry)
-- [ ] **Day 4**: Create `src/react-app/main.tsx` (React entry)
+  # Update all imports: @/ → @t3-vue/ (automated)
+  # This will be done with find & replace
+  ```**Week 2 Tasks**:
+- [ ] **Day 1**: Update all Vue imports (automated find & replace)
+  ```bash
+  # Find & Replace across all Vue files
+  # Replace: from '@/ → from '@t3-vue/
+  # Replace: import('@/ → import('@t3-vue/
+  ```
+- [ ] **Day 2**: Create `src/main.ts` (route dispatcher)
+- [ ] **Day 3**: Create `src/t3-vue/main.ts` (Vue entry)
+- [ ] **Day 4**: Create `src/t3-react/main.tsx` (React entry)
 - [ ] **Day 5**: Create shared infrastructure
-  - `src/shared/api/client.ts`
-  - `src/shared/auth/authService.ts`
-  - `src/shared/state/sharedState.ts`
-  - `src/shared/types/device.types.ts`
+  - `src/common/api/client.ts`
+  - `src/common/auth/authService.ts`
+  - `src/common/state/sharedState.ts`
+  - `src/common/types/device.types.ts`
 
 **Testing**:
 - [ ] Verify Vue app loads on `/v2/dashboard`
@@ -1097,7 +1754,7 @@ export default defineConfig({
   - Error boundaries
 
 - [ ] **Day 5**: Create first page placeholder
-  - `src/react-app/pages/T3000/Tstat/TstatView.tsx`
+  - `src/t3-react/pages/T3000/Tstat/TstatView.tsx`
   - Basic layout with Fluent UI components
 
 **Week 4 Tasks**:
@@ -1182,9 +1839,474 @@ export default defineConfig({
 
 ## 5. Code Examples
 
-### 5.1 Complete Example: React Page with Fluent UI
+### 5.1 T3-React MainLayout Design (Azure Portal Style)
 
-**File**: `src/react-app/pages/T3000/Tstat/TstatView.tsx`
+#### Layout Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  TOP HEADER (48px height, #323130 dark gray)                                │
+│  ┌──────────┬────────────────────────────────────────────────┬────────────┐ │
+│  │ T3000    │  🔍 Search devices, settings...                │  👤 Admin  │ │
+│  │ Logo     │                                                 │  🔔 ⚙️     │ │
+│  └──────────┴────────────────────────────────────────────────┴────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌──┬──────────────────────────────────────────────────────────────────────────┐
+│  │  BREADCRUMB (32px height, #f3f2f1 light gray)                            │
+│  │  Home > T3000 > Tstat Controller > Room 101                              │
+│  │                                                                            │
+├──┼────────────────────────────────────────────────────────────────────────────┤
+│  │                                                                            │
+│ L│  MAIN CONTENT AREA (scrollable, white background)                        │
+│ E│  ┌──────────────────────────────────────────────────────────────────┐   │
+│ F│  │  Page Title: Tstat Controller - Room 101                         │   │
+│ T│  │  [Refresh] [Save] [Settings]                                     │   │
+│  │  ├──────────────────────────────────────────────────────────────────┤   │
+│ S│  │                                                                   │   │
+│ I│  │  TABS: Overview | Data Points | Schedule | Trend Log            │   │
+│ D│  │  ━━━━━━━━                                                        │   │
+│ E│  │                                                                   │   │
+│ B│  │  ┌─────────────────────┐  ┌──────────────────────────────────┐ │   │
+│ A│  │  │ CARD: Device Info   │  │ CARD: Quick Actions              │ │   │
+│ R│  │  │ Model: T3-BB        │  │ [Read All]  [Write All]          │ │   │
+│  │  │  │ IP: 192.168.1.100   │  │ [Clear Alarms]                   │ │   │
+│ (│  │  │ Status: Online      │  │                                  │ │   │
+│ 5│  │  └─────────────────────┘  └──────────────────────────────────┘ │   │
+│ 0│  │                                                                   │   │
+│ p│  │  ┌───────────────────────────────────────────────────────────┐  │   │
+│ x│  │  │ DATA GRID: Data Points (Fluent UI DataGrid)              │  │   │
+│ )│  │  ├─────────┬────────┬──────┬──────┬────────┬─────────────────┤  │   │
+│  │  │  │ Name    │ Value  │ Unit │ Auto │ Range  │ Description     │  │   │
+│  │  │  ├─────────┼────────┼──────┼──────┼────────┼─────────────────┤  │   │
+│ │││  │  │ Temp    │ 72.5   │ °F   │ ✓    │ 50-90  │ Room Temp       │  │   │
+│ │││  │  │ Setpoint│ 70.0   │ °F   │ ✓    │ 50-90  │ Target Temp     │  │   │
+│ │││  │  │ Humidity│ 45     │ %    │ ✓    │ 0-100  │ Relative Humid  │  │   │
+│ │││  │  │ Fan     │ Auto   │ -    │ ✓    │ -      │ Fan Mode        │  │   │
+│ │││  │  │ ...     │ ...    │ ...  │ ...  │ ...    │ ...             │  │   │
+│ │││  │  └─────────┴────────┴──────┴──────┴────────┴─────────────────┘  │   │
+│ ▼││  │                                                                   │   │
+│  │  │  [Show 50 rows] [Page 1 of 5] [Next >]                           │   │
+│  │  └───────────────────────────────────────────────────────────────────┘   │
+│  │                                                                            │
+└──┴────────────────────────────────────────────────────────────────────────────┘
+
+LEFT SIDEBAR (Icon-only, 50px width, collapsible to 200px on hover):
+┌──────┐
+│ ☰    │  Hamburger (toggle expand)
+├──────┤
+│ 🏠   │  Home
+│ Home │  (text shows on hover/expand)
+├──────┤
+│ 🌡️   │  Tstat
+│Tstat │
+├──────┤
+│ 📊   │  BACnet
+│BACnet│  ├─ Input
+│      │  ├─ Output
+│      │  ├─ Variable
+│      │  └─ Schedule
+├──────┤
+│ 🌐   │  Network
+│Netwrk│
+├──────┤
+│ 📈   │  Trend Log
+│Trend │
+├──────┤
+│ 🎨   │  Graphics
+│Graph │
+├──────┤
+│ ⚙️   │  Settings
+│Config│
+└──────┘
+```
+
+#### Key Design Elements (Fluent UI)
+
+**1. Top Header (48px)**
+- Dark gray background (#323130)
+- White text and icons
+- Components:
+  - Logo/Brand (left)
+  - Global search bar (center, expandable)
+  - User profile, notifications, settings (right)
+
+**2. Left Sidebar (50px collapsed, 200px expanded)**
+- Icon-only by default (Azure Portal style)
+- Expands on hover or click hamburger
+- Shows icon + label when expanded
+- Highlights active section
+- Background: #f3f2f1 (light gray)
+
+**3. Breadcrumb Navigation (32px)**
+- Shows current location hierarchy
+- Clickable breadcrumb trail
+- Background: white or very light gray
+
+**4. Main Content Area**
+- White background
+- Padded (24px)
+- Components:
+  - Page title + action buttons
+  - Tabs for different views
+  - Cards for grouped information
+  - Fluent UI DataGrid for data tables
+  - Pagination controls
+
+**5. Color Scheme (Fluent UI)**
+- Primary: #0078D4 (Microsoft Blue)
+- Background: #FFFFFF (white)
+- Surface: #F3F2F1 (light gray)
+- Text: #323130 (dark gray)
+- Border: #EDEBE9 (very light gray)
+
+---
+
+### 5.2 MainLayout Component Structure
+
+```
+MainLayout.tsx
+├── Header (fixed top)
+│   ├── Logo + Brand
+│   ├── SearchBox (Fluent UI)
+│   └── UserMenu (Persona + Menu)
+│
+├── Sidebar (fixed left)
+│   ├── Hamburger toggle
+│   ├── Navigation items
+│   │   ├── NavLink (Home)
+│   │   ├── NavLink (Tstat)
+│   │   ├── NavLink with submenu (BACnet)
+│   │   │   ├── Input
+│   │   │   ├── Output
+│   │   │   ├── Variable
+│   │   │   └── Schedule
+│   │   ├── NavLink (Network)
+│   │   ├── NavLink (Trend Log)
+│   │   ├── NavLink (Graphics)
+│   │   └── NavLink (Settings)
+│   └── [Collapsible state management]
+│
+├── Breadcrumb (below header)
+│   └── Breadcrumb items (Home > Section > Page)
+│
+└── Main Content (scrollable)
+    ├── Page header
+    │   ├── Title
+    │   └── Action buttons
+    ├── Tabs (optional)
+    └── Outlet (React Router)
+        └── Rendered page content
+```
+
+---
+
+### 5.3 Complete MainLayout Implementation
+
+**File**: `src/t3-react/layouts/MainLayout.tsx`
+
+```tsx
+import React, { useState } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import {
+  makeStyles,
+  shorthands,
+  tokens,
+  Button,
+  Input,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  Avatar,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbButton,
+  BreadcrumbDivider,
+} from '@fluentui/react-components';
+import {
+  Navigation20Regular,
+  Home20Regular,
+  Temperature20Regular,
+  DataArea20Regular,
+  Globe20Regular,
+  ChartMultiple20Regular,
+  Paint20Regular,
+  Settings20Regular,
+  Search20Regular,
+  Alert20Regular,
+  Person20Regular,
+  ChevronRight20Regular,
+} from '@fluentui/react-icons';
+
+const useStyles = makeStyles({
+  root: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    overflow: 'hidden',
+  },
+
+  // Top Header
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    height: '48px',
+    backgroundColor: '#323130',
+    color: '#FFFFFF',
+    ...shorthands.padding('0', '16px'),
+    ...shorthands.gap('16px'),
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    zIndex: 1000,
+  },
+  logo: {
+    fontSize: '18px',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.gap('8px'),
+    minWidth: '150px',
+  },
+  searchContainer: {
+    flex: 1,
+    maxWidth: '600px',
+  },
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.gap('12px'),
+  },
+
+  // Main container
+  mainContainer: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  },
+
+  // Left Sidebar
+  sidebar: {
+    width: '50px',
+    backgroundColor: '#F3F2F1',
+    ...shorthands.borderRight('1px', 'solid', '#EDEBE9'),
+    display: 'flex',
+    flexDirection: 'column',
+    transition: 'width 0.2s ease',
+    overflow: 'hidden',
+    zIndex: 100,
+    ':hover': {
+      width: '200px',
+    },
+  },
+  sidebarExpanded: {
+    width: '200px',
+  },
+  navItem: {
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.padding('12px', '16px'),
+    ...shorthands.gap('12px'),
+    cursor: 'pointer',
+    color: '#323130',
+    textDecoration: 'none',
+    transition: 'background-color 0.15s',
+    whiteSpace: 'nowrap',
+    ':hover': {
+      backgroundColor: '#E1DFDD',
+    },
+  },
+  navItemActive: {
+    backgroundColor: '#EDEBE9',
+    ...shorthands.borderLeft('3px', 'solid', '#0078D4'),
+  },
+  navIcon: {
+    minWidth: '20px',
+  },
+  navLabel: {
+    fontSize: '14px',
+  },
+
+  // Content area
+  contentArea: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  breadcrumbContainer: {
+    ...shorthands.padding('8px', '24px'),
+    backgroundColor: '#FAFAFA',
+    ...shorthands.borderBottom('1px', 'solid', '#EDEBE9'),
+  },
+  content: {
+    flex: 1,
+    overflow: 'auto',
+    backgroundColor: '#FFFFFF',
+    ...shorthands.padding('24px'),
+  },
+});
+
+export const MainLayout: React.FC = () => {
+  const styles = useStyles();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  const navItems = [
+    { path: '/t3000', icon: <Home20Regular />, label: 'Home' },
+    { path: '/t3000/tstat', icon: <Temperature20Regular />, label: 'Tstat' },
+    {
+      path: '/t3000/bacnet',
+      icon: <DataArea20Regular />,
+      label: 'BACnet',
+      submenu: [
+        { path: '/t3000/bacnet/input', label: 'Input' },
+        { path: '/t3000/bacnet/output', label: 'Output' },
+        { path: '/t3000/bacnet/variable', label: 'Variable' },
+        { path: '/t3000/bacnet/schedule', label: 'Schedule' },
+      ],
+    },
+    { path: '/t3000/network', icon: <Globe20Regular />, label: 'Network' },
+    { path: '/t3000/trendlog', icon: <ChartMultiple20Regular />, label: 'Trend Log' },
+    { path: '/t3000/graphics', icon: <Paint20Regular />, label: 'Graphics' },
+    { path: '/t3000/settings', icon: <Settings20Regular />, label: 'Settings' },
+  ];
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const handleNavClick = (path: string) => {
+    navigate(path);
+  };
+
+  return (
+    <div className={styles.root}>
+      {/* Top Header */}
+      <header className={styles.header}>
+        <div className={styles.logo}>
+          <Temperature20Regular /> T3000 Portal
+        </div>
+
+        <div className={styles.searchContainer}>
+          <Input
+            placeholder="Search devices, settings..."
+            contentBefore={<Search20Regular />}
+            appearance="filled-lighter"
+            style={{ width: '100%' }}
+          />
+        </div>
+
+        <div className={styles.headerActions}>
+          <Button
+            appearance="subtle"
+            icon={<Alert20Regular />}
+            style={{ color: '#FFFFFF' }}
+          />
+
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button
+                appearance="subtle"
+                icon={<Avatar name="Admin" color="colorful" size={28} />}
+                style={{ color: '#FFFFFF' }}
+              >
+                Admin
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem>Profile</MenuItem>
+                <MenuItem>Settings</MenuItem>
+                <MenuItem>Sign Out</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        </div>
+      </header>
+
+      <div className={styles.mainContainer}>
+        {/* Left Sidebar */}
+        <nav
+          className={`${styles.sidebar} ${sidebarExpanded ? styles.sidebarExpanded : ''}`}
+          onMouseEnter={() => setSidebarExpanded(true)}
+          onMouseLeave={() => setSidebarExpanded(false)}
+        >
+          <div
+            className={styles.navItem}
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+          >
+            <Navigation20Regular className={styles.navIcon} />
+            {sidebarExpanded && <span className={styles.navLabel}>Menu</span>}
+          </div>
+
+          {navItems.map((item) => (
+            <div key={item.path}>
+              <div
+                className={`${styles.navItem} ${isActive(item.path) ? styles.navItemActive : ''}`}
+                onClick={() => handleNavClick(item.path)}
+              >
+                <span className={styles.navIcon}>{item.icon}</span>
+                {sidebarExpanded && <span className={styles.navLabel}>{item.label}</span>}
+              </div>
+
+              {/* Submenu items (if expanded and has submenu) */}
+              {sidebarExpanded && item.submenu && (
+                <div style={{ paddingLeft: '20px' }}>
+                  {item.submenu.map((subItem) => (
+                    <div
+                      key={subItem.path}
+                      className={`${styles.navItem} ${isActive(subItem.path) ? styles.navItemActive : ''}`}
+                      onClick={() => handleNavClick(subItem.path)}
+                      style={{ paddingLeft: '32px' }}
+                    >
+                      <ChevronRight20Regular className={styles.navIcon} />
+                      <span className={styles.navLabel}>{subItem.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+
+        {/* Content Area */}
+        <div className={styles.contentArea}>
+          {/* Breadcrumb */}
+          <div className={styles.breadcrumbContainer}>
+            <Breadcrumb>
+              <BreadcrumbItem>
+                <BreadcrumbButton onClick={() => navigate('/t3000')}>
+                  Home
+                </BreadcrumbButton>
+              </BreadcrumbItem>
+              <BreadcrumbDivider />
+              <BreadcrumbItem>
+                <BreadcrumbButton>T3000</BreadcrumbButton>
+              </BreadcrumbItem>
+              <BreadcrumbDivider />
+              <BreadcrumbItem>
+                <BreadcrumbButton>Current Page</BreadcrumbButton>
+              </BreadcrumbItem>
+            </Breadcrumb>
+          </div>
+
+          {/* Main Content (React Router Outlet) */}
+          <main className={styles.content}>
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MainLayout;
+```
+
+---
+
+### 5.4 Complete Example: React Page with Fluent UI
+
+**File**: `src/t3-react/pages/T3000/Tstat/TstatView.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -1207,8 +2329,8 @@ import {
   TableCellLayout,
   TableColumnDefinition,
 } from '@fluentui/react-components';
-import { apiGet } from '@shared/api/client';
-import { Device, DataPoint } from '@shared/types/device.types';
+import { apiGet } from '@common/api/client';
+import { Device, DataPoint } from '@common/types/device.types';
 
 const useStyles = makeStyles({
   container: {
@@ -1356,7 +2478,7 @@ export default TstatView;
 
 ### 5.2 Navigation Example: Vue → React
 
-**In Vue Component** (`src/vue-app/layouts/MainLayout.vue`):
+**In Vue Component** (`src/t3-vue/layouts/MainLayout.vue`):
 
 ```vue
 <template>
@@ -1395,7 +2517,7 @@ const goToT3BASWeb = () => {
 
 ### 5.3 Navigation Example: React → Vue
 
-**In React Component** (`src/react-app/layouts/MainLayout.tsx`):
+**In React Component** (`src/t3-react/layouts/MainLayout.tsx`):
 
 ```tsx
 import { Menu, MenuItem, MenuTrigger, MenuPopover, MenuList, Button } from '@fluentui/react-components';
@@ -1448,9 +2570,9 @@ export const MainLayout: React.FC = () => {
 
 **Vue Tests** (using @vue/test-utils):
 ```typescript
-// tests/vue-app/components/StatusIndicator.spec.ts
+// tests/t3-vue/components/StatusIndicator.spec.ts
 import { mount } from '@vue/test-utils';
-import StatusIndicator from '@/vue-app/components/Basic/StatusIndicator.vue';
+import StatusIndicator from '@t3-vue/components/Basic/StatusIndicator.vue';
 
 describe('StatusIndicator (Vue)', () => {
   it('renders online status', () => {
@@ -1464,9 +2586,9 @@ describe('StatusIndicator (Vue)', () => {
 
 **React Tests** (using @testing-library/react):
 ```typescript
-// tests/react-app/components/StatusIndicator.spec.tsx
+// tests/t3-react/components/StatusIndicator.spec.tsx
 import { render, screen } from '@testing-library/react';
-import { StatusIndicator } from '@/react-app/components/T3000/StatusIndicator';
+import { StatusIndicator } from '@t3-react/components/T3000/StatusIndicator';
 
 describe('StatusIndicator (React)', () => {
   it('renders online status', () => {
@@ -1478,9 +2600,9 @@ describe('StatusIndicator (React)', () => {
 
 **Shared Code Tests**:
 ```typescript
-// tests/shared/api/client.spec.ts
+// tests/common/api/client.spec.ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import { api } from '@shared/api/client';
+import { api } from '@common/api/client';
 
 describe('API Client', () => {
   it('should add auth token to requests', async () => {

@@ -299,7 +299,7 @@ const communicationTimeout = 30000 // Fixed 30s for network
 // Poll every [user interval], timeout each request after 30s
 ```
 
-### � **Performance & Efficiency Impact**
+### Performance & Efficiency Impact
 
 #### Current (Hard-coded 60s polling):
 ```

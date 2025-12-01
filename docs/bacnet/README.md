@@ -238,13 +238,13 @@ The phased implementation strategy minimizes risk while delivering incremental v
 
 ## Document Change Log
 
-| Date | Author | Changes | Version |
-|------|--------|---------|---------|
-| 2025-07-29 | GitHub Copilot | Initial documentation creation | 1.0 |
-| | | Complete requirements analysis | |
-| | | Technical roadmap development | |
-| | | BACnet protocol research | |
-| | | SQLite integration guide | |
+| Date | Changes | Version |
+|------|---------|---------|
+| 2025-07-29 | Initial documentation creation | 1.0 |
+| | Complete requirements analysis | |
+| | Technical roadmap development | |
+| | BACnet protocol research | |
+| | SQLite integration guide | |
 
 ## Related Resources
 

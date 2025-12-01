@@ -28,11 +28,12 @@ module.exports = configure(function (/* ctx */) {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli/boot-files
     boot: [
-      'antd'
+      '../t3-vue/boot/antd', // Load Ant Design Vue
+      'react.tsx' // Initialize React app conditionally based on route
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#css
-    css: ["app.css", "lib.css", "shape.css", "global.css"],
+    css: ["app.css"],
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
@@ -79,6 +80,14 @@ module.exports = configure(function (/* ctx */) {
 
       // extendViteConf (viteConf) {},
       extendViteConf(viteConf) {
+        // Add path aliases for hybrid Vue+React architecture
+        viteConf.resolve = viteConf.resolve || {};
+        viteConf.resolve.alias = viteConf.resolve.alias || {};
+        viteConf.resolve.alias['@'] = require('path').resolve(__dirname, 'src');
+        viteConf.resolve.alias['@t3-vue'] = require('path').resolve(__dirname, 'src/t3-vue');
+        viteConf.resolve.alias['@t3-react'] = require('path').resolve(__dirname, 'src/t3-react');
+        viteConf.resolve.alias['@common'] = require('path').resolve(__dirname, 'src/lib');
+
         // Enable React JSX support for Grafana components
         viteConf.esbuild = viteConf.esbuild || {};
         viteConf.esbuild.jsx = 'automatic';
@@ -197,16 +206,16 @@ module.exports = configure(function (/* ctx */) {
     animations: [],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#property-sourcefiles
-    // sourceFiles: {
-    //   rootComponent: 'src/App.vue',
-    //   router: 'src/router/index',
-    //   store: 'src/store/index',
-    //   registerServiceWorker: 'src-pwa/register-service-worker',
-    //   serviceWorker: 'src-pwa/custom-service-worker',
-    //   pwaManifestFile: 'src-pwa/manifest.json',
-    //   electronMain: 'src-electron/electron-main',
-    //   electronPreload: 'src-electron/electron-preload'
-    // },
+    sourceFiles: {
+      rootComponent: 'src/t3-vue/App.vue',
+      router: 'src/t3-vue/router/index',
+      // store: 'src/t3-vue/store/index', // Not used
+      // registerServiceWorker: 'src-pwa/register-service-worker',
+      // serviceWorker: 'src-pwa/custom-service-worker',
+      // pwaManifestFile: 'src-pwa/manifest.json',
+      // electronMain: 'src-electron/electron-main',
+      // electronPreload: 'src-electron/electron-preload'
+    },
 
     // https://v2.quasar.dev/quasar-cli/developing-ssr/configuring-ssr
     ssr: {

@@ -84,9 +84,9 @@ Located in `../hvac-shape-library/`:
 5. **User Experience**: Enhanced tools, smart connections, automatic layout, and improved interactions
 
 ### Implementation Strategy
-- **Phase 1-2 (Weeks 1-8)**: Foundation stabilization and core architecture refactoring
-- **Phase 3-4 (Weeks 9-16)**: Data layer enhancement and performance optimization
-- **Phase 5-6 (Weeks 17-24)**: Shape library implementation and advanced features
+- **Phase 1-2**: Foundation stabilization and core architecture refactoring
+- **Phase 3-4**: Data layer enhancement and performance optimization
+- **Phase 5-6**: Shape library implementation and advanced features
 
 ---
 
@@ -115,12 +115,6 @@ Located in `../hvac-shape-library/`:
 2. **Planning**: Use `hvac-modernization-roadmap.md` for implementation strategy
 3. **Architecture**: Reference `hvac-module-structure-and-deep-suggestions.md` for design patterns
 4. **Shape Library**: Follow `../hvac-shape-library/shape-library-feature-suggestions.md` for implementation
-
-### For Project Managers
-1. **Overview**: Read this README and the roadmap summary
-2. **Resource Planning**: Review team structure and timeline in the roadmap
-3. **Risk Assessment**: Check risk management strategies and mitigation plans
-4. **Success Metrics**: Use defined performance targets and quality metrics
 
 ### For Architects
 1. **Current State**: Review all analysis documents for comprehensive understanding

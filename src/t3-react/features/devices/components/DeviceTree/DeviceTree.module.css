@@ -1,0 +1,111 @@
+.emptyState {
+  padding: 20px 16px;
+  text-align: center;
+  color: #605e5c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.treeItemSelected {
+  font-weight: 400;
+  color: #0078d4;
+  background-color: #e1dfdd;
+  border-left: 2px solid #0078d4;
+  border-radius: 0;
+  transition: all 0.1s ease-in-out;
+  padding-left: 6px;
+}
+
+.treeItemNormal {
+  font-weight: 400;
+  color: #201f1e;
+  background-color: transparent;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  transition: all 0.1s ease-in-out;
+  padding-left: 6px;
+}
+
+.treeItemNormal:hover {
+  background-color: #f3f2f1;
+  border-left-color: #8a8886;
+}
+
+/* Override Fluent UI Tree defaults for Azure Portal look */
+:global(.fui-Tree) {
+  background-color: transparent !important;
+  font-size: 13px !important;
+  color: #201f1e !important;
+}
+
+:global(.fui-TreeItem) {
+  margin-bottom: 1px !important;
+  border-radius: 0 !important;
+}
+
+:global(.fui-TreeItemLayout) {
+  padding: 4px 8px 4px 0 !important;
+  min-height: 32px !important;
+  font-size: 13px !important;
+  color: #201f1e !important;
+  border-radius: 0 !important;
+  padding-left: calc(var(--tree-level, 0) * 20px) !important;
+}
+
+/* Selected tree item styling */
+.treeItemSelected :global(.fui-TreeItemLayout) {
+  color: #0078d4 !important;
+}
+
+.treeItemSelected :global(.fui-TreeItemLayout__main) {
+  color: #0078d4 !important;
+}
+
+.treeItemSelected :global(.fui-TreeItemLayout__iconBefore) svg,
+.treeItemSelected :global(.fui-TreeItemLayout__expandIcon) svg {
+  color: #0078d4 !important;
+}
+
+/* Add extra margin to leaf nodes to align with branch content (for missing expand icon) */
+:global(.fui-TreeItem[itemtype="leaf"] .fui-TreeItemLayout__main) {
+  margin-left: 44px !important;
+}
+
+:global(.fui-TreeItemLayout:hover) {
+  background-color: #f3f2f1 !important;
+}
+
+:global(.fui-TreeItemLayout__expandIcon) {
+  color: #605e5c !important;
+  width: 20px !important;
+  height: 20px !important;
+}
+
+:global(.fui-TreeItemLayout__iconBefore),
+:global(.fui-TreeItemLayout__iconAfter) {
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Azure Portal scrollbar styling */
+:global(.fui-Tree::-webkit-scrollbar) {
+  width: 8px;
+}
+
+:global(.fui-Tree::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:global(.fui-Tree::-webkit-scrollbar-thumb) {
+  background-color: #c8c6c4;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+:global(.fui-Tree::-webkit-scrollbar-thumb:hover) {
+  background-color: #a19f9d;
+}

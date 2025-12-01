@@ -46,7 +46,7 @@ type GetDeviceNetworkConfigFn =
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-enum WebViewMessageType {
+pub enum WebViewMessageType {
     GET_PANEL_DATA = 0,
     GET_INITIAL_DATA = 1,
     SAVE_GRAPHIC_DATA = 2,
@@ -63,16 +63,18 @@ enum WebViewMessageType {
     BIND_DEVICE = 13,
     SAVE_NEW_LIBRARY_DATA = 14,
     LOGGING_DATA = 15, // Used for full device data sync
+    UPDATE_WEBVIEW_LIST = 16, // Used for updating full records (inputs/outputs/variables)
+    REFRESH_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
 }
 
 // Global function pointers - will be loaded from T3000.exe at runtime
-static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
+pub static mut BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN: Option<BacnetWebViewHandleWebViewMsgFn> = None;
 static mut GET_DEVICE_BASIC_SETTINGS_FN: Option<GetDeviceBasicSettingsFn> = None;
 static mut GET_DEVICE_NETWORK_CONFIG_FN: Option<GetDeviceNetworkConfigFn> = None;
 static mut T3000_LOADED: bool = false;
 
 // Load the BacnetWebView_HandleWebViewMsg function from the current executable (T3000.exe)
-unsafe fn load_t3000_function() -> bool {
+pub unsafe fn load_t3000_function() -> bool {
     if T3000_LOADED {
         return BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN.is_some();
     }

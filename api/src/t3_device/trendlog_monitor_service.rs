@@ -446,24 +446,64 @@ impl TrendlogMonitorService {
     }
 
     /// Get all trendlog data and sync to database for all configured devices
-    /// DEPRECATED: Use sync_all_trendlog_configs in t3_ffi_sync_service instead
+    /// FIXED: Now properly queries devices table for actual SerialNumber and PanelId
     pub async fn sync_all_devices(&self) -> Result<usize, AppError> {
-        // This function assumes device_id == panel_id == serial_number
-        // which is not correct. Use the startup sync in t3_ffi_sync_service instead.
-        let device_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        use crate::entity::t3_device::devices;
+
+        // Query all devices from the database
+        let db = self.db_connection.lock().await;
+        let all_devices = devices::Entity::find()
+            .all(&*db)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to query devices: {}", e)))?;
+
+        drop(db); // Release lock before sync operations
+
+        if all_devices.is_empty() {
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Trendlog_Monitor",
+                "No devices found in database to sync",
+                LogLevel::Warn,
+            );
+            return Ok(0);
+        }
+
+        let _ = write_structured_log_with_level(
+            "T3_Webview_Trendlog_Monitor",
+            &format!("Found {} devices in database, starting trendlog sync", all_devices.len()),
+            LogLevel::Info,
+        );
+
         let mut total_synced = 0;
 
-        for device_id in device_ids {
-            // FIXME: This incorrectly uses device_id as both panel_id and serial_number
-            match self.sync_trendlogs_to_database(device_id, device_id).await {
+        for device in &all_devices {
+            let serial_number = device.serial_number;
+            let panel_id = device.panel_id.unwrap_or(device.panel_number.unwrap_or(1));
+
+            let _ = write_structured_log_with_level(
+                "T3_Webview_Trendlog_Monitor",
+                &format!("Syncing device: SerialNumber={}, PanelId={}, ProductName={:?}",
+                    serial_number, panel_id, device.product_name),
+                LogLevel::Info,
+            );
+
+            // FIXED: Now correctly uses actual panel_id and serial_number from database
+            match self.sync_trendlogs_to_database(panel_id, serial_number).await {
                 Ok(count) => {
                     total_synced += count;
+                    let _ = write_structured_log_with_level(
+                        "T3_Webview_Trendlog_Monitor",
+                        &format!("✅ Synced {} trendlogs for device SerialNumber={}, PanelId={}",
+                            count, serial_number, panel_id),
+                        LogLevel::Info,
+                    );
                 },
                 Err(e) => {
                     // Log error but continue with other devices
                     let _ = write_structured_log_with_level(
                         "T3_Webview_Trendlog_Monitor",
-                        &format!("Failed to sync trendlogs for device {}: {}", device_id, e),
+                        &format!("⚠️ Failed to sync trendlogs for device SerialNumber={}, PanelId={}: {}",
+                            serial_number, panel_id, e),
                         LogLevel::Warn,
                     );
                 }
@@ -472,7 +512,7 @@ impl TrendlogMonitorService {
 
         let _ = write_structured_log_with_level(
             "T3_Webview_Trendlog_Monitor",
-            &format!("Total trendlogs synced across all devices: {}", total_synced),
+            &format!("✅ Total trendlogs synced: {} across {} devices", total_synced, all_devices.len()),
             LogLevel::Info,
         );
 

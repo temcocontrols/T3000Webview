@@ -1,0 +1,44 @@
+/* Settings Page Custom Styles */
+
+/* Override Fluent UI Tab font sizes */
+.customTabList :global(.fui-Tab) {
+  font-size: 12px !important;
+}
+
+.customTabList :global(.fui-Tab__content) {
+  font-size: 12px !important;
+}
+
+.customTabList :global(button) {
+  font-size: 12px !important;
+}
+
+.customTabList :global(button span) {
+  font-size: 12px !important;
+}
+
+/* Alternative selectors in case the above don't work */
+:global(.fui-TabList) :global(button) {
+  font-size: 12px !important;
+}
+
+:global([role="tab"]) {
+  font-size: 12px !important;
+}
+
+:global([role="tab"] span) {
+  font-size: 12px !important;
+}
+
+/* Override Fluent UI Dropdown/Option font sizes */
+:global(.fui-Option) {
+  font-size: 12px !important;
+}
+
+:global([role="option"]) {
+  font-size: 12px !important;
+}
+
+:global(.fui-Listbox) :global([role="option"]) {
+  font-size: 12px !important;
+}

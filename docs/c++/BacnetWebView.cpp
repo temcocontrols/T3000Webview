@@ -1700,49 +1700,10 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			}
 			unsigned int temp_objectinstance = g_Device_Basic_Setting[temp_panel_id].reg.object_instance;
 
-			// Log write attempt
-			CString writeLog;
-			writeLog.Format(_T("Writing to device: ObjectInstance=%d, Type=INPUT, Index=%d"),
-				temp_objectinstance, entry_index);
-			WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), writeLog, 0);
+		
 
-			int ret_results = WritePrivateData_Blocking(temp_objectinstance, WRITEINPUT_T3000, entry_index, entry_index, 4, (char*)&g_Input_data[temp_panel_id].at(entry_index));
-			if (ret_results > 0)
-			{
-				CString successLog;
-				successLog.Format(_T("SUCCESS: Write completed for INPUT[%d]"), entry_index);
-				WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), successLog, 1);
-			}
-			else
-			{
-				WrapErrorMessage(builder, tempjson, outmsg, _T("Write data timeout."));
-
-				CString errorLog;
-				errorLog.Format(_T("ERROR: WritePrivateData_Blocking failed for INPUT[%d]"), entry_index);
-				WriteHandleWebViewMsgLog(_T("UPDATE_WEBVIEW_LIST"), errorLog, 0);
-				break;
-			}
-			break;
-		}
-		case BAC_OUT:
-		{
-			break;
-		}
-		default:
-			break;
-		}
-
-		tempjson["action"] = "UPDATE_WEBVIEW_LIST";
-		tempjson["data"]["status"] = true;
-		const std::string output = Json::writeString(builder, tempjson);
-		CString temp_cs(output.c_str());
-		outmsg = temp_cs;
-
-
-
-
+		break;
 	}
-	break;
 	case WEBVIEW_MESSAGE_TYPE::UPDATE_ENTRY:
 	{
 
@@ -2121,8 +2082,13 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 		//m_webView->PostWebMessageAsJson(temp_cs); 
 
+		bool enable_logging_data_log = true;
+
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
+		if (enable_logging_data_log) {
+			WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
+		}
+
 		break;
 	}
 	case WEBVIEW_MESSAGE_TYPE::GET_ENTRIES:
@@ -2641,7 +2607,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			break; // Ignore the command if within 15 minutes
 		}
 		last_logging_time = current_time;
-
+		 
 		Json::Value tempjson;
 		tempjson["action"] = "LOGGING_DATA_RES";
 
@@ -2765,7 +2731,9 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count);
+		if (enable_logging_data_log) { 
+			WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count);
+		} 
 	}
 	break;
 	default:

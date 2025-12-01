@@ -104,7 +104,21 @@ pub fn t3_enhanced_logging(message: &str) {
 }
 
 /// Abstracted T3000 device database copy functionality
+///
+/// Version-controlled database update system:
+/// - Reads database.need_update and database.update_status from ResourceFile database
+/// - If need_update=1 AND update_status=0: Force copy, clean all files, set update_status=1
+/// - If update_status=1: Skip force copy (update already applied)
+/// - Otherwise: Only copy if destination doesn't exist
+///
+/// For new releases:
+/// 1. Update ResourceFile/webview_t3_device.db with database.version="X.X"
+/// 2. Set database.need_update=1 and database.update_status=0
+/// 3. On first run: Database is force copied and update_status becomes 1
+/// 4. Subsequent runs: update_status=1, no force copy
 pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
+    use rusqlite::Connection;
+
     let source_db_path = Path::new("ResourceFile/webview_t3_device.db");
     let destination_db_path = Path::new(
         T3_DEVICE_DATABASE_URL
@@ -112,19 +126,153 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
             .ok_or("Invalid webview_t3_device database url")?,
     );
 
-    t3_enhanced_logging(&format!("Attempting to copy webview_t3_device database:"));
-    t3_enhanced_logging(&format!("  Source: {:?}", source_db_path));
-    t3_enhanced_logging(&format!("  Destination: {:?}", destination_db_path));
-
     let destination_dir = destination_db_path
         .parent()
         .ok_or("Invalid destination webview_t3_device database path")?;
 
     if !destination_dir.exists() {
         fs::create_dir_all(destination_dir)?;
-        t3_enhanced_logging(&format!("Created destination directory: {:?}", destination_dir));
     }
 
+    t3_enhanced_logging(&format!("Attempting to copy webview_t3_device database:"));
+    t3_enhanced_logging(&format!("  Source: {:?}", source_db_path));
+    t3_enhanced_logging(&format!("  Destination: {:?}", destination_db_path));
+
+    // Check version control settings from ResourceFile database
+    let (db_version, need_update, update_status) = if source_db_path.exists() {
+        match Connection::open(source_db_path) {
+            Ok(conn) => {
+                let version = conn.query_row(
+                    "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = 'database.version'",
+                    [],
+                    |row| row.get::<_, String>(0)
+                ).unwrap_or_else(|_| "unknown".to_string());
+
+                let need_update = conn.query_row(
+                    "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = 'database.need_update'",
+                    [],
+                    |row| row.get::<_, String>(0)
+                ).unwrap_or_else(|_| "0".to_string()) == "1";
+
+                let update_status = conn.query_row(
+                    "SELECT config_value FROM APPLICATION_CONFIG WHERE config_key = 'database.update_status'",
+                    [],
+                    |row| row.get::<_, String>(0)
+                ).unwrap_or_else(|_| "0".to_string()) == "1";
+
+                (version, need_update, update_status)
+            }
+            Err(_) => ("unknown".to_string(), false, false)
+        }
+    } else {
+        ("unknown".to_string(), false, false)
+    };
+
+    t3_enhanced_logging(&format!("  Database Version: {}", db_version));
+    t3_enhanced_logging(&format!("  Need Update: {}", need_update));
+    t3_enhanced_logging(&format!("  Update Status: {}", if update_status { "completed" } else { "pending" }));
+
+    // Determine if force copy is needed
+    let should_force_copy = need_update && !update_status;
+
+    // Handle force copy mode - clean all database files and copy fresh
+    if should_force_copy {
+        t3_enhanced_logging("🔄 Force copy mode enabled - removing existing database files...");
+
+        // Remove primary destination
+        if destination_db_path.exists() {
+            fs::remove_file(destination_db_path)?;
+            t3_enhanced_logging(&format!("   ✅ Removed existing file: {:?}", destination_db_path));
+        }
+
+        // Remove WAL and SHM files for main database
+        let wal_path = destination_db_path.with_extension("db-wal");
+        let shm_path = destination_db_path.with_extension("db-shm");
+        if wal_path.exists() {
+            match fs::remove_file(&wal_path) {
+                Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed WAL file: {:?}", wal_path)),
+                Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove WAL: {}", e)),
+            }
+        }
+        if shm_path.exists() {
+            match fs::remove_file(&shm_path) {
+                Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed SHM file: {:?}", shm_path)),
+                Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove SHM: {}", e)),
+            }
+        }
+
+        // Remove all files with prefix "webview_t3_device_" in destination directory (partition files)
+        if let Some(dest_dir) = destination_db_path.parent() {
+            if dest_dir.exists() {
+                match fs::read_dir(dest_dir) {
+                    Ok(entries) => {
+                        for entry in entries.flatten() {
+                            let path = entry.path();
+                            if let Some(filename) = path.file_name() {
+                                if let Some(name_str) = filename.to_str() {
+                                    if name_str.starts_with("webview_t3_device_") {
+                                        match fs::remove_file(&path) {
+                                            Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed partition file: {:?}", path)),
+                                            Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove {:?}: {}", path, e)),
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not read directory {:?}: {}", dest_dir, e)),
+                }
+            }
+        }
+
+        // Remove alternative locations that might exist
+        let alt_locations = [
+            Path::new("Database/webview_t3_device.db"),
+            Path::new("../Database/webview_t3_device.db"),
+            Path::new("../../api/Database/webview_t3_device.db"),
+        ];
+
+        for alt_path in &alt_locations {
+            if alt_path.exists() && alt_path.canonicalize().ok() != destination_db_path.canonicalize().ok() {
+                match fs::remove_file(alt_path) {
+                    Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed existing file: {:?}", alt_path)),
+                    Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove {:?}: {}", alt_path, e)),
+                }
+            }
+
+            // Also remove files with prefix in alternative locations
+            if let Some(alt_dir) = alt_path.parent() {
+                if alt_dir.exists() {
+                    match fs::read_dir(alt_dir) {
+                        Ok(entries) => {
+                            for entry in entries.flatten() {
+                                let path = entry.path();
+                                if let Some(filename) = path.file_name() {
+                                    if let Some(name_str) = filename.to_str() {
+                                        if name_str.starts_with("webview_t3_device_") {
+                                            match fs::remove_file(&path) {
+                                                Ok(_) => t3_enhanced_logging(&format!("   ✅ Removed file with prefix: {:?}", path)),
+                                                Err(e) => t3_enhanced_logging(&format!("   ⚠️  Could not remove {:?}: {}", path, e)),
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Err(_) => {} // Silently skip if directory doesn't exist
+                    }
+                }
+            }
+        }
+
+        t3_enhanced_logging("   All existing webview_t3_device.db and webview_t3_device_* files removed");
+    } else if need_update && update_status {
+        t3_enhanced_logging("ℹ️  Database update already completed");
+        t3_enhanced_logging(&format!("   Version: {}", db_version));
+        t3_enhanced_logging("   To force update again, set database.update_status=0 in ResourceFile database");
+    }
+
+    // Copy database if it doesn't exist (or if force copy removed it)
     if !destination_db_path.exists() {
         if !source_db_path.exists() {
             t3_enhanced_logging(&format!("Source webview_t3_device database file does not exist: {:?}", source_db_path));
@@ -160,6 +308,50 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
                 "Copied webview_t3_device database file from {:?} to {:?}",
                 source_db_path, destination_db_path
             ));
+        }
+
+        // If this was a force copy due to version update, mark update as completed
+        if should_force_copy {
+            t3_enhanced_logging("🔄 Marking database update as completed...");
+
+            // Update the update_status in both ResourceFile (source) and destination databases
+
+            // 1. Update ResourceFile database (source)
+            if let Ok(conn) = Connection::open(source_db_path) {
+                match conn.execute(
+                    "UPDATE APPLICATION_CONFIG SET config_value = '1' WHERE config_key = 'database.update_status'",
+                    []
+                ) {
+                    Ok(_) => {
+                        t3_enhanced_logging("   ✅ ResourceFile database update status set to completed");
+                    }
+                    Err(e) => {
+                        t3_enhanced_logging(&format!("   ⚠️  Could not update ResourceFile status: {}", e));
+                        t3_enhanced_logging("   WARNING: Force copy may repeat on next startup!");
+                    }
+                }
+            } else {
+                t3_enhanced_logging(&format!("   ⚠️  Could not open ResourceFile database: {:?}", source_db_path));
+            }
+
+            // 2. Update destination database (runtime)
+            if let Ok(conn) = Connection::open(destination_db_path) {
+                match conn.execute(
+                    "UPDATE APPLICATION_CONFIG SET config_value = '1' WHERE config_key = 'database.update_status'",
+                    []
+                ) {
+                    Ok(_) => {
+                        t3_enhanced_logging("   ✅ Runtime database update status set to completed");
+                        t3_enhanced_logging(&format!("   Version: {}", db_version));
+                        t3_enhanced_logging("   Next startup will skip force copy");
+                    }
+                    Err(e) => {
+                        t3_enhanced_logging(&format!("   ⚠️  Could not update runtime database status: {}", e));
+                    }
+                }
+            } else {
+                t3_enhanced_logging(&format!("   ⚠️  Could not open runtime database: {:?}", destination_db_path));
+            }
         }
     } else {
         t3_enhanced_logging(&format!("webview_t3_device database already exists at destination: {:?}", destination_db_path));

@@ -1,93 +1,174 @@
+/**
+ * Library and component-specific styles
+ * Overrides and customizations for third-party libraries
+ */
 
-.cur-default {
-  cursor: default
+/* Quasar customizations */
+.q-table {
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
-.cur-pointer {
-  cursor: pointer
+.q-table__card {
+  box-shadow: none;
 }
 
-.cur-text {
-  cursor: text
+.q-drawer {
+  background-color: #fafafa;
 }
 
-.cur-move {
-  cursor: move
+.q-item--active {
+  background-color: rgba(25, 118, 210, 0.1);
+  color: var(--primary-color);
 }
 
-.cur-n-resize {
-  cursor: n-resize
+/* Ant Design Vue customizations */
+.ant-btn {
+  border-radius: var(--border-radius-sm);
 }
 
-.cur-e-resize {
-  cursor: e-resize
+.ant-table {
+  font-size: 13px;
 }
 
-.cur-s-resize {
-  cursor: s-resize
+.ant-table-thead > tr > th {
+  background-color: #f5f5f5;
+  font-weight: 500;
 }
 
-.cur-w-resize {
-  cursor: w-resize
+.ant-tree {
+  font-size: 13px;
 }
 
-.cur-ns-resize {
-  cursor: ns-resize
+.ant-tree-node-selected {
+  background-color: rgba(25, 118, 210, 0.1) !important;
 }
 
-.cur-ew-resize {
-  cursor: ew-resize
+/* Fluent UI customizations (for React app) */
+.fui-Button {
+  border-radius: var(--border-radius-sm);
 }
 
-.cur-ne-resize {
-  cursor: ne-resize
+.fui-DataGrid {
+  border-radius: var(--border-radius-md);
 }
 
-.cur-nw-resize {
-  cursor: nw-resize
+/* Chart.js customizations */
+.chart-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
 }
 
-.cur-se-resize {
-  cursor: se-resize
+/* Monaco Editor customizations */
+.monaco-editor {
+  border-radius: var(--border-radius-md);
 }
 
-.cur-sw-resize {
-  cursor: sw-resize
+/* Custom scrollbar for tree and lists */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
 }
 
-.cur-nesw-resize {
-  cursor: nesw-resize
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.cur-nwse-resize {
-  cursor: nwse-resize
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
 }
 
-.cur-anchor {
-  cursor: url("assets/cursor/cur1012.cur"), pointer
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #999;
 }
 
-.cur-rotate {
-  cursor: url("assets/cursor/rotate.cur"), move
+/* Loading overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
 }
 
-.cur-pencil {
-  cursor: url("assets/cursor/edit.cur"), pointer
+/* Toast notifications */
+.notification-toast {
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
 }
 
-.cur-pencil-close {
-  cursor: url("assets/cursor/edit-close.cur"), pointer
+.notification-success {
+  background-color: var(--positive-color);
+  color: white;
 }
 
-.cur-add {
-  cursor: url("assets/cursor/cur1012.cur"), pointer
+.notification-error {
+  background-color: var(--negative-color);
+  color: white;
 }
 
-.cur-stamp {
-  cursor: url("assets/cursor/cur1012.cur"), pointer
+.notification-warning {
+  background-color: var(--warning-color);
+  color: #333;
 }
 
-.cur-cross {
-  cursor: url("assets/cursor/cross.svg") 18 18, pointer
+.notification-info {
+  background-color: var(--info-color);
+  color: white;
 }
 
+/* Dialog/Modal customizations */
+.custom-dialog {
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.custom-dialog-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.custom-dialog-body {
+  padding: var(--spacing-lg);
+}
+
+.custom-dialog-footer {
+  padding: var(--spacing-lg);
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+/* Context menu */
+.context-menu {
+  position: fixed;
+  background: white;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs) 0;
+  min-width: 150px;
+  z-index: var(--z-dropdown);
+}
+
+.context-menu-item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: var(--spacing-xs) 0;
+}

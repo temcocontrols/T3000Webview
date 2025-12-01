@@ -12,7 +12,7 @@ This repository stores the webview components used in the T3000 software. There 
 
 Available at localhost:3003/#/modbus-register
 
-![Screenshot of Modbus Register Tool](./screenshots/Modbus-Register.png)
+![Screenshot of Modbus Register Tool](./docs/screenshots/Modbus-Register.png)
 
 ### Overview
 
@@ -123,7 +123,7 @@ This example illustrates how a typical Modbus register entry is structured. User
 
 Available at localhost:3003/#
 
-![Screenshot of HVAC Drawer](./screenshots/HVAC-Drawer.png)
+![Screenshot of HVAC Drawer](./docs/screenshots/HVAC-Drawer.png)
 
 ### Overview
 
