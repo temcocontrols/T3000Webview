@@ -1153,8 +1153,15 @@ INSERT OR IGNORE INTO database_partition_config (
 );
 
 -- Insert default application configuration
+-- Database Version Control System: database.version, database.need_update, database.update_status
+-- Database Configuration: database.max_file_size, database.backup_enabled, database.compression_enabled, database.vacuum_interval
+-- UI Configuration: ui.theme, ui.language
+-- Service Configuration: ffi.sync_interval_secs, rediscover.interval_secs
 INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, user_id, device_serial, panel_id) VALUES
-('database.max_file_size', '100', 'number', 'Maximum database file size in MB', 1, NULL, NULL, NULL),
+('database.version', '1.0', 'string', 'Database schema version', 1, NULL, NULL, NULL),
+('database.need_update', '1', 'boolean', 'Flag indicating if database needs update (force copy on startup)', 1, NULL, NULL, NULL),
+('database.update_status', '0', 'boolean', 'Update completion status (0=pending, 1=completed)', 1, NULL, NULL, NULL),
+('database.max_file_size', '2048', 'number', 'Maximum database file size in MB (default: 2GB)', 1, NULL, NULL, NULL),
 ('database.backup_enabled', 'true', 'boolean', 'Enable automatic database backups', 1, NULL, NULL, NULL),
 ('database.compression_enabled', 'false', 'boolean', 'Enable database compression', 1, NULL, NULL, NULL),
 ('database.vacuum_interval', '7', 'number', 'Database vacuum interval in days', 1, NULL, NULL, NULL),

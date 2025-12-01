@@ -449,6 +449,33 @@ async fn migrate_single_period(
     // Small delay to ensure connection is fully closed
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
+    // Check if partition has any data - skip if empty
+    if migrated_count == 0 {
+        logger.warn(&format!("⚠️ No data found for period {} - skipping partition creation", partition_id));
+        logger.info("🗑️ Removing empty partition file");
+
+        // Remove the empty partition file
+        if let Err(e) = std::fs::remove_file(&partition_path) {
+            logger.warn(&format!("⚠️ Could not remove empty partition file: {}", e));
+        } else {
+            logger.info("✅ Empty partition file removed");
+        }
+
+        // Also clean up any WAL/SHM files
+        let wal_path = partition_path.with_extension("db-wal");
+        let shm_path = partition_path.with_extension("db-shm");
+
+        if wal_path.exists() {
+            std::fs::remove_file(&wal_path).ok();
+        }
+        if shm_path.exists() {
+            std::fs::remove_file(&shm_path).ok();
+        }
+
+        logger.info("ℹ️ Partition creation skipped - no data for this period");
+        return Ok(0);
+    }
+
     // Get partition file size after VACUUM
     let partition_size = std::fs::metadata(&partition_path)
         .map(|m| m.len())
