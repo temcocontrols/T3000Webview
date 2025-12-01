@@ -452,13 +452,17 @@
   display: flex;
   flex-direction: column;
   min-width: 200px;
-  max-width: 350px;
+  max-width: 360px;
 }
 
 .subGridHeader {
-  padding: 8px 12px;
+  padding: 0 8px;
+  height: 32px;
+  line-height: 32px;
   background-color: #fafafa;
+  border-top: 1px solid #edebe9;
   border-bottom: 1px solid #edebe9;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 600;
   color: #323130;
@@ -472,7 +476,7 @@
 .inputRow {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 6px 8px;
   border-bottom: 1px solid #f3f2f1;
   font-size: 12px;
   transition: background-color 0.1s ease;

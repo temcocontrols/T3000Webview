@@ -58,7 +58,7 @@ export const TrendLogsPage: React.FC = () => {
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
-  const [monitorInputs, setMonitorInputs] = useState<string[]>(Array(12).fill(''));
+  const [monitorInputs, setMonitorInputs] = useState<string[]>(Array(14).fill(''));
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
@@ -265,14 +265,14 @@ export const TrendLogsPage: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setMonitorInputs(data.inputs || Array(12).fill(''));
+        setMonitorInputs(data.inputs || Array(14).fill(''));
       } else {
         // If API not implemented yet, use empty inputs
-        setMonitorInputs(Array(12).fill(''));
+        setMonitorInputs(Array(14).fill(''));
       }
     } catch (err) {
       console.error('Error fetching monitor inputs:', err);
-      setMonitorInputs(Array(12).fill(''));
+      setMonitorInputs(Array(14).fill(''));
     }
   }, [selectedDevice]);
 
