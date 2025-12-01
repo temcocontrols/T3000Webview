@@ -2356,7 +2356,23 @@ impl DatabaseFilesService {
                     }
                 }
 
-                println!("🗑�?Database file deleted: {}", file_model.file_name);
+                // Also delete associated WAL and SHM files
+                let wal_path = file_path.with_extension("db-wal");
+                let shm_path = file_path.with_extension("db-shm");
+
+                if wal_path.exists() {
+                    if let Err(e) = std::fs::remove_file(&wal_path) {
+                        println!("⚠️ Warning: Failed to delete WAL file: {}", e);
+                    }
+                }
+
+                if shm_path.exists() {
+                    if let Err(e) = std::fs::remove_file(&shm_path) {
+                        println!("⚠️ Warning: Failed to delete SHM file: {}", e);
+                    }
+                }
+
+                println!("🗑️ Database file deleted: {}", file_model.file_name);
                 Ok(true)
             }
             None => Ok(false)
@@ -2481,6 +2497,18 @@ impl DatabaseFilesService {
                 if let Err(_e) = std::fs::remove_file(&runtime_db_path) {
                     // Silently continue if file deletion fails
                 }
+            }
+
+            // Also delete associated WAL and SHM files
+            let wal_path = runtime_db_path.with_extension("db-wal");
+            let shm_path = runtime_db_path.with_extension("db-shm");
+
+            if wal_path.exists() {
+                std::fs::remove_file(&wal_path).ok();
+            }
+
+            if shm_path.exists() {
+                std::fs::remove_file(&shm_path).ok();
             }
         }
 
