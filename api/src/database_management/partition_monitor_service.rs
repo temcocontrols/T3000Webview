@@ -870,9 +870,55 @@ async fn check_and_partition_by_size() -> Result<bool> {
         return Err(crate::error::Error::ServerError(msg));
     }
 
+    // Validate the copied file is not empty or corrupted
+    match std::fs::metadata(&partition_path) {
+        Ok(metadata) => {
+            let copied_size = metadata.len();
+            if copied_size == 0 {
+                let msg = "❌ Copied database file is 0 bytes! Copy operation failed.";
+                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", msg, LogLevel::Error);
+                // Clean up the invalid file
+                let _ = std::fs::remove_file(&partition_path);
+                return Err(crate::error::Error::ServerError(msg.to_string()));
+            }
+            // Verify file is at least 50% of original size (sanity check)
+            let original_size = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
+            if copied_size < original_size / 2 {
+                let msg = format!(
+                    "❌ Copied database file is suspiciously small ({} bytes vs {} bytes original). Possible corruption.",
+                    copied_size, original_size
+                );
+                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+                // Clean up the suspicious file
+                let _ = std::fs::remove_file(&partition_path);
+                return Err(crate::error::Error::ServerError(msg));
+            }
+            let msg = format!("✅ Database copied successfully ({:.2} MB)", copied_size as f64 / 1024.0 / 1024.0);
+            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Info);
+        }
+        Err(e) => {
+            let msg = format!("❌ Cannot verify copied database file: {}", e);
+            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+            // Clean up if file exists
+            let _ = std::fs::remove_file(&partition_path);
+            return Err(crate::error::Error::ServerError(msg));
+        }
+    }
+
     // Step 2: Get record count and date range from copied partition
+    let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", "📊 Querying partition metadata...", LogLevel::Info);
+
     let (record_count, start_datetime, end_datetime) = match Connection::open(&partition_path) {
         Ok(conn) => {
+            // Verify database integrity
+            if let Err(e) = conn.execute("PRAGMA integrity_check", []) {
+                let msg = format!("❌ Partition database integrity check failed: {}", e);
+                let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+                // Clean up corrupted file
+                let _ = std::fs::remove_file(&partition_path);
+                return Err(crate::error::Error::ServerError(msg));
+            }
+
             let count = conn.query_row(
                 "SELECT COUNT(*) FROM TRENDLOG_DATA_DETAIL",
                 [],
@@ -893,7 +939,13 @@ async fn check_and_partition_by_size() -> Result<bool> {
 
             (count, start, end)
         }
-        Err(_) => (0, None, None)
+        Err(e) => {
+            let msg = format!("❌ Cannot open partition database file (possibly corrupted): {}", e);
+            let _ = write_structured_log_with_level("T3_DatabaseSizeMonitor", &msg, LogLevel::Error);
+            // Clean up corrupted file
+            let _ = std::fs::remove_file(&partition_path);
+            return Err(crate::error::Error::ServerError(msg));
+        }
     };
 
     // Step 3: Clear main database (delete child data and sync metadata only)
