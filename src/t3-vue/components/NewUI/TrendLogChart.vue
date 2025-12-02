@@ -440,15 +440,6 @@
           <!-- Combined Analog Chart with Multiple Signals -->
           <!-- Only show analog chart if there are visible analog series -->
           <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
-            <!-- <div class="combined-label">
-              <div class="signal-info">
-                <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
-                      :style="{ color: series.color }" class="signal-legend">
-                  �?{{ series.name }} ({{ series.unit }})
-                  <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
-                </span>
-              </div>
-            </div> -->
             <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
           </div>
 
@@ -3012,7 +3003,7 @@
         padding: {
           left: 2,
           right: 20,
-          top: 10,
+          top: 25,
           bottom: 10
         }
       },
@@ -3022,7 +3013,7 @@
       },
       plugins: {
         legend: {
-          display: true,
+          display: false,
           position: 'top' as const,
           labels: {
             color: '#000000',
@@ -3086,6 +3077,8 @@
           }
         },
         y: {
+          display: true,
+          position: 'left' as const,
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
