@@ -3098,15 +3098,12 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            count: 10,              // Force 10 tick marks for better granularity
-            maxTicksLimit: 10,      // Ensure 10 ticks displayed
-            autoSkip: false,        // Don't skip ticks automatically
-            // Improve precision for small value ranges
+            // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
               return Number(value).toFixed(2)
             }
           },
-          // Dynamic Y-axis scaling to better show small variations
+          // Dynamic Y-axis scaling with round grid numbers
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
             if (data.length === 0) return
@@ -3146,6 +3143,13 @@
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Calculate nice step size for round grid numbers (minimum 5)
+            const newRange = scale.max - scale.min
+            const niceSteps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 5 // Target 5-7 grid lines
+            const stepSize = niceSteps.find(s => s >= roughStep) || 5
+            scale.options.ticks.stepSize = stepSize
           }
         }
       }
