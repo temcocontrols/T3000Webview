@@ -15,9 +15,9 @@
         <a-flex align="center" gap="small" class="control-group">
           <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
           <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center;">
+            <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
               <span>{{ getTimeBaseLabel() }}</span>
-              <DownOutlined style="margin-left: 4px;" />
+              <DownOutlined style="margin-left: 4px; font-size: 10px;" />
             </a-button>
             <template #overlay>
               <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
@@ -37,33 +37,32 @@
         </a-flex>
 
         <!-- Navigation Arrows -->
+        <!-- Scroll Left/Right Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="moveTimeLeft" :disabled="isRealTime">
-              <template #icon>
-                <LeftOutlined />
-              </template>
+            <a-button @click="moveTimeLeft" :disabled="isRealTime" title="Scroll Left (←)"
+                      style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
+              <ArrowLeftOutlined style="font-size: 12px;" />
             </a-button>
-            <a-button @click="moveTimeRight" :disabled="isRealTime">
-              <template #icon>
-                <RightOutlined />
-              </template>
+            <a-button @click="moveTimeRight" :disabled="isRealTime" title="Scroll Right (→)"
+                      style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
+              <ArrowRightOutlined style="font-size: 12px;" />
             </a-button>
           </a-button-group>
         </a-flex>
 
-        <!-- Zoom Controls -->
+        <!-- Zoom In/Out Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
-                      style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
-              <ZoomOutOutlined />
-              <span>Zoom Out</span>
-            </a-button>
-            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
-                      style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
-              <ZoomInOutlined />
+            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shift + ←)"
+                      style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
+              <ArrowUpOutlined style="font-size: 12px;" />
               <span>Zoom In</span>
+            </a-button>
+            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Shift + →)"
+                      style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
+              <ArrowDownOutlined style="font-size: 12px;" />
+              <span>Zoom Out</span>
             </a-button>
           </a-button-group>
         </a-flex>
@@ -426,7 +425,7 @@
 
       <!-- Right Panel: Oscilloscope Charts -->
       <div class="right-panel">
-        <div class="oscilloscope-container">
+        <div class="oscilloscope-container" @wheel="handleMouseWheel">
           <!-- Combined Analog Chart with Multiple Signals -->
           <!-- Only show analog chart if there are visible analog series -->
           <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
@@ -953,6 +952,10 @@
   import {
     LeftOutlined,
     RightOutlined,
+    ArrowLeftOutlined,
+    ArrowRightOutlined,
+    ArrowUpOutlined,
+    ArrowDownOutlined,
     ZoomInOutlined,
     ZoomOutOutlined,
     ReloadOutlined,
@@ -6597,6 +6600,23 @@
         autoScrollState: isRealTime.value,
         note: 'Timebase watcher will handle data loading'
       })
+    }
+  }
+
+  // Mouse wheel zoom handler
+  const handleMouseWheel = (event: WheelEvent) => {
+    event.preventDefault() // Prevent page scroll
+
+    if (event.deltaY < 0) {
+      // Scroll up = Zoom In
+      if (canZoomIn.value) {
+        zoomIn()
+      }
+    } else if (event.deltaY > 0) {
+      // Scroll down = Zoom Out
+      if (canZoomOut.value) {
+        zoomOut()
+      }
     }
   }
 
