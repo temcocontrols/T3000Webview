@@ -3044,6 +3044,7 @@
           }
         },
         tooltip: {
+          enabled: true,
           backgroundColor: '#ffffff',
           titleColor: '#000000',
           bodyColor: '#000000',
@@ -3062,11 +3063,9 @@
             },
             label: (context: any) => {
               const series = visibleAnalogSeries.value.find(s => s.name === context.dataset.label)
-              if (!series) return `${context.dataset.label}: ${context.parsed.y}`
+              if (!series) return `${context.parsed.y}`
 
-              const cleanLabel = series.description || series.prefix || context.dataset.label
-              const unit = series.unit || ''
-              return `${cleanLabel}: ${context.parsed.y.toFixed(2)} ${unit}`
+              return `   ${context.parsed.y.toFixed(2)}`
             }
           }
         }
@@ -3110,7 +3109,7 @@
             padding: 2,
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
-              return Number(value).toFixed(2)
+              return Math.round(Number(value))
             }
           },
           // Dynamic Y-axis scaling with round grid numbers
@@ -3154,11 +3153,11 @@
               scale.max = max + padding
             }
 
-            // Calculate nice step size for round grid numbers (minimum 5)
+            // Calculate nice step size for more ticks
             const newRange = scale.max - scale.min
-            const niceSteps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-            const roughStep = newRange / 5 // Target 5-7 grid lines
-            const stepSize = niceSteps.find(s => s >= roughStep) || 5
+            const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10 // Target 10 grid lines for more ticks
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
         }
@@ -3202,6 +3201,7 @@
             display: false // Digital charts don't need legends (shown in channel label)
           },
           tooltip: {
+            enabled: true,
             backgroundColor: '#ffffff',
             titleColor: '#000000',
             bodyColor: '#000000',
@@ -3221,7 +3221,7 @@
               label: (context: any) => {
                 const stateIndex = context.parsed.y === 1 ? 1 : 0
                 const stateText = digitalStates[stateIndex]
-                return `${series.name}: ${stateText}`
+                return `   ${stateText}`
               }
             }
           }
@@ -10505,9 +10505,8 @@
     margin-bottom: 2px;
     color: #262626;
     line-height: 1.3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
     max-width: 100%;
   }
 
