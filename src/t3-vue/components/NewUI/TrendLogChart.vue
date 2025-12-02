@@ -2361,23 +2361,10 @@
     return 'yyyy-MM-dd HH:mm'
   }
 
-  // Custom tick formatter:
-  // - For ranges > 1 day ('1d', '4d'): show date+time for first and last ticks, time only for middle ticks
-  // - For ranges ≤1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show time + date (multi-line) for first tick, time only for the rest
+  // X-axis tick formatter to always show time + date (multi-line) for first tick
+  // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
     const date = new Date(value)
-    const currentRangeMinutes = getTimeRangeMinutes(timeBase.value)
-    const isLargeRange = currentRangeMinutes > 1440 // Larger than 1 day (1440 minutes)
-
-    // Helper function to format date+time (single line)
-    const formatDateTime = () => {
-      const year = date.getFullYear()
-      const month = (date.getMonth() + 1).toString().padStart(2, '0')
-      const day = date.getDate().toString().padStart(2, '0')
-      const hours = date.getHours().toString().padStart(2, '0')
-      const minutes = date.getMinutes().toString().padStart(2, '0')
-      return `${year}-${month}-${day} ${hours}:${minutes}`
-    }
 
     // Helper function to format multi-line: time on top, date below
     const formatDateTimeMultiLine = () => {
@@ -2397,22 +2384,12 @@
     }
 
     const isFirstTick = index === 0
-    const isLastTick = index === ticks.length - 1
 
-    if (isLargeRange) {
-      // For ranges > 1 day: show date+time for first and last ticks, time only for middle ticks
-      if (isFirstTick || isLastTick) {
-        return formatDateTime() // Show date+time for first and last
-      } else {
-        return formatTimeOnly() // Show time only for middle ticks
-      }
+    // Always show time + date (multi-line) for first tick, time only for the rest
+    if (isFirstTick) {
+      return formatDateTimeMultiLine() // Show time on top, date below
     } else {
-      // For ranges ≤1 day: show time + date as multi-line for first tick, time only for the rest
-      if (isFirstTick) {
-        return formatDateTimeMultiLine() // Show time on top, date below
-      } else {
-        return formatTimeOnly() // Show time only for other ticks
-      }
+      return formatTimeOnly() // Show time only for other ticks
     }
   }
 
@@ -3036,6 +3013,44 @@
               if (!series) return `${context.parsed.y}`
 
               return `   ${context.parsed.y.toFixed(2)}`
+            }
+          }
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x' as const,
+            modifierKey: 'shift' as const
+          },
+          zoom: {
+            drag: {
+              enabled: true,
+              backgroundColor: 'rgba(24, 144, 255, 0.15)',
+              borderColor: 'rgba(24, 144, 255, 0.5)',
+              borderWidth: 1,
+              modifierKey: 'ctrl' as const
+            },
+            mode: 'x' as const,
+            onZoomComplete: ({ chart }: any) => {
+              if (chart.scales.x) {
+                const newStart = chart.scales.x.min
+                const newEnd = chart.scales.x.max
+                startTimestamp.value = Math.floor(newStart)
+                endTimestamp.value = Math.floor(newEnd)
+                isCustomDateRange.value = true
+                const currentRangeSec = (endTimestamp.value - startTimestamp.value) / 1000
+                const totalRangeSec = (maxTime.value - minTime.value) / 1000
+                if (totalRangeSec > 0) {
+                  zoomLevel.value = Math.max(1, Math.round(totalRangeSec / currentRangeSec))
+                }
+              }
+            }
+          },
+          limits: {
+            x: {
+              min: 'original' as const,
+              max: 'original' as const,
+              minRange: 60 * 1000
             }
           }
         }
