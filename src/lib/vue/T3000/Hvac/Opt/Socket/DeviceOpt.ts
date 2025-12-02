@@ -298,11 +298,16 @@ class DeviceOpt {
   }
 
   // rest the device count
-  refreshCurrentDeviceCount(deviceModel) {
+  refreshCurrentDeviceCount(deviceModel?) {
 
     // current device's element count
     const appStateLs = this.lsOpt.loadDeviceAppStateLS();
     const currentDevice = this.getCurrentDevice();
+
+    // Check if currentDevice exists and has graphicFull
+    if (!currentDevice || !currentDevice.graphicFull) {
+      return;
+    }
 
     if (appStateLs) {
       appStateLs.forEach(opt => {
@@ -311,7 +316,10 @@ class DeviceOpt {
 
           //{"device":"T3-XX-ESP 1","graphic":1,"graphicFull":{"id":"1","fullLabel":"Graphic full label 1","label":"label 1","elementCount":"0"}}
           currentDevice.graphicFull.elementCount = elementCount;
-          deviceModel.value.data = currentDevice;
+          // Only update deviceModel if it was provided
+          if (deviceModel) {
+            deviceModel.value.data = currentDevice;
+          }
           return;
         }
       });
@@ -444,6 +452,11 @@ class DeviceOpt {
 
   refreshCurrentDevice() {
     const currentDevice = this.getCurrentDevice();
+
+    // Check if currentDevice exists and has graphicFull
+    if (!currentDevice || !currentDevice.graphicFull) {
+      return;
+    }
 
     const appStateElmCount = appState.value.items.length;
     const graphicElmCount = currentDevice.graphicFull.elementCount;
