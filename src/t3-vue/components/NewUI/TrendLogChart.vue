@@ -435,7 +435,7 @@
 
           <!-- Separate Digital Channels -->
           <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
-            <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }" :style="{ backgroundColor: `${series.color}15` }">
+            <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
               <div class="channel-label" :style="{ color: series.color }">
                 {{ series.name }}
               </div>
@@ -3189,7 +3189,7 @@
             left: 5,
             right: 5,
             top: 0,
-            bottom: 0
+            bottom: isLastChart ? 10 : 0
           }
         },
         interaction: {
@@ -10850,15 +10850,15 @@
 
 
   .channel-chart {
-    height: 70px;
-    background: #ffebee;
+    height: 50px;
+    background: white;
     border: 1px solid #ddd;
     margin-bottom: -1px;
     position: relative;
   }
 
     .channel-chart.last-channel {
-      height: 70px;
+      height: 85px;
     }
 
     /* Add border to first channel-chart (top) */
