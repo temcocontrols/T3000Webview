@@ -54,12 +54,12 @@
         <!-- Zoom In/Out Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shift + ←)"
+            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (↑)"
                       style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
               <ArrowUpOutlined style="font-size: 12px;" />
               <span>Zoom In</span>
             </a-button>
-            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Shift + →)"
+            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (↓)"
                       style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
               <ArrowDownOutlined style="font-size: 12px;" />
               <span>Zoom Out</span>
@@ -230,7 +230,7 @@
                   Loading...
                 </span>
                 <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                  📡 Live
+                  <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
                 </span>
                 <span v-else-if="dataSource === 'api'" class="source-badge historical">
                   📚 Historical ({{ timeBase }})
@@ -809,12 +809,13 @@
               <a-switch v-model:checked="keyboardEnabled" size="small" />
             </div>
           </template>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px; color: #666;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; color: #666;">
             <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">←</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">→</kbd> : Scroll time left/right</div>
-            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">Shift</kbd> + <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">←</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">→</kbd> : Zoom in/out</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↑</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↓</kbd> : Zoom in/out</div>
             <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">1-9, A-E</kbd> : Toggle series visibility</div>
-            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↑</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↓</kbd> : Navigate series list</div>
-            <div style="grid-column: 1 / -1;"><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">ESC</kbd> : Toggle keyboard shortcuts on/off</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">Ctrl</kbd> + <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↑</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↓</kbd> : Navigate series list</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">Enter</kbd> : Toggle selected item</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">ESC</kbd> : Toggle item shortcuts on/off</div>
           </div>
         </a-card>
       </a-space>
@@ -981,6 +982,7 @@
     DatabaseOutlined,
     SaveOutlined,
     ThunderboltOutlined,
+    ThunderboltFilled,
     DeleteOutlined
   } from '@ant-design/icons-vue'
   import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
@@ -7055,7 +7057,14 @@
 
   // ⌨️ Keyboard Navigation Handler
   const handleKeydown = async (event: KeyboardEvent) => {
-    if (!keyboardEnabled.value) return
+    // Arrow keys and mouse wheel always work, regardless of keyboardEnabled
+    const isNavigationKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.code)
+    const isItemSelectionKey = event.code.match(/^(Digit[1-9]|Key[A-E])$/) || event.code === 'Enter'
+
+    // Only check keyboardEnabled for item selection keys (1-9, A-E, Enter, Ctrl+Up/Down)
+    if (isItemSelectionKey && !keyboardEnabled.value) return
+    if (event.code === 'ArrowUp' && event.ctrlKey && !keyboardEnabled.value) return
+    if (event.code === 'ArrowDown' && event.ctrlKey && !keyboardEnabled.value) return
 
     // List of keys we handle - prevent default behavior for these
     const handledKeys = [
@@ -7064,7 +7073,7 @@
       'Digit6', 'Digit7', 'Digit8', 'Digit9',
       // Item selection keys (A-E)
       'KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE',
-      // Navigation keys
+      // Navigation keys (always work)
       'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
       // Toggle key
       'Enter',
@@ -7123,57 +7132,79 @@
         }
         break
 
-      case 'ArrowLeft': // Change timebase (zoom in to shorter timebase)
-        if (canZoomIn.value) {
-          zoomIn()
-          LogUtil.Info(`⌨️ Keyboard: Timebase Left (Zoom In)`, {
-            newTimebase: timeBase.value,
-            canZoomInMore: canZoomIn.value
+      case 'ArrowLeft': // Scroll left through time history
+        if (!isRealTime.value) {
+          moveTimeLeft()
+          LogUtil.Info(`⌨️ Keyboard: Arrow Left (Scroll Left)`, {
+            action: 'SCROLL_TIME_LEFT'
           })
+        }
+        break
+
+      case 'ArrowRight': // Scroll right through time history
+        if (!isRealTime.value) {
+          moveTimeRight()
+          LogUtil.Info(`⌨️ Keyboard: Arrow Right (Scroll Right)`, {
+            action: 'SCROLL_TIME_RIGHT'
+          })
+        }
+        break
+
+      case 'ArrowUp': // Zoom in (shorter timebase)
+        if (event.ctrlKey) {
+          // Ctrl + Up: Navigate up through items
+          if (displayedSeries.value.length > 0) {
+            selectedItemIndex.value = selectedItemIndex.value <= 0
+              ? displayedSeries.value.length - 1
+              : selectedItemIndex.value - 1
+
+            LogUtil.Info(`⌨️ Keyboard: Ctrl + Up (Navigate Up)`, {
+              selectedIndex: selectedItemIndex.value,
+              selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
+            })
+          }
         } else {
-          LogUtil.Info(`⌨️ Keyboard: Timebase Left blocked (already at minimum timebase)`, {
-            currentTimebase: timeBase.value
-          })
+          // Plain Up: Zoom In
+          if (canZoomIn.value) {
+            zoomIn()
+            LogUtil.Info(`⌨️ Keyboard: Arrow Up (Zoom In)`, {
+              newTimebase: timeBase.value,
+              canZoomInMore: canZoomIn.value
+            })
+          } else {
+            LogUtil.Info(`⌨️ Keyboard: Arrow Up blocked (already at minimum timebase)`, {
+              currentTimebase: timeBase.value
+            })
+          }
         }
         break
 
-      case 'ArrowRight': // Change timebase (zoom out to longer timebase)
-        if (canZoomOut.value) {
-          zoomOut()
-          LogUtil.Info(`⌨️ Keyboard: Timebase Right (Zoom Out)`, {
-            newTimebase: timeBase.value,
-            canZoomOutMore: canZoomOut.value
-          })
+      case 'ArrowDown': // Zoom out (longer timebase)
+        if (event.ctrlKey) {
+          // Ctrl + Down: Navigate down through items
+          if (displayedSeries.value.length > 0) {
+            selectedItemIndex.value = selectedItemIndex.value >= displayedSeries.value.length - 1
+              ? 0
+              : selectedItemIndex.value + 1
+
+            LogUtil.Info(`⌨️ Keyboard: Ctrl + Down (Navigate Down)`, {
+              selectedIndex: selectedItemIndex.value,
+              selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
+            })
+          }
         } else {
-          LogUtil.Info(`⌨️ Keyboard: Timebase Right blocked (already at maximum timebase)`, {
-            currentTimebase: timeBase.value
-          })
-        }
-        break
-
-      case 'ArrowUp': // Navigate up through items
-        if (displayedSeries.value.length > 0) {
-          selectedItemIndex.value = selectedItemIndex.value <= 0
-            ? displayedSeries.value.length - 1
-            : selectedItemIndex.value - 1
-
-          LogUtil.Info(`⌨️ Keyboard: Navigate Up`, {
-            selectedIndex: selectedItemIndex.value,
-            selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
-          })
-        }
-        break
-
-      case 'ArrowDown': // Navigate down through items
-        if (displayedSeries.value.length > 0) {
-          selectedItemIndex.value = selectedItemIndex.value >= displayedSeries.value.length - 1
-            ? 0
-            : selectedItemIndex.value + 1
-
-          LogUtil.Info(`⌨️ Keyboard: Navigate Down`, {
-            selectedIndex: selectedItemIndex.value,
-            selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
-          })
+          // Plain Down: Zoom Out
+          if (canZoomOut.value) {
+            zoomOut()
+            LogUtil.Info(`⌨️ Keyboard: Arrow Down (Zoom Out)`, {
+              newTimebase: timeBase.value,
+              canZoomOutMore: canZoomOut.value
+            })
+          } else {
+            LogUtil.Info(`⌨️ Keyboard: Arrow Down blocked (already at maximum timebase)`, {
+              currentTimebase: timeBase.value
+            })
+          }
         }
         break
 
@@ -10328,7 +10359,13 @@
   }
 
     .source-badge.realtime {
-      background: linear-gradient(45deg, #4CAF50, #45a049);
+      background: linear-gradient(45deg, #52c41a, #389e0d);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
     }
 
     .source-badge.historical {
