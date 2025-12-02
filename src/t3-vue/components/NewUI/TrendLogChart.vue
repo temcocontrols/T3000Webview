@@ -2393,13 +2393,13 @@
 
   // Custom tick formatter:
   // - For ranges > 1 day ('1d', '4d'): show date+time for first and last ticks, time only for middle ticks
-  // - For ranges �?1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
+  // - For ranges ≤1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show time + date (multi-line) for first tick, time only for the rest
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
     const date = new Date(value)
     const currentRangeMinutes = getTimeRangeMinutes(timeBase.value)
     const isLargeRange = currentRangeMinutes > 1440 // Larger than 1 day (1440 minutes)
 
-    // Helper function to format date+time
+    // Helper function to format date+time (single line)
     const formatDateTime = () => {
       const year = date.getFullYear()
       const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -2407,6 +2407,16 @@
       const hours = date.getHours().toString().padStart(2, '0')
       const minutes = date.getMinutes().toString().padStart(2, '0')
       return `${year}-${month}-${day} ${hours}:${minutes}`
+    }
+
+    // Helper function to format multi-line: time on top, date below
+    const formatDateTimeMultiLine = () => {
+      const year = date.getFullYear()
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      return [`${hours}:${minutes}`, `${year}-${month}-${day}`] // Array for multi-line
     }
 
     // Helper function to format time only
@@ -2427,9 +2437,9 @@
         return formatTimeOnly() // Show time only for middle ticks
       }
     } else {
-      // For ranges �?1 day: show date+time for first tick, time only for the rest
+      // For ranges ≤1 day: show time + date as multi-line for first tick, time only for the rest
       if (isFirstTick) {
-        return formatDateTime() // Show date+time for first tick
+        return formatDateTimeMultiLine() // Show time on top, date below
       } else {
         return formatTimeOnly() // Show time only for other ticks
       }
