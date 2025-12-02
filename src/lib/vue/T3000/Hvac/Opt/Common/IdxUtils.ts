@@ -292,8 +292,8 @@ class IdxUtils {
       LogUtil.Debug('= IdxUtils Saved successfully.');
 
       // Refresh right-side panel info after successful save
-      Hvac.DeviceOpt.refreshCurrentDevice();
-      Hvac.DeviceOpt.refreshCurrentDeviceCount();
+      IdxUtils.deviceOpt?.refreshCurrentDevice();
+      IdxUtils.deviceOpt?.refreshCurrentDeviceCount();
 
     } else {
       $q.notify({

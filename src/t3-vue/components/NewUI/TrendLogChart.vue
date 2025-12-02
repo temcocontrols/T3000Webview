@@ -15,9 +15,9 @@
         <a-flex align="center" gap="small" class="control-group">
           <a-typography-text class="control-label" style="font-size: 11px;">Time Base:</a-typography-text>
           <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center;">
+            <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
               <span>{{ getTimeBaseLabel() }}</span>
-              <DownOutlined style="margin-left: 4px;" />
+              <DownOutlined style="margin-left: 4px; font-size: 10px;" />
             </a-button>
             <template #overlay>
               <a-menu @click="handleTimeBaseMenu" class="timebase-dropdown-menu">
@@ -37,33 +37,32 @@
         </a-flex>
 
         <!-- Navigation Arrows -->
+        <!-- Scroll Left/Right Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="moveTimeLeft" :disabled="isRealTime">
-              <template #icon>
-                <LeftOutlined />
-              </template>
+            <a-button @click="moveTimeLeft" :disabled="isRealTime" title="Scroll Left (←)"
+                      style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
+              <ArrowLeftOutlined style="font-size: 12px;" />
             </a-button>
-            <a-button @click="moveTimeRight" :disabled="isRealTime">
-              <template #icon>
-                <RightOutlined />
-              </template>
+            <a-button @click="moveTimeRight" :disabled="isRealTime" title="Scroll Right (→)"
+                      style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
+              <ArrowRightOutlined style="font-size: 12px;" />
             </a-button>
           </a-button-group>
         </a-flex>
 
-        <!-- Zoom Controls -->
+        <!-- Zoom In/Out Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (Longer timebase)"
-                      style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
-              <ZoomOutOutlined />
-              <span>Zoom Out</span>
-            </a-button>
-            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (Shorter timebase)"
-                      style="display: flex; align-items: center; gap: 2px; font-size: 11px;">
-              <ZoomInOutlined />
+            <a-button @click="zoomIn" :disabled="!canZoomIn" title="Zoom In (↑)"
+                      style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
+              <ArrowUpOutlined style="font-size: 12px;" />
               <span>Zoom In</span>
+            </a-button>
+            <a-button @click="zoomOut" :disabled="!canZoomOut" title="Zoom Out (↓)"
+                      style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
+              <ArrowDownOutlined style="font-size: 12px;" />
+              <span>Zoom Out</span>
             </a-button>
           </a-button-group>
         </a-flex>
@@ -116,53 +115,8 @@
 
           <!-- Range Info -->
           <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
-
-          <!-- ⌨️ Keyboard Navigation Status -->
-          <a-tag :color="keyboardEnabled ? 'green' : 'default'" size="small" class="keyboard-status-tag clickable"
-                 :title="keyboardEnabled ? 'Keyboard shortcuts:\n• 1-9, A-E: Toggle items (also removes navigation border)\n• ←→: Change timebase\n• ↑↓: Navigate items + Enter to toggle\n• ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
-                 @click="toggleKeyboard">
-            <template #icon>
-              <span class="keyboard-icon">⌨️</span>
-            </template>
-            {{ keyboardEnabled ? 'KB On' : 'KB Off' }}
-          </a-tag>
         </a-flex>
 
-        <!-- Chart Options -->
-        <!-- <a-flex align="center" class="control-group chart-options">
-          <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center;">
-              <SettingOutlined style="margin-right: 4px;" />
-              <span>Chart</span>
-              <DownOutlined style="margin-left: 4px;" />
-            </a-button>
-            <template #overlay>
-              <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
-                <a-menu-item key="grid">
-                  <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
-                  Show Grid
-                </a-menu-item>
-                <a-menu-item key="legend">
-                  <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
-                  Show Legend
-                </a-menu-item>
-                <a-menu-item key="smooth">
-                  <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
-                  Smooth Lines
-                </a-menu-item>
-                <a-menu-item key="points">
-                  <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
-                  Show Points
-                </a-menu-item>
-                <a-menu-divider />
-                <a-menu-item key="reset">
-                  <ReloadOutlined />
-                  Reset to Default
-                </a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
-        </a-flex> -->
         <!-- Trendlog Configuration -->
         <a-flex align="center" class="control-group">
           <a-button @click="showDatabaseConfig = true" size="small" title="Trendlog Configuration"
@@ -241,7 +195,7 @@
                   Loading...
                 </span>
                 <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                  📡 Live
+                  <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
                 </span>
                 <span v-else-if="dataSource === 'api'" class="source-badge historical">
                   📚 Historical ({{ timeBase }})
@@ -436,28 +390,19 @@
 
       <!-- Right Panel: Oscilloscope Charts -->
       <div class="right-panel">
-        <div class="oscilloscope-container">
+        <div class="oscilloscope-container" @wheel="handleMouseWheel">
           <!-- Combined Analog Chart with Multiple Signals -->
           <!-- Only show analog chart if there are visible analog series -->
           <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
-            <!-- <div class="combined-label">
-              <div class="signal-info">
-                <span v-for="(series, index) in visibleAnalogSeries" :key="series.name"
-                      :style="{ color: series.color }" class="signal-legend">
-                  �?{{ series.name }} ({{ series.unit }})
-                  <span v-if="index < visibleAnalogSeries.length - 1"> | </span>
-                </span>
-              </div>
-            </div> -->
             <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
           </div>
 
           <!-- Separate Digital Channels -->
           <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
-            <!-- <div class="channel-label" :style="{ color: series.color }">
-              📶 {{ series.name }} - {{ getDigitalStateLabel(series) }}
-            </div> -->
-            <div class="channel-chart">
+            <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
+              <div class="channel-label" :style="{ color: series.color }">
+                {{ series.name }}
+              </div>
               <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
             </div>
           </template>
@@ -820,6 +765,24 @@
             </div>
           </div>
         </a-card>
+
+        <!-- Keyboard Shortcuts Card -->
+        <a-card size="small" style="margin-bottom: 8px;">
+          <template #title>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Keyboard Shortcuts</span>
+              <a-switch v-model:checked="keyboardEnabled" size="small" />
+            </div>
+          </template>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; color: #666;">
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">←</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">→</kbd> : Scroll time left/right</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↑</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↓</kbd> : Zoom in/out</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">1-9, A-E</kbd> : Toggle series visibility</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">Ctrl</kbd> + <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↑</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↓</kbd> : Navigate series list</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">Enter</kbd> : Toggle selected item</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">ESC</kbd> : Toggle item shortcuts on/off</div>
+          </div>
+        </a-card>
       </a-space>
 
       <template #footer>
@@ -955,6 +918,10 @@
   import {
     LeftOutlined,
     RightOutlined,
+    ArrowLeftOutlined,
+    ArrowRightOutlined,
+    ArrowUpOutlined,
+    ArrowDownOutlined,
     ZoomInOutlined,
     ZoomOutOutlined,
     ReloadOutlined,
@@ -980,6 +947,7 @@
     DatabaseOutlined,
     SaveOutlined,
     ThunderboltOutlined,
+    ThunderboltFilled,
     DeleteOutlined
   } from '@ant-design/icons-vue'
   import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil'
@@ -1790,7 +1758,7 @@
 
       // Debug logging for series creation
       if (unitType === 'digital') {
-        // console.log(`= TLChart Series Created (Digital):`, {
+        // LogUtil.Debug(`= TLChart Series Created (Digital):`, {
         //   name: seriesName,
         //   unit: unit,
         //   unitType: unitType,
@@ -2393,22 +2361,19 @@
     return 'yyyy-MM-dd HH:mm'
   }
 
-  // Custom tick formatter:
-  // - For ranges > 1 day ('1d', '4d'): show date+time for first and last ticks, time only for middle ticks
-  // - For ranges �?1 day ('5m', '10m', '30m', '1h', '4h', '12h'): show date+time for first tick, time only for the rest
+  // X-axis tick formatter to always show time + date (multi-line) for first tick
+  // All timebases: First tick shows time on top line, date on bottom line for better visibility
   const formatXAxisTick = (value: any, index: number, ticks: any[]) => {
     const date = new Date(value)
-    const currentRangeMinutes = getTimeRangeMinutes(timeBase.value)
-    const isLargeRange = currentRangeMinutes > 1440 // Larger than 1 day (1440 minutes)
 
-    // Helper function to format date+time
-    const formatDateTime = () => {
+    // Helper function to format multi-line: time on top, date below
+    const formatDateTimeMultiLine = () => {
       const year = date.getFullYear()
       const month = (date.getMonth() + 1).toString().padStart(2, '0')
       const day = date.getDate().toString().padStart(2, '0')
       const hours = date.getHours().toString().padStart(2, '0')
       const minutes = date.getMinutes().toString().padStart(2, '0')
-      return `${year}-${month}-${day} ${hours}:${minutes}`
+      return [`${hours}:${minutes}`, `${year}-${month}-${day}`] // Array for multi-line
     }
 
     // Helper function to format time only
@@ -2419,22 +2384,12 @@
     }
 
     const isFirstTick = index === 0
-    const isLastTick = index === ticks.length - 1
 
-    if (isLargeRange) {
-      // For ranges > 1 day: show date+time for first and last ticks, time only for middle ticks
-      if (isFirstTick || isLastTick) {
-        return formatDateTime() // Show date+time for first and last
-      } else {
-        return formatTimeOnly() // Show time only for middle ticks
-      }
+    // Always show time + date (multi-line) for first tick, time only for the rest
+    if (isFirstTick) {
+      return formatDateTimeMultiLine() // Show time on top, date below
     } else {
-      // For ranges �?1 day: show date+time for first tick, time only for the rest
-      if (isFirstTick) {
-        return formatDateTime() // Show date+time for first tick
-      } else {
-        return formatTimeOnly() // Show time only for other ticks
-      }
+      return formatTimeOnly() // Show time only for other ticks
     }
   }
 
@@ -2475,7 +2430,7 @@
     const roundedSec = getRoundedIntervalSeconds(internalSec)
 
     // Disabled debug logging for production
-    // console.log(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
+    // LogUtil.Debug(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
     //   minuteInterval: props.itemData?.t3Entry?.minute_interval_time,
     //   secondInterval: props.itemData?.t3Entry?.second_interval_time,
     //   timeBase: timeBase.value
@@ -3012,7 +2967,7 @@
         padding: {
           left: 2,
           right: 20,
-          top: 10,
+          top: 25,
           bottom: 10
         }
       },
@@ -3022,7 +2977,7 @@
       },
       plugins: {
         legend: {
-          display: true,
+          display: false,
           position: 'top' as const,
           labels: {
             color: '#000000',
@@ -3036,6 +2991,7 @@
           }
         },
         tooltip: {
+          enabled: true,
           backgroundColor: '#ffffff',
           titleColor: '#000000',
           bodyColor: '#000000',
@@ -3054,11 +3010,47 @@
             },
             label: (context: any) => {
               const series = visibleAnalogSeries.value.find(s => s.name === context.dataset.label)
-              if (!series) return `${context.dataset.label}: ${context.parsed.y}`
+              if (!series) return `${context.parsed.y}`
 
-              const cleanLabel = series.description || series.prefix || context.dataset.label
-              const unit = series.unit || ''
-              return `${cleanLabel}: ${context.parsed.y.toFixed(2)} ${unit}`
+              return `   ${context.parsed.y.toFixed(2)}`
+            }
+          }
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x' as const,
+            modifierKey: 'shift' as const
+          },
+          zoom: {
+            drag: {
+              enabled: true,
+              backgroundColor: 'rgba(24, 144, 255, 0.15)',
+              borderColor: 'rgba(24, 144, 255, 0.5)',
+              borderWidth: 1,
+              modifierKey: 'ctrl' as const
+            },
+            mode: 'x' as const,
+            onZoomComplete: ({ chart }: any) => {
+              if (chart.scales.x) {
+                const newStart = chart.scales.x.min
+                const newEnd = chart.scales.x.max
+                startTimestamp.value = Math.floor(newStart)
+                endTimestamp.value = Math.floor(newEnd)
+                isCustomDateRange.value = true
+                const currentRangeSec = (endTimestamp.value - startTimestamp.value) / 1000
+                const totalRangeSec = (maxTime.value - minTime.value) / 1000
+                if (totalRangeSec > 0) {
+                  zoomLevel.value = Math.max(1, Math.round(totalRangeSec / currentRangeSec))
+                }
+              }
+            }
+          },
+          limits: {
+            x: {
+              min: 'original' as const,
+              max: 'original' as const,
+              minRange: 60 * 1000
             }
           }
         }
@@ -3086,6 +3078,8 @@
           }
         },
         y: {
+          display: true,
+          position: 'left' as const,
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
@@ -3098,15 +3092,12 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
-            count: 10,              // Force 10 tick marks for better granularity
-            maxTicksLimit: 10,      // Ensure 10 ticks displayed
-            autoSkip: false,        // Don't skip ticks automatically
-            // Improve precision for small value ranges
+            // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
-              return Number(value).toFixed(2)
+              return Math.round(Number(value))
             }
           },
-          // Dynamic Y-axis scaling to better show small variations
+          // Dynamic Y-axis scaling with round grid numbers
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
             if (data.length === 0) return
@@ -3146,6 +3137,13 @@
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Calculate nice step size for more ticks
+            const newRange = scale.max - scale.min
+            const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10 // Target 10 grid lines for more ticks
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
           }
         }
       }
@@ -3174,9 +3172,9 @@
         layout: {
           padding: {
             left: 5,
-            right: 20,
-            top: 5,
-            bottom: 5
+            right: 5,
+            top: 0,
+            bottom: isLastChart ? 10 : 0
           }
         },
         interaction: {
@@ -3188,6 +3186,7 @@
             display: false // Digital charts don't need legends (shown in channel label)
           },
           tooltip: {
+            enabled: true,
             backgroundColor: '#ffffff',
             titleColor: '#000000',
             bodyColor: '#000000',
@@ -3207,7 +3206,7 @@
               label: (context: any) => {
                 const stateIndex = context.parsed.y === 1 ? 1 : 0
                 const stateText = digitalStates[stateIndex]
-                return `${series.name}: ${stateText}`
+                return `   ${stateText}`
               }
             }
           }
@@ -3215,19 +3214,19 @@
         scales: {
           x: {
             type: 'time' as const,
-            display: true, // Always show x-axis to enable grid lines
+            display: isLastChart, // Only show x-axis on last chart
             grid: {
               color: '#e0e0e0',
               display: true,
               lineWidth: 1, // Make vertical grid lines more visible
               drawOnChartArea: true, // Ensure grid lines are drawn over chart area
-              drawTicks: true // Draw tick marks on axis
+              drawTicks: isLastChart // Only draw tick marks on last chart
             },
             ticks: {
-              display: true, // Always display ticks to maintain consistent layout
-              color: isLastChart ? '#595959' : 'transparent', // Transparent labels on non-last charts
+              display: isLastChart, // Only display ticks on last chart
+              color: '#595959',
               font: {
-                size: 10, // Same font size for all to maintain consistent layout
+                size: 10,
                 family: 'Inter, Helvetica, Arial, sans-serif'
               },
               maxRotation: 0,
@@ -3236,8 +3235,8 @@
             }
           },
           y: {
-            min: -0.5,
-            max: 1.5,
+            min: 0,
+            max: 1,
             display: true, // Show y-axis for digital charts
             grid: {
               color: '#F0F0F0',
@@ -4795,13 +4794,24 @@
         }
       }
 
+      // Helper function to round timestamp to nearest 5 minutes
+      const roundToNearest5Minutes = (timestamp: number): number => {
+        const date = new Date(timestamp)
+        const minutes = date.getMinutes()
+        const roundedMinutes = Math.round(minutes / 5) * 5
+        date.setMinutes(roundedMinutes)
+        date.setSeconds(0)
+        date.setMilliseconds(0)
+        return date.getTime()
+      }
+
       // Calculate time range based on current timebase with time offset support
       const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
       const currentTime = new Date()
 
-      // Apply time offset for navigation (positive = future, negative = past)
-      const offsetEndTime = new Date(currentTime.getTime() + timeOffset.value * 60 * 1000)
-      const offsetStartTime = new Date(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000)
+      // Apply time offset for navigation and round to nearest 5 minutes
+      const offsetEndTime = new Date(roundToNearest5Minutes(currentTime.getTime() + timeOffset.value * 60 * 1000))
+      const offsetStartTime = new Date(roundToNearest5Minutes(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000))
 
       // 🆕 SMART LOADING: Check if we already have data in this time range
       const existingDataRange = getExistingDataTimeRange()
@@ -5274,7 +5284,7 @@
  * Store real-time data to database for historical usage
  */
   const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
-    console.log('🔥 storeRealtimeDataToDatabase ENTRY', {
+    LogUtil.Debug('🔥 storeRealtimeDataToDatabase ENTRY', {
       itemsCount: validDataItems.length,
       firstItem: validDataItems[0]
     })
@@ -5294,7 +5304,7 @@
       const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
       const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
 
-      console.log('🔍 Serial Number Source Check', {
+      LogUtil.Debug('🔍 Serial Number Source Check', {
         urlSerialNumber,
         panelsListSN: panelsList.length > 0 ? panelsList[0].serial_number : 'N/A',
         finalSN: currentSN,
@@ -5368,7 +5378,7 @@
 
       // Store batch to database with detailed logging
       if (realtimeDataPoints.length > 0) {
-        console.log('🔥 About to call saveRealtimeBatch API', {
+        LogUtil.Debug('🔥 About to call saveRealtimeBatch API', {
           pointsCount: realtimeDataPoints.length,
           serialNumber: currentSN,
           firstPoint: realtimeDataPoints[0]
@@ -5436,7 +5446,7 @@
    * Update chart with new data from GET_ENTRIES response
    */
   const updateChartWithNewData = (validDataItems: any[]) => {
-    console.log('🔥 updateChartWithNewData CALLED', {
+    LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
       isRealTime: isRealTime.value
@@ -6034,7 +6044,7 @@
 
   // Multi-canvas chart creation functions
   const createCharts = () => {
-    console.log('= TLChart DataFlow: Creating multi-canvas charts')
+    LogUtil.Debug('= TLChart DataFlow: Creating multi-canvas charts')
 
     // Create analog chart
     createAnalogChart()
@@ -6071,7 +6081,7 @@
       const config = getAnalogChartConfig()
       analogChartInstance = new Chart(ctx, config)
 
-      console.log('= TLChart DataFlow: Analog chart created successfully')
+      LogUtil.Debug('= TLChart DataFlow: Analog chart created successfully')
     } catch (error) {
       console.error('= TLChart createAnalogChart - Error:', error)
     }
@@ -6103,7 +6113,7 @@
         const config = getDigitalChartConfig(series, isLastChart)
         digitalChartInstances[index] = new Chart(ctx, config)
 
-        // console.log(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
+        // LogUtil.Debug(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
       } catch (error) {
         console.error(`= TLChart createDigitalCharts - Error creating chart ${index}:`, error)
       }
@@ -6575,6 +6585,23 @@
     }
   }
 
+  // Mouse wheel zoom handler
+  const handleMouseWheel = (event: WheelEvent) => {
+    event.preventDefault() // Prevent page scroll
+
+    if (event.deltaY < 0) {
+      // Scroll up = Zoom In
+      if (canZoomIn.value) {
+        zoomIn()
+      }
+    } else if (event.deltaY > 0) {
+      // Scroll down = Zoom Out
+      if (canZoomOut.value) {
+        zoomOut()
+      }
+    }
+  }
+
   const resetToDefaultTimebase = () => {
     LogUtil.Info('🔄 Reset button clicked - preparing to reset to default timebase', {
       currentTimeBase: timeBase.value,
@@ -7010,7 +7037,14 @@
 
   // ⌨️ Keyboard Navigation Handler
   const handleKeydown = async (event: KeyboardEvent) => {
-    if (!keyboardEnabled.value) return
+    // Arrow keys and mouse wheel always work, regardless of keyboardEnabled
+    const isNavigationKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.code)
+    const isItemSelectionKey = event.code.match(/^(Digit[1-9]|Key[A-E])$/) || event.code === 'Enter'
+
+    // Only check keyboardEnabled for item selection keys (1-9, A-E, Enter, Ctrl+Up/Down)
+    if (isItemSelectionKey && !keyboardEnabled.value) return
+    if (event.code === 'ArrowUp' && event.ctrlKey && !keyboardEnabled.value) return
+    if (event.code === 'ArrowDown' && event.ctrlKey && !keyboardEnabled.value) return
 
     // List of keys we handle - prevent default behavior for these
     const handledKeys = [
@@ -7019,7 +7053,7 @@
       'Digit6', 'Digit7', 'Digit8', 'Digit9',
       // Item selection keys (A-E)
       'KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE',
-      // Navigation keys
+      // Navigation keys (always work)
       'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
       // Toggle key
       'Enter',
@@ -7078,57 +7112,79 @@
         }
         break
 
-      case 'ArrowLeft': // Change timebase (zoom in to shorter timebase)
-        if (canZoomIn.value) {
-          zoomIn()
-          LogUtil.Info(`⌨️ Keyboard: Timebase Left (Zoom In)`, {
-            newTimebase: timeBase.value,
-            canZoomInMore: canZoomIn.value
+      case 'ArrowLeft': // Scroll left through time history
+        if (!isRealTime.value) {
+          moveTimeLeft()
+          LogUtil.Info(`⌨️ Keyboard: Arrow Left (Scroll Left)`, {
+            action: 'SCROLL_TIME_LEFT'
           })
+        }
+        break
+
+      case 'ArrowRight': // Scroll right through time history
+        if (!isRealTime.value) {
+          moveTimeRight()
+          LogUtil.Info(`⌨️ Keyboard: Arrow Right (Scroll Right)`, {
+            action: 'SCROLL_TIME_RIGHT'
+          })
+        }
+        break
+
+      case 'ArrowUp': // Zoom in (shorter timebase)
+        if (event.ctrlKey) {
+          // Ctrl + Up: Navigate up through items
+          if (displayedSeries.value.length > 0) {
+            selectedItemIndex.value = selectedItemIndex.value <= 0
+              ? displayedSeries.value.length - 1
+              : selectedItemIndex.value - 1
+
+            LogUtil.Info(`⌨️ Keyboard: Ctrl + Up (Navigate Up)`, {
+              selectedIndex: selectedItemIndex.value,
+              selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
+            })
+          }
         } else {
-          LogUtil.Info(`⌨️ Keyboard: Timebase Left blocked (already at minimum timebase)`, {
-            currentTimebase: timeBase.value
-          })
+          // Plain Up: Zoom In
+          if (canZoomIn.value) {
+            zoomIn()
+            LogUtil.Info(`⌨️ Keyboard: Arrow Up (Zoom In)`, {
+              newTimebase: timeBase.value,
+              canZoomInMore: canZoomIn.value
+            })
+          } else {
+            LogUtil.Info(`⌨️ Keyboard: Arrow Up blocked (already at minimum timebase)`, {
+              currentTimebase: timeBase.value
+            })
+          }
         }
         break
 
-      case 'ArrowRight': // Change timebase (zoom out to longer timebase)
-        if (canZoomOut.value) {
-          zoomOut()
-          LogUtil.Info(`⌨️ Keyboard: Timebase Right (Zoom Out)`, {
-            newTimebase: timeBase.value,
-            canZoomOutMore: canZoomOut.value
-          })
+      case 'ArrowDown': // Zoom out (longer timebase)
+        if (event.ctrlKey) {
+          // Ctrl + Down: Navigate down through items
+          if (displayedSeries.value.length > 0) {
+            selectedItemIndex.value = selectedItemIndex.value >= displayedSeries.value.length - 1
+              ? 0
+              : selectedItemIndex.value + 1
+
+            LogUtil.Info(`⌨️ Keyboard: Ctrl + Down (Navigate Down)`, {
+              selectedIndex: selectedItemIndex.value,
+              selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
+            })
+          }
         } else {
-          LogUtil.Info(`⌨️ Keyboard: Timebase Right blocked (already at maximum timebase)`, {
-            currentTimebase: timeBase.value
-          })
-        }
-        break
-
-      case 'ArrowUp': // Navigate up through items
-        if (displayedSeries.value.length > 0) {
-          selectedItemIndex.value = selectedItemIndex.value <= 0
-            ? displayedSeries.value.length - 1
-            : selectedItemIndex.value - 1
-
-          LogUtil.Info(`⌨️ Keyboard: Navigate Up`, {
-            selectedIndex: selectedItemIndex.value,
-            selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
-          })
-        }
-        break
-
-      case 'ArrowDown': // Navigate down through items
-        if (displayedSeries.value.length > 0) {
-          selectedItemIndex.value = selectedItemIndex.value >= displayedSeries.value.length - 1
-            ? 0
-            : selectedItemIndex.value + 1
-
-          LogUtil.Info(`⌨️ Keyboard: Navigate Down`, {
-            selectedIndex: selectedItemIndex.value,
-            selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
-          })
+          // Plain Down: Zoom Out
+          if (canZoomOut.value) {
+            zoomOut()
+            LogUtil.Info(`⌨️ Keyboard: Arrow Down (Zoom Out)`, {
+              newTimebase: timeBase.value,
+              canZoomOutMore: canZoomOut.value
+            })
+          } else {
+            LogUtil.Info(`⌨️ Keyboard: Arrow Down blocked (already at maximum timebase)`, {
+              currentTimebase: timeBase.value
+            })
+          }
         }
         break
 
@@ -7318,7 +7374,7 @@
 
   // Event handlers
   const onTimeBaseChange = async () => {
-    console.log('= TLChart DataFlow: Timebase changed to:', timeBase.value)
+    LogUtil.Debug('= TLChart DataFlow: Timebase changed to:', timeBase.value)
 
     // Stop any real-time updates when changing timebase
     stopRealTimeUpdates()
@@ -7329,32 +7385,32 @@
 
       // Check if timebase is NOT 5 minutes - need to get data from API/database
       if (timeBase.value !== '5m') {
-        console.log('= TLChart DataFlow: Non-5m timebase - fetching historical data from API')
+        LogUtil.Debug('= TLChart DataFlow: Non-5m timebase - fetching historical data from API')
 
         // Calculate time range based on selected timebase
         const timeRanges = calculateTimeRangeForTimebase(timeBase.value)
-        console.log('= TLChart DataFlow: Time range calculated:', {
+        LogUtil.Debug('= TLChart DataFlow: Time range calculated:', {
           timeBase: timeBase.value,
           duration: timeRanges.durationMinutes + ' minutes'
         })
 
         // Try to get device parameters from current data
         const deviceParams = extractDeviceParameters()
-        console.log('= TLChart DataFlow: Device parameters extracted for API request:', {
+        LogUtil.Debug('= TLChart DataFlow: Device parameters extracted for API request:', {
           hasSN: !!deviceParams.sn,
           hasPanelId: deviceParams.panel_id !== null,
           hasTrendlogId: deviceParams.trendlog_id !== null
         })
 
         if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-          console.log('= TLChart DataFlow: Valid device parameters - making debounced API request for 14 panel items')
+          LogUtil.Debug('= TLChart DataFlow: Valid device parameters - making debounced API request for 14 panel items')
           await debouncedFetchHistoricalData(deviceParams, timeRanges)
         } else {
-          console.log('= TLChart DataFlow: Missing device parameters - using fallback initialization')
+          LogUtil.Debug('= TLChart DataFlow: Missing device parameters - using fallback initialization')
           await initializeData()
         }
       } else {
-        console.log('= TLChart DataFlow: 5m timebase - using real-time data initialization')
+        LogUtil.Debug('= TLChart DataFlow: 5m timebase - using real-time data initialization')
         await initializeData()
       }
     }
@@ -7362,7 +7418,7 @@
 
   const onCustomDateChange = async () => {
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
-      console.log('= TLChart DataFlow: Custom date range selected - fetching historical data')
+      LogUtil.Debug('= TLChart DataFlow: Custom date range selected - fetching historical data')
 
       // Stop any real-time updates when using custom dates
       stopRealTimeUpdates()
@@ -7371,13 +7427,13 @@
       const deviceParams = extractDeviceParameters()
       const durationHours = Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60 * 60))
 
-      console.log('= TLChart DataFlow: Custom range details:', {
+      LogUtil.Debug('= TLChart DataFlow: Custom range details:', {
         durationHours: durationHours,
         hasValidParams: !!(deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null)
       })
 
       if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-        console.log('= TLChart DataFlow: Making API request for custom date range')
+        LogUtil.Debug('= TLChart DataFlow: Making API request for custom date range')
 
         // Format timestamps for API (SQLite format) - use local time instead of UTC
         const formatLocalTime = (date: any): string => {
@@ -7401,7 +7457,7 @@
           timebaseLabel: `Custom Range (${customStartDate.value.format('DD/MM HH:mm')} - ${customEndDate.value.format('DD/MM HH:mm')})`
         }
 
-        console.log('= TLChart DataFlow: Custom time range formatted:', {
+        LogUtil.Debug('= TLChart DataFlow: Custom time range formatted:', {
           startTime: customTimeRanges.startTime,
           endTime: customTimeRanges.endTime,
           durationMinutes: customTimeRanges.durationMinutes
@@ -7409,7 +7465,7 @@
 
         await debouncedFetchHistoricalData(deviceParams, customTimeRanges)
       } else {
-        console.log('= TLChart DataFlow: Missing device parameters - using standard initialization')
+        LogUtil.Debug('= TLChart DataFlow: Missing device parameters - using standard initialization')
         await initializeData()
       }
 
@@ -7427,7 +7483,7 @@
         // Update charts with the loaded data
         updateCharts()
 
-        console.log('= TLChart DataFlow: Charts recreated and updated with custom range data', {
+        LogUtil.Debug('= TLChart DataFlow: Charts recreated and updated with custom range data', {
           seriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
           totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
@@ -7877,7 +7933,7 @@
       panel_id = T3000_Data.value.panelsList[0].panel_number
     }
 
-    console.log('= TLChart DataFlow: Device parameter extraction for API request:', {
+    LogUtil.Debug('= TLChart DataFlow: Device parameter extraction for API request:', {
       methods_used: ['URL params', 'props.itemData', 'T3000_Data'],
       final_result: { sn, panel_id, trendlog_id },
       trendlog_mapping: trendlog_id ? `MON${trendlog_id + 1} -> ${trendlog_id}` : 'no mapping'
@@ -7899,11 +7955,11 @@
     }> = []
 
     if (!dataSeries.value || dataSeries.value.length === 0) {
-      console.log('= TLChart DataFlow: No data series available for 14-item point extraction')
+      LogUtil.Debug('= TLChart DataFlow: No data series available for 14-item point extraction')
       return points
     }
 
-    console.log('= TLChart DataFlow: Extracting 14 panel items from series data')
+    LogUtil.Debug('= TLChart DataFlow: Extracting 14 panel items from series data')
 
     // Extract points from current series configuration
     dataSeries.value.forEach((series, index) => {
@@ -7961,7 +8017,7 @@
           panel_id: panelId
         })
 
-        console.log('= TLChart DataFlow: Extracted panel item:', {
+        LogUtil.Debug('= TLChart DataFlow: Extracted panel item:', {
           itemNumber: index + 1,
           itemType: itemType,
           pointId: pointId, // Database-compatible format like "IN1", "OUT2", "VAR3"
@@ -7981,7 +8037,7 @@
       }
     })
 
-    console.log('= TLChart DataFlow: 14 panel items extraction completed:', {
+    LogUtil.Debug('= TLChart DataFlow: 14 panel items extraction completed:', {
       totalItems: points.length,
       itemFormats: points.map(p => p.point_id)
     })
@@ -8017,7 +8073,7 @@
 
   const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any) => {
     try {
-      console.log('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
+      LogUtil.Debug('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
 
       startLoading()
       dataSource.value = 'api'
@@ -8035,7 +8091,7 @@
       const calculatedLimit = timeRanges.expectedDataPoints * pointCount * safetyMultiplier
       const finalLimit = Math.min(calculatedLimit, maxTotalRecords)
 
-      console.log('📊 TLChart DataFlow: Calculated query limit to ensure complete data:', {
+      LogUtil.Debug('📊 TLChart DataFlow: Calculated query limit to ensure complete data:', {
         pointCount,
         expectedDataPointsPerPoint: timeRanges.expectedDataPoints,
         safetyMultiplier,
@@ -8058,7 +8114,7 @@
         specific_points: specificPoints // NEW: Pass specific points to filter
       }
 
-      console.log('= TLChart DataFlow: API request details:', {
+      LogUtil.Debug('= TLChart DataFlow: API request details:', {
         device: `SN:${deviceParams.sn}, Panel:${deviceParams.panel_id}, TrendLog:${deviceParams.trendlog_id}`,
         pointsRequested: specificPoints.length,
         timeRange: `${timeRanges.durationMinutes} minutes`
@@ -8066,7 +8122,7 @@
 
       const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
 
-      console.log('= TLChart DataFlow: API response received:', {
+      LogUtil.Debug('= TLChart DataFlow: API response received:', {
         hasData: !!(historyResponse?.data && historyResponse.data.length > 0),
         dataPointsCount: historyResponse?.data?.length || 0,
         requestedLimit: finalLimit,
@@ -8084,7 +8140,7 @@
           pointDistribution.set(key, (pointDistribution.get(key) || 0) + 1)
         })
 
-        console.log('📊 TLChart DataFlow: Data distribution across points:', {
+        LogUtil.Debug('📊 TLChart DataFlow: Data distribution across points:', {
           totalRecords: historyResponse.data.length,
           uniquePoints: pointDistribution.size,
           recordsPerPoint: Array.from(pointDistribution.entries()).map(([point, count]) => ({
@@ -8097,12 +8153,12 @@
       }
 
       if (historyResponse && historyResponse.data && historyResponse.data.length > 0) {
-        console.log('= TLChart DataFlow: Converting API data to chart format for 14 panel items')
+        LogUtil.Debug('= TLChart DataFlow: Converting API data to chart format for 14 panel items')
 
         // Process the historical data into series format
         const historicalSeries = convertApiDataToSeries(historyResponse.data, timeRanges)
 
-        console.log('= TLChart DataFlow: Chart conversion completed:', {
+        LogUtil.Debug('= TLChart DataFlow: Chart conversion completed:', {
           seriesCount: historicalSeries.length,
           totalDataPoints: historicalSeries.reduce((sum, series) => sum + series.data.length, 0)
         })
@@ -8117,7 +8173,7 @@
         lastSyncTime.value = dayjs().format('HH:mm:ss')
 
       } else {
-        console.log('= TLChart DataFlow: No historical data available - setting connection error')
+        LogUtil.Debug('= TLChart DataFlow: No historical data available - setting connection error')
         hasConnectionError.value = true
         // Clear all data when connection error occurs
         dataSeries.value = []
@@ -8147,11 +8203,11 @@
   }
 
   const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
-    console.log('= TLChart DataFlow: Converting API data to chart series format')
+    LogUtil.Debug('= TLChart DataFlow: Converting API data to chart series format')
 
     // Store original series for name preservation and MAINTAIN ORIGINAL SEQUENCE
     const originalSeries = dataSeries.value || []
-    console.log('= TLChart DataFlow: Preserving original 14-item series order:', {
+    LogUtil.Debug('= TLChart DataFlow: Preserving original 14-item series order:', {
       originalSeriesCount: originalSeries.length,
       preservingSequence: originalSeries.length > 0
     })
@@ -8167,7 +8223,7 @@
       groupedData.get(key)!.push(point)
     })
 
-    console.log('= TLChart DataFlow: Grouping API data by point types:', {
+    LogUtil.Debug('= TLChart DataFlow: Grouping API data by point types:', {
       totalApiPoints: apiData.length,
       uniqueSeries: groupedData.size
     })
@@ -8249,7 +8305,7 @@
 
         series.push(seriesConfig)
 
-        console.log('= TLChart DataFlow: Matched panel item to API data:', {
+        LogUtil.Debug('= TLChart DataFlow: Matched panel item to API data:', {
           itemIndex: index,
           name: originalSeries.name,
           dataPoints: chartData.length
@@ -8272,14 +8328,14 @@
 
         series.push(emptySeries)
 
-        console.log('= TLChart DataFlow: No API data found for panel item:', {
+        LogUtil.Debug('= TLChart DataFlow: No API data found for panel item:', {
           itemIndex: index,
           name: originalSeries.name
         })
       }
     })
 
-    console.log('= TLChart DataFlow: 14 panel items series conversion completed:', {
+    LogUtil.Debug('= TLChart DataFlow: 14 panel items series conversion completed:', {
       totalItems: series.length,
       itemsWithData: series.filter(s => !s.isEmpty).length,
       totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
@@ -8313,15 +8369,15 @@
     const { sn, panel_id, trendlog_id } = extractQueryParams()
 
     // 🔥 DEBUG: Log extracted parameters
-    // console.log('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
+    // LogUtil.Debug('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
     if (!sn || trendlog_id === null || trendlog_id === undefined) {
       LogUtil.Warn('�?FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
-      console.log('🔥 FFI DEBUG: Early return due to missing parameters')
+      LogUtil.Debug('🔥 FFI DEBUG: Early return due to missing parameters')
       return
     }
 
-    // console.log('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
+    // LogUtil.Debug('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
 
     try {
       ffiSyncStatus.value.syncing = true
@@ -8333,7 +8389,7 @@
       })
 
       // Two-step FFI approach: 1) Create initial record (fast), 2) FFI sync (slower)
-      // console.log('🔥 FFI DEBUG: Starting two-step FFI initialization', {
+      // LogUtil.Debug('🔥 FFI DEBUG: Starting two-step FFI initialization', {
       //   device_id: sn,
       //   panel_id: panel_id,
       //   trendlog_id: trendlog_id,
@@ -8342,7 +8398,7 @@
 
       const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value)
 
-      // console.log('🔥 FFI DEBUG: Complete FFI result received', {
+      // LogUtil.Debug('🔥 FFI DEBUG: Complete FFI result received', {
       //   completeResult
       // })
 
@@ -9316,7 +9372,7 @@
 
   // Watch for changes in visible analog series to ensure proper chart updates
   watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
-    // console.log(`📊 visibleAnalogSeries watcher triggered`, {
+    // LogUtil.Debug(`📊 visibleAnalogSeries watcher triggered`, {
     //   oldCount: oldSeries?.length || 0,
     //   newCount: newSeries.length,
     //   oldSeries: oldSeries?.map(s => s.name) || [],
@@ -9330,7 +9386,7 @@
     const hasVisibleSeries = newSeries.length > 0
 
     if (hadVisibleSeries !== hasVisibleSeries || newSeries.length !== oldSeries?.length) {
-      // console.log(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
+      // LogUtil.Debug(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
       //   hadVisibleSeries,
       //   hasVisibleSeries,
       //   needsUpdate: true
@@ -9343,27 +9399,27 @@
       if (analogChartInstance) {
         analogChartInstance.destroy()
         analogChartInstance = null
-        // console.log(`📊 Destroyed existing analog chart instance`)
+        // LogUtil.Debug(`📊 Destroyed existing analog chart instance`)
       }
 
       if (hasVisibleSeries) {
         // Create fresh analog chart for visible series
-        // console.log(`📊 Creating fresh analog chart for visible series`)
+        // LogUtil.Debug(`📊 Creating fresh analog chart for visible series`)
         createAnalogChart()
         await nextTick()
         updateAnalogChart()
 
-        // console.log(`📊 Analog chart recreated and updated with data`, {
+        // LogUtil.Debug(`📊 Analog chart recreated and updated with data`, {
         //   oldCount: oldSeries?.length || 0,
         //   newCount: newSeries.length,
         //   hasChartInstance: !!analogChartInstance,
         //   seriesWithData: newSeries.filter(s => s.data.length > 0).length
         // })
       } else {
-        // console.log(`📊 No visible analog series - chart destroyed`)
+        // LogUtil.Debug(`📊 No visible analog series - chart destroyed`)
       }
     } else {
-      // console.log(`📊 No significant change in analog series visibility - skipping update`)
+      // LogUtil.Debug(`📊 No significant change in analog series visibility - skipping update`)
     }
   }, { deep: true })
 
@@ -9384,7 +9440,7 @@
       // IMPORTANT: Populate the newly created charts with data
       updateDigitalCharts()
 
-      // console.log(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
+      // LogUtil.Debug(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
       //   oldCount: oldSeries?.length || 0,
       //   newCount: newSeries.length,
       //   chartInstancesCount: Object.keys(digitalChartInstances).length,
@@ -9423,7 +9479,7 @@
 
     // Removed diagnostic report - kept essential data flow tracking only
     // LogUtil.Info('= TLChart DataFlow: Component state diagnostic available if needed')
-    // console.log('= TLChart DataFlow: Component state diagnostic available if needed')
+    // LogUtil.Debug('= TLChart DataFlow: Component state diagnostic available if needed')
     return report
   }
 
@@ -10283,7 +10339,13 @@
   }
 
     .source-badge.realtime {
-      background: linear-gradient(45deg, #4CAF50, #45a049);
+      background: linear-gradient(45deg, #52c41a, #389e0d);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
     }
 
     .source-badge.historical {
@@ -10480,9 +10542,8 @@
     margin-bottom: 2px;
     color: #262626;
     line-height: 1.3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
     max-width: 100%;
   }
 
@@ -10812,27 +10873,30 @@
     }
 
   .channel-label {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 600;
-    margin-bottom: 2px;
-    padding: 2px 6px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 3px;
-    border: 1px solid #e0e0e0;
+    padding: 1px 4px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 2px;
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    z-index: 10;
+    line-height: 1;
   }
 
 
   .channel-chart {
-    height: 70px;
+    height: 50px;
     background: white;
     border: 1px solid #ddd;
-    border-bottom: none;
-    border-top: none;
-    /* border-radius: 4px; */
-    /* margin-bottom: 6px; */
     margin-bottom: -1px;
     position: relative;
   }
+
+    .channel-chart.last-channel {
+      height: 85px;
+    }
 
     /* Add border to first channel-chart (top) */
     .channel-chart:first-child {
