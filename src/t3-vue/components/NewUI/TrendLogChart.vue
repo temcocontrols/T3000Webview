@@ -1758,7 +1758,7 @@
 
       // Debug logging for series creation
       if (unitType === 'digital') {
-        // console.log(`= TLChart Series Created (Digital):`, {
+        // LogUtil.Debug(`= TLChart Series Created (Digital):`, {
         //   name: seriesName,
         //   unit: unit,
         //   unitType: unitType,
@@ -2430,7 +2430,7 @@
     const roundedSec = getRoundedIntervalSeconds(internalSec)
 
     // Disabled debug logging for production
-    // console.log(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
+    // LogUtil.Debug(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
     //   minuteInterval: props.itemData?.t3Entry?.minute_interval_time,
     //   secondInterval: props.itemData?.t3Entry?.second_interval_time,
     //   timeBase: timeBase.value
@@ -5284,7 +5284,7 @@
  * Store real-time data to database for historical usage
  */
   const storeRealtimeDataToDatabase = async (validDataItems: any[]) => {
-    console.log('🔥 storeRealtimeDataToDatabase ENTRY', {
+    LogUtil.Debug('🔥 storeRealtimeDataToDatabase ENTRY', {
       itemsCount: validDataItems.length,
       firstItem: validDataItems[0]
     })
@@ -5304,7 +5304,7 @@
       const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
       const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
 
-      console.log('🔍 Serial Number Source Check', {
+      LogUtil.Debug('🔍 Serial Number Source Check', {
         urlSerialNumber,
         panelsListSN: panelsList.length > 0 ? panelsList[0].serial_number : 'N/A',
         finalSN: currentSN,
@@ -5378,7 +5378,7 @@
 
       // Store batch to database with detailed logging
       if (realtimeDataPoints.length > 0) {
-        console.log('🔥 About to call saveRealtimeBatch API', {
+        LogUtil.Debug('🔥 About to call saveRealtimeBatch API', {
           pointsCount: realtimeDataPoints.length,
           serialNumber: currentSN,
           firstPoint: realtimeDataPoints[0]
@@ -5446,7 +5446,7 @@
    * Update chart with new data from GET_ENTRIES response
    */
   const updateChartWithNewData = (validDataItems: any[]) => {
-    console.log('🔥 updateChartWithNewData CALLED', {
+    LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
       isRealTime: isRealTime.value
@@ -6044,7 +6044,7 @@
 
   // Multi-canvas chart creation functions
   const createCharts = () => {
-    console.log('= TLChart DataFlow: Creating multi-canvas charts')
+    LogUtil.Debug('= TLChart DataFlow: Creating multi-canvas charts')
 
     // Create analog chart
     createAnalogChart()
@@ -6081,7 +6081,7 @@
       const config = getAnalogChartConfig()
       analogChartInstance = new Chart(ctx, config)
 
-      console.log('= TLChart DataFlow: Analog chart created successfully')
+      LogUtil.Debug('= TLChart DataFlow: Analog chart created successfully')
     } catch (error) {
       console.error('= TLChart createAnalogChart - Error:', error)
     }
@@ -6113,7 +6113,7 @@
         const config = getDigitalChartConfig(series, isLastChart)
         digitalChartInstances[index] = new Chart(ctx, config)
 
-        // console.log(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
+        // LogUtil.Debug(`= TLChart DataFlow: Digital chart ${index} created for series: ${series.name}`)
       } catch (error) {
         console.error(`= TLChart createDigitalCharts - Error creating chart ${index}:`, error)
       }
@@ -7374,7 +7374,7 @@
 
   // Event handlers
   const onTimeBaseChange = async () => {
-    console.log('= TLChart DataFlow: Timebase changed to:', timeBase.value)
+    LogUtil.Debug('= TLChart DataFlow: Timebase changed to:', timeBase.value)
 
     // Stop any real-time updates when changing timebase
     stopRealTimeUpdates()
@@ -7385,32 +7385,32 @@
 
       // Check if timebase is NOT 5 minutes - need to get data from API/database
       if (timeBase.value !== '5m') {
-        console.log('= TLChart DataFlow: Non-5m timebase - fetching historical data from API')
+        LogUtil.Debug('= TLChart DataFlow: Non-5m timebase - fetching historical data from API')
 
         // Calculate time range based on selected timebase
         const timeRanges = calculateTimeRangeForTimebase(timeBase.value)
-        console.log('= TLChart DataFlow: Time range calculated:', {
+        LogUtil.Debug('= TLChart DataFlow: Time range calculated:', {
           timeBase: timeBase.value,
           duration: timeRanges.durationMinutes + ' minutes'
         })
 
         // Try to get device parameters from current data
         const deviceParams = extractDeviceParameters()
-        console.log('= TLChart DataFlow: Device parameters extracted for API request:', {
+        LogUtil.Debug('= TLChart DataFlow: Device parameters extracted for API request:', {
           hasSN: !!deviceParams.sn,
           hasPanelId: deviceParams.panel_id !== null,
           hasTrendlogId: deviceParams.trendlog_id !== null
         })
 
         if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-          console.log('= TLChart DataFlow: Valid device parameters - making debounced API request for 14 panel items')
+          LogUtil.Debug('= TLChart DataFlow: Valid device parameters - making debounced API request for 14 panel items')
           await debouncedFetchHistoricalData(deviceParams, timeRanges)
         } else {
-          console.log('= TLChart DataFlow: Missing device parameters - using fallback initialization')
+          LogUtil.Debug('= TLChart DataFlow: Missing device parameters - using fallback initialization')
           await initializeData()
         }
       } else {
-        console.log('= TLChart DataFlow: 5m timebase - using real-time data initialization')
+        LogUtil.Debug('= TLChart DataFlow: 5m timebase - using real-time data initialization')
         await initializeData()
       }
     }
@@ -7418,7 +7418,7 @@
 
   const onCustomDateChange = async () => {
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
-      console.log('= TLChart DataFlow: Custom date range selected - fetching historical data')
+      LogUtil.Debug('= TLChart DataFlow: Custom date range selected - fetching historical data')
 
       // Stop any real-time updates when using custom dates
       stopRealTimeUpdates()
@@ -7427,13 +7427,13 @@
       const deviceParams = extractDeviceParameters()
       const durationHours = Math.floor((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (1000 * 60 * 60))
 
-      console.log('= TLChart DataFlow: Custom range details:', {
+      LogUtil.Debug('= TLChart DataFlow: Custom range details:', {
         durationHours: durationHours,
         hasValidParams: !!(deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null)
       })
 
       if (deviceParams.sn && deviceParams.panel_id !== null && deviceParams.trendlog_id !== null) {
-        console.log('= TLChart DataFlow: Making API request for custom date range')
+        LogUtil.Debug('= TLChart DataFlow: Making API request for custom date range')
 
         // Format timestamps for API (SQLite format) - use local time instead of UTC
         const formatLocalTime = (date: any): string => {
@@ -7457,7 +7457,7 @@
           timebaseLabel: `Custom Range (${customStartDate.value.format('DD/MM HH:mm')} - ${customEndDate.value.format('DD/MM HH:mm')})`
         }
 
-        console.log('= TLChart DataFlow: Custom time range formatted:', {
+        LogUtil.Debug('= TLChart DataFlow: Custom time range formatted:', {
           startTime: customTimeRanges.startTime,
           endTime: customTimeRanges.endTime,
           durationMinutes: customTimeRanges.durationMinutes
@@ -7465,7 +7465,7 @@
 
         await debouncedFetchHistoricalData(deviceParams, customTimeRanges)
       } else {
-        console.log('= TLChart DataFlow: Missing device parameters - using standard initialization')
+        LogUtil.Debug('= TLChart DataFlow: Missing device parameters - using standard initialization')
         await initializeData()
       }
 
@@ -7483,7 +7483,7 @@
         // Update charts with the loaded data
         updateCharts()
 
-        console.log('= TLChart DataFlow: Charts recreated and updated with custom range data', {
+        LogUtil.Debug('= TLChart DataFlow: Charts recreated and updated with custom range data', {
           seriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
           totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
@@ -7933,7 +7933,7 @@
       panel_id = T3000_Data.value.panelsList[0].panel_number
     }
 
-    console.log('= TLChart DataFlow: Device parameter extraction for API request:', {
+    LogUtil.Debug('= TLChart DataFlow: Device parameter extraction for API request:', {
       methods_used: ['URL params', 'props.itemData', 'T3000_Data'],
       final_result: { sn, panel_id, trendlog_id },
       trendlog_mapping: trendlog_id ? `MON${trendlog_id + 1} -> ${trendlog_id}` : 'no mapping'
@@ -7955,11 +7955,11 @@
     }> = []
 
     if (!dataSeries.value || dataSeries.value.length === 0) {
-      console.log('= TLChart DataFlow: No data series available for 14-item point extraction')
+      LogUtil.Debug('= TLChart DataFlow: No data series available for 14-item point extraction')
       return points
     }
 
-    console.log('= TLChart DataFlow: Extracting 14 panel items from series data')
+    LogUtil.Debug('= TLChart DataFlow: Extracting 14 panel items from series data')
 
     // Extract points from current series configuration
     dataSeries.value.forEach((series, index) => {
@@ -8017,7 +8017,7 @@
           panel_id: panelId
         })
 
-        console.log('= TLChart DataFlow: Extracted panel item:', {
+        LogUtil.Debug('= TLChart DataFlow: Extracted panel item:', {
           itemNumber: index + 1,
           itemType: itemType,
           pointId: pointId, // Database-compatible format like "IN1", "OUT2", "VAR3"
@@ -8037,7 +8037,7 @@
       }
     })
 
-    console.log('= TLChart DataFlow: 14 panel items extraction completed:', {
+    LogUtil.Debug('= TLChart DataFlow: 14 panel items extraction completed:', {
       totalItems: points.length,
       itemFormats: points.map(p => p.point_id)
     })
@@ -8073,7 +8073,7 @@
 
   const fetchHistoricalDataForTimebase = async (deviceParams: any, timeRanges: any) => {
     try {
-      console.log('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
+      LogUtil.Debug('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
 
       startLoading()
       dataSource.value = 'api'
@@ -8091,7 +8091,7 @@
       const calculatedLimit = timeRanges.expectedDataPoints * pointCount * safetyMultiplier
       const finalLimit = Math.min(calculatedLimit, maxTotalRecords)
 
-      console.log('📊 TLChart DataFlow: Calculated query limit to ensure complete data:', {
+      LogUtil.Debug('📊 TLChart DataFlow: Calculated query limit to ensure complete data:', {
         pointCount,
         expectedDataPointsPerPoint: timeRanges.expectedDataPoints,
         safetyMultiplier,
@@ -8114,7 +8114,7 @@
         specific_points: specificPoints // NEW: Pass specific points to filter
       }
 
-      console.log('= TLChart DataFlow: API request details:', {
+      LogUtil.Debug('= TLChart DataFlow: API request details:', {
         device: `SN:${deviceParams.sn}, Panel:${deviceParams.panel_id}, TrendLog:${deviceParams.trendlog_id}`,
         pointsRequested: specificPoints.length,
         timeRange: `${timeRanges.durationMinutes} minutes`
@@ -8122,7 +8122,7 @@
 
       const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
 
-      console.log('= TLChart DataFlow: API response received:', {
+      LogUtil.Debug('= TLChart DataFlow: API response received:', {
         hasData: !!(historyResponse?.data && historyResponse.data.length > 0),
         dataPointsCount: historyResponse?.data?.length || 0,
         requestedLimit: finalLimit,
@@ -8140,7 +8140,7 @@
           pointDistribution.set(key, (pointDistribution.get(key) || 0) + 1)
         })
 
-        console.log('📊 TLChart DataFlow: Data distribution across points:', {
+        LogUtil.Debug('📊 TLChart DataFlow: Data distribution across points:', {
           totalRecords: historyResponse.data.length,
           uniquePoints: pointDistribution.size,
           recordsPerPoint: Array.from(pointDistribution.entries()).map(([point, count]) => ({
@@ -8153,12 +8153,12 @@
       }
 
       if (historyResponse && historyResponse.data && historyResponse.data.length > 0) {
-        console.log('= TLChart DataFlow: Converting API data to chart format for 14 panel items')
+        LogUtil.Debug('= TLChart DataFlow: Converting API data to chart format for 14 panel items')
 
         // Process the historical data into series format
         const historicalSeries = convertApiDataToSeries(historyResponse.data, timeRanges)
 
-        console.log('= TLChart DataFlow: Chart conversion completed:', {
+        LogUtil.Debug('= TLChart DataFlow: Chart conversion completed:', {
           seriesCount: historicalSeries.length,
           totalDataPoints: historicalSeries.reduce((sum, series) => sum + series.data.length, 0)
         })
@@ -8173,7 +8173,7 @@
         lastSyncTime.value = dayjs().format('HH:mm:ss')
 
       } else {
-        console.log('= TLChart DataFlow: No historical data available - setting connection error')
+        LogUtil.Debug('= TLChart DataFlow: No historical data available - setting connection error')
         hasConnectionError.value = true
         // Clear all data when connection error occurs
         dataSeries.value = []
@@ -8203,11 +8203,11 @@
   }
 
   const convertApiDataToSeries = (apiData: any[], timeRanges: any): SeriesConfig[] => {
-    console.log('= TLChart DataFlow: Converting API data to chart series format')
+    LogUtil.Debug('= TLChart DataFlow: Converting API data to chart series format')
 
     // Store original series for name preservation and MAINTAIN ORIGINAL SEQUENCE
     const originalSeries = dataSeries.value || []
-    console.log('= TLChart DataFlow: Preserving original 14-item series order:', {
+    LogUtil.Debug('= TLChart DataFlow: Preserving original 14-item series order:', {
       originalSeriesCount: originalSeries.length,
       preservingSequence: originalSeries.length > 0
     })
@@ -8223,7 +8223,7 @@
       groupedData.get(key)!.push(point)
     })
 
-    console.log('= TLChart DataFlow: Grouping API data by point types:', {
+    LogUtil.Debug('= TLChart DataFlow: Grouping API data by point types:', {
       totalApiPoints: apiData.length,
       uniqueSeries: groupedData.size
     })
@@ -8305,7 +8305,7 @@
 
         series.push(seriesConfig)
 
-        console.log('= TLChart DataFlow: Matched panel item to API data:', {
+        LogUtil.Debug('= TLChart DataFlow: Matched panel item to API data:', {
           itemIndex: index,
           name: originalSeries.name,
           dataPoints: chartData.length
@@ -8328,14 +8328,14 @@
 
         series.push(emptySeries)
 
-        console.log('= TLChart DataFlow: No API data found for panel item:', {
+        LogUtil.Debug('= TLChart DataFlow: No API data found for panel item:', {
           itemIndex: index,
           name: originalSeries.name
         })
       }
     })
 
-    console.log('= TLChart DataFlow: 14 panel items series conversion completed:', {
+    LogUtil.Debug('= TLChart DataFlow: 14 panel items series conversion completed:', {
       totalItems: series.length,
       itemsWithData: series.filter(s => !s.isEmpty).length,
       totalDataPoints: series.reduce((sum, s) => sum + s.data.length, 0),
@@ -8369,15 +8369,15 @@
     const { sn, panel_id, trendlog_id } = extractQueryParams()
 
     // 🔥 DEBUG: Log extracted parameters
-    // console.log('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
+    // LogUtil.Debug('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
     if (!sn || trendlog_id === null || trendlog_id === undefined) {
       LogUtil.Warn('�?FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
-      console.log('🔥 FFI DEBUG: Early return due to missing parameters')
+      LogUtil.Debug('🔥 FFI DEBUG: Early return due to missing parameters')
       return
     }
 
-    // console.log('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
+    // LogUtil.Debug('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
 
     try {
       ffiSyncStatus.value.syncing = true
@@ -8389,7 +8389,7 @@
       })
 
       // Two-step FFI approach: 1) Create initial record (fast), 2) FFI sync (slower)
-      // console.log('🔥 FFI DEBUG: Starting two-step FFI initialization', {
+      // LogUtil.Debug('🔥 FFI DEBUG: Starting two-step FFI initialization', {
       //   device_id: sn,
       //   panel_id: panel_id,
       //   trendlog_id: trendlog_id,
@@ -8398,7 +8398,7 @@
 
       const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value)
 
-      // console.log('🔥 FFI DEBUG: Complete FFI result received', {
+      // LogUtil.Debug('🔥 FFI DEBUG: Complete FFI result received', {
       //   completeResult
       // })
 
@@ -9372,7 +9372,7 @@
 
   // Watch for changes in visible analog series to ensure proper chart updates
   watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
-    // console.log(`📊 visibleAnalogSeries watcher triggered`, {
+    // LogUtil.Debug(`📊 visibleAnalogSeries watcher triggered`, {
     //   oldCount: oldSeries?.length || 0,
     //   newCount: newSeries.length,
     //   oldSeries: oldSeries?.map(s => s.name) || [],
@@ -9386,7 +9386,7 @@
     const hasVisibleSeries = newSeries.length > 0
 
     if (hadVisibleSeries !== hasVisibleSeries || newSeries.length !== oldSeries?.length) {
-      // console.log(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
+      // LogUtil.Debug(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
       //   hadVisibleSeries,
       //   hasVisibleSeries,
       //   needsUpdate: true
@@ -9399,27 +9399,27 @@
       if (analogChartInstance) {
         analogChartInstance.destroy()
         analogChartInstance = null
-        // console.log(`📊 Destroyed existing analog chart instance`)
+        // LogUtil.Debug(`📊 Destroyed existing analog chart instance`)
       }
 
       if (hasVisibleSeries) {
         // Create fresh analog chart for visible series
-        // console.log(`📊 Creating fresh analog chart for visible series`)
+        // LogUtil.Debug(`📊 Creating fresh analog chart for visible series`)
         createAnalogChart()
         await nextTick()
         updateAnalogChart()
 
-        // console.log(`📊 Analog chart recreated and updated with data`, {
+        // LogUtil.Debug(`📊 Analog chart recreated and updated with data`, {
         //   oldCount: oldSeries?.length || 0,
         //   newCount: newSeries.length,
         //   hasChartInstance: !!analogChartInstance,
         //   seriesWithData: newSeries.filter(s => s.data.length > 0).length
         // })
       } else {
-        // console.log(`📊 No visible analog series - chart destroyed`)
+        // LogUtil.Debug(`📊 No visible analog series - chart destroyed`)
       }
     } else {
-      // console.log(`📊 No significant change in analog series visibility - skipping update`)
+      // LogUtil.Debug(`📊 No significant change in analog series visibility - skipping update`)
     }
   }, { deep: true })
 
@@ -9440,7 +9440,7 @@
       // IMPORTANT: Populate the newly created charts with data
       updateDigitalCharts()
 
-      // console.log(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
+      // LogUtil.Debug(`= TLChart DataFlow: Digital charts recreated and updated with data`, {
       //   oldCount: oldSeries?.length || 0,
       //   newCount: newSeries.length,
       //   chartInstancesCount: Object.keys(digitalChartInstances).length,
@@ -9479,7 +9479,7 @@
 
     // Removed diagnostic report - kept essential data flow tracking only
     // LogUtil.Info('= TLChart DataFlow: Component state diagnostic available if needed')
-    // console.log('= TLChart DataFlow: Component state diagnostic available if needed')
+    // LogUtil.Debug('= TLChart DataFlow: Component state diagnostic available if needed')
     return report
   }
 
