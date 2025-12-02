@@ -435,10 +435,10 @@
 
           <!-- Separate Digital Channels -->
           <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
-            <!-- <div class="channel-label" :style="{ color: series.color }">
-              📶 {{ series.name }} - {{ getDigitalStateLabel(series) }}
-            </div> -->
-            <div class="channel-chart">
+            <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }" :style="{ backgroundColor: `${series.color}15` }">
+              <div class="channel-label" :style="{ color: series.color }">
+                {{ series.name }}
+              </div>
               <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
             </div>
           </template>
@@ -3187,9 +3187,9 @@
         layout: {
           padding: {
             left: 5,
-            right: 20,
-            top: 5,
-            bottom: 5
+            right: 5,
+            top: 0,
+            bottom: 0
           }
         },
         interaction: {
@@ -3229,19 +3229,19 @@
         scales: {
           x: {
             type: 'time' as const,
-            display: true, // Always show x-axis to enable grid lines
+            display: isLastChart, // Only show x-axis on last chart
             grid: {
               color: '#e0e0e0',
               display: true,
               lineWidth: 1, // Make vertical grid lines more visible
               drawOnChartArea: true, // Ensure grid lines are drawn over chart area
-              drawTicks: true // Draw tick marks on axis
+              drawTicks: isLastChart // Only draw tick marks on last chart
             },
             ticks: {
-              display: true, // Always display ticks to maintain consistent layout
-              color: isLastChart ? '#595959' : 'transparent', // Transparent labels on non-last charts
+              display: isLastChart, // Only display ticks on last chart
+              color: '#595959',
               font: {
-                size: 10, // Same font size for all to maintain consistent layout
+                size: 10,
                 family: 'Inter, Helvetica, Arial, sans-serif'
               },
               maxRotation: 0,
@@ -3250,8 +3250,8 @@
             }
           },
           y: {
-            min: -0.5,
-            max: 1.5,
+            min: 0,
+            max: 1,
             display: true, // Show y-axis for digital charts
             grid: {
               color: '#F0F0F0',
@@ -10836,27 +10836,30 @@
     }
 
   .channel-label {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 600;
-    margin-bottom: 2px;
-    padding: 2px 6px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 3px;
-    border: 1px solid #e0e0e0;
+    padding: 1px 4px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 2px;
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    z-index: 10;
+    line-height: 1;
   }
 
 
   .channel-chart {
     height: 70px;
-    background: white;
+    background: #ffebee;
     border: 1px solid #ddd;
-    border-bottom: none;
-    border-top: none;
-    /* border-radius: 4px; */
-    /* margin-bottom: 6px; */
     margin-bottom: -1px;
     position: relative;
   }
+
+    .channel-chart.last-channel {
+      height: 70px;
+    }
 
     /* Add border to first channel-chart (top) */
     .channel-chart:first-child {
