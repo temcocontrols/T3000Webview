@@ -117,41 +117,6 @@
           <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
         </a-flex>
 
-        <!-- Chart Options -->
-        <!-- <a-flex align="center" class="control-group chart-options">
-          <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center;">
-              <SettingOutlined style="margin-right: 4px;" />
-              <span>Chart</span>
-              <DownOutlined style="margin-left: 4px;" />
-            </a-button>
-            <template #overlay>
-              <a-menu class="chart-options-menu" @click="handleChartOptionsMenu">
-                <a-menu-item key="grid">
-                  <a-checkbox v-model:checked="showGrid" style="margin-right: 8px;" />
-                  Show Grid
-                </a-menu-item>
-                <a-menu-item key="legend">
-                  <a-checkbox v-model:checked="showLegend" style="margin-right: 8px;" />
-                  Show Legend
-                </a-menu-item>
-                <a-menu-item key="smooth">
-                  <a-checkbox v-model:checked="smoothLines" style="margin-right: 8px;" />
-                  Smooth Lines
-                </a-menu-item>
-                <a-menu-item key="points">
-                  <a-checkbox v-model:checked="showPoints" style="margin-right: 8px;" />
-                  Show Points
-                </a-menu-item>
-                <a-menu-divider />
-                <a-menu-item key="reset">
-                  <ReloadOutlined />
-                  Reset to Default
-                </a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
-        </a-flex> -->
         <!-- Trendlog Configuration -->
         <a-flex align="center" class="control-group">
           <a-button @click="showDatabaseConfig = true" size="small" title="Trendlog Configuration"
