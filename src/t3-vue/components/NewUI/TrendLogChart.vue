@@ -116,16 +116,6 @@
 
           <!-- Range Info -->
           <a-tag size="small">{{ timeBase === 'custom' ? 'Custom' : timeBaseLabel }}</a-tag>
-
-          <!-- ⌨️ Keyboard Navigation Status -->
-          <a-tag :color="keyboardEnabled ? 'green' : 'default'" size="small" class="keyboard-status-tag clickable"
-                 :title="keyboardEnabled ? 'Keyboard shortcuts:\n• 1-9, A-E: Toggle items (also removes navigation border)\n• ←→: Change timebase\n• ↑↓: Navigate items + Enter to toggle\n• ESC: Disable keyboard first' : 'Keyboard shortcuts disabled (ESC to enable)'"
-                 @click="toggleKeyboard">
-            <template #icon>
-              <span class="keyboard-icon">⌨️</span>
-            </template>
-            {{ keyboardEnabled ? 'KB On' : 'KB Off' }}
-          </a-tag>
         </a-flex>
 
         <!-- Chart Options -->
@@ -809,6 +799,23 @@
                 Optimize
               </a-button>
             </div>
+          </div>
+        </a-card>
+
+        <!-- Keyboard Shortcuts Card -->
+        <a-card size="small" style="margin-bottom: 8px;">
+          <template #title>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Keyboard Shortcuts</span>
+              <a-switch v-model:checked="keyboardEnabled" size="small" />
+            </div>
+          </template>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px; color: #666;">
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">←</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">→</kbd> : Scroll time left/right</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">Shift</kbd> + <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">←</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">→</kbd> : Zoom in/out</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">1-9, A-E</kbd> : Toggle series visibility</div>
+            <div><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↑</kbd> / <kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">↓</kbd> : Navigate series list</div>
+            <div style="grid-column: 1 / -1;"><kbd style="padding: 2px 6px; background: #f0f0f0; border-radius: 3px; font-family: monospace;">ESC</kbd> : Toggle keyboard shortcuts on/off</div>
           </div>
         </a-card>
       </a-space>
