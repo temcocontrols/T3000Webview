@@ -4809,13 +4809,24 @@
         }
       }
 
+      // Helper function to round timestamp to nearest 5 minutes
+      const roundToNearest5Minutes = (timestamp: number): number => {
+        const date = new Date(timestamp)
+        const minutes = date.getMinutes()
+        const roundedMinutes = Math.round(minutes / 5) * 5
+        date.setMinutes(roundedMinutes)
+        date.setSeconds(0)
+        date.setMilliseconds(0)
+        return date.getTime()
+      }
+
       // Calculate time range based on current timebase with time offset support
       const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
       const currentTime = new Date()
 
-      // Apply time offset for navigation (positive = future, negative = past)
-      const offsetEndTime = new Date(currentTime.getTime() + timeOffset.value * 60 * 1000)
-      const offsetStartTime = new Date(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000)
+      // Apply time offset for navigation and round to nearest 5 minutes
+      const offsetEndTime = new Date(roundToNearest5Minutes(currentTime.getTime() + timeOffset.value * 60 * 1000))
+      const offsetStartTime = new Date(roundToNearest5Minutes(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000))
 
       // 🆕 SMART LOADING: Check if we already have data in this time range
       const existingDataRange = getExistingDataTimeRange()
