@@ -178,14 +178,14 @@ describe('StateStore', () => {
 
   describe('Global Messages', () => {
     it('should manage global messages', () => {
-      const message1: GlobalMsgModel = {
+      const message1 = {
         type: 'info',
         message: 'Test message 1',
         isShow: true,
         msgType: 'system'
       };
 
-      const message2: GlobalMsgModel = {
+      const message2 = {
         type: 'error',
         message: 'Test message 2',
         isShow: true,
@@ -201,14 +201,14 @@ describe('StateStore', () => {
     });
 
     it('should remove specific global message', () => {
-      const message1: GlobalMsgModel = {
+      const message1 = {
         type: 'info',
         message: 'Test message 1',
         isShow: true,
         msgType: 'system'
       };
 
-      const message2: GlobalMsgModel = {
+      const message2 = {
         type: 'error',
         message: 'Test message 2',
         isShow: true,
@@ -225,7 +225,7 @@ describe('StateStore', () => {
     });
 
     it('should handle invalid message removal gracefully', () => {
-      const message: GlobalMsgModel = {
+      const message = {
         type: 'info',
         message: 'Test message',
         isShow: true,
