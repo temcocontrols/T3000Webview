@@ -1,5 +1,3 @@
-use std::env;
-
 use axum::{
     body::Body,
     extract::State,

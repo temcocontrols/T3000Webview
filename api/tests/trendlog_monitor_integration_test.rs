@@ -5,14 +5,13 @@
 // 3. Database operations work correctly
 // 4. API endpoints return proper responses
 
-use axum::response::Json;
 use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::t3_device::trendlog_monitor_service::{TrendlogMonitorService, initialize_trendlog_monitor_service};
-use crate::db_connection::establish_t3_device_connection;
-use crate::error::AppError;
+use t3_webview_api::t3_device::trendlog_monitor_service::{TrendlogMonitorService, initialize_trendlog_monitor_service};
+use t3_webview_api::db_connection::establish_t3_device_connection;
+use t3_webview_api::error::AppError;
 
 /// Test the complete trendlog monitor integration
 pub async fn test_trendlog_monitor_integration() -> Result<(), AppError> {
