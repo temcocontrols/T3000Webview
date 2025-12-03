@@ -6,8 +6,8 @@ use serde_json::Value;
 use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
-    modbus_register::
-        inputs::
+    modbus_register::{
+        inputs::{
             CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
             UpdateModbusRegisterItemInput, UpdateSettingInput,
         },
