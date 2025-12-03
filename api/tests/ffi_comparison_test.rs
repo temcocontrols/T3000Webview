@@ -2,9 +2,7 @@
 // This test demonstrates the technical differences between the two approaches
 
 use std::ffi::CString;
-use std::os::raw::c_char;
-use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA, GetModuleHandleA};
-use std::ptr::null_mut;
+use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 
 fn main() {
     println!("🔍 FFI Comparison Test - Testing both approaches");
