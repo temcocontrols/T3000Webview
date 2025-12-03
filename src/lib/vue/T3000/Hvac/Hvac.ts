@@ -14,7 +14,7 @@ import IdxUtils from "./Opt/Common/IdxUtils";
 
 const Hvac = {
   PageMain: new PageMain(),
-  UI: new T3Opt(),
+  UI: null as any, // Will be initialized after module loading to avoid circular dependency
   // Doc: new DocUtil(),
   KiOpt: new KeyInsertOpt(),
   QuasarUtil: new QuasarUtil(),
@@ -29,6 +29,9 @@ const Hvac = {
 
 // Inject dependencies into WebSocketClient to break circular dependency
 Hvac.WsClient.setDependencies(Hvac.DeviceOpt, Hvac.IdxPage, Hvac.QuasarUtil);
+
+// Initialize T3Opt after module loading to avoid circular dependency
+Hvac.UI = new T3Opt();
 
 // Initialize WebViewClient after module loading to avoid circular dependency
 Hvac.WebClient = new WebViewClient();
