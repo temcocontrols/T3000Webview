@@ -39,7 +39,9 @@ async fn test_modbus_register_crud() {
     };
     let conn = app_state().await.unwrap();
     let item = create(State(conn.clone()), Json(payload)).await;
-    assert!(item.is_ok());
+    if let Err(e) = &item {
+        panic!("Failed to create modbus register: {:?}", e);
+    }
     let item = item.unwrap();
 
     let params = ModbusRegisterQueryParams {
@@ -93,10 +95,14 @@ async fn test_modbus_register_settings_crud() {
         json_value: Some(Value::String("test".to_string())),
     };
     let result = settings::create(State(conn.clone()), Json(payload)).await;
-    assert!(result.is_ok());
+    if let Err(e) = &result {
+        panic!("Failed to create modbus register setting: {:?}", e);
+    }
 
     let result = settings::get_all(State(conn.clone())).await;
-    assert!(result.is_ok());
+    if let Err(e) = &result {
+        panic!("Failed to get all settings: {:?}", e);
+    }
     assert!(result.unwrap().len() == 1);
 
     let name = Path("test".to_string());
