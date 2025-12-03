@@ -1,4 +1,4 @@
-import FileUploadS3 from "../../../src/components/Hvac/FileUploadS3.vue";
+import FileUploadS3 from "../../../src/t3-vue/components/Hvac/FileUploadS3.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 

@@ -1,4 +1,4 @@
-import FileUpload from "../../../src/components/Hvac/FileUpload.vue";
+import FileUpload from "../../../src/t3-vue/components/Hvac/FileUpload.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 

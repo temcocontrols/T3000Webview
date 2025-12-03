@@ -341,14 +341,3 @@ describe('StateStore', () => {
     });
   });
 });
-
-// Mock GlobalMsgModel for testing
-declare global {
-  namespace Vi {
-    interface JestAssertion<T = any> extends CustomMatchers<T> {}
-  }
-}
-
-interface CustomMatchers<R = unknown> {
-  toBeTypeOf(expected: string): R;
-}

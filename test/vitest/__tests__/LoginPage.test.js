@@ -1,4 +1,4 @@
-import LoginPage from "../../../src/pages/LoginPage.vue";
+import LoginPage from "../../../src/t3-vue/pages/LoginPage.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { Quasar } from "quasar";
