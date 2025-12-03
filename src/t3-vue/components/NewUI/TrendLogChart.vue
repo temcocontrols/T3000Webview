@@ -333,14 +333,14 @@
                 </div>
                 <div class="series-info">
                   <div class="series-name-line">
-                    <!-- Column 1: Series Name -->
+                    <!-- Series Name takes most space on left -->
                     <div class="series-name-col">
                       <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
                         <span class="series-name">{{ getSeriesNameText(series) }}</span>
                       </a-tooltip>
                     </div>
-                    <!-- Column 2: Chip + Tags/Unit grouped together -->
-                    <div class="series-right-col">
+                    <!-- Right side: Chip + Unit + Expand button grouped together -->
+                    <div class="series-right-group">
                       <div class="series-chip-col">
                         <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
                                 text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
@@ -352,17 +352,17 @@
                           </span>
                         </span>
                       </div>
+                      <div class="series-controls">
+                        <a-button size="small" type="text" class="expand-toggle"
+                                  @click="(e) => toggleSeriesExpansion(index, e)">
+                          <template #icon>
+                            <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
+                            <RightOutlined v-else class="expand-icon" />
+                          </template>
+                        </a-button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="series-controls">
-                  <a-button size="small" type="text" class="expand-toggle"
-                            @click="(e) => toggleSeriesExpansion(index, e)">
-                    <template #icon>
-                      <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
-                      <RightOutlined v-else class="expand-icon" />
-                    </template>
-                  </a-button>
                 </div>
               </div>
               <div v-if="expandedSeries.has(index)" class="series-stats">
@@ -8826,8 +8826,7 @@
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${lastValue})`
     } else {
-      const unit = series?.unit || ''
-      return lastValue.toFixed(2) + unit
+      return lastValue.toFixed(2)
     }
   }
 
@@ -8842,8 +8841,7 @@
       const percentage = (highCount / data.length) * 100
       return `${percentage.toFixed(1)}% High`
     } else {
-      const unit = series?.unit || ''
-      return avg.toFixed(2) + unit
+      return avg.toFixed(2)
     }
   }
 
@@ -8858,8 +8856,7 @@
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${min})`
     } else {
-      const unit = series?.unit || ''
-      return min.toFixed(2) + unit
+      return min.toFixed(2)
     }
   }
 
@@ -8874,8 +8871,7 @@
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${max})`
     } else {
-      const unit = series?.unit || ''
-      return max.toFixed(2) + unit
+      return max.toFixed(2)
     }
   }
 
@@ -10481,7 +10477,7 @@
   .series-header {
     display: flex;
     align-items: center;
-    padding: 6px 10px;
+    padding: 6px 4px 6px 10px;
     cursor: pointer;
     gap: 2px;
     border-radius: 6px;
@@ -10573,9 +10569,10 @@
     overflow: hidden;
   }
 
-  .series-right-col {
+  /* Right group contains chip, unit, and expand button all together */
+  .series-right-group {
     display: grid;
-    grid-template-columns: 40px 40px;
+    grid-template-columns: 40px 40px auto;
     align-items: center;
     /* gap: 8px; */
     white-space: nowrap;
@@ -10666,15 +10663,14 @@
   .series-controls {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    gap: 4px;
-    margin-left: auto;
+    justify-content: flex-end;
     flex-shrink: 0;
   }
 
   .expand-toggle {
     padding: 0 !important;
-    width: 20px;
+    margin-right: 0 !important;
+    min-width: 16px;
     height: 20px;
     display: flex;
     align-items: center;
