@@ -1650,7 +1650,7 @@ impl T3000MainService {
         txn: &DatabaseTransaction,
         serial_number: i32,
         device_data: &DeviceWithPoints,
-        sync_metadata_id: i32,
+        _sync_metadata_id: i32,
     ) -> Result<(), AppError> {
         let timestamp = chrono::Utc::now().to_rfc3339();
 
@@ -3169,7 +3169,7 @@ impl T3000MainService {
         point: &PointData,
         point_type: &str,
         logging_time: &str,
-        sync_metadata_id: i32,
+        _sync_metadata_id: i32,
     ) -> Result<usize, AppError> {
         let units = Self::derive_units_from_range(point.range);
 
