@@ -2,15 +2,15 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use t3_webview_api::{app_state, server::create_app, utils::run_migrations_if_pending}; // Updated to use smart migration
+use t3_webview_api::{app_state, server::create_app, utils::run_migrations}; // Use direct migration for in-memory test databases
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
 #[tokio::test]
 async fn test_server_start() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    // Use smart migration system that only runs when needed
-    run_migrations_if_pending().await.unwrap();
+    // Run migrations for fresh in-memory database
+    run_migrations().await.unwrap();
 
     let state = app_state::app_state().await.unwrap();
 

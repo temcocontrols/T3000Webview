@@ -11,15 +11,15 @@ use t3_webview_api::{
     entity::user,
     server::create_app,
     user::routes::{delete_user, get_user, save_user},
-    utils::run_migrations_if_pending, // Updated to use smart migration
+    utils::run_migrations, // Use direct migration for in-memory test databases
 };
 use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_user_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
-    // Use smart migration system that only runs when needed
-    run_migrations_if_pending().await.unwrap();
+    // Run migrations for fresh in-memory database
+    run_migrations().await.unwrap();
 
     let conn = app_state().await.unwrap();
     let res = get_user(State(conn.clone())).await;
@@ -47,8 +47,8 @@ async fn test_user_crud() {
 async fn test_user_auth() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    // Use smart migration system that only runs when needed
-    run_migrations_if_pending().await.unwrap();
+    // Run migrations for fresh in-memory database
+    run_migrations().await.unwrap();
 
     let state = app_state::app_state().await.unwrap();
 

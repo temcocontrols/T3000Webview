@@ -6,22 +6,22 @@ use serde_json::Value;
 use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
-    modbus_register::{
-        inputs::{
+    modbus_register::
+        inputs::
             CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
             UpdateModbusRegisterItemInput, UpdateSettingInput,
         },
         queries::{create, delete, list, update},
         settings,
     },
-    utils::run_migrations_if_pending, // Updated to use smart migration
+    utils::run_migrations, // Use direct migration for in-memory test databases
 };
 
 #[tokio::test]
 async fn test_modbus_register_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
-    // Use smart migration system that only runs when needed
-    run_migrations_if_pending().await.unwrap();
+    // Run migrations for fresh in-memory database
+    run_migrations().await.unwrap();
     let payload = CreateModbusRegisterItemInput {
         id: None,
         register_name: Some("test".to_string()),
@@ -84,8 +84,8 @@ async fn test_modbus_register_crud() {
 async fn test_modbus_register_settings_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    // Use smart migration system that only runs when needed
-    run_migrations_if_pending().await.unwrap();
+    // Run migrations for fresh in-memory database
+    run_migrations().await.unwrap();
 
     let conn = app_state().await.unwrap();
 
