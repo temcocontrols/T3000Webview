@@ -1633,8 +1633,8 @@
       return ''
     }
 
-    // Priority order: label �?command �?fullLabel �?description �?id
-    const description = device.label || device.command || device.fullLabel || device.description || device.id || ''
+    // Priority order: description (contains full label) → fullLabel → label → command → id
+    const description = device.description || device.fullLabel || device.label || device.command || device.id || ''
 
     if (!description) {
       LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
@@ -5548,13 +5548,12 @@
         series.data = series.data.slice(-200)
       }
 
-      // Update series metadata from matched item
+      // Update series metadata from matched item only if not already set
       if (matchedItem.description && !series.description) {
         series.description = matchedItem.description
       }
-      if (matchedItem.label && series.name === series.description) {
-        series.name = matchedItem.label
-      }
+      // Note: Series name is already set during initialization from trendlog config (which has fullLabel)
+      // We don't update it from real-time panelsData since it may not have fullLabel field
 
       matched++
 
