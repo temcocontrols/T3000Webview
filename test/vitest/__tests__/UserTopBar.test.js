@@ -1,4 +1,4 @@
-import UserTopBar from "../../../src/components/Hvac/UserTopBar.vue";
+import UserTopBar from "../../../src/t3-vue/components/Hvac/UserTopBar.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { Quasar } from "quasar";

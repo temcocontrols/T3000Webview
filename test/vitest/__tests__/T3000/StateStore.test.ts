@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { stateStore } from '../../../../src/lib/T3000/Hvac/Data/Store/StateStore';
-import GlobalMsgModel from '../../../../src/lib/T3000/Hvac/Model/GlobalMsgModel';
+import { stateStore } from '../../../../src/lib/vue/T3000/Hvac/Data/Store/StateStore';
+import GlobalMsgModel from '../../../../src/lib/vue/T3000/Hvac/Model/GlobalMsgModel';
 
 describe('StateStore', () => {
   beforeEach(() => {

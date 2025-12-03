@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { stateStore } from '../../../../src/lib/T3000/Hvac/Data/Store/StateStore';
+import { stateStore } from '../../../../src/lib/vue/T3000/Hvac/Data/Store/StateStore';
 
 describe('StateStore', () => {
   beforeEach(() => {
