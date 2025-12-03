@@ -59,11 +59,11 @@ describe('StateStore', () => {
       const item2 = { id: 2, name: 'Item 2' };
 
       stateStore.addItem(item1);
-      expect(stateStore.appState.value.items).toContain(item1);
+      expect(stateStore.appState.value.items).toContainEqual(item1);
       expect(stateStore.appState.value.itemsCount).toBe(1);
 
       stateStore.addItem(item2);
-      expect(stateStore.appState.value.items).toContain(item2);
+      expect(stateStore.appState.value.items).toContainEqual(item2);
       expect(stateStore.appState.value.itemsCount).toBe(2);
     });
 
@@ -119,8 +119,8 @@ describe('StateStore', () => {
       stateStore.addSelectedTarget(target1);
       stateStore.addSelectedTarget(target2);
 
-      expect(stateStore.appState.value.selectedTargets).toContain(target1);
-      expect(stateStore.appState.value.selectedTargets).toContain(target2);
+      expect(stateStore.appState.value.selectedTargets).toContainEqual(target1);
+      expect(stateStore.appState.value.selectedTargets).toContainEqual(target2);
       expect(stateStore.appState.value.selectedTargets.length).toBe(2);
     });
 
@@ -195,8 +195,8 @@ describe('StateStore', () => {
       stateStore.addGlobalMessage(message1);
       stateStore.addGlobalMessage(message2);
 
-      expect(stateStore.globalMsg.value).toContain(message1);
-      expect(stateStore.globalMsg.value).toContain(message2);
+      expect(stateStore.globalMsg.value).toContainEqual(message1);
+      expect(stateStore.globalMsg.value).toContainEqual(message2);
       expect(stateStore.globalMsg.value.length).toBe(2);
     });
 
@@ -219,8 +219,8 @@ describe('StateStore', () => {
       stateStore.addGlobalMessage(message2);
 
       stateStore.removeGlobalMessage(0);
-      expect(stateStore.globalMsg.value).not.toContain(message1);
-      expect(stateStore.globalMsg.value).toContain(message2);
+      expect(stateStore.globalMsg.value).not.toContainEqual(message1);
+      expect(stateStore.globalMsg.value).toContainEqual(message2);
       expect(stateStore.globalMsg.value.length).toBe(1);
     });
 
