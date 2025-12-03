@@ -1,4 +1,4 @@
-import ToolsSidebar from "../../../src/components/Hvac/ToolsSidebar.vue";
+import ToolsSidebar from "../../../src/t3-vue/components/Hvac/ToolsSidebar.vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { Quasar } from "quasar";
