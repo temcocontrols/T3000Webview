@@ -34,6 +34,7 @@ import {
   Text,
   Badge,
   Switch,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -45,6 +46,7 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -372,9 +374,24 @@ export const OutputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Output, Panel, Full Label, Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type
+  // Column definitions matching the sequence: Panel, Output, Full Label, Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type
   const columns: TableColumnDefinition<OutputPoint>[] = [
-    // 1. Output (Index/ID)
+    // 1. Panel ID
+    createTableColumn<OutputPoint>({
+      columnId: 'panel',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+          <span>Panel</span>
+          {sortColumn === 'panel' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+    }),
+    // 2. Output (Index/ID)
     createTableColumn<OutputPoint>({
       columnId: 'output',
       renderHeaderCell: () => (
@@ -412,21 +429,6 @@ export const OutputsPage: React.FC = () => {
           </TableCellLayout>
         );
       },
-    }),
-    // 2. Panel
-    createTableColumn<OutputPoint>({
-      columnId: 'panel',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
     }),
     // 3. Full Label
     createTableColumn<OutputPoint>({
@@ -1045,21 +1047,6 @@ export const OutputsPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing output points for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured output points including digital and analog outputs, their current values,
-                    voltage settings, and operational status.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -1117,6 +1104,21 @@ export const OutputsPage: React.FC = () => {
                       aria-label="Search outputs"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -1139,7 +1141,7 @@ export const OutputsPage: React.FC = () => {
                 {loading && outputs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading outputs...</Text>
+                    <Text size={200} weight="regular">Loading outputs...</Text>
                   </div>
                 )}
 
