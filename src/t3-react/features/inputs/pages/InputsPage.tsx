@@ -34,6 +34,7 @@ import {
   Text,
   Badge,
   Switch,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -45,6 +46,7 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -470,9 +472,24 @@ export const InputsPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Input, Panel, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
+  // Column definitions matching the sequence: Panel, Input, Full Label, Label, Auto/Man, Value, Units, Range, Calibration, Sign, Filter, Status, Signal Type, Type
   const columns: TableColumnDefinition<InputPoint>[] = [
-    // 1. Input (Index/ID)
+    // 1. Panel ID
+    createTableColumn<InputPoint>({
+      columnId: 'panel',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+          <span>Panel</span>
+          {sortColumn === 'panel' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+    }),
+    // 2. Input (Index/ID)
     createTableColumn<InputPoint>({
       columnId: 'input',
       renderHeaderCell: () => (
@@ -511,21 +528,6 @@ export const InputsPage: React.FC = () => {
           </TableCellLayout>
         );
       },
-    }),
-    // 2. Panel
-    createTableColumn<InputPoint>({
-      columnId: 'panel',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
     }),
     // 3. Full Label
     createTableColumn<InputPoint>({
@@ -981,21 +983,6 @@ export const InputsPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing input points for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured input points including digital and analog sensors, their current values,
-                    calibration settings, and operational status.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -1053,6 +1040,21 @@ export const InputsPage: React.FC = () => {
                       aria-label="Search inputs"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing input points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured input points including digital and analog sensors, their current values, calibration settings, and operational status.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -1075,7 +1077,7 @@ export const InputsPage: React.FC = () => {
                 {loading && inputs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading inputs...</Text>
+                    <Text size={200} weight="regular">Loading inputs...</Text>
                   </div>
                 )}
 
