@@ -30,6 +30,7 @@ import {
   Spinner,
   Text,
   Switch,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -41,6 +42,7 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
@@ -365,9 +367,24 @@ export const VariablesPage: React.FC = () => {
     }
   };
 
-  // Column definitions matching the sequence: Variable, Panel, Full Label, Label, Auto/Manual, Value, Units
+  // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Auto/Manual, Value, Units
   const columns: TableColumnDefinition<VariablePoint>[] = [
-    // 1. Variable (Index/ID)
+    // 1. Panel ID
+    createTableColumn<VariablePoint>({
+      columnId: 'panel',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+          <span>Panel</span>
+          {sortColumn === 'panel' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+    }),
+    // 2. Variable (Index/ID)
     createTableColumn<VariablePoint>({
       columnId: 'variable',
       renderHeaderCell: () => (
@@ -405,21 +422,6 @@ export const VariablesPage: React.FC = () => {
           </TableCellLayout>
         );
       },
-    }),
-    // 2. Panel
-    createTableColumn<VariablePoint>({
-      columnId: 'panel',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
-          <span>Panel</span>
-          {sortColumn === 'panel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
     }),
     // 3. Full Label
     createTableColumn<VariablePoint>({
@@ -754,21 +756,6 @@ export const VariablesPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing variable points for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured variable points used for internal calculations, logic operations,
-                    and data storage within the building automation system.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -826,6 +813,21 @@ export const VariablesPage: React.FC = () => {
                       aria-label="Search variables"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing variable points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured variable points used for internal calculations, logic operations, and data storage within the building automation system.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -848,6 +850,7 @@ export const VariablesPage: React.FC = () => {
                 {loading && variables.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading variables...</Text>
                     <Text>Loading variables...</Text>
                   </div>
                 )}
