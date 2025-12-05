@@ -90,6 +90,7 @@ export const InputsPage: React.FC = () => {
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -282,11 +283,34 @@ export const InputsPage: React.FC = () => {
 
   // Handle scroll event to detect when user reaches bottom
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    const scrolledToBottom =
-      target.scrollHeight - target.scrollTop - target.clientHeight < 50; // 50px threshold
+    if (isLoadingNextDevice || loading) {
+      return;
+    }
 
-    if (scrolledToBottom && !isLoadingNextDevice && !loading && inputs.length > 0) {
+    const target = e.currentTarget;
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const isAtBottom = scrollBottom <= 1; // At absolute bottom (1px tolerance)
+
+    if (isAtBottom && inputs.length > 0) {
+      // Mark that we're at bottom
+      isAtBottomRef.current = true;
+      console.log('[InputsPage] Reached bottom, scroll again to load next device');
+    } else {
+      // Not at bottom anymore, reset the flag
+      isAtBottomRef.current = false;
+    }
+  }, [isLoadingNextDevice, loading, inputs.length]);
+
+  // Handle wheel event to detect scroll attempts when already at bottom
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading || inputs.length === 0) {
+      return;
+    }
+
+    // If user is scrolling down (deltaY > 0) and already at bottom, load next device
+    if (e.deltaY > 0 && isAtBottomRef.current) {
+      console.log('[InputsPage] User scrolled down while at bottom, loading next device');
+      isAtBottomRef.current = false; // Reset
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, inputs.length, loadNextDevice]);
@@ -1144,6 +1168,7 @@ export const InputsPage: React.FC = () => {
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
                     onScroll={handleScroll}
+                    onWheel={handleWheel}
                   >
                     <DataGrid
                       items={inputs}
