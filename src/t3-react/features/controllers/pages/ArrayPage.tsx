@@ -11,6 +11,7 @@ import {
   createTableColumn,
   Spinner,
   Text,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -18,6 +19,7 @@ import {
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -183,20 +185,6 @@ const ArrayPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing arrays for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured array variables for the device.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -254,6 +242,23 @@ const ArrayPage: React.FC = () => {
                       aria-label="Search arrays"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  {selectedDevice && (
+                    <Tooltip
+                      content={`Showing arrays for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured array variables for the device.`}
+                      relationship="description"
+                    >
+                      <button
+                        className={styles.toolbarButton}
+                        style={{ marginLeft: '8px' }}
+                        title="Information"
+                        aria-label="Information about this page"
+                      >
+                        <InfoRegular />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
               )}
@@ -276,7 +281,7 @@ const ArrayPage: React.FC = () => {
                 {loading && arrays.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading arrays...</Text>
+                    <Text size={200} weight="regular">Loading arrays...</Text>
                   </div>
                 )}
 

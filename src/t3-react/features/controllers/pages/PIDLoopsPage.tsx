@@ -17,6 +17,7 @@ import {
   Spinner,
   Text,
   tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -30,6 +31,7 @@ import {
   ArrowClockwise24Regular,
   Save24Regular,
   Dismiss24Regular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -618,17 +620,6 @@ const PIDLoopsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Blade Description */}
-        {selectedDevice && (
-          <div className={styles.bladeDescription}>
-            <span>
-              Showing PID loops for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-              {' '}This table displays all PID controller configurations including inputs, outputs, setpoints, and tuning parameters.
-              {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-            </span>
-          </div>
-        )}
-
         {/* Toolbar Section */}
         {selectedDevice && (
         <div className={styles.toolbar}>
@@ -681,6 +672,23 @@ const PIDLoopsPage: React.FC = () => {
               />
             </div>
 
+            {/* Info Button with Tooltip */}
+            {selectedDevice && (
+              <Tooltip
+                content={`Showing PID loops for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all PID controller configurations including inputs, outputs, setpoints, and tuning parameters.`}
+                relationship="description"
+              >
+                <button
+                  className={styles.toolbarButton}
+                  style={{ marginLeft: '8px' }}
+                  title="Information"
+                  aria-label="Information about this page"
+                >
+                  <InfoRegular />
+                </button>
+              </Tooltip>
+            )}
+
             {hasChanges && (
               <>
                 <div className={styles.toolbarSeparator} role="separator" />
@@ -720,7 +728,7 @@ const PIDLoopsPage: React.FC = () => {
         {isLoading && pidLoops.length === 0 && (
           <div className={styles.loadingBar}>
             <Spinner size="tiny" />
-            <Text>Loading PID loops...</Text>
+            <Text size={200} weight="regular">Loading PID loops...</Text>
           </div>
         )}
 
