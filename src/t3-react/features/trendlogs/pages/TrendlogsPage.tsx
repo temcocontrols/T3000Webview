@@ -19,6 +19,7 @@ import {
   Spinner,
   Text,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -30,6 +31,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ChartMultipleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
@@ -464,20 +466,6 @@ export const TrendLogsPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing trend log monitors for <b>{selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -537,6 +525,21 @@ export const TrendLogsPage: React.FC = () => {
                       aria-label="Search trendlogs"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing trend log monitors for ${selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: ${selectedDevice.serialNumber}). This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -551,7 +554,7 @@ export const TrendLogsPage: React.FC = () => {
                 {loading && trendLogs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading trendlogs...</Text>
+                    <Text size={200} weight="regular">Loading trendlogs...</Text>
                   </div>
                 )}
 

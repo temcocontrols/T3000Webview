@@ -13,12 +13,14 @@ import {
   Text,
   Button,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
   ErrorCircleRegular,
   CheckmarkCircleRegular,
   PersonRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -327,17 +329,6 @@ const UsersPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Blade Description */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing user accounts for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}Manage user access levels, passwords, and permissions.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
               {/* Toolbar */}
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
@@ -350,6 +341,23 @@ const UsersPage: React.FC = () => {
                   >
                     Refresh
                   </Button>
+
+                  {/* Info Button with Tooltip */}
+                  {selectedDevice && (
+                    <Tooltip
+                      content={`Showing user accounts for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). Manage user access levels, passwords, and permissions.`}
+                      relationship="description"
+                    >
+                      <button
+                        className={styles.toolbarButton}
+                        style={{ marginLeft: '8px' }}
+                        title="Information"
+                        aria-label="Information about this page"
+                      >
+                        <InfoRegular />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
 
@@ -359,7 +367,8 @@ const UsersPage: React.FC = () => {
               <div className={styles.dockingBody}>
                 {loading ? (
                   <div className={styles.loading}>
-                    <Spinner size="medium" label="Loading users..." />
+                    <Spinner size="medium" />
+                    <Text size={200} weight="regular">Loading users...</Text>
                   </div>
                 ) : users.length === 0 ? (
                   <div className={styles.noData}>
