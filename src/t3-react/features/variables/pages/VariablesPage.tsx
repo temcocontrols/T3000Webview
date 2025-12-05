@@ -15,7 +15,7 @@
  * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -72,7 +72,7 @@ interface VariablePoint {
 }
 
 export const VariablesPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [variables, setVariables] = useState<VariablePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,26 +81,30 @@ export const VariablesPage: React.FC = () => {
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
 
+  // Auto-scroll feature state
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
-      const findFirstDevice = (nodes: any[]): any => {
-        for (const node of nodes) {
-          if (node.data) return node;
-          if (node.children && node.children.length > 0) {
-            const found = findFirstDevice(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
+      // Get the first device from filtered devices list (respects current filters)
+      const filteredDevices = getFilteredDevices();
+      console.log('[VariablesPage] Auto-select check:', {
+        hasSelectedDevice: !!selectedDevice,
+        treeDataLength: treeData.length,
+        filteredDevicesCount: filteredDevices.length,
+        filteredDevicesList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
+      });
 
-      const firstDeviceNode = findFirstDevice(treeData);
-      if (firstDeviceNode?.data) {
-        selectDevice(firstDeviceNode.data);
+      if (filteredDevices.length > 0) {
+        const firstDevice = filteredDevices[0];
+        console.log(`[VariablesPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+        selectDevice(firstDevice);
       }
     }
-  }, [selectedDevice, treeData, selectDevice]);
+  }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
 
   // Fetch variables for selected device
   const fetchVariables = useCallback(async () => {
@@ -251,6 +255,72 @@ export const VariablesPage: React.FC = () => {
   const handleSettings = () => {
     console.log('Settings clicked');
   };
+
+  // Auto-scroll to next device when reaching bottom
+  const loadNextDevice = useCallback(async () => {
+    const nextDevice = getNextDevice();
+
+    if (!nextDevice) {
+      console.log('[VariablesPage] No next device available');
+      return;
+    }
+
+    console.log(`[VariablesPage] Auto-loading next device: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber})`);
+    setIsLoadingNextDevice(true);
+
+    // Switch device (this will trigger fetchVariables via useEffect)
+    selectDevice(nextDevice);
+
+    // Reset loading state after a short delay
+    setTimeout(() => {
+      setIsLoadingNextDevice(false);
+    }, 500);
+  }, [getNextDevice, selectDevice]);
+
+  // Handle scroll event to detect when user reaches bottom
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading) {
+      return;
+    }
+
+    const target = e.currentTarget;
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const isAtBottom = scrollBottom <= 1; // At absolute bottom (1px tolerance)
+
+    if (isAtBottom && variables.length > 0) {
+      // Mark that we're at bottom
+      isAtBottomRef.current = true;
+      console.log('[VariablesPage] Reached bottom, scroll again to load next device');
+    } else {
+      // Not at bottom anymore, reset the flag
+      isAtBottomRef.current = false;
+    }
+  }, [isLoadingNextDevice, loading, variables.length]);
+
+  // Handle wheel event to detect scroll attempts when already at bottom
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading || variables.length === 0) {
+      return;
+    }
+
+    // If user is scrolling down (deltaY > 0) and already at bottom, load next device
+    if (e.deltaY > 0 && isAtBottomRef.current) {
+      console.log('[VariablesPage] User scrolled down while at bottom, loading next device');
+      isAtBottomRef.current = false; // Reset
+      loadNextDevice();
+    }
+  }, [isLoadingNextDevice, loading, variables.length, loadNextDevice]);
+
+  // Auto-scroll to top when device changes
+  useEffect(() => {
+    if (selectedDevice && scrollContainerRef.current) {
+      // Use smooth scroll for auto-loaded devices, instant for manual selection
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+      });
+    }
+  }, [selectedDevice, isLoadingNextDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: VariablePoint, field: string, currentValue: string) => {
@@ -868,7 +938,12 @@ export const VariablesPage: React.FC = () => {
 
                 {/* Data Grid - Always show with header (even when there's an error) */}
                 {selectedDevice && !loading && (
-                  <>
+                  <div
+                    ref={scrollContainerRef}
+                    className={styles.scrollContainer}
+                    onScroll={handleScroll}
+                    onWheel={handleWheel}
+                  >
                   <DataGrid
                     items={variables}
                     columns={columns}
@@ -923,6 +998,14 @@ export const VariablesPage: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
+                  {/* Loading Next Device Indicator */}
+                  {isLoadingNextDevice && (
+                    <div className={styles.autoLoadIndicator}>
+                      <Spinner size="tiny" />
+                      <Text size={200} weight="regular">Loading next device...</Text>
+                    </div>
+                  )}
+
                   {/* No Data Message - Show below grid when empty */}
                   {variables.length === 0 && (
                     <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
@@ -941,12 +1024,10 @@ export const VariablesPage: React.FC = () => {
                       >
                         Refresh
                       </Button>
-                    </div>
-                  )}
-                  </>
-                )}
-
-              </div>
+                      </div>
+                    )}
+                  </div>
+                )}              </div>
             </div>
           </div>
         </div>
