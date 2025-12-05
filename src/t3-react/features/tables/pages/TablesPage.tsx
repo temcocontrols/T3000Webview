@@ -12,11 +12,13 @@ import {
   Spinner,
   Text,
   Button,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
   ErrorCircleRegular,
   CheckmarkCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -266,17 +268,6 @@ const TablesPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Blade Description */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing analog conversion tables for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}These tables define custom voltage-to-value conversions for analog inputs.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
               {/* Toolbar */}
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
@@ -289,6 +280,23 @@ const TablesPage: React.FC = () => {
                   >
                     Refresh
                   </Button>
+
+                  {/* Info Button with Tooltip */}
+                  {selectedDevice && (
+                    <Tooltip
+                      content={`Showing analog conversion tables for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). These tables define custom voltage-to-value conversions for analog inputs.`}
+                      relationship="description"
+                    >
+                      <button
+                        className={styles.toolbarButton}
+                        style={{ marginLeft: '8px' }}
+                        title="Information"
+                        aria-label="Information about this page"
+                      >
+                        <InfoRegular />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
 
