@@ -34,6 +34,7 @@ import {
   Text,
   Badge,
   Switch,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -44,6 +45,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ErrorCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -588,17 +590,6 @@ export const ProgramsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* BLADE DESCRIPTION */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing program points for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured program logic including execution status, size, and control settings.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
               {/* TOOLBAR */}
               {selectedDevice && (
               <div className={styles.toolbar}>
@@ -650,6 +641,21 @@ export const ProgramsPage: React.FC = () => {
                       aria-label="Search programs"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing program points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured program logic including execution status, size, and control settings.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -665,7 +671,7 @@ export const ProgramsPage: React.FC = () => {
                 {loading && programs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading programs...</Text>
+                    <Text size={200} weight="regular">Loading programs...</Text>
                   </div>
                 )}
 

@@ -31,6 +31,7 @@ import {
   Text,
   Switch,
   Input,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -41,6 +42,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ErrorCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -483,20 +485,6 @@ export const HolidaysPage: React.FC = () => {
             )}
 
             {/* ========================================
-                BLADE DESCRIPTION
-                Matches: ext-blade-description
-                ======================================== */}
-            {selectedDevice && (
-              <div className={styles.bladeDescription}>
-                <span>
-                  Showing holidays for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                  {' '}This table displays all configured annual routine/holiday schedules including labels, auto/manual modes, and values.
-                  {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                </span>
-              </div>
-            )}
-
-            {/* ========================================
                 TOOLBAR - Azure Portal Command Bar
                 Matches: ext-overview-assistant-toolbar azc-toolbar
                 ======================================== */}
@@ -549,6 +537,21 @@ export const HolidaysPage: React.FC = () => {
                     aria-label="Search holidays"
                   />
                 </div>
+
+                {/* Info Button with Tooltip */}
+                <Tooltip
+                  content={`Showing holidays for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured annual routine/holiday schedules including labels, auto/manual modes, and values.`}
+                  relationship="description"
+                >
+                  <button
+                    className={styles.toolbarButton}
+                    style={{ marginLeft: '8px' }}
+                    title="Information"
+                    aria-label="Information about this page"
+                  >
+                    <InfoRegular />
+                  </button>
+                </Tooltip>
               </div>
             </div>
             )}
@@ -564,7 +567,7 @@ export const HolidaysPage: React.FC = () => {
               {loading && holidays.length === 0 && (
                 <div className={styles.loadingBar}>
                   <Spinner size="tiny" />
-                  <Text>Loading holidays...</Text>
+                  <Text size={200} weight="regular">Loading holidays...</Text>
                 </div>
               )}
 
