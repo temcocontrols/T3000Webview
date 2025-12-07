@@ -233,6 +233,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const trendlogId = props.trendlogId || '0';
   const isDrawerMode = props.isDrawerMode || false;
   const onToolbarRender = props.onToolbarRender;
+
+  console.log('🔍 TrendChartContent: isDrawerMode =', isDrawerMode, 'onToolbarRender =', !!onToolbarRender);
+
   // monitorId may be used in future for multi-monitor support
   // const monitorId = props.monitorId || '0';
 
@@ -883,7 +886,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* Right Panel - Trend Chart Viewer */}
       <div className={styles.chartViewerContainer}>
-        {/* Chart Viewer Header */}
+        {/* Chart Viewer Header - hide in drawer mode */}
+        {!isDrawerMode && (
         <div className={styles.chartViewerHeader}>
           {/* Title */}
           <div className={styles.chartTitle}>
@@ -1071,6 +1075,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             </div>
           )}
         </div>
+        )}
 
         {/* Chart Container */}
         <div className={styles.chartContainer}>

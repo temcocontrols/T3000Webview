@@ -34,22 +34,20 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: 0,
   },
-  headerTop: {
+  toolbarContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '12px 16px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  headerTitle: {
-    fontSize: '16px',
-    fontWeight: 600,
-    margin: 0,
-  },
-  toolbarContainer: {
     padding: '8px 16px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    gap: '8px',
+  },
+  toolbarContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
   },
 });
 
@@ -84,18 +82,17 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
       className={styles.drawer}
     >
       <div className={styles.drawerHeader}>
-        <div className={styles.headerTop}>
-          <h2 className={styles.headerTitle}>Trend Chart Viewer</h2>
-          <Button
-            appearance="subtle"
-            aria-label="Close"
-            icon={<Dismiss24Regular />}
-            onClick={onClose}
-          />
-        </div>
         {toolbarContent && (
           <div className={styles.toolbarContainer}>
-            {toolbarContent}
+            <div className={styles.toolbarContent}>
+              {toolbarContent}
+            </div>
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={onClose}
+            />
           </div>
         )}
       </div>
