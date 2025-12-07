@@ -80,7 +80,7 @@ export const TrendLogsPage: React.FC = () => {
     async (trendlog: TrendLogData) => {
       if (!selectedDevice) return;
 
-      console.log('📊 [TrendLogsPage] Opening chart drawer - Step 1: Fetching monitor config:', {
+      console.log('📊 [TrendLogsPage] Opening chart drawer - Fetching trendlog config:', {
         serialNumber: selectedDevice.serialNumber,
         panelId: selectedDevice.panelId,
         trendlogId: trendlog.trendlogId,
@@ -90,39 +90,81 @@ export const TrendLogsPage: React.FC = () => {
       const monitorIndex = trendlog.trendlogIndex || '0';
 
       try {
-        // Step 1: Fetch complete monitor configuration (Vue pattern: comes from all_data parameter)
-        const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${trendlog.trendlogId}`;
-        console.log('📡 [TrendLogsPage] Fetching monitor config from:', url);
+        // Step 1: Fetch trendlog info
+        const trendlogUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${trendlog.trendlogId}`;
+        console.log('📡 [TrendLogsPage] Fetching trendlog from:', trendlogUrl);
 
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch monitor config: ${response.statusText}`);
+        const trendlogResponse = await fetch(trendlogUrl);
+        if (!trendlogResponse.ok) {
+          throw new Error(`Failed to fetch trendlog: ${trendlogResponse.statusText}`);
         }
 
-        const monitorData = await response.json();
-        console.log('✅ [TrendLogsPage] Monitor config received:', monitorData);
+        const trendlogData = await trendlogResponse.json();
+        console.log('✅ [TrendLogsPage] Trendlog received:', trendlogData);
 
-        // Step 2: Construct itemData with complete monitor configuration
+        // Step 2: Fetch TRENDLOG_INPUTS using the generic table endpoint
+        const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+        console.log('📡 [TrendLogsPage] Fetching TRENDLOG_INPUTS from:', inputsUrl);
+
+        const inputsResponse = await fetch(inputsUrl);
+
+        let inputItems: any[] = [];
+        let rangeItems: any[] = [];
+
+        if (inputsResponse.ok) {
+          const inputsData = await inputsResponse.json();
+          console.log('✅ [TrendLogsPage] Raw inputs data received:', inputsData);
+
+          // Filter inputs for this specific trendlog and transform to expected format
+          if (inputsData.data && Array.isArray(inputsData.data)) {
+            const trendlogInputs = inputsData.data.filter(
+              (input: any) => input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId
+            );
+
+            console.log('✅ [TrendLogsPage] Filtered inputs for this trendlog:', trendlogInputs);
+
+            if (trendlogInputs.length > 0) {
+              inputItems = trendlogInputs.map((input: any) => ({
+                panel: input.pointPanel || input.point_panel ? parseInt(input.pointPanel || input.point_panel) : selectedDevice.panelId,
+                point_number: parseInt(input.pointIndex || input.point_index || '1') - 1, // Convert 1-based to 0-based
+                point_type: (input.pointType || input.point_type) === 'INPUT' ? 0 : (input.pointType || input.point_type) === 'OUTPUT' ? 1 : 2,
+                network: 0,
+                sub_panel: 0,
+              }));
+
+              // TODO: Fetch range data from another table or FFI
+              // For now, create default range items
+              rangeItems = inputItems.map(() => ({
+                digital_analog: 0, // Assume analog
+                units: '',
+              }));
+            }
+          }
+        } else {
+          console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', inputsResponse.status, inputsResponse.statusText);
+        }
+
+        // Step 3: Construct itemData
         const itemData = {
-          title: trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
+          title: trendlogData?.trendlog?.trendlogLabel || trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
           t3Entry: {
             id: `MON${monitorIndex}`,
             pid: selectedDevice.panelId || 1,
-            label: trendlog.trendlogLabel || `MON${monitorIndex}`,
+            label: trendlogData?.trendlog?.trendlogLabel || trendlog.trendlogLabel || `MON${monitorIndex}`,
             command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
-            // Include actual monitor configuration data
-            input: monitorData.input || [],
-            range: monitorData.range || [],
+            input: inputItems.length > 0 ? inputItems : undefined,
+            range: rangeItems.length > 0 ? rangeItems : undefined,
           },
         };
 
-        console.log('✅ [TrendLogsPage] Opening drawer with complete itemData:', {
+        console.log('✅ [TrendLogsPage] Opening drawer with itemData:', {
           title: itemData.title,
-          inputCount: itemData.t3Entry.input.length,
-          rangeCount: itemData.t3Entry.range.length,
+          hasInputConfig: inputItems.length > 0,
+          inputCount: inputItems.length,
+          rangeCount: rangeItems.length,
         });
 
-        // Step 3: Open drawer with complete data
+        // Step 4: Open drawer
         setChartParams({
           serialNumber: selectedDevice.serialNumber,
           panelId: selectedDevice.panelId || 1,
@@ -132,7 +174,7 @@ export const TrendLogsPage: React.FC = () => {
         });
         setChartDrawerOpen(true);
       } catch (error) {
-        console.error('❌ [TrendLogsPage] Failed to fetch monitor config:', error);
+        console.error('❌ [TrendLogsPage] Failed to fetch trendlog config:', error);
         // Fallback: Open drawer with basic structure (will show sample data)
         const itemData = {
           title: trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
@@ -204,7 +246,26 @@ export const TrendLogsPage: React.FC = () => {
 
       const data = await response.json();
       const fetchedTrendLogs = data.trendlogs || [];
-      setTrendLogs(fetchedTrendLogs);
+
+      // Debug: Check for duplicate trendlogIds
+      const idCounts = fetchedTrendLogs.reduce((acc: any, log: any) => {
+        const id = log.trendlogId || log.trendlogIndex;
+        acc[id] = (acc[id] || 0) + 1;
+        return acc;
+      }, {});
+      const duplicates = Object.entries(idCounts).filter(([_, count]) => (count as number) > 1);
+      if (duplicates.length > 0) {
+        console.warn('⚠️ [TrendLogsPage] Duplicate trendlogIds found:', duplicates);
+        console.log('📊 [TrendLogsPage] Full trendlog data:', fetchedTrendLogs);
+      }
+
+      // Add unique index to each trendlog to ensure unique keys
+      const trendlogsWithIndex = fetchedTrendLogs.map((log: any, idx: number) => ({
+        ...log,
+        _uniqueIndex: idx
+      }));
+
+      setTrendLogs(trendlogsWithIndex);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
       setError(errorMessage);
@@ -317,12 +378,71 @@ export const TrendLogsPage: React.FC = () => {
   };
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
+    console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
     setSelectedMonitor(monitor);
-    // Note: Monitor inputs are not fetched via API endpoint
-    // Input/range data comes from itemData.t3Entry which is passed through URL parameters or FFI
-    // For now, initialize with empty array
-    setMonitorInputs(Array(14).fill(''));
-  }, []);
+
+    if (!selectedDevice) {
+      console.log('⚠️ [TrendLogsPage] No device selected, skipping input fetch');
+      setMonitorInputs(Array(14).fill(''));
+      return;
+    }
+
+    try {
+      console.log('📡 [TrendLogsPage] Fetching inputs for monitor:', monitor.trendlogId, 'device:', selectedDevice.serialNumber);
+
+      // Fetch TRENDLOG_INPUTS for this device
+      const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+      const response = await fetch(inputsUrl);
+
+      if (response.ok) {
+        const inputsData = await response.json();
+        console.log('✅ [TrendLogsPage] Inputs data received:', inputsData);
+
+        // Filter inputs for this specific trendlog
+        if (inputsData.data && Array.isArray(inputsData.data)) {
+          const trendlogInputs = inputsData.data.filter(
+            (input: any) =>
+              (input.trendlogId === monitor.trendlogId || input.Trendlog_ID === monitor.trendlogId) &&
+              (input.viewType === 'MAIN' || input.view_type === 'MAIN' || !input.viewType)
+          );
+
+          console.log('✅ [TrendLogsPage] Filtered inputs for monitor:', trendlogInputs);
+
+          // Create array of 14 inputs (standard monitor size)
+          const inputs = Array(14).fill('');
+
+          // Fill in the configured inputs
+          trendlogInputs.forEach((input: any) => {
+            const pointIndex = parseInt(input.pointIndex || input.point_index || '0');
+            const pointType = input.pointType || input.point_type || '';
+            const pointLabel = input.pointLabel || input.point_label || '';
+
+            // Calculate display index (0-13)
+            if (pointIndex > 0 && pointIndex <= 14) {
+              const displayIndex = pointIndex - 1;
+              // Format: "IN1: Label" or "OUT1: Label"
+              const prefix = pointType === 'INPUT' ? 'IN' :
+                           pointType === 'OUTPUT' ? 'OUT' :
+                           pointType === 'VARIABLE' ? 'VAR' : '';
+              inputs[displayIndex] = pointLabel || `${prefix}${pointIndex}`;
+            }
+          });
+
+          setMonitorInputs(inputs);
+          console.log('✅ [TrendLogsPage] Monitor inputs set:', inputs);
+        } else {
+          console.warn('⚠️ [TrendLogsPage] No data in response');
+          setMonitorInputs(Array(14).fill(''));
+        }
+      } else {
+        console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', response.status);
+        setMonitorInputs(Array(14).fill(''));
+      }
+    } catch (error) {
+      console.error('❌ [TrendLogsPage] Error fetching monitor inputs:', error);
+      setMonitorInputs(Array(14).fill(''));
+    }
+  }, [selectedDevice]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -656,7 +776,7 @@ export const TrendLogsPage: React.FC = () => {
                             defaultWidth: 180,
                           },
                         }}
-                        getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}`}
+                        getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}
                       >
                         <DataGridHeader>
                           <DataGridRow selectionCell={{ renderHeaderCell: () => <span>#</span> }}>
