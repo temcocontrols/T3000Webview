@@ -18,7 +18,7 @@
  * - Column 6: PROGRAM_LABEL (edit)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -66,7 +66,7 @@ interface ProgramPoint {
 }
 
 export const ProgramsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [programs, setPrograms] = useState<ProgramPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,26 +75,20 @@ export const ProgramsPage: React.FC = () => {
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
 
+  // Auto-scroll feature state
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  const isAtBottomRef = useRef(false);
+
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
-      const findFirstDevice = (nodes: any[]): any => {
-        for (const node of nodes) {
-          if (node.data) return node;
-          if (node.children && node.children.length > 0) {
-            const found = findFirstDevice(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const firstDeviceNode = findFirstDevice(treeData);
-      if (firstDeviceNode?.data) {
-        selectDevice(firstDeviceNode.data);
+      const filteredDevices = getFilteredDevices();
+      if (filteredDevices.length > 0) {
+        selectDevice(filteredDevices[0]);
       }
     }
-  }, [selectedDevice, treeData, selectDevice]);
+  }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
 
   // Fetch programs for selected device
   const fetchPrograms = useCallback(async () => {
@@ -244,6 +238,44 @@ export const ProgramsPage: React.FC = () => {
   const handleSettings = () => {
     console.log('Settings clicked');
   };
+
+  // Auto-scroll handlers
+  const loadNextDevice = useCallback(async () => {
+    const nextDevice = getNextDevice();
+    if (!nextDevice) return;
+    setIsLoadingNextDevice(true);
+    selectDevice(nextDevice);
+    setTimeout(() => setIsLoadingNextDevice(false), 500);
+  }, [getNextDevice, selectDevice]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading) return;
+    const target = e.currentTarget;
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const isAtBottom = scrollBottom <= 1;
+    if (isAtBottom && programs.length > 0) {
+      isAtBottomRef.current = true;
+    } else {
+      isAtBottomRef.current = false;
+    }
+  }, [isLoadingNextDevice, loading, programs.length]);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading || programs.length === 0) return;
+    if (e.deltaY > 0 && isAtBottomRef.current) {
+      isAtBottomRef.current = false;
+      loadNextDevice();
+    }
+  }, [isLoadingNextDevice, loading, programs.length, loadNextDevice]);
+
+  useEffect(() => {
+    if (selectedDevice && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+      });
+    }
+  }, [selectedDevice, isLoadingNextDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: ProgramPoint, field: string, currentValue: string) => {
@@ -686,7 +718,12 @@ export const ProgramsPage: React.FC = () => {
                 )}
 
                 {selectedDevice && !loading && (
-                  <>
+                  <div
+                    ref={scrollContainerRef}
+                    className={styles.scrollContainer}
+                    onScroll={handleScroll}
+                    onWheel={handleWheel}
+                  >
                   <DataGrid
                     items={programs}
                     columns={columns}
@@ -759,12 +796,10 @@ export const ProgramsPage: React.FC = () => {
                       >
                         Refresh
                       </Button>
-                    </div>
-                  )}
-                  </>
-                )}
-
-              </div>
+                      </div>
+                    )}
+                  </div>
+                )}              </div>
             </div>
           </div>
         </div>

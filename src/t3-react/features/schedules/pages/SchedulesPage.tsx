@@ -11,7 +11,7 @@
  * Rust Entity: api/src/entity/t3_device/schedules.rs
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -65,7 +65,7 @@ interface SchedulePoint {
 }
 
 export const SchedulesPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [schedules, setSchedules] = useState<SchedulePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,27 +76,19 @@ export const SchedulesPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
-    if (!selectedDevice && treeData.length > 0) {
-      const findFirstDevice = (nodes: any[]): any => {
-        for (const node of nodes) {
-          if (node.data) return node;
-          if (node.children && node.children.length > 0) {
-            const found = findFirstDevice(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const firstDeviceNode = findFirstDevice(treeData);
-      if (firstDeviceNode?.data) {
-        selectDevice(firstDeviceNode.data);
+    if (!selectedDevice) {
+      const devices = getFilteredDevices();
+      if (devices.length > 0) {
+        selectDevice(devices[0]);
       }
     }
-  }, [selectedDevice, treeData, selectDevice]);
+  }, [selectedDevice, getFilteredDevices, selectDevice]);
 
   // Fetch schedules for selected device
   const fetchSchedules = useCallback(async () => {
@@ -245,6 +237,51 @@ export const SchedulesPage: React.FC = () => {
       setSortDirection('ascending');
     }
   };
+
+  // Auto-scroll navigation handlers
+  const loadNextDevice = useCallback(() => {
+    const nextDevice = getNextDevice();
+    if (nextDevice) {
+      setIsLoadingNextDevice(true);
+      selectDevice(nextDevice);
+      setTimeout(() => {
+        setIsLoadingNextDevice(false);
+      }, 500);
+    }
+  }, [getNextDevice, selectDevice]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading) return;
+
+    const target = e.currentTarget;
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const isAtBottom = scrollBottom <= 1;
+
+    if (isAtBottom && schedules.length > 0) {
+      isAtBottomRef.current = true;
+    } else {
+      isAtBottomRef.current = false;
+    }
+  }, [isLoadingNextDevice, loading, schedules.length]);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading || schedules.length === 0) return;
+
+    if (e.deltaY > 0 && isAtBottomRef.current) {
+      isAtBottomRef.current = false;
+      loadNextDevice();
+    }
+  }, [isLoadingNextDevice, loading, schedules.length, loadNextDevice]);
+
+  // Auto-scroll to top after device change
+  useEffect(() => {
+    if (selectedDevice && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+      });
+    }
+  }, [selectedDevice, isLoadingNextDevice]);
 
   // Auto/Manual toggle handler
   const handleAutoManualToggle = async (item: SchedulePoint) => {
@@ -563,7 +600,12 @@ export const SchedulesPage: React.FC = () => {
 
                 {/* Data Grid - Always show with header (even when there's an error) */}
                 {selectedDevice && !loading && (
-                  <>
+                  <div
+                    ref={scrollContainerRef}
+                    className={styles.scrollContainer}
+                    onScroll={handleScroll}
+                    onWheel={handleWheel}
+                  >
                   <DataGrid
                     items={sortedSchedules}
                     columns={columns}
@@ -642,7 +684,14 @@ export const SchedulesPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
-                  </>
+
+                  {isLoadingNextDevice && (
+                    <div className={styles.autoLoadIndicator}>
+                      <Spinner size="tiny" />
+                      <Text>Loading next device...</Text>
+                    </div>
+                  )}
+                  </div>
                 )}
 
               </div>
