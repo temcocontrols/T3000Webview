@@ -67,7 +67,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   leftPanel: {
-    flex: '0 0 220px',
+    flex: '0 0 280px',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
@@ -78,6 +78,31 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  headerLine: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+  },
+  headerControls: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+  },
+  leftControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  autoScrollToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
   seriesPanel: {
     flex: 1,
@@ -95,13 +120,28 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '8px',
+    padding: '6px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusSmall,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground2Hover,
+      borderColor: tokens.colorBrandStroke1,
+    },
+  },
+  colorIndicator: {
+    width: '20px',
+    height: '20px',
+    borderRadius: '4px',
+    flexShrink: 0,
+    border: `2px solid ${tokens.colorNeutralStroke2}`,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    ':hover': {
+      transform: 'scale(1.1)',
     },
   },
   seriesItemContent: {
@@ -265,12 +305,38 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
   const [keyboardEnabled, setKeyboardEnabled] = useState(false);
 
+  // Data source tracking for proper indicators
+  const [dataSource, setDataSource] = useState<'realtime' | 'api'>('realtime');
+  const [hasConnectionError, setHasConnectionError] = useState(false);
+
   // Refs
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastDataTimestampRef = useRef<number>(0);
+  const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const historyAbortControllerRef = useRef<AbortController | null>(null);
 
   /**
-   * Load historical data from database
+   * Helper: Get existing data time range to optimize loading
+   */
+  const getExistingDataTimeRange = useCallback(() => {
+    let earliest = Infinity;
+    let latest = -Infinity;
+    let totalPoints = 0;
+
+    series.forEach((s) => {
+      s.data.forEach((point) => {
+        if (point.timestamp < earliest) earliest = point.timestamp;
+        if (point.timestamp > latest) latest = point.timestamp;
+        totalPoints++;
+      });
+    });
+
+    if (totalPoints === 0) return null;
+    return { earliest, latest, totalPoints };
+  }, [series]);
+
+  /**
+   * Load historical data from database (enhanced with Vue flow logic)
    */
   const loadHistoricalData = useCallback(async () => {
     if (!serialNumber || !panelId) {
@@ -278,7 +344,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       return;
     }
 
+    if (series.length === 0) {
+      console.warn('⚠️ TrendChartContent: No series initialized yet');
+      return;
+    }
+
     setLoading(true);
+    setHasConnectionError(false);
+
     try {
       // Calculate time range based on timeBase
       const now = Date.now();
@@ -292,17 +365,48 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         '1d': 24 * 60 * 60 * 1000,
         '4d': 4 * 24 * 60 * 60 * 1000,
       };
-      const startTime = now - timeRanges[timeBase];
 
-      // Format timestamps for API (backend expects "YYYY-MM-DD HH:mm:ss")
-      const formatDateTime = (timestamp: number) => {
+      const timeRangeMs = timeRanges[timeBase];
+      let startTime = now - timeRangeMs;
+      let endTime = now;
+
+      // 🆕 SMART LOADING: Check if we already have data in this time range
+      const existingRange = getExistingDataTimeRange();
+      if (existingRange) {
+        console.log('📊 TrendChartContent: Existing data detected - optimizing load range', {
+          requestedRange: {
+            start: new Date(startTime).toISOString(),
+            end: new Date(endTime).toISOString(),
+          },
+          existingRange: {
+            start: new Date(existingRange.earliest).toISOString(),
+            end: new Date(existingRange.latest).toISOString(),
+          },
+        });
+
+        // Only load data BEFORE the earliest existing point (historical gap)
+        if (startTime < existingRange.earliest) {
+          endTime = existingRange.earliest - 1000; // 1 second before earliest
+          console.log('🔍 TrendChartContent: Loading historical gap BEFORE existing data', {
+            gapStart: new Date(startTime).toISOString(),
+            gapEnd: new Date(endTime).toISOString(),
+          });
+        } else {
+          console.log('✅ TrendChartContent: All requested data already exists in memory - skipping database load');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Format timestamps for API - use UTC to match backend storage (Vue pattern)
+      const formatUTCDateTime = (timestamp: number) => {
         const date = new Date(timestamp);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const hours = String(date.getUTCHours()).padStart(2, '0');
+        const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(date.getUTCSeconds()).padStart(2, '0');
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
       };
 
@@ -311,8 +415,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         serial_number: serialNumber,
         panel_id: panelId,
         trendlog_id: trendlogId,
-        start_time: formatDateTime(startTime),
-        end_time: formatDateTime(now),
+        start_time: formatUTCDateTime(startTime),
+        end_time: formatUTCDateTime(endTime),
         limit: 10000,
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
         specific_points: series.map((s) => ({
@@ -332,16 +436,23 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         dataPoints: response.data.length,
       });
 
-      // Process and merge data into series
+      // 🆕 Process and MERGE data into series (don't replace)
       const updatedSeries = [...series];
       response.data.forEach((point) => {
-        const seriesIndex = updatedSeries.findIndex((s) => s.pointId === point.point_id && s.pointType === point.point_type);
+        const seriesIndex = updatedSeries.findIndex(
+          (s) => s.pointId === point.point_id && s.pointType === point.point_type
+        );
         if (seriesIndex !== -1) {
           const timestamp = new Date(point.timestamp).getTime();
-          updatedSeries[seriesIndex].data.push({
-            timestamp,
-            value: point.value,
-          });
+
+          // Check if this timestamp already exists (deduplication)
+          const exists = updatedSeries[seriesIndex].data.some((d) => d.timestamp === timestamp);
+          if (!exists) {
+            updatedSeries[seriesIndex].data.push({
+              timestamp,
+              value: point.value,
+            });
+          }
 
           // Track latest timestamp
           if (timestamp > lastDataTimestampRef.current) {
@@ -350,19 +461,21 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         }
       });
 
-      // Sort data by timestamp
+      // Sort data by timestamp after merge
       updatedSeries.forEach((s) => {
         s.data.sort((a, b) => a.timestamp - b.timestamp);
       });
 
       setSeries(updatedSeries);
       setLastUpdate(new Date());
+      setDataSource('api'); // Track that data came from API
     } catch (error) {
       console.error('❌ TrendChartContent: Failed to load historical data', error);
+      setHasConnectionError(true);
     } finally {
       setLoading(false);
     }
-  }, [serialNumber, panelId, trendlogId, timeBase, series]);
+  }, [serialNumber, panelId, trendlogId, timeBase, series, getExistingDataTimeRange]);
 
   /**
    * Initialize series from monitor configuration
@@ -422,7 +535,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [serialNumber, panelId]);
 
   /**
-   * Handle realtime updates
+   * Handle realtime updates (enhanced with Vue flow)
    */
   const updateRealtimeData = useCallback(async () => {
     if (!isRealtime || !serialNumber || !panelId || series.length === 0) return;
@@ -440,13 +553,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       if (newData.length > 0) {
         const updatedSeries = [...series];
         newData.forEach((point) => {
-          const seriesIndex = updatedSeries.findIndex((s) => s.pointId === point.point_id && s.pointType === point.point_type);
+          const seriesIndex = updatedSeries.findIndex(
+            (s) => s.pointId === point.point_id && s.pointType === point.point_type
+          );
           if (seriesIndex !== -1) {
             const timestamp = new Date(point.timestamp).getTime();
-            updatedSeries[seriesIndex].data.push({
-              timestamp,
-              value: point.value,
-            });
+
+            // Deduplication: check if timestamp already exists
+            const exists = updatedSeries[seriesIndex].data.some((d) => d.timestamp === timestamp);
+            if (!exists) {
+              updatedSeries[seriesIndex].data.push({
+                timestamp,
+                value: point.value,
+              });
+            }
 
             // Keep only data within time range
             const timeRanges: Record<TimeBase, number> = {
@@ -460,15 +580,22 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               '4d': 4 * 24 * 60 * 60 * 1000,
             };
             const cutoffTime = Date.now() - timeRanges[timeBase];
-            updatedSeries[seriesIndex].data = updatedSeries[seriesIndex].data.filter((d) => d.timestamp >= cutoffTime);
+            updatedSeries[seriesIndex].data = updatedSeries[seriesIndex].data.filter(
+              (d) => d.timestamp >= cutoffTime
+            );
+
+            // Sort after adding new data
+            updatedSeries[seriesIndex].data.sort((a, b) => a.timestamp - b.timestamp);
           }
         });
 
         setSeries(updatedSeries);
         setLastUpdate(new Date());
+        setDataSource('realtime'); // Track that data came from real-time updates
       }
     } catch (error) {
       console.error('❌ TrendChartContent: Realtime update failed', error);
+      setHasConnectionError(true);
     }
   }, [isRealtime, serialNumber, panelId, series, timeBase]);
 
@@ -505,30 +632,126 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [initializeSeries]);
 
   /**
-   * Load historical data when series or timebase changes
+   * Watch timeBase changes with debouncing (Vue flow pattern)
    */
   useEffect(() => {
-    if (series.length > 0) {
-      loadHistoricalData();
+    // Cancel previous pending timebase change
+    if (timebaseChangeTimeoutRef.current) {
+      clearTimeout(timebaseChangeTimeoutRef.current);
+      console.log('⏸️ TrendChartContent: Cancelled pending timebase change');
     }
-  }, [series.length, timeBase]); // Only trigger on length change, not full series
+
+    // Abort any ongoing history API request
+    if (historyAbortControllerRef.current) {
+      historyAbortControllerRef.current.abort();
+      console.log('🛑 TrendChartContent: Aborted previous history API request');
+    }
+
+    // Debounce: wait 300ms before executing
+    timebaseChangeTimeoutRef.current = setTimeout(async () => {
+      console.log('⏰ TrendChartContent: TimeBase changed - loading data', {
+        timeBase,
+        isRealtime,
+        seriesCount: series.length,
+      });
+
+      if (series.length === 0) {
+        console.log('⚠️ TrendChartContent: No series yet, skipping timebase load');
+        return;
+      }
+
+      try {
+        // Create new abort controller for this request
+        historyAbortControllerRef.current = new AbortController();
+
+        // Check if we can reuse existing data
+        const existingRange = getExistingDataTimeRange();
+        const hasExistingData = existingRange && existingRange.totalPoints > 0;
+
+        if (hasExistingData) {
+          console.log('✅ TrendChartContent: Existing data found - merging with historical', {
+            existingPoints: existingRange?.totalPoints,
+          });
+        }
+
+        // Load data based on Auto Scroll state
+        if (isRealtime) {
+          // Auto Scroll ON: Load real-time + historical data
+          console.log('📊 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
+          await loadHistoricalData();
+
+          // Ensure real-time updates are active
+          if (!realtimeIntervalRef.current) {
+            console.log('🔄 TrendChartContent: Starting real-time updates');
+            realtimeIntervalRef.current = setInterval(updateRealtimeData, 5000);
+          }
+        } else {
+          // Auto Scroll OFF: Load historical data only
+          console.log('📚 TrendChartContent: Auto Scroll OFF - Loading historical only');
+
+          // Stop real-time updates
+          if (realtimeIntervalRef.current) {
+            clearInterval(realtimeIntervalRef.current);
+            realtimeIntervalRef.current = null;
+          }
+
+          await loadHistoricalData();
+        }
+
+        console.log('✅ TrendChartContent: Timebase change completed', {
+          timeBase,
+          isRealtime,
+          totalPoints: series.reduce((sum, s) => sum + s.data.length, 0),
+        });
+      } catch (error: any) {
+        // Check if error is due to abort
+        if (error.name === 'AbortError') {
+          console.log('⏹️ TrendChartContent: History request aborted (newer request started)');
+          return;
+        }
+
+        console.error('❌ TrendChartContent: Error loading data for new timebase:', error);
+        setHasConnectionError(true);
+      }
+    }, 300); // 300ms debounce delay
+
+    // Cleanup on unmount
+    return () => {
+      if (timebaseChangeTimeoutRef.current) {
+        clearTimeout(timebaseChangeTimeoutRef.current);
+      }
+      if (historyAbortControllerRef.current) {
+        historyAbortControllerRef.current.abort();
+      }
+    };
+  }, [timeBase, isRealtime, series.length, loadHistoricalData, updateRealtimeData, getExistingDataTimeRange]);
 
   /**
-   * Start/stop realtime updates
+   * Start/stop realtime updates when isRealtime changes
    */
   useEffect(() => {
+    console.log('🔄 TrendChartContent: Auto Scroll state changed', { isRealtime });
+
     if (isRealtime) {
-      realtimeIntervalRef.current = setInterval(updateRealtimeData, 5000);
+      // Start real-time updates
+      if (!realtimeIntervalRef.current) {
+        console.log('▶️ TrendChartContent: Starting real-time updates interval');
+        realtimeIntervalRef.current = setInterval(updateRealtimeData, 5000);
+      }
     } else {
+      // Stop real-time updates
       if (realtimeIntervalRef.current) {
+        console.log('⏸️ TrendChartContent: Stopping real-time updates interval');
         clearInterval(realtimeIntervalRef.current);
         realtimeIntervalRef.current = null;
       }
     }
 
+    // Cleanup on unmount
     return () => {
       if (realtimeIntervalRef.current) {
         clearInterval(realtimeIntervalRef.current);
+        realtimeIntervalRef.current = null;
       }
     };
   }, [isRealtime, updateRealtimeData]);
@@ -536,10 +759,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   /**
    * Toggle series visibility
    */
-  const toggleSeriesVisibility = useCallback((index: number) => {
+  const toggleSeriesVisibility = useCallback((index: number, forceValue?: boolean) => {
     setSeries((prev) => {
       const updated = [...prev];
-      updated[index].visible = !updated[index].visible;
+      updated[index].visible = forceValue !== undefined ? forceValue : !updated[index].visible;
       return updated;
     });
   }, []);
@@ -875,16 +1098,88 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       {/* Left Panel - Series List */}
       <div className={styles.leftPanel}>
         <div className={styles.seriesPanelHeader}>
-          <Text size={300} weight="semibold">
-            Data Series ({series.filter(s => s.visible !== false).length}/{series.length})
-          </Text>
+          <div className={styles.headerLine}>
+            <Text size={300} weight="semibold">
+              Data Series ({series.filter(s => s.visible !== false).length}/{series.length})
+            </Text>
+            <Badge
+              appearance="filled"
+              color={isRealtime ? 'success' : 'informative'}
+              size="small"
+            >
+              {isRealtime ? '⚡ Live' : '📚 Historical'}
+            </Badge>
+          </div>
+          <div className={styles.headerControls}>
+            <div className={styles.leftControls}>
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <Button size="small" appearance="subtle" style={{ fontSize: '11px' }}>
+                    All ▼
+                  </Button>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem onClick={() => series.forEach((_, i) => toggleSeriesVisibility(i, true))}>
+                      ✓ Enable All
+                    </MenuItem>
+                    <MenuItem onClick={() => series.forEach((_, i) => toggleSeriesVisibility(i, false))}>
+                      ✕ Disable All
+                    </MenuItem>
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <Button size="small" appearance="subtle" style={{ fontSize: '11px' }}>
+                    By Type ▼
+                  </Button>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem onClick={() => console.log('Toggle Analog')}>
+                      📈 Toggle Analog
+                    </MenuItem>
+                    <MenuItem onClick={() => console.log('Toggle Digital')}>
+                      📊 Toggle Digital
+                    </MenuItem>
+                    <MenuItem onClick={() => console.log('Toggle Input')}>
+                      ⬇ Toggle Input
+                    </MenuItem>
+                    <MenuItem onClick={() => console.log('Toggle Output')}>
+                      ⬆ Toggle Output
+                    </MenuItem>
+                    <MenuItem onClick={() => console.log('Toggle Variable')}>
+                      ƒ Toggle Variable
+                    </MenuItem>
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+            </div>
+            <div className={styles.autoScrollToggle}>
+              <Text size={100}>Auto Scroll:</Text>
+              <Switch
+                checked={isRealtime}
+                onChange={(_, data) => setIsRealtime(data.checked)}
+                size="small"
+              />
+            </div>
+          </div>
         </div>
 
         <div className={styles.seriesPanel}>
           {series.map((s, index) => (
-            <div key={`${s.pointType}-${s.pointIndex}`} className={styles.seriesItem}>
-              <div className={styles.colorBox} style={{ backgroundColor: s.color }} />
-              <div className={styles.seriesItemContent}>
+            <div
+              key={`${s.pointType}-${s.pointIndex}`}
+              className={styles.seriesItem}
+              style={{ opacity: s.visible !== false ? 1 : 0.5 }}
+            >
+              <div
+                className={styles.colorIndicator}
+                style={{ backgroundColor: s.visible !== false ? s.color : '#d9d9d9' }}
+                onClick={() => toggleSeriesVisibility(index)}
+              />
+              <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
                 <Text size={200} className={styles.seriesItemName}>
                   {s.name}
                 </Text>
@@ -892,16 +1187,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   {s.unit || 'N/A'}
                 </Text>
               </div>
-              <Switch
-                checked={s.visible !== false}
-                onChange={() => toggleSeriesVisibility(index)}
-                aria-label={`Toggle ${s.name}`}
-              />
             </div>
           ))}
 
           {series.length === 0 && (
-            <div style={{ padding: '24px', textAlign: 'center' }}>
+            <div className={styles.emptyState}>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                 No data series configured
               </Text>
