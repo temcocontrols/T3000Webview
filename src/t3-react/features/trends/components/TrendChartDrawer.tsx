@@ -22,6 +22,7 @@ interface TrendChartDrawerProps {
   panelId?: number;
   trendlogId?: string;
   monitorId?: string;
+  itemData?: any; // Complete monitor configuration data (Vue pattern)
 }
 
 export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
@@ -31,6 +32,7 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
   panelId,
   trendlogId,
   monitorId,
+  itemData,
 }) => {
   const [toolbarContent, setToolbarContent] = useState<React.ReactNode>(null);
 
@@ -69,6 +71,7 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
           panelId={panelId}
           trendlogId={trendlogId}
           monitorId={monitorId}
+          itemData={itemData}
           isDrawerMode={true}
           onToolbarRender={setToolbarContent}
         />

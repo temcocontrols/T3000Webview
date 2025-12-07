@@ -72,30 +72,90 @@ export const TrendLogsPage: React.FC = () => {
     panelId?: number;
     trendlogId?: string;
     monitorId?: string;
+    itemData?: any; // Complete monitor configuration data (Vue pattern)
   }>({});
 
-  // Handle opening trend chart drawer
+  // Handle opening trend chart drawer - construct itemData from trendlog info
   const handleViewChart = useCallback(
-    (trendlog: TrendLogData) => {
+    async (trendlog: TrendLogData) => {
       if (!selectedDevice) return;
 
-      console.log('📊 [TrendLogsPage] Opening chart drawer:', {
-        trendlog: trendlog.trendlogId,
-        monitor: trendlog.trendlogIndex,
+      console.log('📊 [TrendLogsPage] Opening chart drawer - Step 1: Fetching monitor config:', {
+        serialNumber: selectedDevice.serialNumber,
+        panelId: selectedDevice.panelId,
+        trendlogId: trendlog.trendlogId,
+        monitorIndex: trendlog.trendlogIndex,
       });
 
-      setChartParams({
-        serialNumber: selectedDevice.serialNumber,
-        panelId: selectedDevice.panelId || 1,
-        trendlogId: trendlog.trendlogId || '0',
-        monitorId: trendlog.trendlogIndex || '0',
-      });
-      setChartDrawerOpen(true);
+      const monitorIndex = trendlog.trendlogIndex || '0';
+
+      try {
+        // Step 1: Fetch complete monitor configuration (Vue pattern: comes from all_data parameter)
+        const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${trendlog.trendlogId}`;
+        console.log('📡 [TrendLogsPage] Fetching monitor config from:', url);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch monitor config: ${response.statusText}`);
+        }
+
+        const monitorData = await response.json();
+        console.log('✅ [TrendLogsPage] Monitor config received:', monitorData);
+
+        // Step 2: Construct itemData with complete monitor configuration
+        const itemData = {
+          title: trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
+          t3Entry: {
+            id: `MON${monitorIndex}`,
+            pid: selectedDevice.panelId || 1,
+            label: trendlog.trendlogLabel || `MON${monitorIndex}`,
+            command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
+            // Include actual monitor configuration data
+            input: monitorData.input || [],
+            range: monitorData.range || [],
+          },
+        };
+
+        console.log('✅ [TrendLogsPage] Opening drawer with complete itemData:', {
+          title: itemData.title,
+          inputCount: itemData.t3Entry.input.length,
+          rangeCount: itemData.t3Entry.range.length,
+        });
+
+        // Step 3: Open drawer with complete data
+        setChartParams({
+          serialNumber: selectedDevice.serialNumber,
+          panelId: selectedDevice.panelId || 1,
+          trendlogId: trendlog.trendlogId || '0',
+          monitorId: monitorIndex,
+          itemData,
+        });
+        setChartDrawerOpen(true);
+      } catch (error) {
+        console.error('❌ [TrendLogsPage] Failed to fetch monitor config:', error);
+        // Fallback: Open drawer with basic structure (will show sample data)
+        const itemData = {
+          title: trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
+          t3Entry: {
+            id: `MON${monitorIndex}`,
+            pid: selectedDevice.panelId || 1,
+            label: trendlog.trendlogLabel || `MON${monitorIndex}`,
+            command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
+          },
+        };
+
+        setChartParams({
+          serialNumber: selectedDevice.serialNumber,
+          panelId: selectedDevice.panelId || 1,
+          trendlogId: trendlog.trendlogId || '0',
+          monitorId: monitorIndex,
+          itemData,
+        });
+        setChartDrawerOpen(true);
+      }
     },
     [selectedDevice]
-  );
-
-  // Debug log to verify new component is loading
+  );  // Debug log to verify new component is loading
   useEffect(() => {
     console.log('🔍 [TrendLogsPage] NEW DataGrid version loaded!', {
       selectedDevice: selectedDevice?.serialNumber,
@@ -258,25 +318,11 @@ export const TrendLogsPage: React.FC = () => {
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     setSelectedMonitor(monitor);
-    // Fetch monitor inputs for the selected monitor
-    if (!selectedDevice) return;
-
-    try {
-      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${monitor.trendlogId}/inputs`;
-      const response = await fetch(url);
-
-      if (response.ok) {
-        const data = await response.json();
-        setMonitorInputs(data.inputs || Array(14).fill(''));
-      } else {
-        // If API not implemented yet, use empty inputs
-        setMonitorInputs(Array(14).fill(''));
-      }
-    } catch (err) {
-      console.error('Error fetching monitor inputs:', err);
-      setMonitorInputs(Array(14).fill(''));
-    }
-  }, [selectedDevice]);
+    // Note: Monitor inputs are not fetched via API endpoint
+    // Input/range data comes from itemData.t3Entry which is passed through URL parameters or FFI
+    // For now, initialize with empty array
+    setMonitorInputs(Array(14).fill(''));
+  }, []);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -681,6 +727,7 @@ export const TrendLogsPage: React.FC = () => {
         panelId={chartParams.panelId}
         trendlogId={chartParams.trendlogId}
         monitorId={chartParams.monitorId}
+        itemData={chartParams.itemData}
       />
     </div>
   );

@@ -47,6 +47,7 @@ interface TrendChartProps {
   series: TrendSeries[];
   timeBase: '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d';
   showGrid?: boolean;
+  chartType?: 'analog' | 'digital'; // New prop to distinguish chart types
   onTimeRangeChange?: (startTime: number, endTime: number) => void;
 }
 
@@ -74,6 +75,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   series,
   timeBase,
   showGrid = true,
+  chartType = 'analog', // Default to analog for backward compatibility
   onTimeRangeChange,
 }) => {
   const styles = useStyles();

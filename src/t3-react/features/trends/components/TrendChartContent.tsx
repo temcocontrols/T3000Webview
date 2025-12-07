@@ -203,6 +203,36 @@ const useStyles = makeStyles({
     minHeight: 0,
     padding: '16px',
   },
+  oscilloscopeContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    height: '100%',
+    gap: '8px',
+  },
+  combinedAnalogChart: {
+    flex: 1,
+    minHeight: '300px',
+    position: 'relative',
+  },
+  channelChart: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '120px',
+    position: 'relative',
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    paddingTop: '8px',
+  },
+  lastChannel: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    paddingBottom: '8px',
+  },
+  channelLabel: {
+    fontSize: '12px',
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: '4px',
+    paddingLeft: '8px',
+  },
   controlGroup: {
     display: 'flex',
     alignItems: 'center',
@@ -246,6 +276,7 @@ export interface TrendChartContentProps {
   panelId?: number;
   trendlogId?: string;
   monitorId?: string; // Currently unused but may be needed for future multi-monitor support
+  itemData?: any; // Complete monitor configuration data (Vue pattern: { title, t3Entry })
   isDrawerMode?: boolean;
   onToolbarRender?: (toolbar: React.ReactNode) => void;
 }
@@ -314,6 +345,23 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const lastDataTimestampRef = useRef<number>(0);
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const historyAbortControllerRef = useRef<AbortController | null>(null);
+  const hasLoadedInitialDataRef = useRef<boolean>(false);
+
+  /**
+   * Computed: Visible analog series (Vue pattern)
+   */
+  const visibleAnalogSeries = useMemo(
+    () => series.filter((s) => s.digitalAnalog === 'Analog' && s.visible !== false),
+    [series]
+  );
+
+  /**
+   * Computed: Visible digital series (Vue pattern)
+   */
+  const visibleDigitalSeries = useMemo(
+    () => series.filter((s) => s.digitalAnalog === 'Digital' && s.visible !== false),
+    [series]
+  );
 
   /**
    * Helper: Get existing data time range to optimize loading
@@ -478,14 +526,67 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [serialNumber, panelId, trendlogId, timeBase, series, getExistingDataTimeRange]);
 
   /**
-   * Initialize series from monitor configuration
+   * Initialize series from monitor configuration (enhanced with itemData support)
    */
   const initializeSeries = useCallback(async () => {
     if (!serialNumber || !panelId) return;
 
     try {
-      // Fetch monitor configuration to know which points to display
-      // For now, create sample series - in production, fetch from monitor config
+      // Check if we have itemData with monitor configuration (Vue pattern)
+      if (props.itemData?.t3Entry?.input && props.itemData?.t3Entry?.range) {
+        const inputData = props.itemData.t3Entry.input;
+        const rangeData = props.itemData.t3Entry.range;
+
+        console.log('✅ TrendChartContent: Initializing series from itemData', {
+          inputCount: inputData.length,
+          rangeCount: rangeData.length,
+        });
+
+        // Generate series from monitor configuration
+        const generatedSeries: TrendSeries[] = [];
+        const itemCount = Math.min(inputData.length, rangeData.length);
+
+        for (let index = 0; index < itemCount; index++) {
+          const inputItem = inputData[index];
+          const rangeItem = rangeData[index];
+
+          // Extract point information
+          const panelIdFromInput = inputItem.panel || panelId;
+          const pointType = inputItem.point_type; // INPUT=0, OUTPUT=1, VARIABLE=2
+          const pointNumber = inputItem.point_number; // 0-based
+
+          // Map point type to string
+          const pointTypeStr = pointType === 0 ? 'INPUT' : pointType === 1 ? 'OUTPUT' : 'VARIABLE';
+          const pointPrefix = pointType === 0 ? 'IN' : pointType === 1 ? 'OUT' : 'VAR';
+          const pointId = `${pointPrefix}${pointNumber + 1}`;
+
+          // Determine if analog or digital based on range
+          const digitalAnalog = rangeItem.digital_analog === 0 ? 'Analog' : 'Digital';
+
+          generatedSeries.push({
+            name: pointId,
+            pointId,
+            pointType: pointTypeStr,
+            pointIndex: pointNumber + 1, // Convert to 1-based for API
+            data: [],
+            color: CHART_COLORS[index % CHART_COLORS.length],
+            unit: rangeItem.units || '',
+            digitalAnalog: digitalAnalog as 'Analog' | 'Digital',
+            visible: true,
+          });
+        }
+
+        setSeries(generatedSeries);
+        console.log('✅ TrendChartContent: Series initialized from itemData', {
+          count: generatedSeries.length,
+          serialNumber,
+          panelId,
+        });
+        return;
+      }
+
+      // Fallback: Create sample series if no itemData
+      console.log('⚠️ TrendChartContent: No itemData available, using sample series');
       const sampleSeries: TrendSeries[] = [
         {
           name: 'IN1',
@@ -532,7 +633,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } catch (error) {
       console.error('❌ TrendChartContent: Failed to initialize series', error);
     }
-  }, [serialNumber, panelId]);
+  }, [serialNumber, panelId, props.itemData]);
 
   /**
    * Handle realtime updates (enhanced with Vue flow)
@@ -625,16 +726,51 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, [isRealtime, loadHistoricalData]);
 
   /**
-   * Initialize page
+   * Initialize page - Load initial data once (Vue flow pattern)
+   * This mimics Vue's onMounted behavior - runs only once when component mounts
    */
   useEffect(() => {
-    initializeSeries();
-  }, [initializeSeries]);
+    const initializeData = async () => {
+      console.log('🚀 TrendChartContent: Starting initialization sequence');
+
+      // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
+      await initializeSeries();
+
+      console.log('✅ TrendChartContent: Series initialized, waiting for series state update');
+
+      // Wait for series state to be updated before loading data
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('✅ TrendChartContent: Series state updated, loading historical data');
+
+      // Step 2: Load initial historical data (Vue: initializeData -> loadHistoricalDataFromDatabase)
+      await loadHistoricalData();
+
+      // Step 3: Mark as initialized
+      hasLoadedInitialDataRef.current = true;
+
+      console.log('✅ TrendChartContent: Initialization completed');
+    };
+
+    initializeData();
+  }, []); // Empty deps - run only once on mount
 
   /**
    * Watch timeBase changes with debouncing (Vue flow pattern)
    */
   useEffect(() => {
+    // Skip if series not initialized yet
+    if (series.length === 0) {
+      console.log('⚠️ TrendChartContent: No series yet, skipping timebase effect');
+      return;
+    }
+
+    // Skip if this is the first load and we haven't loaded initial data yet
+    if (!hasLoadedInitialDataRef.current) {
+      console.log('⚠️ TrendChartContent: Initial data not loaded yet, skipping timebase effect');
+      return;
+    }
+
     // Cancel previous pending timebase change
     if (timebaseChangeTimeoutRef.current) {
       clearTimeout(timebaseChangeTimeoutRef.current);
@@ -654,11 +790,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         isRealtime,
         seriesCount: series.length,
       });
-
-      if (series.length === 0) {
-        console.log('⚠️ TrendChartContent: No series yet, skipping timebase load');
-        return;
-      }
 
       try {
         // Create new abort controller for this request
@@ -724,19 +855,27 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         historyAbortControllerRef.current.abort();
       }
     };
-  }, [timeBase, isRealtime, series.length, loadHistoricalData, updateRealtimeData, getExistingDataTimeRange]);
+  }, [timeBase, isRealtime]);
 
   /**
-   * Start/stop realtime updates when isRealtime changes
+   * Start/stop realtime updates when isRealtime changes (Vue: watch(isRealTime))
    */
   useEffect(() => {
+    // Only manage interval after initial load is complete
+    if (!hasLoadedInitialDataRef.current) {
+      console.log('⏸️ TrendChartContent: Skipping Auto Scroll effect - not initialized yet');
+      return;
+    }
+
     console.log('🔄 TrendChartContent: Auto Scroll state changed', { isRealtime });
 
     if (isRealtime) {
       // Start real-time updates
       if (!realtimeIntervalRef.current) {
         console.log('▶️ TrendChartContent: Starting real-time updates interval');
-        realtimeIntervalRef.current = setInterval(updateRealtimeData, 5000);
+        realtimeIntervalRef.current = setInterval(() => {
+          updateRealtimeData();
+        }, 5000);
       }
     } else {
       // Stop real-time updates
@@ -754,7 +893,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         realtimeIntervalRef.current = null;
       }
     };
-  }, [isRealtime, updateRealtimeData]);
+  }, [isRealtime]); // Only depend on isRealtime, not updateRealtimeData
 
   /**
    * Toggle series visibility
@@ -1393,10 +1532,40 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </div>
         )}
 
-        {/* Chart Container */}
+        {/* Chart Container - Multi-canvas oscilloscope approach (Vue pattern) */}
         <div className={styles.chartContainer}>
           {series.length > 0 ? (
-            <TrendChart series={series} timeBase={timeBase} showGrid={showGrid} />
+            <div className={styles.oscilloscopeContainer}>
+              {/* Combined Analog Chart - Only show if there are visible analog series */}
+              {visibleAnalogSeries.length > 0 && (
+                <div className={styles.combinedAnalogChart}>
+                  <TrendChart
+                    series={visibleAnalogSeries}
+                    timeBase={timeBase}
+                    showGrid={showGrid}
+                    chartType="analog"
+                  />
+                </div>
+              )}
+
+              {/* Separate Digital Channels - One canvas per digital signal */}
+              {visibleDigitalSeries.map((digitalSeries, index) => (
+                <div
+                  key={digitalSeries.name}
+                  className={`${styles.channelChart} ${index === visibleDigitalSeries.length - 1 ? styles.lastChannel : ''}`}
+                >
+                  <div className={styles.channelLabel} style={{ color: digitalSeries.color }}>
+                    {digitalSeries.name}
+                  </div>
+                  <TrendChart
+                    series={[digitalSeries]}
+                    timeBase={timeBase}
+                    showGrid={showGrid}
+                    chartType="digital"
+                  />
+                </div>
+              ))}
+            </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
               <Text size={500} weight="semibold">No Data Available</Text>
