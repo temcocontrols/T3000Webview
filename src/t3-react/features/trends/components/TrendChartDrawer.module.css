@@ -1,0 +1,90 @@
+.drawerBody {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.drawer {
+  width: 95vw;
+  max-width: 95vw;
+}
+
+.drawerHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.toolbarContainer {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  background-color: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+  gap: 0;
+  width: 100%;
+  height: 40px;
+}
+
+.toolbarContent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: nowrap;
+  width: 100%;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.controlLabel {
+  font-size: 10px;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0;
+}
+
+.toolbarButton {
+  font-size: 10px;
+  font-weight: normal;
+  padding: 0px 4px;
+  height: 24px;
+  min-width: auto;
+  line-height: 24px;
+}
+
+.iconButton {
+  padding: 0px;
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.statusTags {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.closeButton {
+  min-width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 4px;
+}

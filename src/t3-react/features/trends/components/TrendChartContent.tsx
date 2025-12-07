@@ -42,12 +42,14 @@ import {
   ArrowDownloadRegular,
   PlayRegular,
   PauseRegular,
-  ZoomInRegular,
-  ZoomOutRegular,
   ArrowResetRegular,
   ChevronDownRegular,
   DatabaseRegular,
   ImageRegular,
+  ArrowUpRegular,
+  ArrowDownRegular,
+  ArrowLeftRegular,
+  ArrowRightRegular,
   DocumentRegular,
 } from '@fluentui/react-icons';
 import { TrendChart, TrendSeries } from './TrendChart';
@@ -149,10 +151,10 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '12px',
     padding: '8px 12px',
     flexWrap: 'wrap',
-    minHeight: '48px',
+    minHeight: '40px',
   },
   chartContainer: {
     flex: 1,
@@ -164,7 +166,17 @@ const useStyles = makeStyles({
   controlGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '6px',
+  },
+  controlLabel: {
+    fontSize: '11px',
+    fontWeight: tokens.fontWeightRegular,
+    whiteSpace: 'nowrap',
+  },
+  statusTags: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
   spacer: {
     flex: 1,
@@ -233,8 +245,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const trendlogId = props.trendlogId || '0';
   const isDrawerMode = props.isDrawerMode || false;
   const onToolbarRender = props.onToolbarRender;
-
-  console.log('🔍 TrendChartContent: isDrawerMode =', isDrawerMode, 'onToolbarRender =', !!onToolbarRender);
 
   // monitorId may be used in future for multi-monitor support
   // const monitorId = props.monitorId || '0';
@@ -642,185 +652,188 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // Toolbar JSX - memoized for performance
   const toolbar = useMemo(() => (
     <div className={styles.toolbar}>
-      {/* Time Base */}
-      <Dropdown
-        value={timeBase}
-        selectedOptions={[timeBase]}
-        onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
-        size="small"
-        style={{ minWidth: '90px' }}
-      >
-        <Option value="5m">5 min</Option>
-        <Option value="30m">30 min</Option>
-        <Option value="1h">1 hour</Option>
-        <Option value="8h">8 hours</Option>
-        <Option value="1d">1 day</Option>
-        <Option value="2d">2 days</Option>
-        <Option value="4d">4 days</Option>
-      </Dropdown>
+      {/* Time Base Control Group */}
+      <div className={styles.controlGroup}>
+        <Text className={styles.controlLabel}>Time Base:</Text>
+        <Dropdown
+          value={timeBase}
+          selectedOptions={[timeBase]}
+          onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
+          size="small"
+          style={{ fontSize: '11px', minWidth: '100px', fontWeight: 'normal' }}
+        >
+          <Option value="5m">5 minutes</Option>
+          <Option value="10m">10 minutes</Option>
+          <Option value="30m">30 minutes</Option>
+          <Option value="1h">1 hour</Option>
+          <Option value="4h">4 hours</Option>
+          <Option value="12h">12 hours</Option>
+          <Option value="1d">1 day</Option>
+          <Option value="4d">4 days</Option>
+        </Dropdown>
+      </div>
 
-      <ToolbarDivider />
-
-      {/* Zoom Controls */}
-      <ToolbarButton
-        appearance="subtle"
-        icon={<ZoomInRegular />}
-        onClick={zoomIn}
-        disabled={loading}
-      >
-        Zoom In
-      </ToolbarButton>
-
-      <ToolbarButton
-        appearance="subtle"
-        icon={<ZoomOutRegular />}
-        onClick={zoomOut}
-        disabled={loading}
-      >
-        Zoom Out
-      </ToolbarButton>
-
-      <ToolbarButton
-        appearance="subtle"
-        icon={<ArrowResetRegular />}
-        onClick={resetTimeBase}
-        disabled={loading}
-      >
-        Reset
-      </ToolbarButton>
-
-      <ToolbarDivider />
-
-      {/* View buttons */}
-      <ToolbarButton
-        appearance={currentView === 1 ? 'primary' : 'subtle'}
-        onClick={() => setCurrentView(1)}
-        disabled={loading}
-      >
-        1
-      </ToolbarButton>
-
-      <ToolbarButton
-        appearance={currentView === 2 ? 'primary' : 'subtle'}
-        onClick={() => setCurrentView(2)}
-        disabled={loading}
-      >
-        2
-      </ToolbarButton>
-
-      <ToolbarButton
-        appearance={currentView === 3 ? 'primary' : 'subtle'}
-        onClick={() => setCurrentView(3)}
-        disabled={loading}
-      >
-        3
-      </ToolbarButton>
-
-      <ToolbarDivider />
-
-      {/* Live Status Badge */}
-      <Badge
-        appearance="outline"
-        color={isRealtime ? 'success' : 'warning'}
-        style={{ marginLeft: '4px', marginRight: '4px' }}
-      >
-        {isRealtime ? 'Live' : 'Paused'}
-      </Badge>
-
-      {lastUpdate && (
-        <Text size={200} style={{ marginLeft: '4px', color: tokens.colorNeutralForeground3 }}>
-          {lastUpdate.toLocaleTimeString()}
-        </Text>
-      )}
-
-      <ToolbarDivider />
-
-      {/* Keyboard Shortcuts Toggle */}
-      <ToolbarButton
-        appearance="subtle"
-        onClick={() => console.log('Keyboard shortcuts toggle')}
-      >
-        Keyboard
-      </ToolbarButton>
-
-      {/* Grid Toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
-        <Switch
-          checked={showGrid}
-          onChange={(_, data) => setShowGrid(data.checked)}
-          label="Grid"
+      {/* Navigation Arrows */}
+      <div className={styles.controlGroup}>
+        <Button
+          appearance="subtle"
+          icon={<ArrowLeftRegular />}
+          onClick={() => console.log('Move time left')}
+          disabled={isRealtime || loading}
+          size="small"
+          style={{ minWidth: '24px', padding: '4px 8px' }}
+        />
+        <Button
+          appearance="subtle"
+          icon={<ArrowRightRegular />}
+          onClick={() => console.log('Move time right')}
+          disabled={isRealtime || loading}
+          size="small"
+          style={{ minWidth: '24px', padding: '4px 8px' }}
         />
       </div>
 
-      {/* Config */}
-      <ToolbarButton
-        appearance="subtle"
-        icon={<DatabaseRegular />}
-        onClick={() => console.log('Config - Not yet implemented')}
-        disabled={loading}
-      >
-        Config
-      </ToolbarButton>
+      {/* Zoom Controls */}
+      <div className={styles.controlGroup}>
+        <Button
+          appearance="subtle"
+          icon={<ArrowUpRegular />}
+          onClick={zoomIn}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          Zoom In
+        </Button>
+        <Button
+          appearance="subtle"
+          icon={<ArrowDownRegular />}
+          onClick={zoomOut}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          Zoom Out
+        </Button>
+      </div>
+
+      {/* Reset Button */}
+      <div className={styles.controlGroup}>
+        <Button
+          appearance="subtle"
+          icon={<ArrowResetRegular />}
+          onClick={resetTimeBase}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          Reset
+        </Button>
+      </div>
+
+      {/* View Buttons */}
+      <div className={styles.controlGroup}>
+        <Button
+          appearance={currentView === 1 ? 'primary' : 'subtle'}
+          onClick={() => setCurrentView(1)}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          View 1
+        </Button>
+        <Button
+          appearance={currentView === 2 ? 'primary' : 'subtle'}
+          onClick={() => setCurrentView(2)}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          View 2
+        </Button>
+        <Button
+          appearance={currentView === 3 ? 'primary' : 'subtle'}
+          onClick={() => setCurrentView(3)}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          View 3
+        </Button>
+      </div>
+
+      {/* Status Tags */}
+      <div className={styles.statusTags}>
+        <Badge
+          appearance="filled"
+          color={isRealtime ? 'success' : 'informative'}
+          size="small"
+        >
+          {isRealtime ? 'Live' : 'Historical'}
+        </Badge>
+        <Badge appearance="outline" size="small">
+          {timeBase === '5m' ? '5 minutes' :
+           timeBase === '10m' ? '10 minutes' :
+           timeBase === '30m' ? '30 minutes' :
+           timeBase === '1h' ? '1 hour' :
+           timeBase === '4h' ? '4 hours' :
+           timeBase === '12h' ? '12 hours' :
+           timeBase === '1d' ? '1 day' :
+           timeBase === '4d' ? '4 days' : timeBase}
+        </Badge>
+      </div>
+
+      {/* Config Button */}
+      <div className={styles.controlGroup}>
+        <Button
+          appearance="subtle"
+          icon={<DatabaseRegular />}
+          onClick={() => console.log('Config - Not yet implemented')}
+          disabled={loading}
+          size="small"
+          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+        >
+          Config
+        </Button>
+      </div>
 
       {/* Export Menu */}
-      <Menu>
-        <MenuTrigger disableButtonEnhancement>
-          <ToolbarButton
-            appearance="subtle"
-            icon={<ChevronDownRegular />}
-            disabled={loading}
-          >
-            Export
-          </ToolbarButton>
-        </MenuTrigger>
+      <div className={styles.controlGroup}>
+        <Menu>
+          <MenuTrigger disableButtonEnhancement>
+            <Button
+              appearance="subtle"
+              icon={<ArrowDownloadRegular />}
+              disabled={loading}
+              size="small"
+              style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+            >
+              Export
+            </Button>
+          </MenuTrigger>
 
-        <MenuPopover>
-          <MenuList>
-            <MenuItem icon={<ImageRegular />} onClick={exportToPNG}>
-              Export as PNG
-            </MenuItem>
-            <MenuItem icon={<ArrowDownloadRegular />} onClick={exportToCSV}>
-              Export as CSV
-            </MenuItem>
-            <MenuItem icon={<ArrowDownloadRegular />} onClick={exportToJSON}>
-              Export as JSON
-            </MenuItem>
-          </MenuList>
-        </MenuPopover>
-      </Menu>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem icon={<ImageRegular />} onClick={exportToPNG}>
+                Export as PNG
+              </MenuItem>
+              <MenuItem icon={<ArrowDownloadRegular />} onClick={exportToCSV}>
+                Export as CSV
+              </MenuItem>
+              <MenuItem icon={<ArrowDownloadRegular />} onClick={exportToJSON}>
+                Export as JSON
+              </MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      </div>
 
-      <ToolbarDivider />
-
-      {/* Live/Pause toggle button */}
-      <ToolbarButton
-        appearance={isRealtime ? 'primary' : 'subtle'}
-        icon={isRealtime ? <PauseRegular /> : <PlayRegular />}
-        onClick={() => setIsRealtime(!isRealtime)}
-        disabled={loading}
-      >
-        {isRealtime ? 'Pause' : 'Resume'}
-      </ToolbarButton>
-
-      {/* Refresh button */}
-      <ToolbarButton
-        appearance="subtle"
-        icon={<ArrowSyncRegular />}
-        onClick={loadHistoricalData}
-        disabled={loading}
-      >
-        Refresh
-      </ToolbarButton>
-
-      <div className={styles.spacer} />
-
-      {loading && <Spinner size="tiny" label="Loading..." />}
+      {loading && <Spinner size="tiny" />}
     </div>
   ), [
     timeBase,
     currentView,
     isRealtime,
-    lastUpdate,
-    showGrid,
     loading,
     zoomIn,
     zoomOut,
@@ -828,7 +841,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     exportToPNG,
     exportToCSV,
     exportToJSON,
-    loadHistoricalData,
   ]);
 
   // Call onToolbarRender when in drawer mode

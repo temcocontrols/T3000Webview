@@ -9,47 +9,11 @@ import React, { useState } from 'react';
 import {
   Drawer,
   DrawerBody,
-  DrawerHeader,
-  DrawerHeaderTitle,
   Button,
-  makeStyles,
-  tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
 import { TrendChartContent } from './TrendChartContent';
-
-const useStyles = makeStyles({
-  drawerBody: {
-    padding: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-  },
-  drawer: {
-    width: '95vw',
-    maxWidth: '95vw',
-  },
-  drawerHeader: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 0,
-  },
-  toolbarContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '8px 16px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    gap: '8px',
-  },
-  toolbarContent: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flex: 1,
-  },
-});
+import styles from './TrendChartDrawer.module.css';
 
 interface TrendChartDrawerProps {
   isOpen: boolean;
@@ -68,7 +32,6 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
   trendlogId,
   monitorId,
 }) => {
-  const styles = useStyles();
   const [toolbarContent, setToolbarContent] = useState<React.ReactNode>(null);
 
   return (
@@ -76,7 +39,9 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
       type="overlay"
       separator
       open={isOpen}
-      onOpenChange={(_, { open }) => !open && onClose()}
+      onOpenChange={(_, { open }) => {
+        // Only allow closing via the close button (don't close on backdrop click)
+      }}
       position="end"
       size="full"
       className={styles.drawer}
@@ -92,6 +57,7 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
               aria-label="Close"
               icon={<Dismiss24Regular />}
               onClick={onClose}
+              className={styles.closeButton}
             />
           </div>
         )}
