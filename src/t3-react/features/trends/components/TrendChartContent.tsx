@@ -173,6 +173,12 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightRegular,
     whiteSpace: 'nowrap',
   },
+  divider: {
+    width: '1px',
+    height: '24px',
+    backgroundColor: tokens.colorNeutralStroke1,
+    flexShrink: 0,
+  },
   statusTags: {
     display: 'flex',
     alignItems: 'center',
@@ -251,7 +257,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   // State
   const [series, setSeries] = useState<TrendSeries[]>([]);
-  const [timeBase, setTimeBase] = useState<TimeBase>('1h');
+  const [timeBase, setTimeBase] = useState<TimeBase>('5m');
   const [showGrid, setShowGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -673,23 +679,25 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </Dropdown>
       </div>
 
+      <div className={styles.divider} />
+
       {/* Navigation Arrows */}
       <div className={styles.controlGroup}>
         <Button
           appearance="subtle"
-          icon={<ArrowLeftRegular />}
+          icon={<ArrowLeftRegular fontSize={16} />}
           onClick={() => console.log('Move time left')}
           disabled={isRealtime || loading}
           size="small"
-          style={{ minWidth: '24px', padding: '4px 8px' }}
+          style={{ minWidth: '20px', padding: '2px', width: '20px' }}
         />
         <Button
           appearance="subtle"
-          icon={<ArrowRightRegular />}
+          icon={<ArrowRightRegular fontSize={16} />}
           onClick={() => console.log('Move time right')}
           disabled={isRealtime || loading}
           size="small"
-          style={{ minWidth: '24px', padding: '4px 8px' }}
+          style={{ minWidth: '20px', padding: '2px', width: '20px' }}
         />
       </div>
 
@@ -697,21 +705,21 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       <div className={styles.controlGroup}>
         <Button
           appearance="subtle"
-          icon={<ArrowUpRegular />}
+          icon={<ArrowUpRegular fontSize={16} />}
           onClick={zoomIn}
           disabled={loading}
           size="small"
-          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+          style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
         >
           Zoom In
         </Button>
         <Button
           appearance="subtle"
-          icon={<ArrowDownRegular />}
+          icon={<ArrowDownRegular fontSize={16} />}
           onClick={zoomOut}
           disabled={loading}
           size="small"
-          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+          style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
         >
           Zoom Out
         </Button>
@@ -721,15 +729,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       <div className={styles.controlGroup}>
         <Button
           appearance="subtle"
-          icon={<ArrowResetRegular />}
+          icon={<ArrowResetRegular fontSize={16} />}
           onClick={resetTimeBase}
           disabled={loading}
           size="small"
-          style={{ fontSize: '11px', padding: '4px 8px', fontWeight: 'normal' }}
+          style={{ fontSize: '11px', padding: '2px 6px', fontWeight: 'normal' }}
         >
           Reset
         </Button>
       </div>
+
+      <div className={styles.divider} />
 
       {/* View Buttons */}
       <div className={styles.controlGroup}>
@@ -762,6 +772,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         </Button>
       </div>
 
+      <div className={styles.divider} />
+
       {/* Status Tags */}
       <div className={styles.statusTags}>
         <Badge
@@ -782,6 +794,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
            timeBase === '4d' ? '4 days' : timeBase}
         </Badge>
       </div>
+
+      <div className={styles.divider} />
 
       {/* Config Button */}
       <div className={styles.controlGroup}>
