@@ -18,7 +18,7 @@
  * - Export to CSV
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Dropdown,
   Option,
@@ -189,6 +189,7 @@ export interface TrendChartContentProps {
   trendlogId?: string;
   monitorId?: string; // Currently unused but may be needed for future multi-monitor support
   isDrawerMode?: boolean;
+  onToolbarRender?: (toolbar: React.ReactNode) => void;
 }
 
 type TimeBase = '5m' | '10m' | '30m' | '1h' | '4h' | '12h' | '1d' | '4d';
@@ -230,6 +231,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const serialNumber = props.serialNumber || selectedDevice?.serialNumber;
   const panelId = props.panelId || selectedDevice?.panelId || 1;
   const trendlogId = props.trendlogId || '0';
+  const isDrawerMode = props.isDrawerMode || false;
+  const onToolbarRender = props.onToolbarRender;
   // monitorId may be used in future for multi-monitor support
   // const monitorId = props.monitorId || '0';
 
@@ -633,6 +636,211 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     URL.revokeObjectURL(url);
   }, [series, serialNumber]);
 
+  // Toolbar JSX - memoized for performance
+  const toolbar = useMemo(() => (
+    <div className={styles.toolbar}>
+      {/* Time Base */}
+      <Dropdown
+        value={timeBase}
+        selectedOptions={[timeBase]}
+        onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
+        size="small"
+        style={{ minWidth: '90px' }}
+      >
+        <Option value="5m">5 min</Option>
+        <Option value="30m">30 min</Option>
+        <Option value="1h">1 hour</Option>
+        <Option value="8h">8 hours</Option>
+        <Option value="1d">1 day</Option>
+        <Option value="2d">2 days</Option>
+        <Option value="4d">4 days</Option>
+      </Dropdown>
+
+      <ToolbarDivider />
+
+      {/* Zoom Controls */}
+      <ToolbarButton
+        appearance="subtle"
+        icon={<ZoomInRegular />}
+        onClick={zoomIn}
+        disabled={loading}
+      >
+        Zoom In
+      </ToolbarButton>
+
+      <ToolbarButton
+        appearance="subtle"
+        icon={<ZoomOutRegular />}
+        onClick={zoomOut}
+        disabled={loading}
+      >
+        Zoom Out
+      </ToolbarButton>
+
+      <ToolbarButton
+        appearance="subtle"
+        icon={<ArrowResetRegular />}
+        onClick={resetTimeBase}
+        disabled={loading}
+      >
+        Reset
+      </ToolbarButton>
+
+      <ToolbarDivider />
+
+      {/* View buttons */}
+      <ToolbarButton
+        appearance={currentView === 1 ? 'primary' : 'subtle'}
+        onClick={() => setCurrentView(1)}
+        disabled={loading}
+      >
+        1
+      </ToolbarButton>
+
+      <ToolbarButton
+        appearance={currentView === 2 ? 'primary' : 'subtle'}
+        onClick={() => setCurrentView(2)}
+        disabled={loading}
+      >
+        2
+      </ToolbarButton>
+
+      <ToolbarButton
+        appearance={currentView === 3 ? 'primary' : 'subtle'}
+        onClick={() => setCurrentView(3)}
+        disabled={loading}
+      >
+        3
+      </ToolbarButton>
+
+      <ToolbarDivider />
+
+      {/* Live Status Badge */}
+      <Badge
+        appearance="outline"
+        color={isRealtime ? 'success' : 'warning'}
+        style={{ marginLeft: '4px', marginRight: '4px' }}
+      >
+        {isRealtime ? 'Live' : 'Paused'}
+      </Badge>
+
+      {lastUpdate && (
+        <Text size={200} style={{ marginLeft: '4px', color: tokens.colorNeutralForeground3 }}>
+          {lastUpdate.toLocaleTimeString()}
+        </Text>
+      )}
+
+      <ToolbarDivider />
+
+      {/* Keyboard Shortcuts Toggle */}
+      <ToolbarButton
+        appearance="subtle"
+        onClick={() => console.log('Keyboard shortcuts toggle')}
+      >
+        Keyboard
+      </ToolbarButton>
+
+      {/* Grid Toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
+        <Switch
+          checked={showGrid}
+          onChange={(_, data) => setShowGrid(data.checked)}
+          label="Grid"
+        />
+      </div>
+
+      {/* Config */}
+      <ToolbarButton
+        appearance="subtle"
+        icon={<DatabaseRegular />}
+        onClick={() => console.log('Config - Not yet implemented')}
+        disabled={loading}
+      >
+        Config
+      </ToolbarButton>
+
+      {/* Export Menu */}
+      <Menu>
+        <MenuTrigger disableButtonEnhancement>
+          <ToolbarButton
+            appearance="subtle"
+            icon={<ChevronDownRegular />}
+            disabled={loading}
+          >
+            Export
+          </ToolbarButton>
+        </MenuTrigger>
+
+        <MenuPopover>
+          <MenuList>
+            <MenuItem icon={<ImageRegular />} onClick={exportToPNG}>
+              Export as PNG
+            </MenuItem>
+            <MenuItem icon={<ArrowDownloadRegular />} onClick={exportToCSV}>
+              Export as CSV
+            </MenuItem>
+            <MenuItem icon={<ArrowDownloadRegular />} onClick={exportToJSON}>
+              Export as JSON
+            </MenuItem>
+          </MenuList>
+        </MenuPopover>
+      </Menu>
+
+      <ToolbarDivider />
+
+      {/* Live/Pause toggle button */}
+      <ToolbarButton
+        appearance={isRealtime ? 'primary' : 'subtle'}
+        icon={isRealtime ? <PauseRegular /> : <PlayRegular />}
+        onClick={() => setIsRealtime(!isRealtime)}
+        disabled={loading}
+      >
+        {isRealtime ? 'Pause' : 'Resume'}
+      </ToolbarButton>
+
+      {/* Refresh button */}
+      <ToolbarButton
+        appearance="subtle"
+        icon={<ArrowSyncRegular />}
+        onClick={loadHistoricalData}
+        disabled={loading}
+      >
+        Refresh
+      </ToolbarButton>
+
+      <div className={styles.spacer} />
+
+      {loading && <Spinner size="tiny" label="Loading..." />}
+    </div>
+  ), [
+    timeBase,
+    currentView,
+    isRealtime,
+    lastUpdate,
+    showGrid,
+    loading,
+    zoomIn,
+    zoomOut,
+    resetTimeBase,
+    exportToPNG,
+    exportToCSV,
+    exportToJSON,
+    loadHistoricalData,
+  ]);
+
+  // Call onToolbarRender when in drawer mode
+  useEffect(() => {
+    if (isDrawerMode && onToolbarRender) {
+      onToolbarRender(toolbar);
+    }
+    // Cleanup: clear toolbar when component unmounts or mode changes
+    return () => {
+      if (isDrawerMode && onToolbarRender) {
+        onToolbarRender(null);
+      }
+    };
+  }, [toolbar, isDrawerMode, onToolbarRender]);
+
   return (
     <div className={styles.container}>
       {/* Left Panel - Series List */}
@@ -684,8 +892,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             </Text>
           </div>
 
-          {/* Toolbar */}
-          <div className={styles.toolbar}>
+          {/* Toolbar - conditionally rendered */}
+          {!(isDrawerMode && onToolbarRender) && (
+            <div className={styles.toolbar}>
             {/* Time Base */}
             <div className={styles.controlGroup}>
               <Text size={200}>Time:</Text>
@@ -859,7 +1068,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             <div className={styles.spacer} />
 
             {loading && <Spinner size="tiny" label="Loading..." />}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Chart Container */}
