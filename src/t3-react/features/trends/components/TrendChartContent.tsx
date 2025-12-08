@@ -73,20 +73,18 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: tokens.borderRadiusMedium,
+    padding: '5px',
   },
   seriesPanelHeader: {
-    padding: '8px 2px',
-    paddingLeft: '16px',
-    backgroundColor: '#f5f5f5',
-    borderLeft: `3px solid ${tokens.colorBrandBackground}`,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '4px',
+    backgroundColor: 'transparent',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
     flexShrink: 0,
   },
   seriesPanelToolbar: {
-    padding: '8px 2px',
+    padding: '4px',
     backgroundColor: '#ffffff',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
@@ -124,39 +122,37 @@ const useStyles = makeStyles({
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    padding: '8px',
-    backgroundColor: '#fafafa',
+    gap: '0',
+    padding: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
     overflowY: 'auto',
     overflowX: 'hidden',
     minHeight: 0,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderTop: 'none',
   },
   seriesItem: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '6px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusSmall,
+    padding: '8px 12px',
+    backgroundColor: 'transparent',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     fontSize: '12px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'background-color 0.2s ease',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground2Hover,
+      backgroundColor: tokens.colorNeutralBackground1Hover,
     },
   },
   colorIndicator: {
-    width: '20px',
-    height: '20px',
-    borderRadius: '4px',
+    width: '16px',
+    height: '16px',
+    borderRadius: '2px',
     flexShrink: 0,
-    border: `2px solid ${tokens.colorNeutralStroke2}`,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    ':hover': {
-      transform: 'scale(1.1)',
-    },
+    transition: 'opacity 0.2s ease',
   },
   seriesItemContent: {
     flex: 1,
@@ -1097,14 +1093,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           className={styles.timeBaseDropdown}
           style={{ fontSize: '11px', minWidth: '100px', fontWeight: 'normal' }}
         >
-          <Option value="5m">5 minutes</Option>
-          <Option value="10m">10 minutes</Option>
-          <Option value="30m">30 minutes</Option>
-          <Option value="1h">1 hour</Option>
-          <Option value="4h">4 hours</Option>
-          <Option value="12h">12 hours</Option>
-          <Option value="1d">1 day</Option>
-          <Option value="4d">4 days</Option>
+          <Option value="5m" style={{ fontSize: '11px' }}>5 minutes</Option>
+          <Option value="10m" style={{ fontSize: '11px' }}>10 minutes</Option>
+          <Option value="30m" style={{ fontSize: '11px' }}>30 minutes</Option>
+          <Option value="1h" style={{ fontSize: '11px' }}>1 hour</Option>
+          <Option value="4h" style={{ fontSize: '11px' }}>4 hours</Option>
+          <Option value="12h" style={{ fontSize: '11px' }}>12 hours</Option>
+          <Option value="1d" style={{ fontSize: '11px' }}>1 day</Option>
+          <Option value="4d" style={{ fontSize: '11px' }}>4 days</Option>
         </Dropdown>
       </div>
 
@@ -1306,15 +1302,20 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         {/* C1: Header Section */}
         <div className={styles.seriesPanelHeader}>
           <div className={styles.headerLine}>
-            <Text size={300} weight="semibold">
+            <Text size={200} weight="semibold" style={{ marginLeft: '2px', fontSize: '12px' }}>
               Data Series ({series.filter(s => s.visible !== false).length}/{series.length})
             </Text>
             <Badge
               appearance="filled"
               color={isRealtime ? 'success' : 'informative'}
               size="small"
+              style={{
+                marginRight: '4px',
+                borderRadius: '2px',
+                backgroundColor: isRealtime ? '#107c10' : '#0078d4'
+              }}
             >
-              {isRealtime ? '⚡ Live' : '📚 Historical'}
+              {isRealtime ? 'Live' : 'Historical'}
             </Badge>
           </div>
         </div>
@@ -1328,8 +1329,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 value=""
                 size="small"
                 style={{
-                  minWidth: '80px',
-                  fontSize: '11px',
+                  minWidth: '70px',
+                  fontSize: '10px',
                   border: 'none',
                   borderBottom: '1px solid #d1d1d1',
                   borderRadius: 0
@@ -1342,10 +1343,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   }
                 }}
               >
-                <Option value="enable-all" style={{ paddingLeft: '8px' }}>
+                <Option value="enable-all" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Enable All
                 </Option>
-                <Option value="disable-all" style={{ paddingLeft: '8px' }}>
+                <Option value="disable-all" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Disable All
                 </Option>
               </Dropdown>
@@ -1354,8 +1355,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 value=""
                 size="small"
                 style={{
-                  minWidth: '90px',
-                  fontSize: '11px',
+                  minWidth: '80px',
+                  fontSize: '10px',
                   border: 'none',
                   borderBottom: '1px solid #d1d1d1',
                   borderRadius: 0
@@ -1364,19 +1365,19 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   console.log('Toggle', data.optionValue);
                 }}
               >
-                <Option value="analog" style={{ paddingLeft: '8px' }}>
+                <Option value="analog" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Toggle Analog
                 </Option>
-                <Option value="digital" style={{ paddingLeft: '8px' }}>
+                <Option value="digital" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Toggle Digital
                 </Option>
-                <Option value="input" style={{ paddingLeft: '8px' }}>
+                <Option value="input" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Toggle Input
                 </Option>
-                <Option value="output" style={{ paddingLeft: '8px' }}>
+                <Option value="output" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Toggle Output
                 </Option>
-                <Option value="variable" style={{ paddingLeft: '8px' }}>
+                <Option value="variable" style={{ paddingLeft: '8px', fontSize: '11px' }}>
                   Toggle Variable
                 </Option>
               </Dropdown>
