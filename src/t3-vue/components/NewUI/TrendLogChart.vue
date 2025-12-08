@@ -4817,12 +4817,11 @@
       }
 
       // Calculate time range based on current timebase with time offset support
-      const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
-      const currentTime = new Date()
-
-      // Apply time offset for navigation and round to nearest 5 minutes
-      const offsetEndTime = new Date(roundToNearest5Minutes(currentTime.getTime() + timeOffset.value * 60 * 1000))
-      const offsetStartTime = new Date(roundToNearest5Minutes(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000))
+      // 🆕 FIX: Use the exact same time window as chart display for data consistency
+      const chartTimeWindow = getCurrentTimeWindow()
+      const offsetStartTime = new Date(chartTimeWindow.min)
+      const offsetEndTime = new Date(chartTimeWindow.max)
+      const timeRangeMinutes = Math.round((offsetEndTime.getTime() - offsetStartTime.getTime()) / 60000)
 
       // 🆕 SMART LOADING: Check if we already have data in this time range
       const existingDataRange = getExistingDataTimeRange()
@@ -5002,12 +5001,6 @@
         willUseUrl: `/trendlogs/${trendlogId}/history`
       })
 
-      // Calculate dynamic limit to avoid truncation (was fixed at 80)
-      const timeRangeHours = timeRangeMinutes / 60
-      const estimatedPointsPerHour = 12 // Assuming 5-minute intervals
-      const estimatedTotalPoints = Math.ceil(timeRangeHours * estimatedPointsPerHour * specificPoints.length)
-      const recommendedLimit = Math.max(200, estimatedTotalPoints * 1.5) // 50% buffer
-
       // Prepare historical data request (matching the working API structure)
       const historyRequest = {
         serial_number: currentSN,
@@ -5015,7 +5008,7 @@
         trendlog_id: trendlogId,
         start_time: formattedStartTime,
         end_time: formattedEndTime,
-        limit: recommendedLimit, // Dynamic limit based on expected data volume
+        // No limit - return all data in the time range
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types (matching working API)
         specific_points: specificPoints
       }
@@ -5024,7 +5017,7 @@
         timeRange: `${formattedStartTime} to ${formattedEndTime}`,
         timeRangeMinutes: timeRangeMinutes,
         pointsCount: specificPoints.length,
-        limit: historyRequest.limit,
+        noLimit: true,
         trendlogId: trendlogId
       })
 
@@ -5199,6 +5192,12 @@
               timestamp: p.timestamp,
               timeISO: new Date(p.timestamp).toISOString(),
               value: p.value
+            })),
+            allDataPoints: dataPoints.map(p => ({
+              timestamp: p.timestamp,
+              timeISO: new Date(p.timestamp).toISOString(),
+              value: p.value,
+              id: p.id
             })),
             timeRange: dataPoints.length > 0 ? {
               first: new Date(dataPoints[0].timestamp).toISOString(),
@@ -5802,7 +5801,7 @@
         trendlog_id: trendlogId,
         start_time: formattedStartTime,
         end_time: formattedEndTime,
-        limit: 10000, // Reasonable limit for gap data
+        // No limit - return all data in the time range (same as main history load)
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'],
         specific_points: specificPoints
       }
@@ -5849,25 +5848,63 @@
 
     // Process each series and prepend gap data
     dataSeries.value.forEach(series => {
-      if (!series.pointType || series.pointNumber === undefined) return
+      if (!series.pointType || series.pointNumber === undefined) {
+        LogUtil.Debug(`⚠️ Skipping series - missing point info`, {
+          name: series.name,
+          hasPointType: !!series.pointType,
+          pointType: series.pointType,
+          hasPointNumber: series.pointNumber !== undefined,
+          pointNumber: series.pointNumber
+        })
+        return
+      }
 
       const pointId = generateDeviceId(series.pointType, series.pointNumber)
       const pointGapData = pointDataMap.get(pointId)
 
+      LogUtil.Debug(`🔍 Gap data lookup for ${series.name}`, {
+        seriesName: series.name,
+        pointType: series.pointType,
+        pointNumber: series.pointNumber,
+        generatedPointId: pointId,
+        hasGapData: !!pointGapData,
+        gapDataCount: pointGapData?.length || 0,
+        availablePointIds: Array.from(pointDataMap.keys())
+      })
+
       if (pointGapData && pointGapData.length > 0) {
         // Convert gap data to chart format (matching series.data structure)
         const gapChartData = pointGapData.map(item => {
-          const timestamp = new Date(item.LoggingTime_Fmt).getTime()
-          const value = item.digital_analog === 1 ?
-            (item.value !== null ? item.value : 0) :
-            (item.control !== null ? item.control : 0)
+          // Handle both old format (LoggingTime_Fmt) and new format (time)
+          const timeField = item.time || item.LoggingTime_Fmt
+          const timestamp = new Date(timeField).getTime()
+
+          // Extract value from history API response format
+          // History API returns: {value, original_value, is_analog, digital_analog}
+          const value = item.value !== undefined && item.value !== null ?
+            parseFloat(item.value) :
+            (item.original_value !== undefined && item.original_value !== null ?
+              parseFloat(item.original_value) : 0)
+
+          // Diagnostic logging for first item
+          if (pointGapData.indexOf(item) === 0) {
+            LogUtil.Debug(`🔬 Gap data conversion sample for ${series.name}`, {
+              rawItem: item,
+              timeField,
+              timestamp,
+              timestampValid: !isNaN(timestamp),
+              value,
+              valueValid: !isNaN(value),
+              itemKeys: Object.keys(item)
+            })
+          }
 
           return {
             timestamp: timestamp,
             value: value,
             id: item.point_id,
             type: item.point_type,
-            digital_analog: item.digital_analog,
+            digital_analog: item.digital_analog || item.is_analog || 1,
             description: item.description || ''
           }
         }).filter(point => !isNaN(point.timestamp) && !isNaN(point.value))
@@ -5875,6 +5912,7 @@
 
         // Prepend gap data to existing data (gap data comes before existing data)
         if (series.data && series.data.length > 0) {
+          const beforePrepend = series.data.length
           series.data = [...gapChartData, ...series.data]
 
           // Remove duplicates and sort by timestamp
@@ -5884,11 +5922,19 @@
           })
           series.data = Array.from(uniqueData.values()).sort((a, b) => a.timestamp - b.timestamp)
 
-          LogUtil.Debug(`�?Prepended gap data to ${series.name}`, {
-            gapPoints: gapChartData.length,
+          LogUtil.Debug(`✅ Prepended gap data to ${series.name}`, {
+            gapPointsReceived: gapChartData.length,
+            existingPointsBefore: beforePrepend,
+            combinedBeforeDedup: gapChartData.length + beforePrepend,
             totalPointsAfter: series.data.length,
+            actualPointsAdded: series.data.length - beforePrepend,
+            duplicatesRemoved: (gapChartData.length + beforePrepend) - series.data.length,
             firstPoint: series.data[0],
-            lastPoint: series.data[series.data.length - 1]
+            lastPoint: series.data[series.data.length - 1],
+            gapDataTimeRange: gapChartData.length > 0 ? {
+              first: new Date(gapChartData[0].timestamp).toISOString(),
+              last: new Date(gapChartData[gapChartData.length - 1].timestamp).toISOString()
+            } : null
           })
         }
       }
@@ -6170,12 +6216,13 @@
       // 🆕 CRITICAL: After chart is created, if data series already exists, load history and update
       if (dataSeries.value.length > 0 && !hasLoadedInitialHistory.value) {
         LogUtil.Info('📚 Chart ready - loading historical data now')
+        hasLoadedInitialHistory.value = true // Set immediately to prevent duplicate loads
         loadHistoricalDataFromDatabase().then(() => {
-          hasLoadedInitialHistory.value = true
           updateCharts()
           LogUtil.Info('✅ Historical data loaded and displayed')
         }).catch(error => {
           LogUtil.Error('❌ Failed to load historical data', error)
+          hasLoadedInitialHistory.value = false // Reset on error so it can retry
         })
       } else if (dataSeries.value.some(s => s.data && s.data.length > 0)) {
         // Data already loaded, just update charts
@@ -6380,7 +6427,11 @@
         label: ds.label,
         pointCount: ds.data.length,
         firstPoint: ds.data[0],
-        lastPoint: ds.data[ds.data.length - 1]
+        lastPoint: ds.data[ds.data.length - 1],
+        timeRange: ds.data.length > 0 ? {
+          start: new Date(ds.data[0].x).toISOString(),
+          end: new Date(ds.data[ds.data.length - 1].x).toISOString()
+        } : null
       }))
     })
 
@@ -6442,6 +6493,25 @@
       const timeWindow = getCurrentTimeWindow()
       xScale.min = timeWindow.min
       xScale.max = timeWindow.max
+
+      LogUtil.Info('⏰ Chart Time Window Set:', {
+        timeBase: timeBase.value,
+        min: new Date(timeWindow.min).toISOString(),
+        max: new Date(timeWindow.max).toISOString(),
+        rangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
+        datasetSample: analogChartInstance.data.datasets[0] ? {
+          label: analogChartInstance.data.datasets[0].label,
+          pointCount: analogChartInstance.data.datasets[0].data.length,
+          firstPoint: analogChartInstance.data.datasets[0].data[0] ? {
+            x: new Date(analogChartInstance.data.datasets[0].data[0].x).toISOString(),
+            y: analogChartInstance.data.datasets[0].data[0].y
+          } : null,
+          lastPoint: analogChartInstance.data.datasets[0].data[analogChartInstance.data.datasets[0].data.length - 1] ? {
+            x: new Date(analogChartInstance.data.datasets[0].data[analogChartInstance.data.datasets[0].data.length - 1].x).toISOString(),
+            y: analogChartInstance.data.datasets[0].data[analogChartInstance.data.datasets[0].data.length - 1].y
+          } : null
+        } : null
+      })
     }
 
     // Update y-axis grid
