@@ -1948,7 +1948,7 @@
   }, { deep: true })
 
   // Watch T3000_Data for panels data changes
-  watch(() => T3000_Data.value?.panelsData, (newPanelsData, oldPanelsData) => {
+  watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
     LogUtil.Info('🔔 T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
@@ -1968,28 +1968,14 @@
 
     if (newPanelsData && newPanelsData.length > 0) {
       // Regenerate data series when panels data becomes available or changes
-      if (currentItemData.value) {
+      // CRITICAL: Only regenerate if series don't exist yet, to preserve historical data
+      if (currentItemData.value && dataSeries.value.length === 0) {
         regenerateDataSeries()
-
-        // Load historical data after series are generated and charts are ready
-        if (!hasLoadedInitialHistory.value && dataSeries.value.length > 0 && analogChartInstance) {
-          LogUtil.Info('📚 Loading historical data after series generation (charts ready)', {
-            dataSeriesCount: dataSeries.value.length,
-            hasChartInstance: !!analogChartInstance,
-            timestamp: new Date().toISOString()
-          })
-          loadHistoricalDataFromDatabase().then(() => {
-            hasLoadedInitialHistory.value = true
-            LogUtil.Info('✅ Historical data loaded and displayed', {
-              totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0),
-              seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
-            })
-            updateCharts()
-          }).catch(error => {
-            LogUtil.Error('❌ Failed to load historical data', error)
-          })
-        }
+        stopLoading() // Stop loading after series generation
       }
+
+      // NOTE: Historical data loading is handled by createAnalogChart() after chart instance is created
+      // This ensures series structure and chart are both ready before loading history
 
       // Process new data for chart data points
       // Batch data is APPENDED to existing data, not replacing it
@@ -3581,14 +3567,17 @@
         timestamp: new Date().toISOString()
       })
 
-      // Set loading state
-      startLoading()
+      // Only show loading state if we don't have data yet (initial load)
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      if (!hasExistingData) {
+        startLoading()
+      }
 
       // Use the reactive monitor config
       const monitorConfigData = monitorConfig.value
       if (!monitorConfigData) {
         LogUtil.Error('�?fetchRealTimeMonitorData: No monitor config available')
-        stopLoading()
+        if (!hasExistingData) stopLoading()
         return []
       }
 
@@ -3609,7 +3598,7 @@
           currentPanelsDataLength: T3000_Data.value.panelsData?.length || 0,
           T3000DataExists: !!T3000_Data.value
         })
-        stopLoading()
+        if (!hasExistingData) stopLoading()
         return []
       }
 
@@ -3662,8 +3651,11 @@
     } catch (error) {
       return []
     } finally {
-      // Clear loading state
-      stopLoading()
+      // Clear loading state (only if we started it)
+      const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+      if (!hasExistingData) {
+        stopLoading()
+      }
     }
   }
 
@@ -5190,14 +5182,19 @@
 
           // 🆕 MERGE instead of replace - preserves real-time data not yet in database
           const existingDataCount = series.data?.length || 0
+          const beforeMerge = series.data?.length || 0
           series.data = mergeAndDeduplicate(series.data || [], dataPoints)
+          const afterMerge = series.data.length
 
-          LogUtil.Info(`📈 Successfully merged ${dataPoints.length} historical points with ${existingDataCount} existing points for ${series.name}`, {
+          LogUtil.Info(`📈 HISTORY MERGED for ${series.name}:`, {
             seriesIndex,
             seriesId: series.id,
-            existingPoints: existingDataCount,
-            historicalPoints: dataPoints.length,
+            existingPointsBefore: existingDataCount,
+            historicalPointsToMerge: dataPoints.length,
             mergedTotal: series.data.length,
+            dataBeforeMerge: beforeMerge,
+            dataAfterMerge: afterMerge,
+            mergeWorked: afterMerge >= dataPoints.length,
             sampleDataPoints: dataPoints.slice(0, 3).map(p => ({
               timestamp: p.timestamp,
               timeISO: new Date(p.timestamp).toISOString(),
@@ -5357,12 +5354,14 @@
         source: urlSerialNumber ? 'URL' : 'panelsList'
       })
 
+      /*
       LogUtil.Info('📊 Device info for storage', {
         panelsListLength: panelsList.length,
         currentPanelId,
         currentSN,
         hasPanelsList: !!panelsList.length
       })
+        */
 
       if (!currentSN) {
         LogUtil.Warn('�?No serial number available for data storage', {
@@ -5577,6 +5576,7 @@
 
       series.data = series.data || []
 
+      /*
       LogUtil.Debug(`📊 Before adding batch point to ${series.name}:`, {
         existingDataCount: series.data.length,
         existingTimeRange: series.data.length > 0 ? {
@@ -5585,6 +5585,7 @@
         } : null,
         newPointTimestamp: new Date(dataPoint.timestamp).toISOString()
       })
+      */
 
       // Check if this data point already exists (prevent duplicates)
       const existingIndex = series.data.findIndex(point =>
@@ -5619,6 +5620,7 @@
 
       matched++
 
+      /*
       LogUtil.Debug(`�?Matched series ${series.name}`, {
         matchedItem: {
           id: matchedItem.id,
@@ -5628,6 +5630,7 @@
           scaledValue: actualValue
         }
       })
+        */
     })
 
     LogUtil.Debug('📊 TrendLogChart: Data processing complete', {
@@ -5917,40 +5920,19 @@
 
     if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
       try {
-        // Only show loading if we don't already have data
-        const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
-        if (!hasExistingData) {
-          startLoading()
-        }
-
-        // Step 1: Initialize real-time data series structure FIRST (needed for loading historical data)
-        LogUtil.Info('�?Initializing data series structure')
+        // Step 1: Initialize real-time data series structure
+        LogUtil.Info('🔧 Initializing data series structure')
         await initializeRealDataSeries()
 
-        // Step 2: Load historical data from database to populate the series
-        LogUtil.Info('✅ Loading historical data from database for current timebase')
-        await loadHistoricalDataFromDatabase()
+        LogUtil.Info('✅ Data series structure initialized, history will load via panelsData watcher')
 
-        // Mark history as loaded to prevent duplicate loading in addRealtimeDataPoint
-        hasLoadedInitialHistory.value = true
-
-        // Step 3: Update charts with combined data
-        updateCharts()
-
-        // Force a UI update to ensure immediate rendering
-        nextTick(() => {
-          updateCharts()
-        })
-
-        if (!hasExistingData) {
-          stopLoading()
-        }
+        // Note: Historical data loading happens in the panelsData watcher
+        // when charts are ready. This ensures proper timing.
 
       } catch (error) {
-        LogUtil.Error('= TLChart: Error in hybrid data initialization:', error)
+        LogUtil.Error('= TLChart: Error in data initialization:', error)
         hasConnectionError.value = true
         dataSeries.value = []
-        stopLoading()
       }
     } else {
       LogUtil.Info('📊 Empty State Configuration:', {
@@ -6391,6 +6373,17 @@
     }
 
     // Batch update to minimize reflows
+    LogUtil.Info('🎨 About to set chart datasets:', {
+      datasetsCount: datasets.length,
+      totalDataPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0),
+      datasetDetails: datasets.map(ds => ({
+        label: ds.label,
+        pointCount: ds.data.length,
+        firstPoint: ds.data[0],
+        lastPoint: ds.data[ds.data.length - 1]
+      }))
+    })
+
     analogChartInstance.data.datasets = datasets
 
     // Update x-axis configuration
@@ -9829,12 +9822,20 @@
       })
 
       // 🆕 FIX: Then load and display data
-      LogUtil.Info('🔍 STEP 3: Loading historical and real-time data')
-      await initializeData()
-      LogUtil.Info('🔍 STEP 4: Data initialization completed', {
-        dataSeriesCount: dataSeries.value.length,
-        seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
-      })
+      // NOTE: Only initialize if series don't already exist (from panelsData watcher)
+      if (dataSeries.value.length === 0) {
+        LogUtil.Info('🔍 STEP 3: Loading historical and real-time data')
+        await initializeData()
+        LogUtil.Info('🔍 STEP 4: Data initialization completed', {
+          dataSeriesCount: dataSeries.value.length,
+          seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
+        })
+      } else {
+        LogUtil.Info('✅ STEP 3: Data series already initialized (via panelsData watcher), skipping initializeData', {
+          dataSeriesCount: dataSeries.value.length,
+          seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
+        })
+      }
 
       if (isRealTime.value) {
         startRealTimeUpdates()
