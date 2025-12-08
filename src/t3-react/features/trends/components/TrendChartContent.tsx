@@ -63,7 +63,7 @@ const useStyles = makeStyles({
     height: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
     gap: '0',
-    padding: '12px',
+    padding: '5px',
     overflow: 'hidden',
   },
   leftPanel: {
@@ -75,9 +75,9 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
   },
   seriesPanelHeader: {
-    padding: '8px 12px',
+    padding: '8px 2px',
     paddingLeft: '16px',
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: '#f5f5f5',
     borderLeft: `3px solid ${tokens.colorBrandBackground}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
@@ -86,8 +86,8 @@ const useStyles = makeStyles({
     flexShrink: 0,
   },
   seriesPanelToolbar: {
-    padding: '8px 12px',
-    backgroundColor: tokens.colorNeutralBackground1,
+    padding: '8px 2px',
+    backgroundColor: '#ffffff',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     flexDirection: 'column',
@@ -105,16 +105,20 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '8px',
+    width: '100%',
   },
   leftControls: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    paddingLeft: '2px',
   },
   autoScrollToggle: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '2px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   seriesPanel: {
     flex: 1,
@@ -122,10 +126,11 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '6px',
     padding: '8px',
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: '#fafafa',
     overflowY: 'auto',
     overflowX: 'hidden',
     minHeight: 0,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   seriesItem: {
     display: 'flex',
@@ -202,7 +207,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '8px 12px',
+    padding: '8px 2px',
     flexWrap: 'wrap',
     minHeight: '40px',
   },
@@ -1298,6 +1303,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     <div className={styles.container}>
       {/* Left Panel - Series List */}
       <div className={styles.leftPanel} style={{ width: `${leftPanelWidth}px` }}>
+        {/* C1: Header Section */}
         <div className={styles.seriesPanelHeader}>
           <div className={styles.headerLine}>
             <Text size={300} weight="semibold">
@@ -1311,64 +1317,82 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               {isRealtime ? '⚡ Live' : '📚 Historical'}
             </Badge>
           </div>
+        </div>
+
+        {/* C2: Toolbar Section */}
+        <div className={styles.seriesPanelToolbar}>
           <div className={styles.headerControls}>
             <div className={styles.leftControls}>
-              <Menu>
-                <MenuTrigger disableButtonEnhancement>
-                  <Button size="small" appearance="subtle" style={{ fontSize: '11px' }}>
-                    All ▼
-                  </Button>
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    <MenuItem onClick={() => series.forEach((_, i) => toggleSeriesVisibility(i, true))}>
-                      ✓ Enable All
-                    </MenuItem>
-                    <MenuItem onClick={() => series.forEach((_, i) => toggleSeriesVisibility(i, false))}>
-                      ✕ Disable All
-                    </MenuItem>
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
-              <Menu>
-                <MenuTrigger disableButtonEnhancement>
-                  <Button size="small" appearance="subtle" style={{ fontSize: '11px' }}>
-                    By Type ▼
-                  </Button>
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    <MenuItem onClick={() => console.log('Toggle Analog')}>
-                      📈 Toggle Analog
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Digital')}>
-                      📊 Toggle Digital
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Input')}>
-                      ⬇ Toggle Input
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Output')}>
-                      ⬆ Toggle Output
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Variable')}>
-                      ƒ Toggle Variable
-                    </MenuItem>
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
+              <Dropdown
+                placeholder="All"
+                value=""
+                size="small"
+                style={{
+                  minWidth: '80px',
+                  fontSize: '11px',
+                  border: 'none',
+                  borderBottom: '1px solid #d1d1d1',
+                  borderRadius: 0
+                }}
+                onOptionSelect={(e, data) => {
+                  if (data.optionValue === 'enable-all') {
+                    series.forEach((_, i) => toggleSeriesVisibility(i, true));
+                  } else if (data.optionValue === 'disable-all') {
+                    series.forEach((_, i) => toggleSeriesVisibility(i, false));
+                  }
+                }}
+              >
+                <Option value="enable-all" style={{ paddingLeft: '8px' }}>
+                  Enable All
+                </Option>
+                <Option value="disable-all" style={{ paddingLeft: '8px' }}>
+                  Disable All
+                </Option>
+              </Dropdown>
+              <Dropdown
+                placeholder="By Type"
+                value=""
+                size="small"
+                style={{
+                  minWidth: '90px',
+                  fontSize: '11px',
+                  border: 'none',
+                  borderBottom: '1px solid #d1d1d1',
+                  borderRadius: 0
+                }}
+                onOptionSelect={(e, data) => {
+                  console.log('Toggle', data.optionValue);
+                }}
+              >
+                <Option value="analog" style={{ paddingLeft: '8px' }}>
+                  Toggle Analog
+                </Option>
+                <Option value="digital" style={{ paddingLeft: '8px' }}>
+                  Toggle Digital
+                </Option>
+                <Option value="input" style={{ paddingLeft: '8px' }}>
+                  Toggle Input
+                </Option>
+                <Option value="output" style={{ paddingLeft: '8px' }}>
+                  Toggle Output
+                </Option>
+                <Option value="variable" style={{ paddingLeft: '8px' }}>
+                  Toggle Variable
+                </Option>
+              </Dropdown>
             </div>
             <div className={styles.autoScrollToggle}>
               <Text size={100}>Auto Scroll:</Text>
               <Switch
                 checked={isRealtime}
                 onChange={(_, data) => setIsRealtime(data.checked)}
-                size="small"
+                style={{ transform: 'scale(0.7)', marginRight: '-10px', marginLeft: '-10px' }}
               />
             </div>
           </div>
         </div>
 
-        {/* Data Series List Section */}
+        {/* C3: Data Series List Section */}
         <div className={styles.seriesPanel}>
           {series.map((s, index) => (
             <div
