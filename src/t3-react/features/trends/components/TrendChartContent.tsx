@@ -62,25 +62,37 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     height: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
-    gap: '12px',
+    gap: '0',
     padding: '12px',
     overflow: 'hidden',
   },
   leftPanel: {
-    flex: '0 0 280px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
-    minWidth: 0,
+    gap: '0',
+    overflow: 'hidden',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusMedium,
   },
   seriesPanelHeader: {
     padding: '8px 12px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0`,
+    paddingLeft: '16px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderLeft: `3px solid ${tokens.colorBrandBackground}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
+    flexShrink: 0,
+  },
+  seriesPanelToolbar: {
+    padding: '8px 12px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    flexShrink: 0,
   },
   headerLine: {
     display: 'flex',
@@ -111,10 +123,9 @@ const useStyles = makeStyles({
     gap: '6px',
     padding: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: `0 0 ${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium}`,
     overflowY: 'auto',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderTop: 'none',
+    overflowX: 'hidden',
+    minHeight: 0,
   },
   seriesItem: {
     display: 'flex',
@@ -123,13 +134,11 @@ const useStyles = makeStyles({
     padding: '6px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusSmall,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
     fontSize: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground2Hover,
-      borderColor: tokens.colorBrandStroke1,
     },
   },
   colorIndicator: {
@@ -173,10 +182,11 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    minWidth: 0,
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
     overflow: 'hidden',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusMedium,
   },
   chartViewerHeader: {
     display: 'flex',
@@ -238,6 +248,24 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '6px',
   },
+  controlGroupWithIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    paddingLeft: '8px',
+    borderLeft: `3px solid ${tokens.colorBrandBackground}`,
+    height: '16px',
+  },
+  timeBaseDropdown: {
+    border: 'none',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: 0,
+    '& button': {
+      border: 'none',
+      borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+      borderRadius: 0,
+    },
+  },
   controlLabel: {
     fontSize: '11px',
     fontWeight: tokens.fontWeightRegular,
@@ -268,6 +296,16 @@ const useStyles = makeStyles({
     height: '100%',
     flexDirection: 'column',
     gap: '16px',
+  },
+  resizer: {
+    width: '4px',
+    cursor: 'col-resize',
+    backgroundColor: '#e1e1e1',
+    transition: 'background-color 0.2s',
+    flexShrink: 0,
+    '&:hover': {
+      backgroundColor: '#0078d4',
+    },
   },
 });
 
@@ -339,6 +377,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // Data source tracking for proper indicators
   const [dataSource, setDataSource] = useState<'realtime' | 'api'>('realtime');
   const [hasConnectionError, setHasConnectionError] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(280);
 
   // Refs
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -346,6 +385,28 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const historyAbortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedInitialDataRef = useRef<boolean>(false);
+
+  // Handle left panel resize (similar to MainLayout pattern)
+  const handleLeftPanelResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const startWidth = leftPanelWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.min(Math.max(startWidth + delta, 200), 400);
+      setLeftPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [leftPanelWidth]);
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -1021,13 +1082,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const toolbar = useMemo(() => (
     <div className={styles.toolbar}>
       {/* Time Base Control Group */}
-      <div className={styles.controlGroup}>
+      <div className={styles.controlGroupWithIndicator}>
         <Text className={styles.controlLabel}>Time Base:</Text>
         <Dropdown
           value={timeBase}
           selectedOptions={[timeBase]}
           onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
           size="small"
+          className={styles.timeBaseDropdown}
           style={{ fontSize: '11px', minWidth: '100px', fontWeight: 'normal' }}
         >
           <Option value="5m">5 minutes</Option>
@@ -1235,7 +1297,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   return (
     <div className={styles.container}>
       {/* Left Panel - Series List */}
-      <div className={styles.leftPanel}>
+      <div className={styles.leftPanel} style={{ width: `${leftPanelWidth}px` }}>
         <div className={styles.seriesPanelHeader}>
           <div className={styles.headerLine}>
             <Text size={300} weight="semibold">
@@ -1306,6 +1368,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           </div>
         </div>
 
+        {/* Data Series List Section */}
         <div className={styles.seriesPanel}>
           {series.map((s, index) => (
             <div
@@ -1338,6 +1401,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           )}
         </div>
       </div>
+
+      {/* Resizer */}
+      <div
+        className={styles.resizer}
+        onMouseDown={handleLeftPanelResize}
+      />
 
       {/* Right Panel - Trend Chart Viewer */}
       <div className={styles.chartViewerContainer}>
