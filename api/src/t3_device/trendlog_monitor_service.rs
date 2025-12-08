@@ -8,13 +8,14 @@
 
 use std::os::raw::{c_char, c_int};
 use sea_orm::*;
+use sea_orm::ActiveValue::NotSet;
 use serde::{Deserialize, Serialize};
 use chrono::Utc;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::ffi::CString;
 
-use crate::entity::t3_device::trendlogs;
+use crate::entity::t3_device::{trendlogs, trendlog_inputs};
 use crate::error::AppError;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
@@ -327,6 +328,9 @@ impl TrendlogMonitorService {
 
         // Process each trendlog
         for trendlog_data in &trendlog_list.trendlogs {
+            // Get detailed entry with inputs for this trendlog
+            let trendlog_entry = self.get_trendlog_entry(panel_id, trendlog_data.num).await;
+
             // Create or update trendlog entry in database
             // Pass panel_id (device's panel ID) along with serial_number and trendlog data
             let result = self.save_trendlog_to_database(&*db, serial_number, panel_id, trendlog_data).await;
@@ -339,6 +343,28 @@ impl TrendlogMonitorService {
                         &format!("Saved trendlog {} '{}' to database", trendlog_data.num, trendlog_data.label),
                         LogLevel::Info,
                     );
+
+                    // Also save the related inputs to TRENDLOG_INPUTS table
+                    if let Ok(entry) = trendlog_entry {
+                        let trendlog_id = format!("MON{}", trendlog_data.num + 1);
+                        let inputs_result = self.save_trendlog_inputs_to_database(&*db, serial_number, panel_id, &trendlog_id, &entry.inputs).await;
+                        match inputs_result {
+                            Ok(count) => {
+                                let _ = write_structured_log_with_level(
+                                    "T3_Webview_Trendlog_Monitor",
+                                    &format!("Saved {} input points for trendlog {}", count, trendlog_id),
+                                    LogLevel::Info,
+                                );
+                            },
+                            Err(e) => {
+                                let _ = write_structured_log_with_level(
+                                    "T3_Webview_Trendlog_Monitor",
+                                    &format!("Failed to save inputs for trendlog {}: {}", trendlog_id, e),
+                                    LogLevel::Warn,
+                                );
+                            }
+                        }
+                    }
                 },
                 Err(e) => {
                     let _ = write_structured_log_with_level(
@@ -443,6 +469,73 @@ impl TrendlogMonitorService {
         }
 
         Ok(())
+    }
+
+    /// Save trendlog input points to TRENDLOG_INPUTS table
+    async fn save_trendlog_inputs_to_database(
+        &self,
+        db: &DatabaseConnection,
+        device_id: i32,
+        panel_id: i32,
+        trendlog_id: &str,
+        inputs: &[TrendlogInputData]
+    ) -> Result<usize, AppError> {
+        use sea_orm::{ActiveModelTrait, Set};
+        use crate::entity::t3_device::trendlog_inputs;
+
+        let now = Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+
+        // Clear existing MAIN inputs for this TrendLog
+        trendlog_inputs::Entity::delete_many()
+            .filter(trendlog_inputs::Column::SerialNumber.eq(device_id))
+            .filter(trendlog_inputs::Column::PanelId.eq(panel_id))
+            .filter(trendlog_inputs::Column::TrendlogId.eq(trendlog_id))
+            .filter(trendlog_inputs::Column::ViewType.eq("MAIN"))
+            .exec(db)
+            .await?;
+
+        let mut saved_count = 0;
+
+        // Save each input point
+        for input in inputs {
+            // Only save valid points (panel > 0 and point_type > 0)
+            if input.panel > 0 && input.point_type > 0 {
+                let point_type_str = match input.point_type {
+                    1 => "INPUT",
+                    2 => "OUTPUT",
+                    3 => "VARIABLE",
+                    _ => "UNKNOWN",
+                }.to_string();
+
+                let point_label = format!("{}_{}",
+                    match input.point_type { 1 => "IN", 2 => "OUT", 3 => "VAR", _ => "UNK" },
+                    input.point_number
+                );
+
+                let input_record = trendlog_inputs::ActiveModel {
+                    id: NotSet,
+                    serial_number: Set(device_id),
+                    panel_id: Set(panel_id),
+                    trendlog_id: Set(trendlog_id.to_string()),
+                    point_type: Set(point_type_str),
+                    point_index: Set(input.point_number.to_string()),
+                    point_panel: Set(Some(input.panel.to_string())),
+                    point_label: Set(Some(point_label)),
+                    status: Set(Some("ACTIVE".to_string())),
+                    view_type: Set(Some("MAIN".to_string())),
+                    view_number: Set(None),
+                    is_selected: Set(Some(1)),
+                    created_at: Set(Some(now.clone())),
+                    updated_at: Set(Some(now.clone())),
+                    ..Default::default()
+                };
+
+                input_record.insert(db).await?;
+                saved_count += 1;
+            }
+        }
+
+        Ok(saved_count)
     }
 
     /// Get all trendlog data and sync to database for all configured devices
