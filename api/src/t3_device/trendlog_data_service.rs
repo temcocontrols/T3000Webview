@@ -447,8 +447,8 @@ impl T3TrendlogDataService {
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &save_info, LogLevel::Info);
 
-        // Generate timestamp for logging
-        let now = Utc::now();
+        // Generate timestamp for logging - use Local time instead of UTC
+        let now = chrono::Local::now();
         let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
@@ -525,7 +525,8 @@ impl T3TrendlogDataService {
         );
         let _ = write_structured_log_with_level("T3_Webview_API", &batch_info, LogLevel::Info);
 
-        let now = Utc::now();
+        // Use Local time instead of UTC to match user's timezone
+        let now = chrono::Local::now();
         let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 

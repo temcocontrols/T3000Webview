@@ -36,6 +36,8 @@ import {
   MenuList,
   MenuItem,
   Button,
+  Tooltip,
+  Tag,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -51,6 +53,13 @@ import {
   ArrowLeftRegular,
   ArrowRightRegular,
   DocumentRegular,
+  SettingsRegular,
+  FlashRegular,
+  HistoryRegular,
+  ErrorCircleRegular,
+  DismissRegular,
+  ChevronRightRegular,
+  ChevronDownFilled,
 } from '@fluentui/react-icons';
 import { TrendChart, TrendSeries } from './TrendChart';
 import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
@@ -62,25 +71,35 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     height: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
-    gap: '12px',
-    padding: '12px',
+    gap: '0',
+    padding: '5px',
     overflow: 'hidden',
   },
   leftPanel: {
-    flex: '0 0 280px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0',
+    overflow: 'hidden',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: '5px',
+  },
+  seriesPanelHeader: {
+    padding: '4px',
+    backgroundColor: 'transparent',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    minWidth: 0,
+    flexShrink: 0,
   },
-  seriesPanelHeader: {
-    padding: '8px 12px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0`,
+  seriesPanelToolbar: {
+    padding: '4px',
+    backgroundColor: '#ffffff',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
+    flexShrink: 0,
   },
   headerLine: {
     display: 'flex',
@@ -93,58 +112,114 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '8px',
+    width: '100%',
   },
   leftControls: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    paddingLeft: '2px',
   },
   autoScrollToggle: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '2px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   seriesPanel: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    padding: '8px',
+    gap: '0',
+    padding: '4px',
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: `0 0 ${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium}`,
     overflowY: 'auto',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    overflowX: 'hidden',
+    minHeight: 0,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderTop: 'none',
   },
   seriesItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '6px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusSmall,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    gap: '12px',
+    padding: '10px 12px',
+    backgroundColor: 'transparent',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     fontSize: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    position: 'relative',
+    minHeight: '48px',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground2Hover,
-      borderColor: tokens.colorBrandStroke1,
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+    ':last-child': {
+      borderBottom: 'none',
+    },
+  },
+  seriesItemExpanded: {
+    backgroundColor: tokens.colorNeutralBackground1Hover,
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: '6px',
+    right: '6px',
+    minWidth: '24px',
+    width: '24px',
+    height: '24px',
+    padding: '0',
+    zIndex: 2,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: tokens.borderRadiusCircular,
+    ':hover': {
+      backgroundColor: tokens.colorPaletteRedBackground3,
+      color: tokens.colorNeutralForegroundOnBrand,
     },
   },
   colorIndicator: {
     width: '20px',
     height: '20px',
-    borderRadius: '4px',
+    borderRadius: tokens.borderRadiusMedium,
     flexShrink: 0,
-    border: `2px solid ${tokens.colorNeutralStroke2}`,
+    border: `2px solid ${tokens.colorNeutralStroke1}`,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    position: 'relative',
+    boxShadow: tokens.shadow4,
     ':hover': {
       transform: 'scale(1.1)',
+      boxShadow: tokens.shadow8,
     },
   },
+  keyboardBadge: {
+    position: 'absolute',
+    top: '-6px',
+    right: '-6px',
+    fontSize: '9px',
+    fontWeight: tokens.fontWeightBold,
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+    padding: '1px 4px',
+    borderRadius: tokens.borderRadiusCircular,
+    minWidth: '16px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: `2px solid ${tokens.colorNeutralBackground1}`,
+    boxShadow: tokens.shadow4,
+  },
   seriesItemContent: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  seriesItemInfo: {
     flex: 1,
     minWidth: 0,
     overflow: 'hidden',
@@ -155,11 +230,49 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     fontWeight: tokens.fontWeightSemibold,
+    fontSize: '12px',
+  },
+  seriesItemMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginTop: '4px',
+    flexWrap: 'wrap',
   },
   seriesItemUnit: {
-    display: 'block',
     color: tokens.colorNeutralForeground3,
     fontSize: '11px',
+    fontWeight: tokens.fontWeightMedium,
+  },
+  expandButton: {
+    minWidth: '24px',
+    width: '24px',
+    height: '24px',
+    padding: '0',
+    flexShrink: 0,
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Pressed,
+    },
+  },
+  seriesDetails: {
+    padding: '4px 8px 4px 5px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    fontSize: '11px',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '2px 8px',
+    color: tokens.colorNeutralForeground2,
+  },
+  seriesStats: {
+    display: 'contents',
+  },
+  dataSourceIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11px',
+    marginLeft: 'auto',
   },
   colorBox: {
     width: '14px',
@@ -173,10 +286,11 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    minWidth: 0,
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
     overflow: 'hidden',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusMedium,
   },
   chartViewerHeader: {
     display: 'flex',
@@ -192,7 +306,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '8px 12px',
+    padding: '8px 2px',
     flexWrap: 'wrap',
     minHeight: '40px',
   },
@@ -238,6 +352,24 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '6px',
   },
+  controlGroupWithIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    paddingLeft: '8px',
+    borderLeft: `3px solid ${tokens.colorBrandBackground}`,
+    height: '16px',
+  },
+  timeBaseDropdown: {
+    border: 'none',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: 0,
+    '& button': {
+      border: 'none',
+      borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+      borderRadius: 0,
+    },
+  },
   controlLabel: {
     fontSize: '11px',
     fontWeight: tokens.fontWeightRegular,
@@ -268,6 +400,16 @@ const useStyles = makeStyles({
     height: '100%',
     flexDirection: 'column',
     gap: '16px',
+  },
+  resizer: {
+    width: '4px',
+    cursor: 'col-resize',
+    backgroundColor: '#e1e1e1',
+    transition: 'background-color 0.2s',
+    flexShrink: 0,
+    '&:hover': {
+      backgroundColor: '#0078d4',
+    },
   },
 });
 
@@ -335,10 +477,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
   const [keyboardEnabled, setKeyboardEnabled] = useState(false);
-
-  // Data source tracking for proper indicators
-  const [dataSource, setDataSource] = useState<'realtime' | 'api'>('realtime');
+  const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
+  const [dataSource, setDataSource] = useState<'realtime' | 'api' | 'loading' | 'error'>('loading');
   const [hasConnectionError, setHasConnectionError] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(280);
 
   // Refs
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -346,6 +489,28 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const historyAbortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedInitialDataRef = useRef<boolean>(false);
+
+  // Handle left panel resize (similar to MainLayout pattern)
+  const handleLeftPanelResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const startWidth = leftPanelWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.min(Math.max(startWidth + delta, 200), 400);
+      setLeftPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [leftPanelWidth]);
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -362,6 +527,68 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     () => series.filter((s) => s.digitalAnalog === 'Digital' && s.visible !== false),
     [series]
   );
+
+  /**
+   * Helper: Get series counts by type for dropdown labels
+   */
+  const getSeriesCounts = useMemo(() => {
+    const counts = {
+      analog: 0,
+      digital: 0,
+      input: 0,
+      output: 0,
+      variable: 0,
+    };
+
+    series.forEach((s) => {
+      if (s.digitalAnalog === 'Analog') counts.analog++;
+      if (s.digitalAnalog === 'Digital') counts.digital++;
+      if (s.pointType === 'IN') counts.input++;
+      if (s.pointType === 'OUT') counts.output++;
+      if (s.pointType === 'VAR') counts.variable++;
+    });
+
+    return counts;
+  }, [series]);
+
+  /**
+   * Helper: Get keyboard shortcut for series
+   */
+  const getKeyboardShortcut = useCallback((index: number): string | null => {
+    if (!keyboardEnabled) return null;
+    if (index < 9) return `${index + 1}`;
+    if (index === 9) return '0';
+    return null;
+  }, [keyboardEnabled]);
+
+  /**
+   * Helper: Toggle series expansion
+   */
+  const toggleSeriesExpand = useCallback((seriesKey: string) => {
+    setExpandedSeries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(seriesKey)) {
+        newSet.delete(seriesKey);
+      } else {
+        newSet.add(seriesKey);
+      }
+      return newSet;
+    });
+  }, []);
+
+  /**
+   * Helper: Remove series from tracking (for View 2/3)
+   */
+  const removeFromTracking = useCallback((seriesKey: string) => {
+    setSeries(prev => prev.filter(s => `${s.pointType}-${s.pointIndex}` !== seriesKey));
+  }, []);
+
+  /**
+   * Helper: Get prefix tag for series
+   */
+  const getPrefixTag = useCallback((pointType: string): string => {
+    return pointType || 'N/A';
+  }, []);
 
   /**
    * Helper: Get existing data time range to optimize loading
@@ -1021,23 +1248,24 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const toolbar = useMemo(() => (
     <div className={styles.toolbar}>
       {/* Time Base Control Group */}
-      <div className={styles.controlGroup}>
+      <div className={styles.controlGroupWithIndicator}>
         <Text className={styles.controlLabel}>Time Base:</Text>
         <Dropdown
           value={timeBase}
           selectedOptions={[timeBase]}
           onOptionSelect={(_, data) => setTimeBase(data.optionValue as TimeBase)}
           size="small"
+          className={styles.timeBaseDropdown}
           style={{ fontSize: '11px', minWidth: '100px', fontWeight: 'normal' }}
         >
-          <Option value="5m">5 minutes</Option>
-          <Option value="10m">10 minutes</Option>
-          <Option value="30m">30 minutes</Option>
-          <Option value="1h">1 hour</Option>
-          <Option value="4h">4 hours</Option>
-          <Option value="12h">12 hours</Option>
-          <Option value="1d">1 day</Option>
-          <Option value="4d">4 days</Option>
+          <Option value="5m" style={{ fontSize: '11px' }}>5 minutes</Option>
+          <Option value="10m" style={{ fontSize: '11px' }}>10 minutes</Option>
+          <Option value="30m" style={{ fontSize: '11px' }}>30 minutes</Option>
+          <Option value="1h" style={{ fontSize: '11px' }}>1 hour</Option>
+          <Option value="4h" style={{ fontSize: '11px' }}>4 hours</Option>
+          <Option value="12h" style={{ fontSize: '11px' }}>12 hours</Option>
+          <Option value="1d" style={{ fontSize: '11px' }}>1 day</Option>
+          <Option value="4d" style={{ fontSize: '11px' }}>4 days</Option>
         </Dropdown>
       </div>
 
@@ -1132,6 +1360,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         >
           View 3
         </Button>
+        {currentView !== 1 && (
+          <Button
+            appearance="subtle"
+            icon={<SettingsRegular />}
+            onClick={() => console.log('Reconfigure tracked items')}
+            disabled={loading}
+            size="small"
+            title="Reconfigure tracked items"
+            style={{ fontSize: '9px', padding: '4px', minWidth: '24px' }}
+          />
+        )}
       </div>
 
       <div className={styles.divider} />
@@ -1143,7 +1382,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           color={isRealtime ? 'success' : 'informative'}
           size="small"
         >
-          {isRealtime ? 'Live' : 'Historical'}
+          {isRealtime ? `Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}` : 'Historical'}
         </Badge>
         <Badge appearance="outline" size="small">
           {timeBase === '5m' ? '5 minutes' :
@@ -1235,109 +1474,281 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   return (
     <div className={styles.container}>
       {/* Left Panel - Series List */}
-      <div className={styles.leftPanel}>
+      <div className={styles.leftPanel} style={{ width: `${leftPanelWidth}px` }}>
+        {/* C1: Header Section */}
         <div className={styles.seriesPanelHeader}>
           <div className={styles.headerLine}>
-            <Text size={300} weight="semibold">
+            <Text size={200} weight="semibold" style={{ marginLeft: '2px', fontSize: '12px' }}>
               Data Series ({series.filter(s => s.visible !== false).length}/{series.length})
             </Text>
-            <Badge
-              appearance="filled"
-              color={isRealtime ? 'success' : 'informative'}
-              size="small"
-            >
-              {isRealtime ? '⚡ Live' : '📚 Historical'}
-            </Badge>
+            <div className={styles.dataSourceIndicator}>
+              {dataSource === 'loading' ? (
+                <Badge appearance="tint" color="warning" size="small" icon={<Spinner size="tiny" />}>
+                  Loading...
+                </Badge>
+              ) : dataSource === 'realtime' ? (
+                <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
+                  Live
+                </Badge>
+              ) : dataSource === 'api' ? (
+                <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
+                  Historical
+                </Badge>
+              ) : hasConnectionError ? (
+                <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
+                  Error
+                </Badge>
+              ) : null}
+            </div>
           </div>
+        </div>
+
+        {/* C2: Toolbar Section */}
+        <div className={styles.seriesPanelToolbar}>
           <div className={styles.headerControls}>
             <div className={styles.leftControls}>
-              <Menu>
-                <MenuTrigger disableButtonEnhancement>
-                  <Button size="small" appearance="subtle" style={{ fontSize: '11px' }}>
-                    All ▼
-                  </Button>
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    <MenuItem onClick={() => series.forEach((_, i) => toggleSeriesVisibility(i, true))}>
-                      ✓ Enable All
-                    </MenuItem>
-                    <MenuItem onClick={() => series.forEach((_, i) => toggleSeriesVisibility(i, false))}>
-                      ✕ Disable All
-                    </MenuItem>
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
-              <Menu>
-                <MenuTrigger disableButtonEnhancement>
-                  <Button size="small" appearance="subtle" style={{ fontSize: '11px' }}>
-                    By Type ▼
-                  </Button>
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    <MenuItem onClick={() => console.log('Toggle Analog')}>
-                      📈 Toggle Analog
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Digital')}>
-                      📊 Toggle Digital
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Input')}>
-                      ⬇ Toggle Input
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Output')}>
-                      ⬆ Toggle Output
-                    </MenuItem>
-                    <MenuItem onClick={() => console.log('Toggle Variable')}>
-                      ƒ Toggle Variable
-                    </MenuItem>
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
+              <Dropdown
+                placeholder="All"
+                value=""
+                size="small"
+                style={{
+                  minWidth: '70px',
+                  fontSize: '10px',
+                  border: 'none',
+                  borderBottom: '1px solid #d1d1d1',
+                  borderRadius: 0
+                }}
+                onOptionSelect={(e, data) => {
+                  if (data.optionValue === 'enable-all') {
+                    series.forEach((_, i) => toggleSeriesVisibility(i, true));
+                  } else if (data.optionValue === 'disable-all') {
+                    series.forEach((_, i) => toggleSeriesVisibility(i, false));
+                  }
+                }}
+              >
+                <Option value="enable-all" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Enable All
+                </Option>
+                <Option value="disable-all" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Disable All
+                </Option>
+              </Dropdown>
+              <Dropdown
+                placeholder="By Type"
+                value=""
+                size="small"
+                style={{
+                  minWidth: '80px',
+                  fontSize: '10px',
+                  border: 'none',
+                  borderBottom: '1px solid #d1d1d1',
+                  borderRadius: 0
+                }}
+                onOptionSelect={(e, data) => {
+                  const type = data.optionValue as string;
+                  series.forEach((s, i) => {
+                    if (type === 'analog' && s.digitalAnalog === 'Analog') {
+                      toggleSeriesVisibility(i);
+                    } else if (type === 'digital' && s.digitalAnalog === 'Digital') {
+                      toggleSeriesVisibility(i);
+                    } else if (type === 'input' && s.pointType === 'IN') {
+                      toggleSeriesVisibility(i);
+                    } else if (type === 'output' && s.pointType === 'OUT') {
+                      toggleSeriesVisibility(i);
+                    } else if (type === 'variable' && s.pointType === 'VAR') {
+                      toggleSeriesVisibility(i);
+                    }
+                  });
+                }}
+              >
+                <Option value="analog" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Toggle Analog ({getSeriesCounts.analog})
+                </Option>
+                <Option value="digital" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Toggle Digital ({getSeriesCounts.digital})
+                </Option>
+                <Option value="input" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Toggle Input ({getSeriesCounts.input})
+                </Option>
+                <Option value="output" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Toggle Output ({getSeriesCounts.output})
+                </Option>
+                <Option value="variable" style={{ paddingLeft: '8px', fontSize: '11px' }}>
+                  Toggle Variable ({getSeriesCounts.variable})
+                </Option>
+              </Dropdown>
             </div>
             <div className={styles.autoScrollToggle}>
               <Text size={100}>Auto Scroll:</Text>
               <Switch
                 checked={isRealtime}
                 onChange={(_, data) => setIsRealtime(data.checked)}
-                size="small"
+                style={{ transform: 'scale(0.7)', marginRight: '-10px', marginLeft: '-10px' }}
               />
             </div>
           </div>
         </div>
 
+        {/* C3: Data Series List Section */}
         <div className={styles.seriesPanel}>
-          {series.map((s, index) => (
-            <div
-              key={`${s.pointType}-${s.pointIndex}`}
-              className={styles.seriesItem}
-              style={{ opacity: s.visible !== false ? 1 : 0.5 }}
-            >
-              <div
-                className={styles.colorIndicator}
-                style={{ backgroundColor: s.visible !== false ? s.color : '#d9d9d9' }}
-                onClick={() => toggleSeriesVisibility(index)}
-              />
-              <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
-                <Text size={200} className={styles.seriesItemName}>
-                  {s.name}
-                </Text>
-                <Text size={100} className={styles.seriesItemUnit}>
-                  {s.unit || 'N/A'}
-                </Text>
-              </div>
+          {series.length === 0 ? (
+            <div className={styles.emptyStateCenter}>
+              {dataSource === 'loading' ? (
+                <>
+                  <Spinner size="large" />
+                  <Text size={300} weight="semibold">Loading trend log data...</Text>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Connecting to your T3000 devices to retrieve trend data...
+                  </Text>
+                </>
+              ) : loadingTimeout ? (
+                <>
+                  <Text size={500}>⏱️</Text>
+                  <Text size={300} weight="semibold">Loading Timeout</Text>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Loading took too long (&gt;30s). The system may be busy or experiencing connection issues.
+                  </Text>
+                  <Button
+                    appearance="primary"
+                    icon={<ArrowSyncRegular />}
+                    onClick={() => window.location.reload()}
+                  >
+                    Refresh Data
+                  </Button>
+                </>
+              ) : hasConnectionError ? (
+                <>
+                  <Text size={500}>⚠️</Text>
+                  <Text size={300} weight="semibold">Data Connection Error</Text>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Unable to load real-time or historical data. Check system connections.
+                  </Text>
+                  <Button
+                    appearance="primary"
+                    icon={<ArrowSyncRegular />}
+                    onClick={() => window.location.reload()}
+                  >
+                    Refresh Data
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Text size={500}>📊</Text>
+                  <Text size={300} weight="semibold">No valid trend log data available</Text>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Configure monitor points with valid T3000 devices to see data series
+                  </Text>
+                </>
+              )}
             </div>
-          ))}
+          ) : (
+            series.map((s, index) => {
+              const seriesKey = `${s.pointType}-${s.pointIndex}`;
+              const isExpanded = expandedSeries.has(seriesKey);
+              const shortcut = getKeyboardShortcut(index);
 
-          {series.length === 0 && (
-            <div className={styles.emptyState}>
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                No data series configured
-              </Text>
-            </div>
+              return (
+                <React.Fragment key={seriesKey}>
+                  <div
+                    className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}
+                    style={{ opacity: s.visible !== false ? 1 : 0.5 }}
+                  >
+                    {/* Delete button for View 2/3 */}
+                    {currentView !== 1 && (
+                      <Button
+                        appearance="subtle"
+                        icon={<DismissRegular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFromTracking(seriesKey);
+                        }}
+                        className={styles.deleteButton}
+                        size="small"
+                      />
+                    )}
+
+                    {/* Color indicator with keyboard badge */}
+                    <div
+                      className={styles.colorIndicator}
+                      style={{ backgroundColor: s.visible !== false ? s.color : '#d9d9d9' }}
+                      onClick={() => toggleSeriesVisibility(index)}
+                    >
+                      {shortcut && keyboardEnabled && (
+                        <div className={styles.keyboardBadge}>{shortcut}</div>
+                      )}
+                    </div>
+
+                    {/* Series content */}
+                    <Tooltip content={s.name} relationship="label">
+                      <div className={styles.seriesItemContent} onClick={() => toggleSeriesVisibility(index)}>
+                        <div className={styles.seriesItemInfo}>
+                          <Text className={styles.seriesItemName}>
+                            {s.name}
+                          </Text>
+                          <div className={styles.seriesItemMeta}>
+                            {s.pointType && (
+                              <Tag size="extra-small" appearance="outline">
+                                {getPrefixTag(s.pointType)}
+                              </Tag>
+                            )}
+                            <Text className={styles.seriesItemUnit} style={{ color: s.color }}>
+                              {s.unit || 'N/A'}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    </Tooltip>
+
+                    {/* Expand button */}
+                    <Button
+                      appearance="subtle"
+                      icon={isExpanded ? <ChevronDownFilled /> : <ChevronRightRegular />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSeriesExpand(seriesKey);
+                      }}
+                      className={styles.expandButton}
+                      size="small"
+                    />
+                  </div>
+
+                  {/* Expanded details */}
+                  {isExpanded && (
+                    <div className={styles.seriesDetails}>
+                      <Text size={100}>
+                        <strong>Last:</strong> {s.data && s.data.length > 0
+                          ? `${s.data[s.data.length - 1].value.toFixed(2)} ${s.unit || ''}`
+                          : 'N/A'}
+                      </Text>
+                      <Text size={100}>
+                        <strong>Avg:</strong> {s.data && s.data.length > 0
+                          ? `${(s.data.reduce((sum, p) => sum + p.value, 0) / s.data.length).toFixed(2)} ${s.unit || ''}`
+                          : 'N/A'}
+                      </Text>
+                      <Text size={100}>
+                        <strong>Min:</strong> {s.data && s.data.length > 0
+                          ? `${Math.min(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
+                          : 'N/A'}
+                      </Text>
+                      <Text size={100}>
+                        <strong>Max:</strong> {s.data && s.data.length > 0
+                          ? `${Math.max(...s.data.map(p => p.value)).toFixed(2)} ${s.unit || ''}`
+                          : 'N/A'}
+                      </Text>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })
           )}
         </div>
       </div>
+
+      {/* Resizer */}
+      <div
+        className={styles.resizer}
+        onMouseDown={handleLeftPanelResize}
+      />
 
       {/* Right Panel - Trend Chart Viewer */}
       <div className={styles.chartViewerContainer}>

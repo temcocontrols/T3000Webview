@@ -367,26 +367,32 @@ export const InputsPage: React.FC = () => {
   };
   */
 
-  // Test function: Update full label using UPDATE_WEBVIEW_LIST (Action 16 - full record)
+  // Generic function: Update input field using UPDATE_WEBVIEW_LIST (Action 16 - full record)
   // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
-  const updateFullLabelUsingAction16 = async (serialNumber: number, inputIndex: string, newLabel: string, currentInput: InputPoint) => {
+  const updateInputFieldUsingAction16 = async (
+    serialNumber: number,
+    inputIndex: string,
+    field: string,
+    newValue: string,
+    currentInput: InputPoint
+  ) => {
     try {
-      console.log(`[Action 16] Updating full label for Input ${inputIndex} (SN: ${serialNumber})`);
+      console.log(`[Action 16] Updating ${field} for Input ${inputIndex} (SN: ${serialNumber})`);
 
-      // Action 16 requires ALL fields, so we send current values + the new label
+      // Action 16 requires ALL fields, so we send current values + the new field value
       const payload = {
-        fullLabel: newLabel, // New value (maps to "description" in C++)
-        label: currentInput.label || '',
-        value: parseFloat(currentInput.fValue || '0'),
-        range: parseInt(currentInput.rangeField || currentInput.range || '0', 10), // Use rangeField first
-        autoManual: parseInt(currentInput.autoManual || '0', 10),
-        control: parseInt(currentInput.control || '0', 10),
+        fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
+        label: field === 'label' ? newValue : (currentInput.label || ''),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0'),
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
+        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
+        control: 0, // control field not part of InputPoint interface
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10), // High byte
-        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10), // Low byte
-        decom: 0, // Not in UI, use default
+        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
+        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        decom: 0,
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -428,11 +434,11 @@ export const InputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Test both methods for fullLabel field
-      if (editingCell.field === 'fullLabel' && selectedDevice) {
-        console.log('=== Updating Full Label ===');
-        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Label: "${editValue}"`);
-        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST) - the only method that supports fullLabel');
+      // Use Action 16 for all editable fields (fullLabel, label, fValue, range, autoManual)
+      if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
+        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Value: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
 
         // Find the current input data to pass all fields for Action 16
         const currentInput = inputs.find(
@@ -443,15 +449,16 @@ export const InputsPage: React.FC = () => {
           throw new Error('Current input data not found');
         }
 
-        // Use Action 16 (UPDATE_WEBVIEW_LIST) - This is the ONLY way to update fullLabel
-        await updateFullLabelUsingAction16(
+        // Use Action 16 (UPDATE_WEBVIEW_LIST) for all fields
+        await updateInputFieldUsingAction16(
           selectedDevice.serialNumber,
           editingCell.inputIndex,
+          editingCell.field,
           editValue,
           currentInput
         );
 
-        console.log('✅ Full label updated successfully!');
+        console.log(`✅ ${editingCell.field} updated successfully!`);
       }
 
       // Update local state optimistically
@@ -506,22 +513,46 @@ export const InputsPage: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = (newRange: number) => {
-    if (!selectedInputForRange) return;
+  const handleRangeSave = async (newRange: number) => {
+    if (!selectedInputForRange || !selectedDevice) return;
 
-    // Update local state optimistically
-    setInputs(prevInputs =>
-      prevInputs.map(input =>
-        input.serialNumber === selectedInputForRange.serialNumber &&
-        input.inputIndex === selectedInputForRange.inputIndex
-          ? { ...input, range: newRange.toString() }
-          : input
-      )
-    );
+    try {
+      console.log(`=== Updating range ===`);
+      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}`);
 
-    console.log('Range updated:', selectedInputForRange.serialNumber, selectedInputForRange.inputIndex, newRange);
-    // TODO: Call API to update range value
-    // Example: await updateInputRange(selectedInputForRange.serialNumber, selectedInputForRange.inputIndex, newRange);
+      // Find the current input data to pass all fields for Action 16
+      const currentInput = inputs.find(
+        input => input.serialNumber === selectedInputForRange.serialNumber && input.inputIndex === selectedInputForRange.inputIndex
+      );
+
+      if (!currentInput) {
+        throw new Error('Current input data not found');
+      }
+
+      // Use Action 16 (UPDATE_WEBVIEW_LIST) for range field
+      await updateInputFieldUsingAction16(
+        selectedDevice.serialNumber,
+        selectedInputForRange.inputIndex,
+        'range',
+        newRange.toString(),
+        currentInput
+      );
+
+      // Update local state optimistically
+      setInputs(prevInputs =>
+        prevInputs.map(input =>
+          input.serialNumber === selectedInputForRange.serialNumber &&
+          input.inputIndex === selectedInputForRange.inputIndex
+            ? { ...input, range: newRange.toString(), rangeField: newRange.toString() }
+            : input
+        )
+      );
+
+      console.log('✅ Range updated successfully!');
+    } catch (error) {
+      console.error('Failed to update range:', error);
+      alert(`Failed to update range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -746,40 +777,14 @@ export const InputsPage: React.FC = () => {
               throw new Error('Current input data not found');
             }
 
-            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
-            const payload = {
-              fullLabel: currentInput.fullLabel || '',
-              label: currentInput.label || '',
-              value: parseFloat(currentInput.fValue || '0'),
-              range: parseInt(currentInput.range || '0'),
-              autoManual: parseInt(newValue),
-              control: 0,
-              filter: parseInt(currentInput.filterField || '0'),
-              digitalAnalog: currentInput.digitalAnalog === '0' ? 0 : 1,
-              calibrationSign: parseInt(currentInput.sign || '0'),
-              calibrationH: 0,
-              calibrationL: 0,
-              decom: 0,
-            };
-
-            console.log('[Action 16] Updating Auto/Man:', payload);
-
-            const response = await fetch(
-              `${API_BASE_URL}/api/t3_device/inputs/${item.serialNumber}/${item.inputIndex}`,
-              {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              }
+            // Use Action 16 (UPDATE_WEBVIEW_LIST) for autoManual field
+            await updateInputFieldUsingAction16(
+              item.serialNumber,
+              item.inputIndex,
+              'autoManual',
+              newValue,
+              currentInput
             );
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const result = await response.json();
-            console.log('[Action 16] Auto/Man updated successfully:', result);
 
             // Update local state optimistically
             setInputs(prevInputs =>
@@ -789,6 +794,8 @@ export const InputsPage: React.FC = () => {
                   : input
               )
             );
+
+            console.log('✅ Auto/Man updated successfully!');
           } catch (error) {
             console.error('Failed to update Auto/Man:', error);
             alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -285,7 +285,7 @@ fn get_trendlog_cache() -> &'static TrendlogParentCache {
 // ═══════════════════════════════════════════════════════════════════════════
 // TWO-TIER SYNC STATE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════════════════
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use tokio::sync::RwLock;
 
 lazy_static::lazy_static! {
@@ -1581,9 +1581,9 @@ impl T3000MainService {
         Ok(())
     }
 
-    /// Format timestamp to "YYYY-MM-DD HH:MM:SS" format for LoggingTime_Fmt
+    /// Format timestamp to "YYYY-MM-DD HH:MM:SS" format for LoggingTime_Fmt - using Local time
     fn format_logging_time() -> String {
-        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
     }
 
     /// Convert Unix timestamp to formatted local time string for LoggingTime_Fmt
@@ -1599,8 +1599,8 @@ impl T3000MainService {
             }
         }
 
-        // Fallback to current UTC time if parsing fails
-        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+        // Fallback to current Local time if parsing fails
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
     }
 
     /// Derive units from range value for T3000 points

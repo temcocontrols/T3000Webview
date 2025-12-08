@@ -1559,6 +1559,7 @@
   const trendlogAPI = useTrendlogDataAPI()
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
+  const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
 
   // Helper functions for delayed loading indicator
   const startLoading = () => {
@@ -1968,12 +1969,30 @@
     if (newPanelsData && newPanelsData.length > 0) {
       // Regenerate data series when panels data becomes available or changes
       if (currentItemData.value) {
-        // debugDataSeriesFlow('Before T3000_Data regeneration')
         regenerateDataSeries()
-        // debugDataSeriesFlow('After T3000_Data regeneration')
+
+        // Load historical data after series are generated and charts are ready
+        if (!hasLoadedInitialHistory.value && dataSeries.value.length > 0 && analogChartInstance) {
+          LogUtil.Info('📚 Loading historical data after series generation (charts ready)', {
+            dataSeriesCount: dataSeries.value.length,
+            hasChartInstance: !!analogChartInstance,
+            timestamp: new Date().toISOString()
+          })
+          loadHistoricalDataFromDatabase().then(() => {
+            hasLoadedInitialHistory.value = true
+            LogUtil.Info('✅ Historical data loaded and displayed', {
+              totalDataPoints: dataSeries.value.reduce((sum, series) => sum + series.data.length, 0),
+              seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length
+            })
+            updateCharts()
+          }).catch(error => {
+            LogUtil.Error('❌ Failed to load historical data', error)
+          })
+        }
       }
 
       // Process new data for chart data points
+      // Batch data is APPENDED to existing data, not replacing it
       const chartDataFormat = newPanelsData.flat()
       updateChartWithNewData(chartDataFormat)
 
@@ -4851,19 +4870,20 @@
       const endTime = actualEndTime
       const startTime = actualStartTime
 
-      // Format timestamps for API (SQLite format) - use UTC to match backend storage
-      const formatUTCTime = (date: Date): string => {
-        const year = date.getUTCFullYear()
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(date.getUTCDate()).padStart(2, '0')
-        const hours = String(date.getUTCHours()).padStart(2, '0')
-        const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-        const seconds = String(date.getUTCSeconds()).padStart(2, '0')
+      // Format timestamps for API (SQLite format) - use Local time to match backend storage
+      // Backend now stores timestamps in Local time (fixed timezone issue)
+      const formatLocalTime = (date: Date): string => {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
       }
 
-      const formattedStartTime = formatUTCTime(startTime)
-      const formattedEndTime = formatUTCTime(endTime)
+      const formattedStartTime = formatLocalTime(startTime)
+      const formattedEndTime = formatLocalTime(endTime)
 
       // 🆕 FIX: Create specific points list from available data sources
       let specificPoints: Array<{ point_id: string, point_type: string, point_index: number, panel_id: number }> = []
@@ -5016,17 +5036,41 @@
         trendlogId: trendlogId
       })
 
+      LogUtil.Debug('🔍 Historical data request:', {
+        timeRange: `${formattedStartTime} to ${formattedEndTime}`,
+        timeRangeMinutes: timeRangeMinutes,
+        timeBase: timeBase.value,
+        pointsCount: specificPoints.length,
+        limit: historyRequest.limit,
+        trendlogId: trendlogId
+      })
+
       // Fetch historical data
       const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
 
       if (historyResponse?.data?.length > 0) {
         LogUtil.Info('📚 Historical data loaded:', {
           dataPointsCount: historyResponse.data.length,
-          timeRange: `${timeRangeMinutes} minutes`
+          timeRange: `${timeRangeMinutes} minutes`,
+          actualTimeRange: `${formattedStartTime} to ${formattedEndTime}`
         })
 
         // 🆕 Convert historical data to chart format and populate data series (now async)
         await populateDataSeriesWithHistoricalData(historyResponse.data)
+
+        // 🆕 CRITICAL: Update charts immediately after historical data is populated
+        LogUtil.Info('🎨 Updating charts to display historical data', {
+          seriesCount: dataSeries.value.length,
+          seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length,
+          totalDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0),
+          seriesDetails: dataSeries.value.map(s => ({
+            name: s.name,
+            id: s.id,
+            dataCount: s.data?.length || 0,
+            visible: s.visible
+          }))
+        })
+        updateCharts()
       } else {
         LogUtil.Debug('📭 No historical data found for current timebase')
       }
@@ -5254,6 +5298,7 @@
       // Use calculated interval if > 0, otherwise fallback to default
       const syncIntervalSeconds = totalSeconds > 0 ? Math.max(totalSeconds, 15) : 60
 
+      /*
       LogUtil.Debug('🕐 Calculating sync interval from T3000 config', {
         dataSource,
         hourInterval,
@@ -5264,6 +5309,7 @@
         timeBase: timeBase.value,
         configExists: !!intervalConfig
       })
+      */
 
       return syncIntervalSeconds
     }
@@ -5336,6 +5382,7 @@
 
         const syncInterval = getCurrentSyncInterval()
 
+        /*
         LogUtil.Debug('🔧 Processing item for database storage', {
           pointId,
           rawPointType: item.point_type,
@@ -5356,6 +5403,7 @@
             second: monitorConfig.value?.second_interval_time || props.itemData?.t3Entry?.second_interval_time || 0
           }
         })
+        */
 
         return {
           // Required fields
@@ -5406,6 +5454,7 @@
 
         const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
 
+        /*
         LogUtil.Info(`�?Successfully stored ${rowsAffected} real-time data points`, {
           pointsCount: realtimeDataPoints.length,
           rowsAffected,
@@ -5413,6 +5462,7 @@
           timestamp: new Date().toISOString(),
           success: rowsAffected > 0
         })
+        */
       } else {
         LogUtil.Warn('⚠️ No valid data points to store', {
           originalItemsCount: validDataItems.length,
@@ -5527,6 +5577,15 @@
 
       series.data = series.data || []
 
+      LogUtil.Debug(`📊 Before adding batch point to ${series.name}:`, {
+        existingDataCount: series.data.length,
+        existingTimeRange: series.data.length > 0 ? {
+          first: new Date(series.data[0].timestamp).toISOString(),
+          last: new Date(series.data[series.data.length - 1].timestamp).toISOString()
+        } : null,
+        newPointTimestamp: new Date(dataPoint.timestamp).toISOString()
+      })
+
       // Check if this data point already exists (prevent duplicates)
       const existingIndex = series.data.findIndex(point =>
         Math.abs(point.timestamp - dataPoint.timestamp) < 1000 // Within 1 second
@@ -5543,10 +5602,13 @@
         series.data.sort((a, b) => a.timestamp - b.timestamp)
       }
 
-      // Limit data points for performance (keep recent 200 points for better historical context)
-      if (series.data.length > 200) {
-        series.data = series.data.slice(-200)
-      }
+      LogUtil.Debug(`📊 After adding batch point to ${series.name}:`, {
+        finalDataCount: series.data.length,
+        finalTimeRange: series.data.length > 0 ? {
+          first: new Date(series.data[0].timestamp).toISOString(),
+          last: new Date(series.data[series.data.length - 1].timestamp).toISOString()
+        } : null
+      })
 
       // Update series metadata from matched item only if not already set
       if (matchedItem.description && !series.description) {
@@ -5841,17 +5903,36 @@
     dataSource.value = 'realtime'
 
     const monitorConfigData = monitorConfig.value
+
+    // 🔍 DIAGNOSTIC: Log detailed state when initializeData is called
+    LogUtil.Info('🔍 DIAGNOSTIC: initializeData state check', {
+      hasMonitorConfig: !!monitorConfigData,
+      monitorConfigType: typeof monitorConfigData,
+      hasInputItems: !!(monitorConfigData?.inputItems),
+      inputItemsLength: monitorConfigData?.inputItems?.length || 0,
+      inputItemsIsArray: Array.isArray(monitorConfigData?.inputItems),
+      willCallLoadHistory: !!(monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0),
+      monitorConfigKeys: monitorConfigData ? Object.keys(monitorConfigData) : []
+    })
+
     if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
       try {
-        startLoading()
+        // Only show loading if we don't already have data
+        const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
+        if (!hasExistingData) {
+          startLoading()
+        }
 
         // Step 1: Initialize real-time data series structure FIRST (needed for loading historical data)
         LogUtil.Info('�?Initializing data series structure')
         await initializeRealDataSeries()
 
         // Step 2: Load historical data from database to populate the series
-        LogUtil.Info('�?Loading historical data from database for current timebase')
+        LogUtil.Info('✅ Loading historical data from database for current timebase')
         await loadHistoricalDataFromDatabase()
+
+        // Mark history as loaded to prevent duplicate loading in addRealtimeDataPoint
+        hasLoadedInitialHistory.value = true
 
         // Step 3: Update charts with combined data
         updateCharts()
@@ -5861,7 +5942,9 @@
           updateCharts()
         })
 
-        stopLoading()
+        if (!hasExistingData) {
+          stopLoading()
+        }
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in hybrid data initialization:', error)
@@ -6014,6 +6097,21 @@
 
     try {
       LogUtil.Info('📡 addRealtimeDataPoint: About to send batch request')
+
+      // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
+      // This ensures history API is called when real-time monitoring starts
+      if (!hasLoadedInitialHistory.value && monitorConfigData) {
+        LogUtil.Info('📚 addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
+        hasLoadedInitialHistory.value = true // Set flag immediately to prevent duplicate calls
+
+        try {
+          await loadHistoricalDataFromDatabase()
+          LogUtil.Info('✅ addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
+        } catch (error) {
+          LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
+        }
+      }
+
       // Send batch GET_ENTRIES request for ALL items at once
       await sendPeriodicBatchRequest(monitorConfigData)
 
@@ -6054,20 +6152,22 @@
 
   const createAnalogChart = () => {
     if (!analogChartCanvas.value) {
-      console.error('= TLChart createAnalogChart - Canvas ref not available')
+      // Canvas not ready yet - retry after a delay
+      LogUtil.Debug('⏸️ createAnalogChart - Canvas not ready, will retry in 100ms')
+      setTimeout(() => createAnalogChart(), 100)
       return
     }
 
     // Check if canvas has proper dimensions
     if (analogChartCanvas.value.offsetWidth === 0 || analogChartCanvas.value.offsetHeight === 0) {
-      console.warn('= TLChart createAnalogChart - Canvas has zero dimensions, delaying creation')
+      LogUtil.Debug('⏸️ createAnalogChart - Canvas has zero dimensions, will retry in 100ms')
       setTimeout(() => createAnalogChart(), 100)
       return
     }
 
     const ctx = analogChartCanvas.value.getContext('2d')
     if (!ctx) {
-      console.error('= TLChart createAnalogChart - Failed to get 2D context')
+      LogUtil.Error('❌ createAnalogChart - Failed to get 2D context')
       return
     }
 
@@ -6080,9 +6180,28 @@
       const config = getAnalogChartConfig()
       analogChartInstance = new Chart(ctx, config)
 
-      LogUtil.Debug('= TLChart DataFlow: Analog chart created successfully')
+      LogUtil.Info('✅ createAnalogChart - Chart created successfully, now loading data', {
+        canvasWidth: analogChartCanvas.value.offsetWidth,
+        canvasHeight: analogChartCanvas.value.offsetHeight
+      })
+
+      // 🆕 CRITICAL: After chart is created, if data series already exists, load history and update
+      if (dataSeries.value.length > 0 && !hasLoadedInitialHistory.value) {
+        LogUtil.Info('📚 Chart ready - loading historical data now')
+        loadHistoricalDataFromDatabase().then(() => {
+          hasLoadedInitialHistory.value = true
+          updateCharts()
+          LogUtil.Info('✅ Historical data loaded and displayed')
+        }).catch(error => {
+          LogUtil.Error('❌ Failed to load historical data', error)
+        })
+      } else if (dataSeries.value.some(s => s.data && s.data.length > 0)) {
+        // Data already loaded, just update charts
+        LogUtil.Info('📊 Chart ready - data already exists, updating display')
+        updateCharts()
+      }
     } catch (error) {
-      console.error('= TLChart createAnalogChart - Error:', error)
+      LogUtil.Error('❌ createAnalogChart - Error creating chart:', error)
     }
   }
 
@@ -6131,6 +6250,23 @@
       chart.destroy()
     })
     digitalChartInstances = {}
+  }
+
+  /**
+   * Wait for canvas and chart to be ready, then update with data
+   * Simplified: charts should already be created before this is called
+   */
+  const waitForCanvasAndUpdate = () => {
+    // Simple check - charts should already exist
+    if (analogChartCanvas.value && analogChartInstance) {
+      LogUtil.Info('✅ Canvas and chart ready, updating with data')
+      updateCharts()
+    } else {
+      LogUtil.Warn('⚠️ Chart not ready when trying to update', {
+        hasCanvas: !!analogChartCanvas.value,
+        hasChartInstance: !!analogChartInstance
+      })
+    }
   }
 
   const updateCharts = () => {
@@ -6248,6 +6384,12 @@
       })
     }
 
+    // 🆕 FIX: Check if chart still exists before updating (could be destroyed during async processing)
+    if (!analogChartInstance) {
+      LogUtil.Warn('⚠️ updateAnalogChart: Chart instance was destroyed during processing, skipping update')
+      return
+    }
+
     // Batch update to minimize reflows
     analogChartInstance.data.datasets = datasets
 
@@ -6319,6 +6461,12 @@
       }
     }
 
+    // 🆕 FIX: Final safety check before update operations
+    if (!analogChartInstance) {
+      LogUtil.Warn('⚠️ updateAnalogChart: Chart instance lost before final update, skipping')
+      return
+    }
+
     // Log before update
     LogUtil.Info('📊 updateAnalogChart: About to update chart', {
       datasetsCount: analogChartInstance.data.datasets.length,
@@ -6344,12 +6492,30 @@
   }
 
   const updateDigitalCharts = async () => {
+    // 🆕 FIX: Early return if no digital charts exist
+    if (Object.keys(digitalChartInstances).length === 0) {
+      LogUtil.Debug('📊 updateDigitalCharts: No digital chart instances available')
+      return
+    }
+
     // 🆕 Process digital charts asynchronously to prevent UI blocking
     for (let index = 0; index < visibleDigitalSeries.value.length; index++) {
       const series = visibleDigitalSeries.value[index]
       const chart = digitalChartInstances[index]
 
+      // 🆕 FIX: Skip if chart doesn't exist or no data
       if (!chart || series.data.length === 0) continue
+
+      // 🆕 FIX: Validate chart still has canvas (not destroyed during async)
+      try {
+        if (!chart.canvas || !chart.ctx) {
+          LogUtil.Warn(`⚠️ updateDigitalCharts: Chart ${index} canvas/context is null, skipping`)
+          continue
+        }
+      } catch (e) {
+        LogUtil.Warn(`⚠️ updateDigitalCharts: Chart ${index} validation failed, skipping`, e)
+        continue
+      }
 
       // Yield to event loop every 2 digital charts
       if (index > 0 && index % 2 === 0) {
@@ -6435,7 +6601,14 @@
         xScale.max = timeWindow.max
       }
 
-      chart.update('none')
+      // 🆕 FIX: Final check before update - chart might be destroyed during async processing
+      if (chart && chart.canvas && chart.ctx) {
+        try {
+          chart.update('none')
+        } catch (error) {
+          LogUtil.Warn(`⚠️ updateDigitalCharts: Failed to update chart ${index}`, error)
+        }
+      }
     } // End of for loop
   }
 
@@ -6557,6 +6730,7 @@
 
       LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
+        timeOffset: timeOffset.value,
         note: 'Timebase watcher will handle data loading'
       })
     }
@@ -6579,6 +6753,7 @@
 
       LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
+        timeOffset: timeOffset.value,
         note: 'Timebase watcher will handle data loading'
       })
     }
@@ -9483,6 +9658,9 @@
   // Lifecycle
   onMounted(async () => {
     try {
+      // 🆕 FORCE: Always reset history flag on mount to ensure data loads
+      hasLoadedInitialHistory.value = false
+
       // 🆕 FIX: Clear existing data on page refresh to force reload from database
       const hasStaleData = dataSeries.value.length > 0 && dataSeries.value.some(s => s.data?.length > 0)
       if (hasStaleData) {
@@ -9549,6 +9727,9 @@
         // Regenerate dataseries now that we have monitor config for consistency
         regenerateDataSeries()
 
+        // Note: Historical data will be loaded later in initializeData() after dataseries is created
+        // Don't load history here as dataseries structure doesn't exist yet
+
         // 🆕 FFI Integration: Get complete TrendLog info from T3000 and save view selections
         LogUtil.Info('🔄 TrendLogChart: Starting FFI integration for complete TrendLog info')
         const ffiInfo = await initializeWithCompleteFFI()
@@ -9601,21 +9782,60 @@
 
     // Initialize multi-canvas charts
     nextTick(async () => {
+      LogUtil.Info('🔍 DIAGNOSTIC: nextTick callback STARTED', {
+        hasMonitorConfig: !!monitorConfig.value,
+        monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
+        dataSeriesLength: dataSeries.value.length,
+        timestamp: new Date().toISOString()
+      })
+
       // Add delay for DOM layout in standalone browsers
       if (!(window as any).chrome?.webview) {
         await new Promise(resolve => setTimeout(resolve, 150))
       }
 
-      // Ensure canvases are ready
-      if (analogChartCanvas.value) {
-        const canvasReady = analogChartCanvas.value.offsetWidth > 0 && analogChartCanvas.value.offsetHeight > 0
-        if (!canvasReady) {
-          await new Promise(resolve => setTimeout(resolve, 300))
-        }
+      // 🆕 FIX: Wait for canvas to be available in DOM
+      let canvasWaitAttempts = 0
+      while (!analogChartCanvas.value && canvasWaitAttempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 50))
+        canvasWaitAttempts++
       }
 
-      await initializeData()
+      if (!analogChartCanvas.value) {
+        LogUtil.Error('❌ Canvas not available after waiting, cannot create charts')
+        return
+      }
+
+      LogUtil.Info('✅ Canvas ref available after', {
+        attempts: canvasWaitAttempts,
+        waitTime: `${canvasWaitAttempts * 50}ms`
+      })
+
+      // Ensure canvas has proper dimensions
+      if (analogChartCanvas.value.offsetWidth === 0 || analogChartCanvas.value.offsetHeight === 0) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+
+      // 🆕 FIX: Create charts FIRST before loading any data
+      LogUtil.Info('🔍 STEP 1: Creating chart instances')
       createCharts()
+
+      // 🆕 FIX: Wait a moment for charts to be fully initialized
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      LogUtil.Info('🔍 STEP 2: Chart instances created, verifying', {
+        hasAnalogChart: !!analogChartInstance,
+        hasDigitalCharts: Object.keys(digitalChartInstances).length > 0
+      })
+
+      // 🆕 FIX: Then load and display data
+      LogUtil.Info('🔍 STEP 3: Loading historical and real-time data')
+      await initializeData()
+      LogUtil.Info('🔍 STEP 4: Data initialization completed', {
+        dataSeriesCount: dataSeries.value.length,
+        seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
+      })
+
       if (isRealTime.value) {
         startRealTimeUpdates()
       }
