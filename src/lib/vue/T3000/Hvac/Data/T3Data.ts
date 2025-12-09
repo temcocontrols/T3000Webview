@@ -626,6 +626,7 @@ export const T3000_Data = ref({
   loadingPanel: null,
 });
 
+/*
 // Log the initial T3000_Data store creation
 console.log('= T3Data: STORE INITIALIZATION - T3000_Data reactive store created:', {
   initialState: {
@@ -638,6 +639,7 @@ console.log('= T3Data: STORE INITIALIZATION - T3000_Data reactive store created:
   timestamp: new Date().toISOString(),
   note: 'This is the global reactive store shared across all components'
 });
+*/
 
 // Add a watcher to track all changes to T3000_Data
 import { watch } from 'vue';
@@ -673,9 +675,9 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:25.1205.01");
+export const devVersion = ref("V:25.1209.01");
 
-export const localSettings = ref({ version: "V:25.1205.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.1209.01", transform: 0 });
 
 export const T3Data = {
   deviceList: ref([]),

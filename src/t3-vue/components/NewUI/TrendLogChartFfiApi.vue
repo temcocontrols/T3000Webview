@@ -452,6 +452,8 @@ const T3000_Data = {
 
 // FFI API SPECIFIC: Replace WebSocket imports with FFI API imports
 import { useT3000FfiApi } from '@/lib/vue/T3000/Hvac/Opt/FFI/T3000FfiApi'
+import { useTrendlogDataAPI } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+import { useRoute } from 'vue-router'
 // Remove WebViewClient and Hvac dependencies for FFI API version
 // import WebViewClient from '@/lib/vue/T3000/Hvac/Opt/Webview2/WebViewClient'
 // import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
@@ -631,6 +633,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 // FFI API SPECIFIC: Initialize FFI API composable for WebSocket replacement
 const ffiApi = useT3000FfiApi()
+const trendlogAPI = useTrendlogDataAPI()
+const route = useRoute()
 
 // Computed property to get the current item data - prioritizes props over global state
 const currentItemData = computed(() => {
@@ -2816,6 +2820,148 @@ const getTimeRangeMinutes = (range: string): number => {
   return ranges[range] || 60
 }
 
+/**
+ * Load historical data from database based on current timebase
+ * Matches the implementation from TrendLogChart.vue
+ */
+const loadHistoricalDataFromDatabase = async () => {
+  LogUtil.Info('🔍 loadHistoricalDataFromDatabase CALLED', {
+    hasMonitorConfig: !!monitorConfig.value,
+    monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
+    dataSeriesLength: dataSeries.value.length,
+    timestamp: new Date().toISOString()
+  })
+
+  try {
+    // Extract device parameters from URL query
+    const currentSN = route.query.sn ? Number(route.query.sn) : null
+    const currentPanelId = route.query.panel_id ? Number(route.query.panel_id) : null
+    const trendlog_id = route.query.trendlog_id ? Number(route.query.trendlog_id) : null
+
+    LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Device parameters from URL', {
+      currentSN,
+      currentPanelId,
+      trendlog_id,
+      source: 'route.query'
+    })
+
+    if (!currentSN || !currentPanelId) {
+      LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: Missing device parameters from URL')
+      return
+    }
+
+    // Use dataseries for point information
+    if (dataSeries.value.length === 0) {
+      LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: No dataseries available')
+      return
+    }
+
+    // Calculate time range based on current timebase
+    const timeRangeMinutes = getTimeRangeMinutes(timeBase.value)
+    const currentTime = new Date()
+    const offsetEndTime = new Date(currentTime.getTime() + timeOffset.value * 60 * 1000)
+    const offsetStartTime = new Date(offsetEndTime.getTime() - timeRangeMinutes * 60 * 1000)
+
+    // Format timestamps for API (UTC format)
+    const formatUTCTime = (date: Date): string => {
+      const year = date.getUTCFullYear()
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(date.getUTCDate()).padStart(2, '0')
+      const hours = String(date.getUTCHours()).padStart(2, '0')
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0')
+      const seconds = String(date.getUTCSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    }
+
+    const formattedStartTime = formatUTCTime(offsetStartTime)
+    const formattedEndTime = formatUTCTime(offsetEndTime)
+
+    // Build specific points list from dataseries
+    const specificPoints: Array<{ point_id: string, point_type: string, point_index: number, panel_id: number }> = []
+
+    dataSeries.value.forEach((series) => {
+      if (series.pointType !== undefined && series.pointNumber !== undefined) {
+        const pointTypeMap: Record<number, string> = {
+          1: 'OUTPUT',
+          2: 'INPUT',
+          3: 'VARIABLE'
+        }
+        const pointTypeString = pointTypeMap[series.pointType] || 'INPUT'
+        const pointId = series.id || `${pointTypeString}${series.pointNumber + 1}`
+
+        specificPoints.push({
+          point_id: pointId,
+          point_type: pointTypeString,
+          point_index: series.pointNumber + 1, // Convert 0-based to 1-based
+          panel_id: currentPanelId
+        })
+      }
+    })
+
+    if (specificPoints.length === 0) {
+      LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: No valid points extracted from dataseries')
+      return
+    }
+
+    // Prepare historical data request
+    const historyRequest = {
+      serial_number: currentSN,
+      panel_id: currentPanelId,
+      trendlog_id: trendlog_id?.toString() || '1',
+      start_time: formattedStartTime,
+      end_time: formattedEndTime,
+      limit: 500,
+      point_types: ['INPUT', 'OUTPUT', 'VARIABLE'],
+      specific_points: specificPoints
+    }
+
+    LogUtil.Debug('🔍 Historical data request:', {
+      timeRange: `${formattedStartTime} to ${formattedEndTime}`,
+      pointsCount: specificPoints.length,
+      trendlogId: historyRequest.trendlog_id
+    })
+
+    // Fetch historical data
+    const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
+
+    if (historyResponse?.data?.length > 0) {
+      LogUtil.Info('📚 Historical data loaded:', {
+        dataPointsCount: historyResponse.data.length,
+        timeRange: `${timeRangeMinutes} minutes`
+      })
+
+      // Merge historical data into existing series
+      historyResponse.data.forEach((item: any) => {
+        const pointId = item.point_id
+        const series = dataSeries.value.find(s => s.id === pointId)
+
+        if (series) {
+          const timestamp = new Date(item.timestamp).getTime()
+          const value = parseFloat(item.value) || 0
+
+          // Add data point if not already exists
+          const exists = series.data.some(d => Math.abs(d.timestamp - timestamp) < 1000)
+          if (!exists) {
+            series.data.push({ timestamp, value })
+          }
+        }
+      })
+
+      // Sort all series data by timestamp
+      dataSeries.value.forEach(series => {
+        series.data.sort((a, b) => a.timestamp - b.timestamp)
+      })
+
+      LogUtil.Info('✅ Historical data merged into series')
+    } else {
+      LogUtil.Debug('📭 No historical data found for current timebase')
+    }
+
+  } catch (error) {
+    LogUtil.Error('Failed to load historical data from database:', error)
+  }
+}
+
 const initializeData = async () => {
   LogUtil.Info('🚀 TrendLogModal: Starting data initialization...', {
     currentDataSeriesLength: dataSeries.value.length,
@@ -3315,6 +3461,11 @@ const onTimeBaseChange = async () => {
   if (timeBase.value !== 'custom') {
     // Reset time offset when timebase changes
     timeOffset.value = 0
+
+    // Load historical data from database
+    await loadHistoricalDataFromDatabase()
+
+    // Then initialize real-time data structure
     await initializeData()
   }
 }
@@ -3943,8 +4094,15 @@ onMounted(async () => {
 
   // Initialize chart since component is always visible
   nextTick(async () => {
+    // Load historical data first
+    await loadHistoricalDataFromDatabase()
+
+    // Then initialize real-time data
     await initializeData()
+
+    // Create chart
     createChart()
+
     if (isRealTime.value) {
       startRealTimeUpdates()
     }

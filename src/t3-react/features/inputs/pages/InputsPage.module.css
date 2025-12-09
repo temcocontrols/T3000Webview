@@ -203,8 +203,18 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
+}
+
+/* Scrollable Container for DataGrid */
+.scrollContainer {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Loading and No Data States */
@@ -229,6 +239,20 @@
   margin-bottom: 12px;
   font-size: 13px;
   color: #323130;
+}
+
+/* Auto-Load Next Device Indicator */
+.autoLoadIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background-color: #f3f2f1;
+  border-top: 1px solid #edebe9;
+  font-size: 13px;
+  color: #605e5c;
+  margin-top: auto;
 }
 
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to InputsPage only */

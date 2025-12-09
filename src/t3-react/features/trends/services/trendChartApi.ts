@@ -44,7 +44,7 @@ export class TrendChartApiService {
    */
   static async getTrendHistory(request: TrendDataRequest): Promise<TrendDataResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/trendlog/history`, {
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/devices/${request.serial_number}/trendlogs/${request.trendlog_id}/history`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,6 +65,9 @@ export class TrendChartApiService {
 
   /**
    * Fetch real-time data for specific points
+   * Note: This endpoint doesn't exist in the backend API.
+   * Real-time data should come from WebSocket (port 9104) instead.
+   * Keeping this for now but it may need to be removed.
    */
   static async getRealtimeData(
     serialNumber: number,
@@ -72,7 +75,7 @@ export class TrendChartApiService {
     points: SpecificPoint[]
   ): Promise<TrendDataPoint[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/trendlog/realtime`, {
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/trendlog-data/realtime`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,16 +99,16 @@ export class TrendChartApiService {
   }
 
   /**
-   * Store realtime data to database
+   * Store realtime data to database (batch endpoint)
    */
   static async storeRealtimeData(data: TrendDataPoint[]): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/trendlog/store`, {
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/trendlog-data/realtime/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {

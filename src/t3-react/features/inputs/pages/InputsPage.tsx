@@ -18,7 +18,7 @@
  * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -78,7 +78,7 @@ interface InputPoint {
 }
 
 export const InputsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,26 +87,30 @@ export const InputsPage: React.FC = () => {
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
 
+  // Auto-scroll feature state
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
-      const findFirstDevice = (nodes: any[]): any => {
-        for (const node of nodes) {
-          if (node.data) return node;
-          if (node.children && node.children.length > 0) {
-            const found = findFirstDevice(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
+      // Get the first device from filtered devices list (respects current filters)
+      const filteredDevices = getFilteredDevices();
+      console.log('[InputsPage] Auto-select check:', {
+        hasSelectedDevice: !!selectedDevice,
+        treeDataLength: treeData.length,
+        filteredDevicesCount: filteredDevices.length,
+        filteredDevicesList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
+      });
 
-      const firstDeviceNode = findFirstDevice(treeData);
-      if (firstDeviceNode?.data) {
-        selectDevice(firstDeviceNode.data);
+      if (filteredDevices.length > 0) {
+        const firstDevice = filteredDevices[0];
+        console.log(`[InputsPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
+        selectDevice(firstDevice);
       }
     }
-  }, [selectedDevice, treeData, selectDevice]);
+  }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
 
   // Fetch inputs for selected device
   const fetchInputs = useCallback(async () => {
@@ -256,6 +260,72 @@ export const InputsPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
+  // Auto-scroll to next device when reaching bottom
+  const loadNextDevice = useCallback(async () => {
+    const nextDevice = getNextDevice();
+
+    if (!nextDevice) {
+      console.log('[InputsPage] No next device available');
+      return;
+    }
+
+    console.log(`[InputsPage] Auto-loading next device: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber})`);
+    setIsLoadingNextDevice(true);
+
+    // Switch device (this will trigger fetchInputs via useEffect)
+    selectDevice(nextDevice);
+
+    // Reset loading state after a short delay
+    setTimeout(() => {
+      setIsLoadingNextDevice(false);
+    }, 500);
+  }, [getNextDevice, selectDevice]);
+
+  // Handle scroll event to detect when user reaches bottom
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading) {
+      return;
+    }
+
+    const target = e.currentTarget;
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const isAtBottom = scrollBottom <= 1; // At absolute bottom (1px tolerance)
+
+    if (isAtBottom && inputs.length > 0) {
+      // Mark that we're at bottom
+      isAtBottomRef.current = true;
+      console.log('[InputsPage] Reached bottom, scroll again to load next device');
+    } else {
+      // Not at bottom anymore, reset the flag
+      isAtBottomRef.current = false;
+    }
+  }, [isLoadingNextDevice, loading, inputs.length]);
+
+  // Handle wheel event to detect scroll attempts when already at bottom
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading || inputs.length === 0) {
+      return;
+    }
+
+    // If user is scrolling down (deltaY > 0) and already at bottom, load next device
+    if (e.deltaY > 0 && isAtBottomRef.current) {
+      console.log('[InputsPage] User scrolled down while at bottom, loading next device');
+      isAtBottomRef.current = false; // Reset
+      loadNextDevice();
+    }
+  }, [isLoadingNextDevice, loading, inputs.length, loadNextDevice]);
+
+  // Auto-scroll to top when device changes
+  useEffect(() => {
+    if (selectedDevice && scrollContainerRef.current) {
+      // Use smooth scroll for auto-loaded devices, instant for manual selection
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+      });
+    }
+  }, [selectedDevice, isLoadingNextDevice]);
+
   // Inline editing handlers
   const handleCellDoubleClick = (item: InputPoint, field: string, currentValue: string) => {
     setEditingCell({ serialNumber: item.serialNumber, inputIndex: item.inputIndex || '', field });
@@ -297,26 +367,32 @@ export const InputsPage: React.FC = () => {
   };
   */
 
-  // Test function: Update full label using UPDATE_WEBVIEW_LIST (Action 16 - full record)
+  // Generic function: Update input field using UPDATE_WEBVIEW_LIST (Action 16 - full record)
   // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
-  const updateFullLabelUsingAction16 = async (serialNumber: number, inputIndex: string, newLabel: string, currentInput: InputPoint) => {
+  const updateInputFieldUsingAction16 = async (
+    serialNumber: number,
+    inputIndex: string,
+    field: string,
+    newValue: string,
+    currentInput: InputPoint
+  ) => {
     try {
-      console.log(`[Action 16] Updating full label for Input ${inputIndex} (SN: ${serialNumber})`);
+      console.log(`[Action 16] Updating ${field} for Input ${inputIndex} (SN: ${serialNumber})`);
 
-      // Action 16 requires ALL fields, so we send current values + the new label
+      // Action 16 requires ALL fields, so we send current values + the new field value
       const payload = {
-        fullLabel: newLabel, // New value (maps to "description" in C++)
-        label: currentInput.label || '',
-        value: parseFloat(currentInput.fValue || '0'),
-        range: parseInt(currentInput.rangeField || currentInput.range || '0', 10), // Use rangeField first
-        autoManual: parseInt(currentInput.autoManual || '0', 10),
-        control: parseInt(currentInput.control || '0', 10),
+        fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
+        label: field === 'label' ? newValue : (currentInput.label || ''),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0'),
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
+        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
+        control: 0, // control field not part of InputPoint interface
         filter: parseInt(currentInput.filterField || '0', 10),
         digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
         calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10), // High byte
-        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10), // Low byte
-        decom: 0, // Not in UI, use default
+        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
+        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        decom: 0,
       };
 
       console.log('[Action 16] Full payload:', payload);
@@ -358,11 +434,11 @@ export const InputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Test both methods for fullLabel field
-      if (editingCell.field === 'fullLabel' && selectedDevice) {
-        console.log('=== Updating Full Label ===');
-        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Label: "${editValue}"`);
-        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST) - the only method that supports fullLabel');
+      // Use Action 16 for all editable fields (fullLabel, label, fValue, range, autoManual)
+      if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
+        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Value: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
 
         // Find the current input data to pass all fields for Action 16
         const currentInput = inputs.find(
@@ -373,15 +449,16 @@ export const InputsPage: React.FC = () => {
           throw new Error('Current input data not found');
         }
 
-        // Use Action 16 (UPDATE_WEBVIEW_LIST) - This is the ONLY way to update fullLabel
-        await updateFullLabelUsingAction16(
+        // Use Action 16 (UPDATE_WEBVIEW_LIST) for all fields
+        await updateInputFieldUsingAction16(
           selectedDevice.serialNumber,
           editingCell.inputIndex,
+          editingCell.field,
           editValue,
           currentInput
         );
 
-        console.log('✅ Full label updated successfully!');
+        console.log(`✅ ${editingCell.field} updated successfully!`);
       }
 
       // Update local state optimistically
@@ -436,22 +513,46 @@ export const InputsPage: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = (newRange: number) => {
-    if (!selectedInputForRange) return;
+  const handleRangeSave = async (newRange: number) => {
+    if (!selectedInputForRange || !selectedDevice) return;
 
-    // Update local state optimistically
-    setInputs(prevInputs =>
-      prevInputs.map(input =>
-        input.serialNumber === selectedInputForRange.serialNumber &&
-        input.inputIndex === selectedInputForRange.inputIndex
-          ? { ...input, range: newRange.toString() }
-          : input
-      )
-    );
+    try {
+      console.log(`=== Updating range ===`);
+      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}`);
 
-    console.log('Range updated:', selectedInputForRange.serialNumber, selectedInputForRange.inputIndex, newRange);
-    // TODO: Call API to update range value
-    // Example: await updateInputRange(selectedInputForRange.serialNumber, selectedInputForRange.inputIndex, newRange);
+      // Find the current input data to pass all fields for Action 16
+      const currentInput = inputs.find(
+        input => input.serialNumber === selectedInputForRange.serialNumber && input.inputIndex === selectedInputForRange.inputIndex
+      );
+
+      if (!currentInput) {
+        throw new Error('Current input data not found');
+      }
+
+      // Use Action 16 (UPDATE_WEBVIEW_LIST) for range field
+      await updateInputFieldUsingAction16(
+        selectedDevice.serialNumber,
+        selectedInputForRange.inputIndex,
+        'range',
+        newRange.toString(),
+        currentInput
+      );
+
+      // Update local state optimistically
+      setInputs(prevInputs =>
+        prevInputs.map(input =>
+          input.serialNumber === selectedInputForRange.serialNumber &&
+          input.inputIndex === selectedInputForRange.inputIndex
+            ? { ...input, range: newRange.toString(), rangeField: newRange.toString() }
+            : input
+        )
+      );
+
+      console.log('✅ Range updated successfully!');
+    } catch (error) {
+      console.error('Failed to update range:', error);
+      alert(`Failed to update range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -676,40 +777,14 @@ export const InputsPage: React.FC = () => {
               throw new Error('Current input data not found');
             }
 
-            // Use Action 16 (UPDATE_WEBVIEW_LIST) - requires ALL fields
-            const payload = {
-              fullLabel: currentInput.fullLabel || '',
-              label: currentInput.label || '',
-              value: parseFloat(currentInput.fValue || '0'),
-              range: parseInt(currentInput.range || '0'),
-              autoManual: parseInt(newValue),
-              control: 0,
-              filter: parseInt(currentInput.filterField || '0'),
-              digitalAnalog: currentInput.digitalAnalog === '0' ? 0 : 1,
-              calibrationSign: parseInt(currentInput.sign || '0'),
-              calibrationH: 0,
-              calibrationL: 0,
-              decom: 0,
-            };
-
-            console.log('[Action 16] Updating Auto/Man:', payload);
-
-            const response = await fetch(
-              `${API_BASE_URL}/api/t3_device/inputs/${item.serialNumber}/${item.inputIndex}`,
-              {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              }
+            // Use Action 16 (UPDATE_WEBVIEW_LIST) for autoManual field
+            await updateInputFieldUsingAction16(
+              item.serialNumber,
+              item.inputIndex,
+              'autoManual',
+              newValue,
+              currentInput
             );
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const result = await response.json();
-            console.log('[Action 16] Auto/Man updated successfully:', result);
 
             // Update local state optimistically
             setInputs(prevInputs =>
@@ -719,6 +794,8 @@ export const InputsPage: React.FC = () => {
                   : input
               )
             );
+
+            console.log('✅ Auto/Man updated successfully!');
           } catch (error) {
             console.error('Failed to update Auto/Man:', error);
             alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1092,9 +1169,14 @@ export const InputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid - Always show with header (even when there's an error) */}
+                {/* Scrollable Container for DataGrid */}
                 {selectedDevice && !loading && (
-                  <>
+                  <div
+                    ref={scrollContainerRef}
+                    className={styles.scrollContainer}
+                    onScroll={handleScroll}
+                    onWheel={handleWheel}
+                  >
                     <DataGrid
                       items={inputs}
                       columns={columns}
@@ -1177,6 +1259,14 @@ export const InputsPage: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
+                  {/* Loading Next Device Indicator */}
+                  {isLoadingNextDevice && (
+                    <div className={styles.autoLoadIndicator}>
+                      <Spinner size="tiny" />
+                      <Text size={200} weight="regular">Loading next device...</Text>
+                    </div>
+                  )}
+
                   {/* No Data Message - Show below grid when empty */}
                   {inputs.length === 0 && (
                     <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
@@ -1197,7 +1287,7 @@ export const InputsPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
-                  </>
+                  </div>
                 )}
 
               </div>

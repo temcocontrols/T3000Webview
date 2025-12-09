@@ -19,6 +19,7 @@ import {
   Spinner,
   Text,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -30,6 +31,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortRegular,
   ChartMultipleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
@@ -70,30 +72,132 @@ export const TrendLogsPage: React.FC = () => {
     panelId?: number;
     trendlogId?: string;
     monitorId?: string;
+    itemData?: any; // Complete monitor configuration data (Vue pattern)
   }>({});
 
-  // Handle opening trend chart drawer
+  // Handle opening trend chart drawer - construct itemData from trendlog info
   const handleViewChart = useCallback(
-    (trendlog: TrendLogData) => {
+    async (trendlog: TrendLogData) => {
       if (!selectedDevice) return;
 
-      console.log('📊 [TrendLogsPage] Opening chart drawer:', {
-        trendlog: trendlog.trendlogId,
-        monitor: trendlog.trendlogIndex,
+      console.log('📊 [TrendLogsPage] Opening chart drawer - Fetching trendlog config:', {
+        serialNumber: selectedDevice.serialNumber,
+        panelId: selectedDevice.panelId,
+        trendlogId: trendlog.trendlogId,
+        monitorIndex: trendlog.trendlogIndex,
       });
 
-      setChartParams({
-        serialNumber: selectedDevice.serialNumber,
-        panelId: selectedDevice.panelId || 1,
-        trendlogId: trendlog.trendlogId || '0',
-        monitorId: trendlog.trendlogIndex || '0',
-      });
-      setChartDrawerOpen(true);
+      const monitorIndex = trendlog.trendlogIndex || '0';
+
+      try {
+        // Step 1: Fetch trendlog info
+        const trendlogUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${trendlog.trendlogId}`;
+        console.log('📡 [TrendLogsPage] Fetching trendlog from:', trendlogUrl);
+
+        const trendlogResponse = await fetch(trendlogUrl);
+        if (!trendlogResponse.ok) {
+          throw new Error(`Failed to fetch trendlog: ${trendlogResponse.statusText}`);
+        }
+
+        const trendlogData = await trendlogResponse.json();
+        console.log('✅ [TrendLogsPage] Trendlog received:', trendlogData);
+
+        // Step 2: Fetch TRENDLOG_INPUTS using the generic table endpoint
+        const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+        console.log('📡 [TrendLogsPage] Fetching TRENDLOG_INPUTS from:', inputsUrl);
+
+        const inputsResponse = await fetch(inputsUrl);
+
+        let inputItems: any[] = [];
+        let rangeItems: any[] = [];
+
+        if (inputsResponse.ok) {
+          const inputsData = await inputsResponse.json();
+          console.log('✅ [TrendLogsPage] Raw inputs data received:', inputsData);
+
+          // Filter inputs for this specific trendlog and transform to expected format
+          if (inputsData.data && Array.isArray(inputsData.data)) {
+            const trendlogInputs = inputsData.data.filter(
+              (input: any) => input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId
+            );
+
+            console.log('✅ [TrendLogsPage] Filtered inputs for this trendlog:', trendlogInputs);
+
+            if (trendlogInputs.length > 0) {
+              inputItems = trendlogInputs.map((input: any) => ({
+                panel: input.pointPanel || input.point_panel ? parseInt(input.pointPanel || input.point_panel) : selectedDevice.panelId,
+                point_number: parseInt(input.pointIndex || input.point_index || '1') - 1, // Convert 1-based to 0-based
+                point_type: (input.pointType || input.point_type) === 'INPUT' ? 0 : (input.pointType || input.point_type) === 'OUTPUT' ? 1 : 2,
+                network: 0,
+                sub_panel: 0,
+              }));
+
+              // TODO: Fetch range data from another table or FFI
+              // For now, create default range items
+              rangeItems = inputItems.map(() => ({
+                digital_analog: 0, // Assume analog
+                units: '',
+              }));
+            }
+          }
+        } else {
+          console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', inputsResponse.status, inputsResponse.statusText);
+        }
+
+        // Step 3: Construct itemData
+        const itemData = {
+          title: trendlogData?.trendlog?.trendlogLabel || trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
+          t3Entry: {
+            id: `MON${monitorIndex}`,
+            pid: selectedDevice.panelId || 1,
+            label: trendlogData?.trendlog?.trendlogLabel || trendlog.trendlogLabel || `MON${monitorIndex}`,
+            command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
+            input: inputItems.length > 0 ? inputItems : undefined,
+            range: rangeItems.length > 0 ? rangeItems : undefined,
+          },
+        };
+
+        console.log('✅ [TrendLogsPage] Opening drawer with itemData:', {
+          title: itemData.title,
+          hasInputConfig: inputItems.length > 0,
+          inputCount: inputItems.length,
+          rangeCount: rangeItems.length,
+        });
+
+        // Step 4: Open drawer
+        setChartParams({
+          serialNumber: selectedDevice.serialNumber,
+          panelId: selectedDevice.panelId || 1,
+          trendlogId: trendlog.trendlogId || '0',
+          monitorId: monitorIndex,
+          itemData,
+        });
+        setChartDrawerOpen(true);
+      } catch (error) {
+        console.error('❌ [TrendLogsPage] Failed to fetch trendlog config:', error);
+        // Fallback: Open drawer with basic structure (will show sample data)
+        const itemData = {
+          title: trendlog.trendlogLabel || `Monitor ${monitorIndex}`,
+          t3Entry: {
+            id: `MON${monitorIndex}`,
+            pid: selectedDevice.panelId || 1,
+            label: trendlog.trendlogLabel || `MON${monitorIndex}`,
+            command: `${selectedDevice.panelId || 1}MON${monitorIndex}`,
+          },
+        };
+
+        setChartParams({
+          serialNumber: selectedDevice.serialNumber,
+          panelId: selectedDevice.panelId || 1,
+          trendlogId: trendlog.trendlogId || '0',
+          monitorId: monitorIndex,
+          itemData,
+        });
+        setChartDrawerOpen(true);
+      }
     },
     [selectedDevice]
-  );
-
-  // Debug log to verify new component is loading
+  );  // Debug log to verify new component is loading
   useEffect(() => {
     console.log('🔍 [TrendLogsPage] NEW DataGrid version loaded!', {
       selectedDevice: selectedDevice?.serialNumber,
@@ -142,7 +246,26 @@ export const TrendLogsPage: React.FC = () => {
 
       const data = await response.json();
       const fetchedTrendLogs = data.trendlogs || [];
-      setTrendLogs(fetchedTrendLogs);
+
+      // Debug: Check for duplicate trendlogIds
+      const idCounts = fetchedTrendLogs.reduce((acc: any, log: any) => {
+        const id = log.trendlogId || log.trendlogIndex;
+        acc[id] = (acc[id] || 0) + 1;
+        return acc;
+      }, {});
+      const duplicates = Object.entries(idCounts).filter(([_, count]) => (count as number) > 1);
+      if (duplicates.length > 0) {
+        console.warn('⚠️ [TrendLogsPage] Duplicate trendlogIds found:', duplicates);
+        console.log('📊 [TrendLogsPage] Full trendlog data:', fetchedTrendLogs);
+      }
+
+      // Add unique index to each trendlog to ensure unique keys
+      const trendlogsWithIndex = fetchedTrendLogs.map((log: any, idx: number) => ({
+        ...log,
+        _uniqueIndex: idx
+      }));
+
+      setTrendLogs(trendlogsWithIndex);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
       setError(errorMessage);
@@ -255,23 +378,68 @@ export const TrendLogsPage: React.FC = () => {
   };
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
+    console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
     setSelectedMonitor(monitor);
-    // Fetch monitor inputs for the selected monitor
-    if (!selectedDevice) return;
+
+    if (!selectedDevice) {
+      console.log('⚠️ [TrendLogsPage] No device selected, skipping input fetch');
+      setMonitorInputs(Array(14).fill(''));
+      return;
+    }
 
     try {
-      const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/trendlogs/${monitor.trendlogId}/inputs`;
-      const response = await fetch(url);
+      console.log('📡 [TrendLogsPage] Fetching inputs for monitor:', monitor.trendlogId, 'device:', selectedDevice.serialNumber);
+
+      // Fetch TRENDLOG_INPUTS for this device
+      const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+      const response = await fetch(inputsUrl);
 
       if (response.ok) {
-        const data = await response.json();
-        setMonitorInputs(data.inputs || Array(14).fill(''));
+        const inputsData = await response.json();
+        console.log('✅ [TrendLogsPage] Inputs data received:', inputsData);
+
+        // Filter inputs for this specific trendlog
+        if (inputsData.data && Array.isArray(inputsData.data)) {
+          const trendlogInputs = inputsData.data.filter(
+            (input: any) =>
+              (input.trendlogId === monitor.trendlogId || input.Trendlog_ID === monitor.trendlogId) &&
+              (input.viewType === 'MAIN' || input.view_type === 'MAIN' || !input.viewType)
+          );
+
+          console.log('✅ [TrendLogsPage] Filtered inputs for monitor:', trendlogInputs);
+
+          // Create array of 14 inputs (standard monitor size)
+          const inputs = Array(14).fill('');
+
+          // Fill in the configured inputs
+          trendlogInputs.forEach((input: any) => {
+            const pointIndex = parseInt(input.pointIndex || input.point_index || '0');
+            const pointType = input.pointType || input.point_type || '';
+            const pointLabel = input.pointLabel || input.point_label || '';
+
+            // Calculate display index (0-13)
+            if (pointIndex > 0 && pointIndex <= 14) {
+              const displayIndex = pointIndex - 1;
+              // Format: "IN1: Label" or "OUT1: Label"
+              const prefix = pointType === 'INPUT' ? 'IN' :
+                           pointType === 'OUTPUT' ? 'OUT' :
+                           pointType === 'VARIABLE' ? 'VAR' : '';
+              inputs[displayIndex] = pointLabel || `${prefix}${pointIndex}`;
+            }
+          });
+
+          setMonitorInputs(inputs);
+          console.log('✅ [TrendLogsPage] Monitor inputs set:', inputs);
+        } else {
+          console.warn('⚠️ [TrendLogsPage] No data in response');
+          setMonitorInputs(Array(14).fill(''));
+        }
       } else {
-        // If API not implemented yet, use empty inputs
+        console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', response.status);
         setMonitorInputs(Array(14).fill(''));
       }
-    } catch (err) {
-      console.error('Error fetching monitor inputs:', err);
+    } catch (error) {
+      console.error('❌ [TrendLogsPage] Error fetching monitor inputs:', error);
       setMonitorInputs(Array(14).fill(''));
     }
   }, [selectedDevice]);
@@ -464,20 +632,6 @@ export const TrendLogsPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  Matches: ext-blade-description
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing trend log monitors for <b>{selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
@@ -537,6 +691,21 @@ export const TrendLogsPage: React.FC = () => {
                       aria-label="Search trendlogs"
                     />
                   </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing trend log monitors for ${selectedDevice.nameShowOnTree || selectedDevice.productName} (SN: ${selectedDevice.serialNumber}). This table displays all configured trendlog/monitor data collection points. Click the refresh icon next to each trendlog to sync from the device.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -551,7 +720,7 @@ export const TrendLogsPage: React.FC = () => {
                 {loading && trendLogs.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading trendlogs...</Text>
+                    <Text size={200} weight="regular">Loading trendlogs...</Text>
                   </div>
                 )}
 
@@ -607,7 +776,7 @@ export const TrendLogsPage: React.FC = () => {
                             defaultWidth: 180,
                           },
                         }}
-                        getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}`}
+                        getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}
                       >
                         <DataGridHeader>
                           <DataGridRow selectionCell={{ renderHeaderCell: () => <span>#</span> }}>
@@ -678,6 +847,7 @@ export const TrendLogsPage: React.FC = () => {
         panelId={chartParams.panelId}
         trendlogId={chartParams.trendlogId}
         monitorId={chartParams.monitorId}
+        itemData={chartParams.itemData}
       />
     </div>
   );

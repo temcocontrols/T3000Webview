@@ -116,8 +116,8 @@ impl TrendlogParentCache {
             return Ok(parent.id);
         }
 
-        // Create new parent
-        let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        // Create new parent - use Local time instead of UTC
+        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         let new_parent = trendlog_data::ActiveModel {
             serial_number: Set(key.serial_number),
             panel_id: Set(key.panel_id),

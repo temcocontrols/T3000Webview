@@ -16,6 +16,7 @@ import {
   Spinner,
   Text,
   tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -30,6 +31,7 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -440,19 +442,6 @@ const AlarmsPage: React.FC = () => {
               )}
 
               {/* ========================================
-                  BLADE DESCRIPTION
-                  ======================================== */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing alarm log for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}This table displays all alarm records including active and resolved alarms.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); console.log('Learn more clicked'); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
-              {/* ========================================
                   TOOLBAR - Azure Portal Command Bar
                   ======================================== */}
               {selectedDevice && (
@@ -505,6 +494,23 @@ const AlarmsPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Info Button with Tooltip */}
+                  {selectedDevice && (
+                    <Tooltip
+                      content={`Showing alarm log for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all alarm records including active and resolved alarms.`}
+                      relationship="description"
+                    >
+                      <button
+                        className={styles.toolbarButton}
+                        style={{ marginLeft: '8px' }}
+                        title="Information"
+                        aria-label="Information about this page"
+                      >
+                        <InfoRegular />
+                      </button>
+                    </Tooltip>
+                  )}
+
                   {hasChanges && (
                     <>
                       <div className={styles.toolbarSeparator} role="separator" />
@@ -549,7 +555,7 @@ const AlarmsPage: React.FC = () => {
                 {isLoading && alarms.length === 0 && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
-                    <Text>Loading alarms...</Text>
+                    <Text size={200} weight="regular">Loading alarms...</Text>
                   </div>
                 )}
 

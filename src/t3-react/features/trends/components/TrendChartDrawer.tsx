@@ -5,30 +5,15 @@
  * Wraps the main TrendChartContent component
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Drawer,
   DrawerBody,
-  DrawerHeader,
-  DrawerHeaderTitle,
   Button,
-  makeStyles,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
 import { TrendChartContent } from './TrendChartContent';
-
-const useStyles = makeStyles({
-  drawerBody: {
-    padding: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-  },
-  drawer: {
-    width: '95vw',
-    maxWidth: '95vw',
-  },
-});
+import styles from './TrendChartDrawer.module.css';
 
 interface TrendChartDrawerProps {
   isOpen: boolean;
@@ -37,6 +22,7 @@ interface TrendChartDrawerProps {
   panelId?: number;
   trendlogId?: string;
   monitorId?: string;
+  itemData?: any; // Complete monitor configuration data (Vue pattern)
 }
 
 export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
@@ -46,33 +32,38 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
   panelId,
   trendlogId,
   monitorId,
+  itemData,
 }) => {
-  const styles = useStyles();
+  const [toolbarContent, setToolbarContent] = useState<React.ReactNode>(null);
 
   return (
     <Drawer
       type="overlay"
       separator
       open={isOpen}
-      onOpenChange={(_, { open }) => !open && onClose()}
+      onOpenChange={(_, { open }) => {
+        // Only allow closing via the close button (don't close on backdrop click)
+      }}
       position="end"
       size="full"
       className={styles.drawer}
     >
-      <DrawerHeader>
-        <DrawerHeaderTitle
-          action={
+      <div className={styles.drawerHeader}>
+        {toolbarContent && (
+          <div className={styles.toolbarContainer}>
+            <div className={styles.toolbarContent}>
+              {toolbarContent}
+            </div>
             <Button
               appearance="subtle"
               aria-label="Close"
               icon={<Dismiss24Regular />}
               onClick={onClose}
+              className={styles.closeButton}
             />
-          }
-        >
-          Trend Chart Viewer
-        </DrawerHeaderTitle>
-      </DrawerHeader>
+          </div>
+        )}
+      </div>
 
       <DrawerBody className={styles.drawerBody}>
         <TrendChartContent
@@ -80,7 +71,9 @@ export const TrendChartDrawer: React.FC<TrendChartDrawerProps> = ({
           panelId={panelId}
           trendlogId={trendlogId}
           monitorId={monitorId}
+          itemData={itemData}
           isDrawerMode={true}
+          onToolbarRender={setToolbarContent}
         />
       </DrawerBody>
     </Drawer>

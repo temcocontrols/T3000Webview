@@ -94,6 +94,11 @@ interface DeviceTreeState {
   setShowOfflineOnly: (show: boolean) => void;
   clearFilters: () => void;
 
+  // Actions: Device Navigation
+  getNextDevice: () => DeviceInfo | null;
+  getPreviousDevice: () => DeviceInfo | null;
+  getFilteredDevices: () => DeviceInfo[];
+
   // Actions: Background services
   startSync: (intervalMs?: number) => void;
   stopSync: () => void;
@@ -327,6 +332,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           );
         }
 
+        // Sort devices by name (alphabetically) for consistent order in tree
+        filteredDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+
         // Use treeBuilder utility to construct tree
         const treeNodes = buildTreeFromDevices(filteredDevices, expandedNodes, deviceStatuses);
 
@@ -453,7 +461,112 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         get().buildTreeStructure();
       },
 
-      // Start background sync (maps to C++ m_pFreshTree thread)
+      // Get filtered devices list (applies same filters as buildTreeStructure)
+      getFilteredDevices: () => {
+        const { devices, filterText, filterProtocol, filterBuilding, showOfflineOnly, deviceStatuses } = get();
+
+        let filteredDevices = [...devices];
+
+        if (filterText) {
+          const searchLower = filterText.toLowerCase();
+          filteredDevices = filteredDevices.filter(
+            (d) =>
+              d.nameShowOnTree.toLowerCase().includes(searchLower) ||
+              d.serialNumber.toString().includes(searchLower) ||
+              d.ipAddress?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        if (filterProtocol !== 'All') {
+          filteredDevices = filteredDevices.filter((d) => d.protocol === filterProtocol);
+        }
+
+        if (filterBuilding !== 'All') {
+          filteredDevices = filteredDevices.filter(
+            (d) => d.mainBuildingName === filterBuilding || d.buildingName === filterBuilding
+          );
+        }
+
+        if (showOfflineOnly) {
+          filteredDevices = filteredDevices.filter(
+            (d) => deviceStatuses.get(d.serialNumber) === 'offline'
+          );
+        }
+
+        // Sort devices by name (alphabetically) for consistent order
+        filteredDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+
+        return filteredDevices;
+      },
+
+      // Get next device in filtered list
+      getNextDevice: () => {
+        const { selectedDevice } = get();
+        const filteredDevices = get().getFilteredDevices();
+
+        console.log('[deviceTreeStore] getNextDevice called:', {
+          selectedDevice: selectedDevice ? `${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber})` : 'none',
+          totalFilteredDevices: filteredDevices.length,
+          deviceList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
+        });
+
+        if (!selectedDevice) {
+          console.log('[deviceTreeStore] No selected device');
+          return null;
+        }
+
+        if (filteredDevices.length === 0) {
+          console.log('[deviceTreeStore] No filtered devices available');
+          return null;
+        }
+
+        // Only one device - no next device
+        if (filteredDevices.length === 1) {
+          console.log('[deviceTreeStore] Only one device available');
+          return null;
+        }
+
+        const currentIndex = filteredDevices.findIndex(d => d.serialNumber === selectedDevice.serialNumber);
+
+        console.log('[deviceTreeStore] Current device index:', currentIndex);
+
+        if (currentIndex === -1) {
+          console.log('[deviceTreeStore] Current device not in filtered list');
+          return null;
+        }
+
+        const nextIndex = currentIndex + 1;
+
+        // Circular navigation: if at last device, loop back to first
+        if (nextIndex >= filteredDevices.length) {
+          const firstDevice = filteredDevices[0];
+          console.log(`[deviceTreeStore] At last device (${currentIndex + 1}/${filteredDevices.length}), looping to first: ${firstDevice.nameShowOnTree}`);
+          return firstDevice;
+        }
+
+        const nextDevice = filteredDevices[nextIndex];
+        console.log(`[deviceTreeStore] Next device found: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber}) - ${nextIndex + 1}/${filteredDevices.length}`);
+
+        return nextDevice;
+      },
+
+      // Get previous device in filtered list
+      getPreviousDevice: () => {
+        const { selectedDevice } = get();
+        const filteredDevices = get().getFilteredDevices();
+
+        if (!selectedDevice || filteredDevices.length === 0) return null;
+
+        const currentIndex = filteredDevices.findIndex(d => d.serialNumber === selectedDevice.serialNumber);
+
+        if (currentIndex === -1) return null; // Current device not in filtered list
+
+        const previousIndex = currentIndex - 1;
+
+        return previousIndex >= 0 ? filteredDevices[previousIndex] : null;
+      },
+
+      // Background sync thread (maps to C++ m_pFreshTree)
       startSync: (intervalMs: number = 60000) => {
         const interval = window.setInterval(() => {
           get().fetchDevices();

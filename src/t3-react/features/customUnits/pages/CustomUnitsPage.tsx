@@ -13,11 +13,13 @@ import {
   Text,
   Button,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
   ErrorCircleRegular,
   CheckmarkCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -353,17 +355,6 @@ const CustomUnitsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Blade Description */}
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <span>
-                    Showing custom units for <b>{selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})</b>.
-                    {' '}Define custom digital and analog unit labels for points.
-                    {' '}<a href="#" onClick={(e) => { e.preventDefault(); }}>Learn more</a>
-                  </span>
-                </div>
-              )}
-
               {/* Toolbar */}
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
@@ -376,6 +367,23 @@ const CustomUnitsPage: React.FC = () => {
                   >
                     Refresh
                   </Button>
+
+                  {/* Info Button with Tooltip */}
+                  {selectedDevice && (
+                    <Tooltip
+                      content={`Showing custom units for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). Define custom digital and analog unit labels for points.`}
+                      relationship="description"
+                    >
+                      <button
+                        className={styles.toolbarButton}
+                        style={{ marginLeft: '8px' }}
+                        title="Information"
+                        aria-label="Information about this page"
+                      >
+                        <InfoRegular />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
 
