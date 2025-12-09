@@ -174,230 +174,241 @@
       </div>
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
-      <div class="left-panel">
-        <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
-        <div v-if="showLoadingOverlay" class="loading-overlay">
-          <a-spin size="large" />
-          <div class="loading-text">Loading trend log data...</div>
-        </div>
+      <!-- ANALOG AREA (Top Section) -->
+      <div class="analog-area">
+        <div class="left-panel">
+          <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
+          <div v-if="showLoadingOverlay" class="loading-overlay">
+            <a-spin size="large" />
+            <div class="loading-text">Loading trend log data...</div>
+          </div>
 
-        <!-- Data Series -->
-        <div class="control-section">
-          <div class="data-series-header">
-            <!-- Single line: Title, count, and status -->
-            <div class="header-line-1">
-              <div :title="devVersion" class="chart-title-with-version">
-                {{ chartTitle }} ({{ visibleSeriesCount }}/{{ displayedSeries.length }})
+          <!-- Data Series - Analog Only -->
+          <div class="control-section">
+            <div class="data-series-header">
+              <!-- Single line: Title, count, and status -->
+              <div class="header-line-1">
+                <div :title="devVersion" class="chart-title-with-version">
+                  {{ chartTitle }} ({{ visibleAnalogSeriesCount }}/{{ analogSeriesList.length }})
+                </div>
+                <!-- Data Source Indicator -->
+                <div class="data-source-indicator">
+                  <span v-if="shouldShowLoading" class="source-badge loading">
+                    Loading...
+                  </span>
+                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
+                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
+                  </span>
+                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
+                    📚 Historical ({{ timeBase }})
+                  </span>
+                  <span v-else-if="hasConnectionError" class="source-badge error">
+                    ⚠️ Connection Error
+                  </span>
+                </div>
+              </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
+              <div class="header-line-2">
+                <div class="left-controls">
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>All</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
+                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                          <CheckOutlined />
+                          Enable All
+                        </a-menu-item>
+                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                          <DisconnectOutlined />
+                          Disable All
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>By Type</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
+                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                          <LineChartOutlined />
+                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                          <BarChartOutlined />
+                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
+                          <ImportOutlined />
+                          {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
+                          <ExportOutlined />
+                          {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
+                          <FunctionOutlined />
+                          {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </div>
+                <div class="auto-scroll-toggle">
+                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                </div>
               </div>
-              <!-- Data Source Indicator -->
-              <div class="data-source-indicator">
-                <span v-if="shouldShowLoading" class="source-badge loading">
-                  Loading...
-                </span>
-                <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                  <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
-                </span>
-                <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                  📚 Historical ({{ timeBase }})
-                </span>
-                <span v-else-if="hasConnectionError" class="source-badge error">
-                  ⚠️ Connection Error
-                </span>
+            </div>
+            <div class="series-list">
+              <!-- Empty state when no valid data series available -->
+              <div v-if="analogSeriesList.length === 0" class="series-empty-state">
+                <div class="empty-state-content">
+                  <div v-if="shouldShowLoading" class="empty-state-icon">
+                    <a-spin size="small" />
+                  </div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
+                  <div v-else-if="hasConnectionError" class="empty-state-icon">⚠️</div>
+                  <div v-else class="empty-state-icon">📊</div>
+
+                  <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
+                  <div v-else-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
+                  <div v-else class="empty-state-text">No valid analog data available</div>
+
+                  <div v-if="shouldShowLoading" class="empty-state-subtitle">
+                    Connecting to your T3000 devices to retrieve trend data...
+                  </div>
+                  <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
+                    Loading took too long (>30s). The system may be busy or experiencing connection issues.
+                  </div>
+                  <div v-else-if="hasConnectionError" class="empty-state-subtitle">
+                    Unable to load real-time or historical data. Check system connections.
+                  </div>
+                  <div v-else class="empty-state-subtitle">
+                    Configure analog monitor points to see data series
+                  </div>
+
+                  <!-- Refresh button for timeout and error states -->
+                  <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
+                       style="margin-top: 16px;">
+                    <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small">
+                      <template #icon>
+                        <ReloadOutlined />
+                      </template>
+                      Refresh Data
+                    </a-button>
+                  </div>
+                </div>
               </div>
-            </div> <!-- Line 2: All dropdown, By Type dropdown, Auto Scroll toggle -->
-            <div class="header-line-2">
-              <div class="left-controls">
-                <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
-                    <span>All</span>
-                    <DownOutlined style="margin-left: 4px;" />
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="handleAllMenu" class="all-dropdown-menu">
-                      <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
-                        <CheckOutlined />
-                        Enable All
-                      </a-menu-item>
-                      <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
-                        <DisconnectOutlined />
-                        Disable All
-                      </a-menu-item>
-                    </a-menu>
+
+              <!-- Regular series list when data is available - Analog Only -->
+              <div v-for="(series, index) in analogSeriesList" :key="series.name" class="series-item" :class="{
+                'series-disabled': !series.visible,
+                'keyboard-selected': selectedItemIndex === index && keyboardEnabled
+              }">
+                <!-- Delete button overlay for View 2 & 3 tracked items -->
+                <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
+                          @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
+                  <template #icon>
+                    <CloseOutlined class="delete-icon" />
                   </template>
-                </a-dropdown>
-                <a-dropdown>
-                  <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
-                    <span>By Type</span>
-                    <DownOutlined style="margin-left: 4px;" />
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
-                      <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
-                        <LineChartOutlined />
-                        {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
-                        <BarChartOutlined />
-                        {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
-                        <ImportOutlined />
-                        {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
-                        <ExportOutlined />
-                        {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
-                      </a-menu-item>
-                      <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
-                        <FunctionOutlined />
-                        {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </div>
-              <div class="auto-scroll-toggle">
-                <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
-                <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                </a-button>
+
+                <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
+                  <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
+                       :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
+                    <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
+                    <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                         class="keyboard-shortcut-badge left-panel-badge"
+                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
+                         :data-key="getKeyboardShortcut(series.name)"
+                         :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
+                      {{ getKeyboardShortcut(series.name) }}
+                    </div>
+                  </div>
+                  <div class="series-info">
+                    <div class="series-name-line">
+                      <!-- Series Name takes most space on left -->
+                      <div class="series-name-col">
+                        <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
+                          <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                        </a-tooltip>
+                      </div>
+                      <!-- Right side: Chip + Unit + Expand button grouped together -->
+                      <div class="series-right-group">
+                        <div class="series-chip-col">
+                          <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
+                                  text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
+                        </div>
+                        <div class="series-tags-col">
+                          <span class="series-inline-tags">
+                            <span class="unit-info" :style="{ color: series.color }">
+                              {{ getDisplayUnit(series) }}
+                            </span>
+                          </span>
+                        </div>
+                        <div class="series-controls">
+                          <a-button size="small" type="text" class="expand-toggle"
+                                    @click="(e) => toggleSeriesExpansion(index, e)">
+                            <template #icon>
+                              <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
+                              <RightOutlined v-else class="expand-icon" />
+                            </template>
+                          </a-button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="expandedSeries.has(index)" class="series-stats">
+                  <div class="stat-item">
+                    <span class="stat-label">Last:</span>
+                    <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg:</span>
+                    <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Min:</span>
+                    <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Max:</span>
+                    <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="series-list">
-            <!-- Empty state when no valid data series available -->
-            <div v-if="dataSeries.length === 0" class="series-empty-state">
-              <div class="empty-state-content">
-                <div v-if="shouldShowLoading" class="empty-state-icon">
-                  <a-spin size="small" />
-                </div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
-                <div v-else-if="hasConnectionError" class="empty-state-icon">⚠️</div>
-                <div v-else class="empty-state-icon">📊</div>
+        </div>
 
-                <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                <div v-else-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
-                <div v-else class="empty-state-text">No valid trend log data available</div>
-
-                <div v-if="shouldShowLoading" class="empty-state-subtitle">
-                  Connecting to your T3000 devices to retrieve trend data...
-                </div>
-                <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
-                  Loading took too long (>30s). The system may be busy or experiencing connection issues.
-                </div>
-                <div v-else-if="hasConnectionError" class="empty-state-subtitle">
-                  Unable to load real-time or historical data. Check system connections.
-                </div>
-                <div v-else class="empty-state-subtitle">
-                  Configure monitor points with valid T3000 devices to see data
-                  series
-                </div>
-
-                <!-- Refresh button for timeout and error states -->
-                <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
-                     style="margin-top: 16px;">
-                  <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small">
-                    <template #icon>
-                      <ReloadOutlined />
-                    </template>
-                    Refresh Data
-                  </a-button>
-                </div>
-              </div>
+        <!-- Right Panel: Analog Chart Only -->
+        <div class="right-panel">
+          <div class="oscilloscope-container" @wheel="handleMouseWheel">
+            <!-- Combined Analog Chart with Multiple Signals -->
+            <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
+              <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
             </div>
-
-            <!-- Regular series list when data is available -->
-            <div v-for="(series, index) in displayedSeries" :key="series.name" class="series-item" :class="{
-              'series-disabled': !series.visible,
-              'keyboard-selected': selectedItemIndex === index && keyboardEnabled
-            }">
-              <!-- Delete button overlay for View 2 & 3 tracked items -->
-              <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
-                        @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
-                <template #icon>
-                  <CloseOutlined class="delete-icon" />
-                </template>
-              </a-button>
-
-              <div class="series-header" @click="toggleSeriesVisibility(index, $event)">
-                <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
-                     :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
-                  <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
-                  <!-- ⌨️ Keyboard shortcut badge for left panel -->
-                  <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
-                       class="keyboard-shortcut-badge left-panel-badge"
-                       :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
-                       :data-key="getKeyboardShortcut(series.name)"
-                       :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
-                    {{ getKeyboardShortcut(series.name) }}
-                  </div>
-                </div>
-                <div class="series-info">
-                  <div class="series-name-line">
-                    <!-- Series Name takes most space on left -->
-                    <div class="series-name-col">
-                      <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
-                        <span class="series-name">{{ getSeriesNameText(series) }}</span>
-                      </a-tooltip>
-                    </div>
-                    <!-- Right side: Chip + Unit + Expand button grouped together -->
-                    <div class="series-right-group">
-                      <div class="series-chip-col">
-                        <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
-                                text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
-                      </div>
-                      <div class="series-tags-col">
-                        <span class="series-inline-tags">
-                          <span class="unit-info" :style="{ color: series.color }">
-                            {{ getDisplayUnit(series) }}
-                          </span>
-                        </span>
-                      </div>
-                      <div class="series-controls">
-                        <a-button size="small" type="text" class="expand-toggle"
-                                  @click="(e) => toggleSeriesExpansion(index, e)">
-                          <template #icon>
-                            <DownOutlined v-if="expandedSeries.has(index)" class="expand-icon expanded" />
-                            <RightOutlined v-else class="expand-icon" />
-                          </template>
-                        </a-button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="expandedSeries.has(index)" class="series-stats">
-                <div class="stat-item">
-                  <span class="stat-label">Last:</span>
-                  <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Avg:</span>
-                  <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Min:</span>
-                  <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Max:</span>
-                  <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
-                </div>
-              </div>
+            <div v-else class="empty-chart-message">
+              <div class="empty-state-icon">📈</div>
+              <div class="empty-state-text">No analog series enabled</div>
+              <div class="empty-state-subtitle">Enable analog series from the left panel to see charts</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right Panel: Oscilloscope Charts -->
-      <div class="right-panel">
-        <div class="oscilloscope-container" @wheel="handleMouseWheel">
-          <!-- Combined Analog Chart with Multiple Signals -->
-          <!-- Only show analog chart if there are visible analog series -->
-          <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
-            <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
-          </div>
-
-          <!-- Separate Digital Channels -->
+      <!-- DIGITAL AREA (Bottom Section) -->
+      <div class="digital-area">
+        <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
+          <!-- Separate Digital Channels (Original Canvas Style) -->
           <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
             <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
               <div class="channel-label" :style="{ color: series.color }">
@@ -1589,6 +1600,12 @@
   // Route for URL parameter extraction
   const route = useRoute()
 
+  // NEW: Resizable divider state
+  const analogAreaHeight = ref(60) // Default 60% height
+  const isResizing = ref(false)
+  const resizeStartY = ref(0)
+  const resizeStartHeight = ref(0)
+
   // Reactive monitor configuration
   const monitorConfig = ref(null as any)
 
@@ -2722,6 +2739,28 @@
 
   const visibleDigitalSeries = computed(() => {
     return digitalSeries.value.filter(series => series.visible)
+  })
+
+  // NEW: Analog series list for left panel (filtered by displayedSeries logic)
+  const analogSeriesList = computed(() => {
+    const displayed = displayedSeries.value
+    return displayed.filter(series => series.unitType === 'analog')
+  })
+
+  // NEW: Digital series list for digital area (filtered by displayedSeries logic)
+  const digitalSeriesList = computed(() => {
+    const displayed = displayedSeries.value
+    return displayed.filter(series => series.unitType === 'digital')
+  })
+
+  // NEW: Count of visible analog series
+  const visibleAnalogSeriesCount = computed(() => {
+    return analogSeriesList.value.filter(series => series.visible).length
+  })
+
+  // NEW: Count of visible digital series
+  const visibleDigitalSeriesCount = computed(() => {
+    return digitalSeriesList.value.filter(series => series.visible).length
   })
 
   // Helper function to get digital state label using T3Range
@@ -8035,6 +8074,65 @@
     }
   }
 
+  // NEW: Toggle digital channel visibility
+  const toggleDigitalVisibility = (seriesName: string) => {
+    const series = dataSeries.value.find(s => s.name === seriesName)
+    if (series) {
+      series.visible = !series.visible
+      // Trigger chart update
+      nextTick(() => {
+        renderCharts()
+      })
+    }
+  }
+
+  // NEW: Get last digital state (for display)
+  const getLastDigitalState = (series: SeriesConfig): boolean => {
+    if (series.data.length === 0) return false
+    const lastValue = series.data[series.data.length - 1].value
+    return lastValue > 0.5
+  }
+
+  // NEW: Resizable divider functions
+  const startResize = (event: MouseEvent) => {
+    isResizing.value = true
+    resizeStartY.value = event.clientY
+    resizeStartHeight.value = analogAreaHeight.value
+
+    document.addEventListener('mousemove', handleResize)
+    document.addEventListener('mouseup', stopResize)
+    event.preventDefault()
+  }
+
+  const handleResize = (event: MouseEvent) => {
+    if (!isResizing.value) return
+
+    const container = document.querySelector('.timeseries-container')
+    if (!container) return
+
+    const containerHeight = container.clientHeight
+    const deltaY = event.clientY - resizeStartY.value
+    const deltaPercent = (deltaY / containerHeight) * 100
+
+    let newHeight = resizeStartHeight.value + deltaPercent
+
+    // Constrain between 20% and 100%
+    newHeight = Math.max(20, Math.min(100, newHeight))
+
+    analogAreaHeight.value = newHeight
+  }
+
+  const stopResize = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', handleResize)
+    document.removeEventListener('mouseup', stopResize)
+
+    // Trigger chart resize after resize complete
+    nextTick(() => {
+      renderCharts()
+    })
+  }
+
   const handleByTypeMenu = ({ key }: { key: string }) => {
     switch (key) {
       case 'toggle-analog':
@@ -10449,50 +10547,138 @@
 <style scoped>
   .timeseries-container {
     display: flex;
+    flex-direction: column;
     height: calc(97vh - 40px);
-    /* Full viewport height minus top controls */
-    /* min-height: 400px; */
-    /* Minimum for small screens */
-    gap: 6px;
-    /* Ultra-minimal gap for maximum space */
+    gap: 0;
     background: #ffffff;
     border-radius: 0px;
-    /* No border radius */
     overflow: hidden;
-    /* Prevent main container scrollbars */
     padding: 0;
-    /* Remove any default padding */
+  }
+
+  /* ANALOG AREA (Top Section) */
+  .analog-area {
+    display: flex;
+    flex-direction: row;
+    height: 70%;
+    min-height: 200px;
+    gap: 6px;
+    overflow: hidden;
+    padding: 4px;
+    background: #f5f5f5;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    margin-bottom: 8px;
   }
 
   .left-panel {
     width: clamp(210px, 23vw, 330px);
-    /* Responsive width - adjusted values */
     background: #fafafa;
     border: 1px solid #e8e8e8;
     border-radius: 0px;
-    /* No border radius */
     overflow-y: auto;
     overflow-x: hidden;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    position: relative; /* For loading overlay positioning */
+    position: relative;
   }
 
   .right-panel {
     flex: 1;
     background: #fafafa;
-    border: 1px solid #e8e8e8;
+    border: none;
     border-radius: 0px;
-    /* No border radius */
     display: flex;
     flex-direction: column;
     min-width: 200px;
-    /* Ensure readability */
     overflow-y: auto;
-    /* Make scrollable when content overflows */
     overflow-x: hidden;
-    /* Hide horizontal overflow */
+  }
+
+  /* RESIZABLE DIVIDER */
+  .resizable-divider {
+    height: 12px;
+    background: linear-gradient(to bottom, #e8e8e8 0%, #d9d9d9 50%, #e8e8e8 100%);
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    transition: background 0.2s ease;
+  }
+
+  .resizable-divider:hover {
+    background: linear-gradient(to bottom, #bfbfbf 0%, #999 50%, #bfbfbf 100%);
+  }
+
+  .divider-handle {
+    width: 60px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .divider-grip {
+    width: 40px;
+    height: 3px;
+    background: #8c8c8c;
+    border-radius: 2px;
+    box-shadow: 0 -1px 0 #fff, 0 1px 0 #fff;
+  }
+
+  .resizable-divider:hover .divider-grip {
+    background: #595959;
+  }
+
+  /* DIGITAL AREA (Bottom Section) */
+  .digital-area {
+    flex: 1;
+    min-height: 150px;
+    background: #f5f5f5;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .digital-oscilloscope-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0px;
+  }
+
+  /* Empty chart message */
+  .empty-chart-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px 20px;
+  }
+
+  .empty-chart-message .empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+
+  .empty-chart-message .empty-state-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #595959;
+    margin-bottom: 6px;
+  }
+
+  .empty-chart-message .empty-state-subtitle {
+    font-size: 12px;
+    color: #8c8c8c;
+    text-align: center;
   }
 
   /* Loading overlay - centered in left panel */
@@ -11144,12 +11330,12 @@
   }
 
   .combined-analog-chart {
-    height: 400px;
+    flex: 1;
     background: white;
-    border: 1px solid #ddd;
+    border: none;
     border-radius: 4px;
-    margin-bottom: 8px;
     position: relative;
+    min-height: 0;
   }
 
     .combined-analog-chart canvas {
