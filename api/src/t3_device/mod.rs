@@ -30,6 +30,7 @@ pub mod schedules_update_routes;    // ✅ T3000 Schedules Update API Routes usi
 pub mod holidays_update_routes;     // ✅ T3000 Holidays Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod pid_controllers_update_routes; // ✅ T3000 PID Controllers Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod graphics_update_routes;     // ✅ T3000 Graphics Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
+pub mod graphics_refresh_routes;    // ✅ T3000 Graphics Refresh API Routes using REFRESH_WEBVIEW_LIST (Action 17)
 pub mod alarms_update_routes;       // ✅ T3000 Alarms Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod settings_routes;            // ✅ T3000 Settings API Routes (network/communication/time/protocol settings)
 pub mod specialized_routes;         // ✅ T3000 Specialized Features API Routes (remote points, email alarms, etc.)

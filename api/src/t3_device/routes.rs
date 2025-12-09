@@ -44,6 +44,7 @@ use crate::t3_device::schedules_update_routes::create_schedules_update_routes;
 use crate::t3_device::holidays_update_routes::create_holidays_update_routes;
 use crate::t3_device::pid_controllers_update_routes::create_pid_controllers_update_routes;
 use crate::t3_device::graphics_update_routes::create_graphics_update_routes;
+use crate::t3_device::graphics_refresh_routes::create_graphics_refresh_routes;
 use crate::t3_device::alarms_update_routes::create_alarms_update_routes;
 use crate::t3_device::settings_routes::create_settings_routes;
 use crate::t3_device::specialized_routes::create_specialized_routes;
@@ -1168,6 +1169,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_holiday_refresh_routes())
         .merge(create_alarm_refresh_routes())
         .merge(create_trendlog_refresh_routes())
+        .merge(create_graphics_refresh_routes())  // ✅ ENABLED
         .merge(create_arrays_refresh_routes())  // ✅ ENABLED
         .merge(create_conversion_tables_refresh_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_refresh_routes())  // ✅ ENABLED
