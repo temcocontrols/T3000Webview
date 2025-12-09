@@ -1,0 +1,123 @@
+/**
+ * Graphics Page Styles - Azure Portal Style
+ * Based on InputsPage.module.css pattern
+ */
+
+/* Root container styling */
+.container {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #292827;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Blade Content Container */
+.bladeContentContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bladeContentWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bladeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.partContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Toolbar styles */
+.toolbar {
+  background-color: transparent;
+  border-bottom: none;
+  padding: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.toolbarContainer {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  background-color: transparent;
+  border: none;
+  color: #323130;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color 0.1s ease;
+}
+
+.toolbarButton svg {
+  width: 16px;
+  height: 16px;
+  color: #0078d4;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background-color: #f3f2f1;
+}
+
+.toolbarButton:active:not(:disabled) {
+  background-color: #edebe9;
+}
+
+.toolbarButton:disabled {
+  color: #a19f9d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.toolbarButton:disabled svg {
+  color: #a19f9d;
+}
+
+/* Horizontal Divider */
+.horizontalDivider {
+  height: 1px;
+  background-color: #edebe9;
+  margin: 8px 0;
+}
+
+/* Blade Description */
+.bladeDescription {
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
