@@ -349,12 +349,53 @@ export const OutputsPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call to update the backend
-      // if (editingCell.field === 'fullLabel') {
-      //   await updateOutputLabel(editingCell.serialNumber, editingCell.outputIndex, editValue);
-      // } else if (editingCell.field === 'fValue') {
-      //   await updateOutputValue(editingCell.serialNumber, editingCell.outputIndex, editValue);
-      // }
+      // Use Action 16 for editable fields (fullLabel, fValue)
+      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
+
+        // Find the current output data to pass all fields for Action 16
+        const currentOutput = outputs.find(
+          output => output.serialNumber === editingCell.serialNumber && output.outputIndex === editingCell.outputIndex
+        );
+
+        if (!currentOutput) {
+          throw new Error('Current output data not found');
+        }
+
+        // Prepare payload with all required fields
+        const payload = {
+          fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentOutput.fullLabel || ''),
+          label: currentOutput.label || '',
+          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') : parseFloat(currentOutput.fValue || '0'),
+          range: parseInt(currentOutput.range || '0'),
+          autoManual: parseInt(currentOutput.autoManual || '0'),
+          control: 0,
+          lowVoltage: parseFloat(currentOutput.lowVoltage || '0'),
+          highVoltage: parseFloat(currentOutput.highVoltage || '0'),
+          pwmPeriod: parseInt(currentOutput.pwmPeriod || '0'),
+        };
+
+        console.log('[Action 16] Full payload:', payload);
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/t3_device/outputs/${selectedDevice.serialNumber}/${editingCell.outputIndex}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log(`✅ ${editingCell.field} updated successfully!`, result);
+      }
 
       // Update local state optimistically
       setOutputs(prevOutputs =>
@@ -370,7 +411,7 @@ export const OutputsPage: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       console.error('Failed to update:', error);
-      // Optionally show error message to user
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -408,22 +449,57 @@ export const OutputsPage: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = (newRange: number) => {
+  const handleRangeSave = async (newRange: number) => {
     if (!selectedOutput) return;
 
-    // Update local state optimistically
-    setOutputs(prevOutputs =>
-      prevOutputs.map(output =>
-        output.serialNumber === selectedOutput.serialNumber &&
-        output.outputIndex === selectedOutput.outputIndex
-          ? { ...output, range: newRange.toString() }
-          : output
-      )
-    );
+    try {
+      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber})`);
 
-    console.log('Range updated:', selectedOutput.serialNumber, selectedOutput.outputIndex, newRange);
-    // TODO: Call API to update range value
-    // Example: await updateOutputRange(selectedOutput.serialNumber, selectedOutput.outputIndex, newRange);
+      // Action 16 requires ALL fields
+      const payload = {
+        fullLabel: selectedOutput.fullLabel || '',
+        label: selectedOutput.label || '',
+        value: parseFloat(selectedOutput.fValue || '0'),
+        range: newRange,
+        autoManual: parseInt(selectedOutput.autoManual || '0'),
+        control: 0,
+        lowVoltage: parseFloat(selectedOutput.lowVoltage || '0'),
+        highVoltage: parseFloat(selectedOutput.highVoltage || '0'),
+        pwmPeriod: parseInt(selectedOutput.pwmPeriod || '0'),
+      };
+
+      console.log('[Action 16] Full payload:', payload);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/outputs/${selectedOutput.serialNumber}/${selectedOutput.outputIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 16] Range updated successfully:', result);
+
+      // Update local state optimistically
+      setOutputs(prevOutputs =>
+        prevOutputs.map(output =>
+          output.serialNumber === selectedOutput.serialNumber &&
+          output.outputIndex === selectedOutput.outputIndex
+            ? { ...output, range: newRange.toString() }
+            : output
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update Range:', error);
+      alert(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {

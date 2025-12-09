@@ -342,12 +342,55 @@ export const VariablesPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call to update the backend
-      // if (editingCell.field === 'fullLabel') {
-      //   await updateVariableLabel(editingCell.serialNumber, editingCell.variableIndex, editValue);
-      // } else if (editingCell.field === 'fValue') {
-      //   await updateVariableValue(editingCell.serialNumber, editingCell.variableIndex, editValue);
-      // }
+      // Use Action 16 for editable fields (fullLabel, fValue)
+      if (selectedDevice && ['fullLabel', 'fValue'].includes(editingCell.field)) {
+        console.log(`=== Updating ${editingCell.field} ===`);
+        console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
+        console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
+
+        // Find the current variable data to pass all fields for Action 16
+        const currentVariable = variables.find(
+          variable => variable.serialNumber === editingCell.serialNumber && variable.variableIndex === editingCell.variableIndex
+        );
+
+        if (!currentVariable) {
+          throw new Error('Current variable data not found');
+        }
+
+        // Prepare payload with all required fields
+        const payload = {
+          fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentVariable.fullLabel || ''),
+          label: currentVariable.label || '',
+          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') : parseFloat(currentVariable.fValue || '0'),
+          range: parseInt(currentVariable.rangeField || '0'),
+          autoManual: parseInt(currentVariable.autoManual || '0'),
+          control: 0,
+          filter: parseInt(currentVariable.filterField || '0'),
+          digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
+          calibrationSign: parseInt(currentVariable.sign || '0'),
+          calibrationH: 0,
+          calibrationL: 0,
+        };
+
+        console.log('[Action 16] Full payload:', payload);
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/t3_device/variables/${selectedDevice.serialNumber}/${editingCell.variableIndex}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log(`✅ ${editingCell.field} updated successfully!`, result);
+      }
 
       // Update local state optimistically
       setVariables(prevVariables =>
@@ -363,7 +406,7 @@ export const VariablesPage: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       console.error('Failed to update:', error);
-      // Optionally show error message to user
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -401,22 +444,59 @@ export const VariablesPage: React.FC = () => {
     setRangeDrawerOpen(true);
   };
 
-  const handleRangeSave = (newRange: number) => {
+  const handleRangeSave = async (newRange: number) => {
     if (!selectedVariableForRange) return;
 
-    // Update local state optimistically
-    setVariables(prevVariables =>
-      prevVariables.map(variable =>
-        variable.serialNumber === selectedVariableForRange.serialNumber &&
-        variable.variableIndex === selectedVariableForRange.variableIndex
-          ? { ...variable, rangeField: newRange.toString() }
-          : variable
-      )
-    );
+    try {
+      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber})`);
 
-    console.log('Range updated:', selectedVariableForRange.serialNumber, selectedVariableForRange.variableIndex, newRange);
-    // TODO: Call API to update range value
-    // Example: await updateVariableRange(selectedVariableForRange.serialNumber, selectedVariableForRange.variableIndex, newRange);
+      // Action 16 requires ALL fields
+      const payload = {
+        fullLabel: selectedVariableForRange.fullLabel || '',
+        label: selectedVariableForRange.label || '',
+        value: parseFloat(selectedVariableForRange.fValue || '0'),
+        range: newRange,
+        autoManual: parseInt(selectedVariableForRange.autoManual || '0'),
+        control: 0,
+        filter: parseInt(selectedVariableForRange.filterField || '0'),
+        digitalAnalog: selectedVariableForRange.digitalAnalog === '1' ? 1 : 0,
+        calibrationSign: parseInt(selectedVariableForRange.sign || '0'),
+        calibrationH: 0,
+        calibrationL: 0,
+      };
+
+      console.log('[Action 16] Full payload:', payload);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/t3_device/variables/${selectedVariableForRange.serialNumber}/${selectedVariableForRange.variableIndex}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Action 16] Range/Units updated successfully:', result);
+
+      // Update local state optimistically
+      setVariables(prevVariables =>
+        prevVariables.map(variable =>
+          variable.serialNumber === selectedVariableForRange.serialNumber &&
+          variable.variableIndex === selectedVariableForRange.variableIndex
+            ? { ...variable, rangeField: newRange.toString() }
+            : variable
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update Range/Units:', error);
+      alert(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
