@@ -405,6 +405,17 @@
         </div>
       </div>
 
+      <!-- RESIZABLE DIVIDER -->
+      <div
+        class="resizable-divider"
+        @mousedown="startResize"
+        :style="{ cursor: isResizing ? 'row-resize' : 'row-resize' }"
+      >
+        <div class="divider-handle">
+          <div class="divider-grip"></div>
+        </div>
+      </div>
+
       <!-- DIGITAL AREA (Bottom Section) -->
       <div class="digital-area">
         <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
@@ -1601,7 +1612,7 @@
   const route = useRoute()
 
   // NEW: Resizable divider state
-  const analogAreaHeight = ref(60) // Default 60% height
+  const analogAreaHeight = ref(75) // Default 75% height
   const isResizing = ref(false)
   const resizeStartY = ref(0)
   const resizeStartHeight = ref(0)
@@ -10560,7 +10571,7 @@
   .analog-area {
     display: flex;
     flex-direction: row;
-    height: 70%;
+    height: v-bind('analogAreaHeight + "%"');
     min-height: 200px;
     gap: 6px;
     overflow: hidden;
@@ -10568,7 +10579,6 @@
     background: #f5f5f5;
     border: 1px solid #d9d9d9;
     border-radius: 4px;
-    margin-bottom: 8px;
   }
 
   .left-panel {
@@ -10631,6 +10641,43 @@
 
   .resizable-divider:hover .divider-grip {
     background: #595959;
+  }
+
+  /* RESIZABLE DIVIDER */
+  .resizable-divider {
+    height: 3px;
+    background: linear-gradient(to bottom, #e1e4e8 0%, #d1d5da 50%, #e1e4e8 100%);
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    transition: background 0.2s ease;
+  }
+
+  .resizable-divider:hover {
+    background: linear-gradient(to bottom, #c6cbd1 0%, #959da5 50%, #c6cbd1 100%);
+  }
+
+  .divider-handle {
+    width: 60px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .divider-grip {
+    width: 40px;
+    height: 1.5px;
+    background: #959da5;
+    border-radius: 2px;
+    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.5), 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .resizable-divider:hover .divider-grip {
+    background: #6a737d;
   }
 
   /* DIGITAL AREA (Bottom Section) */
