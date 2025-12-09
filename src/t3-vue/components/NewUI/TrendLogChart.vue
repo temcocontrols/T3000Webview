@@ -11166,7 +11166,7 @@
     border-radius: 2px;
     position: absolute;
     top: 2px;
-    right: 4px;
+    left: 30px;
     z-index: 10;
     line-height: 1;
   }
