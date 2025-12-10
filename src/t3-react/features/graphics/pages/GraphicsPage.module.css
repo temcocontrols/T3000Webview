@@ -89,22 +89,78 @@
   color: #0078d4;
 }
 
-.toolbarButton:hover:not(:disabled) {
+.toolbarButton:hover {
   background-color: #f3f2f1;
+  color: #201f1e;
 }
 
-.toolbarButton:active:not(:disabled) {
+.toolbarButton:active {
   background-color: #edebe9;
+  color: #201f1e;
 }
 
 .toolbarButton:disabled {
   color: #a19f9d;
-  cursor: not-allowed;
-  opacity: 0.6;
+  cursor: default;
+  background-color: transparent;
 }
 
 .toolbarButton:disabled svg {
   color: #a19f9d;
+}
+
+.toolbarSeparator {
+  width: 1px;
+  height: 24px;
+  background-color: #edebe9;
+  margin: 0 4px;
+}
+
+/* Search Input - Azure Portal Style */
+.searchInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  color: #605e5c;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.searchInput {
+  height: 28px;
+  padding: 0 8px 0 28px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  background-color: #ffffff;
+  color: #323130;
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  outline: none;
+  min-width: 300px;
+  transition: border-color 0.1s ease;
+  box-shadow: none;
+}
+
+.searchInput::placeholder {
+  color: #605e5c;
+}
+
+.searchInput:hover {
+  border-color: #323130;
+}
+
+.searchInput:focus {
+  border-color: #0078d4;
+  box-shadow: none;
+  outline: none;
 }
 
 /* Horizontal Divider */
@@ -112,6 +168,135 @@
   height: 1px;
   background-color: #edebe9;
   margin: 8px 0;
+}
+
+/* Azure Portal Grid - fxc-gc-dataGrid styling */
+.container :global(.fui-DataGrid) {
+  font-size: 12px;
+  color: #292827;
+  background: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 2px;
+  width: 100%;
+}
+
+.container :global(.fui-DataGridHeader) {
+  background-color: #fafafa;
+  border-bottom: 1px solid #edebe9;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.container :global(.fui-DataGridHeaderCell) {
+  font-size: 12px;
+  font-weight: 600;
+  color: #323130;
+  padding: 0 12px;
+  height: 32px;
+  line-height: 32px;
+  border-right: 1px solid #edebe9;
+  background-color: #fafafa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.container :global(.fui-DataGridHeaderCell):last-child {
+  border-right: none;
+}
+
+.container :global(.fui-DataGridRow) {
+  border-bottom: 1px solid #f3f2f1;
+  min-height: 32px;
+  transition: background-color 0.1s ease;
+}
+
+.container :global(.fui-DataGridRow):hover {
+  background-color: #f3f2f1;
+}
+
+.container :global(.fui-DataGridRow):last-child {
+  border-bottom: none;
+}
+
+.container :global(.fui-DataGridCell) {
+  font-size: 12px;
+  color: #323130;
+  padding: 0 12px;
+  min-height: 32px;
+  border-right: 1px solid #edebe9;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.container :global(.fui-DataGridCell):last-child {
+  border-right: none;
+}
+
+/* Badge styling */
+.container :global(.fui-Badge) {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+/* TableCellLayout styling */
+.container :global(.fui-TableCellLayout) {
+  padding: 0;
+  font-size: 12px;
+}
+
+/* Link styling in grid */
+.container :global(.fui-DataGridCell) :global(.fui-Link) {
+  color: #0078d4;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.container :global(.fui-DataGridCell) :global(.fui-Link):hover {
+  color: #106ebe;
+  text-decoration: underline;
+}
+
+/* Column width constraints */
+.container :global(.fui-DataGridHeaderCell[role="columnheader"]) {
+  min-width: 80px;
+}
+
+/* Icon column */
+.container :global(.fui-DataGridHeaderCell[role="columnheader"]:first-child),
+.container :global(.fui-DataGridCell:first-child) {
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  padding: 0 8px;
+  justify-content: center;
+}
+
+/* Status badge column */
+.container :global(.fui-DataGridHeaderCell[aria-colindex="3"]),
+.container :global(.fui-DataGridCell[aria-colindex="3"]) {
+  min-width: 100px;
+  max-width: 120px;
+}
+
+/* Name column */
+.container :global(.fui-DataGridHeaderCell[aria-colindex="2"]),
+.container :global(.fui-DataGridCell[aria-colindex="2"]) {
+  min-width: 150px;
+  flex: 1;
+}
+
+/* Description column */
+.container :global(.fui-DataGridHeaderCell[aria-colindex="4"]),
+.container :global(.fui-DataGridCell[aria-colindex="4"]) {
+  min-width: 200px;
+  flex: 2;
 }
 
 /* Blade Description */

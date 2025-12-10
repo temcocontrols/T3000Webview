@@ -335,6 +335,50 @@ export const GraphicsPage: React.FC = () => {
                     <ArrowDownloadRegular />
                     <span>Export</span>
                   </button>
+
+                  {/* Toolbar Separator */}
+                  <div className={styles.toolbarSeparator} role="separator" />
+
+                  {/* Settings Button */}
+                  <button
+                    className={styles.toolbarButton}
+                    onClick={() => {}}
+                    title="Settings"
+                    aria-label="Settings"
+                  >
+                    <SettingsRegular />
+                    <span>Settings</span>
+                  </button>
+
+                  {/* Search Input Box */}
+                  <div className={styles.searchInputWrapper}>
+                    <SearchRegular className={styles.searchIcon} />
+                    <input
+                      className={styles.searchInput}
+                      type="text"
+                      placeholder="Search graphics..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      spellCheck="false"
+                      role="searchbox"
+                      aria-label="Search graphics"
+                    />
+                  </div>
+
+                  {/* Info Button with Tooltip */}
+                  <Tooltip
+                    content={`Showing graphics for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured graphic floor plans and their associated elements.`}
+                    relationship="description"
+                  >
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ marginLeft: '8px' }}
+                      title="Information"
+                      aria-label="Information about this page"
+                    >
+                      <InfoRegular />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               )}
@@ -376,6 +420,29 @@ export const GraphicsPage: React.FC = () => {
                       items={sortedGraphics}
                       columns={columns}
                       sortable
+                      resizableColumns
+                      columnSizingOptions={{
+                        graphicId: {
+                          minWidth: 80,
+                          defaultWidth: 100,
+                        },
+                        switchNode: {
+                          minWidth: 180,
+                          defaultWidth: 250,
+                        },
+                        graphicLabel: {
+                          minWidth: 120,
+                          defaultWidth: 180,
+                        },
+                        graphicPictureFile: {
+                          minWidth: 150,
+                          defaultWidth: 200,
+                        },
+                        graphicTotalPoint: {
+                          minWidth: 100,
+                          defaultWidth: 130,
+                        },
+                      }}
                       getRowId={(item) => `${item.serialNumber}-${item.graphicId}`}
                     >
                       <DataGridHeader>
