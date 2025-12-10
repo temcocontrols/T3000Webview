@@ -427,26 +427,26 @@ pub async fn load_and_save_graphics(
     };
 
     let panel_id = device.panel_id.unwrap_or(0);
-    let viewitem = payload.get("viewitem").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
 
-    // Prepare GET_INITIAL_DATA request
+    // Prepare GET_PANEL_DATA request to get graphic screens from cached .prog file (Action 0)
+    // C++ loads screen data from .prog files via LoadOnlinePanelData(), we just retrieve it
     let request_json = json!({
-        "action": 1, // GET_INITIAL_DATA
+        "action": 0, // GET_PANEL_DATA - get cached graphic screen list
         "panelId": panel_id,
         "serialNumber": serial,
-        "viewitem": viewitem,
+        "entryType": BAC_GRP,  // 10 = GRAPHICS/SCREEN
         "msg_source": 1, // From browser
     });
 
-    info!("📤 Calling GET_INITIAL_DATA - Panel: {}, Serial: {}, ViewItem: {}", panel_id, serial, viewitem);
+    info!("📤 Calling GET_PANEL_DATA (Action 0) for graphic screens - Panel: {}, Serial: {}", panel_id, serial);
     let _ = write_structured_log_with_level(
         "T3_Webview_API",
-        &format!("📤 Calling FFI Action 1 - Panel: {}, Serial: {}, ViewItem: {}", panel_id, serial, viewitem),
+        &format!("📤 Calling FFI Action 0 (GET_PANEL_DATA for screens) - Panel: {}, Serial: {}", panel_id, serial),
         LogLevel::Info
     );
 
-    // Call FFI to get graphic data
-    let response_str = match call_get_initial_data_ffi(request_json).await {
+    // Call FFI to get graphics list using Action 0 (from prog file cache)
+    let response_str = match call_refresh_ffi(0, request_json).await {
         Ok(resp) => {
             let _ = write_structured_log_with_level(
                 "T3_Webview_API",
