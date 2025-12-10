@@ -502,9 +502,6 @@
             <!-- Separate Digital Channels (Original Canvas Style) -->
             <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
               <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
-                <div class="channel-label" :style="{ color: series.color }">
-                  {{ series.name }}
-                </div>
                 <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
               </div>
             </template>
