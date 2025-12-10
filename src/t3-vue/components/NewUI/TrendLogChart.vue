@@ -10788,7 +10788,7 @@
   .analog-area {
     display: flex;
     flex-direction: row;
-    height: v-bind('analogAreaHeight + "%"');
+    height: v-bind('showDigitalArea ? analogAreaHeight + "%" : "100%"');
     min-height: 200px;
     gap: 6px;
     overflow: hidden;
