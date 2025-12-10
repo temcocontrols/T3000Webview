@@ -3225,10 +3225,16 @@
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
+            autoSkip: false,
+            align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
-              return Math.round(Number(value))
+              const formatted = Math.round(Number(value)).toString();
+              return formatted.padStart(5, ' '); // Fixed width for alignment
             }
+          },
+          afterFit: function(scale: any) {
+            scale.width = 50; // Fixed width for Y-axis to ensure alignment
           },
           // Dynamic Y-axis scaling with round grid numbers
           afterDataLimits: function (scale: any) {
@@ -3383,11 +3389,17 @@
                 size: 8,
                 family: 'Inter, Helvetica, Arial, sans-serif'
               },
-              padding: 5, // Match analog chart padding for alignment
+              padding: 2, // Match analog chart padding for alignment
+              autoSkip: false,
+              align: 'end',
               maxTicksLimit: 2, // Limit to only the two states
               callback: function (value: any) {
-                return value > 0.5 ? digitalStates[1] : digitalStates[0];
+                const label = value > 0.5 ? digitalStates[1] : digitalStates[0];
+                return label.padStart(5, ' '); // Fixed width for alignment
               }
+            },
+            afterFit: function(scale: any) {
+              scale.width = 50; // Fixed width for Y-axis to ensure alignment
             }
           }
         }
