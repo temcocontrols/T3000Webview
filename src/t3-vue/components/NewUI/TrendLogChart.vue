@@ -1690,7 +1690,7 @@
   const route = useRoute()
 
   // NEW: Resizable divider state
-  const analogAreaHeight = ref(75) // Default 75% height
+  const analogAreaHeight = ref(60) // Default 60% height (increased bottom from 25% to 40%)
   const isResizing = ref(false)
   const resizeStartY = ref(0)
   const resizeStartHeight = ref(0)
@@ -3099,7 +3099,7 @@
       layout: {
         padding: {
           left: 2,
-          right: 20,
+          right: 10,
           top: 25,
           bottom: 10
         }
@@ -3311,7 +3311,7 @@
         layout: {
           padding: {
             left: 5,
-            right: 5,
+            right: 10,
             top: 0,
             bottom: isLastChart ? 10 : 0
           }
