@@ -223,13 +223,13 @@ export const GraphicsPage: React.FC = () => {
     }
   });
 
-  // Define columns
+  // Define columns matching C++ BacnetScreen columns
   const columns: TableColumnDefinition<GraphicPoint>[] = [
     createTableColumn<GraphicPoint>({
       columnId: 'graphicId',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('graphicId')}>
-          <span>Graphic ID</span>
+          <span>Graphic #</span>
           {sortColumn === 'graphicId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -238,6 +238,20 @@ export const GraphicsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.graphicId || '---'}</TableCellLayout>,
+    }),
+    createTableColumn<GraphicPoint>({
+      columnId: 'switchNode',
+      renderHeaderCell: () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('switchNode')}>
+          <span>Full Label</span>
+          {sortColumn === 'switchNode' ? (
+            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
+          ) : (
+            <ArrowSortRegular style={{ opacity: 0.5 }} />
+          )}
+        </div>
+      ),
+      renderCell: (item) => <TableCellLayout>{item.switchNode || '---'}</TableCellLayout>,
     }),
     createTableColumn<GraphicPoint>({
       columnId: 'graphicLabel',
@@ -268,24 +282,10 @@ export const GraphicsPage: React.FC = () => {
       renderCell: (item) => <TableCellLayout>{item.graphicPictureFile || '---'}</TableCellLayout>,
     }),
     createTableColumn<GraphicPoint>({
-      columnId: 'switchNode',
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('switchNode')}>
-          <span>Switch Node</span>
-          {sortColumn === 'switchNode' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => <TableCellLayout>{item.switchNode || '---'}</TableCellLayout>,
-    }),
-    createTableColumn<GraphicPoint>({
       columnId: 'graphicTotalPoint',
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('graphicTotalPoint')}>
-          <span>Total Points</span>
+          <span>Element Count</span>
           {sortColumn === 'graphicTotalPoint' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -293,7 +293,7 @@ export const GraphicsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.graphicTotalPoint || '---'}</TableCellLayout>,
+      renderCell: (item) => <TableCellLayout>{item.graphicTotalPoint || '0'}</TableCellLayout>,
     }),
   ];
 
@@ -340,21 +340,6 @@ export const GraphicsPage: React.FC = () => {
               )}
 
               <div className={styles.horizontalDivider}></div>
-
-              {selectedDevice && (
-                <div className={styles.bladeDescription}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ImageRegular style={{ fontSize: '16px', color: '#605e5c' }} />
-                    <Text style={{ fontSize: '13px', color: '#323130', fontWeight: 600 }}>
-                      Graphics for {selectedDevice.nameShowOnTree || `Device ${selectedDevice.serialNumber}`}
-                    </Text>
-                    {loading && <Spinner size="tiny" />}
-                  </div>
-                  <Text style={{ fontSize: '12px', color: '#605e5c', marginTop: '4px' }}>
-                    {graphics.length} graphic{graphics.length !== 1 ? 's' : ''} available
-                  </Text>
-                </div>
-              )}
 
               <div style={{ padding: '0' }}>
                 {!selectedDevice ? (
