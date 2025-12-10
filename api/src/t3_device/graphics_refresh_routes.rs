@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, graphics};
@@ -491,18 +491,48 @@ pub async fn load_and_save_graphics(
         return Err((StatusCode::BAD_REQUEST, format!("C++ error: {}", error)));
     }
 
-    // Parse the graphic data JSON
-    let data_str = match response_value.get("data").and_then(|d| d.as_str()) {
-        Some(s) => s,
+    // Parse the graphic data JSON - handle various data field formats
+    let data_str = match response_value.get("data") {
+        Some(data_value) => {
+            // Try as string first
+            if let Some(s) = data_value.as_str() {
+                if s.is_empty() {
+                    warn!("⚠️ Graphics data field is empty string");
+                    "{}"
+                } else {
+                    s
+                }
+            }
+            // Try as null
+            else if data_value.is_null() {
+                warn!("⚠️ Graphics data field is null, using empty object");
+                "{}"
+            }
+            // Try as object (already parsed)
+            else if data_value.is_object() || data_value.is_array() {
+                warn!("⚠️ Graphics data field is already parsed JSON, converting to string");
+                &serde_json::to_string(data_value).unwrap_or_else(|_| "{}".to_string())
+            }
+            else {
+                error!("❌ Graphics data field has unexpected type: {:?}", data_value);
+                error!("❌ Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
+                let _ = write_structured_log_with_level(
+                    "T3_Webview_API",
+                    &format!("❌ Invalid 'data' field type | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
+                    LogLevel::Error
+                );
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid data field type in response".to_string()));
+            }
+        }
         None => {
             error!("❌ No 'data' field in response");
             error!("❌ Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
             let _ = write_structured_log_with_level(
                 "T3_Webview_API",
-                &format!("❌ No 'data' field | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
+                &format!("❌ Missing 'data' field | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
                 LogLevel::Error
             );
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, "No data in response".to_string()));
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, "No data field in response".to_string()));
         }
     };
 
@@ -527,30 +557,55 @@ pub async fn load_and_save_graphics(
         }
     };
 
-    info!("📊 Graphic data keys: {:?}", graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-    let _ = write_structured_log_with_level(
-        "T3_Webview_API",
-        &format!("📊 Graphic data keys: {:?}", graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>())),
-        LogLevel::Info
-    );
+    // C++ returns graphic data as a JSON array directly in the "data" field, NOT wrapped in an object
+    // The parsed graphic_data should be either:
+    // 1. An array directly: [{...}, {...}]
+    // 2. An object with "items" field: {"items": [{...}, {...}]}
+    // 3. An object with "myitems" field: {"myitems": [{...}, {...}]}
 
-    // Extract items from graphic data (C++ returns "items" not "myitems")
-    let items = match graphic_data.get("items").and_then(|m| m.as_array()) {
-        Some(arr) => arr,
-        None => {
-            error!("❌ No 'items' array in graphic data");
+    let items = if graphic_data.is_array() {
+        // Direct array format from C++
+        info!("📊 Graphic data is a direct array with {} items", graphic_data.as_array().unwrap().len());
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            &format!("📊 Graphic data is direct array - {} items", graphic_data.as_array().unwrap().len()),
+            LogLevel::Info
+        );
+        graphic_data.as_array().unwrap()
+    } else if let Some(items_array) = graphic_data.get("items").and_then(|v| v.as_array()) {
+        // Object with "items" field
+        info!("📊 Graphic data has 'items' field with {} items", items_array.len());
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            &format!("📊 Graphic data has 'items' field - {} items", items_array.len()),
+            LogLevel::Info
+        );
+        items_array
+    } else if let Some(myitems_array) = graphic_data.get("myitems").and_then(|v| v.as_array()) {
+        // Object with "myitems" field (legacy format)
+        info!("📊 Graphic data has 'myitems' field with {} items", myitems_array.len());
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            &format!("📊 Graphic data has 'myitems' field - {} items", myitems_array.len()),
+            LogLevel::Info
+        );
+        myitems_array
+    } else {
+        // Unknown format
+        error!("❌ Graphic data is not an array and has no 'items' or 'myitems' field");
+        error!("❌ Data type: {}", if graphic_data.is_object() { "object" } else if graphic_data.is_null() { "null" } else { "unknown" });
+        if graphic_data.is_object() {
             error!("❌ Available keys: {:?}", graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-            error!("❌ Full graphic data: {}", serde_json::to_string_pretty(&graphic_data).unwrap_or_default());
-            let _ = write_structured_log_with_level(
-                "T3_Webview_API",
-                &format!("❌ No 'items' | Keys: {:?} | Data: {}",
-                    graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>()),
-                    serde_json::to_string_pretty(&graphic_data).unwrap_or_default().chars().take(500).collect::<String>()
-                ),
-                LogLevel::Error
-            );
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, "No items in graphic data".to_string()));
         }
+        let _ = write_structured_log_with_level(
+            "T3_Webview_API",
+            &format!("❌ Invalid graphic data format | Type: {} | Preview: {}",
+                if graphic_data.is_object() { "object" } else if graphic_data.is_null() { "null" } else { "unknown" },
+                serde_json::to_string_pretty(&graphic_data).unwrap_or_default().chars().take(500).collect::<String>()
+            ),
+            LogLevel::Error
+        );
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, "Graphic data is not in expected format".to_string()));
     };    info!("📊 Found {} graphic items in response", items.len());
 
     // Save each item to database
