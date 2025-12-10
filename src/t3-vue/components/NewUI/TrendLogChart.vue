@@ -11657,7 +11657,7 @@
   }
 
     .channel-chart.last-channel {
-      height: 85px;
+      height: 90px;
     }
 
     /* Add border to first channel-chart (top) */
