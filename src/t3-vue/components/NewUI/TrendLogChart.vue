@@ -418,16 +418,97 @@
 
       <!-- DIGITAL AREA (Bottom Section) -->
       <div class="digital-area">
-        <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
-          <!-- Separate Digital Channels (Original Canvas Style) -->
-          <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
-            <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
-              <div class="channel-label" :style="{ color: series.color }">
-                {{ series.name }}
+        <!-- Digital Left Panel -->
+        <div class="digital-left-panel">
+          <div class="control-section">
+            <div class="series-list">
+              <!-- Digital series list -->
+              <div v-for="(series, index) in digitalSeriesList" :key="series.name" class="series-item" :class="{
+                'series-disabled': !series.visible
+              }">
+                <div class="series-header" @click="toggleSeriesVisibility(analogSeriesList.length + index, $event)">
+                  <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
+                       :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
+                    <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
+                    <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                    <div v-if="keyboardEnabled && getKeyboardShortcut(series.name)"
+                         class="keyboard-shortcut-badge left-panel-badge"
+                         :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.name) }"
+                         :data-key="getKeyboardShortcut(series.name)"
+                         :title="`Press ${getKeyboardShortcut(series.name)} to toggle`">
+                      {{ getKeyboardShortcut(series.name) }}
+                    </div>
+                  </div>
+                  <div class="series-info">
+                    <div class="series-name-line">
+                      <!-- Series Name takes most space on left -->
+                      <div class="series-name-col">
+                        <a-tooltip :title="getSeriesNameText(series)" placement="topLeft">
+                          <span class="series-name">{{ getSeriesNameText(series) }}</span>
+                        </a-tooltip>
+                      </div>
+                      <!-- Right side: Chip + Unit + Expand button grouped together -->
+                      <div class="series-right-group">
+                        <div class="series-chip-col">
+                          <q-chip v-if="series.prefix" :label="getChipLabelText(series.prefix)" color="grey-4"
+                                  text-color="grey-8" size="xs" dense class="series-prefix-tag-small" />
+                        </div>
+                        <div class="series-tags-col">
+                          <span class="series-inline-tags">
+                            <span class="unit-info" :style="{ color: series.color }">
+                              {{ getDisplayUnit(series) }}
+                            </span>
+                          </span>
+                        </div>
+                        <div class="series-controls">
+                          <a-button size="small" type="text" class="expand-toggle"
+                                    @click="(e) => toggleSeriesExpansion(analogSeriesList.length + index, e)">
+                            <template #icon>
+                              <DownOutlined v-if="expandedSeries.has(analogSeriesList.length + index)" class="expand-icon expanded" />
+                              <RightOutlined v-else class="expand-icon" />
+                            </template>
+                          </a-button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="expandedSeries.has(analogSeriesList.length + index)" class="series-stats">
+                  <div class="stat-item">
+                    <span class="stat-label">Last:</span>
+                    <span class="stat-value">{{ getLastValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg:</span>
+                    <span class="stat-value">{{ getAverageValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Min:</span>
+                    <span class="stat-value">{{ getMinValue(series.data, series) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Max:</span>
+                    <span class="stat-value">{{ getMaxValue(series.data, series) }}</span>
+                  </div>
+                </div>
               </div>
-              <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
             </div>
-          </template>
+          </div>
+        </div>
+
+        <!-- Digital Right Panel -->
+        <div class="digital-right-panel">
+          <div class="digital-oscilloscope-container" @wheel="handleMouseWheel">
+            <!-- Separate Digital Channels (Original Canvas Style) -->
+            <template v-for="(series, index) in visibleDigitalSeries" :key="series.name">
+              <div class="channel-chart" :class="{ 'last-channel': index === visibleDigitalSeries.length - 1 }">
+                <div class="channel-label" :style="{ color: series.color }">
+                  {{ series.name }}
+                </div>
+                <canvas :ref="(el) => setDigitalChartRef(el, index)" :id="`digital-${index}-chart`"></canvas>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -10689,8 +10770,34 @@
     border-radius: 4px;
     padding: 4px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    gap: 6px;
     overflow: hidden;
+  }
+
+  .digital-left-panel {
+    width: clamp(210px, 23vw, 330px);
+    background: #fafafa;
+    border: 1px solid #e8e8e8;
+    border-radius: 0px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .digital-right-panel {
+    flex: 1;
+    background: #fafafa;
+    border: none;
+    border-radius: 0px;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .digital-oscilloscope-container {
