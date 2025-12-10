@@ -168,7 +168,7 @@
         <div class="empty-description">
           Select items to track to start monitoring specific data points.
         </div>
-        <a-button type="primary" @click="showItemSelector = true" size="large" class="select-items-btn">
+        <a-button type="primary" @click="showItemSelector = true" class="select-items-btn">
           Select Items to Track
         </a-button>
       </div>
@@ -12445,7 +12445,7 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    font-size: 14px;
+    font-size: 13px !important;
     font-weight: 500;
   }
 
@@ -12482,8 +12482,19 @@
     gap: 8px;
   }
 
+  .drawer-footer .ant-btn {
+    height: 32px !important;
+    padding: 0 15px !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+  }
+
   .select-toggle-btn {
     min-width: 90px;
+    height: 32px !important;
+    padding: 0 15px !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
   }
 
   /* Compact item list with detailed info */
@@ -12706,30 +12717,35 @@
   }
 
   .empty-icon {
-    font-size: 48px;
+    font-size: 36px;
     margin-bottom: 16px;
     opacity: 0.6;
   }
 
   .empty-title {
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 600;
     color: #262626;
     margin-bottom: 8px;
   }
 
   .empty-description {
-    font-size: 14px;
+    font-size: 13px;
     color: #8c8c8c;
     line-height: 1.5;
     margin-bottom: 24px;
   }
 
   .select-items-btn {
-    height: 40px;
-    padding: 0 24px;
-    font-size: 14px;
-    font-weight: 500;
+    height: 32px !important;
+    padding: 0 16px !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+  }
+
+  .select-items-btn span {
+    font-size: 14px !important;
+    font-weight: normal !important;
   }
 
   /* ⌨️ Keyboard Navigation Styles */
