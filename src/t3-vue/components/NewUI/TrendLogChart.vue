@@ -175,7 +175,7 @@
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
       <!-- ANALOG AREA (Top Section) -->
-      <div class="analog-area">
+      <div v-if="showAnalogArea" class="analog-area">
         <div class="left-panel">
           <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
           <div v-if="showLoadingOverlay" class="loading-overlay">
@@ -407,6 +407,7 @@
 
       <!-- RESIZABLE DIVIDER -->
       <div
+        v-if="showResizableDivider"
         class="resizable-divider"
         @mousedown="startResize"
         :style="{ cursor: isResizing ? 'row-resize' : 'row-resize' }"
@@ -417,15 +418,102 @@
       </div>
 
       <!-- DIGITAL AREA (Bottom Section) -->
-      <div class="digital-area">
+      <div v-if="showDigitalArea" class="digital-area">
         <!-- Digital Left Panel -->
         <div class="digital-left-panel">
           <div class="control-section">
+            <!-- Show full header when only digital series exist -->
+            <div v-if="showDigitalHeader" class="data-series-header">
+              <div class="header-line-1">
+                <div :title="devVersion" class="chart-title-with-version">
+                  {{ chartTitle }} ({{ visibleDigitalSeriesCount }}/{{ digitalSeriesList.length }})
+                </div>
+                <!-- Data Source Indicator -->
+                <div class="data-source-indicator">
+                  <span v-if="shouldShowLoading" class="source-badge loading">
+                    Loading...
+                  </span>
+                  <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
+                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
+                  </span>
+                  <span v-else-if="dataSource === 'api'" class="source-badge historical">
+                    📚 Historical ({{ timeBase }})
+                  </span>
+                  <span v-else-if="hasConnectionError" class="source-badge error">
+                    ⚠️ Connection Error
+                  </span>
+                </div>
+              </div>
+              <div class="header-line-2">
+                <div class="left-controls">
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>All</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleAllMenu" class="all-dropdown-menu">
+                        <a-menu-item key="enable-all" :disabled="!hasDisabledSeries">
+                          <CheckOutlined />
+                          Enable All
+                        </a-menu-item>
+                        <a-menu-item key="disable-all" :disabled="!hasEnabledSeries">
+                          <DisconnectOutlined />
+                          Disable All
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                  <a-dropdown>
+                    <a-button size="small" style="display: flex; align-items: center; font-size: 11px;">
+                      <span>By Type</span>
+                      <DownOutlined style="margin-left: 4px;" />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleByTypeMenu" class="bytype-dropdown-menu">
+                        <a-menu-item key="toggle-analog" :disabled="!hasAnalogSeries">
+                          <LineChartOutlined />
+                          {{ allAnalogEnabled ? 'Disable' : 'Enable' }} Analog ({{ analogCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-digital" :disabled="!hasDigitalSeries">
+                          <BarChartOutlined />
+                          {{ allDigitalEnabled ? 'Disable' : 'Enable' }} Digital ({{ digitalCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-input" :disabled="!hasInputSeries">
+                          <ImportOutlined />
+                          {{ allInputEnabled ? 'Disable' : 'Enable' }} Input ({{ inputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-output" :disabled="!hasOutputSeries">
+                          <ExportOutlined />
+                          {{ allOutputEnabled ? 'Disable' : 'Enable' }} Output ({{ outputCount }})
+                        </a-menu-item>
+                        <a-menu-item key="toggle-variable" :disabled="!hasVariableSeries">
+                          <FunctionOutlined />
+                          {{ allVariableEnabled ? 'Disable' : 'Enable' }} Variable ({{ variableCount }})
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </div>
+                <div class="auto-scroll-toggle">
+                  <a-typography-text class="toggle-label">Auto Scroll:</a-typography-text>
+                  <a-switch v-model:checked="isRealTime" size="small" @change="onRealTimeToggle" />
+                </div>
+              </div>
+            </div>
             <div class="series-list">
               <!-- Digital series list -->
               <div v-for="(series, index) in digitalSeriesList" :key="series.name" class="series-item" :class="{
                 'series-disabled': !series.visible
               }">
+                <!-- Delete button overlay for View 2 & 3 tracked items -->
+                <a-button v-if="currentView !== 1" size="small" type="text" class="delete-series-btn delete-overlay"
+                          @click="(e) => removeFromTracking(series.name, e)" :title="'Remove from tracking'">
+                  <template #icon>
+                    <CloseOutlined class="delete-icon" />
+                  </template>
+                </a-button>
+
                 <div class="series-header" @click="toggleSeriesVisibility(analogSeriesList.length + index, $event)">
                   <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                        :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
@@ -2852,6 +2940,18 @@
     return digitalSeriesList.value.filter(series => series.visible).length
   })
 
+  // NEW: Scenario detection for conditional display - based on tracked/selected items
+  const showAnalogArea = computed(() => analogSeriesList.value.length > 0)
+  const showDigitalArea = computed(() => digitalSeriesList.value.length > 0)
+  const showResizableDivider = computed(() => analogSeriesList.value.length > 0 && digitalSeriesList.value.length > 0)
+  const showAnalogXAxis = computed(() => {
+    const hasTrackedAnalog = analogSeriesList.value.length > 0
+    const hasTrackedDigital = digitalSeriesList.value.length > 0
+    // Show top X-axis only when we have analog AND no digital tracked
+    return hasTrackedAnalog && !hasTrackedDigital
+  })
+  const showDigitalHeader = computed(() => analogSeriesList.value.length === 0 && digitalSeriesList.value.length > 0)
+
   // Helper function to get digital state label using T3Range
   const getDigitalStateLabel = (series: SeriesConfig): string => {
     if (series.unitType !== 'digital') return ''
@@ -3196,10 +3296,10 @@
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
             lineWidth: 1,
-            drawTicks: false // Hide tick marks
+            drawTicks: showAnalogXAxis.value // Only show tick marks when analog-only
           },
           ticks: {
-            display: false, // Hide x-axis tick labels to look like single chart
+            display: showAnalogXAxis.value, // Show labels only when analog-only (no digital series)
             color: '#595959',
             font: {
               size: 11,
@@ -9818,6 +9918,15 @@
         }, 10)
       }
     })
+  })
+
+  // Watch for showAnalogXAxis changes to update X-axis visibility
+  watch(showAnalogXAxis, (newValue) => {
+    if (analogChartInstance?.options?.scales?.x) {
+      analogChartInstance.options.scales.x.ticks.display = newValue
+      analogChartInstance.options.scales.x.grid.drawTicks = newValue
+      analogChartInstance.update('none') // Update without animation for immediate response
+    }
   })
 
   // Watch for changes in visible analog series to ensure proper chart updates
