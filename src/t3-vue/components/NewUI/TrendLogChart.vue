@@ -1690,7 +1690,7 @@
   const route = useRoute()
 
   // NEW: Resizable divider state
-  const analogAreaHeight = ref(60) // Default 60% height (increased bottom from 25% to 40%)
+  const analogAreaHeight = ref(60) // Default 60% height (bottom 40%)
   const isResizing = ref(false)
   const resizeStartY = ref(0)
   const resizeStartHeight = ref(0)
@@ -3191,13 +3191,15 @@
       scales: {
         x: {
           type: 'time' as const,
-          display: true, // Show x-axis on analog chart
+          display: true, // Keep x-axis displayed for grid lines
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
-            lineWidth: 1
+            lineWidth: 1,
+            drawTicks: false // Hide tick marks
           },
           ticks: {
+            display: false, // Hide x-axis tick labels to look like single chart
             color: '#595959',
             font: {
               size: 11,
@@ -6692,6 +6694,14 @@
     // Using 'none' mode prevents animations but still allows async rendering
     // Removed synchronous render() call that was blocking the entire application
     analogChartInstance.update('none')
+
+    // Scroll right-panel to bottom by default
+    nextTick(() => {
+      const rightPanel = document.querySelector('.analog-area .right-panel') as HTMLElement
+      if (rightPanel) {
+        rightPanel.scrollTop = rightPanel.scrollHeight
+      }
+    })
   }
 
   const updateDigitalCharts = async () => {
@@ -6813,6 +6823,14 @@
         }
       }
     } // End of for loop
+
+    // Scroll digital right-panel to bottom by default
+    nextTick(() => {
+      const digitalRightPanel = document.querySelector('.digital-area .digital-right-panel') as HTMLElement
+      if (digitalRightPanel) {
+        digitalRightPanel.scrollTop = digitalRightPanel.scrollHeight
+      }
+    })
   }
 
   // Series control methods
