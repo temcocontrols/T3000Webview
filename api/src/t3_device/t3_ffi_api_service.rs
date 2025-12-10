@@ -108,26 +108,44 @@ impl T3000FfiApiService {
             }
 
             if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
-                let message_cstring = CString::new(message)
-                    .map_err(|e| Error::ServerError(format!("Invalid message string: {}", e)))?;
+                // Allocate buffer large enough for both input and output
+                let mut buffer: Vec<u8> = vec![0; self.max_buffer_size];
+                let input_bytes = message.as_bytes();
 
-                let mut buffer = vec![0u8; self.max_buffer_size];
+                if input_bytes.len() >= self.max_buffer_size {
+                    return Err(Error::ServerError("Input message too large for buffer".to_string()));
+                }
+
+                // Copy input message into buffer
+                buffer[..input_bytes.len()].copy_from_slice(input_bytes);
+                buffer[input_bytes.len()] = 0;  // Null terminate
+
+                // Call FFI - buffer contains input, will be modified to contain output
                 let result = func(
-                    action,  // Use extracted action from JSON message
-                    message_cstring.as_ptr() as *mut c_char,
-                    message.len() as i32
+                    action,
+                    buffer.as_mut_ptr() as *mut c_char,
+                    buffer.len() as i32
                 );
 
-                if result > 0 {
-                    let response = String::from_utf8(buffer[..result as usize].to_vec())
-                        .map_err(|e| Error::ServerError(format!("Invalid UTF-8 response: {}", e)))?;
+                match result {
+                    0 => {
+                        // Success - extract response from buffer
+                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
-                    api_logger.info(&format!("📡 FFI Response - Size: {} bytes", result));
-                    Ok(response)
-                } else {
-                    let error_msg = format!("FFI call returned error code: {}", result);
-                    api_logger.error(&format!("❌ {}", error_msg));
-                    Err(Error::ServerError(error_msg))
+                        api_logger.info(&format!("📡 FFI Response - {} bytes", null_pos));
+                        Ok(response)
+                    }
+                    -2 => {
+                        let error_msg = "MFC application not initialized".to_string();
+                        api_logger.error(&format!("❌ {}", error_msg));
+                        Err(Error::ServerError(error_msg))
+                    }
+                    code => {
+                        let error_msg = format!("FFI call returned error code: {}", code);
+                        api_logger.error(&format!("❌ {}", error_msg));
+                        Err(Error::ServerError(error_msg))
+                    }
                 }
             } else {
                 Err(Error::ServerError("FFI function not loaded".to_string()))
