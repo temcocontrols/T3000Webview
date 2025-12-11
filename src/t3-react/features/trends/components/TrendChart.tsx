@@ -157,16 +157,25 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     const timeConfig = TIME_CONFIGS[timeBase];
     const yAxisRange = calculateYAxisRange(analogSeries);
 
-    // Build series for ECharts
+    // Build series for ECharts - Match Chart.js style
     const echartsAnalogSeries = analogSeries.map((s, index) => ({
       name: s.name,
       type: 'line' as const,
       smooth: false,
       symbol: 'none',
-      lineStyle: { width: 2, color: s.color || CHART_COLORS[index % CHART_COLORS.length] },
-      itemStyle: { color: s.color || CHART_COLORS[index % CHART_COLORS.length] },
+      lineStyle: {
+        width: 2,
+        color: s.color || CHART_COLORS[index % CHART_COLORS.length]
+      },
+      itemStyle: {
+        color: s.color || CHART_COLORS[index % CHART_COLORS.length]
+      },
+      emphasis: {
+        lineStyle: { width: 3 }
+      },
       data: s.data.map(point => [point.timestamp, point.value]),
       yAxisIndex: 0,
+      animation: false,
     }));
 
     const echartsDigitalSeries = digitalSeries.map((s, index) => ({
@@ -175,52 +184,76 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       step: 'end' as const,
       smooth: false,
       symbol: 'none',
-      lineStyle: { width: 2, color: s.color || CHART_COLORS[(analogSeries.length + index) % CHART_COLORS.length] },
-      itemStyle: { color: s.color || CHART_COLORS[(analogSeries.length + index) % CHART_COLORS.length] },
+      lineStyle: {
+        width: 2,
+        color: s.color || CHART_COLORS[(analogSeries.length + index) % CHART_COLORS.length]
+      },
+      itemStyle: {
+        color: s.color || CHART_COLORS[(analogSeries.length + index) % CHART_COLORS.length]
+      },
       data: s.data.map(point => [point.timestamp, point.value]),
       yAxisIndex: 1,
+      animation: false,
     }));
 
     // Calculate time range
     const now = Date.now();
     const startTime = now - (timeConfig.totalMinutes * 60 * 1000);
 
-    // Configure chart
+    // Configure chart - Match Chart.js styling
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
+      animation: false,
       grid: [
         {
-          left: '80px',
-          right: '60px',
-          top: '60px',
-          bottom: digitalSeries.length > 0 ? '35%' : '60px',
+          left: '60px',
+          right: '20px',
+          top: '35px',
+          bottom: digitalSeries.length > 0 ? '35%' : '40px',
           containLabel: false,
         },
         ...(digitalSeries.length > 0 ? [{
-          left: '80px',
-          right: '60px',
+          left: '60px',
+          right: '20px',
           top: '70%',
-          bottom: '60px',
+          bottom: '40px',
           containLabel: false,
         }] : []),
       ],
       tooltip: {
         trigger: 'axis' as const,
-        axisPointer: { type: 'cross' as const },
+        axisPointer: {
+          type: 'line' as const,
+          lineStyle: {
+            color: '#d9d9d9',
+            width: 1,
+          }
+        },
+        backgroundColor: '#ffffff',
+        borderColor: '#d9d9d9',
+        borderWidth: 1,
+        textStyle: {
+          color: '#000000',
+          fontSize: 11,
+          fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+        },
+        padding: 8,
         formatter: (params: any) => {
           if (!Array.isArray(params) || params.length === 0) return '';
           const timestamp = params[0].value[0];
           const timeStr = formatTimestamp(timestamp, timeBase);
-          let html = `<div style="font-weight: bold; margin-bottom: 8px;">${timeStr}</div>`;
+          let html = `<div style="font-weight: 500; margin-bottom: 6px; color: #000000;">${timeStr}</div>`;
           params.forEach((param: any) => {
             const value = param.value[1];
             const seriesInfo = series.find(s => s.name === param.seriesName);
             const unit = seriesInfo?.unit || '';
+            const displayValue = seriesInfo?.digitalAnalog === 'Digital'
+              ? (value === 1 ? 'ON' : 'OFF')
+              : `${value.toFixed(2)} ${unit}`;
             html += `
-              <div style="display: flex; align-items: center; margin: 4px 0;">
-                <span style="display: inline-block; width: 10px; height: 10px; background: ${param.color}; border-radius: 50%; margin-right: 8px;"></span>
-                <span style="flex: 1;">${param.seriesName}:</span>
-                <span style="font-weight: bold; margin-left: 8px;">${value.toFixed(2)} ${unit}</span>
+              <div style="display: flex; align-items: center; margin: 3px 0;">
+                <span style="display: inline-block; width: 8px; height: 8px; background: ${param.color}; border-radius: 50%; margin-right: 6px;"></span>
+                <span style="color: #595959;">${displayValue}</span>
               </div>
             `;
           });
@@ -228,10 +261,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         },
       },
       legend: {
-        top: 10,
-        left: 'center',
-        type: 'scroll' as const,
-        data: [...analogSeries, ...digitalSeries].map(s => s.name),
+        show: false, // Hide legend like Chart.js
       },
       xAxis: [
         {
@@ -243,9 +273,20 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             formatter: (value: number) => formatTimestamp(value, timeBase),
             color: '#595959',
             fontSize: 11,
+            fontFamily: 'Inter, Helvetica, Arial, sans-serif',
           },
-          axisLine: { lineStyle: { color: '#e0e0e0' } },
-          splitLine: { show: showGrid, lineStyle: { color: '#e0e0e0' } },
+          axisLine: {
+            show: true,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
+          axisTick: {
+            show: true,
+            lineStyle: { color: '#e0e0e0' }
+          },
+          splitLine: {
+            show: showGrid,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
           splitNumber: timeConfig.divisions,
         },
         ...(digitalSeries.length > 0 ? [{
@@ -257,9 +298,20 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             formatter: (value: number) => formatTimestamp(value, timeBase),
             color: '#595959',
             fontSize: 11,
+            fontFamily: 'Inter, Helvetica, Arial, sans-serif',
           },
-          axisLine: { lineStyle: { color: '#e0e0e0' } },
-          splitLine: { show: showGrid, lineStyle: { color: '#e0e0e0' } },
+          axisLine: {
+            show: true,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
+          axisTick: {
+            show: true,
+            lineStyle: { color: '#e0e0e0' }
+          },
+          splitLine: {
+            show: showGrid,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
           splitNumber: timeConfig.divisions,
         }] : []),
       ],
@@ -267,36 +319,56 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         {
           type: 'value' as const,
           gridIndex: 0,
-          name: 'Analog',
-          nameLocation: 'middle' as const,
-          nameGap: 60,
           min: yAxisRange.min,
           max: yAxisRange.max,
-          splitNumber: 10, // 10 tick marks for finer granularity (user requirement)
+          splitNumber: 10, // 10 tick marks for precise reading
           axisLabel: {
-            formatter: (value: number) => value.toFixed(2),
+            formatter: (value: number) => {
+              const formatted = Math.round(value).toString();
+              return formatted.padStart(5, ' '); // Fixed width for alignment
+            },
             color: '#595959',
             fontSize: 11,
+            fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+            align: 'right',
           },
-          axisLine: { lineStyle: { color: '#e0e0e0' } },
-          splitLine: { show: showGrid, lineStyle: { color: '#e0e0e0' } },
+          axisLine: {
+            show: true,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
+          axisTick: {
+            show: true,
+            lineStyle: { color: '#e0e0e0' }
+          },
+          splitLine: {
+            show: showGrid,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
         },
         ...(digitalSeries.length > 0 ? [{
           type: 'value' as const,
           gridIndex: 1,
-          name: 'Digital',
-          nameLocation: 'middle' as const,
-          nameGap: 60,
-          min: 0,
-          max: 1,
-          splitNumber: 2,
+          min: -0.1,
+          max: 1.1,
+          interval: 1,
           axisLabel: {
-            formatter: (value: number) => value === 0 ? 'OFF' : 'ON',
+            formatter: (value: number) => value === 0 ? 'OFF' : (value === 1 ? 'ON' : ''),
             color: '#595959',
             fontSize: 11,
+            fontFamily: 'Inter, Helvetica, Arial, sans-serif',
           },
-          axisLine: { lineStyle: { color: '#e0e0e0' } },
-          splitLine: { show: showGrid, lineStyle: { color: '#e0e0e0' } },
+          axisLine: {
+            show: true,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
+          axisTick: {
+            show: true,
+            lineStyle: { color: '#e0e0e0' }
+          },
+          splitLine: {
+            show: showGrid,
+            lineStyle: { color: '#e0e0e0', width: 1 }
+          },
         }] : []),
       ],
       dataZoom: [
@@ -304,13 +376,8 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           type: 'inside' as const,
           xAxisIndex: [0, ...(digitalSeries.length > 0 ? [1] : [])],
           filterMode: 'none' as const,
-        },
-        {
-          type: 'slider' as const,
-          xAxisIndex: [0, ...(digitalSeries.length > 0 ? [1] : [])],
-          bottom: 10,
-          height: 20,
-          filterMode: 'none' as const,
+          zoomOnMouseWheel: 'ctrl', // Ctrl+wheel to zoom (match Chart.js behavior)
+          moveOnMouseMove: 'shift', // Shift+drag to pan (match Chart.js behavior)
         },
       ],
       series: [...echartsAnalogSeries, ...echartsDigitalSeries],
