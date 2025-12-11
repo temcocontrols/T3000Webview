@@ -25,7 +25,6 @@ import {
   Switch,
   Text,
   Spinner,
-  Badge,
   makeStyles,
   tokens,
   ToolbarButton,
@@ -486,6 +485,38 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+  },
+  statusTag: {
+    padding: '2px 10px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: '500',
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    whiteSpace: 'nowrap',
+    border: '1px solid',
+    transition: 'all 0.2s ease',
+  },
+  statusTagLive: {
+    backgroundColor: '#f6ffed',
+    borderColor: '#b7eb8f',
+    color: '#389e0d',
+  },
+  statusTagHistorical: {
+    backgroundColor: '#e6f7ff',
+    borderColor: '#91d5ff',
+    color: '#0958d9',
+  },
+  statusTagTimeBase: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#d9d9d9',
+    color: '#595959',
+  },
+  liveIndicator: {
+    fontSize: '10px',
+    animation: 'pulse 1.5s ease-in-out infinite',
   },
   spacer: {
     flex: 1,
@@ -1495,14 +1526,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       {/* Status Tags */}
       <div className={styles.statusTags}>
-        <Badge
-          appearance="filled"
-          color={isRealtime ? 'success' : 'informative'}
-          size="small"
-        >
-          {isRealtime ? `Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}` : 'Historical'}
-        </Badge>
-        <Badge appearance="outline" size="small">
+        <div className={`${styles.statusTag} ${isRealtime ? styles.statusTagLive : styles.statusTagHistorical}`}>
+          {isRealtime ? (
+            <>
+              <span className={styles.liveIndicator}>●</span>
+              {`Live-${new Date().toLocaleTimeString('en-US', { hour12: false })}`}
+            </>
+          ) : (
+            'Historical'
+          )}
+        </div>
+        <div className={`${styles.statusTag} ${styles.statusTagTimeBase}`}>
           {timeBase === '5m' ? '5 minutes' :
            timeBase === '10m' ? '10 minutes' :
            timeBase === '30m' ? '30 minutes' :
@@ -1511,7 +1545,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
            timeBase === '12h' ? '12 hours' :
            timeBase === '1d' ? '1 day' :
            timeBase === '4d' ? '4 days' : timeBase}
-        </Badge>
+        </div>
       </div>
 
       <div className={styles.divider} />
