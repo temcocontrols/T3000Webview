@@ -48,6 +48,22 @@ interface TrendLogData {
   bufferSize?: number;
   autoManual?: string;
   status?: string;
+  panelId?: number;
+}
+
+interface TrendLogInput {
+  id?: number;
+  serialNumber?: number;
+  panelId?: number;
+  trendlogId?: string;
+  pointType: string;
+  pointIndex: string;
+  pointPanel?: string;
+  pointLabel?: string;
+  status?: string;
+  viewType?: string;
+  viewNumber?: number;
+  isSelected?: number;
 }
 
 export const TrendLogsPage: React.FC = () => {
@@ -60,10 +76,17 @@ export const TrendLogsPage: React.FC = () => {
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
-  const [monitorInputs, setMonitorInputs] = useState<string[]>(Array(14).fill(''));
+  const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
+  const [loadingInputs, setLoadingInputs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+
+  // Helper function to get row ID for a trendlog
+  const getRowIdForItem = useCallback((item: TrendLogData) => {
+    return `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`;
+  }, []);
 
   // Chart drawer state
   const [chartDrawerOpen, setChartDrawerOpen] = useState(false);
@@ -230,6 +253,8 @@ export const TrendLogsPage: React.FC = () => {
   const fetchTrendLogs = useCallback(async () => {
     if (!selectedDevice) {
       setTrendLogs([]);
+      setSelectedMonitor(null);
+      setMonitorInputs([]);
       return;
     }
 
@@ -266,6 +291,23 @@ export const TrendLogsPage: React.FC = () => {
       }));
 
       setTrendLogs(trendlogsWithIndex);
+
+      // Auto-select first trendlog and load its inputs
+      if (trendlogsWithIndex.length > 0) {
+        console.log('🎯 [TrendLogsPage] Auto-selecting first trendlog:', trendlogsWithIndex[0]);
+        const firstTrendlog = trendlogsWithIndex[0];
+
+        // Use loadTrendlogInputs to handle the loading with deduplication
+        setSelectedMonitor(firstTrendlog);
+
+        // Select the first row's radio button
+        const firstRowId = `${firstTrendlog.serialNumber}-${firstTrendlog.trendlogId || firstTrendlog.trendlogIndex}-${firstTrendlog._uniqueIndex}`;
+        setSelectedItems(new Set([firstRowId]));
+
+        if (firstTrendlog.trendlogId) {
+          await loadTrendlogInputsInternal(firstTrendlog);
+        }
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
       setError(errorMessage);
@@ -273,6 +315,94 @@ export const TrendLogsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, [selectedDevice]);
+
+  // Internal function to load inputs with deduplication
+  const loadTrendlogInputsInternal = async (trendlog: TrendLogData) => {
+    if (!selectedDevice || !trendlog.trendlogId) {
+      setMonitorInputs([]);
+      return;
+    }
+
+    setLoadingInputs(true);
+    try {
+      const fallbackUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
+      const fallbackResponse = await fetch(fallbackUrl);
+
+      if (fallbackResponse.ok) {
+        const inputsData = await fallbackResponse.json();
+
+        const trendlogInputs = (inputsData.data || []).filter(
+          (input: any) => {
+            const trendlogMatch = input.trendlogId === trendlog.trendlogId || input.Trendlog_ID === trendlog.trendlogId;
+            const viewMatch = input.viewType === 'MAIN' || input.view_type === 'MAIN' ||
+                             input.viewType === 'VIEW' || input.view_type === 'VIEW' ||
+                             !input.viewType;
+            return trendlogMatch && viewMatch;
+          }
+        );
+
+        // Remove duplicates
+        const uniqueInputsMap = new Map<string, any>();
+        trendlogInputs.forEach((input: any) => {
+          const pointType = input.Point_Type || input.pointType;
+          const pointIndex = input.Point_Index || input.pointIndex;
+          const key = `${pointType}-${pointIndex}`;
+
+          if (!uniqueInputsMap.has(key)) {
+            uniqueInputsMap.set(key, input);
+          } else {
+            const existing = uniqueInputsMap.get(key);
+            const existingViewType = existing.view_type || existing.viewType;
+            const currentViewType = input.view_type || input.viewType;
+
+            if (currentViewType === 'MAIN' && existingViewType !== 'MAIN') {
+              uniqueInputsMap.set(key, input);
+            }
+          }
+        });
+
+        const uniqueInputs = Array.from(uniqueInputsMap.values());
+
+        const formattedInputs: TrendLogInput[] = uniqueInputs.map((input: any) => ({
+          id: input.id,
+          serialNumber: input.SerialNumber || input.serialNumber,
+          panelId: input.PanelId || input.panelId,
+          trendlogId: input.Trendlog_ID || input.trendlogId,
+          pointType: input.Point_Type || input.pointType,
+          pointIndex: input.Point_Index || input.pointIndex,
+          pointPanel: input.Point_Panel || input.pointPanel,
+          pointLabel: input.Point_Label || input.pointLabel,
+          status: input.Status || input.status,
+          viewType: input.view_type || input.viewType,
+          viewNumber: input.view_number || input.viewNumber,
+          isSelected: input.is_selected || input.isSelected,
+        }));
+
+        setMonitorInputs(formattedInputs);
+      } else {
+        setMonitorInputs([]);
+      }
+    } catch (error) {
+      console.error('❌ [TrendLogsPage] Error loading inputs:', error);
+      setMonitorInputs([]);
+    } finally {
+      setLoadingInputs(false);
+    }
+  };
+
+  // Load inputs for a specific trendlog
+  const loadTrendlogInputs = useCallback(async (trendlog: TrendLogData) => {
+    if (!selectedDevice || !trendlog.trendlogId) {
+      console.log('⚠️ [TrendLogsPage] Missing device or trendlog ID');
+      setSelectedMonitor(trendlog);
+      setMonitorInputs([]);
+      return;
+    }
+
+    console.log('📡 [TrendLogsPage] Loading inputs for trendlog:', trendlog.trendlogId);
+    setSelectedMonitor(trendlog);
+    await loadTrendlogInputsInternal(trendlog);
   }, [selectedDevice]);
 
   useEffect(() => {
@@ -379,70 +509,14 @@ export const TrendLogsPage: React.FC = () => {
 
   const handleMonitorSelect = useCallback(async (monitor: TrendLogData) => {
     console.log('🔵 [TrendLogsPage] handleMonitorSelect called with:', monitor);
-    setSelectedMonitor(monitor);
+    console.log('🔵 [TrendLogsPage] VERSION: 2025-12-12-v2 - Using NEW input loading code');
 
-    if (!selectedDevice) {
-      console.log('⚠️ [TrendLogsPage] No device selected, skipping input fetch');
-      setMonitorInputs(Array(14).fill(''));
-      return;
-    }
+    // Update radio button selection
+    const rowId = getRowIdForItem(monitor);
+    setSelectedItems(new Set([rowId]));
 
-    try {
-      console.log('📡 [TrendLogsPage] Fetching inputs for monitor:', monitor.trendlogId, 'device:', selectedDevice.serialNumber);
-
-      // Fetch TRENDLOG_INPUTS for this device
-      const inputsUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/TRENDLOG_INPUTS`;
-      const response = await fetch(inputsUrl);
-
-      if (response.ok) {
-        const inputsData = await response.json();
-        console.log('✅ [TrendLogsPage] Inputs data received:', inputsData);
-
-        // Filter inputs for this specific trendlog
-        if (inputsData.data && Array.isArray(inputsData.data)) {
-          const trendlogInputs = inputsData.data.filter(
-            (input: any) =>
-              (input.trendlogId === monitor.trendlogId || input.Trendlog_ID === monitor.trendlogId) &&
-              (input.viewType === 'MAIN' || input.view_type === 'MAIN' || !input.viewType)
-          );
-
-          console.log('✅ [TrendLogsPage] Filtered inputs for monitor:', trendlogInputs);
-
-          // Create array of 14 inputs (standard monitor size)
-          const inputs = Array(14).fill('');
-
-          // Fill in the configured inputs
-          trendlogInputs.forEach((input: any) => {
-            const pointIndex = parseInt(input.pointIndex || input.point_index || '0');
-            const pointType = input.pointType || input.point_type || '';
-            const pointLabel = input.pointLabel || input.point_label || '';
-
-            // Calculate display index (0-13)
-            if (pointIndex > 0 && pointIndex <= 14) {
-              const displayIndex = pointIndex - 1;
-              // Format: "IN1: Label" or "OUT1: Label"
-              const prefix = pointType === 'INPUT' ? 'IN' :
-                           pointType === 'OUTPUT' ? 'OUT' :
-                           pointType === 'VARIABLE' ? 'VAR' : '';
-              inputs[displayIndex] = pointLabel || `${prefix}${pointIndex}`;
-            }
-          });
-
-          setMonitorInputs(inputs);
-          console.log('✅ [TrendLogsPage] Monitor inputs set:', inputs);
-        } else {
-          console.warn('⚠️ [TrendLogsPage] No data in response');
-          setMonitorInputs(Array(14).fill(''));
-        }
-      } else {
-        console.warn('⚠️ [TrendLogsPage] Failed to fetch inputs:', response.status);
-        setMonitorInputs(Array(14).fill(''));
-      }
-    } catch (error) {
-      console.error('❌ [TrendLogsPage] Error fetching monitor inputs:', error);
-      setMonitorInputs(Array(14).fill(''));
-    }
-  }, [selectedDevice]);
+    await loadTrendlogInputs(monitor);
+  }, [loadTrendlogInputs, getRowIdForItem]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -746,6 +820,10 @@ export const TrendLogsPage: React.FC = () => {
                         sortable
                         resizableColumns
                         selectionMode="single"
+                        selectedItems={selectedItems}
+                        onSelectionChange={(e, data) => {
+                          setSelectedItems(data.selectedItems);
+                        }}
                         columnSizingOptions={{
                           trendlogId: {
                             minWidth: 120,
@@ -807,15 +885,48 @@ export const TrendLogsPage: React.FC = () => {
                     {/* Monitor Input List - Right Side (20%) */}
                     <div className={styles.subGrid}>
                       <div className={styles.subGridHeader}>
-                        <Text size={300} weight="semibold">Monitor Inputs</Text>
+                        <Text size={300} weight="semibold">
+                          Monitor Inputs {loadingInputs && <Spinner size="tiny" style={{ marginLeft: '8px' }} />}
+                        </Text>
+                        {monitorInputs.length > 0 && (
+                          <Badge appearance="filled" color="informative" size="small">
+                            {monitorInputs.length} inputs
+                          </Badge>
+                        )}
                       </div>
                       <div className={styles.subGridBody}>
-                        {monitorInputs.map((input, index) => (
-                          <div key={index} className={styles.inputRow}>
-                            <div className={styles.inputNum}>{index + 1}</div>
-                            <div className={styles.inputValue}>{input || '-'}</div>
+                        {loadingInputs ? (
+                          <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <Spinner size="small" label="Loading inputs..." />
                           </div>
-                        ))}
+                        ) : monitorInputs.length > 0 ? (
+                          monitorInputs.map((input, index) => {
+                            const pointTypeShort =
+                              input.pointType === 'IN' ? 'IN' :
+                              input.pointType === 'OUT' ? 'OUT' :
+                              input.pointType === 'VAR' ? 'VAR' :
+                              input.pointType;
+
+                            const displayLabel = input.pointLabel ||
+                              `${pointTypeShort}${input.pointIndex}`;
+
+                            return (
+                              <div key={`${input.pointType}-${input.pointIndex}-${index}`} className={styles.inputRow}>
+                                <div className={styles.inputNum}>{index + 1}</div>
+                                <Tooltip
+                                  content={`${pointTypeShort}${input.pointIndex}: ${input.pointLabel || 'No label'}`}
+                                  relationship="label"
+                                >
+                                  <div className={styles.inputValue}>{displayLabel}</div>
+                                </Tooltip>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#605e5c' }}>
+                            <Text size={200}>No inputs configured</Text>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
