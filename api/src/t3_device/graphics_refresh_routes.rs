@@ -606,11 +606,35 @@ pub async fn load_and_save_graphics(
             LogLevel::Error
         );
         return Err((StatusCode::INTERNAL_SERVER_ERROR, "Graphic data is not in expected format".to_string()));
-    };    info!("📊 Found {} graphic items in response", items.len());
+    };
 
-    // Save each item to database
+    info!("📊 Found {} items in response, filtering for type='GRP'", items.len());
+    let _ = write_structured_log_with_level(
+        "T3_Webview_API",
+        &format!("📊 Found {} items total, filtering for GRP type only", items.len()),
+        LogLevel::Info
+    );
+
+    // Filter items to only include type="GRP" (graphics)
+    let grp_items: Vec<&Value> = items.iter()
+        .filter(|item| {
+            item.get("type")
+                .and_then(|v| v.as_str())
+                .map(|t| t == "GRP")
+                .unwrap_or(false)
+        })
+        .collect();
+
+    info!("📊 Filtered to {} GRP items (graphics only)", grp_items.len());
+    let _ = write_structured_log_with_level(
+        "T3_Webview_API",
+        &format!("📊 Filtered {} GRP items from {} total items", grp_items.len(), items.len()),
+        LogLevel::Info
+    );
+
+    // Save each GRP item to database
     let mut saved_count = 0;
-    for (idx, item) in items.iter().enumerate() {
+    for (idx, item) in grp_items.iter().enumerate() {
         // Extract item data
         let graphic_id_str = idx.to_string();
         let switch_node = item.get("id").and_then(|v| v.as_i64()).unwrap_or(0).to_string();
