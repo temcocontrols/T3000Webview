@@ -65,6 +65,10 @@ import { TrendChart, TrendSeries } from './TrendChart';
 import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 
+// BAC Units Constants - Digital/Analog Type Indicators (from Vue update)
+const BAC_UNITS_DIGITAL = 0;
+const BAC_UNITS_ANALOG = 1;
+
 const useStyles = makeStyles({
   container: {
     display: 'flex',
@@ -584,10 +588,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, []);
 
   /**
-   * Helper: Get prefix tag for series
+   * Helper: Get prefix tag for series (updated from Vue)
    */
-  const getPrefixTag = useCallback((pointType: string): string => {
-    return pointType || 'N/A';
+  const getPrefixTag = useCallback((pointType: string, prefix?: string): string => {
+    // Use prefix if available (from series data), otherwise fall back to pointType
+    return prefix || pointType || 'N/A';
   }, []);
 
   /**
@@ -1686,9 +1691,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                             {s.name}
                           </Text>
                           <div className={styles.seriesItemMeta}>
-                            {s.pointType && (
+                            {(s.prefix || s.pointType) && (
                               <Tag size="extra-small" appearance="outline">
-                                {getPrefixTag(s.pointType)}
+                                {getPrefixTag(s.pointType, s.prefix)}
                               </Tag>
                             )}
                             <Text className={styles.seriesItemUnit} style={{ color: s.color }}>

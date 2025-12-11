@@ -41,6 +41,7 @@ export interface TrendSeries {
   unit?: string;
   digitalAnalog: 'Analog' | 'Digital';
   visible?: boolean;
+  prefix?: string; // NEW: Category prefix (IN, OUT, VAR, etc.) - from Vue update
 }
 
 interface TrendChartProps {
