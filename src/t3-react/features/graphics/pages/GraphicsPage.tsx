@@ -178,12 +178,29 @@ export const GraphicsPage: React.FC = () => {
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `graphics_${selectedDevice?.serialNumber}_${new Date().toISOString()}.csv`;
-    link.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `graphics_${selectedDevice?.serialNumber || 'export'}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   };
+
+  const handleViewWebview = useCallback((graphic: GraphicPoint) => {
+    if (!selectedDevice || !graphic.graphicId) return;
+
+    // Construct the webview URL for this graphic
+    const webviewUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/graphics/${graphic.graphicId}/webview`;
+
+    console.log('🖼️ [GraphicsPage] Opening webview for graphic:', {
+      serialNumber: selectedDevice.serialNumber,
+      graphicId: graphic.graphicId,
+      label: graphic.graphicLabel,
+      url: webviewUrl,
+    });
+
+    // Open in a new window/tab
+    window.open(webviewUrl, '_blank');
+  }, [selectedDevice]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -294,6 +311,26 @@ export const GraphicsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.graphicTotalPoint || '0'}</TableCellLayout>,
+    }),
+    // Actions column - View Webview
+    createTableColumn<GraphicPoint>({
+      columnId: 'actions',
+      renderHeaderCell: () => <span>Action</span>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Button
+            size="small"
+            icon={<ImageRegular />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewWebview(item);
+            }}
+            title="View webview for this graphic"
+          >
+            View Webview
+          </Button>
+        </TableCellLayout>
+      ),
     }),
   ];
 
@@ -441,6 +478,10 @@ export const GraphicsPage: React.FC = () => {
                         graphicTotalPoint: {
                           minWidth: 100,
                           defaultWidth: 130,
+                        },
+                        actions: {
+                          minWidth: 120,
+                          defaultWidth: 140,
                         },
                       }}
                       getRowId={(item) => `${item.serialNumber}-${item.graphicId}`}
