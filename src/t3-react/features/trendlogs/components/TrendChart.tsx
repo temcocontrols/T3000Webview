@@ -21,8 +21,13 @@ const useStyles = makeStyles({
   chartContainer: {
     width: '100%',
     height: '100%',
-    minHeight: '400px',
     backgroundColor: tokens.colorNeutralBackground1,
+  },
+  chartContainerMain: {
+    minHeight: '400px',
+  },
+  chartContainerOscilloscope: {
+    minHeight: '60px',
   },
 });
 
@@ -86,6 +91,9 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   // Separate analog and digital series
   const analogSeries = series.filter(s => s.digitalAnalog === 'Analog' && s.visible !== false);
   const digitalSeries = series.filter(s => s.digitalAnalog === 'Digital' && s.visible !== false);
+
+  // For individual digital oscilloscope charts, use only digital series
+  const isDigitalOscilloscope = chartType === 'digital' && series.length === 1 && series[0]?.digitalAnalog === 'Digital';
 
   // Calculate Y-axis range with enhanced auto-scaling
   const calculateYAxisRange = useCallback((seriesData: TrendSeries[]) => {
@@ -174,6 +182,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         lineStyle: { width: 3 }
       },
       data: s.data.map(point => [point.timestamp, point.value]),
+      xAxisIndex: 0,
       yAxisIndex: 0,
       animation: false,
     }));
@@ -192,6 +201,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         color: s.color || CHART_COLORS[(analogSeries.length + index) % CHART_COLORS.length]
       },
       data: s.data.map(point => [point.timestamp, point.value]),
+      xAxisIndex: 1,
       yAxisIndex: 1,
       animation: false,
     }));
@@ -204,7 +214,13 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
       animation: false,
-      grid: [
+      grid: isDigitalOscilloscope ? [{
+        left: '60px',
+        right: '20px',
+        top: '10px',
+        bottom: '40px',
+        containLabel: false,
+      }] : [
         {
           left: '60px',
           right: '20px',
@@ -263,7 +279,31 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       legend: {
         show: false, // Hide legend like Chart.js
       },
-      xAxis: [
+      xAxis: isDigitalOscilloscope ? [{
+        type: 'time' as const,
+        gridIndex: 0,
+        min: startTime,
+        max: now,
+        axisLabel: {
+          formatter: (value: number) => formatTimestamp(value, timeBase),
+          color: '#595959',
+          fontSize: 11,
+          fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+        },
+        axisLine: {
+          show: true,
+          lineStyle: { color: '#e0e0e0', width: 1 }
+        },
+        axisTick: {
+          show: true,
+          lineStyle: { color: '#e0e0e0' }
+        },
+        splitLine: {
+          show: showGrid,
+          lineStyle: { color: '#e0e0e0', width: 1 }
+        },
+        splitNumber: timeConfig.divisions,
+      }] : [
         {
           type: 'time' as const,
           gridIndex: 0,
@@ -315,7 +355,35 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           splitNumber: timeConfig.divisions,
         }] : []),
       ],
-      yAxis: [
+      yAxis: isDigitalOscilloscope ? [{
+        type: 'value' as const,
+        gridIndex: 0,
+        min: 0,
+        max: 1,
+        interval: 1,
+        axisLabel: {
+          formatter: (value: number) => {
+            const label = value === 0 ? 'OFF' : (value === 1 ? 'ON' : '');
+            return label.padStart(5, ' '); // Fixed width for alignment
+          },
+          color: '#595959',
+          fontSize: 8,
+          fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+          align: 'end',
+        },
+        axisLine: {
+          show: true,
+          lineStyle: { color: '#e0e0e0', width: 1 }
+        },
+        axisTick: {
+          show: true,
+          lineStyle: { color: '#e0e0e0' }
+        },
+        splitLine: {
+          show: showGrid,
+          lineStyle: { color: '#F0F0F0', width: 0.3 }
+        },
+      }] : [
         {
           type: 'value' as const,
           gridIndex: 0,
@@ -374,13 +442,32 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       dataZoom: [
         {
           type: 'inside' as const,
-          xAxisIndex: [0, ...(digitalSeries.length > 0 ? [1] : [])],
+          xAxisIndex: isDigitalOscilloscope ? [0] : [0, ...(digitalSeries.length > 0 ? [1] : [])],
           filterMode: 'none' as const,
           zoomOnMouseWheel: 'ctrl', // Ctrl+wheel to zoom (match Chart.js behavior)
           moveOnMouseMove: 'shift', // Shift+drag to pan (match Chart.js behavior)
         },
       ],
-      series: [...echartsAnalogSeries, ...echartsDigitalSeries],
+      series: isDigitalOscilloscope
+        ? digitalSeries.map((s, index) => ({
+            name: s.name,
+            type: 'line' as const,
+            step: 'end' as const,
+            smooth: false,
+            symbol: 'none',
+            lineStyle: {
+              width: 2,
+              color: s.color || CHART_COLORS[index % CHART_COLORS.length]
+            },
+            itemStyle: {
+              color: s.color || CHART_COLORS[index % CHART_COLORS.length]
+            },
+            data: s.data.map(point => [point.timestamp, point.value]),
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            animation: false,
+          }))
+        : [...echartsAnalogSeries, ...echartsDigitalSeries],
     };
 
     chart.setOption(option, true);
@@ -416,5 +503,12 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     };
   }, []);
 
-  return <div ref={chartRef} className={styles.chartContainer} />;
+  return (
+    <div
+      ref={chartRef}
+      className={`${styles.chartContainer} ${
+        isDigitalOscilloscope ? styles.chartContainerOscilloscope : styles.chartContainerMain
+      }`}
+    />
+  );
 };

@@ -37,6 +37,7 @@ import {
   Button,
   Tooltip,
   Tag,
+  Badge,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -63,6 +64,7 @@ import {
 import { TrendChart, TrendSeries } from './TrendChart';
 import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { API_BASE_URL } from '../../../config/constants';
 
 // BAC Units Constants - Digital/Analog Type Indicators (from Vue update)
 const BAC_UNITS_DIGITAL = 0;
@@ -94,7 +96,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'row',
     // Dynamic height: 100% if no digital series, 60% if digital series exist
-    flex: 1, // Use flex instead of fixed height
+    flex: 2, // Top area takes 2 parts (67%)
     minHeight: '200px',
     gap: '6px',
     overflow: 'hidden',
@@ -150,7 +152,7 @@ const useStyles = makeStyles({
   },
   // DIGITAL AREA (Bottom Section)
   digitalArea: {
-    flex: 1,
+    flex: 1, // Bottom area takes 1 part (25%)
     minHeight: '150px',
     backgroundColor: '#f5f5f5',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -432,7 +434,8 @@ const useStyles = makeStyles({
   channelChart: {
     display: 'flex',
     flexDirection: 'column',
-    height: '120px',
+    height: '100px',
+    flexShrink: 0,
     position: 'relative',
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     paddingTop: '8px',
@@ -913,16 +916,73 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       if (props.monitorInputs && props.monitorInputs.length > 0) {
         console.log('✅ TrendChartContent: Initializing series from monitorInputs', {
           inputCount: props.monitorInputs.length,
+          sampleInput: props.monitorInputs[0],
+          serialNumber,
+          panelId,
         });
 
+        // Fetch all point data once for each type
+        const pointsCache: Record<string, any[]> = {};
+
+        try {
+          // Determine which point types we need
+          const neededTypes = new Set(props.monitorInputs.map(input =>
+            input.pointType === 'IN' ? 'INPUT' :
+            input.pointType === 'OUT' ? 'OUTPUT' :
+            'VARIABLE'
+          ));
+
+          // Fetch each type once
+          const fetchPromises = Array.from(neededTypes).map(async (pointTypeStr) => {
+            const endpoint = pointTypeStr === 'INPUT' ? 'input-points' :
+                           pointTypeStr === 'OUTPUT' ? 'output-points' :
+                           'variable-points';
+            const pointUrl = `${API_BASE_URL}/api/t3_device/devices/${serialNumber}/${endpoint}`;
+
+            console.log(`📡 Fetching ${pointTypeStr} points from:`, pointUrl);
+            const response = await fetch(pointUrl);
+
+            if (response.ok) {
+              const data = await response.json();
+              const pointsKey = pointTypeStr === 'INPUT' ? 'input_points' :
+                              pointTypeStr === 'OUTPUT' ? 'output_points' :
+                              'variable_points';
+              pointsCache[pointTypeStr] = data[pointsKey] || [];
+              console.log(`✅ Fetched ${pointsCache[pointTypeStr].length} ${pointTypeStr} points`);
+            } else {
+              console.error(`❌ Failed to fetch ${pointTypeStr} points:`, response.status);
+              pointsCache[pointTypeStr] = [];
+            }
+          });
+
+          await Promise.all(fetchPromises);
+        } catch (err) {
+          console.error('❌ Error fetching point data:', err);
+        }
+
+        // Now create series using the cached data
         const generatedSeries: TrendSeries[] = props.monitorInputs.map((input, index) => {
-          // Map point type
           const pointTypeStr = input.pointType === 'IN' ? 'INPUT' :
                               input.pointType === 'OUT' ? 'OUTPUT' :
                               input.pointType === 'VAR' ? 'VARIABLE' : 'INPUT';
           const pointPrefix = input.pointType;
           const pointIndex = parseInt(input.pointIndex, 10);
           const pointId = `${pointPrefix}${pointIndex}`;
+
+          // Look up digital_analog from cached data
+          let digitalAnalog: 'Digital' | 'Analog' = 'Analog'; // Default
+          const points = pointsCache[pointTypeStr] || [];
+          const point = points.find((p: any) =>
+            parseInt(p.inputIndex || p.outputIndex || p.variableIndex || '0', 10) === pointIndex
+          );
+
+          if (point && point.digitalAnalog !== undefined && point.digitalAnalog !== null) {
+            const rawValue = point.digitalAnalog;
+            digitalAnalog = (rawValue === '0' || rawValue === 0) ? 'Digital' : 'Analog';
+            console.log(`✅ [${pointId}] Classified as ${digitalAnalog} (raw: ${rawValue})`);
+          } else {
+            console.warn(`⚠️ [${pointId}] No digitalAnalog field, defaulting to Analog`);
+          }
 
           return {
             name: input.pointLabel || pointId,
@@ -932,7 +992,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             data: [],
             color: CHART_COLORS[index % CHART_COLORS.length],
             unit: '', // Will be fetched from API later
-            digitalAnalog: 'Analog', // Default to Analog, will be determined from actual data
+            digitalAnalog,
             visible: true,
           };
         });
@@ -942,6 +1002,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           count: generatedSeries.length,
           serialNumber,
           panelId,
+          digitalCount: generatedSeries.filter(s => s.digitalAnalog === 'Digital').length,
+          analogCount: generatedSeries.filter(s => s.digitalAnalog === 'Analog').length,
         });
         return;
       }
@@ -1321,6 +1383,60 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   }, []);
 
   /**
+   * Header dropdown handlers - All menu (Enable/Disable All)
+   */
+  const handleEnableAll = useCallback(() => {
+    setSeries((prev) => prev.map((s) => ({ ...s, visible: true })));
+  }, []);
+
+  const handleDisableAll = useCallback(() => {
+    setSeries((prev) => prev.map((s) => ({ ...s, visible: false })));
+  }, []);
+
+  /**
+   * Header dropdown handlers - By Type menu
+   */
+  const toggleByAnalogDigital = useCallback((type: 'Analog' | 'Digital') => {
+    setSeries((prev) => {
+      const typeSeries = prev.filter((s) => s.digitalAnalog === type);
+      const allEnabled = typeSeries.every((s) => s.visible);
+      return prev.map((s) =>
+        s.digitalAnalog === type ? { ...s, visible: !allEnabled } : s
+      );
+    });
+  }, []);
+
+  const toggleByPointType = useCallback((type: 'INPUT' | 'OUTPUT' | 'VARIABLE') => {
+    setSeries((prev) => {
+      const typeSeries = prev.filter((s) => s.pointType === type);
+      const allEnabled = typeSeries.every((s) => s.visible);
+      return prev.map((s) =>
+        s.pointType === type ? { ...s, visible: !allEnabled } : s
+      );
+    });
+  }, []);
+
+  /**
+   * Computed: Series counts by type for dropdowns
+   */
+  const seriesCounts = useMemo(() => {
+    return {
+      analog: series.filter((s) => s.digitalAnalog === 'Analog').length,
+      digital: series.filter((s) => s.digitalAnalog === 'Digital').length,
+      input: series.filter((s) => s.pointType === 'INPUT').length,
+      output: series.filter((s) => s.pointType === 'OUTPUT').length,
+      variable: series.filter((s) => s.pointType === 'VARIABLE').length,
+      allEnabled: series.every((s) => s.visible),
+      allDisabled: series.every((s) => !s.visible),
+      analogEnabled: series.filter((s) => s.digitalAnalog === 'Analog').every((s) => s.visible),
+      digitalEnabled: series.filter((s) => s.digitalAnalog === 'Digital').every((s) => s.visible),
+      inputEnabled: series.filter((s) => s.pointType === 'INPUT').every((s) => s.visible),
+      outputEnabled: series.filter((s) => s.pointType === 'OUTPUT').every((s) => s.visible),
+      variableEnabled: series.filter((s) => s.pointType === 'VARIABLE').every((s) => s.visible),
+    };
+  }, [series]);
+
+  /**
    * Zoom controls
    */
   const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
@@ -1669,11 +1785,17 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           {/* Analog Left Panel - Series List */}
           <div className={styles.leftPanel}>
             <div className={styles.seriesPanelHeader}>
+              {/* Header Line 1: Title + Count + Data Source */}
               <div className={styles.headerLine}>
                 <Text size={200} weight="semibold">
-                  Analog ({visibleAnalogSeries.length}/{analogSeries.length})
+                  {props.itemData?.title || 'Trend Monitor'} ({visibleAnalogSeries.length}/{analogSeries.length})
                 </Text>
                 <div className={styles.dataSourceIndicator}>
+                  {dataSource === 'loading' && (
+                    <Badge appearance="tint" color="informative" size="small">
+                      Loading...
+                    </Badge>
+                  )}
                   {dataSource === 'realtime' && (
                     <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
                       Live
@@ -1684,6 +1806,84 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                       Historical
                     </Badge>
                   )}
+                  {dataSource === 'error' && (
+                    <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
+                      Error
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Header Line 2: All Dropdown + By Type Dropdown + Auto Scroll Toggle */}
+              <div className={styles.headerControls}>
+                <div className={styles.leftControls}>
+                  {/* All Dropdown */}
+                  <Menu>
+                    <MenuTrigger disableButtonEnhancement>
+                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
+                        All
+                      </Button>
+                    </MenuTrigger>
+                    <MenuPopover>
+                      <MenuList>
+                        <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>
+                          Enable All
+                        </MenuItem>
+                        <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>
+                          Disable All
+                        </MenuItem>
+                      </MenuList>
+                    </MenuPopover>
+                  </Menu>
+
+                  {/* By Type Dropdown */}
+                  <Menu>
+                    <MenuTrigger disableButtonEnhancement>
+                      <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
+                        By Type
+                      </Button>
+                    </MenuTrigger>
+                    <MenuPopover>
+                      <MenuList>
+                        <MenuItem
+                          onClick={() => toggleByAnalogDigital('Analog')}
+                          disabled={seriesCounts.analog === 0}
+                        >
+                          {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => toggleByAnalogDigital('Digital')}
+                          disabled={seriesCounts.digital === 0}
+                        >
+                          {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => toggleByPointType('INPUT')}
+                          disabled={seriesCounts.input === 0}
+                        >
+                          {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => toggleByPointType('OUTPUT')}
+                          disabled={seriesCounts.output === 0}
+                        >
+                          {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => toggleByPointType('VARIABLE')}
+                          disabled={seriesCounts.variable === 0}
+                        >
+                          {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
+                        </MenuItem>
+                      </MenuList>
+                    </MenuPopover>
+                  </Menu>
+                </div>
+
+                {/* Auto Scroll Toggle */}
+                <div className={styles.autoScrollToggle}>
+                  <Text size={100}>Auto Scroll:</Text>
+                  <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} size="small" />
                 </div>
               </div>
             </div>
@@ -1792,11 +1992,111 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           {/* Digital Left Panel - Series List */}
           <div className={styles.digitalLeftPanel}>
             <div className={styles.seriesPanelHeader}>
+              {/* Header Line 1: Title + Count + Data Source (only show if no analog area) */}
               <div className={styles.headerLine}>
                 <Text size={200} weight="semibold">
-                  Digital ({visibleDigitalSeries.length}/{digitalSeries.length})
+                  {analogSeries.length === 0 && (props.itemData?.title || 'Trend Monitor')} Digital ({visibleDigitalSeries.length}/{digitalSeries.length})
                 </Text>
+                {analogSeries.length === 0 && (
+                  <div className={styles.dataSourceIndicator}>
+                    {dataSource === 'loading' && (
+                      <Badge appearance="tint" color="informative" size="small">
+                        Loading...
+                      </Badge>
+                    )}
+                    {dataSource === 'realtime' && (
+                      <Badge appearance="filled" color="success" size="small" icon={<FlashRegular />}>
+                        Live
+                      </Badge>
+                    )}
+                    {dataSource === 'api' && (
+                      <Badge appearance="filled" color="informative" size="small" icon={<HistoryRegular />}>
+                        Historical
+                      </Badge>
+                    )}
+                    {dataSource === 'error' && (
+                      <Badge appearance="filled" color="danger" size="small" icon={<ErrorCircleRegular />}>
+                        Error
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Header Line 2: All Dropdown + By Type Dropdown + Auto Scroll Toggle (only if no analog area) */}
+              {analogSeries.length === 0 && (
+                <div className={styles.headerControls}>
+                  <div className={styles.leftControls}>
+                    {/* All Dropdown */}
+                    <Menu>
+                      <MenuTrigger disableButtonEnhancement>
+                        <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
+                          All
+                        </Button>
+                      </MenuTrigger>
+                      <MenuPopover>
+                        <MenuList>
+                          <MenuItem onClick={handleEnableAll} disabled={seriesCounts.allEnabled}>
+                            Enable All
+                          </MenuItem>
+                          <MenuItem onClick={handleDisableAll} disabled={seriesCounts.allDisabled}>
+                            Disable All
+                          </MenuItem>
+                        </MenuList>
+                      </MenuPopover>
+                    </Menu>
+
+                    {/* By Type Dropdown */}
+                    <Menu>
+                      <MenuTrigger disableButtonEnhancement>
+                        <Button size="small" appearance="subtle" icon={<ChevronDownRegular />} iconPosition="after">
+                          By Type
+                        </Button>
+                      </MenuTrigger>
+                      <MenuPopover>
+                        <MenuList>
+                          <MenuItem
+                            onClick={() => toggleByAnalogDigital('Analog')}
+                            disabled={seriesCounts.analog === 0}
+                          >
+                            {seriesCounts.analogEnabled ? 'Disable' : 'Enable'} Analog ({seriesCounts.analog})
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => toggleByAnalogDigital('Digital')}
+                            disabled={seriesCounts.digital === 0}
+                          >
+                            {seriesCounts.digitalEnabled ? 'Disable' : 'Enable'} Digital ({seriesCounts.digital})
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => toggleByPointType('INPUT')}
+                            disabled={seriesCounts.input === 0}
+                          >
+                            {seriesCounts.inputEnabled ? 'Disable' : 'Enable'} Input ({seriesCounts.input})
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => toggleByPointType('OUTPUT')}
+                            disabled={seriesCounts.output === 0}
+                          >
+                            {seriesCounts.outputEnabled ? 'Disable' : 'Enable'} Output ({seriesCounts.output})
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => toggleByPointType('VARIABLE')}
+                            disabled={seriesCounts.variable === 0}
+                          >
+                            {seriesCounts.variableEnabled ? 'Disable' : 'Enable'} Variable ({seriesCounts.variable})
+                          </MenuItem>
+                        </MenuList>
+                      </MenuPopover>
+                    </Menu>
+                  </div>
+
+                  {/* Auto Scroll Toggle */}
+                  <div className={styles.autoScrollToggle}>
+                    <Text size={100}>Auto Scroll:</Text>
+                    <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} size="small" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Digital Series List */}
@@ -1871,9 +2171,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           <div className={styles.digitalRightPanel}>
             {visibleDigitalSeries.map((digitalSeries, index) => (
               <div key={digitalSeries.name} className={styles.channelChart}>
-                <div style={{ color: digitalSeries.color, fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>
-                  {digitalSeries.name}
-                </div>
                 <TrendChart
                   series={[digitalSeries]}
                   timeBase={timeBase}
