@@ -582,7 +582,7 @@ export const TrendLogsPage: React.FC = () => {
       compare: (a, b) => (a.trendlogLabel || '').localeCompare(b.trendlogLabel || ''),
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogLabel')}>
-          <span>Label test1</span>
+          <span>Label</span>
           {sortColumn === 'trendlogLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -831,12 +831,12 @@ export const TrendLogsPage: React.FC = () => {
                             idealWidth: '5%',
                           },
                           trendlogId: {
-                            minWidth: 90,
-                            idealWidth: '11%',
+                            minWidth: 95,
+                            idealWidth: '12%',
                           },
                           trendlogLabel: {
                             minWidth: 150,
-                            idealWidth: '24%',
+                            idealWidth: '23%',
                           },
                           intervalSeconds: {
                             minWidth: 80,

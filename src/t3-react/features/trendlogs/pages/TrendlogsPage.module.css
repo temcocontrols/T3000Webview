@@ -388,10 +388,11 @@
 .mainGrid {
   flex: 1 1 0;
   min-width: 0;
+  max-width: calc(100% - 300px);
 }
 
 .subGrid {
-  flex: 0 0 250px;
+  flex: 0 0 300px;
   border: 1px solid #edebe9;
   border-radius: 2px;
   background-color: #ffffff;
