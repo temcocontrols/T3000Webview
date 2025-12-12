@@ -96,6 +96,7 @@ export const TrendLogsPage: React.FC = () => {
     trendlogId?: string;
     monitorId?: string;
     itemData?: any; // Complete monitor configuration data (Vue pattern)
+    monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   }>({});
 
   // Handle opening trend chart drawer - construct itemData from trendlog info
@@ -194,6 +195,7 @@ export const TrendLogsPage: React.FC = () => {
           trendlogId: trendlog.trendlogId || '0',
           monitorId: monitorIndex,
           itemData,
+          monitorInputs: monitorInputs, // Pass the loaded monitor inputs
         });
         setChartDrawerOpen(true);
       } catch (error) {
@@ -215,11 +217,12 @@ export const TrendLogsPage: React.FC = () => {
           trendlogId: trendlog.trendlogId || '0',
           monitorId: monitorIndex,
           itemData,
+          monitorInputs: monitorInputs, // Pass the loaded monitor inputs
         });
         setChartDrawerOpen(true);
       }
     },
-    [selectedDevice]
+    [selectedDevice, monitorInputs]
   );  // Debug log to verify new component is loading
   useEffect(() => {
     console.log('🔍 [TrendLogsPage] NEW DataGrid version loaded!', {
@@ -964,6 +967,7 @@ export const TrendLogsPage: React.FC = () => {
         trendlogId={chartParams.trendlogId}
         monitorId={chartParams.monitorId}
         itemData={chartParams.itemData}
+        monitorInputs={chartParams.monitorInputs}
       />
     </div>
   );

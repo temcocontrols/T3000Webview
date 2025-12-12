@@ -551,6 +551,7 @@ export interface TrendChartContentProps {
   trendlogId?: string;
   monitorId?: string; // Currently unused but may be needed for future multi-monitor support
   itemData?: any; // Complete monitor configuration data (Vue pattern: { title, t3Entry })
+  monitorInputs?: any[]; // Monitor inputs for the selected trendlog
   isDrawerMode?: boolean;
   onToolbarRender?: (toolbar: React.ReactNode) => void;
 }
@@ -908,7 +909,44 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     if (!serialNumber || !panelId) return;
 
     try {
-      // Check if we have itemData with monitor configuration (Vue pattern)
+      // Priority 1: Use monitorInputs if provided (from TrendLogs page selection)
+      if (props.monitorInputs && props.monitorInputs.length > 0) {
+        console.log('✅ TrendChartContent: Initializing series from monitorInputs', {
+          inputCount: props.monitorInputs.length,
+        });
+
+        const generatedSeries: TrendSeries[] = props.monitorInputs.map((input, index) => {
+          // Map point type
+          const pointTypeStr = input.pointType === 'IN' ? 'INPUT' :
+                              input.pointType === 'OUT' ? 'OUTPUT' :
+                              input.pointType === 'VAR' ? 'VARIABLE' : 'INPUT';
+          const pointPrefix = input.pointType;
+          const pointIndex = parseInt(input.pointIndex, 10);
+          const pointId = `${pointPrefix}${pointIndex}`;
+
+          return {
+            name: input.pointLabel || pointId,
+            pointId,
+            pointType: pointTypeStr,
+            pointIndex: pointIndex,
+            data: [],
+            color: CHART_COLORS[index % CHART_COLORS.length],
+            unit: '', // Will be fetched from API later
+            digitalAnalog: 'Analog', // Default to Analog, will be determined from actual data
+            visible: true,
+          };
+        });
+
+        setSeries(generatedSeries);
+        console.log('✅ TrendChartContent: Series initialized from monitorInputs', {
+          count: generatedSeries.length,
+          serialNumber,
+          panelId,
+        });
+        return;
+      }
+
+      // Priority 2: Check if we have itemData with monitor configuration (Vue pattern)
       if (props.itemData?.t3Entry?.input && props.itemData?.t3Entry?.range) {
         const inputData = props.itemData.t3Entry.input;
         const rangeData = props.itemData.t3Entry.range;
