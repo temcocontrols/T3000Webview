@@ -633,23 +633,23 @@ export const HolidaysPage: React.FC = () => {
                     columnSizingOptions={{
                       holidayId: {
                         minWidth: 60,
-                        defaultWidth: 80,
+                        idealWidth: '15%',
                       },
                       fullLabel: {
                         minWidth: 150,
-                        defaultWidth: 200,
+                        idealWidth: '30%',
                       },
                       autoManual: {
                         minWidth: 100,
-                        defaultWidth: 120,
+                        idealWidth: '20%',
                       },
                       value: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '15%',
                       },
                       label: {
                         minWidth: 90,
-                        defaultWidth: 120,
+                        idealWidth: '20%',
                       },
                     }}
                   >

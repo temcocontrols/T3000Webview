@@ -36,8 +36,8 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
 import { API_BASE_URL } from '../../../config/constants';
-import { TrendChartDrawer } from '../../trends/components/TrendChartDrawer';
-import styles from './TrendLogsPage.module.css';
+import { TrendChartDrawer } from '../components/TrendChartDrawer';
+import styles from './TrendlogsPage.module.css';
 
 interface TrendLogData {
   serialNumber: number;
@@ -824,34 +824,35 @@ export const TrendLogsPage: React.FC = () => {
                         onSelectionChange={(e, data) => {
                           setSelectedItems(data.selectedItems);
                         }}
+                        style={{ width: '100%' }}
                         columnSizingOptions={{
                           trendlogId: {
                             minWidth: 120,
-                            defaultWidth: 150,
+                            idealWidth: '15%',
                           },
                           trendlogLabel: {
                             minWidth: 150,
-                            defaultWidth: 200,
+                            idealWidth: '20%',
                           },
                           intervalSeconds: {
                             minWidth: 100,
-                            defaultWidth: 120,
+                            idealWidth: '15%',
                           },
                           bufferSize: {
                             minWidth: 90,
-                            defaultWidth: 110,
+                            idealWidth: '12%',
                           },
                           autoManual: {
                             minWidth: 100,
-                            defaultWidth: 130,
+                            idealWidth: '13%',
                           },
                           status: {
                             minWidth: 70,
-                            defaultWidth: 80,
+                            idealWidth: '10%',
                           },
                           actions: {
                             minWidth: 150,
-                            defaultWidth: 180,
+                            idealWidth: '15%',
                           },
                         }}
                         getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}

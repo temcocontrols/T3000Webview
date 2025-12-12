@@ -614,35 +614,35 @@ export const SchedulesPage: React.FC = () => {
                     columnSizingOptions={{
                       scheduleId: {
                         minWidth: 70,
-                        defaultWidth: 90,
+                        idealWidth: '10%',
                       },
                       autoManual: {
                         minWidth: 100,
-                        defaultWidth: 120,
+                        idealWidth: '15%',
                       },
                       outputField: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       variableField: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       holiday1: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '15%',
                       },
                       status1: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       holiday2: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                       status2: {
                         minWidth: 80,
-                        defaultWidth: 100,
+                        idealWidth: '12%',
                       },
                     }}
                   >
