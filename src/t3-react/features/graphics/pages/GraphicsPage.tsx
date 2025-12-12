@@ -458,30 +458,31 @@ export const GraphicsPage: React.FC = () => {
                       columns={columns}
                       sortable
                       resizableColumns
+                      style={{ width: '100%' }}
                       columnSizingOptions={{
                         graphicId: {
                           minWidth: 80,
-                          defaultWidth: 100,
+                          idealWidth: '10%',
                         },
                         switchNode: {
-                          minWidth: 180,
-                          defaultWidth: 250,
+                          minWidth: 150,
+                          idealWidth: '25%',
                         },
                         graphicLabel: {
                           minWidth: 120,
-                          defaultWidth: 180,
+                          idealWidth: '15%',
                         },
                         graphicPictureFile: {
                           minWidth: 150,
-                          defaultWidth: 200,
+                          idealWidth: '25%',
                         },
                         graphicTotalPoint: {
                           minWidth: 100,
-                          defaultWidth: 130,
+                          idealWidth: '10%',
                         },
                         actions: {
-                          minWidth: 120,
-                          defaultWidth: 140,
+                          minWidth: 100,
+                          idealWidth: '15%',
                         },
                       }}
                       getRowId={(item) => `${item.serialNumber}-${item.graphicId}`}
