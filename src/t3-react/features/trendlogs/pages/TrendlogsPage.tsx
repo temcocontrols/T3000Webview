@@ -37,7 +37,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
-import styles from './TrendlogsPage.module.css';
+import styles from './TrendLogsPage.module.css';
 
 interface TrendLogData {
   serialNumber: number;
@@ -582,7 +582,7 @@ export const TrendLogsPage: React.FC = () => {
       compare: (a, b) => (a.trendlogLabel || '').localeCompare(b.trendlogLabel || ''),
       renderHeaderCell: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogLabel')}>
-          <span>Label</span>
+          <span>Label test1</span>
           {sortColumn === 'trendlogLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -813,7 +813,7 @@ export const TrendLogsPage: React.FC = () => {
                 {selectedDevice && !loading && !error && trendLogs.length > 0 && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
-                    <div className={styles.mainGrid}>
+                    <div className={styles.mainGrid} style={{ maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>
                       <DataGrid
                         items={trendLogs}
                         columns={columns}
@@ -826,39 +826,43 @@ export const TrendLogsPage: React.FC = () => {
                         }}
                         style={{ width: '100%' }}
                         columnSizingOptions={{
+                          __selection__: {
+                            minWidth: 44,
+                            idealWidth: '5%',
+                          },
                           trendlogId: {
-                            minWidth: 120,
-                            idealWidth: '15%',
+                            minWidth: 90,
+                            idealWidth: '11%',
                           },
                           trendlogLabel: {
                             minWidth: 150,
-                            idealWidth: '20%',
+                            idealWidth: '24%',
                           },
                           intervalSeconds: {
-                            minWidth: 100,
-                            idealWidth: '15%',
+                            minWidth: 80,
+                            idealWidth: '12%',
                           },
                           bufferSize: {
                             minWidth: 90,
                             idealWidth: '12%',
                           },
                           autoManual: {
-                            minWidth: 100,
-                            idealWidth: '13%',
+                            minWidth: 90,
+                            idealWidth: '11%',
                           },
                           status: {
                             minWidth: 70,
                             idealWidth: '10%',
                           },
                           actions: {
-                            minWidth: 150,
+                            minWidth: 120,
                             idealWidth: '15%',
                           },
                         }}
                         getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}
                       >
                         <DataGridHeader>
-                          <DataGridRow selectionCell={{ renderHeaderCell: () => <span>#</span> }}>
+                          <DataGridRow>
                             {({ renderHeaderCell }) => (
                               <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                             )}

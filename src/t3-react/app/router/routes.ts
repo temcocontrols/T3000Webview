@@ -118,7 +118,7 @@ export const t3000Routes: T3000Route[] = [
     requiresDevice: true,
   },
   {
-    path: '/t3000/trend-logs',
+    path: '/t3000/trendlogs',
     element: TrendLogsPage,
     title: 'Trend Logs',
     windowId: 9, // WINDOW_MONITOR

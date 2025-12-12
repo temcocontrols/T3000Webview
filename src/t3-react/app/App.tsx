@@ -191,7 +191,7 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="trend-logs"
+                  path="trendlogs"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <TrendLogsPage />
