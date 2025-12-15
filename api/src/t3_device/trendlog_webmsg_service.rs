@@ -89,9 +89,17 @@ impl TrendlogWebMsgService {
 
         match self.ffi_service.call_ffi(&message.to_string()).await {
             Ok(response) => {
-                // If we get a valid response with data, device is online
+                // Parse JSON response from C++
                 match serde_json::from_str::<serde_json::Value>(&response) {
-                    Ok(json_response) => Ok(json_response.get("data").is_some()),
+                    Ok(json_response) => {
+                        // If there's an "error" field, device is offline or has error
+                        if json_response.get("error").is_some() {
+                            Ok(false)  // Device offline or error
+                        } else {
+                            // Check for "data" field - indicates successful response
+                            Ok(json_response.get("data").is_some())
+                        }
+                    }
                     Err(_) => Ok(false)  // Invalid JSON means device offline
                 }
             }

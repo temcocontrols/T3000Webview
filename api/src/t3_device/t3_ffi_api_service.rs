@@ -34,7 +34,7 @@ pub struct T3000FfiApiService {
 impl T3000FfiApiService {
     pub fn new() -> Self {
         Self {
-            max_buffer_size: 8192, // 8KB buffer
+            max_buffer_size: 10485760, // 10MB buffer (increased from 8KB to handle large graphics data)
         }
     }
 
@@ -52,8 +52,6 @@ impl T3000FfiApiService {
                 "T3000.exe",  // Same directory as Rust API
                 "./T3000.exe",  // Current directory explicitly
                 "../T3000.exe",  // Parent directory
-                r"E:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3000.exe",
-                r"C:\T3000\T3000.exe"
             ];
 
             for path in &t3000_paths {
@@ -139,6 +137,22 @@ impl T3000FfiApiService {
                         let error_msg = "MFC application not initialized".to_string();
                         api_logger.error(&format!("❌ {}", error_msg));
                         Err(Error::ServerError(error_msg))
+                    }
+                    -1 => {
+                        // C++ returned -1, but buffer may contain error JSON (e.g., device offline)
+                        // Read buffer content to get actual error message
+                        let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
+                        let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+
+                        // If buffer has JSON content, return it (allows frontend to parse error)
+                        if !response.is_empty() && (response.starts_with('{') || response.starts_with('[')) {
+                            api_logger.info(&format!("⚠️ FFI returned -1 with JSON response: {}", response));
+                            Ok(response)  // Return the JSON error response
+                        } else {
+                            let error_msg = format!("FFI call returned error code: -1");
+                            api_logger.error(&format!("❌ {}", error_msg));
+                            Err(Error::ServerError(error_msg))
+                        }
                     }
                     code => {
                         let error_msg = format!("FFI call returned error code: {}", code);
