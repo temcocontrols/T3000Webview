@@ -518,3 +518,124 @@
 .rotating {
   animation: rotate 1s linear infinite;
 }
+
+/* Inline style replacements */
+.headerCellSort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.headerCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortIconFaded {
+  opacity: 0.5;
+}
+
+.cellFlexContainer {
+  display: flex;
+  align-items: center;
+}
+
+.editInputContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.iconSmall {
+  font-size: 14px;
+}
+
+.iconMedium {
+  font-size: 18px;
+}
+
+.iconError {
+  color: #d13438;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.textError {
+  color: #d13438;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.switchScale {
+  transform: scale(0.8);
+}
+
+.switchContainer {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.rangeLink {
+  cursor: pointer;
+  color: #0078d4;
+}
+
+.errorNotice {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #fef6f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.noPadding {
+  padding: 0;
+}
+
+.centerText {
+  text-align: center;
+}
+
+.emptyStateContainer {
+  margin-top: 24px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.emptyStateHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.emptyStateIcon {
+  opacity: 0.5;
+}
+
+.emptyStateText {
+  display: block;
+  margin-bottom: 16px;
+  color: #605e5c;
+  text-align: center;
+}
+
+.refreshButton {
+  min-width: 120px;
+  font-weight: normal;
+}
+
+.marginLeft8 {
+  margin-left: 8px;
+}

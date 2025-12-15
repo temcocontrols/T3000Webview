@@ -523,12 +523,12 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
           <span>Panel</span>
           {sortColumn === 'panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -538,12 +538,12 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'variable',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('variable')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('variable')}>
           <span>Variable</span>
           {sortColumn === 'variable' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -552,7 +552,7 @@ export const VariablesPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className={styles.cellFlexContainer}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -563,8 +563,7 @@ export const VariablesPage: React.FC = () => {
                 disabled={isRefreshing}
               >
                 <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshing ? styles.rotating : ''}
+                  className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                 />
               </button>
               <Text size={200} weight="regular">{item.variableId || item.variableIndex || '---'}</Text>
@@ -577,12 +576,12 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -594,10 +593,10 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="text"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -606,7 +605,6 @@ export const VariablesPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter label"
                   aria-label="Edit full label"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -617,7 +615,7 @@ export const VariablesPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -637,12 +635,12 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -654,10 +652,10 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="text"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -666,7 +664,6 @@ export const VariablesPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter label"
                   aria-label="Edit label"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -677,7 +674,7 @@ export const VariablesPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -697,7 +694,7 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Manual</span>
         </div>
       ),
@@ -772,11 +769,11 @@ export const VariablesPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={handleToggle}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              className={styles.switchContainer}
             >
               <Switch
                 checked={isAuto}
-                style={{ transform: 'scale(0.8)' }}
+                className={styles.switchScale}
               />
             </div>
           </TableCellLayout>
@@ -787,12 +784,12 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -804,11 +801,11 @@ export const VariablesPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="number"
                   step="0.01"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -817,7 +814,6 @@ export const VariablesPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter value"
                   aria-label="Edit value"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -828,7 +824,7 @@ export const VariablesPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -848,12 +844,12 @@ export const VariablesPage: React.FC = () => {
     createTableColumn<VariablePoint>({
       columnId: 'units',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
           <span>Units</span>
           {sortColumn === 'units' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -867,7 +863,7 @@ export const VariablesPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={() => handleUnitsClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4' }}
+              className={styles.rangeLink}
               title="Click to change range/units"
             >
               <Text size={200} weight="regular">{rangeLabel}</Text>
@@ -897,9 +893,9 @@ export const VariablesPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -970,8 +966,7 @@ export const VariablesPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -986,7 +981,7 @@ export const VariablesPage: React.FC = () => {
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
 
@@ -1008,7 +1003,7 @@ export const VariablesPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className={styles.centerText}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={300}>Please select a device from the tree to view variables</Text>
@@ -1088,19 +1083,19 @@ export const VariablesPage: React.FC = () => {
 
                   {/* No Data Message - Show below grid when empty */}
                   {variables.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No variables found</Text>
                       </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured variable points</Text>
+                      <Text size={300} className={styles.emptyStateText}>This device has no configured variable points</Text>
                       <Button
                         appearance="subtle"
                         icon={<ArrowSyncRegular />}
                         onClick={handleRefresh}
-                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                        className={styles.refreshButton}
                       >
                         Refresh
                       </Button>
