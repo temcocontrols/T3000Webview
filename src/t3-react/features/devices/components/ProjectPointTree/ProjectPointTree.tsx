@@ -78,7 +78,10 @@ const ProjectTreeNode: React.FC<{ node: any; level: number }> = React.memo(({ no
   if (node.node_type === 'point_type') {
     return (
       <TreeItem itemType="leaf" value={node.name}>
-        <TreeItemLayout className={styles.pointTypeItem}>
+        <TreeItemLayout
+          className={styles.treeItemNormal}
+          style={{ '--tree-level': level } as React.CSSProperties}
+        >
           {getPointTypeIcon(node.point_type)}
           <span className={styles.pointTypeName}>{node.name}</span>
           {node.used !== undefined && node.total !== undefined && (
@@ -97,10 +100,13 @@ const ProjectTreeNode: React.FC<{ node: any; level: number }> = React.memo(({ no
   if (node.node_type === 'device') {
     return (
       <TreeItem itemType="branch" value={node.name}>
-        <TreeItemLayout>
-          <ServerRegular className={styles.icon} />
-          <span>{node.name}</span>
-          {node.status && <StatusIcon status={node.status} />}
+        <TreeItemLayout
+          className={styles.treeItemNormal}
+          style={{ '--tree-level': level } as React.CSSProperties}
+          iconBefore={<ServerRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
+          aside={node.status ? <StatusIcon status={node.status} /> : undefined}
+        >
+          {node.name}
         </TreeItemLayout>
         {hasChildren && (
           <Tree>
@@ -116,9 +122,12 @@ const ProjectTreeNode: React.FC<{ node: any; level: number }> = React.memo(({ no
   // System or root nodes
   return (
     <TreeItem itemType="branch" value={node.name}>
-      <TreeItemLayout>
-        <FolderRegular className={styles.icon} />
-        <span>{node.name}</span>
+      <TreeItemLayout
+        className={styles.treeItemNormal}
+        style={{ '--tree-level': level } as React.CSSProperties}
+        iconBefore={<FolderRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
+      >
+        {node.name}
       </TreeItemLayout>
       {hasChildren && (
         <Tree>

@@ -1821,7 +1821,7 @@ async fn get_project_point_tree(
     // Get all devices
     let devices_query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        "SELECT SerialNumber, Product_Name, Product_Class_ID FROM DEVICES ORDER BY Product_Name".to_string()
+        "SELECT SerialNumber, Product_Name, Product_Class_ID, show_label_name, Screen_Name FROM DEVICES ORDER BY Product_Name".to_string()
     );
 
     let devices_result = db.query_all(devices_query).await
@@ -1834,8 +1834,16 @@ async fn get_project_point_tree(
         let serial_number: i32 = device.try_get("", "SerialNumber")
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         let serial_str = serial_number.to_string();
-        let device_name: String = device.try_get("", "Product_Name")
-            .unwrap_or_else(|_| format!("Device {}", serial_str));
+
+        // Use show_label_name or Screen_Name, fallback to Product_Name
+        let show_label: Option<String> = device.try_get("", "show_label_name").ok().flatten();
+        let screen_name: Option<String> = device.try_get("", "Screen_Name").ok().flatten();
+        let product_name: Option<String> = device.try_get("", "Product_Name").ok().flatten();
+
+        let device_name = show_label
+            .or(screen_name)
+            .or(product_name)
+            .unwrap_or_else(|| format!("Device {}", serial_str));
         // Note: Online_Status column doesn't exist, default to offline for now
         let online_status: i32 = 0; // TODO: Add online status detection
         let product_class_id: i32 = device.try_get("", "Product_Class_ID").unwrap_or(0);
