@@ -48,6 +48,7 @@ interface TrendLogData {
   bufferSize?: number;
   autoManual?: string;
   status?: string;
+  _uniqueIndex?: number;
   panelId?: number;
 }
 
@@ -544,12 +545,12 @@ export const TrendLogsPage: React.FC = () => {
         return aVal - bVal;
       },
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogId')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('trendlogId')}>
           <span>Trendlog ID</span>
           {sortColumn === 'trendlogId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -570,8 +571,7 @@ export const TrendLogsPage: React.FC = () => {
                 disabled={isRefreshingThis}
               >
                 <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshingThis ? styles.rotating : ''}
+                  className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                 />
               </button>
               <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
@@ -584,12 +584,12 @@ export const TrendLogsPage: React.FC = () => {
       columnId: 'trendlogLabel',
       compare: (a, b) => (a.trendlogLabel || '').localeCompare(b.trendlogLabel || ''),
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('trendlogLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('trendlogLabel')}>
           <span>Label</span>
           {sortColumn === 'trendlogLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -650,7 +650,7 @@ export const TrendLogsPage: React.FC = () => {
         <TableCellLayout>
           <Button
             size="small"
-            icon={<ChartMultipleRegular style={{ fontSize: '14px' }} />}
+            icon={<ChartMultipleRegular className={styles.iconSmall} />}
             onClick={() => handleViewChart(item)}
             title="View trend chart for this trendlog"
           >
@@ -700,9 +700,9 @@ export const TrendLogsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -775,8 +775,7 @@ export const TrendLogsPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -804,7 +803,7 @@ export const TrendLogsPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className={styles.centerText}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={300}>Please select a device from the tree to view trendlogs</Text>
@@ -816,50 +815,51 @@ export const TrendLogsPage: React.FC = () => {
                 {selectedDevice && !loading && !error && trendLogs.length > 0 && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
-                    <div className={styles.mainGrid} style={{ maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>
+                    <div className={`${styles.mainGrid} ${styles.scrollContainerAuto}`}>
                       <DataGrid
+                        key="trendlogs-grid-v5"
                         items={trendLogs}
                         columns={columns}
                         sortable
                         resizableColumns
                         selectionMode="single"
                         selectedItems={selectedItems}
-                        onSelectionChange={(e, data) => {
-                          setSelectedItems(data.selectedItems);
+                        onSelectionChange={(_e, data) => {
+                          setSelectedItems(data.selectedItems as Set<string>);
                         }}
-                        style={{ width: '100%' }}
+                        className={styles.fullWidth}
                         columnSizingOptions={{
                           __selection__: {
-                            minWidth: 44,
                             idealWidth: '5%',
+                            minWidth: 44,
                           },
                           trendlogId: {
-                            minWidth: 95,
                             idealWidth: '12%',
+                            minWidth: 95,
                           },
                           trendlogLabel: {
+                            idealWidth: '26%',
                             minWidth: 150,
-                            idealWidth: '23%',
                           },
                           intervalSeconds: {
-                            minWidth: 80,
                             idealWidth: '12%',
+                            minWidth: 80,
                           },
                           bufferSize: {
+                            idealWidth: '10%',
                             minWidth: 90,
-                            idealWidth: '12%',
                           },
                           autoManual: {
+                            idealWidth: '12%',
                             minWidth: 90,
-                            idealWidth: '11%',
                           },
                           status: {
+                            idealWidth: '8%',
                             minWidth: 70,
-                            idealWidth: '10%',
                           },
                           actions: {
-                            minWidth: 120,
                             idealWidth: '15%',
+                            minWidth: 120,
                           },
                         }}
                         getRowId={(item) => `${item.serialNumber}-${item.trendlogId || item.trendlogIndex}-${item._uniqueIndex}`}
@@ -876,10 +876,7 @@ export const TrendLogsPage: React.FC = () => {
                             <DataGridRow<TrendLogData>
                               key={rowId}
                               onClick={() => handleMonitorSelect(item)}
-                              style={{
-                                cursor: 'pointer',
-                                backgroundColor: selectedMonitor?.trendlogId === item.trendlogId ? '#e6f2ff' : undefined
-                              }}
+                              className={selectedMonitor?.trendlogId === item.trendlogId ? styles.rowSelected : styles.rowClickable}
                             >
                               {({ renderCell }) => (
                                 <DataGridCell>{renderCell(item)}</DataGridCell>
@@ -894,7 +891,7 @@ export const TrendLogsPage: React.FC = () => {
                     <div className={styles.subGrid}>
                       <div className={styles.subGridHeader}>
                         <Text size={300} weight="semibold">
-                          Monitor Inputs {loadingInputs && <Spinner size="tiny" style={{ marginLeft: '8px' }} />}
+                          Monitor Inputs {loadingInputs && <Spinner size="tiny" className={styles.marginLeft8} />}
                         </Text>
                         {monitorInputs.length > 0 && (
                           <Badge appearance="filled" color="informative" size="small">
@@ -904,7 +901,7 @@ export const TrendLogsPage: React.FC = () => {
                       </div>
                       <div className={styles.subGridBody}>
                         {loadingInputs ? (
-                          <div style={{ textAlign: 'center', padding: '20px' }}>
+                          <div className={styles.centerPadding}>
                             <Spinner size="small" label="Loading inputs..." />
                           </div>
                         ) : monitorInputs.length > 0 ? (
@@ -931,7 +928,7 @@ export const TrendLogsPage: React.FC = () => {
                             );
                           })
                         ) : (
-                          <div style={{ textAlign: 'center', padding: '20px', color: '#605e5c' }}>
+                          <div className={styles.centerPaddingMuted}>
                             <Text size={200}>No inputs configured</Text>
                           </div>
                         )}
@@ -942,11 +939,11 @@ export const TrendLogsPage: React.FC = () => {
 
                 {/* No Data Message - Show when device selected but no trendlogs */}
                 {selectedDevice && !loading && !error && trendLogs.length === 0 && (
-                  <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div className={styles.emptyStateContainer}>
+                    <div className={styles.emptyStateHeader}>
                       <Text size={400} weight="semibold">No trendlogs found</Text>
                     </div>
-                    <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>
+                    <Text size={300} className={styles.emptyStateText}>
                       This device has no configured trendlog monitors
                     </Text>
                   </div>

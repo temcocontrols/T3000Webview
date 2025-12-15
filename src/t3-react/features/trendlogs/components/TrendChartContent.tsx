@@ -27,8 +27,6 @@ import {
   Spinner,
   makeStyles,
   tokens,
-  ToolbarButton,
-  ToolbarDivider,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -40,10 +38,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
   ArrowDownloadRegular,
-  PlayRegular,
-  PauseRegular,
   ArrowResetRegular,
   ChevronDownRegular,
   DatabaseRegular,
@@ -52,12 +47,10 @@ import {
   ArrowDownRegular,
   ArrowLeftRegular,
   ArrowRightRegular,
-  DocumentRegular,
   SettingsRegular,
   FlashRegular,
   HistoryRegular,
   ErrorCircleRegular,
-  DismissRegular,
   ChevronRightRegular,
   ChevronDownFilled,
 } from '@fluentui/react-icons';
@@ -65,10 +58,6 @@ import { TrendChart, TrendSeries } from './TrendChart';
 import { TrendChartApiService, TrendDataRequest, SpecificPoint } from '../services/trendChartApi';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-
-// BAC Units Constants - Digital/Analog Type Indicators (from Vue update)
-const BAC_UNITS_DIGITAL = 0;
-const BAC_UNITS_ANALOG = 1;
 
 const useStyles = makeStyles({
   container: {
@@ -290,10 +279,17 @@ const useStyles = makeStyles({
     transition: 'all 0.2s ease',
     position: 'relative',
     boxShadow: tokens.shadow4,
+    backgroundColor: 'var(--series-color)',
     ':hover': {
       transform: 'scale(1.1)',
       boxShadow: tokens.shadow8,
     },
+  },
+  digitalSeriesLabel: {
+    fontSize: '11px',
+    fontWeight: tokens.fontWeightBold,
+    marginBottom: '4px',
+    color: 'var(--series-color)',
   },
   keyboardBadge: {
     position: 'absolute',
@@ -504,17 +500,17 @@ const useStyles = makeStyles({
   },
   statusTagLive: {
     backgroundColor: '#f6ffed',
-    borderColor: '#b7eb8f',
+    border: '1px solid #b7eb8f',
     color: '#389e0d',
   },
   statusTagHistorical: {
     backgroundColor: '#e6f7ff',
-    borderColor: '#91d5ff',
+    border: '1px solid #91d5ff',
     color: '#0958d9',
   },
   statusTagTimeBase: {
     backgroundColor: '#f5f5f5',
-    borderColor: '#d9d9d9',
+    border: '1px solid #d9d9d9',
     color: '#595959',
   },
   liveIndicator: {
@@ -607,17 +603,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   // State
   const [series, setSeries] = useState<TrendSeries[]>([]);
   const [timeBase, setTimeBase] = useState<TimeBase>('5m');
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [currentView, setCurrentView] = useState<1 | 2 | 3>(1);
-  const [keyboardEnabled, setKeyboardEnabled] = useState(false);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [dataSource, setDataSource] = useState<'realtime' | 'api' | 'loading' | 'error'>('loading');
-  const [hasConnectionError, setHasConnectionError] = useState(false);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(280);
 
   // Refs
   const realtimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -625,28 +616,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   const timebaseChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const historyAbortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedInitialDataRef = useRef<boolean>(false);
-
-  // Handle left panel resize (similar to MainLayout pattern)
-  const handleLeftPanelResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-
-    const startX = e.clientX;
-    const startWidth = leftPanelWidth;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const newWidth = Math.min(Math.max(startWidth + delta, 200), 400);
-      setLeftPanelWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [leftPanelWidth]);
 
   /**
    * Computed: Visible analog series (Vue pattern)
@@ -681,39 +650,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   );
 
   /**
-   * Helper: Get series counts by type for dropdown labels
-   */
-  const getSeriesCounts = useMemo(() => {
-    const counts = {
-      analog: 0,
-      digital: 0,
-      input: 0,
-      output: 0,
-      variable: 0,
-    };
-
-    series.forEach((s) => {
-      if (s.digitalAnalog === 'Analog') counts.analog++;
-      if (s.digitalAnalog === 'Digital') counts.digital++;
-      if (s.pointType === 'IN') counts.input++;
-      if (s.pointType === 'OUT') counts.output++;
-      if (s.pointType === 'VAR') counts.variable++;
-    });
-
-    return counts;
-  }, [series]);
-
-  /**
-   * Helper: Get keyboard shortcut for series
-   */
-  const getKeyboardShortcut = useCallback((index: number): string | null => {
-    if (!keyboardEnabled) return null;
-    if (index < 9) return `${index + 1}`;
-    if (index === 9) return '0';
-    return null;
-  }, [keyboardEnabled]);
-
-  /**
    * Helper: Toggle series expansion
    */
   const toggleSeriesExpand = useCallback((seriesKey: string) => {
@@ -726,13 +662,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       }
       return newSet;
     });
-  }, []);
-
-  /**
-   * Helper: Remove series from tracking (for View 2/3)
-   */
-  const removeFromTracking = useCallback((seriesKey: string) => {
-    setSeries(prev => prev.filter(s => `${s.pointType}-${s.pointIndex}` !== seriesKey));
   }, []);
 
   /**
@@ -778,7 +707,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     }
 
     setLoading(true);
-    setHasConnectionError(false);
 
     try {
       // Calculate time range based on timeBase
@@ -895,11 +823,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       });
 
       setSeries(updatedSeries);
-      setLastUpdate(new Date());
       setDataSource('api'); // Track that data came from API
     } catch (error) {
       console.error('�?TrendChartContent: Failed to load historical data', error);
-      setHasConnectionError(true);
+      setDataSource('error');
     } finally {
       setLoading(false);
     }
@@ -1027,7 +954,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const rangeItem = rangeData[index];
 
           // Extract point information
-          const panelIdFromInput = inputItem.panel || panelId;
           const pointType = inputItem.point_type; // INPUT=0, OUTPUT=1, VARIABLE=2
           const pointNumber = inputItem.point_number; // 0-based
 
@@ -1167,12 +1093,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         });
 
         setSeries(updatedSeries);
-        setLastUpdate(new Date());
         setDataSource('realtime'); // Track that data came from real-time updates
       }
     } catch (error) {
       console.error('�?TrendChartContent: Realtime update failed', error);
-      setHasConnectionError(true);
+      setDataSource('error');
     }
   }, [isRealtime, serialNumber, panelId, series, timeBase]);
 
@@ -1318,7 +1243,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         }
 
         console.error('�?TrendChartContent: Error loading data for new timebase:', error);
-        setHasConnectionError(true);
+        setDataSource('error');
       }
     }, 300); // 300ms debounce delay
 
@@ -1440,8 +1365,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
    * Zoom controls
    */
   const timeBaseOrder: TimeBase[] = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d'];
-  const canZoomIn = timeBaseOrder.indexOf(timeBase) > 0;
-  const canZoomOut = timeBaseOrder.indexOf(timeBase) < timeBaseOrder.length - 1;
 
   const zoomIn = useCallback(() => {
     const currentIndex = timeBaseOrder.indexOf(timeBase);
@@ -1459,22 +1382,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
   const resetTimeBase = useCallback(() => {
     setTimeBase('5m');
-  }, []);
-
-  /**
-   * View switching
-   */
-  const handleViewChange = useCallback((view: 1 | 2 | 3) => {
-    setCurrentView(view);
-    // View 2 & 3 could show different time ranges or configurations
-    // For now, just track the view state
-  }, []);
-
-  /**
-   * Toggle keyboard shortcuts
-   */
-  const toggleKeyboard = useCallback(() => {
-    setKeyboardEnabled((prev) => !prev);
   }, []);
 
   /**
@@ -1883,7 +1790,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 {/* Auto Scroll Toggle */}
                 <div className={styles.autoScrollToggle}>
                   <Text size={100}>Auto Scroll:</Text>
-                  <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} size="small" />
+                  <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
                 </div>
               </div>
             </div>
@@ -1897,9 +1804,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 return (
                   <React.Fragment key={seriesKey}>
                     <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
+                      {/* @ts-expect-error CSS custom property for dynamic color */}
                       <div
                         className={styles.colorIndicator}
-                        style={{ backgroundColor: s.color }}
+                        style={{ '--series-color': s.color } as React.CSSProperties}
                         onClick={() => toggleSeriesVisibility(index)}
                       />
 
@@ -2093,7 +2001,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   {/* Auto Scroll Toggle */}
                   <div className={styles.autoScrollToggle}>
                     <Text size={100}>Auto Scroll:</Text>
-                    <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} size="small" />
+                    <Switch checked={isRealtime} onChange={(_, data) => setIsRealtime(data.checked)} />
                   </div>
                 </div>
               )}
@@ -2109,9 +2017,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 return (
                   <React.Fragment key={seriesKey}>
                     <div className={`${styles.seriesItem} ${isExpanded ? styles.seriesItemExpanded : ''}`}>
+                      {/* @ts-expect-error CSS custom property for dynamic color */}
                       <div
                         className={styles.colorIndicator}
-                        style={{ backgroundColor: s.color }}
+                        style={{ '--series-color': s.color } as React.CSSProperties}
                         onClick={() => toggleSeriesVisibility(actualIndex)}
                       />
 
@@ -2169,7 +2078,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
           {/* Digital Right Panel - Oscilloscope */}
           <div className={styles.digitalRightPanel}>
-            {visibleDigitalSeries.map((digitalSeries, index) => (
+            {visibleDigitalSeries.map((digitalSeries) => (
               <div key={digitalSeries.name} className={styles.channelChart}>
                 <TrendChart
                   series={[digitalSeries]}
