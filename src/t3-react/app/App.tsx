@@ -10,6 +10,7 @@ import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-com
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { MainLayout } from '../layout/MainLayout';
+import styles from './App.module.css';
 
 // Lazy load pages from features
 const DashboardPage = React.lazy(() =>
@@ -94,7 +95,7 @@ export const App: React.FC = () => {
   console.log('🚀 React App component rendering...');
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: '100vh', background: '#ffffff' }}>
+    <div className={styles.appContainer}>
       <ThemeProvider>
         <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
           <ErrorBoundary>

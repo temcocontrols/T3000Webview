@@ -245,12 +245,12 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<GraphicPoint>({
       columnId: 'graphicId',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('graphicId')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('graphicId')}>
           <span>Graphic #</span>
           {sortColumn === 'graphicId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -259,12 +259,12 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<GraphicPoint>({
       columnId: 'switchNode',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('switchNode')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('switchNode')}>
           <span>Full Label</span>
           {sortColumn === 'switchNode' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -273,12 +273,12 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<GraphicPoint>({
       columnId: 'graphicLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('graphicLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('graphicLabel')}>
           <span>Label</span>
           {sortColumn === 'graphicLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -287,12 +287,12 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<GraphicPoint>({
       columnId: 'graphicPictureFile',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('graphicPictureFile')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('graphicPictureFile')}>
           <span>Picture File</span>
           {sortColumn === 'graphicPictureFile' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -301,12 +301,12 @@ export const GraphicsPage: React.FC = () => {
     createTableColumn<GraphicPoint>({
       columnId: 'graphicTotalPoint',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('graphicTotalPoint')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('graphicTotalPoint')}>
           <span>Element Count</span>
           {sortColumn === 'graphicTotalPoint' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -342,9 +342,9 @@ export const GraphicsPage: React.FC = () => {
             <div className={styles.partContent}>
 
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -408,8 +408,7 @@ export const GraphicsPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -422,43 +421,43 @@ export const GraphicsPage: React.FC = () => {
 
               <div className={styles.horizontalDivider}></div>
 
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 {!selectedDevice ? (
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ marginTop: '48px', marginBottom: '16px' }}>
-                      <ImageRegular style={{ fontSize: '48px', color: '#c8c6c4' }} />
+                  <div className={styles.centerText}>
+                    <div className={styles.emptyStateOuter}>
+                      <ImageRegular className={styles.iconLarge} />
                     </div>
-                    <Text size={400} weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>
+                    <Text size={400} weight="semibold" className={`${styles.displayBlock} ${styles.marginBottom8}`}>
                       No Device Selected
                     </Text>
-                    <Text size={300} style={{ color: '#605e5c' }}>
+                    <Text size={300} className={styles.textMuted}>
                       Select a device from the tree to view its graphics
                     </Text>
                   </div>
                 ) : loading && graphics.length === 0 ? (
-                  <div style={{ textAlign: 'center', marginTop: '48px' }}>
+                  <div className={styles.loadingState}>
                     <Spinner size="large" label="Loading graphics..." />
                   </div>
                 ) : graphics.length === 0 ? (
-                  <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <InfoRegular style={{ fontSize: '16px', color: '#605e5c' }} />
-                      <Text size={300} weight="semibold" style={{ color: '#323130' }}>
+                  <div className={styles.emptyStateContainer}>
+                    <div className={styles.emptyStateHeader}>
+                      <InfoRegular className={styles.iconSmall} />
+                      <Text size={300} weight="semibold" className={styles.textSemibold}>
                         No graphics found for this device
                       </Text>
                     </div>
-                    <Text size={200} style={{ color: '#605e5c' }}>
+                    <Text size={200} className={styles.textSmall}>
                       Graphics may not have been configured yet
                     </Text>
                   </div>
                 ) : (
-                  <div ref={scrollContainerRef} style={{ maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>
+                  <div className={styles.scrollContainerAuto}>
                     <DataGrid
                       items={sortedGraphics}
                       columns={columns}
                       sortable
                       resizableColumns
-                      style={{ width: '100%' }}
+                      className={styles.fullWidth}
                       columnSizingOptions={{
                         graphicId: {
                           minWidth: 80,

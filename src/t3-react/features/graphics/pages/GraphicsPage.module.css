@@ -306,3 +306,121 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* ============================================================================
+   INLINE STYLE REPLACEMENTS - Utility Classes
+   ============================================================================ */
+
+.headerCellSort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.headerCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortIconFaded {
+  opacity: 0.5;
+}
+
+.errorNotice {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #fef6f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconError {
+  color: #d13438;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.textError {
+  color: #d13438;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.marginLeft8 {
+  margin-left: 8px;
+}
+
+.noPadding {
+  padding: 0;
+}
+
+.centerText {
+  text-align: center;
+}
+
+.emptyStateOuter {
+  margin-top: 48px;
+  margin-bottom: 16px;
+}
+
+.iconLarge {
+  font-size: 48px;
+  color: #c8c6c4;
+}
+
+.displayBlock {
+  display: block;
+}
+
+.marginBottom8 {
+  margin-bottom: 8px;
+}
+
+.textMuted {
+  color: #605e5c;
+}
+
+.emptyStateContainer {
+  margin-top: 24px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.loadingState {
+  text-align: center;
+  margin-top: 48px;
+}
+
+.emptyStateHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.iconSmall {
+  font-size: 16px;
+  color: #605e5c;
+}
+
+.textSemibold {
+  color: #323130;
+}
+
+.textSmall {
+  color: #605e5c;
+}
+
+.scrollContainerAuto {
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.fullWidth {
+  width: 100%;
+}

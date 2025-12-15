@@ -579,12 +579,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'panel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('panel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('panel')}>
           <span>Panel</span>
           {sortColumn === 'panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -594,12 +594,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'input',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('input')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('input')}>
           <span>Input</span>
           {sortColumn === 'input' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -609,7 +609,7 @@ export const InputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className={styles.cellFlexContainer}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -620,8 +620,7 @@ export const InputsPage: React.FC = () => {
                 disabled={isRefreshingThis}
               >
                 <ArrowSyncRegular
-                  style={{ fontSize: '14px' }}
-                  className={isRefreshingThis ? styles.rotating : ''}
+                  className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                 />
               </button>
               <Text size={200} weight="regular">{item.inputId || item.inputIndex || '---'}</Text>
@@ -634,12 +633,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -651,10 +650,10 @@ export const InputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="text"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -663,7 +662,6 @@ export const InputsPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter label"
                   aria-label="Edit full label"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -674,7 +672,7 @@ export const InputsPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -694,12 +692,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -711,10 +709,10 @@ export const InputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="text"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -723,7 +721,6 @@ export const InputsPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter label"
                   aria-label="Edit label"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -734,7 +731,7 @@ export const InputsPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -754,7 +751,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Man</span>
         </div>
       ),
@@ -806,11 +803,11 @@ export const InputsPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={handleToggle}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              className={styles.switchContainer}
             >
               <Switch
                 checked={isAuto}
-                style={{ transform: 'scale(0.8)' }}
+                className={styles.switchScale}
               />
             </div>
           </TableCellLayout>
@@ -821,12 +818,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -838,11 +835,11 @@ export const InputsPage: React.FC = () => {
         return (
           <TableCellLayout>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+              <div className={styles.editInputContainer}>
                 <input
                   type="number"
                   step="0.01"
-                  className={styles.editInput}
+                  className={`${styles.editInput} ${styles.flex1}`}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleEditSave}
@@ -851,7 +848,6 @@ export const InputsPage: React.FC = () => {
                   disabled={isSaving}
                   placeholder="Enter value"
                   aria-label="Edit value"
-                  style={{ flex: 1 }}
                 />
                 <button
                   onClick={(e) => {
@@ -862,7 +858,7 @@ export const InputsPage: React.FC = () => {
                   className={styles.saveButton}
                   title="Save"
                 >
-                  <SaveRegular style={{ fontSize: '18px' }} />
+                  <SaveRegular className={styles.iconMedium} />
                 </button>
               </div>
             ) : (
@@ -882,12 +878,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'units',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('units')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
           <span>Units</span>
           {sortColumn === 'units' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -897,12 +893,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'range',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('range')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
           <span>Range</span>
           {sortColumn === 'range' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -916,7 +912,7 @@ export const InputsPage: React.FC = () => {
           <TableCellLayout>
             <div
               onClick={() => handleRangeClick(item)}
-              style={{ cursor: 'pointer', color: '#0078d4' }}
+              className={styles.rangeLink}
               title="Click to change range"
             >
               <Text size={200} weight="regular">{rangeLabel}</Text>
@@ -929,7 +925,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'calibration',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Calibration</span>
         </div>
       ),
@@ -939,7 +935,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'sign',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Sign</span>
         </div>
       ),
@@ -949,7 +945,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'filter',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Filter</span>
         </div>
       ),
@@ -959,12 +955,12 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'status',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
           <span>Status</span>
           {sortColumn === 'status' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -1002,7 +998,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'signalType',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Signal Type</span>
         </div>
       ),
@@ -1012,7 +1008,7 @@ export const InputsPage: React.FC = () => {
     createTableColumn<InputPoint>({
       columnId: 'type',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Type</span>
         </div>
       ),
@@ -1051,9 +1047,9 @@ export const InputsPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -1124,8 +1120,7 @@ export const InputsPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -1140,7 +1135,7 @@ export const InputsPage: React.FC = () => {
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
 
@@ -1161,7 +1156,7 @@ export const InputsPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className={styles.centerText}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={300}>Please select a device from the tree to view inputs</Text>
@@ -1269,19 +1264,19 @@ export const InputsPage: React.FC = () => {
 
                   {/* No Data Message - Show below grid when empty */}
                   {inputs.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No inputs found</Text>
                       </div>
-                      <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured input points</Text>
+                      <Text size={300} className={styles.emptyStateText}>This device has no configured input points</Text>
                       <Button
                         appearance="subtle"
                         icon={<ArrowSyncRegular />}
                         onClick={handleRefresh}
-                        style={{ minWidth: '120px', fontWeight: 'normal' }}
+                        className={styles.refreshButton}
                       >
                         Refresh
                       </Button>
