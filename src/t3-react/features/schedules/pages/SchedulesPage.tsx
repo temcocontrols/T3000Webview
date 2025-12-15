@@ -306,12 +306,12 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'scheduleId',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('scheduleId')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('scheduleId')}>
           <span>Schedule</span>
           {sortColumn === 'scheduleId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -319,7 +319,7 @@ export const SchedulesPage: React.FC = () => {
         const isRefreshing = item.scheduleId && refreshingItems.has(item.scheduleId);
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className={styles.headerCellWith8Gap}>
               <button
                 className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
                 onClick={(e) => {
@@ -343,7 +343,7 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className={styles.headerCell}>
           <span>Auto/Man</span>
         </div>
       ),
@@ -351,7 +351,7 @@ export const SchedulesPage: React.FC = () => {
         const isAuto = item.autoManual === '1';
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className={styles.headerCellWith8Gap}>
               <Switch
                 checked={isAuto}
                 onChange={() => handleAutoManualToggle(item)}
@@ -367,12 +367,12 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'outputField',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('outputField')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('outputField')}>
           <span>Output</span>
           {sortColumn === 'outputField' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -383,12 +383,12 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'variableField',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('variableField')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('variableField')}>
           <span>Variable</span>
           {sortColumn === 'variableField' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -399,12 +399,12 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'holiday1',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holiday1')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('holiday1')}>
           <span>Holiday1</span>
           {sortColumn === 'holiday1' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -415,8 +415,8 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'status1',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Status1</span>
+        <div className={styles.headerCell}>
+          <span>Label</span>
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.status1 || '---'}</TableCellLayout>,
@@ -426,12 +426,12 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'holiday2',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holiday2')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('holiday2')}>
           <span>Holiday2</span>
           {sortColumn === 'holiday2' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -442,8 +442,8 @@ export const SchedulesPage: React.FC = () => {
     createTableColumn<SchedulePoint>({
       columnId: 'status2',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Status2</span>
+        <div className={styles.headerCell}>
+          <span>Status</span>
         </div>
       ),
       renderCell: (item) => <TableCellLayout>{item.status2 || '---'}</TableCellLayout>,
@@ -480,9 +480,9 @@ export const SchedulesPage: React.FC = () => {
                   ERROR MESSAGE (if any)
                   ======================================== */}
               {error && (
-                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                <div className={styles.errorNotice}>
+                  <ErrorCircleRegular className={styles.iconError} />
+                  <Text className={styles.textError}>
                     {error}
                   </Text>
                 </div>
@@ -553,8 +553,7 @@ export const SchedulesPage: React.FC = () => {
                     relationship="description"
                   >
                     <button
-                      className={styles.toolbarButton}
-                      style={{ marginLeft: '8px' }}
+                      className={`${styles.toolbarButton} ${styles.clearFiltersButton}`}
                       title="Information"
                       aria-label="Information about this page"
                     >
@@ -569,7 +568,7 @@ export const SchedulesPage: React.FC = () => {
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div style={{ padding: '0' }}>
+              <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
 
@@ -590,7 +589,7 @@ export const SchedulesPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className={styles.centerText}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={300}>Please select a device from the tree to view schedules</Text>
@@ -666,9 +665,9 @@ export const SchedulesPage: React.FC = () => {
 
                   {/* No Data Message - Show below grid when empty */}
                   {schedules.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No schedules found</Text>

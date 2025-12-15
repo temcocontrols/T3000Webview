@@ -60,7 +60,7 @@ interface HolidayPoint {
 }
 
 export const HolidaysPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [holidays, setHolidays] = useState<HolidayPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -336,12 +336,12 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'holidayId',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('holidayId')}>
-          <span>NUM</span>
+        <div className={styles.headerCellSort} onClick={() => handleSort('holidayId')}>
+          <span>Holiday</span>
           {sortColumn === 'holidayId' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -349,14 +349,14 @@ export const HolidaysPage: React.FC = () => {
         const isRefreshing = item.holidayId && refreshingItems.has(item.holidayId);
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className={styles.flexCenter8Gap}>
               <button
                 className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRefreshSingleHoliday(item);
                 }}
-                disabled={isRefreshing}
+                disabled={!!isRefreshing}
                 title="Refresh this holiday from device"
                 aria-label="Refresh holiday"
               >
@@ -373,12 +373,12 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('fullLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
           <span>Full Label</span>
           {sortColumn === 'fullLabel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -392,18 +392,18 @@ export const HolidaysPage: React.FC = () => {
             {isEditing ? (
               <Input
                 value={editValue}
-                onChange={(e, data) => setEditValue(data.value)}
+                onChange={(_e, data) => setEditValue(data.value)}
                 onBlur={handleEditSave}
                 onKeyDown={handleEditKeyDown}
                 autoFocus
                 disabled={isSaving}
                 size="small"
-                style={{ width: '100%' }}
+                className={styles.fullWidth}
               />
             ) : (
               <div
                 onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                style={{ cursor: 'text', minHeight: '20px' }}
+                className={styles.editableCell}
               >
                 <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
               </div>
@@ -417,8 +417,8 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'autoManual',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>Auto/Manual</span>
+        <div className={styles.headerCell}>
+          <span>Auto/Man</span>
         </div>
       ),
       renderCell: (item) => {
@@ -426,7 +426,7 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className={styles.headerCellWith8Gap}>
               <Switch
                 checked={isAuto}
                 onChange={() => handleAutoManualToggle(item)}
@@ -442,12 +442,12 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('value')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
           <span>Value</span>
           {sortColumn === 'value' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -458,12 +458,12 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('label')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
           <span>Label</span>
           {sortColumn === 'label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
+            <ArrowSortRegular className={styles.sortIconFaded} />
           )}
         </div>
       ),
@@ -477,18 +477,18 @@ export const HolidaysPage: React.FC = () => {
             {isEditing ? (
               <Input
                 value={editValue}
-                onChange={(e, data) => setEditValue(data.value)}
+                onChange={(_e, data) => setEditValue(data.value)}
                 onBlur={handleEditSave}
                 onKeyDown={handleEditKeyDown}
                 autoFocus
                 disabled={isSaving}
                 size="small"
-                style={{ width: '100%' }}
+                className={styles.fullWidth}
               />
             ) : (
               <div
                 onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                style={{ cursor: 'text', minHeight: '20px' }}
+                className={styles.editableCell}
               >
                 <Text size={200}>{item.label || '---'}</Text>
               </div>
@@ -514,8 +514,8 @@ export const HolidaysPage: React.FC = () => {
                 ======================================== */}
             {error && (
               <div className={styles.errorMessage}>
-                <ErrorCircleRegular style={{ color: '#d13438', fontSize: '14px', flexShrink: 0 }} />
-                <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '12px' }}>
+                <ErrorCircleRegular className={styles.iconError} />
+                <Text className={styles.textError}>
                   {error}
                 </Text>
               </div>
@@ -581,8 +581,7 @@ export const HolidaysPage: React.FC = () => {
                   relationship="description"
                 >
                   <button
-                    className={styles.toolbarButton}
-                    style={{ marginLeft: '8px' }}
+                    className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                     title="Information"
                     aria-label="Information about this page"
                   >
@@ -594,7 +593,7 @@ export const HolidaysPage: React.FC = () => {
             )}
 
             {/* HORIZONTAL DIVIDER */}
-            <div style={{ padding: '0' }}>
+            <div className={styles.noPadding}>
               <hr className={styles.overviewHr} />
             </div>
 
@@ -610,7 +609,7 @@ export const HolidaysPage: React.FC = () => {
 
               {!selectedDevice && !loading && (
                 <div className={styles.noData}>
-                  <div style={{ textAlign: 'center' }}>
+                  <div className={styles.centerText}>
                     <Text size={500} weight="semibold">No device selected</Text>
                     <br />
                     <Text size={300}>Please select a device from the tree to view holidays</Text>
@@ -633,23 +632,23 @@ export const HolidaysPage: React.FC = () => {
                     columnSizingOptions={{
                       holidayId: {
                         minWidth: 60,
-                        idealWidth: '15%',
+                        idealWidth: 100,
                       },
                       fullLabel: {
                         minWidth: 150,
-                        idealWidth: '30%',
+                        idealWidth: 200,
                       },
                       autoManual: {
                         minWidth: 100,
-                        idealWidth: '20%',
+                        idealWidth: 130,
                       },
                       value: {
                         minWidth: 80,
-                        idealWidth: '15%',
+                        idealWidth: 100,
                       },
                       label: {
                         minWidth: 90,
-                        idealWidth: '20%',
+                        idealWidth: 130,
                       },
                     }}
                   >
@@ -673,9 +672,9 @@ export const HolidaysPage: React.FC = () => {
 
                   {/* No Data Message - Show below grid when empty */}
                   {holidays.length === 0 && (
-                    <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+                    <div className={styles.emptyStateContainer}>
+                      <div className={styles.emptyStateHeader}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
                           <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
                         </svg>
                         <Text size={400} weight="semibold">No holidays found</Text>
