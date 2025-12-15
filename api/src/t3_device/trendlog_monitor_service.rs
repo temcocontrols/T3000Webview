@@ -15,15 +15,13 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::ffi::CString;
 
-use crate::entity::t3_device::{trendlogs, trendlog_inputs};
+use crate::entity::t3_device::trendlogs;
 use crate::error::AppError;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
 // Dynamic loading approach to avoid linking errors
 #[cfg(target_os = "windows")]
 use winapi::um::libloaderapi::{GetProcAddress, GetModuleHandleA};
-#[cfg(target_os = "windows")]
-use winapi::shared::minwindef::HINSTANCE;
 
 // Function pointer types for dynamic loading
 type GetTrendlogListFn = unsafe extern "C" fn(panel_id: c_int, result_buffer: *mut c_char, buffer_size: c_int) -> c_int;

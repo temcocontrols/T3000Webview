@@ -462,7 +462,7 @@ async fn get_features_settings(
 /// POST /api/v1/devices/:serial/reboot
 /// Reboot device (sends special command 77 to register 33)
 async fn reboot_device(
-    State(state): State<T3AppState>,
+    State(_state): State<T3AppState>,
     Path(serial): Path<i32>,
 ) -> Result<Json<SettingsResponse>, (StatusCode, String)> {
     info!("Reboot device request for serial: {}", serial);
@@ -511,7 +511,7 @@ async fn reboot_device(
 /// POST /api/v1/devices/:serial/reset-defaults
 /// Reset device to factory defaults (sends special command 88 to register 33)
 async fn reset_to_defaults(
-    State(state): State<T3AppState>,
+    State(_state): State<T3AppState>,
     Path(serial): Path<i32>,
 ) -> Result<Json<SettingsResponse>, (StatusCode, String)> {
     info!("Reset to defaults request for serial: {}", serial);

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "DEVICES")]
 #[serde(rename_all = "camelCase")]
+#[allow(non_snake_case)]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub SerialNumber: i32,                     // C++ SerialNumber (primary key, renamed from Serial_ID)

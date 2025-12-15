@@ -10,9 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
 use crate::app_state::T3AppState;
-use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_webmsg_service::{TrendlogWebMsgService, TrendlogInfo};
 

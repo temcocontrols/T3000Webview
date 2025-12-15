@@ -391,7 +391,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
 pub async fn load_and_save_graphics(
     State(state): State<T3AppState>,
     Path(serial): Path<i32>,
-    Json(payload): Json<Value>,
+    Json(_payload): Json<Value>,
 ) -> Result<Json<SaveResponse>, (StatusCode, String)> {
     info!("GET_INITIAL_DATA: Loading and saving graphics - Serial: {}", serial);
     let _ = write_structured_log_with_level(
@@ -721,6 +721,7 @@ pub async fn load_and_save_graphics(
 }
 
 /// Helper function to call GET_INITIAL_DATA FFI (Action 1)
+#[allow(dead_code)]
 async fn call_get_initial_data_ffi(request_json: Value) -> Result<String, String> {
     use crate::t3_device::t3_ffi_sync_service::{load_t3000_function, BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN};
     const ACTION_GET_INITIAL_DATA: i32 = 1;

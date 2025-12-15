@@ -222,7 +222,7 @@ impl DatabasePartitionConfig {
                 // Calculate which custom month period this falls into
                 let base_year = 2025;
                 let total_months = (date.year() - base_year) * 12 + (date.month() as i32 - 1);
-                let period = total_months / months as i32;
+                let period = total_months / months;
                 format!("custom-{}m-P{}", months, period)
             }
         }

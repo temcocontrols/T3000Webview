@@ -18,7 +18,6 @@ use crate::error::Error;
 use crate::logger::ServiceLogger;
 use crate::app_state::T3AppState;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
-use winapi::shared::minwindef::HINSTANCE;
 
 // FFI function type
 type BacnetWebViewHandleWebViewMsgFn = unsafe extern "C" fn(action: i32, msg: *mut c_char, len: i32) -> i32;

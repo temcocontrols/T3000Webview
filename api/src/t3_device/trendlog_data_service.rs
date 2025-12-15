@@ -9,8 +9,6 @@ use crate::t3_device::trendlog_parent_cache::{TrendlogParentCache, ParentKey};
 use crate::error::AppError;
 use std::sync::Arc;
 
-// Default sync interval to match T3000MainConfig::sync_interval_secs
-const DEFAULT_SYNC_INTERVAL_SECS: i32 = 30;
 use crate::logger::{write_structured_log_with_level, LogLevel};
 
 #[derive(Debug, Serialize, Deserialize, FromQueryResult)]
@@ -167,12 +165,12 @@ impl T3TrendlogDataService {
         #[derive(Debug, FromQueryResult)]
         struct JoinedTrendlogData {
             // From TRENDLOG_DATA_DETAIL (child) - OPTIMIZED SCHEMA (removed id, LoggingTime, SyncInterval, CreatedBy, DataSource, SyncMetadataId)
-            parent_id: i32,
+            _parent_id: i32,
             value: String,
             logging_time_fmt: String,
             // From TRENDLOG_DATA (parent)
-            serial_number: i32,
-            panel_id: i32,
+            _serial_number: i32,
+            _panel_id: i32,
             point_id: String,
             point_index: i32,
             point_type: String,
@@ -183,11 +181,11 @@ impl T3TrendlogDataService {
 
         let mut sql = r#"
             SELECT
-                d.ParentId as parent_id,
+                d.ParentId as _parent_id,
                 d.Value as value,
                 d.LoggingTime_Fmt as logging_time_fmt,
-                p.SerialNumber as serial_number,
-                p.PanelId as panel_id,
+                p.SerialNumber as _serial_number,
+                p.PanelId as _panel_id,
                 p.PointId as point_id,
                 p.PointIndex as point_index,
                 p.PointType as point_type,
@@ -449,7 +447,6 @@ impl T3TrendlogDataService {
 
         // Generate timestamp for logging - use Local time instead of UTC
         let now = chrono::Local::now();
-        let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
         // Step 1: Get or create parent record (with caching)
@@ -478,7 +475,7 @@ impl T3TrendlogDataService {
         };
 
         match detail_record.insert(db).await {
-            Ok(saved_detail) => {
+            Ok(_saved_detail) => {
                 // Log successful save
                 let success_info = format!(
                     "✅ [TrendlogDataService] Realtime data saved - Parent ID: {}, Point: {}, Time: {}",
@@ -527,7 +524,6 @@ impl T3TrendlogDataService {
 
         // Use Local time instead of UTC to match user's timezone
         let now = chrono::Local::now();
-        let logging_time = now.timestamp();
         let logging_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
         let batch_start_time = std::time::Instant::now();

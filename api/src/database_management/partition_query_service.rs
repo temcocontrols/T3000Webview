@@ -38,8 +38,8 @@ pub struct TrendlogFilters {
 struct PartitionInfo {
     pub partition_id: String,
     pub file_path: String,
-    pub start_date: NaiveDateTime,
-    pub end_date: NaiveDateTime,
+    pub _start_date: NaiveDateTime,
+    pub _end_date: NaiveDateTime,
     pub is_main_db: bool,
 }
 
@@ -150,8 +150,8 @@ async fn identify_required_partitions(
                 partitions.push(PartitionInfo {
                     partition_id: partition_file.partition_identifier.unwrap(),
                     file_path: partition_file.file_path,
-                    start_date: p_start,
-                    end_date: p_end,
+                    _start_date: p_start,
+                    _end_date: p_end,
                     is_main_db: false,
                 });
             }
@@ -169,8 +169,8 @@ async fn identify_required_partitions(
         partitions.push(PartitionInfo {
             partition_id: "current".to_string(),
             file_path: get_t3000_database_path().join("webview_t3_device.db").to_string_lossy().to_string(),
-            start_date: current_period_start,
-            end_date: current_date,
+            _start_date: current_period_start,
+            _end_date: current_date,
             is_main_db: true,
         });
     }

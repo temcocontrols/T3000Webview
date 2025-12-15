@@ -27,10 +27,8 @@ async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
     let data_client_id = Uuid::parse_str(T3000_DATA_CLIENT_ID)?;
 
     for (id, client) in clients.iter() {
-        if *id != data_client_id {
-            if client.is_closed() {
-                dead_clients.push(*id);
-            }
+        if *id != data_client_id && client.is_closed() {
+            dead_clients.push(*id);
         }
     }
 

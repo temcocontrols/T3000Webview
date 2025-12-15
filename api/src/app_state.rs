@@ -87,7 +87,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     let t3_device_conn = match establish_t3_device_connection().await {
         Ok(conn) => {
             let success_message = "WebView T3000 database connected successfully";
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", &success_message, LogLevel::Info);
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", success_message, LogLevel::Info);
             Some(conn)
         },
         Err(e) => {

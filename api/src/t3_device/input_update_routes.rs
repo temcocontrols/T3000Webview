@@ -17,8 +17,10 @@ use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
+#[allow(dead_code)]
 const BAC_OUT: i32 = 0;
 const BAC_IN: i32 = 1;
+#[allow(dead_code)]
 const BAC_VAR: i32 = 2;
 
 /// Request payload for updating a single input field

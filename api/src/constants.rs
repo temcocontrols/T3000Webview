@@ -1,10 +1,5 @@
-/// T3000 Application Runtime Constants
-///
-/// This module contains shared constants used across the T3000 WebView API,
-/// particularly paths and configurations related to the T3000 runtime environment.
-
-use std::path::PathBuf;
 use std::env;
+use std::path::PathBuf;
 
 /// Get the base runtime directory where T3000 application stores its files
 /// In development: uses hardcoded path for debugging

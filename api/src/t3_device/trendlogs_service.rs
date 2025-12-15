@@ -104,7 +104,7 @@ impl T3TrendlogService {
     // This function uses old field names that don't exist in enhanced schema
     // Use TrendLogFFIService for new TrendLog operations
     #[allow(dead_code)]
-    pub async fn create_trendlog_disabled(db: &DatabaseConnection, trendlog_data: CreateTrendlogRequest) -> Result<trendlogs::Model, AppError> {
+    pub async fn create_trendlog_disabled(_db: &DatabaseConnection, _trendlog_data: CreateTrendlogRequest) -> Result<trendlogs::Model, AppError> {
         // DISABLED: Field mismatches with current schema
         // Use TrendLogFFIService::sync_complete_trendlog_info instead
         return Err(AppError::ServiceError("Legacy create_trendlog disabled - use TrendLogFFIService".to_string()));
@@ -118,7 +118,7 @@ impl T3TrendlogService {
 
     // TEMPORARY: Disabled due to field mismatches with current database schema
     #[allow(dead_code)]
-    pub async fn update_trendlog_disabled(db: &DatabaseConnection, device_id: i32, trendlog_index: String, trendlog_data: UpdateTrendlogRequest) -> Result<Option<trendlogs::Model>, AppError> {
+    pub async fn update_trendlog_disabled(_db: &DatabaseConnection, _device_id: i32, _trendlog_index: String, _trendlog_data: UpdateTrendlogRequest) -> Result<Option<trendlogs::Model>, AppError> {
         // DISABLED: Field mismatches with current schema
         // Use TrendLogFFIService for new TrendLog operations
         return Err(AppError::ServiceError("Legacy update_trendlog disabled - use TrendLogFFIService".to_string()));

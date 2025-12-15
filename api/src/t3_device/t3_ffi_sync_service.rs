@@ -46,6 +46,7 @@ type GetDeviceNetworkConfigFn =
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
+#[allow(non_camel_case_types)]
 pub enum WebViewMessageType {
     GET_PANEL_DATA = 0,
     GET_INITIAL_DATA = 1,
@@ -285,7 +286,7 @@ fn get_trendlog_cache() -> &'static TrendlogParentCache {
 // ═══════════════════════════════════════════════════════════════════════════
 // TWO-TIER SYNC STATE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════════════════
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use tokio::sync::RwLock;
 
 lazy_static::lazy_static! {
@@ -1582,6 +1583,7 @@ impl T3000MainService {
     }
 
     /// Format timestamp to "YYYY-MM-DD HH:MM:SS" format for LoggingTime_Fmt - using Local time
+    #[allow(dead_code)]
     fn format_logging_time() -> String {
         chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
     }
