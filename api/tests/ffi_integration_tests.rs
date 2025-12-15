@@ -19,15 +19,16 @@ enum MockDataSource {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct MockDataPoint {
     device_id: u32,
-    point_type: MockPointType,
-    point_number: u32,
+    _point_type: MockPointType,
+    _point_number: u32,
     value: f64,
     status: String,
     units: Option<String>,
-    timestamp: u64,
-    source: MockDataSource,
+    _timestamp: u64,
+    _source: MockDataSource,
 }
 
 #[test]
@@ -42,13 +43,13 @@ fn test_ffi_functions_exist() {
 fn test_data_point_creation() {
     let point = MockDataPoint {
         device_id: 1,
-        point_type: MockPointType::Input,
-        point_number: 1,
-        value: 23.5,
+        _point_type: MockPointType::Input,
+        _point_number: 1,
+        value: 72.5,
         status: "OK".to_string(),
-        units: Some("°C".to_string()),
-        timestamp: 1234567890,
-        source: MockDataSource::CppDirect,
+        units: Some("°F".to_string()),
+        _timestamp: 1234567890,
+        _source: MockDataSource::CppDirect,
     };
 
     assert_eq!(point.device_id, 1);
@@ -104,35 +105,35 @@ fn test_data_point_with_units() {
     // Test creating data points with different unit types
     let temp_point = MockDataPoint {
         device_id: 1,
-        point_type: MockPointType::Input,
-        point_number: 1,
+        _point_type: MockPointType::Input,
+        _point_number: 1,
         value: 25.0,
         status: "Online".to_string(),
         units: Some("Deg.C".to_string()),
-        timestamp: 1735123456,
-        source: MockDataSource::CppDirect,
+        _timestamp: 1735123456,
+        _source: MockDataSource::CppDirect,
     };
 
     let pressure_point = MockDataPoint {
         device_id: 1,
-        point_type: MockPointType::Variable,
-        point_number: 1,
+        _point_type: MockPointType::Variable,
+        _point_number: 1,
         value: 1013.25,
         status: "Online".to_string(),
         units: Some("Pascals".to_string()),
-        timestamp: 1735123456,
-        source: MockDataSource::CppDirect,
+        _timestamp: 1735123456,
+        _source: MockDataSource::CppDirect,
     };
 
     let flow_point = MockDataPoint {
         device_id: 1,
-        point_type: MockPointType::Variable,
-        point_number: 2,
+        _point_type: MockPointType::Variable,
+        _point_number: 2,
         value: 150.0,
         status: "Online".to_string(),
         units: Some("p/min".to_string()),
-        timestamp: 1735123456,
-        source: MockDataSource::CppDirect,
+        _timestamp: 1735123456,
+        _source: MockDataSource::CppDirect,
     };
 
     assert_eq!(temp_point.units, Some("Deg.C".to_string()));

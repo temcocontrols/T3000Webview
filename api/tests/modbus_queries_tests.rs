@@ -1,21 +1,5 @@
-use axum::{
-    extract::{Path, Query, State},
-    Json,
-};
-use serde_json::Value;
-use t3_webview_api::{
-    app_state::app_state,
-    entity::modbus_register_settings,
-    modbus_register::{
-        inputs::{
-            CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
-            UpdateModbusRegisterItemInput, UpdateSettingInput,
-        },
-        queries::{create, delete, list, update},
-        settings,
-    },
-    utils::run_migrations, // Use direct migration for in-memory test databases
-};
+// Unused imports removed for test file
+// Unused imports removed - test file does not use these modules
 
 //#[tokio::test]
 //async fn test_modbus_register_crud() {
