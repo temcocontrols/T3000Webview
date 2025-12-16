@@ -1,0 +1,30 @@
+/**
+ * Develop Layout Styles
+ * Azure Portal style layout with left navigation
+ */
+
+.container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #fafafa;
+}
+
+.sidebar {
+  width: 200px;
+  min-width: 200px;
+  background-color: #ffffff;
+  border-right: 1px solid #edebe9;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #fafafa;
+}

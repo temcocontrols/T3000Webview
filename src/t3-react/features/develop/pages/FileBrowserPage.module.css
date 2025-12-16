@@ -1,0 +1,136 @@
+/**
+ * File Browser Page Styles
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background-color: #ffffff;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #edebe9;
+  background-color: #fafafa;
+}
+
+.headerLeft {
+  flex: 1;
+}
+
+.headerRight {
+  display: flex;
+  gap: 8px;
+}
+
+.pathBar {
+  padding: 8px 24px;
+  background-color: #f3f2f1;
+  border-bottom: 1px solid #edebe9;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.splitView {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.fileList {
+  width: 40%;
+  border-right: 1px solid #edebe9;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.fileItem:hover {
+  background-color: #f3f2f1;
+}
+
+.fileItemSelected {
+  background-color: #e1dfdd;
+}
+
+.fileIcon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  color: #605e5c;
+}
+
+.fileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filePreview {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.previewContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.previewMeta {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid #edebe9;
+}
+
+.previewText {
+  padding: 12px;
+  background-color: #f3f2f1;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.previewPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #605e5c;
+}
+
+.error {
+  padding: 12px;
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: #605e5c;
+}

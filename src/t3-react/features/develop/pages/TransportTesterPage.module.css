@@ -1,0 +1,141 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #edebe9;
+  background-color: #ffffff;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  background-color: #faf9f8;
+}
+
+.transportSplitView {
+  display: flex;
+  height: 100%;
+  gap: 1px;
+  background-color: #edebe9;
+}
+
+/* Request Panel */
+.requestPanel {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow-y: auto;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid #edebe9;
+  background-color: #f3f2f1;
+}
+
+.formGroup {
+  padding: 12px;
+  border-bottom: 1px solid #f3f2f1;
+}
+
+.formGroup > *:first-child {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.jsonTextarea {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  min-height: 100px;
+}
+
+.requestPanel > button {
+  margin: 12px;
+  margin-top: auto;
+}
+
+/* Response Panel */
+.responsePanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.responseText {
+  flex: 1;
+  margin: 0;
+  padding: 16px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: auto;
+  background-color: #faf9f8;
+  white-space: pre-wrap;
+}
+
+.responsePlaceholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background-color: #faf9f8;
+}
+
+/* History Panel */
+.historyPanel {
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.historyList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.historyPlaceholder {
+  padding: 24px;
+  text-align: center;
+  color: #605e5c;
+}
+
+.historyItem {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f2f1;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.historyItem:hover {
+  background-color: #f3f2f1;
+}
+
+.historyItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
