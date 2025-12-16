@@ -489,6 +489,45 @@ const helpMenu: MenuItem = {
 };
 
 /**
+ * Develop Menu (Developer Tools)
+ */
+const developMenu: MenuItem = {
+  id: 'develop',
+  label: 'Develop',
+  type: 'submenu',
+  children: [
+    {
+      id: 'develop-files',
+      label: 'File Browser',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/develop/files',
+      icon: 'FolderOpen',
+    },
+    {
+      id: 'develop-database',
+      label: 'Database Viewer',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/develop/database',
+      icon: 'Database',
+    },
+    {
+      id: 'develop-transport',
+      label: 'Transport Tester',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/develop/transport',
+      icon: 'PlugConnected',
+    },
+    {
+      id: 'develop-logs',
+      label: 'System Logs',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/develop/logs',
+      icon: 'DocumentText',
+    },
+  ],
+};
+
+/**
  * Top Menu Configuration
  * Export array of all top-level menus
  */
@@ -500,6 +539,7 @@ export const topMenuConfig: MenuItem[] = [
   controlMenu,
   miscMenu,
   helpMenu,
+  developMenu,
 ];
 
 /**

@@ -71,6 +71,26 @@ const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
 );
 
+// Develop section - special layout
+const DevelopLayoutWrapper = React.lazy(() =>
+  import('../features/develop/layout/DevelopLayoutWrapper').then((m) => ({ default: m.DevelopLayoutWrapper }))
+);
+const DevelopLayout = React.lazy(() =>
+  import('../features/develop/layout/DevelopLayout').then((m) => ({ default: m.DevelopLayout }))
+);
+const FileBrowserPage = React.lazy(() =>
+  import('../features/develop/pages/FileBrowserPage').then((m) => ({ default: m.FileBrowserPage }))
+);
+const DatabaseViewerPage = React.lazy(() =>
+  import('../features/develop/pages/DatabaseViewerPage').then((m) => ({ default: m.DatabaseViewerPage }))
+);
+const TransportTesterPage = React.lazy(() =>
+  import('../features/develop/pages/TransportTesterPage').then((m) => ({ default: m.TransportTesterPage }))
+);
+const SystemLogsPage = React.lazy(() =>
+  import('../features/develop/pages/SystemLogsPage').then((m) => ({ default: m.SystemLogsPage }))
+);
+
 /**
  * Protected Route Wrapper
  * Redirects to login if not authenticated
@@ -271,6 +291,65 @@ export const App: React.FC = () => {
                     </React.Suspense>
                   }
                 />
+
+                {/* Develop Routes - Special layout with left navigation */}
+              </Route>
+
+              {/* Develop Routes - Separate from t3000, no device tree */}
+              <Route
+                path="/t3000/develop"
+                element={
+                  <ProtectedRoute>
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DevelopLayoutWrapper />
+                    </React.Suspense>
+                  </ProtectedRoute>
+                }
+              >
+                <Route
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DevelopLayout />
+                    </React.Suspense>
+                  }
+                >
+                  <Route
+                    index
+                    element={<Navigate to="/t3000/develop/files" replace />}
+                  />
+                  <Route
+                    path="files"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <FileBrowserPage />
+                      </React.Suspense>
+                    }
+                  />
+                  <Route
+                    path="database"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <DatabaseViewerPage />
+                      </React.Suspense>
+                    }
+                  />
+                  <Route
+                    path="transport"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <TransportTesterPage />
+                      </React.Suspense>
+                    }
+                  />
+                  <Route
+                    path="logs"
+                    element={
+                      <React.Suspense fallback={<div>Loading...</div>}>
+                        <SystemLogsPage />
+                      </React.Suspense>
+                    }
+                  />
+                </Route>
               </Route>
 
               {/* Fallback route */}

@@ -26,6 +26,12 @@ const SettingsPage = lazy(() => import('../pages').then(m => ({ default: m.Setti
 const DiscoverPage = lazy(() => import('../pages').then(m => ({ default: m.DiscoverPage })));
 const BuildingsPage = lazy(() => import('../pages').then(m => ({ default: m.BuildingsPage })));
 
+// Develop section pages
+const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
+const DatabaseViewerPage = lazy(() => import('../../features/develop/pages/DatabaseViewerPage'));
+const TransportTesterPage = lazy(() => import('../../features/develop/pages/TransportTesterPage'));
+const SystemLogsPage = lazy(() => import('../../features/develop/pages/SystemLogsPage'));
+
 /**
  * Route configuration with metadata
  */
@@ -173,6 +179,27 @@ export const t3000Routes: T3000Route[] = [
     element: BuildingsPage,
     title: 'Buildings',
     windowId: 16, // WINDOW_BUILDINGS
+  },
+  // Develop section routes
+  {
+    path: '/develop/files',
+    element: FileBrowserPage,
+    title: 'File Browser',
+  },
+  {
+    path: '/develop/database',
+    element: DatabaseViewerPage,
+    title: 'Database Viewer',
+  },
+  {
+    path: '/develop/transport',
+    element: TransportTesterPage,
+    title: 'Transport Tester',
+  },
+  {
+    path: '/develop/logs',
+    element: SystemLogsPage,
+    title: 'System Logs',
   },
 ];
 
