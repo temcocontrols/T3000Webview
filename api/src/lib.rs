@@ -22,6 +22,9 @@ pub mod database_management;
 pub mod t3_device;
 pub mod t3_socket;
 
+// Developer tools modules
+pub mod t3_develop;
+
 #[repr(C)]
 pub enum RustError {
     Ok = 0,
