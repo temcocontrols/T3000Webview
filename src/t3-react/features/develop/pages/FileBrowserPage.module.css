@@ -29,10 +29,46 @@
   gap: 8px;
 }
 
-.pathBar {
-  padding: 8px 24px;
-  background-color: #f3f2f1;
+.navigationBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #ffffff;
   border-bottom: 1px solid #edebe9;
+}
+
+.navButtons {
+  display: flex;
+  gap: 2px;
+  padding-right: 8px;
+  border-right: 1px solid #edebe9;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.breadcrumbButton {
+  min-width: auto;
+  padding: 4px 8px;
+  height: 28px;
+}
+
+.breadcrumbButton:hover {
+  background-color: #f3f2f1;
+}
+
+.breadcrumbSeparator {
+  color: #605e5c;
+  font-size: 14px;
+  padding: 0 4px;
+  user-select: none;
 }
 
 .content {
@@ -52,6 +88,56 @@
   flex: 1;
   overflow: auto;
   padding: 16px;
+}
+
+.fileGrid :global(.fui-DataGrid) {
+  font-size: 12px;
+  color: #292827;
+  background: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 2px;
+  width: 100%;
+}
+
+.fileGrid :global(.fui-DataGrid) table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Name column - 60% */
+.fileGrid :global(.fui-DataGridHeaderCell[aria-colindex="1"]),
+.fileGrid :global(.fui-DataGridCell[aria-colindex="1"]) {
+  width: 60% !important;
+  min-width: 0 !important;
+}
+
+/* Date Modified column - 22% */
+.fileGrid :global(.fui-DataGridHeaderCell[aria-colindex="2"]),
+.fileGrid :global(.fui-DataGridCell[aria-colindex="2"]) {
+  width: 22% !important;
+  min-width: 0 !important;
+}
+
+/* Type column - 10% */
+.fileGrid :global(.fui-DataGridHeaderCell[aria-colindex="3"]),
+.fileGrid :global(.fui-DataGridCell[aria-colindex="3"]) {
+  width: 10% !important;
+  min-width: 0 !important;
+}
+
+/* Size column - 1% */
+.fileGrid :global(.fui-DataGridHeaderCell[aria-colindex="4"]),
+.fileGrid :global(.fui-DataGridCell[aria-colindex="4"]) {
+  width: 1% !important;
+  min-width: 0 !important;
+}
+
+.fileGrid :global(.fui-DataGridHeaderCell),
+.fileGrid :global(.fui-DataGridCell) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding: 0 8px !important;
 }
 
 .loadingContainer {
