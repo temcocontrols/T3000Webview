@@ -1954,9 +1954,9 @@ HWND      m_t3000_log_window = NULL;
 
 
 Str_Setting_Info g_Device_Basic_Setting[256] = {0};
-Str_in_point t_Input_data= { 0 }; //用来取单位
-Str_out_point t_Output_data = {0};
-Str_variable_point t_Variable_data = { 0 };
+//Str_in_point t_Input_data= { 0 }; //用来取单位
+//Str_out_point t_Output_data = {0};
+//Str_variable_point t_Variable_data = { 0 };
 Str_in_point s_Input_data[256] = {0};
 Str_out_point s_Output_data[256] = {0};
 Str_variable_point s_Variable_data[256] = { 0 };
@@ -2375,6 +2375,6 @@ unsigned int DYNAMIC_INPUT_ITEM_COUNT = 64;
 unsigned int DYNAMIC_OUTPUT_ITEM_COUNT = 64;
 unsigned int DYNAMIC_VARIABLE_ITEM_COUNT = 128;
 
-bool enable_trendlog_background_read = true; //是否启用trendlog 后台读取功能;
+bool enable_trendlog_background_read = false; //是否启用trendlog 后台读取功能;
 
 

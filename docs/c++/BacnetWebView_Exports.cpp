@@ -9,18 +9,15 @@
 // Required for Str_Setting_Info structure definition and global variables
 #include "CM5/ud_str.h"
 #include "global_variable_extern.h"
- 
-static bool enable_t3_web_logging = true;
 
+static bool enable_t3_web_logging = true;
 // Forward declarations
 class CMainFrame;
 extern void HandleWebViewMsg(CString msg, CString &outmsg, int msg_source = 0);
 
 // Helper function for T3WebLog logging
 void WriteToT3WebLog(const CString& functionName, const CString& logContent) {
-
     if (!enable_t3_web_logging) return;
-
     try {
         SYSTEMTIME st;
         GetSystemTime(&st);
@@ -790,14 +787,10 @@ extern "C" __declspec(dllexport) int BacnetWebView_GetTrendlogEntry(int panel_id
                 input_item["sub_panel"] = (int)monitor.inputs[j].sub_panel;
                 input_item["point_type"] = (int)monitor.inputs[j].point_type;
                 input_item["point_number"] = (int)monitor.inputs[j].number;
-                //input_item["network"] = (int)monitor.inputs[j].network;
-                //input_item["range"] = (int)monitor.range[j];
-                input_item["network"] = use_m_monitor_data
-                    ? (int)m_monitor_data.at(monitor_index).inputs[j].network
-                    : (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].network;
-                input_item["range"] = use_m_monitor_data
-                    ? (int)m_monitor_data.at(monitor_index).range[j]
-                    : (int)g_monitor_data[panel_id].at(monitor_index).range[j];
+                input_item["network"] = (int)monitor.inputs[j].network;
+                input_item["range"] = (int)monitor.range[j];
+                input_item["network"] = (int)g_monitor_data[panel_id].at(monitor_index).inputs[j].network;
+                input_item["range"] = (int)g_monitor_data[panel_id].at(monitor_index).range[j];
                 inputs_array[j] = input_item;
             }
         }

@@ -1608,7 +1608,7 @@ void CBacnetMonitor::OnBnClickedBtnMonitorGraphicBeta()
 	CString encodedJsonData = UrlEncodeJson(jsonData);
 
 	CString selseted_info;
-	selseted_info.Format(_T("http://localhost:3003/#/trend-log?sn=%d&panel_id=%d&trendlog_id=%d&all_data=%s&mode=beta"), Device_Basic_Setting.reg.n_serial_number,
+	selseted_info.Format(_T("http://localhost:9103/#/trend-log?sn=%d&panel_id=%d&trendlog_id=%d&all_data=%s&mode=beta"), Device_Basic_Setting.reg.n_serial_number,
 		Device_Basic_Setting.reg.panel_number, monitor_list_line, encodedJsonData.GetBuffer());
 
 	CString webviewFolder;
