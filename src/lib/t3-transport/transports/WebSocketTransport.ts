@@ -150,15 +150,68 @@ export class WebSocketTransport extends BaseTransport {
   private handleMessage(data: string): void {
     try {
       const response = JSON.parse(data);
+
+      // Check if this is an error response
+      const hasError = response.error !== undefined || response?.status === false;
+      if (hasError) {
+        this.log(`Received error response: ${response.error || 'Unknown error'}`, 'error');
+        // Try to match with pending request by panel_id or serialNumber
+        const matchingRequest = this.findMatchingPendingRequest(response);
+        if (matchingRequest) {
+          const pending = this.pendingRequests.get(matchingRequest)!;
+          clearTimeout(pending.timeout);
+          this.pendingRequests.delete(matchingRequest);
+          pending.resolve({
+            success: false,
+            error: response.error,
+            message: response.message,
+            data: response
+          });
+        } else {
+          // Emit as error event
+          this.emit('error' as any, response);
+        }
+        return;
+      }
+
       const requestId = response.id;
 
       if (requestId && this.pendingRequests.has(requestId)) {
+        // Direct ID match (modern approach)
         const pending = this.pendingRequests.get(requestId)!;
         clearTimeout(pending.timeout);
         this.pendingRequests.delete(requestId);
 
         this.log(`Received response (ID: ${requestId})`);
-        pending.resolve(response);
+        pending.resolve({
+          success: true,
+          data: response.data || response,
+          message: response.message
+        });
+      } else if (response.action) {
+        // Response action-based matching (C++ backend pattern)
+        // Actions like 'GET_PANEL_DATA_RES', 'GET_PANELS_LIST_RES', etc.
+        const matchingRequest = this.findMatchingPendingRequest(response);
+        if (matchingRequest) {
+          const pending = this.pendingRequests.get(matchingRequest)!;
+          clearTimeout(pending.timeout);
+          this.pendingRequests.delete(matchingRequest);
+
+          this.log(`Received response (Action: ${response.action})`);
+          pending.resolve({
+            success: true,
+            data: response.data || response,
+            message: response.message
+          });
+        } else {
+          // Unsolicited message (notification/event)
+          this.log(`Received unsolicited message (Action: ${response.action})`);
+          this.emit('message' as any, response);
+        }
+      } else if (response.action === 'DATA_SERVER_ONLINE' || response.action === -1) {
+        // Special notification: T3000 data server is online
+        this.log('T3000 data server is online');
+        this.emit('message' as any, response);
       } else {
         // Unsolicited message (notification/event)
         this.log('Received unsolicited message');
@@ -167,6 +220,32 @@ export class WebSocketTransport extends BaseTransport {
     } catch (error) {
       this.log(`Failed to parse message: ${error}`, 'error');
     }
+  }
+
+  /**
+   * Find matching pending request based on response context
+   * Used when response doesn't have direct ID but has panel_id, serialNumber, or action
+   */
+  private findMatchingPendingRequest(response: any): string | undefined {
+    // Strategy 1: Match by panel_id and action context
+    if (response.panel_id !== undefined || response.panelId !== undefined) {
+      const panelId = response.panel_id || response.panelId;
+      // Find most recent request that matches this panel
+      for (const [requestId] of this.pendingRequests) {
+        return requestId; // Return first pending (FIFO assumption)
+      }
+    }
+
+    // Strategy 2: Match by serialNumber
+    if (response.serialNumber !== undefined || response.serial_number !== undefined) {
+      for (const [requestId] of this.pendingRequests) {
+        return requestId; // Return first pending (FIFO assumption)
+      }
+    }
+
+    // Strategy 3: Return first pending request (FIFO)
+    const firstPending = this.pendingRequests.keys().next();
+    return firstPending.done ? undefined : firstPending.value;
   }
 
   private scheduleReconnect(): void {

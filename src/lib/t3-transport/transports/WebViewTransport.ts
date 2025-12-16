@@ -122,15 +122,67 @@ export class WebViewTransport extends BaseTransport {
   private handleMessage(data: any): void {
     try {
       const response = typeof data === 'string' ? JSON.parse(data) : data;
+
+      // Check if this is an error response
+      const hasError = response.error !== undefined || response?.status === false;
+      if (hasError) {
+        this.log(`Received error response from C++: ${response.error || 'Unknown error'}`, 'error');
+        // Try to match with pending request
+        const matchingRequest = this.findMatchingPendingRequest(response);
+        if (matchingRequest) {
+          const pending = this.pendingRequests.get(matchingRequest)!;
+          clearTimeout(pending.timeout);
+          this.pendingRequests.delete(matchingRequest);
+          pending.resolve({
+            success: false,
+            error: response.error,
+            message: response.message,
+            data: response
+          });
+        } else {
+          // Emit as error event
+          this.emit('error' as any, response);
+        }
+        return;
+      }
+
       const requestId = response.id;
 
       if (requestId && this.pendingRequests.has(requestId)) {
+        // Direct ID match
         const pending = this.pendingRequests.get(requestId)!;
         clearTimeout(pending.timeout);
         this.pendingRequests.delete(requestId);
 
         this.log(`Received response from C++ (ID: ${requestId})`);
-        pending.resolve(response);
+        pending.resolve({
+          success: true,
+          data: response.data || response,
+          message: response.message
+        });
+      } else if (response.action) {
+        // Response action-based matching (C++ backend pattern)
+        const matchingRequest = this.findMatchingPendingRequest(response);
+        if (matchingRequest) {
+          const pending = this.pendingRequests.get(matchingRequest)!;
+          clearTimeout(pending.timeout);
+          this.pendingRequests.delete(matchingRequest);
+
+          this.log(`Received response from C++ (Action: ${response.action})`);
+          pending.resolve({
+            success: true,
+            data: response.data || response,
+            message: response.message
+          });
+        } else {
+          // Unsolicited message from C++ (notification/event)
+          this.log(`Received unsolicited message from C++ (Action: ${response.action})`);
+          this.emit('message' as any, response);
+        }
+      } else if (response.action === 'DATA_SERVER_ONLINE' || response.action === -1) {
+        // Special notification: T3000 data server is online
+        this.log('T3000 data server is online (C++)');
+        this.emit('message' as any, response);
       } else {
         // Unsolicited message from C++ (notification/event)
         this.log('Received unsolicited message from C++');
@@ -139,6 +191,32 @@ export class WebViewTransport extends BaseTransport {
     } catch (error) {
       this.log(`Failed to parse message from C++: ${error}`, 'error');
     }
+  }
+
+  /**
+   * Find matching pending request based on response context
+   * Used when response doesn't have direct ID but has panel_id, serialNumber, or action
+   */
+  private findMatchingPendingRequest(response: any): string | undefined {
+    // Strategy 1: Match by panel_id and action context
+    if (response.panel_id !== undefined || response.panelId !== undefined) {
+      const panelId = response.panel_id || response.panelId;
+      // Find most recent request that matches this panel
+      for (const [requestId] of this.pendingRequests) {
+        return requestId; // Return first pending (FIFO assumption)
+      }
+    }
+
+    // Strategy 2: Match by serialNumber
+    if (response.serialNumber !== undefined || response.serial_number !== undefined) {
+      for (const [requestId] of this.pendingRequests) {
+        return requestId; // Return first pending (FIFO assumption)
+      }
+    }
+
+    // Strategy 3: Return first pending request (FIFO)
+    const firstPending = this.pendingRequests.keys().next();
+    return firstPending.done ? undefined : firstPending.value;
   }
 
   private generateRequestId(): string {

@@ -65,9 +65,14 @@ export class FFITransport extends BaseTransport {
     this.log(`Sending FFI request (Action: ${action})`);
 
     try {
+      // Format message to match WebSocket/WebView2 structure
       const requestPayload = {
+        header: {
+          from: this.getBrowserType()
+        },
         message: {
           action,
+          msgId: this.generateMessageId(),
           ...payload
         }
       };
@@ -98,6 +103,33 @@ export class FFITransport extends BaseTransport {
         message: error.response?.data?.message
       };
     }
+  }
+
+  /**
+   * Get browser type for header
+   */
+  private getBrowserType(): string {
+    if (typeof navigator === 'undefined') return 'Unknown';
+
+    const userAgent = navigator.userAgent;
+    if (userAgent.indexOf('Firefox') > -1) {
+      return 'Firefox';
+    } else if (userAgent.indexOf('Chrome') > -1) {
+      return 'Chrome';
+    } else if (userAgent.indexOf('Safari') > -1) {
+      return 'Safari';
+    } else if (userAgent.indexOf('Edge') > -1) {
+      return 'Edge';
+    } else {
+      return 'Unknown';
+    }
+  }
+
+  /**
+   * Generate unique message ID
+   */
+  private generateMessageId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
