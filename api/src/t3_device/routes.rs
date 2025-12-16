@@ -21,6 +21,9 @@ use crate::t3_device::trendlog_webmsg_routes::create_trendlog_webmsg_routes;
 use crate::t3_device::input_update_routes::create_input_update_routes;
 use crate::t3_device::output_update_routes::create_output_update_routes;
 use crate::t3_device::variable_update_routes::create_variable_update_routes;
+use crate::t3_device::input_batch_routes::create_input_batch_routes;
+use crate::t3_device::output_batch_routes::create_output_batch_routes;
+use crate::t3_device::variable_batch_routes::create_variable_batch_routes;
 use crate::t3_device::input_refresh_routes::create_input_refresh_routes;
 use crate::t3_device::output_refresh_routes::create_output_refresh_routes;
 use crate::t3_device::variable_refresh_routes::create_variable_refresh_routes;
@@ -1142,6 +1145,11 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_input_update_routes())
         .merge(create_output_update_routes())
         .merge(create_variable_update_routes())
+
+        // 🆕 Point Batch Save Routes (batch update multiple points)
+        .merge(create_input_batch_routes())
+        .merge(create_output_batch_routes())
+        .merge(create_variable_batch_routes())
         .merge(create_arrays_update_routes())  // ✅ PASSED
         .merge(create_conversion_tables_update_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_update_routes())  // ✅ PASSED
