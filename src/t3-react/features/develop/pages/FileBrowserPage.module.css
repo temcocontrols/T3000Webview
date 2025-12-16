@@ -48,77 +48,73 @@
   overflow: hidden;
 }
 
-.fileList {
-  width: 40%;
-  border-right: 1px solid #edebe9;
-  overflow-y: auto;
-  padding: 8px;
+.fileGrid {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
 }
 
-.fileItem {
+.loadingContainer {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  margin-bottom: 4px;
+  justify-content: center;
+  height: 200px;
 }
 
-.fileItem:hover {
-  background-color: #f3f2f1;
-}
-
-.fileItemSelected {
-  background-color: #e1dfdd;
-}
-
-.fileIcon {
-  width: 24px;
-  height: 24px;
-  margin-right: 12px;
-  color: #605e5c;
-}
-
-.fileInfo {
+.detailsPanel {
+  width: 320px;
+  border-left: 1px solid #edebe9;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  background-color: #fafafa;
 }
 
-.filePreview {
-  flex: 1;
+.detailsHeader {
+  padding: 16px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.detailsContent {
   padding: 16px;
   overflow-y: auto;
-}
-
-.previewContent {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.previewMeta {
+.detailRow {
   display: flex;
-  gap: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid #edebe9;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailDivider {
+  height: 1px;
+  background-color: #edebe9;
+  margin: 8px 0;
+}
+
+.previewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .previewText {
   padding: 12px;
-  background-color: #f3f2f1;
+  background-color: #ffffff;
+  border: 1px solid #edebe9;
   border-radius: 4px;
   font-family: 'Consolas', monospace;
-  font-size: 12px;
-  overflow-x: auto;
+  font-size: 11px;
+  overflow: auto;
+  max-height: 400px;
 }
 
-.previewPlaceholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #605e5c;
+.previewText pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .error {

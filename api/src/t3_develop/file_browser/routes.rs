@@ -8,6 +8,7 @@ use axum::{extract::Query, Json, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use crate::constants::get_t3000_runtime_path;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,6 +16,7 @@ pub struct FileNode {
     pub name: String,
     pub path: String,
     pub is_directory: bool,
+    pub file_type: String,
     pub size: Option<u64>,
     pub modified: Option<String>,
 }
@@ -39,9 +41,7 @@ pub struct ReadFileQuery {
 }
 
 fn get_runtime_path() -> PathBuf {
-    std::env::var("T3000_RUNTIME_PATH")
-        .unwrap_or_else(|_| r"D:\T3000 Output\Debug".to_string())
-        .into()
+    get_t3000_runtime_path()
 }
 
 /// List files and directories in a path
@@ -97,10 +97,21 @@ pub async fn list_files(Query(query): Query<ListFilesQuery>) -> impl IntoRespons
             })
         });
 
+        // Determine file type
+        let file_type = if is_directory {
+            "Folder".to_string()
+        } else {
+            path.extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| format!("{} File", ext.to_uppercase()))
+                .unwrap_or_else(|| "File".to_string())
+        };
+
         files.push(FileNode {
             name,
             path: path.to_string_lossy().to_string(),
             is_directory,
+            file_type,
             size,
             modified,
         });
