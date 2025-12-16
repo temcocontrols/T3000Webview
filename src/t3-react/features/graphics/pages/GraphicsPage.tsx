@@ -423,16 +423,12 @@ export const GraphicsPage: React.FC = () => {
 
               <div className={styles.noPadding}>
                 {!selectedDevice ? (
-                  <div className={styles.centerText}>
-                    <div className={styles.emptyStateOuter}>
-                      <ImageRegular className={styles.iconLarge} />
+                  <div className={styles.noData}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Text size={500} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={300}>Please select a device from the tree to view graphics</Text>
                     </div>
-                    <Text size={400} weight="semibold" className={`${styles.displayBlock} ${styles.marginBottom8}`}>
-                      No Device Selected
-                    </Text>
-                    <Text size={300} className={styles.textMuted}>
-                      Select a device from the tree to view its graphics
-                    </Text>
                   </div>
                 ) : loading && graphics.length === 0 ? (
                   <div className={styles.loadingState}>

@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS DEVICES (
     pc_ip_address TEXT,                        -- C++ PC IP address from reg[19-22] (PC_IP_ADDRESS_*)
     modbus_port INTEGER,                       -- C++ Modbus port from reg[25] (MODBUS_PORT)
     bacnet_ip_port INTEGER,                    -- C++ BACnet IP port from reg[23] (BACNET_IP_PORT)
-    show_label_name INTEGER,                   -- C++ Show label name from reg[345] (SHOW_LABEL_NAME)
-    connection_type INTEGER                    -- C++ Connection type from reg[18] (CONNECTION_TYPE)
+    show_label_name TEXT,                      -- C++ Device display name (panel_name from LOGGING_DATA)
+    connection_type TEXT                       -- C++ Connection type (Serial/Ethernet/BACnet/Modbus)
 );
 
 -- INPUTS table (Original T3000 input points table)

@@ -667,7 +667,11 @@ export const TrendLogsPage: React.FC = () => {
     return (
       <div className={styles.container}>
         <div className={styles.noData}>
-          <Text size={300} weight="semibold">No Device Selected</Text>
+          <div style={{ textAlign: 'center' }}>
+            <Text size={500} weight="semibold">No device selected</Text>
+            <br />
+            <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+          </div>
         </div>
       </div>
     );
@@ -803,7 +807,7 @@ export const TrendLogsPage: React.FC = () => {
                 {/* No Device Selected */}
                 {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div className={styles.centerText}>
+                    <div style={{ textAlign: 'center' }}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={300}>Please select a device from the tree to view trendlogs</Text>
