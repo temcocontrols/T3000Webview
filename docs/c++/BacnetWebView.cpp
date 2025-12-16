@@ -775,8 +775,7 @@ void WrapErrorMessage(Json::StreamWriterBuilder& builder, const Json::Value& tem
 
 // ❌ Set to false to disable all T3WebLog logging
 static bool enable_t3_web_logging = false;
-
-
+ 
 // Helper function to write HandleWebViewMsg logs to T3WebLog directory
 // Creates organized logs in pattern: T3WebLog/YYYY-MM/MMDD/T3_CppMsg_HandWebViewMsg_MMDD_HHMM.txt
 // Logs are grouped into 4-hour buckets (00-03, 04-07, 08-11, 12-15, 16-19, 20-23)
@@ -2543,13 +2542,9 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 		//m_webView->PostWebMessageAsJson(temp_cs);
 
-
-		bool enable_logging_data_log = true;
-
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		if (enable_logging_data_log) {
-			WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
-		}
+		WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
+		
 		break;
 	}
 	case WEBVIEW_MESSAGE_TYPE::GET_ENTRIES:
@@ -3072,9 +3067,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			break; // Ignore the command if within 15 minutes
 		}
 		last_logging_time = current_time;
-
-		bool enable_logging_data_log = true;
-
+		 
 		Json::Value tempjson;
 		tempjson["action"] = "LOGGING_DATA_RES";
 
@@ -3198,9 +3191,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		if (enable_logging_data_log) {
-			WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count);
-		}
+		WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count); 
 	}
 	break;
 	default:
