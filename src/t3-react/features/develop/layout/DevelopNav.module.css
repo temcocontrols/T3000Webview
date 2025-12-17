@@ -55,7 +55,7 @@
 }
 
 .navButton.active {
-  background-color: transparent;
+  background-color: #e1dfdd;
   border-left: 3px solid #0078d4;
   padding-left: 13px;
 }

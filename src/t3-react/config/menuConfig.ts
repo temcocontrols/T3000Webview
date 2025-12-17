@@ -512,7 +512,7 @@ const developMenu: MenuItem = {
     },
     {
       id: 'develop-transport',
-      label: 'Transport Tester',
+      label: 'Transport Message',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/transport',
       icon: 'PlugConnected',

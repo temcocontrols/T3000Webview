@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Text, Button, Spinner, DataGrid, DataGridHeader, DataGridHeaderCell, DataGridBody, DataGridRow, DataGridCell, TableColumnDefinition, createTableColumn, Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, Tooltip } from '@fluentui/react-components';
-import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronLeftRegular, ChevronRightRegular, FolderOpenRegular, InfoRegular, DismissRegular } from '@fluentui/react-icons';
+import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronDownRegular, ChevronLeftRegular, ChevronRightRegular, FolderOpenRegular, InfoRegular, DismissRegular } from '@fluentui/react-icons';
 import styles from './FileBrowserPage.module.css';
 
 interface FileNode {
@@ -209,11 +209,21 @@ export const FileBrowserPage: React.FC = () => {
     }
   };
 
+  const getSortIcon = (columnId: string) => {
+    if (sortState.column !== columnId) return null;
+    return sortState.direction === 'asc' ? <ChevronUpRegular fontSize={12} /> : <ChevronDownRegular fontSize={12} />;
+  };
+
   const columns: TableColumnDefinition<FileNode>[] = [
     createTableColumn<FileNode>({
       columnId: 'name',
       compare: (a, b) => a.name.localeCompare(b.name),
-      renderHeaderCell: () => 'Name',
+      renderHeaderCell: () => (
+        <div onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+          <span>Name</span>
+          {getSortIcon('name')}
+        </div>
+      ),
       renderCell: (item) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
           {item.isDirectory ? <FolderRegular style={{ flexShrink: 0 }} /> : <DocumentRegular style={{ flexShrink: 0 }} />}
@@ -224,19 +234,34 @@ export const FileBrowserPage: React.FC = () => {
     createTableColumn<FileNode>({
       columnId: 'modified',
       compare: (a, b) => (a.modified || '').localeCompare(b.modified || ''),
-      renderHeaderCell: () => 'Date Modified',
+      renderHeaderCell: () => (
+        <div onClick={() => handleSort('modified')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+          <span>Date Modified</span>
+          {getSortIcon('modified')}
+        </div>
+      ),
       renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(item.modified)}</span>,
     }),
     createTableColumn<FileNode>({
       columnId: 'type',
       compare: (a, b) => a.fileType.localeCompare(b.fileType),
-      renderHeaderCell: () => 'Type',
+      renderHeaderCell: () => (
+        <div onClick={() => handleSort('type')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+          <span>Type</span>
+          {getSortIcon('type')}
+        </div>
+      ),
       renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.fileType}</span>,
     }),
     createTableColumn<FileNode>({
       columnId: 'size',
       compare: (a, b) => (a.size || 0) - (b.size || 0),
-      renderHeaderCell: () => 'Size',
+      renderHeaderCell: () => (
+        <div onClick={() => handleSort('size')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px', width: '100%', height: '100%' }}>
+          <span>Size</span>
+          {getSortIcon('size')}
+        </div>
+      ),
       renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatFileSize(item.size)}</span>,
     }),
     createTableColumn<FileNode>({

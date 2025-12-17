@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'transport',
-    label: 'Transport Tester',
+    label: 'Transport Message',
     icon: PlugConnectedRegular,
     path: '/t3000/develop/transport',
   },
