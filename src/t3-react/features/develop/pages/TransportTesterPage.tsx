@@ -30,8 +30,8 @@ interface MessageHistoryItem {
 }
 
 export const TransportTesterPage: React.FC = () => {
-  const [transport, setTransport] = useState<TransportType>('websocket');
-  const [action, setAction] = useState<string>('get_device_status');
+  const [transport, setTransport] = useState<TransportType>('ffi');
+  const [action, setAction] = useState<string>('GET_PANELS_LIST');
   const [panelId, setPanelId] = useState<string>('237219');
   const [serialNumber, setSerialNumber] = useState<string>('');
   const [customData, setCustomData] = useState<string>('{}');
@@ -40,13 +40,24 @@ export const TransportTesterPage: React.FC = () => {
   const [history, setHistory] = useState<MessageHistoryItem[]>([]);
 
   const actions = [
-    'get_device_status',
-    'read_inputs',
-    'read_outputs',
-    'read_variables',
-    'write_output',
-    'get_trendlog_data',
-    'custom',
+    { value: 'GET_PANEL_DATA', label: '0 - GET_PANEL_DATA' },
+    { value: 'GET_INITIAL_DATA', label: '1 - GET_INITIAL_DATA' },
+    { value: 'SAVE_GRAPHIC_DATA', label: '2 - SAVE_GRAPHIC_DATA' },
+    { value: 'UPDATE_ENTRY', label: '3 - UPDATE_ENTRY' },
+    { value: 'GET_PANELS_LIST', label: '4 - GET_PANELS_LIST' },
+    { value: 'GET_PANEL_RANGE_INFO', label: '5 - GET_PANEL_RANGE_INFO' },
+    { value: 'GET_ENTRIES', label: '6 - GET_ENTRIES' },
+    { value: 'LOAD_GRAPHIC_ENTRY', label: '7 - LOAD_GRAPHIC_ENTRY' },
+    { value: 'OPEN_ENTRY_EDIT_WINDOW', label: '8 - OPEN_ENTRY_EDIT_WINDOW' },
+    { value: 'SAVE_IMAGE', label: '9 - SAVE_IMAGE' },
+    { value: 'SAVE_LIBRAY_DATA', label: '10 - SAVE_LIBRAY_DATA' },
+    { value: 'DELETE_IMAGE', label: '11 - DELETE_IMAGE' },
+    { value: 'GET_SELECTED_DEVICE_INFO', label: '12 - GET_SELECTED_DEVICE_INFO' },
+    { value: 'BIND_DEVICE', label: '13 - BIND_DEVICE' },
+    { value: 'SAVE_NEW_LIBRARY_DATA', label: '14 - SAVE_NEW_LIBRARY_DATA' },
+    { value: 'LOGGING_DATA', label: '15 - LOGGING_DATA' },
+    { value: 'UPDATE_WEBVIEW_LIST', label: '16 - UPDATE_WEBVIEW_LIST' },
+    { value: 'GET_WEBVIEW_LIST', label: '17 - GET_WEBVIEW_LIST' },
   ];
 
   const sendMessage = async () => {
@@ -116,33 +127,35 @@ export const TransportTesterPage: React.FC = () => {
             <Text size={200} weight="semibold">Transport Type:</Text>
             <Dropdown
               placeholder="Transport Type"
-              value={transport}
+              value={transport === 'websocket' ? 'WebSocket' : transport === 'ffi' ? 'FFI' : 'WebView2'}
               onOptionSelect={(_, data) => setTransport(data.optionValue as TransportType)}
-              style={{ minWidth: '150px' }}
+              style={{ minWidth: '150px', fontSize: '12px' }}
               size="small"
             >
-              <Option value="websocket">WebSocket</Option>
-              <Option value="ffi">FFI</Option>
-              <Option value="webview2">WebView2</Option>
+              <Option value="websocket" text="WebSocket"><span style={{ fontSize: '12px' }}>WebSocket</span></Option>
+              <Option value="ffi" text="FFI"><span style={{ fontSize: '12px' }}>FFI</span></Option>
+              <Option value="webview2" text="WebView2"><span style={{ fontSize: '12px' }}>WebView2</span></Option>
             </Dropdown>
           </div>
           <div className={styles.controlGroup}>
             <Text size={200} weight="semibold">Message Type:</Text>
             <Dropdown
               placeholder="Select message type"
-              value={action}
+              value={actions.find(a => a.value === action)?.label || action}
               onOptionSelect={(_, data) => data.optionValue && setAction(data.optionValue)}
-              style={{ minWidth: '200px' }}
+              style={{ minWidth: '280px', fontSize: '12px' }}
               size="small"
             >
               {actions.map((act) => (
-                <Option key={act} value={act}>{act}</Option>
+                <Option key={act.value} value={act.value} text={act.label}>
+                  <span style={{ fontSize: '12px' }}>{act.label}</span>
+                </Option>
               ))}
             </Dropdown>
           </div>
           <Button
             appearance="primary"
-            icon={<SendRegular />}
+            icon={<SendRegular fontSize={14} />}
             onClick={sendMessage}
             disabled={loading}
             size="small"
