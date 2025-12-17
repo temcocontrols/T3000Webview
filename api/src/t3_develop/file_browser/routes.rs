@@ -126,7 +126,10 @@ pub async fn list_files(Query(query): Query<ListFilesQuery>) -> impl IntoRespons
         }
     });
 
-    (StatusCode::OK, Json(serde_json::json!(files)))
+    (StatusCode::OK, Json(serde_json::json!({
+        "files": files,
+        "runtimeFolder": canonical_base.to_string_lossy().to_string()
+    })))
 }
 
 /// Read file content

@@ -5,8 +5,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Text, Button, Spinner, DataGrid, DataGridHeader, DataGridHeaderCell, DataGridBody, DataGridRow, DataGridCell, TableColumnDefinition, createTableColumn } from '@fluentui/react-components';
-import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronLeftRegular, ChevronRightRegular, HomeRegular } from '@fluentui/react-icons';
+import { Text, Button, Spinner, DataGrid, DataGridHeader, DataGridHeaderCell, DataGridBody, DataGridRow, DataGridCell, TableColumnDefinition, createTableColumn, Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, Tooltip } from '@fluentui/react-components';
+import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronLeftRegular, ChevronRightRegular, FolderOpenRegular, InfoRegular, DismissRegular } from '@fluentui/react-icons';
 import styles from './FileBrowserPage.module.css';
 
 interface FileNode {
@@ -21,12 +21,16 @@ interface FileNode {
 export const FileBrowserPage: React.FC = () => {
   const [files, setFiles] = useState<FileNode[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
+  const [runtimeFolder, setRuntimeFolder] = useState<string>('Runtime Folder');
   const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerFile, setDrawerFile] = useState<FileNode | null>(null);
+  const [sortState, setSortState] = useState<{column: string | null, direction: 'asc' | 'desc' | null}>({column: null, direction: null});
 
   const loadFiles = async (path?: string, addToHistory: boolean = true) => {
     setLoading(true);
@@ -43,7 +47,18 @@ export const FileBrowserPage: React.FC = () => {
       }
 
       const data = await response.json();
-      setFiles(data);
+
+      // Handle new response format with runtimeFolder
+      if (data.files && data.runtimeFolder) {
+        setFiles(data.files);
+        if (!path) {
+          setRuntimeFolder(data.runtimeFolder);
+        }
+      } else {
+        // Fallback for old format (array of files)
+        setFiles(Array.isArray(data) ? data : []);
+      }
+
       const newPath = path || '';
       setCurrentPath(newPath);
 
@@ -115,6 +130,49 @@ export const FileBrowserPage: React.FC = () => {
     loadFiles('', true);
   };
 
+  const handleViewDetails = (file: FileNode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDrawerFile(file);
+    setDrawerOpen(true);
+    if (!file.isDirectory) {
+      loadFileContent(file.path);
+    }
+  };
+
+  const handleSort = (columnId: string) => {
+    if (sortState.column === columnId) {
+      if (sortState.direction === 'asc') {
+        setSortState({ column: columnId, direction: 'desc' });
+      } else if (sortState.direction === 'desc') {
+        setSortState({ column: null, direction: null }); // Reset to default
+      }
+    } else {
+      setSortState({ column: columnId, direction: 'asc' });
+    }
+  };
+
+  const getSortedFiles = () => {
+    if (!sortState.column || !sortState.direction) {
+      return files; // Return default order
+    }
+
+    return [...files].sort((a, b) => {
+      let aVal: any = (a as any)[sortState.column!];
+      let bVal: any = (b as any)[sortState.column!];
+
+      if (sortState.column === 'size') {
+        aVal = aVal || 0;
+        bVal = bVal || 0;
+        return sortState.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      aVal = aVal || '';
+      bVal = bVal || '';
+      const result = aVal.toString().localeCompare(bVal.toString());
+      return sortState.direction === 'asc' ? result : -result;
+    });
+  };
+
   const loadFileContent = async (filePath: string) => {
     try {
       const relativePath = filePath.replace(/\\/g, '/');
@@ -181,28 +239,25 @@ export const FileBrowserPage: React.FC = () => {
       renderHeaderCell: () => 'Size',
       renderCell: (item) => <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatFileSize(item.size)}</span>,
     }),
+    createTableColumn<FileNode>({
+      columnId: 'actions',
+      renderHeaderCell: () => 'Actions',
+      renderCell: (item) => (
+        <Button
+          appearance="subtle"
+          size="small"
+          icon={<InfoRegular />}
+          onClick={(e) => handleViewDetails(item, e)}
+          title="View details"
+        />
+      ),
+    }),
   ];
 
   const pathParts = currentPath ? currentPath.split('\\').filter(p => p) : [];
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Text size={500} weight="semibold">📁 Runtime Folder Browser</Text>
-        </div>
-        <div className={styles.headerRight}>
-          <Button
-            appearance="subtle"
-            icon={<ArrowSyncRegular />}
-            onClick={() => loadFiles(currentPath, false)}
-            disabled={loading}
-          >
-            Refresh
-          </Button>
-        </div>
-      </div>
-
       <div className={styles.navigationBar}>
         <div className={styles.navButtons}>
           <Button
@@ -234,9 +289,10 @@ export const FileBrowserPage: React.FC = () => {
           <Button
             appearance="subtle"
             size="small"
-            icon={<HomeRegular />}
+            icon={<FolderOpenRegular fontSize={16} />}
             onClick={handleGoHome}
             className={styles.breadcrumbButton}
+            title="Home"
           />
           {pathParts.map((part, index) => (
             <React.Fragment key={index}>
@@ -251,6 +307,19 @@ export const FileBrowserPage: React.FC = () => {
               </Button>
             </React.Fragment>
           ))}
+        </div>
+        <div className={styles.navDivider} />
+        <div className={styles.headerRight}>
+          <Text size={200}><FolderRegular fontSize={12} /> {runtimeFolder}</Text>
+          <Tooltip content="Refresh current folder" relationship="label">
+            <Button
+              appearance="subtle"
+              size="small"
+              icon={<ArrowSyncRegular fontSize={14} />}
+              onClick={() => loadFiles(currentPath, false)}
+              disabled={loading}
+            />
+          </Tooltip>
         </div>
       </div>
 
@@ -272,36 +341,42 @@ export const FileBrowserPage: React.FC = () => {
 
             {!loading && !error && (
               <DataGrid
-                items={files}
+                items={getSortedFiles()}
                 columns={columns}
-                sortable
+                sortable={false}
                 resizableColumns
                 focusMode="composite"
                 size="small"
                 style={{ minWidth: '100%' }}
                 columnSizingOptions={{
                   name: {
-                    minWidth: 300,
-                    idealWidth: '55%',
+                    minWidth: 250,
+                    idealWidth: '43%',
                   },
                   modified: {
                     minWidth: 150,
-                    idealWidth: '20%',
+                    idealWidth: '25%',
                   },
                   type: {
                     minWidth: 80,
-                    idealWidth: '15%',
+                    idealWidth: '14%',
                   },
                   size: {
                     minWidth: 60,
                     idealWidth: '10%',
+                  },
+                  actions: {
+                    minWidth: 70,
+                    idealWidth: '8%',
                   },
                 }}
               >
                 <DataGridHeader>
                   <DataGridRow>
                     {({ renderHeaderCell }) => (
-                      <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                      <DataGridHeaderCell>
+                        {renderHeaderCell()}
+                      </DataGridHeaderCell>
                     )}
                   </DataGridRow>
                 </DataGridHeader>
@@ -330,31 +405,37 @@ export const FileBrowserPage: React.FC = () => {
           {selectedFile && (
             <div className={styles.detailsPanel}>
               <div className={styles.detailsHeader}>
-                <Text size={400} weight="semibold">Details</Text>
+                <Text size={200} weight="semibold">Details</Text>
+                <Button
+                  appearance="subtle"
+                  icon={<DismissRegular />}
+                  size="small"
+                  onClick={() => setSelectedFile(null)}
+                />
               </div>
               <div className={styles.detailsContent}>
                 <div className={styles.detailRow}>
-                  <Text size={300} weight="semibold">Name:</Text>
-                  <Text size={300}>{selectedFile.name}</Text>
+                  <Text size={200} weight="semibold">Name:</Text>
+                  <Text size={200}>{selectedFile.name}</Text>
                 </div>
                 <div className={styles.detailRow}>
-                  <Text size={300} weight="semibold">Type:</Text>
-                  <Text size={300}>{selectedFile.fileType}</Text>
+                  <Text size={200} weight="semibold">Type:</Text>
+                  <Text size={200}>{selectedFile.fileType}</Text>
                 </div>
                 {selectedFile.size !== undefined && (
                   <div className={styles.detailRow}>
-                    <Text size={300} weight="semibold">Size:</Text>
-                    <Text size={300}>{formatFileSize(selectedFile.size)}</Text>
+                    <Text size={200} weight="semibold">Size:</Text>
+                    <Text size={200}>{formatFileSize(selectedFile.size)}</Text>
                   </div>
                 )}
                 {selectedFile.modified && (
                   <div className={styles.detailRow}>
-                    <Text size={300} weight="semibold">Modified:</Text>
-                    <Text size={300}>{formatDate(selectedFile.modified)}</Text>
+                    <Text size={200} weight="semibold">Modified:</Text>
+                    <Text size={200}>{formatDate(selectedFile.modified)}</Text>
                   </div>
                 )}
                 <div className={styles.detailRow}>
-                  <Text size={300} weight="semibold">Path:</Text>
+                  <Text size={200} weight="semibold">Path:</Text>
                   <Text size={200}>{selectedFile.path}</Text>
                 </div>
 
@@ -362,7 +443,7 @@ export const FileBrowserPage: React.FC = () => {
                   <>
                     <div className={styles.detailDivider} />
                     <div className={styles.previewSection}>
-                      <Text size={300} weight="semibold">Preview:</Text>
+                      <Text size={200} weight="semibold">Preview:</Text>
                       <div className={styles.previewText}>
                         <pre>{fileContent.substring(0, 5000)}{fileContent.length > 5000 ? '\n...(truncated)' : ''}</pre>
                       </div>
@@ -374,6 +455,65 @@ export const FileBrowserPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Drawer for file details */}
+      {drawerOpen && (
+        <>
+          <div className={styles.drawerOverlay} onClick={() => setDrawerOpen(false)} />
+          <div className={styles.drawerPanel}>
+            <div className={styles.drawerHeader}>
+              <Text size={300} weight="semibold">{drawerFile?.name}</Text>
+              <Button
+                appearance="subtle"
+                icon={<DismissRegular />}
+                onClick={() => setDrawerOpen(false)}
+              />
+            </div>
+            <div className={styles.drawerBody}>
+              {drawerFile && (
+                <>
+                  <div className={styles.detailRow}>
+                    <Text size={200} weight="semibold">Name:</Text>
+                    <Text size={200}>{drawerFile.name}</Text>
+                  </div>
+                  <div className={styles.detailRow}>
+                    <Text size={200} weight="semibold">Type:</Text>
+                    <Text size={200}>{drawerFile.fileType}</Text>
+                  </div>
+                  {drawerFile.size !== undefined && (
+                    <div className={styles.detailRow}>
+                      <Text size={200} weight="semibold">Size:</Text>
+                      <Text size={200}>{formatFileSize(drawerFile.size)}</Text>
+                    </div>
+                  )}
+                  {drawerFile.modified && (
+                    <div className={styles.detailRow}>
+                      <Text size={200} weight="semibold">Modified:</Text>
+                      <Text size={200}>{formatDate(drawerFile.modified)}</Text>
+                    </div>
+                  )}
+                  <div className={styles.detailRow}>
+                    <Text size={200} weight="semibold">Path:</Text>
+                    <Text size={200}>{drawerFile.path}</Text>
+                  </div>
+
+                  {!drawerFile.isDirectory && fileContent && (
+                    <>
+                      <div className={styles.detailDivider} />
+                      <div className={styles.previewSection}>
+                        <Text size={200} weight="semibold">Preview:</Text>
+                        <div className={styles.previewText}>
+                          <pre>{fileContent.substring(0, 10000)}{fileContent.length > 10000 ? '\n...(truncated)' : ''}</pre>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
