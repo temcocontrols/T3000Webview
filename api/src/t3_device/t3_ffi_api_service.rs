@@ -182,15 +182,30 @@ async fn handle_ffi_call(
 
     // Convert payload to string for FFI call
     let message = payload.to_string();
-    api_logger.info(&format!("📡 FFI API Request - Message: {}", message));
+
+    // Extract action for logging
+    let action = payload.get("message")
+        .and_then(|m| m.get("action"))
+        .and_then(|a| a.as_i64())
+        .unwrap_or(0);
+
+    api_logger.info(&format!("📡 FFI API Request - Action: {}, Full payload: {}", action, message));
 
     let service = T3000FfiApiService::new();
 
     match service.call_ffi(&message).await {
         Ok(response) => {
+            api_logger.info(&format!("📡 FFI Response from C++: {}", response));
+
             // Try to parse response as JSON, otherwise return as string
             match serde_json::from_str::<JsonValue>(&response) {
-                Ok(json_response) => Ok(Json(json_response)),
+                Ok(json_response) => {
+                    let response_action = json_response.get("action")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("UNKNOWN");
+                    api_logger.info(&format!("✅ C++ returned action: {}", response_action));
+                    Ok(Json(json_response))
+                },
                 Err(_) => Ok(Json(serde_json::json!({
                     "status": "success",
                     "data": response,

@@ -79,14 +79,17 @@ export class FFITransport extends BaseTransport {
 
       const response = await this.httpClient.post('/t3000/ffi/call', requestPayload);
 
-      this.log(`Received FFI response (Action: ${action})`);
+      this.log(`Received FFI response (Status: ${response.status})`);
+      this.log(`Raw C++ response: ${JSON.stringify(response.data)}`);
 
-      // Transform response to WebViewResponse format
+      // C++ returns JSON with "action" and "data" fields directly
+      // Keep the full response structure including action field
+      const cppResponse = response.data;
       const result: WebViewResponse = {
-        success: response.data.status === 'success' || response.status === 200,
-        message: response.data.message,
-        data: response.data.data || response.data,
-        timestamp: response.data.timestamp
+        success: response.status === 200 && !cppResponse.error,
+        message: cppResponse.message,
+        data: cppResponse,  // Keep full C++ response so frontend can see action, data, etc.
+        timestamp: new Date().toISOString()
       };
 
       return result;

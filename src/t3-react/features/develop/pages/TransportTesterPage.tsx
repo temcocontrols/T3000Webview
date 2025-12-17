@@ -19,6 +19,9 @@ import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
 import { WebViewMessageType } from '../../../../lib/t3-transport/types/message-enums';
 import styles from './TransportTesterPage.module.css';
 
+// API Configuration
+const API_BASE_URL = 'http://localhost:9103/api';
+
 type TransportType = 'websocket' | 'ffi' | 'webview2';
 
 interface Panel {
@@ -79,7 +82,9 @@ export const TransportTesterPage: React.FC = () => {
   useEffect(() => {
     const initTransport = async () => {
       try {
-        const t3transport = new T3Transport();
+        const t3transport = new T3Transport({
+          apiBaseUrl: API_BASE_URL
+        });
 
         // For browser development, prefer FFI (HTTP API calls)
         // FFI calls the Rust backend API at /api endpoints
@@ -218,24 +223,53 @@ export const TransportTesterPage: React.FC = () => {
         }
       }
 
-      // Display the request being sent
-      const requestInfo = {
-        action: messageType,
-        actionName: action,
-        payload: payload
+      // Build the actual request payload that will be sent to the API
+      // Use same logic as FFI transport
+      const getBrowserType = () => {
+        const userAgent = navigator.userAgent;
+        if (userAgent.indexOf('Firefox') > -1) return 'Firefox';
+        if (userAgent.indexOf('Chrome') > -1) return 'Chrome';
+        if (userAgent.indexOf('Safari') > -1) return 'Safari';
+        if (userAgent.indexOf('Edge') > -1) return 'Edge';
+        return 'Unknown';
       };
-      setCurrentRequest(JSON.stringify(requestInfo, null, 2));
 
-      // Call real transport
-      const transportResponse = await transportRef.current.send(messageType, payload);
+      const actualRequestPayload = {
+        header: {
+          from: getBrowserType()
+        },
+        message: {
+          action: messageType,
+          msgId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          ...payload
+        }
+      };
+
+      // Display the exact payload being sent
+      setCurrentRequest(JSON.stringify(actualRequestPayload, null, 2));
+
+      // Call API directly with the actual payload so we can show exact request/response
+      const response = await fetch(`${API_BASE_URL}/t3000/ffi/call`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(actualRequestPayload)
+      });
+
+      const transportResponse = await response.json();
 
       const duration = Date.now() - startTime;
 
+      // Log what C++ actually returned for debugging
+      console.log('C++ Response:', transportResponse);
+
+      // Parse the response - C++ returns JSON directly (with action and data fields)
+      const success = response.ok && !transportResponse.error;
+
       // Special handling for GET_PANELS_LIST
-      if (action === 'GET_PANELS_LIST' && transportResponse.success && transportResponse.data) {
-        let panelsData = Array.isArray(transportResponse.data)
-          ? transportResponse.data
-          : transportResponse.data.panels || [];
+      if (action === 'GET_PANELS_LIST' && success && transportResponse.data) {
+        let panelsData = Array.isArray(transportResponse.data) ? transportResponse.data : [];
 
         // Filter out invalid panel entries
         panelsData = panelsData.filter((panel: any) =>
@@ -248,6 +282,7 @@ export const TransportTesterPage: React.FC = () => {
         setAvailablePanels(panelsData);
       }
 
+      // Show the full C++ response including action field
       setResponse(JSON.stringify(transportResponse, null, 2));
 
       // Add to history
@@ -255,10 +290,10 @@ export const TransportTesterPage: React.FC = () => {
         id: Date.now().toString(),
         timestamp: new Date(),
         action,
-        request: { action: messageType, ...payload },
+        request: actualRequestPayload,
         response: transportResponse,
         duration,
-        status: transportResponse.success ? 'success' : 'error',
+        status: success ? 'success' : 'error',
       };
 
       setHistory(prev => [historyItem, ...prev].slice(0, 50));
