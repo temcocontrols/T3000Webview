@@ -65,16 +65,13 @@ export class FFITransport extends BaseTransport {
     this.log(`Sending FFI request (Action: ${action})`);
 
     try {
-      // Format message to match WebSocket/WebView2 structure
+      // C++ expects flat JSON structure with action at top level (not nested)
+      // Different from WebSocket/WebView2 which use header/message wrapper
       const requestPayload = {
-        header: {
-          from: this.getBrowserType()
-        },
-        message: {
-          action,
-          msgId: this.generateMessageId(),
-          ...payload
-        }
+        action,
+        msgId: this.generateMessageId(),
+        from: this.getBrowserType(), // For debugging/logging
+        ...payload
       };
 
       const response = await this.httpClient.post('/t3000/ffi/call', requestPayload);

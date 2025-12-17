@@ -234,15 +234,12 @@ export const TransportTesterPage: React.FC = () => {
         return 'Unknown';
       };
 
+      // C++ expects flat JSON with action at top level (not nested in message)
       const actualRequestPayload = {
-        header: {
-          from: getBrowserType()
-        },
-        message: {
-          action: messageType,
-          msgId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          ...payload
-        }
+        action: messageType,
+        msgId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        from: getBrowserType(), // For debugging/logging
+        ...payload
       };
 
       // Display the exact payload being sent

@@ -87,17 +87,39 @@ impl T3000FfiApiService {
         let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
 
         // Parse the JSON to extract the action number
+        api_logger.info(&format!("🔍 Parsing message JSON: {}", message));
+
         let action = match serde_json::from_str::<serde_json::Value>(message) {
             Ok(json) => {
-                json.get("message")
-                    .and_then(|m| m.get("action"))
-                    .and_then(|a| a.as_i64())
-                    .unwrap_or(0) as i32
+                api_logger.info(&format!("✅ JSON parsed successfully"));
+
+                // Log the full JSON structure
+                api_logger.info(&format!("📦 Full JSON: {}", serde_json::to_string_pretty(&json).unwrap_or_default()));
+
+                // Support BOTH patterns:
+                // 1. Top-level action: {"action": 0, "panelId": 123} (trendlog_webmsg_service)
+                // 2. Nested action: {"header": {...}, "message": {"action": 4}} (TransportTesterPage)
+                let action_field = json.get("action")  // Try top level first
+                    .or_else(|| {
+                        // If not found, try nested in "message" field
+                        json.get("message").and_then(|m| m.get("action"))
+                    });
+
+                api_logger.info(&format!("🔍 action field found: {:?}", action_field));
+
+                // Try to convert to i64
+                let action_value = action_field.and_then(|a| a.as_i64()).unwrap_or(0) as i32;
+                api_logger.info(&format!("🔍 action value extracted: {}", action_value));
+
+                action_value
             }
-            Err(_) => 0
+            Err(e) => {
+                api_logger.error(&format!("❌ Failed to parse JSON: {}", e));
+                0
+            }
         };
 
-        api_logger.info(&format!("📡 FFI Call - Action: {}, Message: {}", action, message));
+        api_logger.info(&format!("📡 FFI Call - Final Action: {}, Calling C++ now...", action));
 
         unsafe {
             if !Self::load_t3000_function() {
@@ -131,6 +153,16 @@ impl T3000FfiApiService {
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
                         api_logger.info(&format!("📡 FFI Response - {} bytes", null_pos));
+
+                        // Parse and log response action
+                        if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(&response) {
+                            let response_action = response_json.get("action")
+                                .and_then(|a| a.as_str())
+                                .unwrap_or("UNKNOWN");
+                            api_logger.info(&format!("🔍 C++ Response Action: {}", response_action));
+                            api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
+                        }
+
                         Ok(response)
                     }
                     -2 => {
@@ -183,9 +215,9 @@ async fn handle_ffi_call(
     // Convert payload to string for FFI call
     let message = payload.to_string();
 
-    // Extract action for logging
-    let action = payload.get("message")
-        .and_then(|m| m.get("action"))
+    // Extract action for logging - support both top-level and nested patterns
+    let action = payload.get("action")  // Try top level first (old services)
+        .or_else(|| payload.get("message").and_then(|m| m.get("action")))  // Then nested (new TransportTesterPage)
         .and_then(|a| a.as_i64())
         .unwrap_or(0);
 

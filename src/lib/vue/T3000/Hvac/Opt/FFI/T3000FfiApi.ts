@@ -143,11 +143,11 @@ export function useT3000FfiApi() {
       message.data = data
     }
 
+    // C++ expects flat JSON structure with action at top level (not nested)
+    // Add 'from' field for debugging/logging
     return {
-      header: {
-        from: 'ffi_api'
-      },
-      message
+      ...message,
+      from: 'ffi_api'
     }
   }
 
