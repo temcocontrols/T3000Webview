@@ -421,18 +421,22 @@ export const TransportTesterPage: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className={styles.formGroup}>
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                   <Text size={200} weight="semibold">Panel ID</Text>
                   {availablePanels.length > 0 ? (
                     <Dropdown
                       placeholder="Select a panel"
-                      value={panelId}
+                      value={(() => {
+                        const panel = availablePanels.find(p => p.panel_number.toString() === panelId);
+                        return panel ? `${panel.panel_name || 'Unknown'}, Panel Number: ${panel.panel_number}` : panelId;
+                      })()}
                       onOptionSelect={(_, data) => data.optionValue && setPanelId(data.optionValue)}
                       size="small"
+                      style={{ width: '100%' }}
                     >
                       {availablePanels.filter(panel => panel && panel.panel_number !== undefined).map((panel) => (
                         <Option key={panel.panel_number} value={panel.panel_number.toString()}>
-                          <span style={{ fontSize: '12px' }}>{panel.panel_number} - {panel.panel_name || 'Unknown'}</span>
+                          <span style={{ fontSize: '12px' }}>{panel.panel_name || 'Unknown'}, Panel Number: {panel.panel_number}</span>
                         </Option>
                       ))}
                     </Dropdown>
@@ -443,28 +447,19 @@ export const TransportTesterPage: React.FC = () => {
                       placeholder="Run GET_PANELS_LIST first"
                       size="small"
                       disabled
+                      style={{ width: '100%' }}
                     />
                   )}
                 </div>
 
-                <div className={styles.formGroup}>
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                   <Text size={200} weight="semibold">Serial Number (optional)</Text>
                   <Input
                     value={serialNumber}
                     onChange={(_, data) => setSerialNumber(data.value)}
                     placeholder="Leave empty for broadcast"
                     size="small"
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <Text size={200} weight="semibold">Custom Data (JSON)</Text>
-                  <Textarea
-                    value={customData}
-                    onChange={(_, data) => setCustomData(data.value)}
-                    className={styles.jsonTextarea}
-                    resize="vertical"
-                    size="small"
+                    style={{ width: '100%' }}
                   />
                 </div>
               </>
@@ -499,7 +494,7 @@ export const TransportTesterPage: React.FC = () => {
             {/* Request Panel (Top) */}
             <div className={styles.requestPanel}>
               <div className={styles.panelHeader}>
-                <Text size={200} weight="semibold">Current Request</Text>
+                <Text size={200} weight="semibold">Request Payload</Text>
               </div>
               {!currentRequest && (
                 <div className={styles.responsePlaceholder}>
