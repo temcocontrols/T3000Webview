@@ -19,8 +19,12 @@ import {
   Filter20Regular,
   BuildingRegular,
   DatabaseRegular,
+  ArrowSyncRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
+import { T3Transport } from '../../../../../lib/t3-transport/core/T3Transport';
+import { T3Database } from '../../../../../lib/t3-database';
+import { API_BASE_URL } from '../../../../config/constants';
 import styles from './TreeToolbar.module.css';
 
 /**
@@ -37,6 +41,56 @@ interface TreeToolbarProps {
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
   const { expandAll, collapseAll, viewMode, setViewMode, refreshDevices } = useDeviceTreeStore();
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Initialize T3Transport with FFI
+      const transport = new T3Transport({
+        apiBaseUrl: `${API_BASE_URL}/api`
+      });
+      await transport.connect('ffi');
+
+      // Call action 4: GET_PANELS_LIST
+      const response = await transport.getDeviceList();
+
+      // Check if response has data
+      if (response && response.data) {
+        const panels = response.data;
+
+        // Save to database using t3-database
+        const db = new T3Database(`${API_BASE_URL}/api`);
+        for (const panel of panels) {
+          await db.devices.upsert({
+            serialNumber: panel.serial_number || panel.serialNumber,
+            panelName: panel.panel_name || panel.panelName || `Panel ${panel.panel_number}`,
+            deviceType: panel.pid || 0,
+            objectInstance: panel.object_instance || panel.objectInstance || 0,
+            ipAddress: panel.ip_address || panel.ipAddress || '',
+            port: panel.port || 0,
+            protocol: 'BACnet',
+            mainBuildingName: 'Default_Building',
+            subnetName: 'Local View',
+            isOnline: true,
+            lastOnlineTime: panel.online_time || Date.now(),
+          });
+        }
+
+        console.log(`Refreshed ${panels.length} panels from FFI and saved to database`);
+      }
+
+      // Disconnect transport
+      await transport.disconnect();
+
+      // Refresh the tree view
+      await refreshDevices();
+    } catch (error) {
+      console.error('Failed to refresh panels:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleToggleViewMode = async () => {
     const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
@@ -63,6 +117,16 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
         <div className={styles.title}>Devices</div>
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
+        <Tooltip content="Refresh" relationship="label">
+          <ToolbarButton
+            aria-label="Refresh devices"
+            icon={<ArrowSyncRegular />}
+            onClick={handleRefresh}
+            appearance="subtle"
+            disabled={isRefreshing}
+          />
+        </Tooltip>
+
         <Tooltip content={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'} relationship="label">
           <ToolbarButton
             aria-label={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
