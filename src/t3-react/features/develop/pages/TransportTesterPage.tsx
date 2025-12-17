@@ -69,6 +69,7 @@ export const TransportTesterPage: React.FC = () => {
   const [customData, setCustomData] = useState<string>('{}');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<string>('');
+  const [currentRequest, setCurrentRequest] = useState<string>('');
   const [history, setHistory] = useState<MessageHistoryItem[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<string>('');
 
@@ -216,6 +217,14 @@ export const TransportTesterPage: React.FC = () => {
           }
         }
       }
+
+      // Display the request being sent
+      const requestInfo = {
+        action: messageType,
+        actionName: action,
+        payload: payload
+      };
+      setCurrentRequest(JSON.stringify(requestInfo, null, 2));
 
       // Call real transport
       const transportResponse = await transportRef.current.send(messageType, payload);
@@ -453,40 +462,58 @@ export const TransportTesterPage: React.FC = () => {
             )}
           </div>
 
-          {/* Right: History Panel */}
-          <div className={styles.historyPanel}>
-            <div className={styles.panelHeader}>
-              <Text size={200} weight="semibold">History</Text>
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<DismissRegular />}
-                onClick={clearHistory}
-              >
-                Clear
-              </Button>
-            </div>
-
-            <div className={styles.historyList}>
-              {history.length === 0 && (
-                <div className={styles.historyPlaceholder}>
-                  <Text size={300}>No messages sent yet</Text>
+          {/* Right: Request & History Panel */}
+          <div className={styles.rightPanel}>
+            {/* Request Panel (Top) */}
+            <div className={styles.requestPanel}>
+              <div className={styles.panelHeader}>
+                <Text size={200} weight="semibold">Current Request</Text>
+              </div>
+              {!currentRequest && (
+                <div className={styles.responsePlaceholder}>
+                  <Text size={300}>Request details will appear here</Text>
                 </div>
               )}
+              {currentRequest && (
+                <pre className={styles.requestText}>{currentRequest}</pre>
+              )}
+            </div>
 
-              {history.map((item) => (
-                <div key={item.id} className={styles.historyItem}>
-                  <div className={styles.historyItemHeader}>
-                    <Text size={200} weight="semibold">{item.action}</Text>
-                    <Text size={200} style={{ color: item.status === 'success' ? '#107c10' : '#d13438' }}>
-                      {item.duration}ms
+            {/* History Panel (Bottom) */}
+            <div className={styles.historyPanel}>
+              <div className={styles.panelHeader}>
+                <Text size={200} weight="semibold">History</Text>
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<DismissRegular />}
+                  onClick={clearHistory}
+                >
+                  Clear
+                </Button>
+              </div>
+
+              <div className={styles.historyList}>
+                {history.length === 0 && (
+                  <div className={styles.historyPlaceholder}>
+                    <Text size={300}>No messages sent yet</Text>
+                  </div>
+                )}
+
+                {history.map((item) => (
+                  <div key={item.id} className={styles.historyItem}>
+                    <div className={styles.historyItemHeader}>
+                      <Text size={200} weight="semibold">{item.action}</Text>
+                      <Text size={200} style={{ color: item.status === 'success' ? '#107c10' : '#d13438' }}>
+                        {item.duration}ms
+                      </Text>
+                    </div>
+                    <Text size={100} style={{ color: '#605e5c' }}>
+                      {item.timestamp.toLocaleTimeString()}
                     </Text>
                   </div>
-                  <Text size={100} style={{ color: '#605e5c' }}>
-                    {item.timestamp.toLocaleTimeString()}
-                  </Text>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>

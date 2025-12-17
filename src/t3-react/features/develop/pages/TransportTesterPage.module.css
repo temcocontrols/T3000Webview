@@ -48,8 +48,8 @@
 
 /* Message Panel (Left) */
 .messagePanel {
-  width: 320px;
-  min-width: 320px;
+  width: 280px;
+  min-width: 280px;
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
@@ -100,7 +100,8 @@
 
 /* Response Panel (Middle) */
 .responsePanel {
-  flex: 1;
+  width: 600px;
+  min-width: 600px;
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
@@ -128,9 +129,41 @@
   background-color: #ffffff;
 }
 
+/* Right Panel (Request + History) */
+.rightPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow: hidden;
+  gap: 6px;
+}
+
+/* Request Panel */
+.requestPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow: hidden;
+  border-bottom: 6px solid #faf9f8;
+}
+
+.requestText {
+  flex: 1;
+  margin: 0;
+  padding: 16px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: auto;
+  background-color: #faf9f8;
+  white-space: pre-wrap;
+}
+
 /* History Panel */
 .historyPanel {
-  width: 250px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
