@@ -20,7 +20,7 @@
 }
 
 .title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #292827;
   margin: 0;
@@ -55,7 +55,7 @@
 }
 
 .navButton.active {
-  background-color: #e1dfdd;
+  background-color: transparent;
   border-left: 3px solid #0078d4;
   padding-left: 13px;
 }
@@ -64,10 +64,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin-right: 12px;
   color: #605e5c;
+  font-size: 18px;
 }
 
 .navButton.active .iconWrapper {
@@ -79,5 +80,6 @@
 }
 
 .navButton.active .label {
-  font-weight: 600;
+  font-weight: 400;
+  color: #0078d4;
 }

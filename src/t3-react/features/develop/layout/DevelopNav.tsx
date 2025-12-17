@@ -42,7 +42,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'logs',
-    label: 'System Logs',
+    label: 'T3000 Logs',
     icon: DocumentTextRegular,
     path: '/t3000/develop/logs',
   },
