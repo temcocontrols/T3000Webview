@@ -4,7 +4,7 @@
  * Test t3-transport library messages
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Text,
   Button,
@@ -15,6 +15,8 @@ import {
   Spinner
 } from '@fluentui/react-components';
 import { SendRegular, DismissRegular } from '@fluentui/react-icons';
+import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
+import { WebViewMessageType } from '../../../../lib/t3-transport/types/message-enums';
 import styles from './TransportTesterPage.module.css';
 
 type TransportType = 'websocket' | 'ffi' | 'webview2';
@@ -68,6 +70,46 @@ export const TransportTesterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<string>('');
   const [history, setHistory] = useState<MessageHistoryItem[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<string>('');
+
+  const transportRef = useRef<T3Transport | null>(null);
+
+  // Initialize transport on mount
+  useEffect(() => {
+    const initTransport = async () => {
+      try {
+        const t3transport = new T3Transport();
+
+        // For browser development, prefer FFI (HTTP API calls)
+        // FFI calls the Rust backend API at /api endpoints
+        try {
+          await t3transport.connect('ffi');
+          setConnectionStatus(`Connected via FFI (HTTP API)`);
+          setTransport('ffi');
+        } catch (ffiError) {
+          // If FFI fails, try auto-connect (webview → websocket → ffi)
+          console.warn('FFI connection failed, trying auto-connect:', ffiError);
+          const detectedType = await t3transport.autoConnect();
+          setConnectionStatus(`Connected via ${detectedType}`);
+          setTransport(detectedType as TransportType);
+        }
+
+        transportRef.current = t3transport;
+      } catch (error) {
+        console.error('Transport initialization error:', error);
+        setConnectionStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+
+    initTransport();
+
+    return () => {
+      // Cleanup on unmount
+      if (transportRef.current) {
+        transportRef.current.disconnect();
+      }
+    };
+  }, []);
 
   const messageConfigs: Record<string, MessageTypeConfig> = {
     GET_PANELS_LIST: {
@@ -112,94 +154,127 @@ export const TransportTesterPage: React.FC = () => {
   ];
 
   const sendMessage = async () => {
+    if (!transportRef.current) {
+      setResponse(JSON.stringify({
+        success: false,
+        error: 'Transport not initialized. Please wait for connection.'
+      }, null, 2));
+      return;
+    }
+
     setLoading(true);
     setResponse('');
 
     try {
       const startTime = Date.now();
 
-      // Build request based on message type
-      let request: any = {
-        action,
+      // Map action string to WebViewMessageType enum
+      const actionMap: Record<string, WebViewMessageType> = {
+        'GET_PANEL_DATA': WebViewMessageType.GET_PANEL_DATA,
+        'GET_INITIAL_DATA': WebViewMessageType.GET_INITIAL_DATA,
+        'SAVE_GRAPHIC_DATA': WebViewMessageType.SAVE_GRAPHIC_DATA,
+        'UPDATE_ENTRY': WebViewMessageType.UPDATE_ENTRY,
+        'GET_PANELS_LIST': WebViewMessageType.GET_PANELS_LIST,
+        'GET_PANEL_RANGE_INFO': WebViewMessageType.GET_PANEL_RANGE_INFO,
+        'GET_ENTRIES': WebViewMessageType.GET_ENTRIES,
+        'LOAD_GRAPHIC_ENTRY': WebViewMessageType.LOAD_GRAPHIC_ENTRY,
+        'OPEN_ENTRY_EDIT_WINDOW': WebViewMessageType.OPEN_ENTRY_EDIT_WINDOW,
+        'SAVE_IMAGE': WebViewMessageType.SAVE_IMAGE,
+        'SAVE_LIBRAY_DATA': WebViewMessageType.SAVE_LIBRAY_DATA,
+        'DELETE_IMAGE': WebViewMessageType.DELETE_IMAGE,
+        'GET_SELECTED_DEVICE_INFO': WebViewMessageType.GET_SELECTED_DEVICE_INFO,
+        'BIND_DEVICE': WebViewMessageType.BIND_DEVICE,
+        'SAVE_NEW_LIBRARY_DATA': WebViewMessageType.SAVE_NEW_LIBRARY_DATA,
+        'LOGGING_DATA': WebViewMessageType.LOGGING_DATA,
+        'UPDATE_WEBVIEW_LIST': WebViewMessageType.UPDATE_WEBVIEW_LIST,
+        'GET_WEBVIEW_LIST': WebViewMessageType.REFRESH_WEBVIEW_LIST,
       };
 
-      if (action === 'GET_PANELS_LIST') {
-        // No additional parameters needed
-      } else {
-        request.panel_id = panelId ? parseInt(panelId) : undefined;
-        request.serial_number = serialNumber || undefined;
+      const messageType = actionMap[action];
+      if (messageType === undefined) {
+        throw new Error(`Unknown action: ${action}`);
+      }
+
+      // Build payload based on message type
+      let payload: any = {};
+
+      if (action !== 'GET_PANELS_LIST') {
+        if (panelId) {
+          payload.panelId = parseInt(panelId);
+        }
+        if (serialNumber) {
+          payload.serialNumber = parseInt(serialNumber);
+        }
+
+        // Merge custom JSON data
         if (customData !== '{}') {
           try {
-            request = { ...request, ...JSON.parse(customData) };
+            const customPayload = JSON.parse(customData);
+            payload = { ...payload, ...customPayload };
           } catch (e) {
-            // Invalid JSON, skip
+            console.warn('Invalid custom JSON data:', e);
           }
         }
       }
 
-      // Simulate transport call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      let mockResponse: any;
-
-      if (action === 'GET_PANELS_LIST') {
-        mockResponse = {
-          action: 'GET_PANELS_LIST_RES',
-          data: [
-            {
-              panel_number: 199,
-              object_instance: 199,
-              serial_number: 237219,
-              online_time: Math.floor(Date.now() / 1000),
-              pid: 26,
-              panel_name: 'T3-8I8O'
-            },
-            {
-              panel_number: 200,
-              object_instance: 200,
-              serial_number: 237220,
-              online_time: Math.floor(Date.now() / 1000),
-              pid: 26,
-              panel_name: 'T3-32I32O'
-            }
-          ]
-        };
-        // Store panels for future use
-        setAvailablePanels(mockResponse.data);
-      } else {
-        mockResponse = {
-          status: 'success',
-          data: {
-            panel_id: parseInt(panelId),
-            online: true,
-            response_time_ms: 45,
-            result: 'Mock response data',
-          },
-        };
-      }
+      // Call real transport
+      const transportResponse = await transportRef.current.send(messageType, payload);
 
       const duration = Date.now() - startTime;
 
-      setResponse(JSON.stringify(mockResponse, null, 2));
+      // Special handling for GET_PANELS_LIST
+      if (action === 'GET_PANELS_LIST' && transportResponse.success && transportResponse.data) {
+        let panelsData = Array.isArray(transportResponse.data)
+          ? transportResponse.data
+          : transportResponse.data.panels || [];
+
+        // Filter out invalid panel entries
+        panelsData = panelsData.filter((panel: any) =>
+          panel &&
+          typeof panel === 'object' &&
+          panel.panel_number !== undefined &&
+          panel.panel_number !== null
+        );
+
+        setAvailablePanels(panelsData);
+      }
+
+      setResponse(JSON.stringify(transportResponse, null, 2));
 
       // Add to history
       const historyItem: MessageHistoryItem = {
         id: Date.now().toString(),
         timestamp: new Date(),
         action,
-        request,
-        response: mockResponse,
+        request: { action: messageType, ...payload },
+        response: transportResponse,
         duration,
-        status: 'success',
+        status: transportResponse.success ? 'success' : 'error',
       };
 
       setHistory(prev => [historyItem, ...prev].slice(0, 50));
     } catch (err) {
+      const duration = Date.now() - Date.now();
       const errorResponse = {
-        status: 'error',
-        message: err instanceof Error ? err.message : 'Request failed',
+        success: false,
+        error: err instanceof Error ? err.message : 'Request failed',
+        details: err instanceof Error ? err.stack : undefined
       };
+
       setResponse(JSON.stringify(errorResponse, null, 2));
+
+      // Add error to history
+      const historyItem: MessageHistoryItem = {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        action,
+        request: { action },
+        response: errorResponse,
+        duration: 0,
+        status: 'error',
+      };
+
+      setHistory(prev => [historyItem, ...prev].slice(0, 50));
     } finally {
       setLoading(false);
     }
@@ -218,7 +293,7 @@ export const TransportTesterPage: React.FC = () => {
             <Dropdown
               placeholder="Transport Type"
               value={transport === 'websocket' ? 'WebSocket' : transport === 'ffi' ? 'FFI' : 'WebView2'}
-              onOptionSelect={(_, data) => setTransport(data.optionValue as TransportType)}
+              disabled
               style={{ minWidth: '150px', fontSize: '12px' }}
               size="small"
             >
@@ -226,6 +301,11 @@ export const TransportTesterPage: React.FC = () => {
               <Option value="ffi" text="FFI"><span style={{ fontSize: '12px' }}>FFI</span></Option>
               <Option value="webview2" text="WebView2"><span style={{ fontSize: '12px' }}>WebView2</span></Option>
             </Dropdown>
+            {connectionStatus && (
+              <Text size={200} style={{ marginLeft: '8px', color: connectionStatus.includes('Error') ? '#d13438' : '#107c10' }}>
+                {connectionStatus}
+              </Text>
+            )}
           </div>
           <div className={styles.controlGroup}>
             <Text size={200} weight="semibold">Message Type:</Text>
@@ -309,9 +389,9 @@ export const TransportTesterPage: React.FC = () => {
                       onOptionSelect={(_, data) => data.optionValue && setPanelId(data.optionValue)}
                       size="small"
                     >
-                      {availablePanels.map((panel) => (
+                      {availablePanels.filter(panel => panel && panel.panel_number !== undefined).map((panel) => (
                         <Option key={panel.panel_number} value={panel.panel_number.toString()}>
-                          <span style={{ fontSize: '12px' }}>{panel.panel_number} - {panel.panel_name}</span>
+                          <span style={{ fontSize: '12px' }}>{panel.panel_number} - {panel.panel_name || 'Unknown'}</span>
                         </Option>
                       ))}
                     </Dropdown>

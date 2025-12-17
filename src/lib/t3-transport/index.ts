@@ -32,12 +32,15 @@ export { BaseTransport } from './transports/base/BaseTransport';
 
 // Types and enums
 export {
-  // Message types
+  // Message enums
   WebViewMessageType,
   EntryType,
-  type WebViewMessage,
-  type WebViewResponse,
   type EntryTypeValue
+} from './types/message-enums';
+
+export {
+  // Message types (interfaces only, use 'import type' for these)
+  type WebViewResponse
 } from './types/message.types';
 
 export {

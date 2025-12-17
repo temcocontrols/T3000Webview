@@ -2,7 +2,8 @@
  * Transport Configuration and Type Definitions
  */
 
-import { WebViewMessageType, WebViewMessage, WebViewResponse } from './message.types';
+import { WebViewMessageType } from './message-enums';
+import type { WebViewResponse } from './message.types';
 
 /**
  * Transport type identifier
@@ -51,7 +52,7 @@ export interface TransportConfig {
  */
 export const DEFAULT_TRANSPORT_CONFIG: Required<TransportConfig> = {
   websocketUrl: 'ws://localhost:9104',
-  apiBaseUrl: '/api',
+  apiBaseUrl: 'http://localhost:9103/api',
   autoReconnect: true,
   reconnectInterval: 3000,
   timeout: 10000,
@@ -127,5 +128,6 @@ export interface ITransport {
   off(event: TransportEvent, callback: TransportEventCallback): void;
 }
 
-// Re-export message types for convenience
-export { WebViewMessageType, WebViewMessage, WebViewResponse };
+// Re-export message enum for convenience
+export { WebViewMessageType };
+export type { WebViewResponse };

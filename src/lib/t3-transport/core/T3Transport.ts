@@ -4,17 +4,17 @@
  * Supports WebSocket, WebView2, and FFI transports with auto-detection
  */
 
-import {
+import type {
   TransportConfig,
   TransportType,
   TransportStatus,
   TransportInfo,
   TransportEvent,
   TransportEventCallback,
-  WebViewMessageType,
   WebViewResponse,
   ITransport
 } from '../types/transport.types';
+import { WebViewMessageType } from '../types/message-enums';
 import { WebSocketTransport } from '../transports/WebSocketTransport';
 import { WebViewTransport } from '../transports/WebViewTransport';
 import { FFITransport } from '../transports/FFITransport';
