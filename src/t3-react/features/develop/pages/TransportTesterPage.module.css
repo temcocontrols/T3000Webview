@@ -5,16 +5,28 @@
   overflow: hidden;
 }
 
-.header {
+.topBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px;
+  padding: 0 16px;
+  height: 40px;
+  min-height: 40px;
   border-bottom: 1px solid #edebe9;
   background-color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
-.headerActions {
+.topBarControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.controlGroup {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -26,16 +38,17 @@
   background-color: #faf9f8;
 }
 
-.transportSplitView {
+.bottomArea {
   display: flex;
   height: 100%;
   gap: 1px;
   background-color: #edebe9;
 }
 
-/* Request Panel */
-.requestPanel {
+/* Message Panel (Left) */
+.messagePanel {
   width: 320px;
+  min-width: 320px;
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
@@ -46,19 +59,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 0 12px;
+  height: 32px;
+  min-height: 32px;
   border-bottom: 1px solid #edebe9;
   background-color: #f3f2f1;
+  flex-shrink: 0;
 }
 
 .formGroup {
-  padding: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f3f2f1;
 }
 
 .formGroup > *:first-child {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .jsonTextarea {
@@ -67,12 +83,7 @@
   min-height: 100px;
 }
 
-.requestPanel > button {
-  margin: 12px;
-  margin-top: auto;
-}
-
-/* Response Panel */
+/* Response Panel (Middle) */
 .responsePanel {
   flex: 1;
   display: flex;

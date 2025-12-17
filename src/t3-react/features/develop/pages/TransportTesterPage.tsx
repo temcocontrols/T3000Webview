@@ -110,86 +110,92 @@ export const TransportTesterPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <Text size={500} weight="semibold">📡 Transport Tester</Text>
-        <div className={styles.headerActions}>
-          <Dropdown
-            placeholder="Transport Type"
-            value={transport}
-            onOptionSelect={(_, data) => setTransport(data.optionValue as TransportType)}
-            style={{ minWidth: '150px' }}
+      <div className={styles.topBar}>
+        <div className={styles.topBarControls}>
+          <div className={styles.controlGroup}>
+            <Text size={200} weight="semibold">Transport Type:</Text>
+            <Dropdown
+              placeholder="Transport Type"
+              value={transport}
+              onOptionSelect={(_, data) => setTransport(data.optionValue as TransportType)}
+              style={{ minWidth: '150px' }}
+              size="small"
+            >
+              <Option value="websocket">WebSocket</Option>
+              <Option value="ffi">FFI</Option>
+              <Option value="webview2">WebView2</Option>
+            </Dropdown>
+          </div>
+          <div className={styles.controlGroup}>
+            <Text size={200} weight="semibold">Message Type:</Text>
+            <Dropdown
+              placeholder="Select message type"
+              value={action}
+              onOptionSelect={(_, data) => data.optionValue && setAction(data.optionValue)}
+              style={{ minWidth: '200px' }}
+              size="small"
+            >
+              {actions.map((act) => (
+                <Option key={act} value={act}>{act}</Option>
+              ))}
+            </Dropdown>
+          </div>
+          <Button
+            appearance="primary"
+            icon={<SendRegular />}
+            onClick={sendMessage}
+            disabled={loading}
+            size="small"
           >
-            <Option value="websocket">WebSocket</Option>
-            <Option value="ffi">FFI</Option>
-            <Option value="webview2">WebView2</Option>
-          </Dropdown>
+            {loading ? 'Sending...' : 'Send Message'}
+          </Button>
         </div>
       </div>
 
       <div className={styles.content}>
-        <div className={styles.transportSplitView}>
-          {/* Left: Request Builder */}
-          <div className={styles.requestPanel}>
+        <div className={styles.bottomArea}>
+          {/* Left: Message Panel */}
+          <div className={styles.messagePanel}>
             <div className={styles.panelHeader}>
-              <Text size={400} weight="semibold">Request Builder</Text>
+              <Text size={200} weight="semibold">Message</Text>
             </div>
 
             <div className={styles.formGroup}>
-              <Text size={300} weight="semibold">Action</Text>
-              <Dropdown
-                placeholder="Select action"
-                value={action}
-                onOptionSelect={(_, data) => data.optionValue && setAction(data.optionValue)}
-              >
-                {actions.map((act) => (
-                  <Option key={act} value={act}>{act}</Option>
-                ))}
-              </Dropdown>
-            </div>
-
-            <div className={styles.formGroup}>
-              <Text size={300} weight="semibold">Panel ID</Text>
+              <Text size={200} weight="semibold">Panel ID</Text>
               <Input
                 value={panelId}
                 onChange={(_, data) => setPanelId(data.value)}
                 placeholder="237219"
+                size="small"
               />
             </div>
 
             <div className={styles.formGroup}>
-              <Text size={300} weight="semibold">Serial Number (optional)</Text>
+              <Text size={200} weight="semibold">Serial Number (optional)</Text>
               <Input
                 value={serialNumber}
                 onChange={(_, data) => setSerialNumber(data.value)}
                 placeholder="Leave empty for broadcast"
+                size="small"
               />
             </div>
 
             <div className={styles.formGroup}>
-              <Text size={300} weight="semibold">Custom Data (JSON)</Text>
+              <Text size={200} weight="semibold">Custom Data (JSON)</Text>
               <Textarea
                 value={customData}
                 onChange={(_, data) => setCustomData(data.value)}
                 className={styles.jsonTextarea}
                 resize="vertical"
+                size="small"
               />
             </div>
-
-            <Button
-              appearance="primary"
-              icon={<SendRegular />}
-              onClick={sendMessage}
-              disabled={loading}
-              style={{ width: '100%' }}
-            >
-              {loading ? 'Sending...' : 'Send Message'}
-            </Button>
           </div>
 
-          {/* Center: Response */}
+          {/* Middle: Response Panel */}
           <div className={styles.responsePanel}>
             <div className={styles.panelHeader}>
-              <Text size={400} weight="semibold">Response</Text>
+              <Text size={200} weight="semibold">Response</Text>
             </div>
 
             {loading && (
@@ -209,10 +215,10 @@ export const TransportTesterPage: React.FC = () => {
             )}
           </div>
 
-          {/* Right: History */}
+          {/* Right: History Panel */}
           <div className={styles.historyPanel}>
             <div className={styles.panelHeader}>
-              <Text size={400} weight="semibold">History</Text>
+              <Text size={200} weight="semibold">History</Text>
               <Button
                 appearance="subtle"
                 size="small"
