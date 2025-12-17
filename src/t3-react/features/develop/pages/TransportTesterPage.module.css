@@ -41,8 +41,9 @@
 .bottomArea {
   display: flex;
   height: 100%;
-  gap: 1px;
-  background-color: #edebe9;
+  gap: 6px;
+  background-color: #faf9f8;
+  padding: 6px 0;
 }
 
 /* Message Panel (Left) */
@@ -100,7 +101,7 @@
   font-size: 13px;
   line-height: 1.5;
   overflow: auto;
-  background-color: #faf9f8;
+  background-color: #ffffff;
   white-space: pre-wrap;
 }
 
@@ -110,7 +111,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background-color: #faf9f8;
+  background-color: #ffffff;
 }
 
 /* History Panel */
