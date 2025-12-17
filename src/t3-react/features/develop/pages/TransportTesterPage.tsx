@@ -14,10 +14,140 @@ import {
   Textarea,
   Spinner
 } from '@fluentui/react-components';
-import { SendRegular, DismissRegular } from '@fluentui/react-icons';
+import { SendRegular, DismissRegular, ChevronDownRegular, ChevronRightRegular, CodeTextEditRegular, CopyRegular } from '@fluentui/react-icons';
 import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
 import { WebViewMessageType } from '../../../../lib/t3-transport/types/message-enums';
 import styles from './TransportTesterPage.module.css';
+
+// JSON Tree Viewer Component
+const JsonTreeViewer: React.FC<{ json: string }> = ({ json }) => {
+  let parsedJson: any;
+  try {
+    parsedJson = JSON.parse(json);
+  } catch {
+    return <pre className={styles.responseText}>{json}</pre>;
+  }
+
+  // Collect all paths for initial expansion
+  const getAllPaths = (obj: any, currentPath: string = 'root', paths: Set<string> = new Set()): Set<string> => {
+    paths.add(currentPath);
+
+    if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        if (typeof item === 'object' && item !== null) {
+          getAllPaths(item, `${currentPath}.${index}`, paths);
+        }
+      });
+    } else if (typeof obj === 'object' && obj !== null) {
+      Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        if (typeof value === 'object' && value !== null) {
+          getAllPaths(value, `${currentPath}.${key}`, paths);
+        }
+      });
+    }
+
+    return paths;
+  };
+
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => getAllPaths(parsedJson));
+
+  const togglePath = (path: string) => {
+    setExpandedPaths(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const renderValue = (value: any, path: string, key?: string, depth: number = 0): React.ReactNode => {
+    const indent = depth * 20;
+    const isExpanded = expandedPaths.has(path);
+
+    if (value === null) {
+      return (
+        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
+          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+          <span style={{ color: '#0000ff' }}>null</span>
+        </div>
+      );
+    }
+
+    if (typeof value === 'boolean') {
+      return (
+        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
+          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+          <span style={{ color: '#0000ff' }}>{value.toString()}</span>
+        </div>
+      );
+    }
+
+    if (typeof value === 'number') {
+      return (
+        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
+          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+          <span style={{ color: '#098658' }}>{value}</span>
+        </div>
+      );
+    }
+
+    if (typeof value === 'string') {
+      return (
+        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
+          {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+          <span style={{ color: '#a31515' }}>"{value}"</span>
+        </div>
+      );
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
+          <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => togglePath(path)}>
+            {isExpanded ? <ChevronDownRegular fontSize={12} /> : <ChevronRightRegular fontSize={12} />}
+            {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+            <span>[{value.length}]</span>
+          </div>
+          {isExpanded && (
+            <div>
+              {value.map((item, index) => renderValue(item, `${path}.${index}`, undefined, depth + 1))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (typeof value === 'object') {
+      const keys = Object.keys(value);
+      return (
+        <div style={{ marginLeft: `${indent}px`, fontSize: '12px', fontFamily: 'monospace' }}>
+          <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => togglePath(path)}>
+            {isExpanded ? <ChevronDownRegular fontSize={12} /> : <ChevronRightRegular fontSize={12} />}
+            {key !== undefined && <span style={{ color: '#881391' }}>"{key}": </span>}
+            <span>{`{${keys.length}}`}</span>
+          </div>
+          {isExpanded && (
+            <div>
+              {keys.map(k => renderValue(value[k], `${path}.${k}`, k, depth + 1))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className={styles.responseText} style={{ padding: '8px', overflow: 'auto' }}>
+      {renderValue(parsedJson, 'root')}
+    </div>
+  );
+};
 
 // API Configuration
 const API_BASE_URL = 'http://localhost:9103/api';
@@ -75,6 +205,7 @@ export const TransportTesterPage: React.FC = () => {
   const [currentRequest, setCurrentRequest] = useState<string>('');
   const [history, setHistory] = useState<MessageHistoryItem[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<string>('');
+  const [isTreeView, setIsTreeView] = useState<boolean>(false);
 
   const transportRef = useRef<T3Transport | null>(null);
 
@@ -470,6 +601,26 @@ export const TransportTesterPage: React.FC = () => {
           <div className={styles.responsePanel}>
             <div className={styles.panelHeader}>
               <Text size={200} weight="semibold">Response</Text>
+              {response && (
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<CopyRegular />}
+                    onClick={() => {
+                      navigator.clipboard.writeText(response);
+                    }}
+                    title="Copy JSON to clipboard"
+                  />
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<CodeTextEditRegular />}
+                    onClick={() => setIsTreeView(!isTreeView)}
+                    title={isTreeView ? 'Switch to text view' : 'Switch to tree view'}
+                  />
+                </div>
+              )}
             </div>
 
             {loading && (
@@ -485,7 +636,11 @@ export const TransportTesterPage: React.FC = () => {
             )}
 
             {!loading && response && (
-              <pre className={styles.responseText}>{response}</pre>
+              isTreeView ? (
+                <JsonTreeViewer json={response} />
+              ) : (
+                <pre className={styles.responseText}>{response}</pre>
+              )
             )}
           </div>
 
