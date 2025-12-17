@@ -11,12 +11,16 @@
 }
 
 .header {
-  padding: 16px;
+  padding: 0 12px;
   border-bottom: 1px solid #edebe9;
+  height: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
 }
 
 .title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #292827;
   margin: 0;
