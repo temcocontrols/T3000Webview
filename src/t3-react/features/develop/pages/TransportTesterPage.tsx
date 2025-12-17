@@ -19,6 +19,15 @@ import styles from './TransportTesterPage.module.css';
 
 type TransportType = 'websocket' | 'ffi' | 'webview2';
 
+interface Panel {
+  panel_number: number;
+  object_instance: number;
+  serial_number: number;
+  online_time: number;
+  pid: number;
+  panel_name: string;
+}
+
 interface MessageHistoryItem {
   id: string;
   timestamp: Date;
@@ -29,15 +38,57 @@ interface MessageHistoryItem {
   status: 'success' | 'error';
 }
 
+interface MessageFieldConfig {
+  name: string;
+  label: string;
+  type: 'text' | 'number' | 'select' | 'multiselect' | 'textarea' | 'checkbox';
+  required?: boolean;
+  placeholder?: string;
+  options?: { value: string; label: string }[];
+  defaultValue?: any;
+  helpText?: string;
+}
+
+interface MessageTypeConfig {
+  id: string;
+  label: string;
+  description: string;
+  requiresPanels: boolean;
+  fields: MessageFieldConfig[];
+  helpText: string;
+}
+
 export const TransportTesterPage: React.FC = () => {
   const [transport, setTransport] = useState<TransportType>('ffi');
   const [action, setAction] = useState<string>('GET_PANELS_LIST');
-  const [panelId, setPanelId] = useState<string>('237219');
+  const [availablePanels, setAvailablePanels] = useState<Panel[]>([]);
+  const [panelId, setPanelId] = useState<string>('');
   const [serialNumber, setSerialNumber] = useState<string>('');
   const [customData, setCustomData] = useState<string>('{}');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<string>('');
   const [history, setHistory] = useState<MessageHistoryItem[]>([]);
+
+  const messageConfigs: Record<string, MessageTypeConfig> = {
+    GET_PANELS_LIST: {
+      id: 'GET_PANELS_LIST',
+      label: '4 - GET_PANELS_LIST',
+      description: 'Retrieves the list of all available panels/devices in the network',
+      requiresPanels: false,
+      fields: [],
+      helpText: 'This message requires no parameters. It will return all discovered panels with their panel numbers, serial numbers, panel names, object instances, and last online time. This is typically the first message you should send.'
+    },
+    GET_PANEL_DATA: {
+      id: 'GET_PANEL_DATA',
+      label: '0 - GET_PANEL_DATA',
+      description: 'Get complete data for a specific panel',
+      requiresPanels: true,
+      fields: [
+        { name: 'panelId', label: 'Panel ID', type: 'select', required: true, placeholder: 'Select a panel' }
+      ],
+      helpText: 'Retrieves all data (inputs, outputs, variables, programs, etc.) for the selected panel.'
+    },
+  };
 
   const actions = [
     { value: 'GET_PANEL_DATA', label: '0 - GET_PANEL_DATA' },
@@ -67,26 +118,65 @@ export const TransportTesterPage: React.FC = () => {
     try {
       const startTime = Date.now();
 
-      // Build request
-      const request = {
+      // Build request based on message type
+      let request: any = {
         action,
-        panel_id: parseInt(panelId),
-        serial_number: serialNumber || undefined,
-        ...(customData !== '{}' ? JSON.parse(customData) : {}),
       };
+
+      if (action === 'GET_PANELS_LIST') {
+        // No additional parameters needed
+      } else {
+        request.panel_id = panelId ? parseInt(panelId) : undefined;
+        request.serial_number = serialNumber || undefined;
+        if (customData !== '{}') {
+          try {
+            request = { ...request, ...JSON.parse(customData) };
+          } catch (e) {
+            // Invalid JSON, skip
+          }
+        }
+      }
 
       // Simulate transport call
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      const mockResponse = {
-        status: 'success',
-        data: {
-          panel_id: parseInt(panelId),
-          online: true,
-          response_time_ms: 45,
-          result: 'Mock response data',
-        },
-      };
+      let mockResponse: any;
+
+      if (action === 'GET_PANELS_LIST') {
+        mockResponse = {
+          action: 'GET_PANELS_LIST_RES',
+          data: [
+            {
+              panel_number: 199,
+              object_instance: 199,
+              serial_number: 237219,
+              online_time: Math.floor(Date.now() / 1000),
+              pid: 26,
+              panel_name: 'T3-8I8O'
+            },
+            {
+              panel_number: 200,
+              object_instance: 200,
+              serial_number: 237220,
+              online_time: Math.floor(Date.now() / 1000),
+              pid: 26,
+              panel_name: 'T3-32I32O'
+            }
+          ]
+        };
+        // Store panels for future use
+        setAvailablePanels(mockResponse.data);
+      } else {
+        mockResponse = {
+          status: 'success',
+          data: {
+            panel_id: parseInt(panelId),
+            online: true,
+            response_time_ms: 45,
+            result: 'Mock response data',
+          },
+        };
+      }
 
       const duration = Date.now() - startTime;
 
@@ -173,36 +263,91 @@ export const TransportTesterPage: React.FC = () => {
               <Text size={200} weight="semibold">Message</Text>
             </div>
 
-            <div className={styles.formGroup}>
-              <Text size={200} weight="semibold">Panel ID</Text>
-              <Input
-                value={panelId}
-                onChange={(_, data) => setPanelId(data.value)}
-                placeholder="237219"
-                size="small"
-              />
-            </div>
+            {action === 'GET_PANELS_LIST' ? (
+              <div className={styles.messageInfo}>
+                <div className={styles.infoSection}>
+                  <Text size={300} weight="semibold" style={{ marginBottom: '8px' }}>Description</Text>
+                  <Text size={200} style={{ color: '#605e5c', lineHeight: '1.5' }}>
+                    Retrieves the list of all available panels/devices in the network.
+                  </Text>
+                </div>
 
-            <div className={styles.formGroup}>
-              <Text size={200} weight="semibold">Serial Number (optional)</Text>
-              <Input
-                value={serialNumber}
-                onChange={(_, data) => setSerialNumber(data.value)}
-                placeholder="Leave empty for broadcast"
-                size="small"
-              />
-            </div>
+                <div className={styles.infoSection}>
+                  <Text size={300} weight="semibold" style={{ marginBottom: '8px' }}>Parameters</Text>
+                  <Text size={200} style={{ color: '#605e5c' }}>None required</Text>
+                </div>
 
-            <div className={styles.formGroup}>
-              <Text size={200} weight="semibold">Custom Data (JSON)</Text>
-              <Textarea
-                value={customData}
-                onChange={(_, data) => setCustomData(data.value)}
-                className={styles.jsonTextarea}
-                resize="vertical"
-                size="small"
-              />
-            </div>
+                <div className={styles.infoSection}>
+                  <Text size={300} weight="semibold" style={{ marginBottom: '8px' }}>Returns</Text>
+                  <Text size={200} style={{ color: '#605e5c', lineHeight: '1.5' }}>
+                    Array of panels with:
+                  </Text>
+                  <ul style={{ margin: '4px 0 0 0', padding: '0 0 0 20px', fontSize: '12px', color: '#605e5c' }}>
+                    <li>Panel Number</li>
+                    <li>Serial Number</li>
+                    <li>Panel Name</li>
+                    <li>Object Instance</li>
+                    <li>Last Online Time</li>
+                    <li>PID (Panel Type)</li>
+                  </ul>
+                </div>
+
+                <div className={styles.infoSection}>
+                  <Text size={200} style={{ color: '#0078d4', fontStyle: 'italic' }}>
+                    💡 This is typically the first message you should send to discover available devices.
+                  </Text>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className={styles.formGroup}>
+                  <Text size={200} weight="semibold">Panel ID</Text>
+                  {availablePanels.length > 0 ? (
+                    <Dropdown
+                      placeholder="Select a panel"
+                      value={panelId}
+                      onOptionSelect={(_, data) => data.optionValue && setPanelId(data.optionValue)}
+                      size="small"
+                    >
+                      {availablePanels.map((panel) => (
+                        <Option key={panel.panel_number} value={panel.panel_number.toString()}>
+                          <span style={{ fontSize: '12px' }}>{panel.panel_number} - {panel.panel_name}</span>
+                        </Option>
+                      ))}
+                    </Dropdown>
+                  ) : (
+                    <Input
+                      value={panelId}
+                      onChange={(_, data) => setPanelId(data.value)}
+                      placeholder="Run GET_PANELS_LIST first"
+                      size="small"
+                      disabled
+                    />
+                  )}
+                </div>
+
+                <div className={styles.formGroup}>
+                  <Text size={200} weight="semibold">Serial Number (optional)</Text>
+                  <Input
+                    value={serialNumber}
+                    onChange={(_, data) => setSerialNumber(data.value)}
+                    placeholder="Leave empty for broadcast"
+                    size="small"
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <Text size={200} weight="semibold">Custom Data (JSON)</Text>
+                  <Textarea
+                    value={customData}
+                    onChange={(_, data) => setCustomData(data.value)}
+                    className={styles.jsonTextarea}
+                    resize="vertical"
+                    size="small"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Middle: Response Panel */}
