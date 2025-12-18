@@ -52,7 +52,8 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { OutputRefreshApiService } from '../services/outputRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)
@@ -80,6 +81,7 @@ interface OutputPoint {
 
 export const OutputsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [outputs, setOutputs] = useState<OutputPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -190,28 +192,21 @@ export const OutputsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing outputs from device...', 'info');
+
     try {
-      console.log('[OutputsPage] Refreshing all outputs from device...');
-      const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
-      console.log('[OutputsPage] Refresh response:', refreshResponse);
+      console.log('[OutputsPage] Refreshing all outputs from device via FFI...');
+      const result = await PanelDataRefreshService.refreshAllOutputs(selectedDevice.serialNumber);
+      console.log('[OutputsPage] Refresh result:', result);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await OutputRefreshApiService.saveRefreshedOutputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[OutputsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchOutputs();
-      } else {
-        console.warn('[OutputsPage] No items received from refresh, keeping existing data');
-      }
+      // Reload from database after successful save
+      await fetchOutputs();
+      setMessage(result.message, 'success');
     } catch (error) {
       console.error('[OutputsPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
-      // Don't call fetchOutputs() on error - preserve existing outputs in UI
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
     } finally {
       setRefreshing(false);
     }
@@ -229,18 +224,9 @@ export const OutputsPage: React.FC = () => {
 
     setRefreshingItems(prev => new Set(prev).add(outputIndex));
     try {
-      console.log(`[OutputsPage] Refreshing output ${index} from device...`);
-      const refreshResponse = await OutputRefreshApiService.refreshOutput(selectedDevice.serialNumber, index);
-      console.log('[OutputsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await OutputRefreshApiService.saveRefreshedOutputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[OutputsPage] Save response:', saveResponse);
-      }
+      console.log(`[OutputsPage] Refreshing output ${index} from device via FFI...`);
+      const result = await PanelDataRefreshService.refreshSingleOutput(selectedDevice.serialNumber, index);
+      console.log('[OutputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchOutputs();

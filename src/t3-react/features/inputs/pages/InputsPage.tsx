@@ -52,7 +52,8 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { InputRefreshApiService } from '../services/inputRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './InputsPage.module.css';
 
 // Types based on Rust entity (input_points.rs)
@@ -79,6 +80,7 @@ interface InputPoint {
 
 export const InputsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -189,28 +191,21 @@ export const InputsPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing inputs from device...', 'info');
+
     try {
-      console.log('[InputsPage] Refreshing all inputs from device...');
-      const refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
-      console.log('[InputsPage] Refresh response:', refreshResponse);
+      console.log('[InputsPage] Refreshing all inputs from device via FFI...');
+      const result = await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
+      console.log('[InputsPage] Refresh result:', result);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await InputRefreshApiService.saveRefreshedInputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[InputsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchInputs();
-      } else {
-        console.warn('[InputsPage] No items received from refresh, keeping existing data');
-      }
+      // Reload from database after successful save
+      await fetchInputs();
+      setMessage(result.message, 'success');
     } catch (error) {
       console.error('[InputsPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
-      // Don't call fetchInputs() on error - preserve existing inputs in UI
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
     } finally {
       setRefreshing(false);
     }
@@ -226,18 +221,9 @@ export const InputsPage: React.FC = () => {
 
     setRefreshingItems(prev => new Set(prev).add(inputIndex));
     try {
-      console.log(`[InputsPage] Refreshing input ${index} from device...`);
-      const refreshResponse = await InputRefreshApiService.refreshInput(selectedDevice.serialNumber, index);
-      console.log('[InputsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await InputRefreshApiService.saveRefreshedInputs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[InputsPage] Save response:', saveResponse);
-      }
+      console.log(`[InputsPage] Refreshing input ${index} from device via FFI...`);
+      const result = await PanelDataRefreshService.refreshSingleInput(selectedDevice.serialNumber, index);
+      console.log('[InputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchInputs();

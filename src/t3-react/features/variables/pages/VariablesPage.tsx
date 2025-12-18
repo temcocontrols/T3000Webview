@@ -48,7 +48,8 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
-import { VariableRefreshApiService } from '../services/variableRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './VariablesPage.module.css';
 
 // Types based on Rust entity (variable_points.rs)
@@ -73,6 +74,7 @@ interface VariablePoint {
 
 export const VariablesPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [variables, setVariables] = useState<VariablePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -183,28 +185,21 @@ export const VariablesPage: React.FC = () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
+    setMessage('Refreshing variables from device...', 'info');
+
     try {
-      console.log('[VariablesPage] Refreshing all variables from device...');
-      const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
-      console.log('[VariablesPage] Refresh response:', refreshResponse);
+      console.log('[VariablesPage] Refreshing all variables from device via FFI...');
+      const result = await PanelDataRefreshService.refreshAllVariables(selectedDevice.serialNumber);
+      console.log('[VariablesPage] Refresh result:', result);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await VariableRefreshApiService.saveRefreshedVariables(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[VariablesPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchVariables();
-      } else {
-        console.warn('[VariablesPage] No items received from refresh, keeping existing data');
-      }
+      // Reload from database after successful save
+      await fetchVariables();
+      setMessage(result.message, 'success');
     } catch (error) {
       console.error('[VariablesPage] Failed to refresh from device:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh from device');
-      // Don't call fetchVariables() on error - preserve existing variables in UI
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
+      setError(errorMsg);
+      setMessage(errorMsg, 'error');
     } finally {
       setRefreshing(false);
     }
@@ -222,18 +217,9 @@ export const VariablesPage: React.FC = () => {
 
     setRefreshingItems(prev => new Set(prev).add(variableIndex));
     try {
-      console.log(`[VariablesPage] Refreshing variable ${index} from device...`);
-      const refreshResponse = await VariableRefreshApiService.refreshVariable(selectedDevice.serialNumber, index);
-      console.log('[VariablesPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await VariableRefreshApiService.saveRefreshedVariables(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[VariablesPage] Save response:', saveResponse);
-      }
+      console.log(`[VariablesPage] Refreshing variable ${index} from device via FFI...`);
+      const result = await PanelDataRefreshService.refreshSingleVariable(selectedDevice.serialNumber, index);
+      console.log('[VariablesPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchVariables();

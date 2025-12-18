@@ -35,8 +35,8 @@ export const TreePanel: React.FC = () => {
   // Status monitor: polls device status every 30s (C++ m_pCheck_net_device_online)
   useDeviceStatusMonitor({ enabled: true, intervalMs: 30000 });
 
-  // Sync service: refreshes device list every 60s (C++ m_pFreshTree)
-  useDeviceSyncService({ enabled: true, intervalMs: 60000 });
+  // Sync service: refreshes device list every 5 minutes (C++ m_pFreshTree)
+  useDeviceSyncService({ enabled: true, intervalMs: 300000 });
 
   // Initial data fetch
   useEffect(() => {
