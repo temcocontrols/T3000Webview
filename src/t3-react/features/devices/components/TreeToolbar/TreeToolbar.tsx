@@ -74,9 +74,10 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           for (const panel of panels) {
             try {
               const serialNumber = panel.serial_number || panel.serialNumber;
+              const panelName = panel.panel_name || panel.panelName || `Panel ${panel.panel_number}`;
               const deviceData = {
                 serialNumber,
-                panelName: panel.panel_name || panel.panelName || `Panel ${panel.panel_number}`,
+                panelName: panelName,
                 deviceType: panel.pid || 0,
                 objectInstance: panel.object_instance || panel.objectInstance || 0,
                 ipAddress: panel.ip_address || panel.ipAddress || '',
@@ -84,6 +85,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
                 protocol: 'BACnet',
                 mainBuildingName: 'Default_Building',
                 subnetName: 'Local View',
+                showLabelName: panelName, // Set showLabelName to the panel name
                 isOnline: true,
                 lastOnlineTime: panel.online_time || Date.now(),
               };
