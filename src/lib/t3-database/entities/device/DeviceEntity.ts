@@ -13,7 +13,7 @@ export class DeviceEntity extends BaseEntity<Device> {
   }
 
   protected getEndpoint(): string {
-    return `${this.baseUrl}/t3_device/device`;
+    return `${this.baseUrl}/t3_device/devices`;
   }
 
   /**

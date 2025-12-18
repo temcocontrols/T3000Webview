@@ -267,16 +267,18 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Check device online status
       checkDeviceStatus: async (serialNumber: number) => {
-        try {
-          const statusResult = await DeviceApiService.checkDeviceStatus(serialNumber);
-          set((state) => {
-            const newStatuses = new Map(state.deviceStatuses);
-            newStatuses.set(serialNumber, statusResult.status);
-            return { deviceStatuses: newStatuses };
-          });
-        } catch (error) {
-          console.error(`Failed to check status for device ${serialNumber}:`, error);
-        }
+        // TODO: Commented out - API endpoint not implemented yet
+        // try {
+        //   const statusResult = await DeviceApiService.checkDeviceStatus(serialNumber);
+        //   set((state) => {
+        //     const newStatuses = new Map(state.deviceStatuses);
+        //     newStatuses.set(serialNumber, statusResult.status);
+        //     return { deviceStatuses: newStatuses };
+        //   });
+        // } catch (error) {
+        //   console.error(`Failed to check status for device ${serialNumber}:`, error);
+        // }
+        console.log(`checkDeviceStatus called for device ${serialNumber} (disabled)`);
       },
 
       // Connect to device

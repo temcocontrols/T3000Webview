@@ -25,52 +25,58 @@ pub struct DeviceWithPoints {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateDeviceRequest {
-    #[serde(rename = "SerialNumber")]
+    #[serde(rename = "SerialNumber", alias = "serialNumber")]
     pub serial_number: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)
-    #[serde(rename = "PanelId")]
+    #[serde(rename = "PanelId", alias = "panelId")]
     pub panel_id: Option<i32>,                     // T3000: PanelId (new column for panel identification)
-    #[serde(rename = "MainBuilding_Name")]
+    #[serde(rename = "MainBuilding_Name", alias = "mainBuildingName")]
     pub main_building_name: Option<String>,        // T3000: MainBuilding_Name
-    #[serde(rename = "Building_Name")]
+    #[serde(rename = "Building_Name", alias = "buildingName", alias = "subnetName")]
     pub building_name: Option<String>,             // T3000: Building_Name
-    #[serde(rename = "Floor_Name")]
+    #[serde(rename = "Floor_Name", alias = "floorName")]
     pub floor_name: Option<String>,                // T3000: Floor_Name
-    #[serde(rename = "Room_Name")]
+    #[serde(rename = "Room_Name", alias = "roomName")]
     pub room_name: Option<String>,                 // T3000: Room_Name
-    #[serde(rename = "Product_Name")]
+    #[serde(rename = "Product_Name", alias = "productName", alias = "panelName")]
     pub product_name: Option<String>,              // T3000: Product_Name
-    #[serde(rename = "Product_Class_ID")]
+    #[serde(rename = "Product_Class_ID", alias = "productClassId")]
     pub product_class_id: Option<i32>,             // T3000: Product_Class_ID
-    #[serde(rename = "Product_ID")]
+    #[serde(rename = "Product_ID", alias = "productId", alias = "deviceType")]
     pub product_id: Option<i32>,                   // T3000: Product_ID
-    #[serde(rename = "Address")]
+    #[serde(rename = "Address", alias = "address")]
     pub address: Option<String>,                   // T3000: Address (IP/Modbus address)
-    #[serde(rename = "Bautrate")]
+    #[serde(rename = "Bautrate", alias = "bautrate")]
     pub bautrate: Option<String>,                  // T3000: Bautrate (IP address or baud rate)
-    #[serde(rename = "Description")]
+    #[serde(rename = "Description", alias = "description")]
     pub description: Option<String>,               // T3000: Description
-    #[serde(rename = "Status")]
+    #[serde(rename = "Status", alias = "status")]
     pub status: Option<String>,                    // T3000: Status
 
     // NEW NETWORK CONFIGURATION FIELDS (matching latest entity)
-    #[serde(rename = "IP_Address")]
+    #[serde(rename = "IP_Address", alias = "ipAddress")]
     pub ip_address: Option<String>,                // T3000: IP_Address
-    #[serde(rename = "Port")]
+    #[serde(rename = "Port", alias = "port")]
     pub port: Option<i32>,                         // T3000: Port
-    #[serde(rename = "BACnet_MSTP_MAC_ID")]
+    #[serde(rename = "BACnet_MSTP_MAC_ID", alias = "bacnetMstpMacId", alias = "objectInstance")]
     pub bacnet_mstp_mac_id: Option<i32>,           // T3000: BACnet_MSTP_MAC_ID
-    #[serde(rename = "Modbus_Address")]
+    #[serde(rename = "Modbus_Address", alias = "modbusAddress")]
     pub modbus_address: Option<u8>,                // T3000: Modbus_Address (u8 type)
-    #[serde(rename = "PC_IP_Address")]
+    #[serde(rename = "PC_IP_Address", alias = "pcIpAddress")]
     pub pc_ip_address: Option<String>,             // T3000: PC_IP_Address
-    #[serde(rename = "Modbus_Port")]
+    #[serde(rename = "Modbus_Port", alias = "modbusPort")]
     pub modbus_port: Option<u16>,                  // T3000: Modbus_Port (u16 type)
-    #[serde(rename = "BACnet_IP_Port")]
+    #[serde(rename = "BACnet_IP_Port", alias = "bacnetIpPort")]
     pub bacnet_ip_port: Option<u16>,               // T3000: BACnet_IP_Port (u16 type)
-    #[serde(rename = "Show_Label_Name")]
+    #[serde(rename = "Show_Label_Name", alias = "showLabelName")]
     pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
-    #[serde(rename = "Connection_Type")]
+    #[serde(rename = "Connection_Type", alias = "connectionType", alias = "protocol")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
+
+    // Additional fields from frontend that may be sent but not stored
+    #[serde(skip_deserializing)]
+    pub last_online_time: Option<i64>,             // Timestamp - not in DEVICES table yet
+    #[serde(skip_deserializing)]
+    pub is_online: Option<bool>,                   // Online status - not in DEVICES table yet
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,47 +206,127 @@ impl T3DeviceService {
         }))
     }
 
-    /// Create a new device
+    /// Create a new device (or update if exists - UPSERT behavior)
     pub async fn create_device(db: &DatabaseConnection, device_data: CreateDeviceRequest) -> Result<devices::Model, AppError> {
-        let new_device = devices::ActiveModel {
-            serial_number: NotSet, // Auto-generated primary key
-            panel_id: Set(device_data.panel_id),
-            main_building_name: Set(device_data.main_building_name),
-            building_name: Set(device_data.building_name),
-            floor_name: Set(device_data.floor_name),
-            room_name: Set(device_data.room_name),
-            panel_number: Set(None),
-            network_number: Set(None),
-            product_name: Set(device_data.product_name),
-            product_class_id: Set(device_data.product_class_id),
-            product_id: Set(device_data.product_id),
-            screen_name: Set(None),
-            bautrate: Set(device_data.bautrate),
-            address: Set(device_data.address),
-            register: Set(None),
-            function: Set(None),
-            description: Set(device_data.description),
-            high_units: Set(None),
-            low_units: Set(None),
-            update_field: Set(None),
-            status: Set(device_data.status),
-            range_field: Set(None),
-            calibration: Set(None),
+        let serial_number = device_data.serial_number.unwrap_or(0);
 
-            // Network configuration fields from latest entity
-            ip_address: Set(device_data.ip_address),
-            port: Set(device_data.port),
-            bacnet_mstp_mac_id: Set(device_data.bacnet_mstp_mac_id),
-            modbus_address: Set(device_data.modbus_address),
-            pc_ip_address: Set(device_data.pc_ip_address),
-            modbus_port: Set(device_data.modbus_port),
-            bacnet_ip_port: Set(device_data.bacnet_ip_port),
-            show_label_name: Set(device_data.show_label_name),
-            connection_type: Set(device_data.connection_type),
-        };
+        // Check if device with this serial number already exists
+        let existing_device = devices::Entity::find_by_id(serial_number)
+            .one(db)
+            .await?;
 
-        let device = new_device.insert(db).await?;
-        Ok(device)
+        if let Some(existing) = existing_device {
+            // Device exists - update it
+            let mut device: devices::ActiveModel = existing.into();
+
+            if device_data.panel_id.is_some() {
+                device.panel_id = Set(device_data.panel_id);
+            }
+            if device_data.main_building_name.is_some() {
+                device.main_building_name = Set(device_data.main_building_name);
+            }
+            if device_data.building_name.is_some() {
+                device.building_name = Set(device_data.building_name);
+            }
+            if device_data.floor_name.is_some() {
+                device.floor_name = Set(device_data.floor_name);
+            }
+            if device_data.room_name.is_some() {
+                device.room_name = Set(device_data.room_name);
+            }
+            if device_data.product_name.is_some() {
+                device.product_name = Set(device_data.product_name);
+            }
+            if device_data.product_class_id.is_some() {
+                device.product_class_id = Set(device_data.product_class_id);
+            }
+            if device_data.product_id.is_some() {
+                device.product_id = Set(device_data.product_id);
+            }
+            if device_data.bautrate.is_some() {
+                device.bautrate = Set(device_data.bautrate);
+            }
+            if device_data.address.is_some() {
+                device.address = Set(device_data.address);
+            }
+            if device_data.description.is_some() {
+                device.description = Set(device_data.description);
+            }
+            if device_data.status.is_some() {
+                device.status = Set(device_data.status);
+            }
+            if device_data.ip_address.is_some() {
+                device.ip_address = Set(device_data.ip_address);
+            }
+            if device_data.port.is_some() {
+                device.port = Set(device_data.port);
+            }
+            if device_data.bacnet_mstp_mac_id.is_some() {
+                device.bacnet_mstp_mac_id = Set(device_data.bacnet_mstp_mac_id);
+            }
+            if device_data.modbus_address.is_some() {
+                device.modbus_address = Set(device_data.modbus_address);
+            }
+            if device_data.pc_ip_address.is_some() {
+                device.pc_ip_address = Set(device_data.pc_ip_address);
+            }
+            if device_data.modbus_port.is_some() {
+                device.modbus_port = Set(device_data.modbus_port);
+            }
+            if device_data.bacnet_ip_port.is_some() {
+                device.bacnet_ip_port = Set(device_data.bacnet_ip_port);
+            }
+            if device_data.show_label_name.is_some() {
+                device.show_label_name = Set(device_data.show_label_name);
+            }
+            if device_data.connection_type.is_some() {
+                device.connection_type = Set(device_data.connection_type);
+            }
+
+            let updated_device = device.update(db).await?;
+            Ok(updated_device)
+        } else {
+            // Device doesn't exist - create new one
+            let new_device = devices::ActiveModel {
+                serial_number: Set(serial_number), // Use provided serial number as primary key
+                panel_id: Set(device_data.panel_id),
+                main_building_name: Set(device_data.main_building_name),
+                building_name: Set(device_data.building_name),
+                floor_name: Set(device_data.floor_name),
+                room_name: Set(device_data.room_name),
+                panel_number: Set(None),
+                network_number: Set(None),
+                product_name: Set(device_data.product_name),
+                product_class_id: Set(device_data.product_class_id),
+                product_id: Set(device_data.product_id),
+                screen_name: Set(None),
+                bautrate: Set(device_data.bautrate),
+                address: Set(device_data.address),
+                register: Set(None),
+                function: Set(None),
+                description: Set(device_data.description),
+                high_units: Set(None),
+                low_units: Set(None),
+                update_field: Set(None),
+                status: Set(device_data.status),
+                range_field: Set(None),
+                calibration: Set(None),
+
+                // Network configuration fields from latest entity
+                ip_address: Set(device_data.ip_address),
+                port: Set(device_data.port),
+                bacnet_mstp_mac_id: Set(device_data.bacnet_mstp_mac_id),
+                modbus_address: Set(device_data.modbus_address),
+                pc_ip_address: Set(device_data.pc_ip_address),
+                modbus_port: Set(device_data.modbus_port),
+                bacnet_ip_port: Set(device_data.bacnet_ip_port),
+                show_label_name: Set(device_data.show_label_name),
+                connection_type: Set(device_data.connection_type),
+            };
+
+            let device = new_device.insert(db).await?;
+            Ok(device)
+        }
     }
 
     /// Update a device
