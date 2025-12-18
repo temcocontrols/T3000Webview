@@ -9,6 +9,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
+import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { MainLayout } from '../layout/MainLayout';
 import styles from './App.module.css';
 
@@ -118,8 +119,9 @@ export const App: React.FC = () => {
     <div className={styles.appContainer}>
       <ThemeProvider>
         <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
-          <ErrorBoundary>
-            <HashRouter>
+          <NotificationProvider>
+            <ErrorBoundary>
+              <HashRouter>
               <Routes>
                   {/* T3000 Routes - All protected with MainLayout wrapper */}
                   <Route
@@ -353,10 +355,10 @@ export const App: React.FC = () => {
               </Route>
 
               {/* Fallback route */}
-              <Route path="*" element={<Navigate to="/t3000" replace />} />
-            </Routes>
-          </HashRouter>
-        </ErrorBoundary>
+              </Routes>
+            </HashRouter>
+          </ErrorBoundary>
+        </NotificationProvider>
       </FluentProvider>
       </ThemeProvider>
     </div>
