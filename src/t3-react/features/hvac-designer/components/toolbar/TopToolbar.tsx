@@ -43,6 +43,12 @@ import {
   AlignBottomRegular,
   AddRegular,
   EraserRegular,
+  CursorRegular,
+  ImageAddRegular,
+  ResizeImageRegular,
+  ImageRegular,
+  ArrowResetRegular,
+  ChevronDownRegular,
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { useDrawing } from '../../hooks/useDrawing';
@@ -60,6 +66,22 @@ const useStyles = makeStyles({
     alignItems: 'flex-start',
     gap: '0',
     overflow: 'auto',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#c1c1c1 #f5f5f5',
+    '&::-webkit-scrollbar': {
+      width: '6px',
+      height: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: '#f5f5f5',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: '#c1c1c1',
+      borderRadius: '3px',
+      '&:hover': {
+        backgroundColor: '#a1a1a1',
+      },
+    },
   },
   group: {
     display: 'flex',
@@ -67,7 +89,7 @@ const useStyles = makeStyles({
     alignItems: 'flex-start',
     alignContent: 'flex-start',
     gap: '2px',
-    padding: '2px 8px',
+    padding: '1px 8px',
     minHeight: '52px',
   },
   toolItem: {
@@ -95,10 +117,10 @@ const useStyles = makeStyles({
   },
   divider: {
     width: '1px',
-    minHeight: '52px',
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-    margin: '0',
     alignSelf: 'stretch',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    margin: '4px 1px',
+    flexShrink: 0,
   },
 });
 
@@ -131,6 +153,10 @@ export const TopToolbar: React.FC = () => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showRotateMenu, setShowRotateMenu] = useState(false);
   const [showAlignMenu, setShowAlignMenu] = useState(false);
+  const [showFlipMenu, setShowFlipMenu] = useState(false);
+  const [showMakeSameMenu, setShowMakeSameMenu] = useState(false);
+  const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+  const [zoomValue, setZoomValue] = useState(100);
 
   const handleSave = async () => {
     try {
@@ -179,66 +205,136 @@ export const TopToolbar: React.FC = () => {
     setShowAlignMenu(false);
   };
 
+  const handleFlip = (type: string) => {
+    // TODO: Implement flip
+    console.log('Flip:', type);
+    setShowFlipMenu(false);
+  };
+
+  const handleMakeSame = (type: string) => {
+    // TODO: Implement make same
+    console.log('Make same:', type);
+    setShowMakeSameMenu(false);
+  };
+
+  const handleBackground = (color: string) => {
+    // TODO: Implement background change
+    console.log('Background:', color);
+    setShowBackgroundMenu(false);
+  };
+
+  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 100;
+    setZoomValue(value);
+    // TODO: Apply zoom
+  };
+
+  const handleLock = () => {
+    // TODO: Implement lock
+    console.log('Lock');
+  };
+
+  const handleUnlock = () => {
+    // TODO: Implement unlock
+    console.log('Unlock');
+  };
+
+  const handleInsert = () => {
+    // TODO: Implement insert
+    console.log('Insert');
+  };
+
+  const handleResetZoom = () => {
+    setZoomValue(100);
+    // TODO: Reset zoom to 100%
+  };
+
   return (
     <div className={styles.container}>
       {/* Group 1: Selection */}
-      <div className={styles.group}><div className={styles.toolItem} onClick={selectAll}>
-            <SelectAllOnRegular className={styles.toolIcon} />
-            <span>Select All</span>
-          </div><div className={styles.toolItem} data-data-disabled={selectedShapeIds.length === 0}>
-            <LockClosedRegular className={styles.toolIcon} />
-            <span>Lock</span>
-          </div><div className={styles.toolItem} data-data-disabled={selectedShapeIds.length === 0}>
-            <LockOpenRegular className={styles.toolIcon} />
-            <span>Unlock</span>
-          </div></div>
+      <div className={styles.group}>
+        <div className={styles.toolItem} onClick={clearSelection}>
+          <CursorRegular className={styles.toolIcon} />
+          <span>Select</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleLock : undefined}>
+          <LockClosedRegular className={styles.toolIcon} />
+          <span>Lock</span>
+        </div>
+        <div className={styles.toolItem} onClick={selectAll}>
+          <SelectAllOnRegular className={styles.toolIcon} />
+          <span>Select All</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleUnlock : undefined}>
+          <LockOpenRegular className={styles.toolIcon} />
+          <span>Unlock</span>
+        </div>
+      </div>
 
       <div className={styles.divider} />
 
       {/* Group 2: Clipboard */}
-      <div className={styles.group}><div className={styles.toolItem} onClick={pasteFromClipboard}>
-            <ClipboardPasteRegular className={styles.toolIcon} />
-            <span>Paste</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? copyToClipboard : undefined}>
-            <CopyRegular className={styles.toolIcon} />
-            <span>Copy</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? cutToClipboard : undefined}>
-            <CutRegular className={styles.toolIcon} />
-            <span>Cut</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDelete : undefined}>
-            <DeleteRegular className={styles.toolIcon} />
-            <span>Delete</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDuplicate : undefined}>
-            <AddRegular className={styles.toolIcon} />
-            <span>Duplicate</span>
-          </div></div>
+      <div className={styles.group}>
+        <div className={styles.toolItem} onClick={pasteFromClipboard}>
+          <ClipboardPasteRegular className={styles.toolIcon} />
+          <span>Paste</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? copyToClipboard : undefined}>
+          <CopyRegular className={styles.toolIcon} />
+          <span>Copy</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? cutToClipboard : undefined}>
+          <CutRegular className={styles.toolIcon} />
+          <span>Cut</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDelete : undefined}>
+          <DeleteRegular className={styles.toolIcon} />
+          <span>Delete</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDuplicate : undefined}>
+          <AddRegular className={styles.toolIcon} />
+          <span>Duplicate</span>
+        </div>
+        <div className={styles.toolItem} onClick={handleInsert}>
+          <ImageAddRegular className={styles.toolIcon} />
+          <span>Insert</span>
+        </div>
+      </div>
 
       <div className={styles.divider} />
 
       {/* Group 3: History & Save */}
-      <div className={styles.group}><div className={styles.toolItem} data-disabled={history.past.length === 0} onClick={history.past.length > 0 ? undo : undefined}>
-            <ArrowUndoRegular className={styles.toolIcon} />
-            <span>Undo</span>
-          </div><div className={styles.toolItem} data-disabled={!isDirty || isSaving} onClick={isDirty && !isSaving ? handleSave : undefined}>
-            <SaveRegular className={styles.toolIcon} />
-            <span>{isSaving ? 'Saving...' : 'Save'}</span>
-          </div><div className={styles.toolItem} data-disabled={history.future.length === 0} onClick={history.future.length > 0 ? redo : undefined}>
-            <ArrowRedoRegular className={styles.toolIcon} />
-            <span>Redo</span>
-          </div><div className={styles.toolItem} onClick={clearDrawing}>
-            <EraserRegular className={styles.toolIcon} />
-            <span>Clear</span>
-          </div></div>
+      <div className={styles.group}>
+        <div className={styles.toolItem} data-disabled={history.past.length === 0} onClick={history.past.length > 0 ? undo : undefined}>
+          <ArrowUndoRegular className={styles.toolIcon} />
+          <span>Undo</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={!isDirty || isSaving} onClick={isDirty && !isSaving ? handleSave : undefined}>
+          <SaveRegular className={styles.toolIcon} />
+          <span>{isSaving ? 'Saving...' : 'Save'}</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={history.future.length === 0} onClick={history.future.length > 0 ? redo : undefined}>
+          <ArrowRedoRegular className={styles.toolIcon} />
+          <span>Redo</span>
+        </div>
+        <div className={styles.toolItem} onClick={clearDrawing}>
+          <EraserRegular className={styles.toolIcon} />
+          <span>Clear</span>
+        </div>
+      </div>
 
       <div className={styles.divider} />
 
       {/* Group 4: Transform */}
       <div className={styles.group}>
         <Menu open={showRotateMenu} onOpenChange={(_e, data) => setShowRotateMenu(data.open)}>
-          <MenuTrigger><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
-                <ArrowRotateClockwiseRegular className={styles.toolIcon} />
-                <span>Rotate</span>
-              </div></MenuTrigger>
+          <MenuTrigger>
+            <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+              <ArrowRotateClockwiseRegular className={styles.toolIcon} />
+              <span>Rotate</span>
+              <ChevronDownRegular style={{ fontSize: '10px' }} />
+            </div>
+          </MenuTrigger>
           <MenuPopover>
             <MenuList>
               <MenuItem onClick={() => handleRotate(0)}>0°</MenuItem>
@@ -250,10 +346,13 @@ export const TopToolbar: React.FC = () => {
           </MenuPopover>
         </Menu>
         <Menu open={showAlignMenu} onOpenChange={(_e, data) => setShowAlignMenu(data.open)}>
-          <MenuTrigger><div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
-                <AlignCenterHorizontalRegular className={styles.toolIcon} />
-                <span>Align</span>
-              </div></MenuTrigger>
+          <MenuTrigger>
+            <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
+              <AlignCenterHorizontalRegular className={styles.toolIcon} />
+              <span>Align</span>
+              <ChevronDownRegular style={{ fontSize: '10px' }} />
+            </div>
+          </MenuTrigger>
           <MenuPopover>
             <MenuList>
               <MenuItem icon={<AlignLeftRegular />} onClick={() => handleAlign('left')}>Align Left</MenuItem>
@@ -264,57 +363,133 @@ export const TopToolbar: React.FC = () => {
               <MenuItem icon={<AlignBottomRegular />} onClick={() => handleAlign('bottom')}>Align Bottom</MenuItem>
             </MenuList>
           </MenuPopover>
-        </Menu><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
-            <ArrowRotateCounterclockwiseRegular className={styles.toolIcon} />
-            <span>Flip</span>
-          </div></div>
+        </Menu>
+        <Menu open={showFlipMenu} onOpenChange={(_e, data) => setShowFlipMenu(data.open)}>
+          <MenuTrigger>
+            <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+              <ArrowRotateCounterclockwiseRegular className={styles.toolIcon} />
+              <span>Flip</span>
+              <ChevronDownRegular style={{ fontSize: '10px' }} />
+            </div>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem onClick={() => handleFlip('horizontal')}>Flip Horizontal</MenuItem>
+              <MenuItem onClick={() => handleFlip('vertical')}>Flip Vertical</MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+        <Menu open={showMakeSameMenu} onOpenChange={(_e, data) => setShowMakeSameMenu(data.open)}>
+          <MenuTrigger>
+            <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
+              <ResizeImageRegular className={styles.toolIcon} />
+              <span>Make same</span>
+              <ChevronDownRegular style={{ fontSize: '10px' }} />
+            </div>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem onClick={() => handleMakeSame('width')}>Same Width</MenuItem>
+              <MenuItem onClick={() => handleMakeSame('height')}>Same Height</MenuItem>
+              <MenuItem onClick={() => handleMakeSame('size')}>Same Size</MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      </div>
 
       <div className={styles.divider} />
 
       {/* Group 5: Arrange */}
-      <div className={styles.group}><div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2} onClick={selectedShapeIds.length >= 2 ? handleGroup : undefined}>
-            <GroupRegular className={styles.toolIcon} />
-            <span>Group</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
-            <ArrowUpRegular className={styles.toolIcon} />
-            <span>Bring to Front</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
-            <GroupDismissRegular className={styles.toolIcon} />
-            <span>Ungroup</span>
-          </div><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
-            <ArrowDownRegular className={styles.toolIcon} />
-            <span>Send to Back</span>
-          </div></div>
+      <div className={styles.group}>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2} onClick={selectedShapeIds.length >= 2 ? handleGroup : undefined}>
+          <GroupRegular className={styles.toolIcon} />
+          <span>Group</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+          <ArrowUpRegular className={styles.toolIcon} />
+          <span>Bring to Front</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+          <GroupDismissRegular className={styles.toolIcon} />
+          <span>Ungroup</span>
+        </div>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+          <ArrowDownRegular className={styles.toolIcon} />
+          <span>Send to Back</span>
+        </div>
+      </div>
 
       <div className={styles.divider} />
 
       {/* Group 6: Library */}
-      <div className={styles.group}><div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
-            <AddRegular className={styles.toolIcon} />
-            <span>Add to Library</span>
-          </div><div className={styles.toolItem}>
-            <FolderOpenRegular className={styles.toolIcon} />
-            <span>Load Library</span>
-          </div></div>
+      <div className={styles.group}>
+        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+          <AddRegular className={styles.toolIcon} />
+          <span>Add to Library</span>
+        </div>
+        <div className={styles.toolItem}>
+          <FolderOpenRegular className={styles.toolIcon} />
+          <span>Load Library</span>
+        </div>
+      </div>
 
       <div className={styles.divider} />
 
       {/* Group 7: View & Zoom */}
-      <div className={styles.group}><div className={styles.toolItem} onClick={zoomOut}>
+      <div className={styles.group}>
+        <Menu open={showBackgroundMenu} onOpenChange={(_e, data) => setShowBackgroundMenu(data.open)}>
+          <MenuTrigger>
+            <div className={styles.toolItem}>
+              <ImageRegular className={styles.toolIcon} />
+              <span>Background</span>
+              <ChevronDownRegular style={{ fontSize: '10px' }} />
+            </div>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem onClick={() => handleBackground('white')}>White</MenuItem>
+              <MenuItem onClick={() => handleBackground('gray')}>Gray</MenuItem>
+              <MenuItem onClick={() => handleBackground('black')}>Black</MenuItem>
+              <MenuItem onClick={() => handleBackground('custom')}>Custom...</MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+        <div className={styles.toolItem} onClick={toggleRulers}>
+          <RulerRegular className={styles.toolIcon} />
+          <span>Rulers</span>
+        </div>
+        <div className={styles.toolItem} onClick={toggleGrid}>
+          <GridRegular className={styles.toolIcon} />
+          <span>Grid</span>
+        </div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
+          <div className={styles.toolItem} onClick={zoomOut} style={{ padding: '2px 4px' }}>
             <ZoomOutRegular className={styles.toolIcon} />
-            <span>Zoom Out</span>
-          </div><span style={{ color: '#323130', fontSize: '11px', padding: '0 4px', minWidth: '45px', textAlign: 'center' }}>
-          {Math.round(canvas.zoom * 100)}%
-        </span><div className={styles.toolItem} onClick={zoomIn}>
+          </div>
+          <input
+            type="number"
+            value={zoomValue}
+            onChange={handleZoomChange}
+            style={{
+              width: '50px',
+              height: '22px',
+              fontSize: '11px',
+              padding: '2px 4px',
+              border: '1px solid #ccc',
+              borderRadius: '2px',
+              textAlign: 'center',
+            }}
+          />
+          <span style={{ fontSize: '11px', color: '#323130' }}>%</span>
+          <div className={styles.toolItem} onClick={zoomIn} style={{ padding: '2px 4px' }}>
             <ZoomInRegular className={styles.toolIcon} />
-            <span>Zoom In</span>
-          </div><div className={styles.toolItem} onClick={toggleGrid}>
-            <GridRegular className={styles.toolIcon} />
-            <span>Grid</span>
-          </div><div className={styles.toolItem} onClick={toggleRulers}>
-            <RulerRegular className={styles.toolIcon} />
-            <span>Rulers</span>
-          </div></div>
+          </div>
+        </div>
+        <div className={styles.toolItem} onClick={handleResetZoom}>
+          <ArrowResetRegular className={styles.toolIcon} />
+          <span>Reset Zoom</span>
+        </div>
+      </div>
     </div>
   );
 };
