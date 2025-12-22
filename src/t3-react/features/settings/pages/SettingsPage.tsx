@@ -227,6 +227,72 @@ const useStyles = makeStyles({
     fontSize: '10px',
     padding: '8px 12px',
   },
+  // Basic Information Tab Styles
+  basicTwoColumn: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+    marginBottom: '16px',
+  },
+  basicPanel: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    padding: '12px',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  basicPanelTitle: {
+    fontSize: '13px',
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: '12px',
+    color: tokens.colorNeutralForeground1,
+  },
+  basicField: {
+    marginBottom: '10px',
+    fontSize: '12px',
+  },
+  basicFieldLabel: {
+    display: 'block',
+    fontSize: '12px',
+    marginBottom: '4px',
+    color: tokens.colorNeutralForeground2,
+  },
+  basicFieldValue: {
+    display: 'block',
+    fontSize: '12px',
+    padding: '6px 8px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '2px',
+    color: tokens.colorNeutralForeground1,
+  },
+  lcdOptions: {
+    marginTop: '16px',
+    padding: '12px',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  lcdRadioGroup: {
+    display: 'flex',
+    gap: '16px',
+    marginBottom: '12px',
+    alignItems: 'center',
+  },
+  lcdButtons: {
+    display: 'flex',
+    gap: '8px',
+  },
+  actionsSection: {
+    marginTop: '16px',
+    padding: '12px',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  actionButtons: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
 });
 
 type TabValue = 'basic' | 'communication' | 'time' | 'dyndns' | 'email' | 'users' | 'expansion';
@@ -288,11 +354,16 @@ interface DyndnsSettings {
 }
 
 interface HardwareInfo {
-  Hardware_Rev?: number;
+  Hardware_Rev?: string;
   Firmware0_Rev_Main?: number;
   Firmware0_Rev_Sub?: number;
+  Firmware1_Rev?: number;
+  Firmware2_Rev?: number;
+  Bootloader_Rev?: number;
+  Mini_Type?: number;
   Panel_Type?: number;
   USB_Mode?: number;
+  SD_Exist?: number;
 }
 
 interface FeatureFlags {
@@ -300,6 +371,14 @@ interface FeatureFlags {
   Customer_Unite_Enable?: number;
   Enable_Panel_Name?: number;
   LCD_Display?: number;
+  LCD_Mode?: number; // 0=Always On, 1=Off, 2=Delay
+  LCD_Delay_Seconds?: number;
+}
+
+interface DeviceInfo {
+  SerialNumber?: number;
+  PanelId?: string; // Panel Name
+  Panel_Number?: number;
 }
 
 export const SettingsPage: React.FC = () => {
@@ -322,6 +401,7 @@ export const SettingsPage: React.FC = () => {
   const [dyndnsSettings, setDyndnsSettings] = useState<DyndnsSettings>({});
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo>({});
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({});
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
 
   // Auto-select first device if none is selected
   useEffect(() => {
@@ -342,24 +422,28 @@ export const SettingsPage: React.FC = () => {
 
       switch (selectedTab) {
         case 'basic':
-          // Fetch protocol settings and hardware info
-          const [protocolRes, hardwareRes, featuresRes] = await Promise.all([
+          // Fetch protocol settings, hardware info, features, network (for MAC), and device info
+          const [protocolRes, hardwareRes, featuresRes, networkRes, deviceRes] = await Promise.all([
             fetch(`/api/v1/devices/${serial}/settings/protocol`),
             fetch(`/api/v1/devices/${serial}/settings/hardware`),
             fetch(`/api/v1/devices/${serial}/settings/features`),
+            fetch(`/api/v1/devices/${serial}/settings/network`),
+            fetch(`/api/v1/devices/${serial}`),
           ]);
           if (protocolRes.ok) setProtocolSettings(await protocolRes.json());
           if (hardwareRes.ok) setHardwareInfo(await hardwareRes.json());
           if (featuresRes.ok) setFeatureFlags(await featuresRes.json());
+          if (networkRes.ok) setNetworkSettings(await networkRes.json());
+          if (deviceRes.ok) setDeviceInfo(await deviceRes.json());
           break;
 
         case 'communication':
           // Fetch network and communication settings
-          const [networkRes, commRes] = await Promise.all([
+          const [commNetworkRes, commRes] = await Promise.all([
             fetch(`/api/v1/devices/${serial}/settings/network`),
             fetch(`/api/v1/devices/${serial}/settings/communication`),
           ]);
-          if (networkRes.ok) setNetworkSettings(await networkRes.json());
+          if (commNetworkRes.ok) setNetworkSettings(await commNetworkRes.json());
           if (commRes.ok) setCommSettings(await commRes.json());
           break;
 
@@ -636,105 +720,228 @@ export const SettingsPage: React.FC = () => {
       case 'basic':
         return (
           <>
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Protocol Configuration</div>
-              <div className={styles.formGrid}>
-                <Field label="Object Instance">
+            {/* Two-Column Layout: Device Info | Panel Info */}
+            <div className={styles.basicTwoColumn}>
+              {/* Left Panel - Device Information (Read-Only) */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>Device Information</div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Module Number:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Mini_Type ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Hardware Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Hardware_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>MCU Version:</label>
+                  <span className={styles.basicFieldValue}>
+                    {hardwareInfo.Firmware0_Rev_Main ?? 0}.{hardwareInfo.Firmware0_Rev_Sub ?? 0}
+                  </span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>PIC Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Firmware1_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Top Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Firmware2_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>Bootloader Version:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Bootloader_Rev ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>MCU Type:</label>
+                  <span className={styles.basicFieldValue}>{hardwareInfo.Panel_Type ?? 'N/A'}</span>
+                </div>
+                <div className={styles.basicField}>
+                  <label className={styles.basicFieldLabel}>SD Card:</label>
+                  <span className={styles.basicFieldValue}>
+                    {hardwareInfo.SD_Exist === 1 ? 'Present' : 'Not Present'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Panel - Panel Information (Editable) */}
+              <div className={styles.basicPanel}>
+                <div className={styles.basicPanelTitle}>Panel Information</div>
+                <Field label="Bacnet Instance" size="small">
                   <Input
                     type="number"
+                    size="small"
                     value={String(protocolSettings.Object_Instance ?? '')}
                     onChange={(_, data) =>
                       setProtocolSettings({ ...protocolSettings, Object_Instance: Number(data.value) })
                     }
                   />
                 </Field>
-                <Field label="Modbus ID">
+                <Field label="Serial Number" size="small">
                   <Input
                     type="number"
-                    value={String(protocolSettings.Modbus_ID ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Modbus_ID: Number(data.value) })
-                    }
+                    size="small"
+                    value={String(deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '')}
+                    disabled
                   />
                 </Field>
-                <Field label="MSTP ID">
+                <Field label="MAC Address" size="small">
                   <Input
-                    type="number"
-                    value={String(protocolSettings.MSTP_ID ?? '')}
+                    size="small"
+                    value={networkSettings.MAC_Address ?? ''}
                     onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, MSTP_ID: Number(data.value) })
+                      setNetworkSettings({ ...networkSettings, MAC_Address: data.value })
                     }
+                    placeholder="00:11:22:33:44:55"
                   />
                 </Field>
-                <Field label="Max Master">
+                <Field label="MSTP Network" size="small">
                   <Input
                     type="number"
-                    value={String(protocolSettings.Max_Master ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Max_Master: Number(data.value) })
-                    }
-                  />
-                </Field>
-                <Field label="MSTP Network Number">
-                  <Input
-                    type="number"
+                    size="small"
                     value={String(protocolSettings.MSTP_Network_Number ?? '')}
                     onChange={(_, data) =>
                       setProtocolSettings({ ...protocolSettings, MSTP_Network_Number: Number(data.value) })
                     }
                   />
                 </Field>
-                <Field label="BACnet IP Network">
+                <Field label="Modbus RTU ID" size="small">
                   <Input
                     type="number"
+                    size="small"
+                    value={String(protocolSettings.Modbus_ID ?? '')}
+                    onChange={(_, data) =>
+                      setProtocolSettings({ ...protocolSettings, Modbus_ID: Number(data.value) })
+                    }
+                  />
+                </Field>
+                <Field label="BACnet MSTP MAC" size="small">
+                  <Input
+                    type="number"
+                    size="small"
+                    value={String(protocolSettings.MSTP_ID ?? '')}
+                    onChange={(_, data) =>
+                      setProtocolSettings({ ...protocolSettings, MSTP_ID: Number(data.value) })
+                    }
+                  />
+                </Field>
+                <Field label="BIP Network" size="small">
+                  <Input
+                    type="number"
+                    size="small"
                     value={String(protocolSettings.Network_Number ?? '')}
                     onChange={(_, data) =>
                       setProtocolSettings({ ...protocolSettings, Network_Number: Number(data.value) })
                     }
                   />
                 </Field>
-              </div>
-            </div>
-
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Hardware Information</div>
-              <div className={styles.formGrid}>
-                <Field label="Hardware Revision">
-                  <Input value={String(hardwareInfo.Hardware_Rev ?? 'N/A')} disabled />
-                </Field>
-                <Field label="Firmware Version">
+                <Field label="Max Master" size="small">
                   <Input
-                    value={`${hardwareInfo.Firmware0_Rev_Main ?? 0}.${hardwareInfo.Firmware0_Rev_Sub ?? 0}`}
-                    disabled
+                    type="number"
+                    size="small"
+                    value={String(protocolSettings.Max_Master ?? '')}
+                    onChange={(_, data) =>
+                      setProtocolSettings({ ...protocolSettings, Max_Master: Number(data.value) })
+                    }
                   />
                 </Field>
-                <Field label="Panel Type">
-                  <Input value={String(hardwareInfo.Panel_Type ?? 'N/A')} disabled />
+                <Field label="Panel Number" size="small">
+                  <Input
+                    type="number"
+                    size="small"
+                    value={String(deviceInfo.Panel_Number ?? '')}
+                    onChange={(_, data) =>
+                      setDeviceInfo({ ...deviceInfo, Panel_Number: Number(data.value) })
+                    }
+                  />
                 </Field>
-                <Field label="USB Mode">
-                  <Input value={hardwareInfo.USB_Mode === 0 ? 'Device' : 'Host'} disabled />
+                <Field label="Panel Name" size="small">
+                  <Input
+                    size="small"
+                    value={deviceInfo.PanelId ?? ''}
+                    onChange={(_, data) =>
+                      setDeviceInfo({ ...deviceInfo, PanelId: data.value })
+                    }
+                  />
                 </Field>
               </div>
             </div>
 
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Features</div>
-              <Field label="LCD Display">
-                <Switch
-                  checked={featureFlags.LCD_Display === 1}
-                  onChange={(_, data) =>
-                    setFeatureFlags({ ...featureFlags, LCD_Display: data.checked ? 1 : 0 })
-                  }
-                />
-              </Field>
-              <Field label="Enable Panel Name">
-                <Switch
-                  checked={featureFlags.Enable_Panel_Name === 1}
-                  onChange={(_, data) =>
-                    setFeatureFlags({ ...featureFlags, Enable_Panel_Name: data.checked ? 1 : 0 })
-                  }
-                />
-              </Field>
+            {/* LCD Options */}
+            <div className={styles.lcdOptions}>
+              <div className={styles.basicPanelTitle}>LCD Options</div>
+              <div className={styles.lcdRadioGroup}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="lcdMode"
+                    checked={featureFlags.LCD_Mode === 0}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 0 })}
+                  />
+                  Always On
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="lcdMode"
+                    checked={featureFlags.LCD_Mode === 1}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 1 })}
+                  />
+                  Off
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="lcdMode"
+                    checked={featureFlags.LCD_Mode === 2}
+                    onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 2 })}
+                  />
+                  Delay
+                </label>
+                {featureFlags.LCD_Mode === 2 && (
+                  <Field label="Seconds" size="small" style={{ marginLeft: '16px', marginBottom: 0 }}>
+                    <Input
+                      type="number"
+                      size="small"
+                      value={String(featureFlags.LCD_Delay_Seconds ?? 30)}
+                      onChange={(_, data) =>
+                        setFeatureFlags({ ...featureFlags, LCD_Delay_Seconds: Number(data.value) })
+                      }
+                      style={{ width: '80px' }}
+                    />
+                  </Field>
+                )}
+              </div>
+              <div className={styles.lcdButtons}>
+                <Button size="small" appearance="secondary">Parameter</Button>
+                <Button size="small" appearance="secondary">Advanced Settings</Button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className={styles.actionsSection}>
+              <div className={styles.basicPanelTitle}>Actions</div>
+              <div className={styles.actionButtons}>
+                <Button size="small" appearance="secondary" icon={<InfoRegular />}>
+                  Identify Device
+                </Button>
+                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
+                  Clear Device
+                </Button>
+                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
+                  Clear Subnet Database
+                </Button>
+                <Button
+                  size="small"
+                  appearance="secondary"
+                  icon={<PowerRegular />}
+                  onClick={() => setShowRebootDialog(true)}
+                >
+                  Reboot Device
+                </Button>
+                <Button size="small" appearance="primary" icon={<SaveRegular />} className={styles.saveButton}>
+                  Done
+                </Button>
+              </div>
             </div>
           </>
         );
