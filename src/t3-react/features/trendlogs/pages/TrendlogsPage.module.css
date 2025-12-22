@@ -421,6 +421,21 @@
 .subGridBody {
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.subGridBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.subGridBody::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.subGridBody::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
 }
 
 .inputRow {
