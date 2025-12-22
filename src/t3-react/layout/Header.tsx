@@ -151,7 +151,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  showToolbar?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const styles = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
@@ -358,6 +362,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Row 2: Toolbar with icon buttons */}
+      {showToolbar && (
       <div className={styles.toolbarContainer}>
         <div className={styles.toolbarSection}>
           <Toolbar>
@@ -399,6 +404,7 @@ export const Header: React.FC = () => {
           </Toolbar>
         </div>
       </div>
+      )}
     </div>
   );
 };
