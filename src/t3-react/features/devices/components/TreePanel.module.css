@@ -24,6 +24,26 @@
   overflow-x: hidden;
   padding: 8px;
   background-color: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.treeContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.treeContainer::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+
+.treeContainer::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
+}
+
+.treeContainer::-webkit-scrollbar-thumb:hover {
+  background-color: #a1a1a1;
 }
 
 /* Loading state */

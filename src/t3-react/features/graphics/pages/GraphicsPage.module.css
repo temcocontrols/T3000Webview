@@ -428,6 +428,26 @@
 .scrollContainerAuto {
   max-height: calc(100vh - 220px);
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.scrollContainerAuto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollContainerAuto::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+
+.scrollContainerAuto::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
+}
+
+.scrollContainerAuto::-webkit-scrollbar-thumb:hover {
+  background-color: #a1a1a1;
 }
 
 .fullWidth {

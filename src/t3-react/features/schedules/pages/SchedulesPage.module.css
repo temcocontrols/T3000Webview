@@ -212,6 +212,26 @@
   overflow-x: auto;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.scrollContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollContainer::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb:hover {
+  background-color: #a1a1a1;
 }
 
 .autoLoadIndicator {
