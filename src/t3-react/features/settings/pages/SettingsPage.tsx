@@ -249,20 +249,37 @@ const useStyles = makeStyles({
   basicField: {
     marginBottom: '10px',
     fontSize: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
   },
   basicFieldLabel: {
-    display: 'block',
     fontSize: '12px',
-    marginBottom: '4px',
     color: tokens.colorNeutralForeground2,
+    minWidth: '140px',
+    flexShrink: 0,
   },
   basicFieldValue: {
-    display: 'block',
+    flex: 1,
     fontSize: '12px',
     padding: '6px 8px',
     backgroundColor: '#f5f5f5',
     borderRadius: '2px',
     color: tokens.colorNeutralForeground1,
+  },
+  horizontalField: {
+    display: 'grid',
+    gridTemplateColumns: '140px 1fr',
+    gap: '12px',
+    alignItems: 'center',
+    marginBottom: '10px',
+    '& label': {
+      fontSize: '12px',
+      margin: 0,
+    },
+    '& input': {
+      fontSize: '12px',
+    },
   },
   lcdOptions: {
     marginTop: '16px',
@@ -766,7 +783,7 @@ export const SettingsPage: React.FC = () => {
               {/* Right Panel - Panel Information (Editable) */}
               <div className={styles.basicPanel}>
                 <div className={styles.basicPanelTitle}>Panel Information</div>
-                <Field label="Bacnet Instance" size="small">
+                <Field label="Bacnet Instance" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -776,7 +793,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="Serial Number" size="small">
+                <Field label="Serial Number" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -784,7 +801,7 @@ export const SettingsPage: React.FC = () => {
                     disabled
                   />
                 </Field>
-                <Field label="MAC Address" size="small">
+                <Field label="MAC Address" size="small" className={styles.horizontalField}>
                   <Input
                     size="small"
                     value={networkSettings.MAC_Address ?? ''}
@@ -794,7 +811,7 @@ export const SettingsPage: React.FC = () => {
                     placeholder="00:11:22:33:44:55"
                   />
                 </Field>
-                <Field label="MSTP Network" size="small">
+                <Field label="MSTP Network" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -804,7 +821,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="Modbus RTU ID" size="small">
+                <Field label="Modbus RTU ID" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -814,7 +831,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="BACnet MSTP MAC" size="small">
+                <Field label="BACnet MSTP MAC" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -824,7 +841,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="BIP Network" size="small">
+                <Field label="BIP Network" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -834,7 +851,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="Max Master" size="small">
+                <Field label="Max Master" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -844,7 +861,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="Panel Number" size="small">
+                <Field label="Panel Number" size="small" className={styles.horizontalField}>
                   <Input
                     type="number"
                     size="small"
@@ -854,7 +871,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="Panel Name" size="small">
+                <Field label="Panel Name" size="small" className={styles.horizontalField}>
                   <Input
                     size="small"
                     value={deviceInfo.PanelId ?? ''}
