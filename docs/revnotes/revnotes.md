@@ -12,7 +12,7 @@
 
 ## 2024-11-22
 
-#### 1. Updated the “Weld Selected�?function to make the welded item resizable and moveable.
+#### 1. Updated the “Weld Selected�?function to make the welded item resizable and moveable.
 
 ![1](./pic/2024-11-22/1.png)
 
@@ -20,11 +20,11 @@
 
 ![1](./pic/2024-11-22/2.png)
 
-#### 3. Added a new tool category “General�?with some basic shapes.
+#### 3. Added a new tool category “General�?with some basic shapes.
 
 ![1](./pic/2024-11-22/3.png)
 
-#### 4. Added a new type of wall “Interior/Exterior Wall�?to Room tool category.
+#### 4. Added a new type of wall “Interior/Exterior Wall�?to Room tool category.
 
 ![1](./pic/2024-11-22/4.png)
 
@@ -147,3 +147,43 @@ Mouse hovering displays the full function name.
 ![1](./pic/2025-05-21/7_2.png)
 
 ![1](./pic/2025-05-21/7_1.png)
+
+## 2025-12-21
+
+#### 1. Added new Trend Log Beta page for enhanced data visualization and monitoring.
+
+![Screenshot: Trend Log Overview](./pic/2025-12-21/1.png)
+
+#### 2. Top control bar includes: time range selection (5m to 4d presets + custom), navigation arrows, zoom in/out, view selector (3 custom views), live/historical mode indicator, reset/config/export buttons.
+
+![Screenshot: Top Control Bar](./pic/2025-12-21/2.png)
+
+#### 3. Left data panel shows all trend items with checkboxes, color indicators, current values, and min/max ranges. Separated into analog (continuous) and digital (on/off) sections.
+
+![Screenshot: Left Data Panel](./pic/2025-12-21/3.png)
+
+#### 4. Right chart area displays time-series graphs: analog chart (top) with line plots and crosshair tooltip, digital chart (bottom) with step plots showing state changes.
+
+![Screenshot: Chart Display Area](./pic/2025-12-21/4.png)
+
+#### 5. Features: real-time auto-refresh, historical data review with custom date/time selection, multi-item comparison, export to PNG/JPG/CSV/JSON formats.
+
+![Screenshot: Custom Time Range Dialog](./pic/2025-12-21/5.1.png)
+
+![Screenshot: Custom Time Range Dialog](./pic/2025-12-21/5.2.png)
+
+![Screenshot: Export Options](./pic/2025-12-21/6.1.png)
+
+![Screenshot: Export Options](./pic/2025-12-21/6.2.png)
+
+#### 6. User can create custom monitoring views (View 2 & 3) by selecting specific items to track.
+
+![Screenshot: Custom View Selector](./pic/2025-12-21/7.1.png)
+
+![Screenshot: Custom View Selector](./pic/2025-12-21/7.2.png)
+
+![Screenshot: Custom View Selector](./pic/2025-12-21/7.3.png)
+
+![Screenshot: Custom View Selector](./pic/2025-12-21/7.4.png)
+
+![Screenshot: Custom View Selector](./pic/2025-12-21/7.5.png)
