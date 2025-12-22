@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Spinner,
   Text,
@@ -15,12 +15,12 @@ import {
 } from '@fluentui/react-components';
 import {
   NavigationRegular,
-  LockClosedRegular
+  LockClosedRegular,
+  ArrowLeftRegular
 } from '@fluentui/react-icons';
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { PropertiesPanel } from '../components/panels/PropertiesPanel';
-import { DrawingArea } from '../components/canvas/DrawingArea';
 import { useDrawing } from '../hooks/useDrawing';
 
 const useStyles = makeStyles({
@@ -40,12 +40,17 @@ const useStyles = makeStyles({
   },
   leftPanelHeader: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '8px',
+    flexDirection: 'column',
     borderBottom: '1px solid #e1e1e1',
     backgroundColor: '#f5f5f5',
     height: '60px',
+  },
+  leftPanelRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 8px',
+    height: '30px',
   },
   leftPanelTitle: {
     fontSize: '12px',
@@ -90,6 +95,7 @@ const useStyles = makeStyles({
 
 export const HvacDesignerPage: React.FC = () => {
   const styles = useStyles();
+  const navigate = useNavigate();
   const { graphicId } = useParams<{ graphicId?: string }>();
   const { loadDrawing: loadDrawingFromDB, createNew, isLoading, error } = useDrawing();
   const [showMessageBar, setShowMessageBar] = useState(true);
@@ -143,14 +149,28 @@ export const HvacDesignerPage: React.FC = () => {
           <>
             {/* Left Panel Header */}
             <div className={styles.leftPanelHeader}>
-              <span className={styles.leftPanelTitle}>T3 Hvac</span>
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<NavigationRegular />}
-                onClick={toggleLeftPanel}
-                title="Collapse panel"
-              />
+              {/* Row 1: Title and collapse button */}
+              <div className={styles.leftPanelRow}>
+                <span className={styles.leftPanelTitle}>T3 Hvac</span>
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<NavigationRegular style={{ fontSize: '14px' }} />}
+                  onClick={toggleLeftPanel}
+                  title="Collapse panel"
+                />
+              </div>
+              {/* Row 2: Version and back button */}
+              <div className={styles.leftPanelRow}>
+                <Text size={200} style={{ fontSize: '10px', color: '#605e5c' }}>v1.0</Text>
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<ArrowLeftRegular style={{ fontSize: '14px' }} />}
+                  onClick={() => navigate('/t3000')}
+                  title="Back to main page"
+                />
+              </div>
             </div>
 
             {/* Left Panel Content */}
@@ -190,7 +210,22 @@ export const HvacDesignerPage: React.FC = () => {
 
         {/* Drawing Area */}
         <div className={styles.drawingArea}>
-          <DrawingArea />
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#999',
+            fontSize: '14px',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <div>Drawing Area</div>
+            <div style={{ fontSize: '12px', color: '#ccc' }}>
+              (Implementation coming next)
+            </div>
+          </div>
         </div>
 
         {/* Bottom Message Bar */}
