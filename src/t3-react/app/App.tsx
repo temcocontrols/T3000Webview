@@ -11,6 +11,7 @@ import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { MainLayout } from '../layout/MainLayout';
+import { MinimalLayout } from '../layout/MinimalLayout';
 import styles from './App.module.css';
 
 // Lazy load pages from features
@@ -70,6 +71,9 @@ const DiscoverPage = React.lazy(() =>
 );
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
+);
+const HvacDesignerPage = React.lazy(() =>
+  import('../features/hvac-designer/pages/HvacDesignerPage').then((m) => ({ default: m.HvacDesignerPage }))
 );
 
 // Develop section - special layout
@@ -295,6 +299,18 @@ export const App: React.FC = () => {
                 />
 
                 {/* Develop Routes - Special layout with left navigation */}
+              </Route>
+
+              {/* HVAC Designer - Minimal layout with just top menu bar */}
+              <Route path="/t3000" element={<MinimalLayout />}>
+                <Route
+                  path="hvac-designer/:graphicId?"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <HvacDesignerPage />
+                    </React.Suspense>
+                  }
+                />
               </Route>
 
               {/* Develop Routes - Separate from t3000, no device tree */}
