@@ -122,6 +122,10 @@ const useStyles = makeStyles({
     // margin: '4px 1px',
     flexShrink: 0,
   },
+  menuItem: {
+    fontSize: '13px',
+    fontWeight: 'normal',
+  },
 });
 
 export const TopToolbar: React.FC = () => {
@@ -337,11 +341,11 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem onClick={() => handleRotate(0)}>0°</MenuItem>
-              <MenuItem onClick={() => handleRotate(45)}>45°</MenuItem>
-              <MenuItem onClick={() => handleRotate(90)}>90°</MenuItem>
-              <MenuItem onClick={() => handleRotate(180)}>180°</MenuItem>
-              <MenuItem onClick={() => handleRotate(270)}>270°</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleRotate(0)}>0°</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleRotate(45)}>45°</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleRotate(90)}>90°</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleRotate(180)}>180°</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleRotate(270)}>270°</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -355,12 +359,12 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem icon={<AlignLeftRegular />} onClick={() => handleAlign('left')}>Align Left</MenuItem>
-              <MenuItem icon={<AlignCenterHorizontalRegular />} onClick={() => handleAlign('center-h')}>Align Center H</MenuItem>
-              <MenuItem icon={<AlignRightRegular />} onClick={() => handleAlign('right')}>Align Right</MenuItem>
-              <MenuItem icon={<AlignTopRegular />} onClick={() => handleAlign('top')}>Align Top</MenuItem>
-              <MenuItem icon={<AlignCenterVerticalRegular />} onClick={() => handleAlign('center-v')}>Align Center V</MenuItem>
-              <MenuItem icon={<AlignBottomRegular />} onClick={() => handleAlign('bottom')}>Align Bottom</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignLeftRegular />} onClick={() => handleAlign('left')}>Align Left</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignCenterHorizontalRegular />} onClick={() => handleAlign('center-h')}>Align Center H</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignRightRegular />} onClick={() => handleAlign('right')}>Align Right</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignTopRegular />} onClick={() => handleAlign('top')}>Align Top</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignCenterVerticalRegular />} onClick={() => handleAlign('center-v')}>Align Center V</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignBottomRegular />} onClick={() => handleAlign('bottom')}>Align Bottom</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -374,8 +378,8 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem onClick={() => handleFlip('horizontal')}>Flip Horizontal</MenuItem>
-              <MenuItem onClick={() => handleFlip('vertical')}>Flip Vertical</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleFlip('horizontal')}>Flip Horizontal</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleFlip('vertical')}>Flip Vertical</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -389,9 +393,9 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem onClick={() => handleMakeSame('width')}>Same Width</MenuItem>
-              <MenuItem onClick={() => handleMakeSame('height')}>Same Height</MenuItem>
-              <MenuItem onClick={() => handleMakeSame('size')}>Same Size</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('width')}>Same Width</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('height')}>Same Height</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('size')}>Same Size</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -447,10 +451,10 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem onClick={() => handleBackground('white')}>White</MenuItem>
-              <MenuItem onClick={() => handleBackground('gray')}>Gray</MenuItem>
-              <MenuItem onClick={() => handleBackground('black')}>Black</MenuItem>
-              <MenuItem onClick={() => handleBackground('custom')}>Custom...</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleBackground('white')}>White</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleBackground('gray')}>Gray</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleBackground('black')}>Black</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleBackground('custom')}>Custom...</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>

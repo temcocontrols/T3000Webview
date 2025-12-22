@@ -117,28 +117,47 @@ const useStyles = makeStyles({
   },
   accordion: {
     width: '100%',
+    '& .fui-AccordionHeader': {
+      padding: '0',
+      minHeight: '24px',
+      fontSize: '11px',
+    },
+    '& .fui-AccordionHeader__button': {
+      padding: '2px 4px',
+    },
+    '& .fui-AccordionPanel': {
+      padding: '0 !important',
+      width: '100%',
+      margin: '0 !important',
+      backgroundColor: '#f9f9f9',
+    },
   },
   toolGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '2px',
-    padding: '4px',
+    gap: '1px',
+    padding: '0',
+    margin: '10px',
   },
   toolButton: {
     width: '100%',
-    height: '40px',
+    height: '32px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '20px',
+    fontSize: '16px',
     minWidth: '0',
+    padding: '4px',
   },
   emptyMessage: {
-    padding: '12px 8px',
+    padding: '8px 6px',
     fontSize: '10px',
     color: '#666',
     textAlign: 'center',
-    lineHeight: '1.4',
+    lineHeight: '1.3',
+  },
+  tooltipContent: {
+    fontSize: '10px',
   },
 });
 
@@ -167,8 +186,9 @@ export const ToolsPanel: React.FC = () => {
                   {category.tools.map((tool) => (
                     <Tooltip
                       key={tool.type}
-                      content={tool.label}
+                      content={{ children: tool.label, className: styles.tooltipContent }}
                       relationship="label"
+                      positioning="after"
                     >
                       <ToolbarButton
                         icon={tool.icon}
