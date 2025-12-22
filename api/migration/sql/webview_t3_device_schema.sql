@@ -586,6 +586,8 @@ CREATE TABLE IF NOT EXISTS FEATURE_FLAGS (
     Debug INTEGER,                             -- C++ debug
     Webview_JSON_Flash INTEGER,               -- C++ webview_json_flash (0=old way, 2=new JSON way)
     Write_Flash INTEGER,                       -- C++ write_flash (0=disabled, non-0=enabled)
+    LCD_Mode INTEGER DEFAULT 0,                -- LCD display mode (0=Always On, 1=Off, 2=Delay)
+    LCD_Delay_Seconds INTEGER DEFAULT 30,      -- LCD delay time in seconds when LCD_Mode=2
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

@@ -4,6 +4,7 @@ mod m20240401_215840_create_tables;
 mod m20240404_213650_update_tables;
 mod m20240418_145628_add_devices_table;
 mod m20240519_114859_update_files_table;
+mod m20251222_add_lcd_options;
 
 pub struct Migrator;
 
@@ -16,6 +17,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240404_213650_update_tables::Migration),
             Box::new(m20240418_145628_add_devices_table::Migration),
             Box::new(m20240519_114859_update_files_table::Migration),
+            Box::new(m20251222_add_lcd_options::Migration),
         ]
     }
 }
