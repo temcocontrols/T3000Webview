@@ -142,7 +142,7 @@ export const toolbarConfig: ToolbarButton[] = [
     tooltip: 'Trend Logs (Alt+T)',
     action: 'openWindow',
     windowId: WINDOW_MONITOR,
-    route: '/t3000/trend-logs',
+    route: '/t3000/trendlogs',
     shortcut: 'Alt+T',
   },
   {
