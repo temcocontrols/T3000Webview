@@ -821,24 +821,20 @@ export const SettingsPage: React.FC = () => {
                     }
                   />
                 </Field>
-                <Field label="Modbus RTU ID" size="small" className={styles.horizontalField}>
+                <Field size="small" className={styles.horizontalField}>
+                  <label style={{ fontSize: '12px', lineHeight: '1.3' }}>Modbus RTU ID /<br/>BACnet MSTP MAC</label>
                   <Input
                     type="number"
                     size="small"
                     value={String(protocolSettings.Modbus_ID ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, Modbus_ID: Number(data.value) })
-                    }
-                  />
-                </Field>
-                <Field label="BACnet MSTP MAC" size="small" className={styles.horizontalField}>
-                  <Input
-                    type="number"
-                    size="small"
-                    value={String(protocolSettings.MSTP_ID ?? '')}
-                    onChange={(_, data) =>
-                      setProtocolSettings({ ...protocolSettings, MSTP_ID: Number(data.value) })
-                    }
+                    onChange={(_, data) => {
+                      const value = Number(data.value);
+                      setProtocolSettings({
+                        ...protocolSettings,
+                        Modbus_ID: value,
+                        MSTP_ID: value
+                      });
+                    }}
                   />
                 </Field>
                 <Field label="BIP Network" size="small" className={styles.horizontalField}>
