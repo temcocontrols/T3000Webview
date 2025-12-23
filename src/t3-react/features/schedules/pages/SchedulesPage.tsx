@@ -283,6 +283,36 @@ export const SchedulesPage: React.FC = () => {
     }
   }, [selectedDevice, isLoadingNextDevice]);
 
+  // Display schedules with empty rows when no data (show 10 empty rows)
+  const displaySchedules = React.useMemo(() => {
+    if (schedules.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: 0,
+        scheduleId: '',
+        autoManual: '',
+        outputField: '',
+        variableField: '',
+        holiday1: '',
+        status1: '',
+        holiday2: '',
+        status2: '',
+        intervalField: '',
+        scheduleTime: '',
+        mondayTime: '',
+        tuesdayTime: '',
+        wednesdayTime: '',
+        thursdayTime: '',
+        fridayTime: '',
+      } as SchedulePoint));
+    }
+    return schedules;
+  }, [schedules]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (schedule: SchedulePoint) => {
+    return !schedule.scheduleId && schedules.length === 0;
+  };
+
   // Auto/Manual toggle handler
   const handleAutoManualToggle = async (item: SchedulePoint) => {
     const newValue = item.autoManual === '1' ? '0' : '1';
@@ -319,21 +349,23 @@ export const SchedulesPage: React.FC = () => {
         const isRefreshing = item.scheduleId && refreshingItems.has(item.scheduleId);
         return (
           <TableCellLayout>
-            <div className={styles.headerCellWith8Gap}>
-              <button
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleSchedule(item);
-                }}
-                disabled={isRefreshing}
-                title="Refresh this schedule from device"
-                aria-label="Refresh schedule"
-              >
-                <ArrowSyncRegular fontSize={16} />
-              </button>
-              <span>{item.scheduleId || '---'}</span>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.headerCellWith8Gap}>
+                <button
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleSchedule(item);
+                  }}
+                  disabled={isRefreshing}
+                  title="Refresh this schedule from device"
+                  aria-label="Refresh schedule"
+                >
+                  <ArrowSyncRegular fontSize={16} />
+                </button>
+                <span>{item.scheduleId || '---'}</span>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -351,13 +383,15 @@ export const SchedulesPage: React.FC = () => {
         const isAuto = item.autoManual === '1';
         return (
           <TableCellLayout>
-            <div className={styles.headerCellWith8Gap}>
-              <Switch
-                checked={isAuto}
-                onChange={() => handleAutoManualToggle(item)}
-              />
-              <Text size={200}>{isAuto ? 'AUTO' : 'MAN'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.headerCellWith8Gap}>
+                <Switch
+                  checked={isAuto}
+                  onChange={() => handleAutoManualToggle(item)}
+                />
+                <Text size={200}>{isAuto ? 'AUTO' : 'MAN'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -376,7 +410,11 @@ export const SchedulesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.outputField || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.outputField || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 4. Variable
@@ -392,7 +430,11 @@ export const SchedulesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.variableField || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.variableField || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 5. Holiday1
@@ -408,7 +450,11 @@ export const SchedulesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.holiday1 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.holiday1 || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 6. Status1
@@ -419,7 +465,11 @@ export const SchedulesPage: React.FC = () => {
           <span>Label</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.status1 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.status1 || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 7. Holiday2
@@ -435,7 +485,11 @@ export const SchedulesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.holiday2 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.holiday2 || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 8. Status2
@@ -446,12 +500,16 @@ export const SchedulesPage: React.FC = () => {
           <span>Status</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.status2 || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.status2 || '---')}
+        </TableCellLayout>
+      ),
     }),
   ];
 
-  // Filtered and sorted schedules
-  const filteredSchedules = schedules.filter(schedule =>
+  // Filtered and sorted schedules (use displaySchedules to include empty rows)
+  const filteredSchedules = displaySchedules.filter(schedule =>
     searchQuery === '' ||
     schedule.scheduleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     schedule.outputField?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -663,7 +721,7 @@ export const SchedulesPage: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
-                  {/* No Data Message - Show below grid when empty */}
+                  {/* No Data Message - Commented out - showing empty grid instead
                   {schedules.length === 0 && (
                     <div className={styles.emptyStateContainer}>
                       <div className={styles.emptyStateHeader}>
@@ -683,6 +741,7 @@ export const SchedulesPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
+                  */}
 
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
@@ -690,8 +749,8 @@ export const SchedulesPage: React.FC = () => {
                       <Text>Loading next device...</Text>
                     </div>
                   )}
-                  </div>
-                )}
+                </div>
+              )}
 
               </div>
             </div>
