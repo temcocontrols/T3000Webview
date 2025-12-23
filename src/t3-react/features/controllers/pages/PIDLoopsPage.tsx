@@ -82,6 +82,49 @@ const PIDLoopsPage: React.FC = () => {
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
 
+  // Create empty rows when no data exists
+  const displayPidLoops = useMemo(() => {
+    if (pidLoops.length === 0) {
+      // Return 10 completely empty rows
+      return Array(10).fill(null).map((_, index) => ({
+        loop_field: '',
+        input_field: '',
+        input_value: '',
+        units: '',
+        auto_manual: '',
+        output_field: '',
+        output_value: '',
+        set_value: '',
+        units_state: '',
+        action_field: '',
+        proportional: '',
+        reset_field: '',
+        rate: '',
+        bias: '',
+        switch_node: '',
+        status: '',
+        type_field: '',
+        setpoint_high: '',
+        setpoint_low: '',
+        variable_state: '',
+      } as PIDController));
+    }
+    return pidLoops;
+  }, [pidLoops]);
+
+  // Check if a row is an empty placeholder row
+  const isEmptyRow = (controller: PIDController) => {
+    return !controller.loop_field && pidLoops.length === 0;
+  };
+
+  // Wrapper to render empty cells for empty rows
+  const renderCellContent = (controller: PIDController, content: React.ReactNode) => {
+    if (isEmptyRow(controller)) {
+      return <TableCellLayout></TableCellLayout>;
+    }
+    return <TableCellLayout>{content}</TableCellLayout>;
+  };
+
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
     if (!selectedDevice) {
@@ -365,6 +408,9 @@ const PIDLoopsPage: React.FC = () => {
         </div>
       ),
       renderCell: (controller) => {
+        if (isEmptyRow(controller)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
         const loopField = controller.loop_field || '';
         const isRefreshingThis = refreshingItems.has(loopField);
 
@@ -403,11 +449,13 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(controller, 'input_field')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_field', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              value={getCurrentValue(controller, 'input_field')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_field', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -423,12 +471,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'input_value')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_value', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'input_value')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'input_value', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -440,7 +490,7 @@ const PIDLoopsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Units</div>,
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(controller, 'units')}
+          {!isEmptyRow(controller) && getCurrentValue(controller, 'units')}
         </TableCellLayout>
       ),
     }),
@@ -455,6 +505,9 @@ const PIDLoopsPage: React.FC = () => {
         </div>
       ),
       renderCell: (controller) => {
+        if (isEmptyRow(controller)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
         const isAuto = getCurrentValue(controller, 'auto_manual') === 'AUTO';
         return (
           <TableCellLayout>
@@ -484,11 +537,13 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            value={getCurrentValue(controller, 'output_field')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'output_field', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              value={getCurrentValue(controller, 'output_field')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'output_field', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -504,12 +559,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'set_value')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'set_value', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'set_value')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'set_value', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -525,7 +582,7 @@ const PIDLoopsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Units</div>,
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(controller, 'units_state')}
+          {!isEmptyRow(controller) && getCurrentValue(controller, 'units_state')}
         </TableCellLayout>
       ),
     }),
@@ -541,7 +598,7 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(controller, 'action_field')}
+          {!isEmptyRow(controller) && getCurrentValue(controller, 'action_field')}
         </TableCellLayout>
       ),
     }),
@@ -557,12 +614,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'proportional')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'proportional', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'proportional')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'proportional', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -578,12 +637,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'reset_field')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'reset_field', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'reset_field')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'reset_field', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -603,12 +664,14 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'rate')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'rate', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'rate')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'rate', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
@@ -624,16 +687,18 @@ const PIDLoopsPage: React.FC = () => {
       ),
       renderCell: (controller) => (
         <TableCellLayout>
-          <Input
-            className={styles.editableInput}
-            type="number"
-            value={getCurrentValue(controller, 'bias')}
-            onChange={(e, data) => handleFieldEdit(controller.loop_field, 'bias', data.value)}
-          />
+          {!isEmptyRow(controller) && (
+            <Input
+              className={styles.editableInput}
+              type="number"
+              value={getCurrentValue(controller, 'bias')}
+              onChange={(e, data) => handleFieldEdit(controller.loop_field, 'bias', data.value)}
+            />
+          )}
         </TableCellLayout>
       ),
     }),
-  ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue]);
+  ], [editedValues, sortColumn, sortDirection, handleSort, handleFieldEdit, handleAutoManualToggle, getCurrentValue, isEmptyRow]);
 
   return (
     <div className={styles.container}>
@@ -789,7 +854,7 @@ const PIDLoopsPage: React.FC = () => {
             onWheel={handleWheel}
           >
             <DataGrid
-              items={pidLoops}
+              items={displayPidLoops}
               columns={columns}
               sortable
               resizableColumns
@@ -867,6 +932,7 @@ const PIDLoopsPage: React.FC = () => {
             </DataGrid>
 
             {/* No Data Message - Show below grid when empty */}
+            {/* Commented out - showing empty grid instead
             {pidLoops.length === 0 && (
               <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -886,6 +952,7 @@ const PIDLoopsPage: React.FC = () => {
                 </Button>
               </div>
             )}
+            */}
 
             {isLoadingNextDevice && (
               <div className={styles.autoLoadIndicator}>
