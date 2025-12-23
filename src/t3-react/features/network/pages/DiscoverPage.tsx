@@ -126,6 +126,29 @@ export const DiscoverPage: React.FC = () => {
     );
   });
 
+  // Display data with 10 empty rows when no devices
+  const displayDevices = React.useMemo(() => {
+    if (devices.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        id: '',
+        model: '',
+        building: '',
+        floor: '',
+        room: '',
+        subnet: '',
+        serialNumber: '',
+        ipAddress: '',
+        port: '',
+        protocol: '',
+        modbusId: '',
+      }));
+    }
+    return filteredDevices;
+  }, [devices.length, filteredDevices]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: Device) => !item.id && devices.length === 0;
+
   // Column definitions matching C++ InitScanGrid()
   const columns: TableColumnDefinition<Device>[] = [
     createTableColumn<Device>({
@@ -143,7 +166,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.model}>
-          {item.model}
+          {!isEmptyRow(item) && item.model}
         </TableCellLayout>
       ),
     }),
@@ -162,7 +185,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.building}>
-          {item.building}
+          {!isEmptyRow(item) && item.building}
         </TableCellLayout>
       ),
     }),
@@ -181,7 +204,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.floor}>
-          {item.floor}
+          {!isEmptyRow(item) && item.floor}
         </TableCellLayout>
       ),
     }),
@@ -200,7 +223,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.room}>
-          {item.room}
+          {!isEmptyRow(item) && item.room}
         </TableCellLayout>
       ),
     }),
@@ -219,7 +242,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.subnet}>
-          {item.subnet}
+          {!isEmptyRow(item) && item.subnet}
         </TableCellLayout>
       ),
     }),
@@ -238,7 +261,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.serialNumber}>
-          {item.serialNumber}
+          {!isEmptyRow(item) && item.serialNumber}
         </TableCellLayout>
       ),
     }),
@@ -257,7 +280,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.ipAddress}>
-          {item.ipAddress}
+          {!isEmptyRow(item) && item.ipAddress}
         </TableCellLayout>
       ),
     }),
@@ -276,7 +299,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.port}>
-          {item.port}
+          {!isEmptyRow(item) && item.port}
         </TableCellLayout>
       ),
     }),
@@ -295,7 +318,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.protocol}>
-          {item.protocol}
+          {!isEmptyRow(item) && item.protocol}
         </TableCellLayout>
       ),
     }),
@@ -314,7 +337,7 @@ export const DiscoverPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout truncate title={item.modbusId}>
-          {item.modbusId}
+          {!isEmptyRow(item) && item.modbusId}
         </TableCellLayout>
       ),
     }),
@@ -406,7 +429,7 @@ export const DiscoverPage: React.FC = () => {
                 {!loading && !error && (
                   <>
                   <DataGrid
-                    items={filteredDevices}
+                    items={displayDevices}
                     columns={columns}
                     sortable
                     resizableColumns
@@ -473,7 +496,7 @@ export const DiscoverPage: React.FC = () => {
                   </DataGrid>
 
                   {/* No Data Message - Show below grid when empty */}
-                  {devices.length === 0 && (
+                  {/* {devices.length === 0 && (
                     <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
@@ -491,7 +514,7 @@ export const DiscoverPage: React.FC = () => {
                         Refresh
                       </Button>
                     </div>
-                  )}
+                  )} */}
                   </>
                 )}
               </div>

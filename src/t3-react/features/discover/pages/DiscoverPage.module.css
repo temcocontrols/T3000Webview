@@ -244,21 +244,26 @@
 
 /* Scrollbar styling */
 .gridContainer::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 6px;
+  height: 6px;
 }
 
 .gridContainer::-webkit-scrollbar-track {
-  background: #f3f2f1;
+  background: #f5f5f5;
 }
 
 .gridContainer::-webkit-scrollbar-thumb {
-  background: #c8c6c4;
-  border-radius: 6px;
+  background: #c1c1c1;
+  border-radius: 3px;
 }
 
 .gridContainer::-webkit-scrollbar-thumb:hover {
-  background: #a19f9d;
+  background: #a1a1a1;
+}
+
+.gridContainer {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
 }
 
 /* Responsive adjustments */

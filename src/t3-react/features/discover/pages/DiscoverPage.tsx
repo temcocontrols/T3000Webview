@@ -101,8 +101,33 @@ const DiscoverPage: React.FC = () => {
     setSearchQuery(event.target.value);
   };
 
-  // Filter devices based on search query
-  const filteredDevices = devices.filter((device) => {
+  // Display devices with empty rows when no data (show 10 empty rows)
+  const displayDevices = React.useMemo(() => {
+    if (devices.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        id: '',
+        model: '',
+        building: '',
+        floor: '',
+        room: '',
+        subnet: '',
+        serialNumber: '',
+        ipAddress: '',
+        port: '',
+        protocol: '',
+        modbusId: '',
+      } as Device));
+    }
+    return devices;
+  }, [devices]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (device: Device) => {
+    return !device.id && devices.length === 0;
+  };
+
+  // Filter devices based on search query (use displayDevices to include empty rows)
+  const filteredDevices = displayDevices.filter((device) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -127,7 +152,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Model',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.model}>
-          {item.model}
+          {!isEmptyRow(item) && item.model}
         </TableCellLayout>
       ),
     }),
@@ -137,7 +162,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Building',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.building}>
-          {item.building}
+          {!isEmptyRow(item) && item.building}
         </TableCellLayout>
       ),
     }),
@@ -147,7 +172,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Floor',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.floor}>
-          {item.floor}
+          {!isEmptyRow(item) && item.floor}
         </TableCellLayout>
       ),
     }),
@@ -157,7 +182,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Room',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.room}>
-          {item.room}
+          {!isEmptyRow(item) && item.room}
         </TableCellLayout>
       ),
     }),
@@ -167,7 +192,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Sub_net',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.subnet}>
-          {item.subnet}
+          {!isEmptyRow(item) && item.subnet}
         </TableCellLayout>
       ),
     }),
@@ -177,7 +202,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Serial#',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.serialNumber}>
-          {item.serialNumber}
+          {!isEmptyRow(item) && item.serialNumber}
         </TableCellLayout>
       ),
     }),
@@ -187,7 +212,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'IP Address',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.ipAddress}>
-          {item.ipAddress}
+          {!isEmptyRow(item) && item.ipAddress}
         </TableCellLayout>
       ),
     }),
@@ -197,7 +222,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Port',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.port}>
-          {item.port}
+          {!isEmptyRow(item) && item.port}
         </TableCellLayout>
       ),
     }),
@@ -207,7 +232,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'Protocol',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.protocol}>
-          {item.protocol}
+          {!isEmptyRow(item) && item.protocol}
         </TableCellLayout>
       ),
     }),
@@ -217,7 +242,7 @@ const DiscoverPage: React.FC = () => {
       renderHeaderCell: () => 'ID',
       renderCell: (item) => (
         <TableCellLayout truncate title={item.modbusId}>
-          {item.modbusId}
+          {!isEmptyRow(item) && item.modbusId}
         </TableCellLayout>
       ),
     }),
