@@ -97,7 +97,7 @@ const useStyles = makeStyles({
   },
   tabContent: {
     flex: 1,
-    padding: '8px 0 8px 12px',
+    padding: '8px 0 0 12px',
     overflow: 'auto',
     backgroundColor: tokens.colorNeutralBackground1,
     scrollbarWidth: 'thin',
@@ -298,12 +298,19 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: '8px',
   },
+  tabContentWrapper: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minHeight: 0,
+  },
   actionsSection: {
-    marginTop: '16px',
+    marginTop: 'auto',
     padding: '12px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: '4px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    flexShrink: 0,
   },
   actionButtons: {
     display: 'flex',
@@ -929,33 +936,6 @@ export const SettingsPage: React.FC = () => {
                 <Button size="small" appearance="secondary">Advanced Settings</Button>
               </div>
             </div>
-
-            {/* Actions */}
-            <div className={styles.actionsSection}>
-              <div className={styles.basicPanelTitle}>Actions</div>
-              <div className={styles.actionButtons}>
-                <Button size="small" appearance="secondary" icon={<InfoRegular />}>
-                  Identify Device
-                </Button>
-                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
-                  Clear Device
-                </Button>
-                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
-                  Clear Subnet Database
-                </Button>
-                <Button
-                  size="small"
-                  appearance="secondary"
-                  icon={<PowerRegular />}
-                  onClick={() => setShowRebootDialog(true)}
-                >
-                  Reboot Device
-                </Button>
-                <Button size="small" appearance="primary" icon={<SaveRegular />} className={styles.saveButton}>
-                  Done
-                </Button>
-              </div>
-            </div>
           </>
         );
 
@@ -1302,50 +1282,6 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <SettingsRegular style={{ fontSize: '16px' }} />
-          <Text size={400} weight="semibold">
-            Device Settings
-          </Text>
-          {selectedDevice && (
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              {selectedDevice.nameShowOnTree} (SN: {selectedDevice.serialNumber})
-            </Text>
-          )}
-        </div>
-        <div className={styles.headerActions}>
-          <Button
-            appearance="subtle"
-            icon={<ArrowResetRegular />}
-            onClick={() => setShowResetDialog(true)}
-            disabled={loading || !selectedDevice}
-            style={{ fontWeight: 'normal', fontSize: '12px' }}
-          >
-            Reset to Defaults
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<PowerRegular />}
-            onClick={() => setShowRebootDialog(true)}
-            disabled={loading || !selectedDevice}
-            style={{ fontWeight: 'normal', fontSize: '12px' }}
-          >
-            Reboot Device
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<ArrowSyncRegular />}
-            onClick={handleRefresh}
-            disabled={loading}
-            style={{ fontWeight: 'normal', fontSize: '12px' }}
-          >
-            Refresh
-          </Button>
-        </div>
-      </div>
-
       {/* Tab Container */}
       <div className={styles.tabContainer}>
         {/* Tab List */}
@@ -1359,25 +1295,76 @@ export const SettingsPage: React.FC = () => {
           <Tab value="expansion" style={{ fontSize: '5px' }}>Expansion IO</Tab>
         </TabList>
 
-        {/* Tab Content */}
-        <div className={styles.tabContent}>
-          {/* Error Message */}
-          {error && (
-            <div className={styles.errorMessage}>
-              <ErrorCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />
-              <Text style={{ color: '#d13438', fontSize: '12px' }}>{error}</Text>
+        {/* Tab Content Wrapper */}
+        <div className={styles.tabContentWrapper}>
+          {/* Tab Content - Scrollable Area */}
+          <div className={styles.tabContent}>
+            {/* Error Message */}
+            {error && (
+              <div className={styles.errorMessage}>
+                <ErrorCircleRegular style={{ fontSize: '14px', color: '#d13438' }} />
+                <Text style={{ color: '#d13438', fontSize: '12px' }}>{error}</Text>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {successMessage && (
+              <div className={styles.successMessage}>
+                <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
+                <Text style={{ color: '#0078d4', fontSize: '12px' }}>{successMessage}</Text>
+              </div>
+            )}
+
+            {renderTabContent()}
+          </div>
+
+          {/* Actions Section - Sticky Bottom */}
+          {selectedDevice && selectedTab === 'basic' && (
+            <div className={styles.actionsSection}>
+              <div className={styles.basicPanelTitle}>Actions</div>
+              <div className={styles.actionButtons}>
+                <Button size="small" appearance="secondary" icon={<InfoRegular />}>
+                  Identify Device
+                </Button>
+                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
+                  Clear Device
+                </Button>
+                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
+                  Clear Subnet Database
+                </Button>
+                <Button
+                  size="small"
+                  appearance="secondary"
+                  icon={<PowerRegular />}
+                  onClick={() => setShowRebootDialog(true)}
+                  disabled={loading || !selectedDevice}
+                >
+                  Reboot Device
+                </Button>
+                <Button
+                  size="small"
+                  appearance="secondary"
+                  icon={<ArrowResetRegular />}
+                  onClick={() => setShowResetDialog(true)}
+                  disabled={loading || !selectedDevice}
+                >
+                  Reset to Defaults
+                </Button>
+                <Button
+                  size="small"
+                  appearance="secondary"
+                  icon={<ArrowSyncRegular />}
+                  onClick={handleRefresh}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
+                <Button size="small" appearance="primary" icon={<SaveRegular />} className={styles.saveButton}>
+                  Done
+                </Button>
+              </div>
             </div>
           )}
-
-          {/* Success Message */}
-          {successMessage && (
-            <div className={styles.successMessage}>
-              <InfoRegular style={{ fontSize: '14px', color: '#0078d4' }} />
-              <Text style={{ color: '#0078d4', fontSize: '12px' }}>{successMessage}</Text>
-            </div>
-          )}
-
-          {renderTabContent()}
         </div>
       </div>
 
