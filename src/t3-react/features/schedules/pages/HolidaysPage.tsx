@@ -272,6 +272,26 @@ export const HolidaysPage: React.FC = () => {
     }
   }, [selectedDevice, isLoadingNextDevice]);
 
+  // Display holidays with empty rows when no data (show 10 empty rows)
+  const displayHolidays = React.useMemo(() => {
+    if (holidays.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: 0,
+        holidayId: '',
+        fullLabel: '',
+        autoManual: '',
+        value: '',
+        label: '',
+      } as HolidayPoint));
+    }
+    return holidays;
+  }, [holidays]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (holiday: HolidayPoint) => {
+    return !holiday.holidayId && holidays.length === 0;
+  };
+
   // Inline editing handlers
   const handleCellDoubleClick = (item: HolidayPoint, field: string, currentValue: string) => {
     setEditingCell({ serialNumber: item.serialNumber, holidayId: item.holidayId || '', field });
@@ -349,21 +369,23 @@ export const HolidaysPage: React.FC = () => {
         const isRefreshing = item.holidayId && refreshingItems.has(item.holidayId);
         return (
           <TableCellLayout>
-            <div className={styles.flexCenter8Gap}>
-              <button
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleHoliday(item);
-                }}
-                disabled={!!isRefreshing}
-                title="Refresh this holiday from device"
-                aria-label="Refresh holiday"
-              >
-                <ArrowSyncRegular fontSize={16} />
-              </button>
-              <span>{item.holidayId || '---'}</span>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.flexCenter8Gap}>
+                <button
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleHoliday(item);
+                  }}
+                  disabled={!!isRefreshing}
+                  title="Refresh this holiday from device"
+                  aria-label="Refresh holiday"
+                >
+                  <ArrowSyncRegular fontSize={16} />
+                </button>
+                <span>{item.holidayId || '---'}</span>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -389,24 +411,26 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <Input
-                value={editValue}
-                onChange={(_e, data) => setEditValue(data.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                size="small"
-                className={styles.fullWidth}
-              />
-            ) : (
-              <div
-                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                className={styles.editableCell}
-              >
-                <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <Input
+                  value={editValue}
+                  onChange={(_e, data) => setEditValue(data.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  size="small"
+                  className={styles.fullWidth}
+                />
+              ) : (
+                <div
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
+                  className={styles.editableCell}
+                >
+                  <Text size={200}>{item.fullLabel || 'Unnamed'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -426,13 +450,15 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div className={styles.headerCellWith8Gap}>
-              <Switch
-                checked={isAuto}
-                onChange={() => handleAutoManualToggle(item)}
-              />
-              <Text size={200}>{isAuto ? 'Auto' : 'Manual'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.headerCellWith8Gap}>
+                <Switch
+                  checked={isAuto}
+                  onChange={() => handleAutoManualToggle(item)}
+                />
+                <Text size={200}>{isAuto ? 'Auto' : 'Manual'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -451,7 +477,11 @@ export const HolidaysPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.value || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.value || '---')}
+        </TableCellLayout>
+      ),
     }),
 
     // 5. Label (editable)
@@ -474,24 +504,26 @@ export const HolidaysPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <Input
-                value={editValue}
-                onChange={(_e, data) => setEditValue(data.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                size="small"
-                className={styles.fullWidth}
-              />
-            ) : (
-              <div
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                className={styles.editableCell}
-              >
-                <Text size={200}>{item.label || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <Input
+                  value={editValue}
+                  onChange={(_e, data) => setEditValue(data.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  size="small"
+                  className={styles.fullWidth}
+                />
+              ) : (
+                <div
+                  onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                  className={styles.editableCell}
+                >
+                  <Text size={200}>{item.label || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -625,7 +657,7 @@ export const HolidaysPage: React.FC = () => {
                   onWheel={handleWheel}
                 >
                   <DataGrid
-                    items={holidays}
+                    items={displayHolidays}
                     columns={columns}
                     sortable
                     resizableColumns
@@ -670,7 +702,7 @@ export const HolidaysPage: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
-                  {/* No Data Message - Show below grid when empty */}
+                  {/* No Data Message - Commented out - showing empty grid instead
                   {holidays.length === 0 && (
                     <div className={styles.emptyStateContainer}>
                       <div className={styles.emptyStateHeader}>
@@ -690,6 +722,7 @@ export const HolidaysPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
+                  */}
 
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
