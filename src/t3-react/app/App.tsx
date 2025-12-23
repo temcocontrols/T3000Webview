@@ -67,7 +67,7 @@ const SettingsPage = React.lazy(() =>
   import('../features/settings/pages/SettingsPage')
 );
 const DiscoverPage = React.lazy(() =>
-  import('../features/network/pages/DiscoverPage').then((m) => ({ default: m.DiscoverPage }))
+  import('../features/discover/pages/DiscoverPage').then((m) => ({ default: m.DiscoverPage }))
 );
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
