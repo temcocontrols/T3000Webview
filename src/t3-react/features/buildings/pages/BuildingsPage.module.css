@@ -193,6 +193,27 @@
   flex-direction: column;
   overflow: auto;
   min-height: 0;
+  /* Thin scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+.dockingBody::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dockingBody::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.dockingBody::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.dockingBody::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 /* Loading and No Data States */

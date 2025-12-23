@@ -92,6 +92,26 @@ export const BuildingsPage: React.FC = () => {
     console.log('Search query:', e.target.value);
   };
 
+  // Display data with 10 empty rows when no buildings
+  const displayBuildings = React.useMemo(() => {
+    if (buildings.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        id: undefined,
+        buildingName: '',
+        protocol: '',
+        ipAddress: '',
+        ipPort: '',
+        comPort: '',
+        baudRate: '',
+        buildingPath: '',
+      }));
+    }
+    return buildings;
+  }, [buildings]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: Building) => !item.id && buildings.length === 0;
+
   // Columns definition - matches C++ BuildingConfigration columns
   const columns: TableColumnDefinition<Building>[] = [
     createTableColumn<Building>({
@@ -100,7 +120,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Item',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.id || '-'}
+          {!isEmptyRow(item) && (item.id || '-')}
         </TableCellLayout>
       ),
     }),
@@ -110,7 +130,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Building',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.buildingName || '-'}
+          {!isEmptyRow(item) && (item.buildingName || '-')}
         </TableCellLayout>
       ),
     }),
@@ -120,7 +140,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Protocol',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.protocol || '-'}
+          {!isEmptyRow(item) && (item.protocol || '-')}
         </TableCellLayout>
       ),
     }),
@@ -130,7 +150,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'IP/Domain/Tel#/SerialNumber',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.ipAddress || '-'}
+          {!isEmptyRow(item) && (item.ipAddress || '-')}
         </TableCellLayout>
       ),
     }),
@@ -140,7 +160,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Modbus TCP Port',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.ipPort || '-'}
+          {!isEmptyRow(item) && (item.ipPort || '-')}
         </TableCellLayout>
       ),
     }),
@@ -150,7 +170,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'COM Port',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.comPort || '-'}
+          {!isEmptyRow(item) && (item.comPort || '-')}
         </TableCellLayout>
       ),
     }),
@@ -160,7 +180,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Baud Rate',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.baudRate || '-'}
+          {!isEmptyRow(item) && (item.baudRate || '-')}
         </TableCellLayout>
       ),
     }),
@@ -170,7 +190,7 @@ export const BuildingsPage: React.FC = () => {
       renderHeaderCell: () => 'Building Path',
       renderCell: (item) => (
         <TableCellLayout>
-          {item.buildingPath || '-'}
+          {!isEmptyRow(item) && (item.buildingPath || '-')}
         </TableCellLayout>
       ),
     }),
@@ -267,7 +287,7 @@ export const BuildingsPage: React.FC = () => {
                 {!loading && (
                   <>
                     <DataGrid
-                      items={buildings}
+                      items={displayBuildings}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -325,7 +345,7 @@ export const BuildingsPage: React.FC = () => {
                     </DataGrid>
 
                     {/* No Data Message */}
-                    {buildings.length === 0 && (
+                    {/* {buildings.length === 0 && (
                       <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
@@ -335,7 +355,7 @@ export const BuildingsPage: React.FC = () => {
                         </div>
                         <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>No buildings configured in the system</Text>
                       </div>
-                    )}
+                    )} */}
                   </>
                 )}
 

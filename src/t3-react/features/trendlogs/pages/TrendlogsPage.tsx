@@ -535,6 +535,28 @@ export const TrendLogsPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no trendlogs
+  const displayTrendLogs = React.useMemo(() => {
+    if (trendLogs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        trendlogId: '',
+        trendlogIndex: '',
+        trendlogLabel: '',
+        intervalSeconds: undefined,
+        bufferSize: undefined,
+        autoManual: '',
+        status: '',
+        _uniqueIndex: index,
+        panelId: selectedDevice?.panelId,
+      }));
+    }
+    return trendLogs;
+  }, [trendLogs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: TrendLogData) => !item.trendlogId && !item.trendlogIndex && trendLogs.length === 0;
+
   // Column definitions
   const columns: TableColumnDefinition<TrendLogData>[] = [
     createTableColumn<TrendLogData>({
@@ -560,22 +582,24 @@ export const TrendLogsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div className={styles.refreshContainer}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleTrendlog(trendlogIndex);
-                }}
-                className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
-                title="Refresh this trendlog from device"
-                disabled={isRefreshingThis}
-              >
-                <ArrowSyncRegular
-                  className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
-                />
-              </button>
-              <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.refreshContainer}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleTrendlog(trendlogIndex);
+                  }}
+                  className={`${styles.refreshIconButton} ${isRefreshingThis ? styles.isRefreshing : ''}`}
+                  title="Refresh this trendlog from device"
+                  disabled={isRefreshingThis}
+                >
+                  <ArrowSyncRegular
+                    className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
+                  />
+                </button>
+                <Text size={200} weight="regular">{trendlogIndex || '---'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -595,7 +619,7 @@ export const TrendLogsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200}>{item.trendlogLabel || '---'}</Text>
+          {!isEmptyRow(item) && <Text size={200}>{item.trendlogLabel || '---'}</Text>}
         </TableCellLayout>
       ),
     }),
@@ -604,7 +628,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Interval (sec)</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200}>{item.intervalSeconds ?? '---'}</Text>
+          {!isEmptyRow(item) && <Text size={200}>{item.intervalSeconds ?? '---'}</Text>}
         </TableCellLayout>
       ),
     }),
@@ -613,7 +637,7 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Buffer Size</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Text size={200}>{item.bufferSize ?? '---'}</Text>
+          {!isEmptyRow(item) && <Text size={200}>{item.bufferSize ?? '---'}</Text>}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.bufferSize || 0) - (b.bufferSize || 0),
@@ -623,9 +647,11 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Auto/Manual</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Badge appearance={item.autoManual === '1' ? 'filled' : 'outline'} color="informative">
-            {item.autoManual === '1' ? 'Auto' : item.autoManual === '0' ? 'Manual' : '---'}
-          </Badge>
+          {!isEmptyRow(item) && (
+            <Badge appearance={item.autoManual === '1' ? 'filled' : 'outline'} color="informative">
+              {item.autoManual === '1' ? 'Auto' : item.autoManual === '0' ? 'Manual' : '---'}
+            </Badge>
+          )}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.autoManual || '').localeCompare(b.autoManual || ''),
@@ -635,9 +661,11 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Status</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
-            {item.status || 'OFF'}
-          </Badge>
+          {!isEmptyRow(item) && (
+            <Badge appearance="tint" color={item.status === 'ON' ? 'success' : 'subtle'}>
+              {item.status || 'OFF'}
+            </Badge>
+          )}
         </TableCellLayout>
       ),
       compare: (a, b) => (a.status || '').localeCompare(b.status || ''),
@@ -648,14 +676,16 @@ export const TrendLogsPage: React.FC = () => {
       renderHeaderCell: () => <span>Actions</span>,
       renderCell: (item) => (
         <TableCellLayout>
-          <Button
-            size="small"
-            icon={<ChartMultipleRegular className={styles.iconSmall} />}
-            onClick={() => handleViewChart(item)}
-            title="View trend chart for this trendlog"
-          >
-            View Graphic
-          </Button>
+          {!isEmptyRow(item) && (
+            <Button
+              size="small"
+              icon={<ChartMultipleRegular className={styles.iconSmall} />}
+              onClick={() => handleViewChart(item)}
+              title="View trend chart for this trendlog"
+            >
+              View Graphic
+            </Button>
+          )}
         </TableCellLayout>
       ),
     }),
@@ -816,13 +846,13 @@ export const TrendLogsPage: React.FC = () => {
                 )}
 
                 {/* Dual Grid Layout - Main Grid (80%) + Input Grid (20%) */}
-                {selectedDevice && !loading && !error && trendLogs.length > 0 && (
+                {selectedDevice && !loading && !error && (
                   <div className={styles.gridContainer}>
                     {/* Main Monitor List - Left Side (80%) */}
                     <div className={`${styles.mainGrid} ${styles.scrollContainerAuto}`}>
                       <DataGrid
                         key="trendlogs-grid-v5"
-                        items={trendLogs}
+                        items={displayTrendLogs}
                         columns={columns}
                         sortable
                         resizableColumns
@@ -942,7 +972,7 @@ export const TrendLogsPage: React.FC = () => {
                 )}
 
                 {/* No Data Message - Show when device selected but no trendlogs */}
-                {selectedDevice && !loading && !error && trendLogs.length === 0 && (
+                {/* {selectedDevice && !loading && !error && trendLogs.length === 0 && (
                   <div className={styles.emptyStateContainer}>
                     <div className={styles.emptyStateHeader}>
                       <Text size={400} weight="semibold">No trendlogs found</Text>
@@ -951,7 +981,7 @@ export const TrendLogsPage: React.FC = () => {
                       This device has no configured trendlog monitors
                     </Text>
                   </div>
-                )}
+                )} */}
 
               </div>
             </div>
