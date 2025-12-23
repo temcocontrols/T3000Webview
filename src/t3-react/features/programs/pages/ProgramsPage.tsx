@@ -349,6 +349,27 @@ export const ProgramsPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no programs
+  const displayPrograms = React.useMemo(() => {
+    if (programs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        programId: '',
+        switchNode: '',
+        programLabel: '',
+        programList: '',
+        programSize: '',
+        programPointer: '',
+        programStatus: '',
+        autoManual: '',
+      }));
+    }
+    return programs;
+  }, [programs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: ProgramPoint) => !item.programId && programs.length === 0;
+
   // Column definitions matching C++ BacnetProgram: Program, Full Label, Status, Auto/Manual, Size, Execution time, Label
   const columns: TableColumnDefinition<ProgramPoint>[] = [
     // 1. Program (ID) with refresh icon
@@ -365,6 +386,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const programId = item.programId || '';
         const isRefreshingThis = refreshingItems.has(programId);
 
@@ -405,6 +430,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.programId === item.programId &&
                           editingCell?.field === 'programLabel';
@@ -451,6 +480,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isOn = item.programStatus?.toLowerCase() === 'on' || item.programStatus === '1';
 
         const handleToggle = () => {
@@ -490,6 +523,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
 
@@ -535,7 +572,11 @@ export const ProgramsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.programSize || '0'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.programSize || '0')}
+        </TableCellLayout>
+      ),
     }),
     // 6. Execution time (Run Status)
     createTableColumn<ProgramPoint>({
@@ -545,7 +586,11 @@ export const ProgramsPage: React.FC = () => {
           <span>Execution Time</span>
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.programPointer || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.programPointer || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 7. Label (short label, editable)
     createTableColumn<ProgramPoint>({
@@ -561,6 +606,10 @@ export const ProgramsPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.programId === item.programId &&
                           editingCell?.field === 'programList';
@@ -725,7 +774,7 @@ export const ProgramsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
-                    items={programs}
+                    items={displayPrograms}
                     columns={columns}
                     sortable
                     resizableColumns
@@ -779,7 +828,7 @@ export const ProgramsPage: React.FC = () => {
                   </DataGrid>
 
                   {/* No Data Message - Show below grid when empty */}
-                  {programs.length === 0 && (
+                  {/* {programs.length === 0 && (
                     <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
@@ -797,7 +846,7 @@ export const ProgramsPage: React.FC = () => {
                         Refresh
                       </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}              </div>
             </div>

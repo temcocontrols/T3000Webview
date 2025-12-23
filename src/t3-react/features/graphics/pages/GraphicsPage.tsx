@@ -240,6 +240,24 @@ export const GraphicsPage: React.FC = () => {
     }
   });
 
+  // Display data with 10 empty rows when no graphics
+  const displayGraphics = React.useMemo(() => {
+    if (sortedGraphics.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        graphicId: '',
+        switchNode: '',
+        graphicLabel: '',
+        graphicPictureFile: '',
+        graphicTotalPoint: '',
+      }));
+    }
+    return sortedGraphics;
+  }, [sortedGraphics, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: GraphicPoint) => !item.graphicId && sortedGraphics.length === 0;
+
   // Define columns matching C++ BacnetScreen columns
   const columns: TableColumnDefinition<GraphicPoint>[] = [
     createTableColumn<GraphicPoint>({
@@ -254,7 +272,11 @@ export const GraphicsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.graphicId || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.graphicId || '---')}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<GraphicPoint>({
       columnId: 'switchNode',
@@ -268,7 +290,11 @@ export const GraphicsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.switchNode || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.switchNode || '---')}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<GraphicPoint>({
       columnId: 'graphicLabel',
@@ -282,7 +308,11 @@ export const GraphicsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.graphicLabel || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.graphicLabel || '---')}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<GraphicPoint>({
       columnId: 'graphicPictureFile',
@@ -296,7 +326,11 @@ export const GraphicsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.graphicPictureFile || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.graphicPictureFile || '---')}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<GraphicPoint>({
       columnId: 'graphicTotalPoint',
@@ -310,27 +344,37 @@ export const GraphicsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.graphicTotalPoint || '0'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.graphicTotalPoint || '0')}
+        </TableCellLayout>
+      ),
     }),
     // Actions column - View Webview
     createTableColumn<GraphicPoint>({
       columnId: 'actions',
       renderHeaderCell: () => <span>Action</span>,
-      renderCell: (item) => (
-        <TableCellLayout>
-          <Button
-            size="small"
-            icon={<ImageRegular />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewWebview(item);
-            }}
-            title="View webview for this graphic"
-          >
-            View Webview
-          </Button>
-        </TableCellLayout>
-      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
+        return (
+          <TableCellLayout>
+            <Button
+              size="small"
+              icon={<ImageRegular />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewWebview(item);
+              }}
+              title="View webview for this graphic"
+            >
+              View Webview
+            </Button>
+          </TableCellLayout>
+        );
+      },
     }),
   ];
 
@@ -449,7 +493,7 @@ export const GraphicsPage: React.FC = () => {
                 ) : (
                   <div className={styles.scrollContainerAuto}>
                     <DataGrid
-                      items={sortedGraphics}
+                      items={displayGraphics}
                       columns={columns}
                       sortable
                       resizableColumns

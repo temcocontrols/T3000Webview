@@ -506,6 +506,37 @@ export const OutputsPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no outputs
+  const displayOutputs = React.useMemo(() => {
+    if (outputs.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        outputId: '',
+        outputIndex: '',
+        panel: '',
+        fullLabel: '',
+        autoManual: '',
+        hwSwitchStatus: '',
+        fValue: '',
+        units: '',
+        range: '',
+        rangeField: '',
+        lowVoltage: '',
+        highVoltage: '',
+        pwmPeriod: '',
+        status: '',
+        signalType: '',
+        digitalAnalog: '',
+        label: '',
+        typeField: '',
+      }));
+    }
+    return outputs;
+  }, [outputs, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: OutputPoint) => !item.outputIndex && !item.outputId && outputs.length === 0;
+
   // Column definitions matching the sequence: Panel, Output, Full Label, Label, Auto/Man, HOA Switch, Value, Units, Range, Low V, High V, PWM Period, Status, Type
   const columns: TableColumnDefinition<OutputPoint>[] = [
     // 1. Panel ID
@@ -521,7 +552,11 @@ export const OutputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.panel || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 2. Output (Index/ID)
     createTableColumn<OutputPoint>({
@@ -541,22 +576,24 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div className={styles.cellFlexContainer}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleOutput(item.outputIndex || '');
-                }}
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.isRefreshing : ''}`}
-                title="Refresh this output from device"
-                disabled={isRefreshing}
-              >
-                <ArrowSyncRegular
-                  className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
-                />
-              </button>
-              <Text size={200} weight="regular">{item.outputId || item.outputIndex || '---'}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div className={styles.cellFlexContainer}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleOutput(item.outputIndex || '');
+                  }}
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.isRefreshing : ''}`}
+                  title="Refresh this output from device"
+                  disabled={isRefreshing}
+                >
+                  <ArrowSyncRegular
+                    className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
+                  />
+                </button>
+                <Text size={200} weight="regular">{item.outputId || item.outputIndex || '---'}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -581,40 +618,42 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div className={styles.editInputContainer}>
-                <input
-                  type="text"
-                  className={`${styles.editInput} ${styles.flex1}`}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter label"
-                  aria-label="Edit full label"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="text"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter label"
+                    aria-label="Edit full label"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular className={styles.iconMedium} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fullLabel', item.fullLabel || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.fullLabel || 'Unnamed'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -640,40 +679,42 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div className={styles.editInputContainer}>
-                <input
-                  type="text"
-                  className={`${styles.editInput} ${styles.flex1}`}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter label"
-                  aria-label="Edit label"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="text"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter label"
+                    aria-label="Edit label"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular className={styles.iconMedium} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'label', item.label || '')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.label || '---'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.label || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -754,15 +795,17 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div
-              onClick={handleToggle}
-              className={styles.switchContainer}
-            >
-              <Switch
-                checked={isAuto}
-                className={styles.switchScale}
-              />
-            </div>
+            {!isEmptyRow(item) && (
+              <div
+                onClick={handleToggle}
+                className={styles.switchContainer}
+              >
+                <Switch
+                  checked={isAuto}
+                  className={styles.switchScale}
+                />
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -794,9 +837,11 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge appearance="filled" color={badgeColor} size="small">
-              {switchText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge appearance="filled" color={badgeColor} size="small">
+                {switchText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -821,41 +866,43 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <div className={styles.editInputContainer}>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={`${styles.editInput} ${styles.flex1}`}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleEditSave}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  disabled={isSaving}
-                  placeholder="Enter value"
-                  aria-label="Edit value"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSave();
-                  }}
-                  disabled={isSaving}
-                  className={styles.saveButton}
-                  title="Save"
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <div className={styles.editInputContainer}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={`${styles.editInput} ${styles.flex1}`}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={handleEditSave}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    disabled={isSaving}
+                    placeholder="Enter value"
+                    aria-label="Edit value"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSave();
+                    }}
+                    disabled={isSaving}
+                    className={styles.saveButton}
+                    title="Save"
+                  >
+                    <SaveRegular className={styles.iconMedium} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
+                  title="Double-click to edit"
                 >
-                  <SaveRegular className={styles.iconMedium} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.fValue || '---'}</Text>
-              </div>
+                  <Text size={200} weight="regular">{item.fValue || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -874,7 +921,11 @@ export const OutputsPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.units || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.units || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 7. Range
     createTableColumn<OutputPoint>({
@@ -902,13 +953,15 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <div
-              onClick={() => handleRangeClick(item)}
-              className={styles.rangeLink}
-              title="Click to change range"
-            >
-              <Text size={200} weight="regular">{rangeLabel}</Text>
-            </div>
+            {!isEmptyRow(item) && (
+              <div
+                onClick={() => handleRangeClick(item)}
+                className={styles.rangeLink}
+                title="Click to change range"
+              >
+                <Text size={200} weight="regular">{rangeLabel}</Text>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -933,28 +986,30 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter voltage"
-                aria-label="Edit low voltage"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'lowVoltage', item.lowVoltage?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.lowVoltage || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter voltage"
+                  aria-label="Edit low voltage"
+                />
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'lowVoltage', item.lowVoltage?.toString() || '0')}
+                  title="Double-click to edit"
+                >
+                  <Text size={200} weight="regular">{item.lowVoltage || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -980,28 +1035,30 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter voltage"
-                aria-label="Edit high voltage"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'highVoltage', item.highVoltage?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.highVoltage || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter voltage"
+                  aria-label="Edit high voltage"
+                />
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'highVoltage', item.highVoltage?.toString() || '0')}
+                  title="Double-click to edit"
+                >
+                  <Text size={200} weight="regular">{item.highVoltage || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -1022,28 +1079,30 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            {isEditing ? (
-              <input
-                type="number"
-                step="1"
-                className={styles.editInput}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleEditSave}
-                onKeyDown={handleEditKeyDown}
-                autoFocus
-                disabled={isSaving}
-                placeholder="Enter period"
-                aria-label="Edit PWM period"
-              />
-            ) : (
-              <div
-                className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
-                title="Double-click to edit"
-              >
-                <Text size={200} weight="regular">{item.pwmPeriod || '---'}</Text>
-              </div>
+            {!isEmptyRow(item) && (
+              isEditing ? (
+                <input
+                  type="number"
+                  step="1"
+                  className={styles.editInput}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={handleEditKeyDown}
+                  autoFocus
+                  disabled={isSaving}
+                  placeholder="Enter period"
+                  aria-label="Edit PWM period"
+                />
+              ) : (
+                <div
+                  className={styles.editableCell}
+                  onDoubleClick={() => handleCellDoubleClick(item, 'pwmPeriod', item.pwmPeriod?.toString() || '0')}
+                  title="Double-click to edit"
+                >
+                  <Text size={200} weight="regular">{item.pwmPeriod || '---'}</Text>
+                </div>
+              )
             )}
           </TableCellLayout>
         );
@@ -1082,12 +1141,14 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge
-              appearance="filled"
-              color={statusColor}
-            >
-              {statusText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge
+                appearance="filled"
+                color={statusColor}
+              >
+                {statusText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -1138,9 +1199,11 @@ export const OutputsPage: React.FC = () => {
 
         return (
           <TableCellLayout>
-            <Badge appearance="outline" color={badgeColor}>
-              {typeText}
-            </Badge>
+            {!isEmptyRow(item) && (
+              <Badge appearance="outline" color={badgeColor}>
+                {typeText}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -1292,7 +1355,7 @@ export const OutputsPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                     <DataGrid
-                      items={outputs}
+                      items={displayOutputs}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -1382,7 +1445,7 @@ export const OutputsPage: React.FC = () => {
                     )}
 
                     {/* No Data Message - Show below grid when empty */}
-                    {outputs.length === 0 && (
+                    {/* {outputs.length === 0 && (
                       <div className={styles.emptyStateContainer}>
                         <div className={styles.emptyStateHeader}>
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
@@ -1400,7 +1463,7 @@ export const OutputsPage: React.FC = () => {
                           Refresh
                         </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}
 

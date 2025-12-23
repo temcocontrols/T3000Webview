@@ -503,6 +503,34 @@ export const VariablesPage: React.FC = () => {
     }
   };
 
+  // Display data with 10 empty rows when no variables
+  const displayVariables = React.useMemo(() => {
+    if (variables.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        serialNumber: selectedDevice?.serialNumber || 0,
+        variableId: '',
+        variableIndex: '',
+        panel: '',
+        fullLabel: '',
+        autoManual: '',
+        fValue: '',
+        units: '',
+        rangeField: '',
+        calibration: '',
+        sign: '',
+        filterField: '',
+        status: '',
+        digitalAnalog: '',
+        label: '',
+        typeField: '',
+      }));
+    }
+    return variables;
+  }, [variables, selectedDevice]);
+
+  // Helper to identify empty rows
+  const isEmptyRow = (item: VariablePoint) => !item.variableIndex && !item.variableId && variables.length === 0;
+
   // Column definitions matching the sequence: Panel, Variable, Full Label, Label, Auto/Manual, Value, Units
   const columns: TableColumnDefinition<VariablePoint>[] = [
     // 1. Panel ID
@@ -518,7 +546,11 @@ export const VariablesPage: React.FC = () => {
           )}
         </div>
       ),
-      renderCell: (item) => <TableCellLayout>{item.panel || '---'}</TableCellLayout>,
+      renderCell: (item) => (
+        <TableCellLayout>
+          {!isEmptyRow(item) && (item.panel || '---')}
+        </TableCellLayout>
+      ),
     }),
     // 2. Variable (Index/ID)
     createTableColumn<VariablePoint>({
@@ -534,6 +566,10 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isRefreshing = refreshingItems.has(item.variableIndex || '');
 
         return (
@@ -572,6 +608,10 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.variableIndex === item.variableIndex &&
                           editingCell?.field === 'fullLabel';
@@ -631,6 +671,10 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.variableIndex === item.variableIndex &&
                           editingCell?.field === 'label';
@@ -685,6 +729,10 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         // Check if Auto: value could be 'auto', 'Auto', or '1' (Manual is '0')
         const value = item.autoManual?.toString().toLowerCase();
         const isAuto = value === 'auto' || value === '1';
@@ -780,6 +828,10 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
                           editingCell?.variableIndex === item.variableIndex &&
                           editingCell?.field === 'fValue';
@@ -840,6 +892,10 @@ export const VariablesPage: React.FC = () => {
         </div>
       ),
       renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
         // Parse range value and digital_analog type
         const rangeValue = item.rangeField ? parseInt(item.rangeField) : 0;
         const digitalAnalog = item.digitalAnalog === '1' ? 1 : 0;
@@ -1006,7 +1062,7 @@ export const VariablesPage: React.FC = () => {
                     onWheel={handleWheel}
                   >
                   <DataGrid
-                    items={variables}
+                    items={displayVariables}
                     columns={columns}
                     sortable
                     resizableColumns
@@ -1068,7 +1124,7 @@ export const VariablesPage: React.FC = () => {
                   )}
 
                   {/* No Data Message - Show below grid when empty */}
-                  {variables.length === 0 && (
+                  {/* {variables.length === 0 && (
                     <div className={styles.emptyStateContainer}>
                       <div className={styles.emptyStateHeader}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
@@ -1086,7 +1142,7 @@ export const VariablesPage: React.FC = () => {
                         Refresh
                       </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}              </div>
             </div>
