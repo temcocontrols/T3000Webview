@@ -49,6 +49,8 @@ import {
   ArrowResetRegular,
   PowerRegular,
   WarningRegular,
+  BroomRegular,
+  DeleteRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import cssStyles from './SettingsPage.module.css';
@@ -272,7 +274,7 @@ const useStyles = makeStyles({
     gridTemplateColumns: '140px 1fr',
     gap: '12px',
     alignItems: 'center',
-    marginBottom: '10px',
+    marginBottom: '14px',
     '& label': {
       fontSize: '12px',
       margin: 0,
@@ -307,7 +309,7 @@ const useStyles = makeStyles({
   },
   actionsSection: {
     marginTop: 'auto',
-    padding: '12px',
+    padding: '12px 12px 0 12px',
     borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     flexShrink: 0,
@@ -916,20 +918,18 @@ export const SettingsPage: React.FC = () => {
                     onChange={() => setFeatureFlags({ ...featureFlags, LCD_Mode: 2 })}
                   />
                   Delay
+                  <Input
+                    type="number"
+                    size="small"
+                    value={String(featureFlags.LCD_Delay_Seconds ?? 30)}
+                    onChange={(_, data) =>
+                      setFeatureFlags({ ...featureFlags, LCD_Delay_Seconds: Number(data.value) })
+                    }
+                    disabled={featureFlags.LCD_Mode !== 2}
+                    style={{ width: '100px', marginLeft: '4px' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#605e5c' }}>(s)</span>
                 </label>
-                {featureFlags.LCD_Mode === 2 && (
-                  <Field label="Seconds" size="small" style={{ marginLeft: '16px', marginBottom: 0 }}>
-                    <Input
-                      type="number"
-                      size="small"
-                      value={String(featureFlags.LCD_Delay_Seconds ?? 30)}
-                      onChange={(_, data) =>
-                        setFeatureFlags({ ...featureFlags, LCD_Delay_Seconds: Number(data.value) })
-                      }
-                      style={{ width: '80px' }}
-                    />
-                  </Field>
-                )}
               </div>
               <div className={styles.lcdButtons}>
                 <Button size="small" appearance="secondary">Parameter</Button>
@@ -1321,45 +1321,26 @@ export const SettingsPage: React.FC = () => {
           {/* Actions Section - Sticky Bottom */}
           {selectedDevice && selectedTab === 'basic' && (
             <div className={styles.actionsSection}>
-              <div className={styles.basicPanelTitle}>Actions</div>
               <div className={styles.actionButtons}>
-                <Button size="small" appearance="secondary" icon={<InfoRegular />}>
+                <Button appearance="secondary" icon={<InfoRegular />} style={{ fontWeight: 'normal' }}>
                   Identify Device
                 </Button>
-                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
+                <Button appearance="secondary" icon={<DeleteRegular />} style={{ fontWeight: 'normal' }}>
                   Clear Device
                 </Button>
-                <Button size="small" appearance="secondary" icon={<ArrowResetRegular />}>
+                <Button appearance="secondary" icon={<BroomRegular />} style={{ fontWeight: 'normal' }}>
                   Clear Subnet Database
                 </Button>
                 <Button
-                  size="small"
                   appearance="secondary"
                   icon={<PowerRegular />}
                   onClick={() => setShowRebootDialog(true)}
                   disabled={loading || !selectedDevice}
+                  style={{ fontWeight: '600', color: '#d13438', borderColor: '#d13438' }}
                 >
                   Reboot Device
                 </Button>
-                <Button
-                  size="small"
-                  appearance="secondary"
-                  icon={<ArrowResetRegular />}
-                  onClick={() => setShowResetDialog(true)}
-                  disabled={loading || !selectedDevice}
-                >
-                  Reset to Defaults
-                </Button>
-                <Button
-                  size="small"
-                  appearance="secondary"
-                  icon={<ArrowSyncRegular />}
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  Refresh
-                </Button>
-                <Button size="small" appearance="primary" icon={<SaveRegular />} className={styles.saveButton}>
+                <Button appearance="secondary" icon={<SaveRegular />} style={{ fontWeight: 'normal' }}>
                   Done
                 </Button>
               </div>
