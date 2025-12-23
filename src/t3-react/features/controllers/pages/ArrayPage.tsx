@@ -114,13 +114,35 @@ const ArrayPage: React.FC = () => {
     setSearchQuery(e.target.value);
   };
 
+  // Display arrays with empty rows when no data (show 10 empty rows)
+  const displayArrays = React.useMemo(() => {
+    if (arrays.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        item: '',
+        array_name: '',
+        length: '',
+        value: '',
+      } as ArrayItem));
+    }
+    return arrays;
+  }, [arrays]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (arrayItem: ArrayItem) => {
+    return !arrayItem.item && arrays.length === 0;
+  };
+
   // Column definitions based on C++ CBacnetArray.cpp (4 columns)
   const columns: TableColumnDefinition<ArrayItem>[] = useMemo(() => [
     // Column 0: Item #
     createTableColumn<ArrayItem>({
       columnId: 'item',
       renderHeaderCell: () => <span>Item#</span>,
-      renderCell: (arrayItem) => <TableCellLayout>{arrayItem.item}</TableCellLayout>,
+      renderCell: (arrayItem) => (
+        <TableCellLayout>
+          {!isEmptyRow(arrayItem) && arrayItem.item}
+        </TableCellLayout>
+      ),
     }),
 
     // Column 1: Array Name
@@ -129,7 +151,7 @@ const ArrayPage: React.FC = () => {
       renderHeaderCell: () => <span>Array Name</span>,
       renderCell: (arrayItem) => (
         <TableCellLayout>
-          {arrayItem.array_name}
+          {!isEmptyRow(arrayItem) && arrayItem.array_name}
         </TableCellLayout>
       ),
     }),
@@ -140,7 +162,7 @@ const ArrayPage: React.FC = () => {
       renderHeaderCell: () => <span>Length</span>,
       renderCell: (arrayItem) => (
         <TableCellLayout>
-          {arrayItem.length}
+          {!isEmptyRow(arrayItem) && arrayItem.length}
         </TableCellLayout>
       ),
     }),
@@ -151,7 +173,7 @@ const ArrayPage: React.FC = () => {
       renderHeaderCell: () => <span>Value</span>,
       renderCell: (arrayItem) => (
         <TableCellLayout>
-          {arrayItem.value}
+          {!isEmptyRow(arrayItem) && arrayItem.value}
         </TableCellLayout>
       ),
     }),
@@ -300,7 +322,7 @@ const ArrayPage: React.FC = () => {
                 {selectedDevice && !loading && (
                   <>
                     <DataGrid
-                      items={arrays}
+                      items={displayArrays}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -341,7 +363,7 @@ const ArrayPage: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* No Data Message - Show below grid when empty */}
+                    {/* No Data Message - Commented out - showing empty grid instead
                     {arrays.length === 0 && (
                       <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -353,6 +375,7 @@ const ArrayPage: React.FC = () => {
                         <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>This device has no configured array variables</Text>
                       </div>
                     )}
+                    */}
                   </>
                 )}
 

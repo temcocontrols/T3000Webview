@@ -276,6 +276,26 @@ const AlarmsPage: React.FC = () => {
     }
   };
 
+  // Display alarms with empty rows when no data (show 10 empty rows)
+  const displayAlarms = React.useMemo(() => {
+    if (alarms.length === 0) {
+      return Array(10).fill(null).map((_, index) => ({
+        alarm_id: '',
+        panel: '',
+        message: '',
+        time_stamp: '',
+        acknowledged: '',
+        status: '',
+      } as Alarm));
+    }
+    return alarms;
+  }, [alarms]);
+
+  // Helper to check if row is an empty placeholder
+  const isEmptyRow = (alarm: Alarm) => {
+    return !alarm.alarm_id && alarms.length === 0;
+  };
+
   // Column definitions based on C++ BacnetAlarmLog.cpp (7 columns)
   const columns: TableColumnDefinition<Alarm>[] = useMemo(() => [
     // Column 1: NUM (Alarm ID with refresh icon)
@@ -296,21 +316,23 @@ const AlarmsPage: React.FC = () => {
         const isRefreshing = alarm.alarm_id && refreshingItems.has(alarm.alarm_id);
         return (
           <TableCellLayout className={styles.numCell}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRefreshSingleAlarm(alarm);
-                }}
-                disabled={isRefreshing}
-                title="Refresh this alarm from device"
-                aria-label="Refresh alarm"
-              >
-                <ArrowSyncRegular fontSize={16} />
-              </button>
-              <span>{alarm.alarm_id}</span>
-            </div>
+            {!isEmptyRow(alarm) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  className={`${styles.refreshIconButton} ${isRefreshing ? styles.rotating : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefreshSingleAlarm(alarm);
+                  }}
+                  disabled={isRefreshing}
+                  title="Refresh this alarm from device"
+                  aria-label="Refresh alarm"
+                >
+                  <ArrowSyncRegular fontSize={16} />
+                </button>
+                <span>{alarm.alarm_id}</span>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -323,7 +345,7 @@ const AlarmsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Panel</div>,
       renderCell: (alarm) => (
         <TableCellLayout className={styles.readOnlyCell}>
-          {getCurrentValue(alarm, 'panel')}
+          {!isEmptyRow(alarm) && getCurrentValue(alarm, 'panel')}
         </TableCellLayout>
       ),
     }),
@@ -335,7 +357,7 @@ const AlarmsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Message</div>,
       renderCell: (alarm) => (
         <TableCellLayout className={styles.messageCell}>
-          {getCurrentValue(alarm, 'message')}
+          {!isEmptyRow(alarm) && getCurrentValue(alarm, 'message')}
         </TableCellLayout>
       ),
     }),
@@ -347,7 +369,7 @@ const AlarmsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Time</div>,
       renderCell: (alarm) => (
         <TableCellLayout className={styles.timeCell}>
-          {getCurrentValue(alarm, 'time_stamp')}
+          {!isEmptyRow(alarm) && getCurrentValue(alarm, 'time_stamp')}
         </TableCellLayout>
       ),
     }),
@@ -361,16 +383,18 @@ const AlarmsPage: React.FC = () => {
         const isAcknowledged = getCurrentValue(alarm, 'acknowledged') === 'Yes';
         return (
           <TableCellLayout>
-            <div className={styles.acknowledgeContainer}>
-              <Button
-                appearance={isAcknowledged ? 'primary' : 'secondary'}
-                size="small"
-                icon={isAcknowledged ? <CheckmarkCircle24Regular /> : undefined}
-                onClick={() => handleAcknowledgeToggle(alarm)}
-              >
-                {isAcknowledged ? 'Acknowledged' : 'Acknowledge'}
-              </Button>
-            </div>
+            {!isEmptyRow(alarm) && (
+              <div className={styles.acknowledgeContainer}>
+                <Button
+                  appearance={isAcknowledged ? 'primary' : 'secondary'}
+                  size="small"
+                  icon={isAcknowledged ? <CheckmarkCircle24Regular /> : undefined}
+                  onClick={() => handleAcknowledgeToggle(alarm)}
+                >
+                  {isAcknowledged ? 'Acknowledged' : 'Acknowledge'}
+                </Button>
+              </div>
+            )}
           </TableCellLayout>
         );
       },
@@ -386,12 +410,14 @@ const AlarmsPage: React.FC = () => {
         const isResolved = status === 'Resolved' || status === 'Yes';
         return (
           <TableCellLayout>
-            <Badge
-              appearance={isResolved ? 'success' : 'important'}
-              className={styles.statusBadge}
-            >
-              {isResolved ? 'Resolved' : 'Active'}
-            </Badge>
+            {!isEmptyRow(alarm) && (
+              <Badge
+                appearance={isResolved ? 'success' : 'important'}
+                className={styles.statusBadge}
+              >
+                {isResolved ? 'Resolved' : 'Active'}
+              </Badge>
+            )}
           </TableCellLayout>
         );
       },
@@ -403,13 +429,15 @@ const AlarmsPage: React.FC = () => {
       renderHeaderCell: () => <div className={styles.headerText}>Delete</div>,
       renderCell: (alarm) => (
         <TableCellLayout>
-          <Button
-            appearance="secondary"
-            size="small"
-            onClick={() => handleDelete(alarm)}
-          >
-            Delete
-          </Button>
+          {!isEmptyRow(alarm) && (
+            <Button
+              appearance="secondary"
+              size="small"
+              onClick={() => handleDelete(alarm)}
+            >
+              Delete
+            </Button>
+          )}
         </TableCellLayout>
       ),
     }),
@@ -574,7 +602,7 @@ const AlarmsPage: React.FC = () => {
                 {selectedDevice && !isLoading && !error && (
                   <>
                     <DataGrid
-                      items={alarms}
+                      items={displayAlarms}
                       columns={columns}
                       sortable
                       resizableColumns
@@ -627,7 +655,7 @@ const AlarmsPage: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* No Data Message - Show below grid when empty */}
+                    {/* No Data Message - Commented out - showing empty grid instead
                     {alarms.length === 0 && (
                       <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -647,6 +675,7 @@ const AlarmsPage: React.FC = () => {
                         </Button>
                       </div>
                     )}
+                    */}
                   </>
                 )}
               </div>
