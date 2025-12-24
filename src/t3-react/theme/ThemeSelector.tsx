@@ -44,7 +44,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   const { themeName, setTheme } = useTheme();
 
   const themeOptions: Array<{ name: ThemeName; label: string; icon: React.ReactElement }> = [
-    { name: 'azure', label: 'Azure Portal', icon: <CloudRegular /> },
+    { name: 'azure', label: 'Blue Mode', icon: <CloudRegular /> },
     { name: 'light', label: 'Light Mode', icon: <WeatherSunnyRegular /> },
     { name: 'dark', label: 'Dark Mode', icon: <WeatherMoonRegular /> },
   ];

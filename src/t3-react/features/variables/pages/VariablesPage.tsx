@@ -948,6 +948,7 @@ export const VariablesPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -1017,7 +1018,6 @@ export const VariablesPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -1026,6 +1026,8 @@ export const VariablesPage: React.FC = () => {
               <div className={styles.noPadding}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -1048,7 +1050,7 @@ export const VariablesPage: React.FC = () => {
                     <div className={styles.centerText}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view variables</Text>
+                      <Text size={300}>Please select a device from the tree to view graphics</Text>
                     </div>
                   </div>
                 )}

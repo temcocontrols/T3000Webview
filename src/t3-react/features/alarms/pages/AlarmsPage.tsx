@@ -473,6 +473,7 @@ const AlarmsPage: React.FC = () => {
                   TOOLBAR - Azure Portal Command Bar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   <button
@@ -565,7 +566,6 @@ const AlarmsPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -573,6 +573,8 @@ const AlarmsPage: React.FC = () => {
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -593,7 +595,7 @@ const AlarmsPage: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view alarms</Text>
+                      <Text size={300}>Please select a device from the tree to view graphics</Text>
                     </div>
                   </div>
                 )}

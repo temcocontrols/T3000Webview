@@ -673,6 +673,7 @@ export const ProgramsPage: React.FC = () => {
 
               {/* TOOLBAR */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button - Refresh from Device */}
@@ -739,12 +740,13 @@ export const ProgramsPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               {/* HORIZONTAL DIVIDER */}
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* DOCKING BODY */}
               <div className={styles.dockingBody}>
@@ -761,7 +763,7 @@ export const ProgramsPage: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view programs</Text>
+                      <Text size={300}>Please select a device from the tree to view graphics</Text>
                     </div>
                   </div>
                 )}

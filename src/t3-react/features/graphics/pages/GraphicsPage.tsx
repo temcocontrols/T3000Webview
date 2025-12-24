@@ -395,6 +395,7 @@ export const GraphicsPage: React.FC = () => {
               )}
 
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   <button
@@ -461,9 +462,10 @@ export const GraphicsPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              )}
 
               <div className={styles.horizontalDivider}></div>
+              </>
+              )}
 
               <div className={styles.noPadding}>
                 {!selectedDevice ? (

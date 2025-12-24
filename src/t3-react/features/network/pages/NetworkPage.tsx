@@ -263,6 +263,7 @@ export const NetworkPage: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   {/* Refresh Button */}
@@ -335,7 +336,6 @@ export const NetworkPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              )}
 
               {/* ========================================
                   HORIZONTAL DIVIDER
@@ -344,6 +344,8 @@ export const NetworkPage: React.FC = () => {
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               {/* ========================================
                   DOCKING BODY - Main Content
@@ -365,7 +367,7 @@ export const NetworkPage: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view networks</Text>
+                      <Text size={300}>Please select a device from the tree to view graphics</Text>
                     </div>
                   </div>
                 )}

@@ -700,7 +700,7 @@ export const TrendLogsPage: React.FC = () => {
           <div style={{ textAlign: 'center' }}>
             <Text size={500} weight="semibold">No device selected</Text>
             <br />
-            <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+            <Text size={300}>Please select a device from the tree to view graphics</Text>
           </div>
         </div>
       </div>
@@ -840,7 +840,7 @@ export const TrendLogsPage: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <Text size={500} weight="semibold">No device selected</Text>
                       <br />
-                      <Text size={300}>Please select a device from the tree to view trendlogs</Text>
+                      <Text size={300}>Please select a device from the tree to view graphics</Text>
                     </div>
                   </div>
                 )}
