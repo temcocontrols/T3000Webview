@@ -3,12 +3,12 @@
  * Quasar app entry point for CSS
  */
 
-/* Tailwind CSS */
+/* Tailwind CSS - load base styles first */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import global styles */
+/* Import global styles after Tailwind to override defaults */
 @import './global.css';
 @import './lib.css';
 @import './shape.css';

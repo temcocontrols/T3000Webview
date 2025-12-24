@@ -1322,13 +1322,13 @@ export const SettingsPage: React.FC = () => {
           {selectedDevice && selectedTab === 'basic' && (
             <div className={styles.actionsSection}>
               <div className={styles.actionButtons}>
-                <Button appearance="secondary" icon={<InfoRegular />} style={{ fontWeight: 'normal' }}>
+                <Button appearance="secondary" icon={<InfoRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Identify Device
                 </Button>
-                <Button appearance="secondary" icon={<DeleteRegular />} style={{ fontWeight: 'normal' }}>
+                <Button appearance="secondary" icon={<DeleteRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Clear Device
                 </Button>
-                <Button appearance="secondary" icon={<BroomRegular />} style={{ fontWeight: 'normal' }}>
+                <Button appearance="secondary" icon={<BroomRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Clear Subnet Database
                 </Button>
                 <Button
@@ -1340,7 +1340,7 @@ export const SettingsPage: React.FC = () => {
                 >
                   Reboot Device
                 </Button>
-                <Button appearance="secondary" icon={<SaveRegular />} style={{ fontWeight: 'normal' }}>
+                <Button appearance="secondary" icon={<SaveRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Done
                 </Button>
               </div>

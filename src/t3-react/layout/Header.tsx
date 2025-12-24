@@ -72,6 +72,7 @@ import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
+import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
 
 const useStyles = makeStyles({
   header: {
@@ -306,14 +307,17 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
         {/* Theme Selector and User Avatar on right side of menu bar */}
         <div className={styles.menuBarRight}>
+          <span style={{ fontSize: '12px', color: 'var(--t3-color-header-text)', marginRight: '8px' }}>
+            {devVersion.value}
+          </span>
           <ThemeSelector appearance="subtle" size="small" />
 
           <Popover>
             <PopoverTrigger>
               <div className={styles.userAvatar}>
-                <span className={styles.userName}>{user?.username || 'Guest'}</span>
+                <span className={styles.userName}>{user?.username || 'T3000'}</span>
                 <Avatar
-                  name={user?.username || 'Guest'}
+                  name={user?.username || 'T3000'}
                   color="brand"
                   size={28}
                 />

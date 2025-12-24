@@ -1,11 +1,11 @@
 /* app global css */
 
-/* Tailwind CSS directives */
+/* Tailwind CSS directives - load these first as base */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import additional stylesheets */
+/* Import additional stylesheets after Tailwind to override defaults */
 @import './global.css';
 @import './lib.css';
 @import './main.css';
