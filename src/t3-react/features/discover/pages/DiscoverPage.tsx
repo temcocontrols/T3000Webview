@@ -22,6 +22,7 @@ import {
   ArrowSortUpRegular,
   ArrowSortDownRegular,
   ArrowSortRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './DiscoverPage.module.css';
@@ -349,6 +350,18 @@ export const DiscoverPage: React.FC = () => {
         <div className={styles.bladeContentWrapper}>
           <div className={styles.bladeContent}>
             <div className={styles.partContent}>
+              {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
+                </div>
+              )}
+
               {/* Toolbar */}
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
@@ -408,25 +421,14 @@ export const DiscoverPage: React.FC = () => {
               <div className={styles.dockingBody}>
                 {/* Loading State */}
                 {loading && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="small" />
-                    <Text size={300} style={{ marginLeft: '8px' }}>Loading devices...</Text>
-                  </div>
-                )}
-
-                {/* Error State */}
-                {error && !loading && (
-                  <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Badge appearance="filled" color="danger">Error</Badge>
-                      <br />
-                      <Text size={300}>{error}</Text>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                    <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading devices...</Text>
                   </div>
                 )}
 
                 {/* Data Grid - Always show grid with headers */}
-                {!loading && !error && (
+                {!loading && (
                   <>
                   <DataGrid
                     items={displayDevices}

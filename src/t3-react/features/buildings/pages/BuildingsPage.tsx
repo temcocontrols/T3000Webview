@@ -25,6 +25,7 @@ import {
   AddRegular,
   DeleteRegular,
   SearchRegular,
+  ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './BuildingsPage.module.css';
@@ -208,6 +209,18 @@ export const BuildingsPage: React.FC = () => {
             <div className={styles.partContent}>
 
               {/* ========================================
+                  ERROR MESSAGE (if any)
+                  ======================================== */}
+              {error && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                  <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                    {error}
+                  </Text>
+                </div>
+              )}
+
+              {/* ========================================
                   TOOLBAR - Top Actions Bar
                   Matches: ext-overview-assistant-toolbar azc-toolbar
                   ======================================== */}
@@ -276,17 +289,16 @@ export const BuildingsPage: React.FC = () => {
               <div className={styles.dockingBody}>
 
                 {/* Loading State */}
-                {loading && buildings.length === 0 && (
-                  <div className={styles.loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Spinner size="large" />
-                    <Text style={{ marginLeft: '12px' }}>Loading buildings...</Text>
+                {(loading || refreshing) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                    <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading buildings...</Text>
                   </div>
                 )}
 
-                {/* Data Grid */}
-                {!loading && (
-                  <>
-                    <DataGrid
+                {/* Data Grid - Always show grid with headers */}
+                <>
+                  <DataGrid
                       items={displayBuildings}
                       columns={columns}
                       sortable
@@ -356,8 +368,7 @@ export const BuildingsPage: React.FC = () => {
                         <Text size={300} style={{ display: 'block', marginBottom: '16px', color: '#605e5c', textAlign: 'center' }}>No buildings configured in the system</Text>
                       </div>
                     )} */}
-                  </>
-                )}
+                </>
 
               </div>
             </div>

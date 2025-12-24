@@ -724,6 +724,7 @@ const PIDLoopsPage: React.FC = () => {
 
         {/* Toolbar Section */}
         {selectedDevice && (
+        <>
         <div className={styles.toolbar}>
           <div className={styles.toolbarContainer}>
             {/* Refresh Button - Refresh from Device */}
@@ -817,12 +818,13 @@ const PIDLoopsPage: React.FC = () => {
             )}
           </div>
         </div>
-        )}
 
         {/* Horizontal Divider */}
         <div style={{ padding: '0' }}>
           <hr className={styles.overviewHr} />
         </div>
+        </>
+        )}
 
         {/* Docking Body - Main Content */}
         <div className={styles.dockingBody}>
@@ -838,9 +840,9 @@ const PIDLoopsPage: React.FC = () => {
         {!selectedDevice && !isLoading && (
           <div className={styles.noData}>
             <div style={{ textAlign: 'center' }}>
-              <Text size={500} weight="semibold">No device selected</Text>
+              <Text size={400} weight="semibold">No device selected</Text>
               <br />
-              <Text size={300}>Please select a device from the tree to view PID loops</Text>
+              <Text size={200}>Please select a device from the tree to view pid loops</Text>
             </div>
           </div>
         )}

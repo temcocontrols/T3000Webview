@@ -558,6 +558,7 @@ export const HolidaysPage: React.FC = () => {
                 Matches: ext-overview-assistant-toolbar azc-toolbar
                 ======================================== */}
             {selectedDevice && (
+            <>
             <div className={styles.toolbar}>
               <div className={styles.toolbarContainer}>
                 <button
@@ -622,12 +623,13 @@ export const HolidaysPage: React.FC = () => {
                 </Tooltip>
               </div>
             </div>
-            )}
 
-            {/* HORIZONTAL DIVIDER */}
-            <div className={styles.noPadding}>
-              <hr className={styles.overviewHr} />
-            </div>
+          {/* HORIZONTAL DIVIDER */}
+          <div className={styles.noPadding}>
+            <hr className={styles.overviewHr} />
+          </div>
+          </>
+          )}
 
             {/* DOCKING BODY */}
             <div className={styles.dockingBody}>
@@ -642,9 +644,9 @@ export const HolidaysPage: React.FC = () => {
               {!selectedDevice && !loading && (
                 <div className={styles.noData}>
                   <div className={styles.centerText}>
-                    <Text size={500} weight="semibold">No device selected</Text>
+                    <Text size={400} weight="semibold">No device selected</Text>
                     <br />
-                    <Text size={300}>Please select a device from the tree to view holidays</Text>
+                    <Text size={200}>Please select a device from the tree to view holidays</Text>
                   </div>
                 </div>
               )}

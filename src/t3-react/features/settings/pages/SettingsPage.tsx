@@ -726,9 +726,9 @@ export const SettingsPage: React.FC = () => {
     if (!selectedDevice) {
       return (
         <div className={styles.noDevice}>
-          <Text size={500} weight="semibold">No device selected</Text>
+          <Text size={400} weight="semibold">No device selected</Text>
           <br />
-          <Text size={300}>Please select a device from the tree to view graphics</Text>
+          <Text size={200}>Please select a device from the tree to view settings</Text>
         </div>
       );
     }
