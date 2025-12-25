@@ -47,7 +47,7 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
   },
   section: {
-    border: '1px solid #edebe9',
+    marginBottom: '12px',
   },
   sectionHeader: {
     display: 'flex',
@@ -75,7 +75,6 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '12px',
-    backgroundColor: '#fafafa',
     padding: '12px',
     borderRadius: '4px',
     '@media (max-width: 1200px)': {
