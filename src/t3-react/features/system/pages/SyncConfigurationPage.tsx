@@ -46,14 +46,16 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
   },
   section: {
-    padding: '12px 16px',
+    padding: '12px 16px 12px 0',
     borderBottom: '1px solid #edebe9',
   },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '8px',
+    marginBottom: '12px',
+    paddingBottom: '8px',
+    borderBottom: '1px solid #edebe9',
   },
   sectionTitle: {
     fontSize: '15px',
@@ -70,6 +72,9 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '12px',
+    backgroundColor: '#fafafa',
+    padding: '12px',
+    borderRadius: '4px',
     '@media (max-width: 1200px)': {
       gridTemplateColumns: 'repeat(2, 1fr)',
     },
@@ -284,19 +289,9 @@ export const SyncConfigurationPage: React.FC = () => {
         <div className={styles.sectionHeader}>
           <ArrowSyncRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>FFI Sync Service</h3>
-        </div>
-
-        <div className={styles.infoBox}>
-          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
-            <InfoRegular style={{ marginTop: '2px' }} />
-            <div>
-              <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>FFI Sync Service:</Body1>
-              <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
-                Runs automatically in the background, syncing all devices and updating the database.
-                Shorter intervals provide fresher data but increase system load.
-              </Body1>
-            </div>
-          </div>
+          <span style={{ fontSize: '12px', color: '#605e5c', marginLeft: '8px' }}>
+            Runs automatically in the background, syncing all devices and updating the database. Shorter intervals provide fresher data but increase system load.
+          </span>
         </div>
 
         <div className={styles.formGrid}>
@@ -357,20 +352,9 @@ export const SyncConfigurationPage: React.FC = () => {
         <div className={styles.sectionHeader}>
           <DatabaseRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>Database Management</h3>
-        </div>
-
-        <div className={styles.infoBox}>
-          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
-            <InfoRegular style={{ marginTop: '2px' }} />
-            <div>
-              <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>Database Maintenance:</Body1>
-              <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
-                • Backups create safety copies before major operations<br />
-                • Compression reduces disk space usage<br />
-                • Vacuum reclaims space and optimizes performance
-              </Body1>
-            </div>
-          </div>
+          <span style={{ fontSize: '12px', color: '#605e5c', marginLeft: '8px' }}>
+            • Backups create safety copies before major operations • Compression reduces disk space usage • Vacuum reclaims space and optimizes performance
+          </span>
         </div>
 
         <div className={styles.formGrid}>
@@ -448,18 +432,9 @@ export const SyncConfigurationPage: React.FC = () => {
         <div className={styles.sectionHeader}>
           <ColorRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>UI Settings</h3>
-        </div>
-
-        <div className={styles.infoBox}>
-          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
-            <InfoRegular style={{ marginTop: '2px' }} />
-            <div>
-              <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>UI Settings:</Body1>
-              <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
-                Customize the user interface language and theme preferences. Changes take effect immediately.
-              </Body1>
-            </div>
-          </div>
+          <span style={{ fontSize: '12px', color: '#605e5c', marginLeft: '8px' }}>
+            Customize the user interface language and theme preferences. Changes take effect immediately.
+          </span>
         </div>
 
         <div className={styles.formGrid}>
