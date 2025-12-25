@@ -61,7 +61,7 @@ const useStyles = makeStyles({
     minHeight: '32px',
   },
   sectionTitle: {
-    fontSize: '15px',
+    fontSize: '13px',
     fontWeight: 600,
     color: '#323130',
     margin: 0,
@@ -325,7 +325,7 @@ export const SyncConfigurationPage: React.FC = () => {
 
           <div className={styles.formRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Label htmlFor="rediscover-interval">
+              <Label htmlFor="rediscover-interval" style={{ fontSize: '13px' }}>
                 Rediscovery Interval (seconds)
               </Label>
               <Tooltip content="How often to rediscover devices (1 hour - 7 days)" relationship="description">
@@ -365,24 +365,28 @@ export const SyncConfigurationPage: React.FC = () => {
         <div className={styles.formGrid}>
 
           <div className={styles.formRow}>
-            <Switch
-              checked={config.databaseBackupEnabled}
-              onChange={(e) => setConfig({ ...config, databaseBackupEnabled: e.currentTarget.checked })}
-              label="Enable automatic database backups"
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Switch
+                checked={config.databaseBackupEnabled}
+                onChange={(e) => setConfig({ ...config, databaseBackupEnabled: e.currentTarget.checked })}
+              />
+              <Label style={{ fontSize: '13px' }}>Enable automatic database backups</Label>
+            </div>
           </div>
 
           <div className={styles.formRow}>
-            <Switch
-              checked={config.databaseCompressionEnabled}
-              onChange={(e) => setConfig({ ...config, databaseCompressionEnabled: e.currentTarget.checked })}
-              label="Enable database compression"
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Switch
+                checked={config.databaseCompressionEnabled}
+                onChange={(e) => setConfig({ ...config, databaseCompressionEnabled: e.currentTarget.checked })}
+              />
+              <Label style={{ fontSize: '13px' }}>Enable database compression</Label>
+            </div>
           </div>
 
           <div className={styles.formRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Label htmlFor="db-max-size">
+              <Label htmlFor="db-max-size" style={{ fontSize: '13px' }}>
                 Maximum Database File Size (MB)
               </Label>
               <Tooltip content="Maximum allowed database size (100 MB - 10 GB)" relationship="description">
@@ -409,7 +413,7 @@ export const SyncConfigurationPage: React.FC = () => {
 
           <div className={styles.formRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Label htmlFor="vacuum-interval">
+              <Label htmlFor="vacuum-interval" style={{ fontSize: '13px' }}>
                 Vacuum Interval (days)
               </Label>
               <Tooltip content="How often to optimize database (1 - 365 days)" relationship="description">

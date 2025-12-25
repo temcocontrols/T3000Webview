@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/react-components';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { NotificationProvider } from '../shared/components/NotificationCenter';
@@ -317,7 +317,12 @@ export const App: React.FC = () => {
                 <Route
                   path="hvac-designer/:graphicId?"
                   element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
+                    <React.Suspense fallback={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '20px' }}>
+                        <Spinner size="small" />
+                        <span>Loading...</span>
+                      </div>
+                    }>
                       <HvacDesignerPage />
                     </React.Suspense>
                   }
