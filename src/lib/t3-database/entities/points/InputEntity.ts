@@ -52,9 +52,19 @@ export class InputEntity extends BaseEntity<Input> {
   }
 
   /**
-   * Update single input
+   * Update single input (database only - does NOT update physical device)
+   * Use this for direct database updates without FFI calls
    */
   async update(serialNumber: number, inputIndex: number, data: Partial<Input>): Promise<void> {
+    const url = `${this.buildUrl(String(serialNumber))}/${inputIndex}/db`;
+    await this.putData<void>(url, data);
+  }
+
+  /**
+   * Update single input (device + database - uses FFI)
+   * Updates physical device via FFI and then saves to database
+   */
+  async updateDevice(serialNumber: number, inputIndex: number, data: Partial<Input>): Promise<void> {
     const url = `${this.buildUrl(String(serialNumber))}/${inputIndex}`;
     await this.putData<void>(url, data);
   }

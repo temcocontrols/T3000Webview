@@ -96,6 +96,36 @@ impl ServiceLogger {
         Self::new("T3_Webview_Initialize")
     }
 
+    /// Create a logger for Input API operations
+    pub fn api_inputs() -> Result<Self, std::io::Error> {
+        Self::new("T3_Webview_API_Inputs")
+    }
+
+    /// Create a logger for Output API operations
+    pub fn api_outputs() -> Result<Self, std::io::Error> {
+        Self::new("T3_Webview_API_Outputs")
+    }
+
+    /// Create a logger for Variable API operations
+    pub fn api_variables() -> Result<Self, std::io::Error> {
+        Self::new("T3_Webview_API_Variables")
+    }
+
+    /// Create a logger for Input Database operations
+    pub fn database_inputs() -> Result<Self, std::io::Error> {
+        Self::new("T3_Webview_Database_Inputs")
+    }
+
+    /// Create a logger for Output Database operations
+    pub fn database_outputs() -> Result<Self, std::io::Error> {
+        Self::new("T3_Webview_Database_Outputs")
+    }
+
+    /// Create a logger for Variable Database operations
+    pub fn database_variables() -> Result<Self, std::io::Error> {
+        Self::new("T3_Webview_Database_Variables")
+    }
+
     pub fn log(&mut self, level: LogLevel, message: &str) {
         if let Some(ref mut file) = self.log_file {
             let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");

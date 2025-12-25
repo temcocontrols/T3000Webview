@@ -52,6 +52,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
 import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
+import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './InputsPage.module.css';
@@ -398,7 +399,27 @@ export const InputsPage: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 16] Success:', result);
+      console.log('[Action 16 - Main API] Success:', result);
+      console.log('[Note] Main endpoint: FFI device update + database persistence');
+
+      // Also call database-only endpoint (/db) for verification
+      try {
+        const db = new T3Database(`${API_BASE_URL}/api`);
+        const dbUpdateData: any = { serialNumber, inputIndex: parseInt(inputIndex, 10) };
+
+        if (field === 'fullLabel') dbUpdateData.fullLabel = newValue;
+        if (field === 'label') dbUpdateData.label = newValue;
+        if (field === 'fValue') dbUpdateData.fValue = parseFloat(newValue);
+        if (field === 'range') dbUpdateData.range = parseInt(newValue, 10);
+        if (field === 'autoManual') dbUpdateData.autoManual = parseInt(newValue, 10);
+
+        console.log('[T3Database - /db API] Calling database-only endpoint:', dbUpdateData);
+        await db.inputs.update(serialNumber, parseInt(inputIndex, 10), dbUpdateData);
+        console.log('[T3Database - /db API] Database-only update succeeded');
+      } catch (dbError) {
+        console.warn('[T3Database - /db API] Database-only update failed:', dbError);
+      }
+
       return result;
     } catch (error) {
       console.error('[Action 16] Failed:', error);
