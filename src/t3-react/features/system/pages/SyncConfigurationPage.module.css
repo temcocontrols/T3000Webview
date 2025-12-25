@@ -32,3 +32,12 @@
 .scrollContent::-webkit-scrollbar-thumb:hover {
   background-color: #a1a1a1;
 }
+
+/* Smaller select dropdown styling */
+.smallSelect :global(select) {
+  font-size: 13px !important;
+}
+
+.smallSelect :global(button) {
+  font-size: 13px !important;
+}

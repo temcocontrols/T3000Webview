@@ -25,6 +25,7 @@ import {
   Spinner,
   Text,
   Select,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -46,17 +47,18 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
   },
   section: {
-    padding: '12px 16px 12px 0',
+    border: '1px solid #edebe9',
   },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     marginBottom: '12px',
-    paddingTop: '8px',
-    paddingBottom: '8px',
+    padding: '0 12px',
     borderTop: '1px solid #edebe9',
     borderBottom: '1px solid #edebe9',
+    backgroundColor: '#f5f5f5',
+    minHeight: '32px',
   },
   sectionTitle: {
     fontSize: '15px',
@@ -290,15 +292,20 @@ export const SyncConfigurationPage: React.FC = () => {
           <ArrowSyncRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>FFI Sync Service</h3>
           <span style={{ fontSize: '12px', color: '#605e5c', marginLeft: '8px' }}>
-            Runs automatically in the background, syncing all devices and updating the database. Shorter intervals provide fresher data but increase system load.
+            Background sync with T3000 devices
           </span>
         </div>
 
         <div className={styles.formGrid}>
           <div className={styles.formRow}>
-            <label className={styles.label} htmlFor="ffi-sync-interval">
-              Sync Interval (seconds)
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <label className={styles.label} htmlFor="ffi-sync-interval">
+                Sync Interval (seconds)
+              </label>
+              <Tooltip content="How often to sync data from devices (60s - 365 days)" relationship="description">
+                <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
+              </Tooltip>
+            </div>
             <div className={styles.inputGroup}>
               <Input
                 id="ffi-sync-interval"
@@ -307,7 +314,7 @@ export const SyncConfigurationPage: React.FC = () => {
                 onChange={(e) => setConfig({ ...config, ffiSyncIntervalSecs: parseInt(e.target.value) || 60 })}
                 min={60}
                 max={31536000}
-                style={{ width: '150px' }}
+                style={{ width: '150px', fontSize: '13px' }}
               />
               <Badge appearance="outline">
                 {config.ffiSyncIntervalSecs < 60 ? `${config.ffiSyncIntervalSecs}s` :
@@ -315,15 +322,17 @@ export const SyncConfigurationPage: React.FC = () => {
                  `${Math.floor(config.ffiSyncIntervalSecs / 3600)}h`}
               </Badge>
             </div>
-            <Body1 style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
-              How often to sync data from devices (60s - 365 days)
-            </Body1>
           </div>
 
           <div className={styles.formRow}>
-            <Label htmlFor="rediscover-interval">
-              Rediscovery Interval (seconds)
-            </Label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Label htmlFor="rediscover-interval">
+                Rediscovery Interval (seconds)
+              </Label>
+              <Tooltip content="How often to rediscover devices (1 hour - 7 days)" relationship="description">
+                <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
+              </Tooltip>
+            </div>
             <div className={styles.inputGroup}>
               <Input
                 id="rediscover-interval"
@@ -332,15 +341,12 @@ export const SyncConfigurationPage: React.FC = () => {
                 onChange={(e) => setConfig({ ...config, rediscoverIntervalSecs: parseInt(e.target.value) || 3600 })}
                 min={3600}
                 max={604800}
-                style={{ width: '150px' }}
+                style={{ width: '150px', fontSize: '13px' }}
               />
               <Badge appearance="outline">
                 {Math.floor(config.rediscoverIntervalSecs / 3600)} hours
               </Badge>
             </div>
-            <Body1 style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
-              How often to rediscover devices (1 hour - 7 days)
-            </Body1>
           </div>
         </div>
       </div>
@@ -353,7 +359,7 @@ export const SyncConfigurationPage: React.FC = () => {
           <DatabaseRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>Database Management</h3>
           <span style={{ fontSize: '12px', color: '#605e5c', marginLeft: '8px' }}>
-            • Backups create safety copies before major operations • Compression reduces disk space usage • Vacuum reclaims space and optimizes performance
+            Backup, compression, and maintenance settings
           </span>
         </div>
 
@@ -376,9 +382,14 @@ export const SyncConfigurationPage: React.FC = () => {
           </div>
 
           <div className={styles.formRow}>
-            <Label htmlFor="db-max-size">
-              Maximum Database File Size (MB)
-            </Label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Label htmlFor="db-max-size">
+                Maximum Database File Size (MB)
+              </Label>
+              <Tooltip content="Maximum allowed database size (100 MB - 10 GB)" relationship="description">
+                <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
+              </Tooltip>
+            </div>
             <div className={styles.inputGroup}>
               <Input
                 id="db-max-size"
@@ -387,7 +398,7 @@ export const SyncConfigurationPage: React.FC = () => {
                 onChange={(e) => setConfig({ ...config, databaseMaxFileSizeMB: parseInt(e.target.value) || 1024 })}
                 min={100}
                 max={10240}
-                style={{ width: '150px' }}
+                style={{ width: '150px', fontSize: '13px' }}
               />
               <Badge appearance="outline">
                 {config.databaseMaxFileSizeMB < 1024
@@ -395,15 +406,17 @@ export const SyncConfigurationPage: React.FC = () => {
                   : `${(config.databaseMaxFileSizeMB / 1024).toFixed(1)} GB`}
               </Badge>
             </div>
-            <Body1 style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
-              Maximum allowed database size (100 MB - 10 GB)
-            </Body1>
           </div>
 
           <div className={styles.formRow}>
-            <Label htmlFor="vacuum-interval">
-              Vacuum Interval (days)
-            </Label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Label htmlFor="vacuum-interval">
+                Vacuum Interval (days)
+              </Label>
+              <Tooltip content="How often to optimize database (1 - 365 days)" relationship="description">
+                <InfoRegular style={{ fontSize: '14px', color: '#605e5c', cursor: 'help' }} />
+              </Tooltip>
+            </div>
             <div className={styles.inputGroup}>
               <Input
                 id="vacuum-interval"
@@ -412,15 +425,12 @@ export const SyncConfigurationPage: React.FC = () => {
                 onChange={(e) => setConfig({ ...config, databaseVacuumIntervalDays: parseInt(e.target.value) || 7 })}
                 min={1}
                 max={365}
-                style={{ width: '150px' }}
+                style={{ width: '150px', fontSize: '13px' }}
               />
               <Badge appearance="outline">
                 {config.databaseVacuumIntervalDays} days
               </Badge>
             </div>
-            <Body1 style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
-              How often to optimize database (1 - 365 days)
-            </Body1>
           </div>
         </div>
       </div>
@@ -433,7 +443,7 @@ export const SyncConfigurationPage: React.FC = () => {
           <ColorRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>UI Settings</h3>
           <span style={{ fontSize: '12px', color: '#605e5c', marginLeft: '8px' }}>
-            Customize the user interface language and theme preferences. Changes take effect immediately.
+            Language and theme preferences
           </span>
         </div>
 
@@ -446,12 +456,13 @@ export const SyncConfigurationPage: React.FC = () => {
               id="ui-language"
               value={config.uiLanguage}
               onChange={(e, data) => setConfig({ ...config, uiLanguage: data.value })}
-              style={{ width: '200px' }}
+              className={cssStyles.smallSelect}
+              style={{ width: '150px', fontSize: '13px', lineHeight: '20px' }}
             >
-              <option value="en">English</option>
-              <option value="zh">中文 (Chinese)</option>
-              <option value="es">Español</option>
-              <option value="fr">Français</option>
+              <option value="en" style={{ fontSize: '13px' }}>English</option>
+              <option value="zh" style={{ fontSize: '13px' }}>中文 (Chinese)</option>
+              <option value="es" style={{ fontSize: '13px' }}>Español</option>
+              <option value="fr" style={{ fontSize: '13px' }}>Français</option>
             </Select>
           </div>
 
@@ -463,11 +474,12 @@ export const SyncConfigurationPage: React.FC = () => {
               id="ui-theme"
               value={config.uiTheme}
               onChange={(e, data) => setConfig({ ...config, uiTheme: data.value })}
-              style={{ width: '200px' }}
+              className={cssStyles.smallSelect}
+              style={{ width: '150px', fontSize: '13px', lineHeight: '20px' }}
             >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System Default</option>
+              <option value="light" style={{ fontSize: '13px' }}>Light</option>
+              <option value="dark" style={{ fontSize: '13px' }}>Dark</option>
+              <option value="system" style={{ fontSize: '13px' }}>System Default</option>
             </Select>
           </div>
         </div>
@@ -480,14 +492,14 @@ export const SyncConfigurationPage: React.FC = () => {
           appearance="primary"
           onClick={handleSave}
           disabled={saving}
-          style={{ borderRadius: 0, fontWeight: 400 }}
+          style={{ borderRadius: 0, fontWeight: 400, fontSize: '13px' }}
         >
           {saving ? 'Saving...' : 'Save Configuration'}
         </Button>
         <Button
           onClick={handleReset}
           disabled={saving}
-          style={{ borderRadius: 0, fontWeight: 400 }}
+          style={{ borderRadius: 0, fontWeight: 400, fontSize: '13px' }}
         >
           Reset to Defaults
         </Button>
