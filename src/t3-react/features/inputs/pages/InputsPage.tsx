@@ -356,6 +356,7 @@ export const InputsPage: React.FC = () => {
 
   // Generic function: Update input field using UPDATE_WEBVIEW_LIST (Action 16 - full record)
   // NOTE: Action 16 requires ALL fields to be provided, not just the changed field
+  // CRITICAL: Must read current device values first to avoid overwriting with stale database values
   const updateInputFieldUsingAction16 = async (
     serialNumber: number,
     inputIndex: string,
@@ -366,19 +367,33 @@ export const InputsPage: React.FC = () => {
     try {
       console.log(`[Action 16] Updating ${field} for Input ${inputIndex} (SN: ${serialNumber})`);
 
-      // Action 16 requires ALL fields, so we send current values + the new field value
+      // Step 1: Read current values from DEVICE (not database) to avoid overwriting with stale data
+      console.log('[Action 16] Step 1: Reading current values from device...');
+      const deviceDataUrl = `${API_BASE_URL}/api/t3_device/inputs/${serialNumber}/${inputIndex}`;
+      const deviceResponse = await fetch(deviceDataUrl);
+
+      if (!deviceResponse.ok) {
+        console.warn('[Action 16] Failed to read device values, using database values (may be stale)');
+      }
+
+      const deviceData = deviceResponse.ok ? await deviceResponse.json() : null;
+      const sourceData = deviceData || currentInput; // Prefer device data, fallback to database
+
+      console.log('[Action 16] Source data:', deviceData ? 'DEVICE (fresh)' : 'DATABASE (may be stale)', sourceData);
+
+      // Step 2: Build payload with current device values + the one changed field
       const payload = {
-        fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
-        label: field === 'label' ? newValue : (currentInput.label || ''),
-        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0'),
-        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
-        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
-        control: 0, // control field not part of InputPoint interface
-        filter: parseInt(currentInput.filterField || '0', 10),
-        digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
-        calibrationSign: parseInt(currentInput.sign || '0', 10),
-        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
-        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
+        fullLabel: field === 'fullLabel' ? newValue : (sourceData.fullLabel || ''),
+        label: field === 'label' ? newValue : (sourceData.label || ''),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(sourceData.fValue || '0'),
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(sourceData.rangeField || sourceData.range || '0', 10),
+        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(sourceData.autoManual || '0', 10),
+        control: 0, // control field not typically editable
+        filter: parseInt(sourceData.filterField || '0', 10),
+        digitalAnalog: parseInt(sourceData.digitalAnalog || '0', 10),
+        calibrationSign: parseInt(sourceData.sign || '0', 10),
+        calibrationH: parseInt(sourceData.calibration?.split('.')[0] || '0', 10),
+        calibrationL: parseInt(sourceData.calibration?.split('.')[1] || '0', 10),
         decom: 0,
       };
 
