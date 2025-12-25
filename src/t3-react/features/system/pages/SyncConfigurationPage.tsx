@@ -47,14 +47,15 @@ const useStyles = makeStyles({
   },
   section: {
     padding: '12px 16px 12px 0',
-    borderBottom: '1px solid #edebe9',
   },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     marginBottom: '12px',
+    paddingTop: '8px',
     paddingBottom: '8px',
+    borderTop: '1px solid #edebe9',
     borderBottom: '1px solid #edebe9',
   },
   sectionTitle: {
@@ -89,7 +90,7 @@ const useStyles = makeStyles({
   },
   label: {
     fontSize: '13px',
-    fontWeight: 600,
+    fontWeight: 400,
     color: '#323130',
   },
   inputGroup: {
@@ -110,7 +111,6 @@ const useStyles = makeStyles({
     gap: '8px',
     padding: '8px 16px',
     borderTop: '1px solid #edebe9',
-    backgroundColor: '#fafafa',
     flexShrink: 0,
   },
   loadingBar: {
@@ -480,12 +480,14 @@ export const SyncConfigurationPage: React.FC = () => {
           appearance="primary"
           onClick={handleSave}
           disabled={saving}
+          style={{ borderRadius: 0, fontWeight: 400 }}
         >
           {saving ? 'Saving...' : 'Save Configuration'}
         </Button>
         <Button
           onClick={handleReset}
           disabled={saving}
+          style={{ borderRadius: 0, fontWeight: 400 }}
         >
           Reset to Defaults
         </Button>
