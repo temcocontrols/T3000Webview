@@ -36,6 +36,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { API_BASE_URL } from '../../../config/constants';
+import cssStyles from './SyncConfigurationPage.module.css';
 
 const useStyles = makeStyles({
   container: {
@@ -43,11 +44,6 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100%',
     backgroundColor: '#ffffff',
-  },
-  scrollContent: {
-    flex: 1,
-    overflowY: 'auto',
-    overflowX: 'hidden',
   },
   section: {
     padding: '12px 16px',
@@ -72,8 +68,14 @@ const useStyles = makeStyles({
   },
   formGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr',
+    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '12px',
+    '@media (max-width: 1200px)': {
+      gridTemplateColumns: 'repeat(2, 1fr)',
+    },
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
   },
   formRow: {
     display: 'flex',
@@ -248,7 +250,7 @@ export const SyncConfigurationPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.scrollContent}>
+      <div className={cssStyles.scrollContent}>
         {/* Message Bar */}
         {message && (
           <div style={{
@@ -283,8 +285,18 @@ export const SyncConfigurationPage: React.FC = () => {
           <ArrowSyncRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>FFI Sync Service</h3>
         </div>
-        <div className={styles.sectionDescription}>
-          Background synchronization with T3000 devices
+
+        <div className={styles.infoBox}>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+            <InfoRegular style={{ marginTop: '2px' }} />
+            <div>
+              <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>FFI Sync Service:</Body1>
+              <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
+                Runs automatically in the background, syncing all devices and updating the database.
+                Shorter intervals provide fresher data but increase system load.
+              </Body1>
+            </div>
+          </div>
         </div>
 
         <div className={styles.formGrid}>
@@ -335,36 +347,33 @@ export const SyncConfigurationPage: React.FC = () => {
               How often to rediscover devices (1 hour - 7 days)
             </Body1>
           </div>
-
-          <div className={styles.infoBox}>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
-              <InfoRegular style={{ marginTop: '2px' }} />
-              <div>
-                <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>FFI Sync Service:</Body1>
-                <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
-                  Runs automatically in the background, syncing all devices and updating the database.
-                  Shorter intervals provide fresher data but increase system load.
-                </Body1>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* ========================================
           DATABASE MANAGEMENT
           ======================================== */}
-      <Card className={styles.card}>
-        <div className={styles.section}>
-          <div>
-            <Title3>
-              <DatabaseRegular style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-              Database Management
-            </Title3>
-            <Body1>Database backup, compression, and maintenance settings</Body1>
-          </div>
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <DatabaseRegular style={{ fontSize: '18px', color: '#0078d4' }} />
+          <h3 className={styles.sectionTitle}>Database Management</h3>
+        </div>
 
-          <Divider />
+        <div className={styles.infoBox}>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+            <InfoRegular style={{ marginTop: '2px' }} />
+            <div>
+              <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>Database Maintenance:</Body1>
+              <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
+                • Backups create safety copies before major operations<br />
+                • Compression reduces disk space usage<br />
+                • Vacuum reclaims space and optimizes performance
+              </Body1>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.formGrid}>
 
           <div className={styles.formRow}>
             <Switch
@@ -429,22 +438,8 @@ export const SyncConfigurationPage: React.FC = () => {
               How often to optimize database (1 - 365 days)
             </Body1>
           </div>
-
-          <div className={styles.infoBox}>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
-              <InfoRegular style={{ marginTop: '2px' }} />
-              <div>
-                <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>Database Maintenance:</Body1>
-                <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
-                  • Backups create safety copies before major operations<br />
-                  • Compression reduces disk space usage<br />
-                  • Vacuum reclaims space and optimizes performance
-                </Body1>
-              </div>
-            </div>
-          </div>
         </div>
-      </Card>
+      </div>
 
       {/* ========================================
           UI SETTINGS
@@ -454,8 +449,17 @@ export const SyncConfigurationPage: React.FC = () => {
           <ColorRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>UI Settings</h3>
         </div>
-        <div className={styles.sectionDescription}>
-          User interface language and theme preferences
+
+        <div className={styles.infoBox}>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+            <InfoRegular style={{ marginTop: '2px' }} />
+            <div>
+              <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>UI Settings:</Body1>
+              <Body1 style={{ fontSize: '12px', marginTop: tokens.spacingVerticalS }}>
+                Customize the user interface language and theme preferences. Changes take effect immediately.
+              </Body1>
+            </div>
+          </div>
         </div>
 
         <div className={styles.formGrid}>
