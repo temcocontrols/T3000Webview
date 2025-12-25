@@ -315,7 +315,7 @@ export const SyncConfigurationPage: React.FC = () => {
                 max={31536000}
                 style={{ width: '150px', fontSize: '13px' }}
               />
-              <Badge appearance="outline">
+              <Badge appearance="outline" style={{ borderRadius: 0 }}>
                 {config.ffiSyncIntervalSecs < 60 ? `${config.ffiSyncIntervalSecs}s` :
                  config.ffiSyncIntervalSecs < 3600 ? `${Math.floor(config.ffiSyncIntervalSecs / 60)}m` :
                  `${Math.floor(config.ffiSyncIntervalSecs / 3600)}h`}
@@ -342,7 +342,7 @@ export const SyncConfigurationPage: React.FC = () => {
                 max={604800}
                 style={{ width: '150px', fontSize: '13px' }}
               />
-              <Badge appearance="outline">
+              <Badge appearance="outline" style={{ borderRadius: 0 }}>
                 {Math.floor(config.rediscoverIntervalSecs / 3600)} hours
               </Badge>
             </div>
@@ -399,7 +399,7 @@ export const SyncConfigurationPage: React.FC = () => {
                 max={10240}
                 style={{ width: '150px', fontSize: '13px' }}
               />
-              <Badge appearance="outline">
+              <Badge appearance="outline" style={{ borderRadius: 0 }}>
                 {config.databaseMaxFileSizeMB < 1024
                   ? `${config.databaseMaxFileSizeMB} MB`
                   : `${(config.databaseMaxFileSizeMB / 1024).toFixed(1)} GB`}
@@ -426,7 +426,7 @@ export const SyncConfigurationPage: React.FC = () => {
                 max={365}
                 style={{ width: '150px', fontSize: '13px' }}
               />
-              <Badge appearance="outline">
+              <Badge appearance="outline" style={{ borderRadius: 0 }}>
                 {config.databaseVacuumIntervalDays} days
               </Badge>
             </div>
