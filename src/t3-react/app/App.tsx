@@ -95,6 +95,9 @@ const TransportTesterPage = React.lazy(() =>
 const SystemLogsPage = React.lazy(() =>
   import('../features/develop/pages/SystemLogsPage').then((m) => ({ default: m.SystemLogsPage }))
 );
+const SyncConfigurationPage = React.lazy(() =>
+  import('../features/system/pages/SyncConfigurationPage').then((m) => ({ default: m.SyncConfigurationPage }))
+);
 
 /**
  * Protected Route Wrapper
@@ -294,6 +297,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <BuildingsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="system/sync"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <SyncConfigurationPage />
                     </React.Suspense>
                   }
                 />

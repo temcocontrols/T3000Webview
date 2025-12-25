@@ -489,37 +489,55 @@ const helpMenu: MenuItem = {
 };
 
 /**
- * Develop Menu (Developer Tools)
+ * System Menu (System Settings & Developer Tools)
  */
-const developMenu: MenuItem = {
-  id: 'develop',
-  label: 'Develop',
+const systemMenu: MenuItem = {
+  id: 'system',
+  label: 'System',
   type: 'submenu',
   children: [
     {
-      id: 'develop-files',
+      id: 'system-sync',
+      label: 'Sync Configuration',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/system/sync',
+      icon: 'ArrowSync',
+    },
+    {
+      id: 'system-settings',
+      label: 'Application Settings',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/settings',
+      icon: 'Settings',
+    },
+    {
+      id: 'system-divider-1',
+      type: 'divider',
+    },
+    {
+      id: 'system-files',
       label: 'File Browser',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/files',
       icon: 'FolderOpen',
     },
     {
-      id: 'develop-database',
+      id: 'system-database',
       label: 'Database Viewer',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/database',
       icon: 'Database',
     },
     {
-      id: 'develop-transport',
-      label: 'Transport Message',
+      id: 'system-transport',
+      label: 'Transport Tester',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/transport',
       icon: 'PlugConnected',
     },
     {
-      id: 'develop-logs',
-      label: 'T3000 Logs',
+      id: 'system-logs',
+      label: 'System Logs',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/logs',
       icon: 'DocumentText',
@@ -539,7 +557,7 @@ export const topMenuConfig: MenuItem[] = [
   controlMenu,
   miscMenu,
   helpMenu,
-  developMenu,
+  systemMenu,
 ];
 
 /**
