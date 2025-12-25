@@ -42,25 +42,21 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    backgroundColor: '#ffffff',
-  },
-  scrollContent: {
-    flex: 1,
-    overflowY: 'auto',
-    overflowX: 'hidden',
+    padding: '0',
+    overflow: 'auto',
   },
   section: {
-    padding: '12px 16px',
+    padding: '16px',
     borderBottom: '1px solid #edebe9',
   },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '8px',
+    marginBottom: '12px',
   },
   sectionTitle: {
-    fontSize: '15px',
+    fontSize: '16px',
     fontWeight: 600,
     color: '#323130',
     margin: 0,
@@ -68,17 +64,18 @@ const useStyles = makeStyles({
   sectionDescription: {
     fontSize: '13px',
     color: '#605e5c',
-    marginBottom: '12px',
+    marginBottom: '16px',
   },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr',
-    gap: '12px',
+    gap: '16px',
+    marginBottom: '16px',
   },
   formRow: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '4px',
+    gap: '6px',
   },
   label: {
     fontSize: '13px',
@@ -91,20 +88,18 @@ const useStyles = makeStyles({
     gap: '8px',
   },
   infoBox: {
-    padding: '8px 12px',
+    padding: '12px',
     backgroundColor: '#f3f2f1',
-    borderRadius: '2px',
-    marginTop: '8px',
+    borderRadius: '4px',
+    marginTop: '12px',
     fontSize: '12px',
     color: '#605e5c',
   },
   actions: {
     display: 'flex',
     gap: '8px',
-    padding: '8px 16px',
+    padding: '16px',
     borderTop: '1px solid #edebe9',
-    backgroundColor: '#fafafa',
-    flexShrink: 0,
   },
   loadingBar: {
     display: 'flex',
@@ -248,37 +243,36 @@ export const SyncConfigurationPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.scrollContent}>
-        {/* Message Bar */}
-        {message && (
-          <div style={{
-            marginBottom: '12px',
-            padding: '8px 12px',
-            backgroundColor: message.type === 'error' ? '#fef6f6' : '#f0f9ff',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+      {/* Message Bar */}
+      {message && (
+        <div style={{
+          marginBottom: '12px',
+          padding: '8px 12px',
+          backgroundColor: message.type === 'error' ? '#fef6f6' : '#f0f9ff',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          {message.type === 'error' ? (
+            <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+          ) : (
+            <CheckmarkCircleRegular style={{ color: '#107c10', fontSize: '16px', flexShrink: 0 }} />
+          )}
+          <Text style={{
+            color: message.type === 'error' ? '#d13438' : '#107c10',
+            fontWeight: 500,
+            fontSize: '13px'
           }}>
-            {message.type === 'error' ? (
-              <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
-            ) : (
-              <CheckmarkCircleRegular style={{ color: '#107c10', fontSize: '16px', flexShrink: 0 }} />
-            )}
-            <Text style={{
-              color: message.type === 'error' ? '#d13438' : '#107c10',
-              fontWeight: 500,
-              fontSize: '13px'
-            }}>
-              {message.text}
-            </Text>
-          </div>
-        )}
+            {message.text}
+          </Text>
+        </div>
+      )}
 
-        {/* ========================================
-            FFI SYNC SERVICE
-            ======================================== */}
-        <div className={styles.section}>
+      {/* ========================================
+          FFI SYNC SERVICE
+          ======================================== */}
+      <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <ArrowSyncRegular style={{ fontSize: '18px', color: '#0078d4' }} />
           <h3 className={styles.sectionTitle}>FFI Sync Service</h3>
@@ -349,7 +343,7 @@ export const SyncConfigurationPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* ========================================
           DATABASE MANAGEMENT
@@ -449,20 +443,22 @@ export const SyncConfigurationPage: React.FC = () => {
       {/* ========================================
           UI SETTINGS
           ======================================== */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <ColorRegular style={{ fontSize: '18px', color: '#0078d4' }} />
-          <h3 className={styles.sectionTitle}>UI Settings</h3>
-        </div>
-        <div className={styles.sectionDescription}>
-          User interface language and theme preferences
-        </div>
+      <Card className={styles.card}>
+        <div className={styles.section}>
+          <div>
+            <Title3>
+              <ColorRegular style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              UI Settings
+            </Title3>
+            <Body1>User interface language and theme preferences</Body1>
+          </div>
 
-        <div className={styles.formGrid}>
+          <Divider />
+
           <div className={styles.formRow}>
-            <label className={styles.label} htmlFor="ui-language">
+            <Label htmlFor="ui-language">
               Language
-            </label>
+            </Label>
             <Select
               id="ui-language"
               value={config.uiLanguage}
@@ -477,9 +473,9 @@ export const SyncConfigurationPage: React.FC = () => {
           </div>
 
           <div className={styles.formRow}>
-            <label className={styles.label} htmlFor="ui-theme">
+            <Label htmlFor="ui-theme">
               Theme
-            </label>
+            </Label>
             <Select
               id="ui-theme"
               value={config.uiTheme}
@@ -492,13 +488,13 @@ export const SyncConfigurationPage: React.FC = () => {
             </Select>
           </div>
         </div>
-      </div>
-      </div>
+      </Card>
 
       {/* Actions */}
       <div className={styles.actions}>
         <Button
           appearance="primary"
+          icon={<CheckmarkCircleRegular />}
           onClick={handleSave}
           disabled={saving}
         >
