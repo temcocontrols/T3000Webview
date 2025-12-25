@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Text, Button, Spinner, DataGrid, DataGridHeader, DataGridHeaderCell, DataGridBody, DataGridRow, DataGridCell, TableColumnDefinition, createTableColumn, Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, Tooltip } from '@fluentui/react-components';
-import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronDownRegular, ChevronLeftRegular, ChevronRightRegular, FolderOpenRegular, InfoRegular, DismissRegular } from '@fluentui/react-icons';
+import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronDownRegular, ChevronLeftRegular, ChevronRightRegular, FolderOpenRegular, InfoRegular, DismissRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import styles from './FileBrowserPage.module.css';
 
 interface FileNode {
@@ -353,14 +353,18 @@ export const FileBrowserPage: React.FC = () => {
           {/* File Grid */}
           <div className={styles.fileGrid}>
             {loading && (
-              <div className={styles.loadingContainer}>
-                <Spinner size="medium" label="Loading..." />
+              <div className={styles.loadingBar}>
+                <Spinner size="tiny" />
+                <Text size={200} weight="regular">Loading files...</Text>
               </div>
             )}
 
             {error && (
-              <div className={styles.error}>
-                <Text size={300} style={{ color: '#d13438' }}>{error}</Text>
+              <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#fef6f6', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px', flexShrink: 0 }} />
+                <Text style={{ color: '#d13438', fontWeight: 500, fontSize: '13px' }}>
+                  {error}
+                </Text>
               </div>
             )}
 

@@ -23,6 +23,7 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Spinner,
+  Text,
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
@@ -37,8 +38,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: tokens.spacingVerticalXXL,
-    gap: tokens.spacingVerticalXL,
+    padding: '0',
+    gap: tokens.spacingVerticalL,
     overflow: 'auto',
   },
   header: {
@@ -79,6 +80,15 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: tokens.spacingHorizontalM,
     marginTop: tokens.spacingVerticalL,
+  },
+  loadingBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    padding: '4px 8px',
+    backgroundColor: 'transparent',
+    marginBottom: tokens.spacingVerticalM,
+    fontSize: '13px',
   },
 });
 
@@ -205,7 +215,10 @@ export const SyncConfigurationPage: React.FC = () => {
   if (loading) {
     return (
       <div className={styles.container}>
-        <Spinner label="Loading sync configuration..." />
+        <div className={styles.loadingBar}>
+          <Spinner size="tiny" />
+          <Text size={200} weight="regular">Loading sync configuration...</Text>
+        </div>
       </div>
     );
   }
