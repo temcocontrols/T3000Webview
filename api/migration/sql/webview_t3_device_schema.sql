@@ -1201,4 +1201,120 @@ BEGIN
     UPDATE database_partitions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
+-- ============================================================================
+-- Table: DATA_SYNC_METADATA
+-- Purpose: Track sync operations from both FFI backend service and frontend manual refreshes
+-- Strategy: INSERT on each sync, keep latest 10 records per device/type
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS DATA_SYNC_METADATA (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Timestamp information
+    sync_time INTEGER NOT NULL,                 -- Unix timestamp (e.g., 1735210845)
+    sync_time_fmt TEXT NOT NULL,                -- Human-readable format (e.g., "2025-12-26 14:30:45")
+
+    -- Sync identification
+    data_type TEXT NOT NULL,                    -- Data type: "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS", etc.
+    serial_number TEXT NOT NULL,                -- Device serial number
+    panel_id INTEGER,                           -- Panel number (optional)
+
+    -- Sync details
+    records_synced INTEGER DEFAULT 0,           -- Number of records updated in this sync
+    sync_method TEXT NOT NULL,                  -- "FFI_BACKEND" or "UI_REFRESH"
+
+    -- Status tracking
+    success INTEGER NOT NULL DEFAULT 1,         -- 1 = successful sync, 0 = failed sync
+    error_message TEXT,                         -- Error details if sync failed (NULL if successful)
+
+    -- Audit
+    created_at INTEGER DEFAULT (unixepoch())    -- When this record was created
+);
+
+-- Indexes for fast lookups
+CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_lookup
+    ON DATA_SYNC_METADATA(serial_number, data_type, sync_time DESC);
+
+CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_created
+    ON DATA_SYNC_METADATA(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_data_sync_metadata_method
+    ON DATA_SYNC_METADATA(sync_method, created_at DESC);
+
+-- ============================================================================
+-- UI Auto-Refresh Configuration Entries in APPLICATION_CONFIG
+-- ============================================================================
+
+-- Inputs page auto-refresh configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+VALUES (
+    'ui.refresh.inputs',
+    '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}',
+    'json',
+    'UI auto-refresh settings for Inputs page',
+    0,
+    unixepoch(),
+    unixepoch()
+);
+
+-- Outputs page auto-refresh configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+VALUES (
+    'ui.refresh.outputs',
+    '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}',
+    'json',
+    'UI auto-refresh settings for Outputs page',
+    0,
+    unixepoch(),
+    unixepoch()
+);
+
+-- Variables page auto-refresh configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+VALUES (
+    'ui.refresh.variables',
+    '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}',
+    'json',
+    'UI auto-refresh settings for Variables page',
+    0,
+    unixepoch(),
+    unixepoch()
+);
+
+-- Programs page auto-refresh configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+VALUES (
+    'ui.refresh.programs',
+    '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}',
+    'json',
+    'UI auto-refresh settings for Programs page',
+    0,
+    unixepoch(),
+    unixepoch()
+);
+
+-- Schedules page auto-refresh configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+VALUES (
+    'ui.refresh.schedules',
+    '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}',
+    'json',
+    'UI auto-refresh settings for Schedules page',
+    0,
+    unixepoch(),
+    unixepoch()
+);
+
+-- Holidays page auto-refresh configuration
+INSERT OR IGNORE INTO APPLICATION_CONFIG (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+VALUES (
+    'ui.refresh.holidays',
+    '{"autoRefreshEnabled":false,"refreshIntervalSecs":30}',
+    'json',
+    'UI auto-refresh settings for Holidays page',
+    0,
+    unixepoch(),
+    unixepoch()
+);
+
 -- Database ready for T3000 WebView development with Database Management System (no foreign key constraints)
