@@ -14,7 +14,6 @@ use tracing::{error, info};
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, variable_points};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
-use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
@@ -227,22 +226,6 @@ pub async fn save_refreshed_variables(
     };
 
     info!("✅ Saved {} variable(s) to database", saved_count);
-
-    // Insert DATA_SYNC_METADATA for UI refresh
-    let insert_request = InsertSyncMetadataRequest {
-        data_type: "VARIABLES".to_string(),
-        serial_number: serial.to_string(),
-        panel_id: None,
-        records_synced: saved_count,
-        sync_method: "UI_REFRESH".to_string(),
-        success: true,
-        error_message: None,
-    };
-
-    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db_connection, insert_request).await {
-        error!("❌ Failed to insert VARIABLES sync metadata: {}", e);
-    }
-
     Ok(Json(SaveResponse {
         success: true,
         message: format!("Saved {} variable(s) to database", saved_count),
