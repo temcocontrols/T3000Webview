@@ -14,7 +14,7 @@ use tracing::{error, info};
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, input_points};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
-use crate::logger::{ServiceLogger, LogLevel};
+use crate::logger::ServiceLogger;
 use sea_orm::*;
 
 // Entry type constants matching C++ defines
