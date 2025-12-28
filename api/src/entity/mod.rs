@@ -18,6 +18,7 @@ pub mod application_config_history;
 pub mod database_partitions;
 pub mod database_partition_config;
 pub mod database_files;
+pub mod data_sync_metadata;
 
 // ============================================================================
 // ABSTRACTED ENTITIES - T3000 device database entities (used by T3000 modules)
