@@ -76,6 +76,11 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
                 .merge(file_routes())
                 .route("/health", get(health_check_handler))
                 .with_state(original_state)
+                .merge(
+                    // Data Sync Metadata API routes with T3AppState
+                    crate::database_management::data_sync_endpoints::create_sync_status_routes()
+                        .with_state(app_state.clone())
+                )
         )
         // T3000 device routes with T3AppState
         .nest("/api/t3_device", t3_device_routes())
