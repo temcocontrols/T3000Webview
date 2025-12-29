@@ -1,7 +1,7 @@
 /**
  * Schedule Refresh API Service
  *
- * Handles schedule data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles schedule data refresh operations using GET_WEBVIEW_LIST (Action 17)
  */
 
 import { API_BASE_URL } from '../../../config/constants';

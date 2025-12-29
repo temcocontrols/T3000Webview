@@ -1,11 +1,11 @@
 /**
  * Output Refresh API Service
  *
- * Handles output data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles output data refresh operations using GET_WEBVIEW_LIST (Action 17)
  * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
  *
  * C++ Reference:
- * - REFRESH_WEBVIEW_LIST = 17
+ * - GET_WEBVIEW_LIST = 17
  * - Reads output points from device via BACnet
  * - Updates database with fresh values
  */
@@ -33,7 +33,7 @@ export interface SaveResponse {
 
 /**
  * Output Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for output points
+ * Implements GET_WEBVIEW_LIST action for output points
  */
 export class OutputRefreshApiService {
   private static baseUrl = `${API_BASE_URL}/api/t3_device`;

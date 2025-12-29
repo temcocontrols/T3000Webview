@@ -673,7 +673,8 @@ export const ProgramsPage: React.FC = () => {
               )}
 
               {/* ========================================
-
+                  TOOLBAR
+                  ======================================== */}
               {selectedDevice && (
               <>
               <div className={styles.toolbar}>

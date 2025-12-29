@@ -1,11 +1,11 @@
 /**
  * Variable Refresh API Service
  *
- * Handles variable data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles variable data refresh operations using GET_WEBVIEW_LIST (Action 17)
  * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
  *
  * C++ Reference:
- * - REFRESH_WEBVIEW_LIST = 17
+ * - GET_WEBVIEW_LIST = 17
  * - Reads variable points from device via BACnet
  * - Updates database with fresh values
  */
@@ -33,7 +33,7 @@ export interface SaveResponse {
 
 /**
  * Variable Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for variable points
+ * Implements GET_WEBVIEW_LIST action for variable points
  */
 export class VariableRefreshApiService {
   private static baseUrl = `${API_BASE_URL}/api/t3_device`;

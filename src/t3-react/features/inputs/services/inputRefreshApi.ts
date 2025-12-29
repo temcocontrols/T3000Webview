@@ -1,11 +1,11 @@
 /**
  * Input Refresh API Service
  *
- * Handles input data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles input data refresh operations using GET_WEBVIEW_LIST (Action 17)
  * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
  *
  * C++ Reference:
- * - REFRESH_WEBVIEW_LIST = 17
+ * - GET_WEBVIEW_LIST = 17
  * - Reads input points from device via BACnet
  * - Updates database with fresh values
  */
@@ -33,7 +33,7 @@ export interface SaveResponse {
 
 /**
  * Input Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for input points
+ * Implements GET_WEBVIEW_LIST action for input points
  */
 export class InputRefreshApiService {
   private static baseUrl = `${API_BASE_URL}/api/t3_device`;

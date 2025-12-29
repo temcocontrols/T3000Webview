@@ -324,7 +324,7 @@ export const TransportTesterPage: React.FC = () => {
         'SAVE_NEW_LIBRARY_DATA': WebViewMessageType.SAVE_NEW_LIBRARY_DATA,
         'LOGGING_DATA': WebViewMessageType.LOGGING_DATA,
         'UPDATE_WEBVIEW_LIST': WebViewMessageType.UPDATE_WEBVIEW_LIST,
-        'GET_WEBVIEW_LIST': WebViewMessageType.REFRESH_WEBVIEW_LIST,
+        'GET_WEBVIEW_LIST': WebViewMessageType.GET_WEBVIEW_LIST,
       };
 
       const messageType = actionMap[action];
