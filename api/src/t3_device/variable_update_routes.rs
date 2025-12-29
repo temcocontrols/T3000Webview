@@ -206,7 +206,13 @@ async fn save_variable_to_db(
             active_model.digital_analog = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        // Use update_many with explicit filters
+        variable_points::Entity::update_many()
+            .filter(variable_points::Column::SerialNumber.eq(serial))
+            .filter(variable_points::Column::VariableIndex.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update variable in database: {}", e))?;
 
         Ok(())

@@ -172,7 +172,12 @@ async fn save_graphic_to_db(
             active_model.switch_node = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        graphics::Entity::update_many()
+            .filter(graphics::Column::SerialNumber.eq(serial))
+            .filter(graphics::Column::GraphicId.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update graphics in database: {}", e))?;
 
         Ok(())

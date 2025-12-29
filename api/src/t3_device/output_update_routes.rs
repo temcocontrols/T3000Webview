@@ -213,8 +213,14 @@ async fn save_output_to_db(
             active_model.digital_analog = Set(Some(val.to_string()));
         }
 
-        // Save to database
-        active_model.update(db).await
+        // Save to database using update_many with explicit filters
+        // This ensures we update WHERE SerialNumber = ? AND OutputIndex = ?
+        output_points::Entity::update_many()
+            .filter(output_points::Column::SerialNumber.eq(serial))
+            .filter(output_points::Column::OutputIndex.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update output in database: {}", e))?;
 
         Ok(())

@@ -194,7 +194,12 @@ async fn save_schedule_to_db(
             active_model.status2 = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        schedules::Entity::update_many()
+            .filter(schedules::Column::SerialNumber.eq(serial))
+            .filter(schedules::Column::ScheduleId.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update schedule in database: {}", e))?;
 
         Ok(())

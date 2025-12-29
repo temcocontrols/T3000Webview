@@ -327,7 +327,15 @@ async fn save_input_to_db(
             logger.info(&format!("💾 Executing database update for serial: {}, index: {}", serial, index));
         }
 
-        active_model.update(db).await
+        // Use update_many with explicit filters to update only the specific record
+        // This ensures we update WHERE SerialNumber = ? AND InputIndex = ?
+        // instead of relying on primary key (which would only use SerialNumber)
+        input_points::Entity::update_many()
+            .filter(input_points::Column::SerialNumber.eq(serial))
+            .filter(input_points::Column::InputIndex.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| {
                 if let Ok(mut logger) = ServiceLogger::database_inputs() {
                     logger.error(&format!("Failed to update input in database: {} - serial: {}, index: {}", e, serial, index));

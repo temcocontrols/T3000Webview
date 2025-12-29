@@ -192,7 +192,12 @@ async fn save_holiday_to_db(
             active_model.year_field = Set(Some(val.to_string()));
         }
 
-        active_model.update(db).await
+        holidays::Entity::update_many()
+            .filter(holidays::Column::SerialNumber.eq(serial))
+            .filter(holidays::Column::HolidayId.eq(index.to_string()))
+            .set(active_model)
+            .exec(db)
+            .await
             .map_err(|e| format!("Failed to update holiday in database: {}", e))?;
 
         Ok(())
