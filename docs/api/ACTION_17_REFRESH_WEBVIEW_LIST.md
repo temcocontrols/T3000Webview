@@ -1,4 +1,4 @@
-# Action 17 - REFRESH_WEBVIEW_LIST
+# Action 17 - GET_WEBVIEW_LIST
 
 **Complete Documentation for Message 17 Implementation**
 
@@ -24,7 +24,7 @@
 ## Overview
 
 ### Purpose
-Action 17 (REFRESH_WEBVIEW_LIST) reads data **FROM** devices to update the web interface with current values, complementing Action 16 (UPDATE_WEBVIEW_LIST) which writes data **TO** devices.
+Action 17 (GET_WEBVIEW_LIST) reads data **FROM** devices to update the web interface with current values, complementing Action 16 (UPDATE_WEBVIEW_LIST) which writes data **TO** devices.
 
 ### Two-API Design Pattern
 ```
@@ -320,7 +320,7 @@ fn call_refresh_ffi(
     let result = unsafe {
         HandleWebViewMsg(
             serial,
-            17,  // REFRESH_WEBVIEW_LIST action
+            17,  // GET_WEBVIEW_LIST action
             entry_type,
             index_val,
             0,   // panel (unused)
@@ -652,14 +652,14 @@ const handleRefreshSingleInput = async (inputIndex: string) => {
 enum WEBVIEW_MESSAGE_TYPE {
     // ... existing values
     UPDATE_WEBVIEW_LIST = 16,
-    REFRESH_WEBVIEW_LIST = 17,  // ← Add this
+    GET_WEBVIEW_LIST = 17,  // ← Add this
 };
 ```
 
 #### 2. Implement Case 17 Handler
 
 ```cpp
-case 17: // REFRESH_WEBVIEW_LIST
+case 17: // GET_WEBVIEW_LIST
 {
     int entry_type = params["entry_type"];  // 0=OUT, 1=IN, 2=VAR
     int index = params["index"];            // -1 for all, specific for single
@@ -733,7 +733,7 @@ The Rust code calls C++ via this signature:
 ```cpp
 extern "C" int HandleWebViewMsg(
     unsigned int serial,      // Device serial number
-    int action,               // 17 for REFRESH_WEBVIEW_LIST
+    int action,               // 17 for GET_WEBVIEW_LIST
     int entry_type,           // 0=OUT, 1=IN, 2=VAR
     int index,                // -1 for all, specific index for single
     int panel,                // Panel ID (usually 0)
@@ -1038,7 +1038,7 @@ WHERE serial_number = 1234567 AND InputIndex = 5;
 - Styles: `src/t3-react/features/{inputs,outputs,variables}/pages/*Page.module.css`
 
 ### Documentation
-- This file: `docs/api/ACTION_17_REFRESH_WEBVIEW_LIST.md`
+- This file: `docs/api/ACTION_17_GET_WEBVIEW_LIST.md`
 
 ---
 

@@ -274,7 +274,7 @@ Develop
   - SAVE_NEW_LIBRARY_DATA (14)
   - LOGGING_DATA (15)
   - UPDATE_WEBVIEW_LIST (16)
-  - REFRESH_WEBVIEW_LIST (17)
+  - GET_WEBVIEW_LIST (17)
 
 - **Quick Fields**: Panel ID, Serial Number, View Item
 - **Custom Data**: JSON editor for additional payload
