@@ -1,5 +1,5 @@
 // Input Refresh API Routes
-// Provides RESTful endpoints for refreshing input point data using REFRESH_WEBVIEW_LIST action
+// Provides RESTful endpoints for refreshing input point data using GET_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -63,7 +63,7 @@ pub fn create_input_refresh_routes() -> Router<T3AppState> {
         .route("/inputs/:serial/save-refreshed", axum::routing::post(save_refreshed_inputs))
 }
 
-/// Refresh input(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
+/// Refresh input(s) from device using GET_WEBVIEW_LIST action (Action 17)
 /// POST /api/t3-device/inputs/:serial/refresh
 /// Body: { "index": 5 } for single item, or {} for all items
 /// Returns the raw data from device without saving to database
@@ -74,10 +74,10 @@ pub async fn refresh_inputs(
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
     match payload.index {
         Some(idx) => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing single input - Serial: {}, Index: {}", serial, idx);
+            info!("GET_WEBVIEW_LIST: Refreshing single input - Serial: {}, Index: {}", serial, idx);
         }
         None => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing all inputs - Serial: {}", serial);
+            info!("GET_WEBVIEW_LIST: Refreshing all inputs - Serial: {}", serial);
         }
     }
 
@@ -107,11 +107,12 @@ pub async fn refresh_inputs(
         }
     };
 
-    // Prepare refresh JSON for REFRESH_WEBVIEW_LIST action
+    // Prepare refresh JSON for GET_WEBVIEW_LIST action (Action 17)
     let mut refresh_json = json!({
-        "action": WebViewMessageType::REFRESH_WEBVIEW_LIST as i32,
+        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
+        "object_instance": serial,
         "entryType": BAC_IN,  // 1 = INPUT
     });
 
@@ -121,7 +122,7 @@ pub async fn refresh_inputs(
     }
 
     // Call FFI function
-    match call_refresh_ffi(WebViewMessageType::REFRESH_WEBVIEW_LIST as i32, refresh_json).await {
+    match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             // Parse C++ response
             let response_json: Value = match serde_json::from_str(&response) {
@@ -151,7 +152,7 @@ pub async fn refresh_inputs(
                     error!("❌ Action 17 not implemented in C++: {}", debug_msg);
                     return Err((
                         StatusCode::NOT_IMPLEMENTED,
-                        "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
+                        "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
                     ));
                 }
 
@@ -184,7 +185,7 @@ pub async fn refresh_inputs(
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((
                     StatusCode::NOT_IMPLEMENTED,
-                    "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
+                    "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
                 ));
             }
 

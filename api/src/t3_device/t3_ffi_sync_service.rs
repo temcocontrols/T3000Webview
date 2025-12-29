@@ -66,7 +66,7 @@ pub enum WebViewMessageType {
     SAVE_NEW_LIBRARY_DATA = 14,
     LOGGING_DATA = 15, // Used for full device data sync
     UPDATE_WEBVIEW_LIST = 16, // Used for updating full records (inputs/outputs/variables)
-    REFRESH_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
+    GET_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
 }
 
 // Global function pointers - will be loaded from T3000.exe at runtime
@@ -1151,17 +1151,29 @@ impl T3000MainService {
         ));
 
         // Also insert into new DATA_SYNC_METADATA table for sync cycle start
-        let new_sync_request = InsertSyncMetadataRequest {
-            data_type: "LOGGING_DATA_CYCLE".to_string(),
-            serial_number: "ALL".to_string(),
-            panel_id: None,
-            records_synced: 0, // Will be updated later
-            sync_method: "FFI_BACKEND".to_string(),
-            success: true,
-            error_message: None,
+        // Note: Using txn.into_transaction_log() for inline insertion to avoid database lock
+        let now = chrono::Utc::now();
+        let sync_time = now.timestamp();
+        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let cycle_metadata = crate::entity::data_sync_metadata::ActiveModel {
+            sync_time: Set(sync_time),
+            sync_time_fmt: Set(sync_time_fmt.clone()),
+            data_type: Set("LOGGING_DATA_CYCLE".to_string()),
+            serial_number: Set("ALL".to_string()),
+            panel_id: Set(None),
+            records_synced: Set(0),
+            sync_method: Set("FFI_BACKEND".to_string()),
+            success: Set(1),
+            error_message: Set(None),
+            created_at: Set(sync_time),
+            ..Default::default()
         };
 
-        if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, new_sync_request).await {
+        if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(cycle_metadata)
+            .exec(&txn)
+            .await
+        {
             sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
         }
 
@@ -1309,17 +1321,28 @@ impl T3000MainService {
                     sync_logger.info("✅ INPUT points completed");
 
                     // Insert DATA_SYNC_METADATA for INPUTS sync
-                    let insert_request = InsertSyncMetadataRequest {
-                        data_type: "INPUTS".to_string(),
-                        serial_number: serial_number.to_string(),
-                        panel_id: Some(device_with_points.device_info.panel_id),
-                        records_synced: device_with_points.input_points.len() as i32,
-                        sync_method: "FFI_BACKEND".to_string(),
-                        success: true,
-                        error_message: None,
+                    let now = chrono::Utc::now();
+                    let sync_time = now.timestamp();
+                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                    let input_metadata = crate::entity::data_sync_metadata::ActiveModel {
+                        sync_time: Set(sync_time),
+                        sync_time_fmt: Set(sync_time_fmt),
+                        data_type: Set("INPUTS".to_string()),
+                        serial_number: Set(serial_number.to_string()),
+                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
+                        records_synced: Set(device_with_points.input_points.len() as i32),
+                        sync_method: Set("FFI_BACKEND".to_string()),
+                        success: Set(1),
+                        error_message: Set(None),
+                        created_at: Set(sync_time),
+                        ..Default::default()
                     };
 
-                    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, insert_request).await {
+                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(input_metadata)
+                        .exec(&txn)
+                        .await
+                    {
                         sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
                     }
                 }
@@ -1349,17 +1372,28 @@ impl T3000MainService {
                     sync_logger.info("✅ OUTPUT points completed");
 
                     // Insert DATA_SYNC_METADATA for OUTPUTS sync
-                    let insert_request = InsertSyncMetadataRequest {
-                        data_type: "OUTPUTS".to_string(),
-                        serial_number: serial_number.to_string(),
-                        panel_id: Some(device_with_points.device_info.panel_id),
-                        records_synced: device_with_points.output_points.len() as i32,
-                        sync_method: "FFI_BACKEND".to_string(),
-                        success: true,
-                        error_message: None,
+                    let now = chrono::Utc::now();
+                    let sync_time = now.timestamp();
+                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                    let output_metadata = crate::entity::data_sync_metadata::ActiveModel {
+                        sync_time: Set(sync_time),
+                        sync_time_fmt: Set(sync_time_fmt),
+                        data_type: Set("OUTPUTS".to_string()),
+                        serial_number: Set(serial_number.to_string()),
+                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
+                        records_synced: Set(device_with_points.output_points.len() as i32),
+                        sync_method: Set("FFI_BACKEND".to_string()),
+                        success: Set(1),
+                        error_message: Set(None),
+                        created_at: Set(sync_time),
+                        ..Default::default()
                     };
 
-                    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, insert_request).await {
+                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(output_metadata)
+                        .exec(&txn)
+                        .await
+                    {
                         sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
                     }
                 }
@@ -1384,17 +1418,28 @@ impl T3000MainService {
                     sync_logger.info("✅ VARIABLE points completed");
 
                     // Insert DATA_SYNC_METADATA for VARIABLES sync
-                    let insert_request = InsertSyncMetadataRequest {
-                        data_type: "VARIABLES".to_string(),
-                        serial_number: serial_number.to_string(),
-                        panel_id: Some(device_with_points.device_info.panel_id),
-                        records_synced: device_with_points.variable_points.len() as i32,
-                        sync_method: "FFI_BACKEND".to_string(),
-                        success: true,
-                        error_message: None,
+                    let now = chrono::Utc::now();
+                    let sync_time = now.timestamp();
+                    let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                    let variable_metadata = crate::entity::data_sync_metadata::ActiveModel {
+                        sync_time: Set(sync_time),
+                        sync_time_fmt: Set(sync_time_fmt),
+                        data_type: Set("VARIABLES".to_string()),
+                        serial_number: Set(serial_number.to_string()),
+                        panel_id: Set(Some(device_with_points.device_info.panel_id)),
+                        records_synced: Set(device_with_points.variable_points.len() as i32),
+                        sync_method: Set("FFI_BACKEND".to_string()),
+                        success: Set(1),
+                        error_message: Set(None),
+                        created_at: Set(sync_time),
+                        ..Default::default()
                     };
 
-                    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, insert_request).await {
+                    if let Err(e) = crate::entity::data_sync_metadata::Entity::insert(variable_metadata)
+                        .exec(&txn)
+                        .await
+                    {
                         sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
                     }
                 }

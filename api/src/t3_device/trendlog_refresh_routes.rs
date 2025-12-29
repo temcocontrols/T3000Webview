@@ -1,5 +1,5 @@
 // TrendLog Refresh API Routes
-// Provides RESTful endpoints for refreshing trendlog data using REFRESH_WEBVIEW_LIST action
+// Provides RESTful endpoints for refreshing trendlog data using GET_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -62,7 +62,7 @@ pub fn create_trendlog_refresh_routes() -> Router<T3AppState> {
         .route("/trendlogs/:serial/save-refreshed", axum::routing::post(save_refreshed_trendlogs))
 }
 
-/// Refresh trendlog(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
+/// Refresh trendlog(s) from device using GET_WEBVIEW_LIST action (Action 17)
 pub async fn refresh_trendlogs(
     State(state): State<T3AppState>,
     Path(serial): Path<i32>,
@@ -70,10 +70,10 @@ pub async fn refresh_trendlogs(
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
     match payload.index {
         Some(idx) => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing single trendlog - Serial: {}, Index: {}", serial, idx);
+            info!("GET_WEBVIEW_LIST: Refreshing single trendlog - Serial: {}, Index: {}", serial, idx);
         }
         None => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing all trendlogs - Serial: {}", serial);
+            info!("GET_WEBVIEW_LIST: Refreshing all trendlogs - Serial: {}", serial);
         }
     }
 
@@ -102,7 +102,7 @@ pub async fn refresh_trendlogs(
     };
 
     let mut refresh_json = json!({
-        "action": WebViewMessageType::REFRESH_WEBVIEW_LIST as i32,
+        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_TREND,
@@ -112,7 +112,7 @@ pub async fn refresh_trendlogs(
         refresh_json["entryIndex"] = json!(idx);
     }
 
-    match call_refresh_ffi(WebViewMessageType::REFRESH_WEBVIEW_LIST as i32, refresh_json).await {
+    match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => json,
@@ -129,7 +129,7 @@ pub async fn refresh_trendlogs(
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
                     error!("❌ Action 17 not implemented in C++: {}", debug_msg);
-                    return Err((StatusCode::NOT_IMPLEMENTED, "REFRESH_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
+                    return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
                 }
 
                 error!("❌ Device refresh failed: {}", error_msg);
@@ -151,7 +151,7 @@ pub async fn refresh_trendlogs(
         Err(e) => {
             error!("❌ Failed to refresh trendlogs: {}", e);
             if e.contains("not implemented") || e.contains("empty response") {
-                return Err((StatusCode::NOT_IMPLEMENTED, "REFRESH_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
+                return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
             }
             Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to refresh trendlogs: {}", e)))
         }
