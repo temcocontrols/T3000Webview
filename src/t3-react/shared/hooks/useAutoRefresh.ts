@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../../config/constants';
 
 export interface AutoRefreshConfig {
   autoRefreshEnabled: boolean;
@@ -47,7 +48,7 @@ export const useAutoRefresh = ({
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/config/application/ui.refresh.${pageName}`);
+      const response = await fetch(`${API_BASE_URL}/api/config/application/ui.refresh.${pageName}`);
 
       if (!response.ok) {
         // If config doesn't exist, use default
@@ -86,7 +87,7 @@ export const useAutoRefresh = ({
       try {
         setError(null);
 
-        const response = await fetch(`/api/config/application/ui.refresh.${pageName}`, {
+        const response = await fetch(`${API_BASE_URL}/api/config/application/ui.refresh.${pageName}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

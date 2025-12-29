@@ -28,6 +28,25 @@ import {
 } from '@fluentui/react-icons';
 import { SyncStatus } from '../hooks/useSyncStatus';
 import { useAutoRefresh, AutoRefreshConfig } from '../hooks/useAutoRefresh';
+import { API_BASE_URL } from '../../config/constants';
+
+/**
+ * Convert UTC timestamp to local time string
+ * @param utcTimestamp Unix timestamp in seconds (UTC)
+ * @returns Formatted local time string "YYYY-MM-DD HH:MM:SS"
+ */
+const formatUtcToLocalTime = (utcTimestamp: number): string => {
+  const date = new Date(utcTimestamp * 1000); // Convert to milliseconds
+  return date.toLocaleString('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).replace(',', '');
+};
 
 const useStyles = makeStyles({
   drawer: {
@@ -60,6 +79,30 @@ const useStyles = makeStyles({
     flexGrow: 1,
     minHeight: '100px',
     marginBottom: '16px',
+    overflow: 'hidden',
+  },
+  historyList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    overflowY: 'auto',
+    paddingRight: '2px',
+    maxHeight: '400px',
+    scrollbarWidth: 'thin',
+    scrollbarColor: `${tokens.colorNeutralStroke2} transparent`,
+    '&::-webkit-scrollbar': {
+      width: '2px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: 'transparent',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: tokens.colorNeutralStroke2,
+      borderRadius: '1px',
+      '&:hover': {
+        backgroundColor: tokens.colorNeutralStroke1,
+      },
+    },
   },
   bottomSection: {
     display: 'flex',
@@ -212,7 +255,7 @@ export const SyncSettingsDrawer: React.FC<SyncSettingsDrawerProps> = ({
       setHistoryError(null);
       try {
         const response = await fetch(
-          `/api/sync-status/${serialNumber}/${dataType}/history?limit=10`
+          `${API_BASE_URL}/api/sync-status/${serialNumber}/${dataType}/history?limit=10`
         );
 
         if (!response.ok) {
@@ -325,20 +368,22 @@ export const SyncSettingsDrawer: React.FC<SyncSettingsDrawerProps> = ({
               <Text>No sync history available</Text>
             </div>
           ) : (
-            syncHistory.map((item) => (
-              <div key={item.id} className={styles.historyItem}>
-                {renderHistoryIcon(item)}
-                <div className={styles.historyContent}>
-                  <Text className={styles.historyTime}>{item.syncTimeFmt}</Text>
-                  <div className={styles.historyDetails}>
-                    {renderSyncMethod(item.syncMethod)} • {item.recordsSynced} records
+            <div className={styles.historyList}>
+              {syncHistory.map((item) => (
+                <div key={item.id} className={styles.historyItem}>
+                  {renderHistoryIcon(item)}
+                  <div className={styles.historyContent}>
+                    <Text className={styles.historyTime}>{formatUtcToLocalTime(item.syncTime)}</Text>
+                    <div className={styles.historyDetails}>
+                      {renderSyncMethod(item.syncMethod)} • {item.recordsSynced} records
+                    </div>
+                    {item.errorMessage && (
+                      <Text className={styles.historyError}>{item.errorMessage}</Text>
+                    )}
                   </div>
-                  {item.errorMessage && (
-                    <Text className={styles.historyError}>{item.errorMessage}</Text>
-                  )}
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
 

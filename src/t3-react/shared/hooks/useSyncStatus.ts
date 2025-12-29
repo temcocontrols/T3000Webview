@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../../config/constants';
 
 export interface SyncStatus {
   id: number;
@@ -67,7 +68,7 @@ export const useSyncStatus = ({
       setError(null);
 
       const response = await fetch(
-        `/api/sync-status/${serialNumber}/${dataType}`
+        `${API_BASE_URL}/api/sync-status/${serialNumber}/${dataType}`
       );
 
       if (!response.ok) {

@@ -2,7 +2,7 @@
  * Panel Data Refresh Service
  *
  * Uses t3-transport library to refresh inputs/outputs/variables from device
- * Action 17: REFRESH_WEBVIEW_LIST
+ * Action 17: GET_WEBVIEW_LIST
  *
  * Replaces old API route-based refresh with direct FFI calls via t3-transport
  */
@@ -30,7 +30,7 @@ export interface RefreshResult {
 
 /**
  * Panel Data Refresh Service
- * Implements Action 17 (REFRESH_WEBVIEW_LIST) using t3-transport
+ * Implements Action 17 (GET_WEBVIEW_LIST) using t3-transport
  */
 export class PanelDataRefreshService {
   /**
@@ -55,13 +55,13 @@ export class PanelDataRefreshService {
                         type === 'input' ? EntryType.INPUT :
                         EntryType.VARIABLE;
 
-      console.log(`[PanelDataRefreshService] Calling Action 17 (REFRESH_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
+      console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
-      // Call Action 17: REFRESH_WEBVIEW_LIST
+      // Call Action 17: GET_WEBVIEW_LIST
       let response;
       if (index !== undefined) {
         // Single item refresh - use send() with index
-        response = await transport.send(WebViewMessageType.REFRESH_WEBVIEW_LIST, {
+        response = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
           serialNumber,
           entryType,
           index
