@@ -3,7 +3,7 @@
 //! Provides database operations for tracking data sync status from both
 //! FFI backend service and frontend manual refreshes.
 
-use chrono::Utc;
+use chrono::{Local, Utc};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
 
@@ -29,10 +29,16 @@ pub struct SyncStatusResponse {
 
 impl From<data_sync_metadata::Model> for SyncStatusResponse {
     fn from(model: data_sync_metadata::Model) -> Self {
+        // Convert sync_time timestamp to local time format
+        // This handles existing records that may have UTC formatted times
+        let sync_time_fmt = chrono::DateTime::from_timestamp(model.sync_time, 0)
+            .map(|dt| dt.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string())
+            .unwrap_or(model.sync_time_fmt);
+
         Self {
             id: model.id,
             sync_time: model.sync_time,
-            sync_time_fmt: model.sync_time_fmt,
+            sync_time_fmt,
             data_type: model.data_type,
             serial_number: model.serial_number,
             panel_id: model.panel_id,
@@ -102,7 +108,8 @@ impl DataSyncMetadataService {
     ) -> Result<SyncStatusResponse> {
         let now = Utc::now();
         let sync_time = now.timestamp();
-        let sync_time_fmt = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        // Use local time for display format
+        let sync_time_fmt = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
         let active_model = data_sync_metadata::ActiveModel {
             sync_time: Set(sync_time),

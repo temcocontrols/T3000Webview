@@ -160,6 +160,9 @@ export const SyncStatusBar: React.FC<SyncStatusBarProps> = ({
               <>
                 <Text className={styles.syncText}>
                   Last synced: <strong>{timeAgo}</strong>
+                  {syncStatus.syncTimeFmt && (
+                    <span className={styles.syncMethod}> ({syncStatus.syncTimeFmt})</span>
+                  )}
                 </Text>
                 {renderSyncMethod()}
                 {syncStatus.recordsSynced > 0 && (
