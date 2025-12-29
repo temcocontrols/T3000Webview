@@ -50,7 +50,6 @@ import {
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { ProgramRefreshApiService } from '../services/programRefreshApi';
-import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './ProgramsPage.module.css';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
@@ -672,8 +671,7 @@ export const ProgramsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* ========================================
-
+              {/* TOOLBAR */}
               {selectedDevice && (
               <>
               <div className={styles.toolbar}>

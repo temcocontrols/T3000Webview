@@ -54,7 +54,6 @@ import { getRangeLabel } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { useStatusBarStore } from '../../../store/statusBarStore';
-import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './OutputsPage.module.css';
 
 // Types based on Rust entity (output_points.rs)

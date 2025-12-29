@@ -22,7 +22,6 @@ import {
 } from '@fluentui/react-components';
 import { ChevronRight20Regular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
-import { SyncStatusBar } from '../shared/components/SyncStatusBar';
 
 const useStyles = makeStyles({
   container: {
@@ -71,21 +70,10 @@ const useStyles = makeStyles({
     fontWeight: '600',
     color: '#323130',
   },
-  syncSection: {
-    flexShrink: 0,
-    paddingLeft: '16px',
-    marginLeft: '16px',
-    borderLeft: '1px solid #d1d1d1',
-  },
 });
 
 interface PageHeaderProps {
   title?: string;
-  syncConfig?: {
-    dataType: string;
-    serialNumber: string;
-    onRefresh: () => void;
-  };
 }
 
 /**
@@ -110,7 +98,7 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/buildings': { label: 'Buildings', segments: ['Buildings'] },
 };
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {
+export const PageHeader: React.FC<PageHeaderProps> = ({ title }) => {
   const styles = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
@@ -120,16 +108,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
   const breadcrumbInfo = routeToBreadcrumb[location.pathname];
   const pageTitle = title || breadcrumbInfo?.label || 'T3000';
   const segments = breadcrumbInfo?.segments || ['T3000'];
-
-  // Determine if current page should show sync status
-  const dataTypeByRoute: Record<string, string> = {
-    '/t3000/inputs': 'INPUTS',
-    '/t3000/outputs': 'OUTPUTS',
-    '/t3000/variables': 'VARIABLES',
-    '/t3000/programs': 'PROGRAMS',
-  };
-  const dataType = dataTypeByRoute[location.pathname];
-  const shouldShowSync = !!dataType && !!selectedDevice;
 
   const handleBreadcrumbClick = (index: number) => {
     if (index === 0) {
@@ -153,18 +131,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
           </div>
         )}
       </div>
-      {shouldShowSync && (
-        <div className={styles.syncSection}>
-          <SyncStatusBar
-            dataType={dataType}
-            serialNumber={selectedDevice.serialNumber.toString()}
-            onRefresh={() => {
-              // Trigger a custom event that pages can listen to
-              window.dispatchEvent(new CustomEvent('sync-refresh-requested'));
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };
