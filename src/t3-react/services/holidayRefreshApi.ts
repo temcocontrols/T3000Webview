@@ -1,7 +1,7 @@
 /**
  * Holiday Refresh API Service
  *
- * Handles holiday data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles holiday data refresh operations using GET_WEBVIEW_LIST (Action 17)
  */
 
 import { API_BASE_URL } from '../config/constants';

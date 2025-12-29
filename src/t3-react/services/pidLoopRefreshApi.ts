@@ -1,7 +1,7 @@
 /**
  * PID Loop Refresh API Service
  *
- * Handles PID loop data refresh operations using REFRESH_WEBVIEW_LIST (Action 17)
+ * Handles PID loop data refresh operations using GET_WEBVIEW_LIST (Action 17)
  * Reads data FROM device (opposite of UPDATE_WEBVIEW_LIST which writes TO device)
  */
 
@@ -28,7 +28,7 @@ export interface SaveResponse {
 
 /**
  * PID Loop Refresh API Service
- * Implements REFRESH_WEBVIEW_LIST action for PID controller points
+ * Implements GET_WEBVIEW_LIST action for PID controller points
  */
 export class PidLoopRefreshApiService {
   private static baseUrl = `${API_BASE_URL}/api/t3_device`;
