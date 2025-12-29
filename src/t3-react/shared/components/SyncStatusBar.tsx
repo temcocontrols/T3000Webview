@@ -31,7 +31,6 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '8px 16px',
     minHeight: '40px',
   },
   leftSection: {
@@ -50,12 +49,15 @@ const useStyles = makeStyles({
     gap: '8px',
   },
   syncText: {
-    fontSize: tokens.fontSizeBase200,
+    fontSize: tokens.fontSizeBase100,
     color: tokens.colorNeutralForeground2,
   },
   syncMethod: {
-    fontSize: tokens.fontSizeBase100,
+    fontSize: '11px',
     color: tokens.colorNeutralForeground3,
+  },
+  button: {
+    fontSize: tokens.fontSizeBase100,
   },
 });
 
@@ -189,6 +191,7 @@ export const SyncStatusBar: React.FC<SyncStatusBarProps> = ({
             icon={<ArrowSync20Regular />}
             onClick={handleManualRefresh}
             disabled={isManualRefreshing || loading}
+            className={styles.button}
           >
             Refresh Now
           </Button>
@@ -197,6 +200,7 @@ export const SyncStatusBar: React.FC<SyncStatusBarProps> = ({
             size="small"
             icon={<Settings20Regular />}
             onClick={() => setIsDrawerOpen(true)}
+            className={styles.button}
           >
             Settings
           </Button>
