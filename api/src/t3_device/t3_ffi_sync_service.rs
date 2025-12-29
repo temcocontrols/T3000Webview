@@ -11,6 +11,7 @@ use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
 };
+use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
@@ -1061,6 +1062,21 @@ impl T3000MainService {
                 })?;
 
             sync_logger.info("✅ GET_PANELS_LIST metadata record created");
+
+            // Also insert into new DATA_SYNC_METADATA table
+            let new_metadata_request = InsertSyncMetadataRequest {
+                data_type: "GET_PANELS_LIST".to_string(),
+                serial_number: "ALL".to_string(),
+                panel_id: None,
+                records_synced: panels.len() as i32,
+                sync_method: "FFI_BACKEND".to_string(),
+                success: true,
+                error_message: None,
+            };
+
+            if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, new_metadata_request).await {
+                sync_logger.error(&format!("❌ Failed to insert GET_PANELS_LIST to DATA_SYNC_METADATA: {}", e));
+            }
         } else {
             sync_logger
                 .info("⚡ QUICK SYNC: Using cached device list, skipping GET_PANELS_LIST...");
@@ -1133,6 +1149,21 @@ impl T3000MainService {
             "📋 LOGGING_DATA sync metadata created - ID: {}",
             sync_metadata_id
         ));
+
+        // Also insert into new DATA_SYNC_METADATA table for sync cycle start
+        let new_sync_request = InsertSyncMetadataRequest {
+            data_type: "LOGGING_DATA_CYCLE".to_string(),
+            serial_number: "ALL".to_string(),
+            panel_id: None,
+            records_synced: 0, // Will be updated later
+            sync_method: "FFI_BACKEND".to_string(),
+            success: true,
+            error_message: None,
+        };
+
+        if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, new_sync_request).await {
+            sync_logger.error(&format!("❌ Failed to insert LOGGING_DATA_CYCLE to DATA_SYNC_METADATA: {}", e));
+        }
 
         // STEP 2: Process each device sequentially with per-device LOGGING_DATA calls
         let total_devices = panels.len();
@@ -1276,6 +1307,21 @@ impl T3000MainService {
                         }
                     }
                     sync_logger.info("✅ INPUT points completed");
+
+                    // Insert DATA_SYNC_METADATA for INPUTS sync
+                    let insert_request = InsertSyncMetadataRequest {
+                        data_type: "INPUTS".to_string(),
+                        serial_number: serial_number.to_string(),
+                        panel_id: Some(device_with_points.device_info.panel_id),
+                        records_synced: device_with_points.input_points.len() as i32,
+                        sync_method: "FFI_BACKEND".to_string(),
+                        success: true,
+                        error_message: None,
+                    };
+
+                    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, insert_request).await {
+                        sync_logger.error(&format!("❌ Failed to insert INPUTS sync metadata: {}", e));
+                    }
                 }
 
                 // UPSERT output points (INSERT or UPDATE)
@@ -1301,6 +1347,21 @@ impl T3000MainService {
                         }
                     }
                     sync_logger.info("✅ OUTPUT points completed");
+
+                    // Insert DATA_SYNC_METADATA for OUTPUTS sync
+                    let insert_request = InsertSyncMetadataRequest {
+                        data_type: "OUTPUTS".to_string(),
+                        serial_number: serial_number.to_string(),
+                        panel_id: Some(device_with_points.device_info.panel_id),
+                        records_synced: device_with_points.output_points.len() as i32,
+                        sync_method: "FFI_BACKEND".to_string(),
+                        success: true,
+                        error_message: None,
+                    };
+
+                    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, insert_request).await {
+                        sync_logger.error(&format!("❌ Failed to insert OUTPUTS sync metadata: {}", e));
+                    }
                 }
 
                 // UPSERT variable points (INSERT or UPDATE)
@@ -1321,6 +1382,21 @@ impl T3000MainService {
                         }
                     }
                     sync_logger.info("✅ VARIABLE points completed");
+
+                    // Insert DATA_SYNC_METADATA for VARIABLES sync
+                    let insert_request = InsertSyncMetadataRequest {
+                        data_type: "VARIABLES".to_string(),
+                        serial_number: serial_number.to_string(),
+                        panel_id: Some(device_with_points.device_info.panel_id),
+                        records_synced: device_with_points.variable_points.len() as i32,
+                        sync_method: "FFI_BACKEND".to_string(),
+                        success: true,
+                        error_message: None,
+                    };
+
+                    if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db, insert_request).await {
+                        sync_logger.error(&format!("❌ Failed to insert VARIABLES sync metadata: {}", e));
+                    }
                 }
 
                 // INSERT trend log data (ALWAYS INSERT for historical data)
