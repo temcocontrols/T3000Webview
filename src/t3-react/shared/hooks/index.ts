@@ -13,4 +13,6 @@ export { useWebSocket } from './useWebSocket';
 export { usePolling } from './usePolling';
 export { useLocalStorage, useSessionStorage } from './useLocalStorage';
 export { useGlobalMessage } from './useGlobalMessage';
+export { useSyncStatus } from './useSyncStatus';
+export { useAutoRefresh } from './useAutoRefresh';
 
