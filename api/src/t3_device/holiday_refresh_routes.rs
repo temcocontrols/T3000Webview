@@ -1,5 +1,5 @@
 // Holiday Refresh API Routes
-// Provides RESTful endpoints for refreshing holiday data using REFRESH_WEBVIEW_LIST action
+// Provides RESTful endpoints for refreshing holiday data using GET_WEBVIEW_LIST action
 
 use axum::{
     extract::{Path, State},
@@ -62,7 +62,7 @@ pub fn create_holiday_refresh_routes() -> Router<T3AppState> {
         .route("/holidays/:serial/save-refreshed", axum::routing::post(save_refreshed_holidays))
 }
 
-/// Refresh holiday(s) from device using REFRESH_WEBVIEW_LIST action (Action 17)
+/// Refresh holiday(s) from device using GET_WEBVIEW_LIST action (Action 17)
 /// POST /api/t3-device/holidays/:serial/refresh
 /// Body: { "index": 1 } for single item, or {} for all items
 /// Returns the raw data from device without saving to database
@@ -73,10 +73,10 @@ pub async fn refresh_holidays(
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
     match payload.index {
         Some(idx) => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing single holiday - Serial: {}, Index: {}", serial, idx);
+            info!("GET_WEBVIEW_LIST: Refreshing single holiday - Serial: {}, Index: {}", serial, idx);
         }
         None => {
-            info!("REFRESH_WEBVIEW_LIST: Refreshing all holidays - Serial: {}", serial);
+            info!("GET_WEBVIEW_LIST: Refreshing all holidays - Serial: {}", serial);
         }
     }
 
@@ -106,9 +106,9 @@ pub async fn refresh_holidays(
         }
     };
 
-    // Prepare refresh JSON for REFRESH_WEBVIEW_LIST action
+    // Prepare refresh JSON for GET_WEBVIEW_LIST action
     let mut refresh_json = json!({
-        "action": WebViewMessageType::REFRESH_WEBVIEW_LIST as i32,
+        "action": WebViewMessageType::GET_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_HOL,  // 8 = HOLIDAY
@@ -120,7 +120,7 @@ pub async fn refresh_holidays(
     }
 
     // Call FFI function
-    match call_refresh_ffi(WebViewMessageType::REFRESH_WEBVIEW_LIST as i32, refresh_json).await {
+    match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             // Parse C++ response
             let response_json: Value = match serde_json::from_str(&response) {
@@ -150,7 +150,7 @@ pub async fn refresh_holidays(
                     error!("❌ Action 17 not implemented in C++: {}", debug_msg);
                     return Err((
                         StatusCode::NOT_IMPLEMENTED,
-                        "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
+                        "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
                     ));
                 }
 
@@ -183,7 +183,7 @@ pub async fn refresh_holidays(
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((
                     StatusCode::NOT_IMPLEMENTED,
-                    "REFRESH_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
+                    "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please implement BacnetWebView_HandleWebViewMsg case 17 in T3000.exe".to_string(),
                 ));
             }
 
