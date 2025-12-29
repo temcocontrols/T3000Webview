@@ -1167,7 +1167,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // 🆕 Specialized Features Routes (supplementary data tables)
         .merge(create_specialized_routes())  // ✅ ENABLED
 
-        // 🆕 Point Refresh Routes (REFRESH_WEBVIEW_LIST Action 17)
+        // 🆕 Point Refresh Routes (GET_WEBVIEW_LIST Action 17)
         .merge(create_input_refresh_routes())
         .merge(create_output_refresh_routes())
         .merge(create_variable_refresh_routes())
