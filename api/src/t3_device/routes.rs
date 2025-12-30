@@ -5,13 +5,14 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use sea_orm::{DatabaseBackend, Statement, ConnectionTrait};
+use sea_orm::{DatabaseBackend, Statement, ConnectionTrait, EntityTrait, ColumnTrait, QueryFilter, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::app_state::T3AppState;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
+use crate::entity::t3_device::{input_points, output_points, variable_points};
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
 use crate::t3_device::programs_service::{T3ProgramService, CreateProgramRequest, UpdateProgramRequest};
 use crate::t3_device::trendlogs_service::{T3TrendlogService, CreateTrendlogRequest, UpdateTrendlogRequest};
@@ -562,6 +563,43 @@ async fn get_all_points_by_device(
 
 /// Check device online status
 /// GET /api/t3_device/devices/:id/status
+/// Get device points count (for smart auto-sync decision)
+/// GET /api/t3_device/devices/:serial/points-count
+async fn get_device_points_count(
+    State(state): State<T3AppState>,
+    Path(serial): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    let db_guard = get_t3_device_conn!(state);
+    let db: &sea_orm::DatabaseConnection = &*db_guard;
+
+    let input_count = input_points::Entity::find()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .count(db)
+        .await
+        .unwrap_or(0);
+
+    let output_count = output_points::Entity::find()
+        .filter(output_points::Column::SerialNumber.eq(serial))
+        .count(db)
+        .await
+        .unwrap_or(0);
+
+    let variable_count = variable_points::Entity::find()
+        .filter(variable_points::Column::SerialNumber.eq(serial))
+        .count(db)
+        .await
+        .unwrap_or(0);
+
+    Ok(Json(json!({
+        "inputCount": input_count,
+        "outputCount": output_count,
+        "variableCount": variable_count,
+        "totalCount": input_count + output_count + variable_count
+    })))
+}
+
+/// Check device online status
+/// GET /api/t3_device/devices/:id/status
 async fn check_device_status(
     Path(device_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
@@ -1078,6 +1116,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))
         .route("/devices/:id/status", get(check_device_status))
+        .route("/devices/:serial/points-count", get(get_device_points_count))
         .route("/devices/:id/points", get(get_device_with_points))
         .route("/devices/:id/all-points", get(get_all_points_by_device))
         .route("/devices/:serial/table/:table", get(get_device_table_data))  // Generic table query by serial number
