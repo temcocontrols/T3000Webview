@@ -22,13 +22,14 @@ import { TreeFilter } from './TreeFilter/TreeFilter';
 import { useDeviceTreeStore } from '../store/deviceTreeStore';
 import { useDeviceStatusMonitor } from '../../../shared/hooks/useDeviceStatusMonitor';
 import { useDeviceSyncService } from '../../../shared/hooks/useDeviceSyncService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './TreePanel.module.css';
 
 /**
  * TreePanel Component
  */
 export const TreePanel: React.FC = () => {
-  const { viewMode, fetchDevices, isLoading, error, devices, treeData } = useDeviceTreeStore();
+  const { viewMode, fetchDevices, loadDevicesWithSync, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
 
   // Background services
@@ -49,6 +50,10 @@ export const TreePanel: React.FC = () => {
 
   const handleRetry = () => {
     fetchDevices();
+  };
+
+  const handleLoadDevices = async () => {
+    await loadDevicesWithSync();
   };
 
   return (
@@ -74,37 +79,37 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Error state */}
-              {!isLoading && error && (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorTitle}>No devices to display</div>
-          <div className={styles.errorMessage}>
-            There was a problem connecting to the server. Please check your connection and try again.
+        {!isLoading && error && (
+          <div className={styles.errorContainer}>
+            <div className={styles.errorTitle}>No devices to display</div>
+            <div className={styles.errorMessage}>
+              There was a problem connecting to the server. Please check your connection and try again.
+            </div>
+            <button
+              className={styles.retryButton}
+              onClick={handleRetry}
+            >
+              <ArrowClockwise16Regular className={styles.buttonIcon} />
+              Refresh
+            </button>
           </div>
-          <button
-            className={styles.retryButton}
-            onClick={handleRetry}
-          >
-            <ArrowClockwise16Regular className={styles.buttonIcon} />
-            Refresh
-          </button>
-        </div>
-      )}
+        )}
 
         {/* Empty state - no devices at all */}
         {!isLoading && !error && devices.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
-              <RouterRegular className={styles.emptyIcon} />
+              <RouterRegular className={styles.emptyIcon} fontSize={32} />
             </div>
             <div className={styles.emptyTitle}>No Devices Found</div>
             <div className={styles.emptyMessage}>
-              Start by scanning for devices on your network
+              Load your devices to get started
             </div>
             <button
               className={styles.scanButton}
-              onClick={() => fetchDevices()}
+              onClick={handleLoadDevices}
             >
-              Scan for Devices
+              Load Devices
             </button>
           </div>
         )}

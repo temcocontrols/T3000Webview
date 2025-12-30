@@ -155,7 +155,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
         <div className={styles.title}>Devices</div>
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
-        <Tooltip content="Refresh" relationship="label">
+        <Tooltip content="Refresh" relationship="label" positioning="below-start" size="small">
           <ToolbarButton
             aria-label="Refresh devices"
             icon={<ArrowSyncRegular fontSize={18} />}
@@ -165,7 +165,12 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           />
         </Tooltip>
 
-        <Tooltip content={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'} relationship="label">
+        <Tooltip
+          content={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
+          relationship="label"
+          positioning="below-start"
+          size="small"
+        >
           <ToolbarButton
             aria-label={isProjectMode ? 'Switch to Equipment View' : 'Switch to Project Point View'}
             icon={isProjectMode ? <DatabaseRegular /> : <BuildingRegular />}
@@ -175,7 +180,12 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           />
         </Tooltip>
 
-        <Tooltip content={showFilter ? 'Hide Filter' : 'Show Filter'} relationship="label">
+        <Tooltip
+          content={showFilter ? 'Hide Filter' : 'Show Filter'}
+          relationship="label"
+          positioning="below-start"
+          size="small"
+        >
           <ToolbarButton
             aria-label="Toggle filter"
             icon={<Filter20Regular />}
@@ -185,7 +195,12 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           />
         </Tooltip>
 
-        <Tooltip content={isExpanded ? 'Collapse All' : 'Expand All'} relationship="label">
+        <Tooltip
+          content={isExpanded ? 'Collapse All' : 'Expand All'}
+          relationship="label"
+          positioning="below-start"
+          size="small"
+        >
           <ToolbarButton
             aria-label={isExpanded ? 'Collapse all nodes' : 'Expand all nodes'}
             icon={isExpanded ? <ChevronDoubleUp20Regular /> : <ChevronDoubleDown20Regular />}
