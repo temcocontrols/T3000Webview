@@ -30,15 +30,107 @@ export interface RefreshResult {
 
 /**
  * Panel Data Refresh Service
- * Implements Action 17 (GET_WEBVIEW_LIST) using t3-transport
+ *
+ * USING Action 17 (GET_WEBVIEW_LIST) - Reads FRESH data FROM DEVICE
+ *
+ * NOTE: Action 15 (LOGGING_DATA) is DISABLED in C++ by enable_trendlog_background_read flag
  */
 export class PanelDataRefreshService {
   /**
-   * Refresh inputs/outputs/variables from device using FFI
+   * Refresh inputs/outputs/variables from device using GET_WEBVIEW_LIST (Action 17)
+   * Reads FRESH data from device using GetPrivateDataSaveSPBlocking()
+   *
    * @param options - Refresh configuration
    * @returns Refresh result with counts
    */
   static async refreshFromDevice(options: RefreshOptions): Promise<RefreshResult> {
+    const { serialNumber, type, index } = options;
+    const timestamp = new Date().toISOString();
+
+    try {
+      // Initialize T3Transport with FFI
+      const transport = new T3Transport({
+        apiBaseUrl: `${API_BASE_URL}/api`
+      });
+
+      await transport.connect('ffi');
+
+      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE
+      const entryType = type === 'output' ? EntryType.OUTPUT :
+                        type === 'input' ? EntryType.INPUT :
+                        EntryType.VARIABLE;
+
+      console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
+
+      // Call Action 17: GET_WEBVIEW_LIST
+      let response;
+      if (index !== undefined) {
+        // Single item refresh
+        response = await transport.refreshDeviceRecords(serialNumber, entryType, index, index);
+      } else {
+        // All items refresh - refreshDeviceRecords will set correct start/end indexes
+        response = await transport.refreshDeviceRecords(serialNumber, entryType);
+      }
+
+      // Disconnect transport
+      await transport.disconnect();
+
+      // Check if response has data
+      if (!response || !response.data) {
+        throw new Error('No data received from device');
+      }
+
+      // Debug: Log the response structure
+      console.log('[PanelDataRefreshService] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
+
+      // Extract items from response - Action 17 returns device_data array
+      // Response structure can be: response.data.device_data OR response.data.data.device_data
+      let items: any[] = [];
+
+      if (response.data.device_data && Array.isArray(response.data.device_data)) {
+        items = response.data.device_data;
+        console.log('[PanelDataRefreshService] Found items at response.data.device_data');
+      } else if (response.data.data?.device_data && Array.isArray(response.data.data.device_data)) {
+        items = response.data.data.device_data;
+        console.log('[PanelDataRefreshService] Found items at response.data.data.device_data');
+      } else {
+        console.error('[PanelDataRefreshService] Could not find device_data array in response:', response);
+      }
+
+      console.log(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
+
+      if (items.length === 0) {
+        return {
+          success: true,
+          message: `No ${type}s found on device`,
+          itemCount: 0,
+          savedCount: 0,
+          timestamp,
+        };
+      }
+
+      // Save to database using T3Database
+      const savedCount = await this.saveToDatabase(serialNumber, type, items);
+
+      return {
+        success: true,
+        message: `Refreshed ${items.length} ${type}(s) from device, saved ${savedCount} to database`,
+        itemCount: items.length,
+        savedCount,
+        timestamp,
+      };
+
+    } catch (error) {
+      console.error(`[PanelDataRefreshService] Refresh failed:`, error);
+      throw error;
+    }
+  }
+
+  /* ============================================================================
+   * COMMENTED OUT - Action 17 implementation (not debugged yet)
+   * TODO: Uncomment and use this when Action 17 is ready
+   * ============================================================================
+  static async refreshFromDevice_Action17(options: RefreshOptions): Promise<RefreshResult> {
     const { serialNumber, type, index } = options;
     const timestamp = new Date().toISOString();
 
@@ -119,6 +211,7 @@ export class PanelDataRefreshService {
       throw error;
     }
   }
+  ============================================================================ */
 
   /**
    * Save refreshed data to database
@@ -147,8 +240,8 @@ export class PanelDataRefreshService {
     try {
       // Use batch save for efficient database operations
       const result = await entity.batchSave(serialNumber, transformedItems);
-      const savedCount = result.inserted + result.updated;
-      console.log(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} ${type}(s) to database (${result.inserted} inserted, ${result.updated} updated)`);
+      const savedCount = result.updatedCount;
+      console.log(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} ${type}(s) to database (${result.updatedCount} updated, ${result.failedCount} failed)`);
       return savedCount;
     } catch (error) {
       console.error(`[PanelDataRefreshService] Failed to batch save ${type}s:`, error);

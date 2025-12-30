@@ -236,11 +236,52 @@ export class T3Transport {
 
   /**
    * Action 17: Refresh records from device
+   * @param serialNumber - Device serial number
+   * @param entryType - Entry type (0=OUTPUT, 1=INPUT, 2=VARIABLE)
+   * @param startIndex - Start index (default 0)
+   * @param endIndex - End index (default -1 for all items)
    */
-  async refreshDeviceRecords(serialNumber: number, entryType: number): Promise<WebViewResponse> {
+  async refreshDeviceRecords(
+    serialNumber: number,
+    entryType: number,
+    startIndex: number = 0,
+    endIndex: number = -1
+  ): Promise<WebViewResponse> {
+    // Get device info (panelId and objectInstance) from device list
+    const deviceListResponse = await this.getDeviceList();
+
+    // Handle the response - data might be directly an array or nested
+    const deviceList = Array.isArray(deviceListResponse.data)
+      ? deviceListResponse.data
+      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
+        ? deviceListResponse.data.data
+        : [];
+
+    if (!Array.isArray(deviceList) || deviceList.length === 0) {
+      throw new Error(`No devices found. Response data is not an array or is empty.`);
+    }
+
+    // Response uses snake_case: serial_number, panel_number, object_instance
+    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
+
+    if (!device) {
+      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
+    }
+
+    // Set default end index based on type if not provided
+    if (endIndex === -1) {
+      endIndex = entryType === 0 ? 63 :   // BAC_OUTPUT_ITEM_COUNT (64 items, 0-63)
+                 entryType === 1 ? 127 :   // BAC_INPUT_ITEM_COUNT (128 items, 0-127)
+                 63;                       // BAC_VARIABLE_ITEM_COUNT (64 items, 0-63)
+    }
+
     return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
+      panelId: device.panel_number,
       serialNumber,
-      entryType
+      entryType,
+      entryIndexStart: startIndex,
+      entryIndexEnd: endIndex,
+      objectinstance: device.object_instance
     });
   }
 
