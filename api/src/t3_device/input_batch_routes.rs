@@ -98,6 +98,7 @@ pub async fn batch_save_inputs(
 
         match existing_input {
             Ok(Some(input_model)) => {
+                // UPDATE existing record
                 let mut input: input_points::ActiveModel = input_model.into();
 
                 // Update fields if provided
@@ -148,8 +149,34 @@ pub async fn batch_save_inputs(
                 }
             }
             Ok(None) => {
-                failed_count += 1;
-                errors.push(format!("Input {} not found", index));
+                // INSERT new record
+                let new_input = input_points::ActiveModel {
+                    serial_number: Set(serial),
+                    input_index: Set(Some(index.clone())),
+                    full_label: Set(input_update.full_label),
+                    label: Set(input_update.label),
+                    f_value: Set(input_update.f_value),
+                    range_field: Set(input_update.range_field),
+                    auto_manual: Set(input_update.auto_manual),
+                    filter_field: Set(input_update.filter_field),
+                    digital_analog: Set(input_update.digital_analog),
+                    sign: Set(input_update.sign),
+                    calibration: Set(input_update.calibration),
+                    status: Set(input_update.status),
+                    units: Set(input_update.units),
+                    ..Default::default()
+                };
+
+                match new_input.insert(&txn).await {
+                    Ok(_) => {
+                        updated_count += 1;
+                    }
+                    Err(e) => {
+                        failed_count += 1;
+                        errors.push(format!("Input {}: {}", index, e));
+                        error!("Failed to insert input {}: {:?}", index, e);
+                    }
+                }
             }
             Err(e) => {
                 failed_count += 1;

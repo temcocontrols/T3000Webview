@@ -96,6 +96,7 @@ pub async fn batch_save_variables(
 
         match existing_variable {
             Ok(Some(variable_model)) => {
+                // UPDATE existing record
                 let mut variable: variable_points::ActiveModel = variable_model.into();
 
                 // Update fields if provided
@@ -140,8 +141,32 @@ pub async fn batch_save_variables(
                 }
             }
             Ok(None) => {
-                failed_count += 1;
-                errors.push(format!("Variable {} not found", index));
+                // INSERT new record
+                let new_variable = variable_points::ActiveModel {
+                    serial_number: Set(serial),
+                    variable_index: Set(Some(index.clone())),
+                    full_label: Set(variable_update.full_label),
+                    label: Set(variable_update.label),
+                    f_value: Set(variable_update.f_value),
+                    range_field: Set(variable_update.range_field),
+                    auto_manual: Set(variable_update.auto_manual),
+                    filter_field: Set(variable_update.filter_field),
+                    digital_analog: Set(variable_update.digital_analog),
+                    status: Set(variable_update.status),
+                    units: Set(variable_update.units),
+                    ..Default::default()
+                };
+
+                match new_variable.insert(&txn).await {
+                    Ok(_) => {
+                        updated_count += 1;
+                    }
+                    Err(e) => {
+                        failed_count += 1;
+                        errors.push(format!("Variable {}: {}", index, e));
+                        error!("Failed to insert variable {}: {:?}", index, e);
+                    }
+                }
             }
             Err(e) => {
                 failed_count += 1;
