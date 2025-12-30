@@ -63,11 +63,8 @@ export class OutputEntity extends BaseEntity<Output> {
    * Batch save outputs (NEW ENDPOINT - uses batch_save route)
    */
   async batchSave(serialNumber: number, outputs: Output[]): Promise<BatchSaveResponse> {
-    const url = `${this.getEndpoint()}/batch_save`;
-    const request: BatchSaveRequest<Output> = {
-      serial_number: serialNumber,
-      items: outputs
-    };
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { outputs }; // Backend expects {outputs: [...]}
     return await this.postData<BatchSaveResponse>(url, request);
   }
 }

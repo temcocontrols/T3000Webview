@@ -80,7 +80,7 @@ export interface BatchSaveRequest<T> {
 
 export interface BatchSaveResponse {
   success: boolean;
-  inserted: number;
-  updated: number;
+  updatedCount: number;  // Backend returns updated_count (camelCase)
+  failedCount: number;   // Backend returns failed_count (camelCase)
   errors?: string[];
 }

@@ -74,11 +74,8 @@ export class InputEntity extends BaseEntity<Input> {
    * Efficient for saving multiple inputs at once (e.g., from C++ GET_PANEL_DATA)
    */
   async batchSave(serialNumber: number, inputs: Input[]): Promise<BatchSaveResponse> {
-    const url = `${this.getEndpoint()}/batch_save`;
-    const request: BatchSaveRequest<Input> = {
-      serial_number: serialNumber,
-      items: inputs
-    };
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { inputs }; // Backend expects {inputs: [...]}
     return await this.postData<BatchSaveResponse>(url, request);
   }
 }

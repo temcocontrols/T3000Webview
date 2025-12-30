@@ -63,11 +63,8 @@ export class VariableEntity extends BaseEntity<Variable> {
    * Batch save variables (NEW ENDPOINT - uses batch_save route)
    */
   async batchSave(serialNumber: number, variables: Variable[]): Promise<BatchSaveResponse> {
-    const url = `${this.getEndpoint()}/batch_save`;
-    const request: BatchSaveRequest<Variable> = {
-      serial_number: serialNumber,
-      items: variables
-    };
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { variables }; // Backend expects {variables: [...]}
     return await this.postData<BatchSaveResponse>(url, request);
   }
 }
