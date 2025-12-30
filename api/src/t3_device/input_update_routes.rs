@@ -63,7 +63,9 @@ pub fn create_input_update_routes() -> Router<T3AppState> {
     Router::new()
         // More specific route must come first to avoid being shadowed by less specific route
         .route("/inputs/:serial/:index/db", axum::routing::put(update_input_database_only))
-        .route("/inputs/:serial/:index", axum::routing::put(update_input_full))
+        .route("/inputs/:serial/:index",
+            axum::routing::get(get_input_by_serial_index)
+            .put(update_input_full))
 }
 
 /// Update full input record using UPDATE_WEBVIEW_LIST action (Action 16)
@@ -441,4 +443,67 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
     })
     .await
     .map_err(|e| format!("Task spawn error: {}", e))?
+}
+
+/// Get input record by serial number and index
+/// GET /api/t3_device/inputs/:serial/:index
+pub async fn get_input_by_serial_index(
+    State(state): State<T3AppState>,
+    Path((serial, index)): Path<(i32, i32)>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    info!("GET input - Serial: {}, Index: {}", serial, index);
+
+    // Get database connection
+    let db_connection = match &state.t3_device_conn {
+        Some(conn) => conn.lock().await.clone(),
+        None => {
+            error!("❌ T3000 device database unavailable");
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
+        }
+    };
+
+    // Find device by serial number
+    let device = match devices::Entity::find()
+        .filter(devices::Column::SerialNumber.eq(serial))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(dev)) => dev,
+        Ok(None) => {
+            let err_msg = format!("Device not found with serial number: {}", serial);
+            error!("{}", err_msg);
+            return Err((StatusCode::NOT_FOUND, err_msg));
+        }
+        Err(e) => {
+            let err_msg = format!("Database error: {}", e);
+            error!("{}", err_msg);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, err_msg));
+        }
+    };
+
+    // Find input point by serial number and index
+    let input = match input_points::Entity::find()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .filter(input_points::Column::InputIndex.eq(index.to_string()))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(inp)) => inp,
+        Ok(None) => {
+            let err_msg = format!("Input not found - Serial: {}, Index: {}", serial, index);
+            error!("{}", err_msg);
+            return Err((StatusCode::NOT_FOUND, err_msg));
+        }
+        Err(e) => {
+            let err_msg = format!("Database error: {}", e);
+            error!("{}", err_msg);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, err_msg));
+        }
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Input retrieved successfully",
+        "data": input
+    })))
 }
