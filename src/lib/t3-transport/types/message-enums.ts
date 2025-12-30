@@ -56,7 +56,7 @@ export enum WebViewMessageType {
   UPDATE_WEBVIEW_LIST = 16,
 
   /** Refresh records from device */
-  REFRESH_WEBVIEW_LIST = 17
+  GET_WEBVIEW_LIST = 17
 }
 
 /**

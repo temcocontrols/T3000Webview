@@ -238,7 +238,7 @@ export class T3Transport {
    * Action 17: Refresh records from device
    */
   async refreshDeviceRecords(serialNumber: number, entryType: number): Promise<WebViewResponse> {
-    return this.send(WebViewMessageType.REFRESH_WEBVIEW_LIST, {
+    return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
       serialNumber,
       entryType
     });
