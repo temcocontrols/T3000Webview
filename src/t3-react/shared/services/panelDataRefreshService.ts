@@ -72,6 +72,13 @@ export class PanelDataRefreshService {
         response = await transport.refreshDeviceRecords(serialNumber, entryType);
       }
 
+      /* COMMENTED OUT - Action 15 implementation (disabled in C++ by default)
+      console.log(`[PanelDataRefreshService] Calling Action 15 (LOGGING_DATA) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
+
+      // Call Action 15: LOGGING_DATA - Gets all inputs, outputs, and variables
+      const response = await transport.getFullDeviceData(serialNumber);
+      */
+
       // Disconnect transport
       await transport.disconnect();
 
@@ -96,6 +103,19 @@ export class PanelDataRefreshService {
       } else {
         console.error('[PanelDataRefreshService] Could not find device_data array in response:', response);
       }
+
+      /* COMMENTED OUT - Action 15 data extraction
+      // Extract items from response - Action 15 returns inputs/outputs/variables arrays
+      let items: any[] = [];
+
+      if (type === 'input' && response.data.inputs) {
+        items = response.data.inputs;
+      } else if (type === 'output' && response.data.outputs) {
+        items = response.data.outputs;
+      } else if (type === 'variable' && response.data.variables) {
+        items = response.data.variables;
+      }
+      */
 
       console.log(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
 
