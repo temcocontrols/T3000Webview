@@ -774,7 +774,7 @@ void WrapErrorMessage(Json::StreamWriterBuilder& builder, const Json::Value& tem
 }
 
 // ❌ Set to false to disable all T3WebLog logging
-static bool enable_t3_web_logging = false;
+static bool enable_t3_web_logging = true;
  
 // Helper function to write HandleWebViewMsg logs to T3WebLog directory
 // Creates organized logs in pattern: T3WebLog/YYYY-MM/MMDD/T3_CppMsg_HandWebViewMsg_MMDD_HHMM.txt
@@ -1739,9 +1739,9 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 						}
 
 						int npanel_id = temp_panel_id;
-						for (int i = temp_start; i < temp_end; i++)
+						for (int idx = temp_start; idx < temp_end; idx++)
 						{
-							int input_idx = i;
+							int input_idx = idx;
 							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
 							tempjson["data"]["device_data"][point_idx]["type"] = "INPUT";
 							tempjson["data"]["device_data"][point_idx]["index"] = i;
@@ -1831,9 +1831,9 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 						}
 
 						int npanel_id = temp_panel_id;
-						for (int i = temp_start; i < temp_end; i++)
+						for (int idx = temp_start; idx < temp_end; idx++)
 						{
-							int output_idx = i;
+							int output_idx = idx;
 							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
 							tempjson["data"]["device_data"][point_idx]["type"] = "OUTPUT";
 							tempjson["data"]["device_data"][point_idx]["index"] = output_idx;
@@ -1920,9 +1920,9 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 						}
 
 						int npanel_id = temp_panel_id;
-						for (int i = temp_start; i < temp_end; i++)
+						for (int idx = temp_start; idx < temp_end; idx++)
 						{
-							int var_idx = i;
+							int var_idx = idx;
 							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
 							tempjson["data"]["device_data"][point_idx]["type"] = "VARIABLE";
 							tempjson["data"]["device_data"][point_idx]["index"] = var_idx;

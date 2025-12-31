@@ -285,33 +285,33 @@ export class PanelDataRefreshService {
     // Add type-specific fields
     if (type === 'input') {
       transformed.inputIndex = item.index?.toString() || item.inputIndex;
-      transformed.fullLabel = item.full_label || item.fullLabel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;  // C++ sends 'description'
       transformed.autoManual = item.auto_manual?.toString() || item.autoManual;
       transformed.fValue = item.value?.toString() || item.fValue;
-      transformed.units = item.units;
+      transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.range = item.range?.toString() || item.range;
-      transformed.calibration = item.calibration?.toString() || item.calibration;
-      transformed.sign = item.sign?.toString() || item.sign;
+      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
-      transformed.status = item.status?.toString() || item.status;
+      transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
     } else if (type === 'output') {
       transformed.outputIndex = item.index?.toString() || item.outputIndex;
-      transformed.fullLabel = item.full_label || item.fullLabel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;  // C++ sends 'description'
       transformed.autoManual = item.auto_manual?.toString() || item.autoManual;
       transformed.fValue = item.value?.toString() || item.fValue;
-      transformed.units = item.units;
+      transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.range = item.range?.toString() || item.range;
       transformed.lowVoltage = item.low_voltage?.toString() || item.lowVoltage;
       transformed.highVoltage = item.high_voltage?.toString() || item.highVoltage;
       transformed.label = item.label;
     } else if (type === 'variable') {
       transformed.variableIndex = item.index?.toString() || item.variableIndex;
-      transformed.fullLabel = item.full_label || item.fullLabel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;  // C++ sends 'description'
       transformed.autoManual = item.auto_manual?.toString() || item.autoManual;
       transformed.fValue = item.value?.toString() || item.fValue;
-      transformed.units = item.units;
+      transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
       transformed.label = item.label;
     }
 
