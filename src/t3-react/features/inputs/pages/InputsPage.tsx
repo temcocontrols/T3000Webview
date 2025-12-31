@@ -159,17 +159,11 @@ export const InputsPage: React.FC = () => {
     const timer = setTimeout(async () => {
       try {
         console.log('[InputsPage] Auto-refreshing from device...');
-        const refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
-        console.log('[InputsPage] Refresh response:', refreshResponse);
+        // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB
+        await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await InputRefreshApiService.saveRefreshedInputs(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchInputs();
-        } else {
-          console.warn('[InputsPage] Auto-refresh: No items received, keeping existing data');
-        }
+        // Reload from database after refresh
+        await fetchInputs();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[InputsPage] Auto-refresh failed:', error);
