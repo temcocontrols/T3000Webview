@@ -1919,19 +1919,8 @@ async fn get_project_point_tree(
             if total == 0 { 0.0 } else { (used as f32 / total as f32) * 100.0 }
         };
 
-        // Build point type children nodes
+        // Build point type children nodes (ordered: Input, Output, Variable, Program, PID, Schedule, Holiday, Graphic, Trendlog)
         let point_children = vec![
-            ProjectTreeNode {
-                name: format!("Output ({}/{})", output_count, output_total),
-                node_type: "point_type".to_string(),
-                serial_number: None,
-                status: None,
-                point_type: Some("outputs".to_string()),
-                used: Some(output_count),
-                total: Some(output_total),
-                percentage: Some(calc_percentage(output_count, output_total)),
-                children: vec![],
-            },
             ProjectTreeNode {
                 name: format!("Input ({}/{})", input_count, input_total),
                 node_type: "point_type".to_string(),
@@ -1941,6 +1930,17 @@ async fn get_project_point_tree(
                 used: Some(input_count),
                 total: Some(input_total),
                 percentage: Some(calc_percentage(input_count, input_total)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("Output ({}/{})", output_count, output_total),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("outputs".to_string()),
+                used: Some(output_count),
+                total: Some(output_total),
+                percentage: Some(calc_percentage(output_count, output_total)),
                 children: vec![],
             },
             ProjectTreeNode {
@@ -1955,11 +1955,22 @@ async fn get_project_point_tree(
                 children: vec![],
             },
             ProjectTreeNode {
-                name: format!("Pid ({}/16)", pid_count),
+                name: format!("Program ({}/16)", program_count),
                 node_type: "point_type".to_string(),
                 serial_number: None,
                 status: None,
-                point_type: Some("pid".to_string()),
+                point_type: Some("programs".to_string()),
+                used: Some(program_count),
+                total: Some(16),
+                percentage: Some(calc_percentage(program_count, 16)),
+                children: vec![],
+            },
+            ProjectTreeNode {
+                name: format!("PID Loop ({}/16)", pid_count),
+                node_type: "point_type".to_string(),
+                serial_number: None,
+                status: None,
+                point_type: Some("pidloops".to_string()),
                 used: Some(pid_count),
                 total: Some(16),
                 percentage: Some(calc_percentage(pid_count, 16)),
@@ -1985,17 +1996,6 @@ async fn get_project_point_tree(
                 used: Some(holiday_count),
                 total: Some(4),
                 percentage: Some(calc_percentage(holiday_count, 4)),
-                children: vec![],
-            },
-            ProjectTreeNode {
-                name: format!("Program ({}/16)", program_count),
-                node_type: "point_type".to_string(),
-                serial_number: None,
-                status: None,
-                point_type: Some("programs".to_string()),
-                used: Some(program_count),
-                total: Some(16),
-                percentage: Some(calc_percentage(program_count, 16)),
                 children: vec![],
             },
             ProjectTreeNode {
