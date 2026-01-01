@@ -122,12 +122,19 @@ export const HolidaysPage: React.FC = () => {
     fetchHolidays();
   }, [fetchHolidays]);
 
-  // Auto-refresh on page load (Trigger #1)
+  // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
     const timer = setTimeout(async () => {
-      console.log('🔄 Auto-refreshing holidays from device on page load...');
+      // Check if database has holiday data
+      if (holidays.length > 0) {
+        console.log('🔄 Database has data, skipping auto-refresh');
+        setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('🔄 Database empty, auto-refreshing holidays from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
@@ -143,7 +150,7 @@ export const HolidaysPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchHolidays]);
+  }, [loading, selectedDevice, autoRefreshed, fetchHolidays, holidays.length]);
 
   // Refresh from database
   const handleRefreshFromDatabase = async () => {

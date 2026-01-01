@@ -166,14 +166,21 @@ const PIDLoopsPage: React.FC = () => {
     fetchPidLoops();
   }, [fetchPidLoops]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (isLoading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then auto-refresh from device
+    // Wait for initial load to complete, then check if we need to refresh from device
     const timer = setTimeout(async () => {
       try {
-        console.log('[PIDLoopsPage] Auto-refreshing from device...');
+        // Check if database has PID loop data
+        if (pidLoops.length > 0) {
+          console.log('[PIDLoopsPage] Database has data, skipping auto-refresh');
+          setAutoRefreshed(true);
+          return;
+        }
+
+        console.log('[PIDLoopsPage] Database empty, auto-refreshing from device...');
         const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
         console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
 
@@ -194,7 +201,7 @@ const PIDLoopsPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops]);
+  }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops, pidLoops.length]);
 
   // Handle field edit
   const handleFieldEdit = (controllerId: string, field: keyof PIDController, value: string) => {

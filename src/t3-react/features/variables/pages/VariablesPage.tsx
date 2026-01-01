@@ -144,14 +144,21 @@ export const VariablesPage: React.FC = () => {
     fetchVariables();
   }, [fetchVariables]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then auto-refresh from device
+    // Wait for initial load to complete, then check if we need to refresh from device
     const timer = setTimeout(async () => {
       try {
-        console.log('[VariablesPage] Auto-refreshing from device...');
+        // Check if database has variable data
+        if (variables.length > 0) {
+          console.log('[VariablesPage] Database has data, skipping auto-refresh');
+          setAutoRefreshed(true);
+          return;
+        }
+
+        console.log('[VariablesPage] Database empty, auto-refreshing from device...');
         const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
         console.log('[VariablesPage] Refresh response:', refreshResponse);
 
@@ -172,7 +179,7 @@ export const VariablesPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchVariables]);
+  }, [loading, selectedDevice, autoRefreshed, fetchVariables, variables.length]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -589,7 +596,9 @@ export const VariablesPage: React.FC = () => {
                   className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                 />
               </button>
-              <Text size={200} weight="regular">{item.variableId || item.variableIndex || '---'}</Text>
+              <Text size={200} weight="regular">
+                {item.variableId || (item.variableIndex ? `VAR${parseInt(item.variableIndex) + 1}` : '---')}
+              </Text>
             </div>
           </TableCellLayout>
         );

@@ -151,14 +151,21 @@ export const OutputsPage: React.FC = () => {
     fetchOutputs();
   }, [fetchOutputs]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then auto-refresh from device
+    // Wait for initial load to complete, then check if we need to refresh from device
     const timer = setTimeout(async () => {
       try {
-        console.log('[OutputsPage] Auto-refreshing from device...');
+        // Check if database has output data
+        if (outputs.length > 0) {
+          console.log('[OutputsPage] Database has data, skipping auto-refresh');
+          setAutoRefreshed(true);
+          return;
+        }
+
+        console.log('[OutputsPage] Database empty, auto-refreshing from device...');
         const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
         console.log('[OutputsPage] Refresh response:', refreshResponse);
 
@@ -179,7 +186,7 @@ export const OutputsPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchOutputs]);
+  }, [loading, selectedDevice, autoRefreshed, fetchOutputs, outputs.length]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -592,7 +599,9 @@ export const OutputsPage: React.FC = () => {
                     className={`${styles.iconSmall} ${isRefreshing ? styles.rotating : ''}`}
                   />
                 </button>
-                <Text size={200} weight="regular">{item.outputId || item.outputIndex || '---'}</Text>
+                <Text size={200} weight="regular">
+                  {item.outputId || (item.outputIndex ? `OUT${parseInt(item.outputIndex) + 1}` : '---')}
+                </Text>
               </div>
             )}
           </TableCellLayout>

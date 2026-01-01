@@ -130,12 +130,19 @@ export const SchedulesPage: React.FC = () => {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Auto-refresh on page load (Trigger #1)
+  // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
     const timer = setTimeout(async () => {
-      console.log('🔄 Auto-refreshing schedules from device on page load...');
+      // Check if database has schedule data
+      if (schedules.length > 0) {
+        console.log('🔄 Database has data, skipping auto-refresh');
+        setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('🔄 Database empty, auto-refreshing schedules from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const response = await ScheduleRefreshApiService.refreshAllSchedules(serial);
@@ -151,7 +158,7 @@ export const SchedulesPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchSchedules]);
+  }, [loading, selectedDevice, autoRefreshed, fetchSchedules, schedules.length]);
 
   // Refresh from database (toolbar button)
   const handleRefreshFromDatabase = () => {

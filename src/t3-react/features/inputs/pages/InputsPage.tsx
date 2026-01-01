@@ -151,14 +151,21 @@ export const InputsPage: React.FC = () => {
     fetchInputs();
   }, [fetchInputs]);
 
-  // Auto-refresh once after page load (Trigger #1)
+  // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then auto-refresh from device
+    // Wait for initial load to complete, then check if we need to refresh from device
     const timer = setTimeout(async () => {
       try {
-        console.log('[InputsPage] Auto-refreshing from device...');
+        // Check if database has input data
+        if (inputs.length > 0) {
+          console.log('[InputsPage] Database has data, skipping auto-refresh');
+          setAutoRefreshed(true);
+          return;
+        }
+
+        console.log('[InputsPage] Database empty, auto-refreshing from device...');
         // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB
         await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
 
@@ -173,7 +180,7 @@ export const InputsPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchInputs]);
+  }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length]);
 
   // Handlers
   const handleRefresh = async () => {
@@ -675,7 +682,9 @@ export const InputsPage: React.FC = () => {
                     className={`${styles.iconSmall} ${isRefreshingThis ? styles.rotating : ''}`}
                   />
                 </button>
-                <Text size={200} weight="regular">{item.inputId || item.inputIndex || '---'}</Text>
+                <Text size={200} weight="regular">
+                  {item.inputId || (item.inputIndex ? `IN${parseInt(item.inputIndex) + 1}` : '---')}
+                </Text>
               </div>
             )}
           </TableCellLayout>
