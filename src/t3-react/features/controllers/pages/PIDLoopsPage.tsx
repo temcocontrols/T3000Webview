@@ -35,7 +35,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { PidLoopRefreshApiService } from '../services/pidLoopRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './PIDLoopsPage.module.css';
 
 // PID Controller interface matching PID_TABLE entity
@@ -166,6 +166,12 @@ const PIDLoopsPage: React.FC = () => {
     fetchPidLoops();
   }, [fetchPidLoops]);
 
+  // Reset autoRefreshed flag when device changes
+  useEffect(() => {
+    setPidLoops([]);
+    setAutoRefreshed(false);
+  }, [selectedDevice?.serialNumber]);
+
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (isLoading || !selectedDevice || autoRefreshed) return;
@@ -181,17 +187,10 @@ const PIDLoopsPage: React.FC = () => {
         }
 
         console.log('[PIDLoopsPage] Database empty, auto-refreshing from device...');
-        const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
-        console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
-
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await PidLoopRefreshApiService.saveRefreshedPidLoops(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchPidLoops();
-        } else {
-          console.warn('[PIDLoopsPage] Auto-refresh: No items received, keeping existing data');
-        }
+        const result = await PanelDataRefreshService.refreshAllPidLoops(selectedDevice.serialNumber);
+        console.log('[PIDLoopsPage] Auto-refresh result:', result);
+        // Data already saved by service, just reload from database
+        await fetchPidLoops();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[PIDLoopsPage] Auto-refresh failed:', error);
@@ -256,22 +255,10 @@ const PIDLoopsPage: React.FC = () => {
     setRefreshing(true);
     try {
       console.log('[PIDLoopsPage] Refreshing all PID loops from device...');
-      const refreshResponse = await PidLoopRefreshApiService.refreshAllPidLoops(selectedDevice.serialNumber);
-      console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await PidLoopRefreshApiService.saveRefreshedPidLoops(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[PIDLoopsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchPidLoops();
-      } else {
-        console.warn('[PIDLoopsPage] No items received from refresh, keeping existing data');
-      }
+      const result = await PanelDataRefreshService.refreshAllPidLoops(selectedDevice.serialNumber);
+      console.log('[PIDLoopsPage] Refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchPidLoops();
     } catch (error) {
       console.error('[PIDLoopsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -294,19 +281,9 @@ const PIDLoopsPage: React.FC = () => {
     setRefreshingItems(prev => new Set(prev).add(loopField));
     try {
       console.log(`[PIDLoopsPage] Refreshing PID loop ${index} from device...`);
-      const refreshResponse = await PidLoopRefreshApiService.refreshPidLoop(selectedDevice.serialNumber, index);
-      console.log('[PIDLoopsPage] Refresh response:', refreshResponse);
-
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await PidLoopRefreshApiService.saveRefreshedPidLoops(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[PIDLoopsPage] Save response:', saveResponse);
-      }
-
-      // Reload data from database after save
+      const result = await PanelDataRefreshService.refreshSinglePidLoop(selectedDevice.serialNumber, index);
+      console.log('[PIDLoopsPage] Refresh result:', result);
+      // Data already saved by service, just reload from database
       await fetchPidLoops();
     } catch (error) {
       console.error(`[PIDLoopsPage] Failed to refresh PID loop ${index}:`, error);

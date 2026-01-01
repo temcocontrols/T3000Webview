@@ -169,9 +169,22 @@ pub async fn refresh_programs(
             let count = items.len() as i32;
 
             info!("✅ Refreshed {} program(s) from device", count);
+
+            // Auto-save to database (matching PanelDataRefreshService behavior)
+            let saved_count = match save_programs_to_db(&db_connection, serial, &items).await {
+                Ok(saved) => {
+                    info!("✅ Auto-saved {} program(s) to database", saved);
+                    saved
+                }
+                Err(e) => {
+                    error!("❌ Auto-save failed: {}", e);
+                    0 // Continue even if save fails, return 0 saved count
+                }
+            };
+
             Ok(Json(RefreshResponse {
                 success: true,
-                message: format!("Refreshed {} program(s) from device", count),
+                message: format!("Refreshed {} program(s) from device, saved {} to database", count, saved_count),
                 items,
                 count,
                 timestamp: chrono::Utc::now().to_rfc3339(),

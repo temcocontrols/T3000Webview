@@ -144,6 +144,12 @@ export const VariablesPage: React.FC = () => {
     fetchVariables();
   }, [fetchVariables]);
 
+  // Reset autoRefreshed flag when device changes
+  useEffect(() => {
+    setVariables([]);
+    setAutoRefreshed(false);
+  }, [selectedDevice?.serialNumber]);
+
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
@@ -159,17 +165,11 @@ export const VariablesPage: React.FC = () => {
         }
 
         console.log('[VariablesPage] Database empty, auto-refreshing from device...');
-        const refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
-        console.log('[VariablesPage] Refresh response:', refreshResponse);
+        const result = await PanelDataRefreshService.refreshAllVariables(selectedDevice.serialNumber);
+        console.log('[VariablesPage] Auto-refresh result:', result);
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await VariableRefreshApiService.saveRefreshedVariables(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchVariables();
-        } else {
-          console.warn('[VariablesPage] Auto-refresh: No items received, keeping existing data');
-        }
+        // Reload from database after successful save
+        await fetchVariables();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[VariablesPage] Auto-refresh failed:', error);

@@ -1,7 +1,10 @@
 /**
  * Panel Data Refresh Service
  *
- * Uses t3-transport library to refresh inputs/outputs/variables from device
+ * Uses t3-transport library to refresh all point types from device:
+ * - Inputs, Outputs, Variables
+ * - Programs, Schedules, PID Loops, Holidays
+ *
  * Action 17: GET_WEBVIEW_LIST
  *
  * Replaces old API route-based refresh with direct FFI calls via t3-transport
@@ -12,7 +15,7 @@ import { EntryType, WebViewMessageType } from '../../../lib/t3-transport/types/m
 import { T3Database } from '../../../lib/t3-database';
 import { API_BASE_URL } from '../../config/constants';
 
-export type PointType = 'input' | 'output' | 'variable';
+export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday';
 
 export interface RefreshOptions {
   serialNumber: number;
@@ -37,8 +40,9 @@ export interface RefreshResult {
  */
 export class PanelDataRefreshService {
   /**
-   * Refresh inputs/outputs/variables from device using GET_WEBVIEW_LIST (Action 17)
+   * Refresh point data from device using GET_WEBVIEW_LIST (Action 17)
    * Reads FRESH data from device using GetPrivateDataSaveSPBlocking()
+   * Supports all point types: input, output, variable, program, schedule, pidloop, holiday
    *
    * @param options - Refresh configuration
    * @returns Refresh result with counts
@@ -55,10 +59,18 @@ export class PanelDataRefreshService {
 
       await transport.connect('ffi');
 
-      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE
-      const entryType = type === 'output' ? EntryType.OUTPUT :
-                        type === 'input' ? EntryType.INPUT :
-                        EntryType.VARIABLE;
+      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 5=CONTROLLER, 6=PROGRAM, 7=SCHEDULE, 8=ANNUAL
+      const entryTypeMap: Record<PointType, EntryType> = {
+        'output': EntryType.OUTPUT,
+        'input': EntryType.INPUT,
+        'variable': EntryType.VARIABLE,
+        'program': EntryType.PROGRAM,
+        'schedule': EntryType.SCHEDULE,
+        'pidloop': EntryType.CONTROLLER,
+        'holiday': EntryType.ANNUAL,
+      };
+
+      const entryType = entryTypeMap[type];
 
       console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
@@ -236,7 +248,7 @@ export class PanelDataRefreshService {
   /**
    * Save refreshed data to database
    * @param serialNumber - Device serial number
-   * @param type - Point type (input/output/variable)
+   * @param type - Point type (input/output/variable/program/schedule/pidloop/holiday)
    * @param items - Array of items from device
    * @returns Number of items successfully saved
    */
@@ -253,9 +265,21 @@ export class PanelDataRefreshService {
     );
 
     // Get the appropriate database entity
-    const entity = type === 'input' ? db.inputs :
-                   type === 'output' ? db.outputs :
-                   db.variables;
+    const entityMap: Record<PointType, any> = {
+      'input': db.inputs,
+      'output': db.outputs,
+      'variable': db.variables,
+      'program': db.programs,
+      'schedule': db.schedules,
+      'pidloop': db.pidLoops,
+      'holiday': db.holidays,
+    };
+
+    const entity = entityMap[type];
+
+    if (!entity) {
+      throw new Error(`Unsupported point type: ${type}`);
+    }
 
     try {
       // Use batch save for efficient database operations
@@ -331,6 +355,46 @@ export class PanelDataRefreshService {
       transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
+    } else if (type === 'program') {
+      // Program transformation - pass through for now, backend will handle
+      const indexValue = item.index?.toString() || item.programIndex;
+      transformed.programIndex = indexValue;
+      transformed.programId = indexValue ? `PRG${parseInt(indexValue) + 1}` : undefined;
+      transformed.panel = item.pid?.toString() || item.panel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
+      transformed.label = item.label;
+      // Copy all other fields as-is
+      Object.assign(transformed, item);
+    } else if (type === 'schedule') {
+      // Schedule transformation - pass through for now, backend will handle
+      const indexValue = item.index?.toString() || item.scheduleIndex;
+      transformed.scheduleIndex = indexValue;
+      transformed.scheduleId = indexValue ? `SCH${parseInt(indexValue) + 1}` : undefined;
+      transformed.panel = item.pid?.toString() || item.panel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
+      transformed.label = item.label;
+      // Copy all other fields as-is
+      Object.assign(transformed, item);
+    } else if (type === 'pidloop') {
+      // PID Loop transformation - pass through for now, backend will handle
+      const indexValue = item.index?.toString() || item.pidLoopIndex;
+      transformed.pidLoopIndex = indexValue;
+      transformed.pidLoopId = indexValue ? `PID${parseInt(indexValue) + 1}` : undefined;
+      transformed.panel = item.pid?.toString() || item.panel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
+      transformed.label = item.label;
+      // Copy all other fields as-is
+      Object.assign(transformed, item);
+    } else if (type === 'holiday') {
+      // Holiday transformation - pass through for now, backend will handle
+      const indexValue = item.index?.toString() || item.holidayIndex;
+      transformed.holidayIndex = indexValue;
+      transformed.holidayId = indexValue ? `HOL${parseInt(indexValue) + 1}` : undefined;
+      transformed.panel = item.pid?.toString() || item.panel;
+      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
+      transformed.label = item.label;
+      // Copy all other fields as-is
+      Object.assign(transformed, item);
     }
 
     return transformed;
@@ -376,6 +440,62 @@ export class PanelDataRefreshService {
    */
   static async refreshSingleVariable(serialNumber: number, index: number): Promise<RefreshResult> {
     return this.refreshFromDevice({ serialNumber, type: 'variable', index });
+  }
+
+  /**
+   * Refresh all programs for a device
+   */
+  static async refreshAllPrograms(serialNumber: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'program' });
+  }
+
+  /**
+   * Refresh single program for a device
+   */
+  static async refreshSingleProgram(serialNumber: number, index: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'program', index });
+  }
+
+  /**
+   * Refresh all schedules for a device
+   */
+  static async refreshAllSchedules(serialNumber: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'schedule' });
+  }
+
+  /**
+   * Refresh single schedule for a device
+   */
+  static async refreshSingleSchedule(serialNumber: number, index: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'schedule', index });
+  }
+
+  /**
+   * Refresh all PID loops for a device
+   */
+  static async refreshAllPidLoops(serialNumber: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'pidloop' });
+  }
+
+  /**
+   * Refresh single PID loop for a device
+   */
+  static async refreshSinglePidLoop(serialNumber: number, index: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'pidloop', index });
+  }
+
+  /**
+   * Refresh all holidays for a device
+   */
+  static async refreshAllHolidays(serialNumber: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'holiday' });
+  }
+
+  /**
+   * Refresh single holiday for a device
+   */
+  static async refreshSingleHoliday(serialNumber: number, index: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'holiday', index });
   }
 }
 

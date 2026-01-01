@@ -49,7 +49,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { ProgramRefreshApiService } from '../services/programRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
 import styles from './ProgramsPage.module.css';
 
@@ -125,6 +125,12 @@ export const ProgramsPage: React.FC = () => {
     fetchPrograms();
   }, [fetchPrograms]);
 
+  // Reset autoRefreshed flag when device changes
+  useEffect(() => {
+    setPrograms([]);
+    setAutoRefreshed(false);
+  }, [selectedDevice?.serialNumber]);
+
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
@@ -140,17 +146,11 @@ export const ProgramsPage: React.FC = () => {
         }
 
         console.log('[ProgramsPage] Database empty, auto-refreshing from device...');
-        const refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
-        console.log('[ProgramsPage] Refresh response:', refreshResponse);
+        const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
+        console.log('[ProgramsPage] Auto-refresh result:', result);
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await ProgramRefreshApiService.saveRefreshedPrograms(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchPrograms();
-        } else {
-          console.warn('[ProgramsPage] Auto-refresh: No items received, keeping existing data');
-        }
+        // Reload from database (data already saved by service)
+        await fetchPrograms();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[ProgramsPage] Auto-refresh failed:', error);
@@ -176,22 +176,11 @@ export const ProgramsPage: React.FC = () => {
     setRefreshing(true);
     try {
       console.log('[ProgramsPage] Refreshing all programs from device...');
-      const refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
-      console.log('[ProgramsPage] Refresh response:', refreshResponse);
+      const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
+      console.log('[ProgramsPage] Refresh result:', result);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await ProgramRefreshApiService.saveRefreshedPrograms(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[ProgramsPage] Save response:', saveResponse);
-
-        // Only reload from database if save was successful
-        await fetchPrograms();
-      } else {
-        console.warn('[ProgramsPage] No items received from refresh, keeping existing data');
-      }
+      // Reload from database (data already saved by service)
+      await fetchPrograms();
     } catch (error) {
       console.error('[ProgramsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -214,19 +203,10 @@ export const ProgramsPage: React.FC = () => {
     setRefreshingItems(prev => new Set(prev).add(programId));
     try {
       console.log(`[ProgramsPage] Refreshing program ${index} from device...`);
-      const refreshResponse = await ProgramRefreshApiService.refreshProgram(selectedDevice.serialNumber, index);
-      console.log('[ProgramsPage] Refresh response:', refreshResponse);
+      const refreshResponse = await PanelDataRefreshService.refreshSingleProgram(selectedDevice.serialNumber, index);
+      console.log('[ProgramsPage] Refresh result:', refreshResponse);
 
-      // Save to database
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await ProgramRefreshApiService.saveRefreshedPrograms(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[ProgramsPage] Save response:', saveResponse);
-      }
-
-      // Reload data from database after save
+      // Reload data from database (data already saved by service)
       await fetchPrograms();
     } catch (error) {
       console.error(`[ProgramsPage] Failed to refresh program ${index}:`, error);

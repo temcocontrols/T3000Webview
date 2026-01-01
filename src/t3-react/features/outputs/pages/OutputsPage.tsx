@@ -151,6 +151,12 @@ export const OutputsPage: React.FC = () => {
     fetchOutputs();
   }, [fetchOutputs]);
 
+  // Reset autoRefreshed flag when device changes
+  useEffect(() => {
+    setOutputs([]);
+    setAutoRefreshed(false);
+  }, [selectedDevice?.serialNumber]);
+
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
@@ -166,17 +172,11 @@ export const OutputsPage: React.FC = () => {
         }
 
         console.log('[OutputsPage] Database empty, auto-refreshing from device...');
-        const refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
-        console.log('[OutputsPage] Refresh response:', refreshResponse);
+        const result = await PanelDataRefreshService.refreshAllOutputs(selectedDevice.serialNumber);
+        console.log('[OutputsPage] Auto-refresh result:', result);
 
-        // Save to database
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await OutputRefreshApiService.saveRefreshedOutputs(selectedDevice.serialNumber, refreshResponse.items);
-          // Only reload from database if save was successful
-          await fetchOutputs();
-        } else {
-          console.warn('[OutputsPage] Auto-refresh: No items received, keeping existing data');
-        }
+        // Reload from database after successful save
+        await fetchOutputs();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[OutputsPage] Auto-refresh failed:', error);

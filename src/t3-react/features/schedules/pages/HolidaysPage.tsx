@@ -46,7 +46,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { HolidayRefreshApiService } from '../services/holidayRefreshApi';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import styles from './HolidaysPage.module.css';
 
 // Types based on C++ BacnetAnnualRoutine structure
@@ -122,6 +122,12 @@ export const HolidaysPage: React.FC = () => {
     fetchHolidays();
   }, [fetchHolidays]);
 
+  // Reset autoRefreshed flag when device changes
+  useEffect(() => {
+    setHolidays([]);
+    setAutoRefreshed(false);
+  }, [selectedDevice?.serialNumber]);
+
   // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
@@ -137,12 +143,10 @@ export const HolidaysPage: React.FC = () => {
       console.log('🔄 Database empty, auto-refreshing holidays from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
-        const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
-        console.log('✅ Auto-refresh response:', response);
-        if (response && response.items) {
-          await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
-          await fetchHolidays();
-        }
+        const result = await PanelDataRefreshService.refreshAllHolidays(serial);
+        console.log('✅ Auto-refresh result:', result);
+        // Data already saved by service, just reload from database
+        await fetchHolidays();
         setAutoRefreshed(true);
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
@@ -168,13 +172,10 @@ export const HolidaysPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       console.log('🔄 Refreshing all holidays from device...');
-      const response = await HolidayRefreshApiService.refreshAllHolidays(serial);
-      console.log('✅ Device refresh response:', response);
-
-      if (response && response.items) {
-        await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
-        await fetchHolidays();
-      }
+      const result = await PanelDataRefreshService.refreshAllHolidays(serial);
+      console.log('✅ Device refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchHolidays();
     } catch (err) {
       console.error('❌ Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
@@ -195,13 +196,10 @@ export const HolidaysPage: React.FC = () => {
       const holidayIndex = parseInt(item.holidayId);
       console.log(`🔄 Refreshing single holiday from device: ${holidayIndex}`);
 
-      const response = await HolidayRefreshApiService.refreshHoliday(serial, holidayIndex);
-      console.log('✅ Single holiday refresh response:', response);
-
-      if (response && response.items) {
-        await HolidayRefreshApiService.saveRefreshedHolidays(serial, response.items);
-        await fetchHolidays();
-      }
+      const result = await PanelDataRefreshService.refreshSingleHoliday(serial, holidayIndex);
+      console.log('✅ Single holiday refresh result:', result);
+      // Data already saved by service, just reload from database
+      await fetchHolidays();
     } catch (err) {
       console.error('❌ Single holiday refresh failed:', err);
     } finally {
