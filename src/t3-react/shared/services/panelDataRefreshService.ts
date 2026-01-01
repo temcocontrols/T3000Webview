@@ -284,12 +284,15 @@ export class PanelDataRefreshService {
 
     // Add type-specific fields
     if (type === 'input') {
-      transformed.inputIndex = item.index?.toString() || item.inputIndex;
+      const indexValue = item.index?.toString() || item.inputIndex;
+      transformed.inputIndex = indexValue;
+      transformed.inputId = indexValue ? `IN${parseInt(indexValue) + 1}` : undefined;  // Format as IN1, IN2, IN3, etc. (1-based)
+      transformed.panel = item.pid?.toString() || item.panel;  // C++ sends 'pid' (panel ID)
       transformed.fullLabel = item.description || item.full_label || item.fullLabel;  // C++ sends 'description'
       transformed.autoManual = item.auto_manual?.toString() || item.autoManual;
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
-      transformed.range = item.range?.toString() || item.range;
+      transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
       transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
       transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
       transformed.filterField = item.filter?.toString() || item.filterField;
@@ -297,22 +300,37 @@ export class PanelDataRefreshService {
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
     } else if (type === 'output') {
-      transformed.outputIndex = item.index?.toString() || item.outputIndex;
+      const indexValue = item.index?.toString() || item.outputIndex;
+      transformed.outputIndex = indexValue;
+      transformed.outputId = indexValue ? `OUT${parseInt(indexValue) + 1}` : undefined;  // Format as OUT1, OUT2, OUT3, etc. (1-based)
+      transformed.panel = item.pid?.toString() || item.panel;  // C++ sends 'pid' (panel ID)
       transformed.fullLabel = item.description || item.full_label || item.fullLabel;  // C++ sends 'description'
       transformed.autoManual = item.auto_manual?.toString() || item.autoManual;
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
-      transformed.range = item.range?.toString() || item.range;
-      transformed.lowVoltage = item.low_voltage?.toString() || item.lowVoltage;
-      transformed.highVoltage = item.high_voltage?.toString() || item.highVoltage;
+      transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
+      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
+      transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
+      transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
     } else if (type === 'variable') {
-      transformed.variableIndex = item.index?.toString() || item.variableIndex;
+      const indexValue = item.index?.toString() || item.variableIndex;
+      transformed.variableIndex = indexValue;
+      transformed.variableId = indexValue ? `VAR${parseInt(indexValue) + 1}` : undefined;  // Format as VAR1, VAR2, VAR3, etc. (1-based)
+      transformed.panel = item.pid?.toString() || item.panel;  // C++ sends 'pid' (panel ID)
       transformed.fullLabel = item.description || item.full_label || item.fullLabel;  // C++ sends 'description'
       transformed.autoManual = item.auto_manual?.toString() || item.autoManual;
       transformed.fValue = item.value?.toString() || item.fValue;
       transformed.units = item.unit?.toString() || item.units;  // C++ sends 'unit' not 'units'
+      transformed.rangeField = item.range?.toString() || item.rangeField;  // FIXED: Backend expects rangeField
+      transformed.calibration = item.calibration_h?.toString() || item.calibration;  // C++ sends 'calibration_h'
+      transformed.sign = item.calibration_sign?.toString() || item.sign;  // C++ sends 'calibration_sign'
+      transformed.filterField = item.filter?.toString() || item.filterField;
+      transformed.status = item.decom?.toString() || item.status;  // C++ sends 'decom'
       transformed.label = item.label;
+      transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
     }
 
     return transformed;
