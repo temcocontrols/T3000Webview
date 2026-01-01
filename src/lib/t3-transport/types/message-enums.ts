@@ -61,11 +61,16 @@ export enum WebViewMessageType {
 
 /**
  * Entry type constants for UPDATE_ENTRY and point operations
+ * Maps to C++ #define constants in global_define.h
  */
 export const EntryType = {
-  OUTPUT: 0,
-  INPUT: 1,
-  VARIABLE: 2
+  OUTPUT: 0,      // BAC_OUT
+  INPUT: 1,       // BAC_IN
+  VARIABLE: 2,    // BAC_VAR
+  CONTROLLER: 3,  // BAC_PID (PID Loops)
+  SCHEDULE: 4,    // BAC_SCH
+  ANNUAL: 5,      // BAC_HOL (Holidays)
+  PROGRAM: 6,     // BAC_PRG
 } as const;
 
 export type EntryTypeValue = typeof EntryType[keyof typeof EntryType];

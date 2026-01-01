@@ -237,7 +237,7 @@ export class T3Transport {
   /**
    * Action 17: Refresh records from device
    * @param serialNumber - Device serial number
-   * @param entryType - Entry type (0=OUTPUT, 1=INPUT, 2=VARIABLE)
+   * @param entryType - Entry type (0=OUTPUT, 1=INPUT, 2=VARIABLE, 3=CONTROLLER/PID, 4=SCHEDULE, 5=ANNUAL/HOLIDAY, 6=PROGRAM)
    * @param startIndex - Start index (default 0)
    * @param endIndex - End index (default -1 for all items)
    */
@@ -269,10 +269,34 @@ export class T3Transport {
     }
 
     // Set default end index based on type if not provided
+    // From global_define.h in T3000-Source
     if (endIndex === -1) {
-      endIndex = entryType === 0 ? 63 :   // BAC_OUTPUT_ITEM_COUNT (64 items, 0-63)
-                 entryType === 1 ? 127 :   // BAC_INPUT_ITEM_COUNT (128 items, 0-127)
-                 63;                       // BAC_VARIABLE_ITEM_COUNT (64 items, 0-63)
+      switch (entryType) {
+        case 0: // BAC_OUT / OUTPUT
+          endIndex = 63;  // BAC_OUTPUT_ITEM_COUNT (64 items, 0-63)
+          break;
+        case 1: // BAC_IN / INPUT
+          endIndex = 127; // BAC_INPUT_ITEM_COUNT (128 items, 0-127)
+          break;
+        case 2: // BAC_VAR / VARIABLE
+          endIndex = 63;  // BAC_VARIABLE_ITEM_COUNT (64 items, 0-63)
+          break;
+        case 3: // BAC_PID / CONTROLLER / PID
+          endIndex = 15;  // BAC_PID_COUNT (16 items, 0-15)
+          break;
+        case 4: // BAC_SCH / SCHEDULE
+          endIndex = 7;   // BAC_SCHEDULE_COUNT (8 items, 0-7)
+          break;
+        case 5: // BAC_HOL / ANNUAL / HOLIDAY
+          endIndex = 3;   // BAC_HOLIDAY_COUNT (4 items, 0-3)
+          break;
+        case 6: // BAC_PRG / PROGRAM
+          endIndex = 15;  // BAC_PROGRAM_ITEM_COUNT (16 items, 0-15)
+          break;
+        default:
+          endIndex = 63;  // Default fallback
+          break;
+      }
     }
 
     return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {

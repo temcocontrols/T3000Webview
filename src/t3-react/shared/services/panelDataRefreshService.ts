@@ -59,18 +59,16 @@ export class PanelDataRefreshService {
 
       await transport.connect('ffi');
 
-      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 5=CONTROLLER, 6=PROGRAM, 7=SCHEDULE, 8=ANNUAL
+      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 3=CONTROLLER, 4=SCHEDULE, 5=ANNUAL, 6=PROGRAM
       const entryTypeMap: Record<PointType, EntryType> = {
-        'output': EntryType.OUTPUT,
-        'input': EntryType.INPUT,
-        'variable': EntryType.VARIABLE,
-        'program': EntryType.PROGRAM,
-        'schedule': EntryType.SCHEDULE,
-        'pidloop': EntryType.CONTROLLER,
-        'holiday': EntryType.ANNUAL,
+        'output': EntryType.OUTPUT,          // BAC_OUT = 0
+        'input': EntryType.INPUT,            // BAC_IN = 1
+        'variable': EntryType.VARIABLE,      // BAC_VAR = 2
+        'pidloop': EntryType.CONTROLLER,     // BAC_PID = 3
+        'schedule': EntryType.SCHEDULE,      // BAC_SCH = 4
+        'holiday': EntryType.ANNUAL,         // BAC_HOL = 5
+        'program': EntryType.PROGRAM,        // BAC_PRG = 6
       };
-
-      const entryType = entryTypeMap[type];
 
       console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
