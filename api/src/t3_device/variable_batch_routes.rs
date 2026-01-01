@@ -13,6 +13,7 @@ use tracing::{error, info};
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::variable_points;
 use sea_orm::*;
+use sea_orm::sea_query::Expr;
 
 /// Request payload for batch updating variables
 #[derive(Debug, Deserialize)]
@@ -25,6 +26,7 @@ pub struct BatchSaveVariablesRequest {
 #[serde(rename_all = "camelCase")]
 pub struct VariableUpdate {
     pub variable_index: String,
+    pub panel: Option<String>,
     pub full_label: Option<String>,
     pub label: Option<String>,
     pub f_value: Option<String>,
@@ -70,21 +72,62 @@ pub async fn batch_save_variables(
         }
     };
 
+    // Retry entire transaction up to 5 times with exponential backoff
+    let max_retries = 5;
+    let mut last_error = String::new();
+
+    for attempt in 1..=max_retries {
+        match execute_variable_batch_save(&db_connection, serial, &payload).await {
+            Ok(response) => {
+                if attempt > 1 {
+                    info!("✅ Batch save succeeded on attempt {}/{}", attempt, max_retries);
+                }
+                return Ok(Json(response));
+            }
+            Err(e) => {
+                last_error = e.clone();
+
+                // Check if it's a database lock error
+                if e.contains("database is locked") {
+                    if attempt < max_retries {
+                        // Exponential backoff: 50ms, 100ms, 200ms, 400ms, 800ms
+                        let delay_ms = 50 * (2_u64.pow(attempt - 1));
+                        info!("⏳ Database locked (attempt {}/{}), retrying in {}ms", attempt, max_retries, delay_ms);
+                        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        continue;
+                    }
+                }
+
+                // Non-retryable error or max retries reached
+                error!("❌ Batch save failed on attempt {}/{}: {}", attempt, max_retries, e);
+                if attempt < max_retries {
+                    break;
+                } else {
+                    return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed after {} retries: {}", max_retries, last_error)));
+                }
+            }
+        }
+    }
+
+    Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Transaction failed: {}", last_error)))
+}
+
+/// Execute the batch save operation within a transaction
+async fn execute_variable_batch_save(
+    db_connection: &DatabaseConnection,
+    serial: i32,
+    payload: &BatchSaveVariablesRequest,
+) -> Result<BatchSaveResponse, String> {
     let mut updated_count = 0;
     let mut failed_count = 0;
     let mut errors = Vec::new();
 
     // Start transaction
-    let txn = match db_connection.begin().await {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Failed to start transaction: {:?}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Transaction error: {}", e)));
-        }
-    };
+    let txn = db_connection.begin().await
+        .map_err(|e| format!("Transaction start error: {}", e))?;
 
     // Process each variable update
-    for variable_update in payload.variables {
+    for variable_update in &payload.variables {
         let index = &variable_update.variable_index;
 
         // Find existing variable record
@@ -95,43 +138,33 @@ pub async fn batch_save_variables(
             .await;
 
         match existing_variable {
-            Ok(Some(variable_model)) => {
-                // UPDATE existing record
-                let mut variable: variable_points::ActiveModel = variable_model.into();
+            Ok(Some(_existing)) => {
+                // UPDATE using update_many() with explicit filters
+                // (Can't use ActiveModel.update() because PK doesn't include Variable_Index)
+                let update_result = variable_points::Entity::update_many()
+                    .filter(variable_points::Column::SerialNumber.eq(serial))
+                    .filter(variable_points::Column::VariableIndex.eq(index))
+                    .col_expr(variable_points::Column::Panel, Expr::value(variable_update.panel.clone()))
+                    .col_expr(variable_points::Column::FullLabel, Expr::value(variable_update.full_label.clone()))
+                    .col_expr(variable_points::Column::Label, Expr::value(variable_update.label.clone()))
+                    .col_expr(variable_points::Column::FValue, Expr::value(variable_update.f_value.clone()))
+                    .col_expr(variable_points::Column::RangeField, Expr::value(variable_update.range_field.clone()))
+                    .col_expr(variable_points::Column::AutoManual, Expr::value(variable_update.auto_manual.clone()))
+                    .col_expr(variable_points::Column::FilterField, Expr::value(variable_update.filter_field.clone()))
+                    .col_expr(variable_points::Column::DigitalAnalog, Expr::value(variable_update.digital_analog.clone()))
+                    .col_expr(variable_points::Column::Status, Expr::value(variable_update.status.clone()))
+                    .col_expr(variable_points::Column::Units, Expr::value(variable_update.units.clone()))
+                    .exec(&txn)
+                    .await;
 
-                // Update fields if provided
-                if let Some(v) = variable_update.full_label {
-                    variable.full_label = Set(Some(v));
-                }
-                if let Some(v) = variable_update.label {
-                    variable.label = Set(Some(v));
-                }
-                if let Some(v) = variable_update.f_value {
-                    variable.f_value = Set(Some(v));
-                }
-                if let Some(v) = variable_update.range_field {
-                    variable.range_field = Set(Some(v));
-                }
-                if let Some(v) = variable_update.auto_manual {
-                    variable.auto_manual = Set(Some(v));
-                }
-                if let Some(v) = variable_update.filter_field {
-                    variable.filter_field = Set(Some(v));
-                }
-                if let Some(v) = variable_update.digital_analog {
-                    variable.digital_analog = Set(Some(v));
-                }
-                if let Some(v) = variable_update.status {
-                    variable.status = Set(Some(v));
-                }
-                if let Some(v) = variable_update.units {
-                    variable.units = Set(Some(v));
-                }
-
-                // Save to database
-                match variable.update(&txn).await {
-                    Ok(_) => {
-                        updated_count += 1;
+                match update_result {
+                    Ok(res) => {
+                        if res.rows_affected > 0 {
+                            updated_count += 1;
+                        } else {
+                            failed_count += 1;
+                            errors.push(format!("Variable {}: No rows updated", index));
+                        }
                     }
                     Err(e) => {
                         failed_count += 1;
@@ -145,15 +178,16 @@ pub async fn batch_save_variables(
                 let new_variable = variable_points::ActiveModel {
                     serial_number: Set(serial),
                     variable_index: Set(Some(index.clone())),
-                    full_label: Set(variable_update.full_label),
-                    label: Set(variable_update.label),
-                    f_value: Set(variable_update.f_value),
-                    range_field: Set(variable_update.range_field),
-                    auto_manual: Set(variable_update.auto_manual),
-                    filter_field: Set(variable_update.filter_field),
-                    digital_analog: Set(variable_update.digital_analog),
-                    status: Set(variable_update.status),
-                    units: Set(variable_update.units),
+                    panel: Set(variable_update.panel.clone()),
+                    full_label: Set(variable_update.full_label.clone()),
+                    label: Set(variable_update.label.clone()),
+                    f_value: Set(variable_update.f_value.clone()),
+                    range_field: Set(variable_update.range_field.clone()),
+                    auto_manual: Set(variable_update.auto_manual.clone()),
+                    filter_field: Set(variable_update.filter_field.clone()),
+                    digital_analog: Set(variable_update.digital_analog.clone()),
+                    status: Set(variable_update.status.clone()),
+                    units: Set(variable_update.units.clone()),
                     ..Default::default()
                 };
 
@@ -177,17 +211,15 @@ pub async fn batch_save_variables(
     }
 
     // Commit transaction
-    if let Err(e) = txn.commit().await {
-        error!("Failed to commit transaction: {:?}", e);
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Transaction commit error: {}", e)));
-    }
+    txn.commit().await
+        .map_err(|e| format!("database is locked: {}", e))?;
 
     info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
 
-    Ok(Json(BatchSaveResponse {
+    Ok(BatchSaveResponse {
         success: failed_count == 0,
         updated_count,
         failed_count,
         errors,
-    }))
+    })
 }
