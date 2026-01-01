@@ -28,7 +28,7 @@ import {
   ImageRegular,
   ChartMultipleRegular,
 } from '@fluentui/react-icons';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
 import { CapacityBar } from './CapacityBar';
 import styles from './ProjectPointTree.module.css';
@@ -78,6 +78,24 @@ const getPointTypeFromRoute = (pathname: string): string | null => {
 };
 
 /**
+ * Map point type to route for navigation
+ */
+const getRouteFromPointType = (pointType: string): string => {
+  const routeMap: Record<string, string> = {
+    'inputs': '/t3000/inputs',
+    'outputs': '/t3000/outputs',
+    'variables': '/t3000/variables',
+    'programs': '/t3000/programs',
+    'pidloops': '/t3000/pidloops',
+    'schedules': '/t3000/schedules',
+    'holidays': '/t3000/holidays',
+    'graphics': '/t3000/graphics',
+    'trendlogs': '/t3000/trendlogs',
+  };
+  return routeMap[pointType] || '/t3000/dashboard';
+};
+
+/**
  * Status icon component
  */
 const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
@@ -90,18 +108,31 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
 /**
  * Recursive tree node renderer for Project Point View
  */
-const ProjectTreeNode: React.FC<{ node: any; level: number; selectedPointType: string | null }> = React.memo(
-  ({ node, level, selectedPointType }) => {
+const ProjectTreeNode: React.FC<{
+  node: any;
+  level: number;
+  selectedPointType: string | null;
+  onNavigate: (pointType: string) => void;
+}> = React.memo(
+  ({ node, level, selectedPointType, onNavigate }) => {
     const hasChildren = node.children && node.children.length > 0;
 
     // Point type node with capacity bar
     if (node.node_type === 'point_type') {
       const isSelected = node.point_type === selectedPointType;
+
+      const handleClick = () => {
+        if (node.point_type) {
+          onNavigate(node.point_type);
+        }
+      };
+
       return (
         <TreeItem itemType="leaf" value={node.name}>
           <TreeItemLayout
             className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
-            style={{ '--tree-level': level } as React.CSSProperties}
+            style={{ '--tree-level': level, cursor: 'pointer' } as React.CSSProperties}
+            onClick={handleClick}
           >
             {getPointTypeIcon(node.point_type)}
             <span className={styles.pointTypeName}>{node.name}</span>
@@ -137,6 +168,7 @@ const ProjectTreeNode: React.FC<{ node: any; level: number; selectedPointType: s
                   node={child}
                   level={level + 1}
                   selectedPointType={selectedPointType}
+                  onNavigate={onNavigate}
                 />
               ))}
             </Tree>
@@ -163,6 +195,7 @@ const ProjectTreeNode: React.FC<{ node: any; level: number; selectedPointType: s
                 node={child}
                 level={level + 1}
                 selectedPointType={selectedPointType}
+                onNavigate={onNavigate}
               />
             ))}
           </Tree>
@@ -179,7 +212,13 @@ export const ProjectPointTree: React.FC = () => {
   const { projectTreeData, isLoading, error, fetchProjectPointTree } = useDeviceTreeStore();
   const [openItems, setOpenItems] = useState<string[]>([]);
   const location = useLocation();
+  const navigate = useNavigate();
   const selectedPointType = getPointTypeFromRoute(location.pathname);
+
+  const handleNavigate = (pointType: string) => {
+    const route = getRouteFromPointType(pointType);
+    navigate(route);
+  };
 
   useEffect(() => {
     if (!projectTreeData) {
@@ -243,7 +282,12 @@ export const ProjectPointTree: React.FC = () => {
         openItems={openItems}
         onOpenChange={(_, data) => setOpenItems(data.openItems as string[])}
       >
-        <ProjectTreeNode node={projectTreeData} level={0} selectedPointType={selectedPointType} />
+        <ProjectTreeNode
+          node={projectTreeData}
+          level={0}
+          selectedPointType={selectedPointType}
+          onNavigate={handleNavigate}
+        />
       </Tree>
     </div>
   );
