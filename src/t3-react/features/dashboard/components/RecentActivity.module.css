@@ -1,0 +1,71 @@
+/* Recent Activity Styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  flex: 1;
+}
+
+.emptyText {
+  font-size: 14px;
+  color: #8a8886;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.activityItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.activityItem:hover {
+  background: #faf9f8;
+}
+
+.activityIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.activityContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activityDevice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.activityMessage {
+  font-size: 12px;
+  color: #605e5c;
+}
+
+.activityTime {
+  font-size: 11px;
+  color: #8a8886;
+  flex-shrink: 0;
+  white-space: nowrap;
+}

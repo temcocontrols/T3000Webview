@@ -1,0 +1,37 @@
+/* Quick Access Styles */
+
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.quickButton {
+  height: 64px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #faf9f8;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  font-weight: 500;
+  color: #323130;
+}
+
+.quickButton:hover {
+  background: #f3f2f1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: #0078d4;
+}
+
+.quickButton:active {
+  transform: translateY(0);
+}
+
+.quickButton svg {
+  width: 20px;
+  height: 20px;
+}
