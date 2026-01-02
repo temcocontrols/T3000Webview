@@ -23,10 +23,10 @@ import {
 import { ChevronRight20Regular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import { SyncStatusBar } from '../shared/components/SyncStatusBar';
-import { InputRefreshApiService } from '../features/inputs/services/inputRefreshApi';
-import { OutputRefreshApiService } from '../features/outputs/services/outputRefreshApi';
-import { VariableRefreshApiService } from '../features/variables/services/variableRefreshApi';
-import { ProgramRefreshApiService } from '../features/programs/services/programRefreshApi';
+import { InputRefreshApi } from '../features/inputs/services/inputRefreshApi';
+import { OutputRefreshApi } from '../features/outputs/services/outputRefreshApi';
+import { VariableRefreshApi } from '../features/variables/services/variableRefreshApi';
+import { ProgramRefreshApi } from '../features/programs/services/programRefreshApi';
 
 const useStyles = makeStyles({
   container: {
@@ -154,35 +154,23 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
       // Call the appropriate refresh API based on data type
       switch (dataType) {
         case 'INPUTS':
-          refreshResponse = await InputRefreshApiService.refreshAllInputs(selectedDevice.serialNumber);
-          if (refreshResponse.items && refreshResponse.items.length > 0) {
-            await InputRefreshApiService.saveRefreshedInputs(selectedDevice.serialNumber, refreshResponse.items);
-          }
+          refreshResponse = await InputRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
           break;
         case 'OUTPUTS':
-          refreshResponse = await OutputRefreshApiService.refreshAllOutputs(selectedDevice.serialNumber);
-          if (refreshResponse.items && refreshResponse.items.length > 0) {
-            await OutputRefreshApiService.saveRefreshedOutputs(selectedDevice.serialNumber, refreshResponse.items);
-          }
+          refreshResponse = await OutputRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
           break;
         case 'VARIABLES':
-          refreshResponse = await VariableRefreshApiService.refreshAllVariables(selectedDevice.serialNumber);
-          if (refreshResponse.items && refreshResponse.items.length > 0) {
-            await VariableRefreshApiService.saveRefreshedVariables(selectedDevice.serialNumber, refreshResponse.items);
-          }
+          refreshResponse = await VariableRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
           break;
         case 'PROGRAMS':
-          refreshResponse = await ProgramRefreshApiService.refreshAllPrograms(selectedDevice.serialNumber);
-          if (refreshResponse.items && refreshResponse.items.length > 0) {
-            await ProgramRefreshApiService.saveRefreshedPrograms(selectedDevice.serialNumber, refreshResponse.items);
-          }
+          refreshResponse = await ProgramRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
           break;
         default:
           console.warn(`[PageHeader] No refresh handler for data type: ${dataType}`);
           return;
       }
 
-      console.log(`[PageHeader] Refresh completed - ${refreshResponse.count} records`);
+      console.log(`[PageHeader] Refresh completed - ${refreshResponse.savedCount} records saved`);
 
       // Trigger page reload via custom event
       window.dispatchEvent(new CustomEvent('data-refreshed', { detail: { dataType } }));

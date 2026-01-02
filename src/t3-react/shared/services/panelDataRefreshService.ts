@@ -15,7 +15,7 @@ import { EntryType, WebViewMessageType } from '../../../lib/t3-transport/types/m
 import { T3Database } from '../../../lib/t3-database';
 import { API_BASE_URL } from '../../config/constants';
 
-export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday';
+export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday' | 'trendlog' | 'alarm';
 
 export interface RefreshOptions {
   serialNumber: number;
@@ -59,7 +59,7 @@ export class PanelDataRefreshService {
 
       await transport.connect('ffi');
 
-      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 3=CONTROLLER, 4=SCHEDULE, 5=ANNUAL, 6=PROGRAM
+      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 3=CONTROLLER, 4=SCHEDULE, 5=ANNUAL, 6=PROGRAM, 7=TABLE, 15=ALARMS
       const entryTypeMap: Record<PointType, EntryType> = {
         'output': EntryType.OUTPUT,          // BAC_OUT = 0
         'input': EntryType.INPUT,            // BAC_IN = 1
@@ -68,7 +68,11 @@ export class PanelDataRefreshService {
         'schedule': EntryType.SCHEDULE,      // BAC_SCH = 4
         'holiday': EntryType.ANNUAL,         // BAC_HOL = 5
         'program': EntryType.PROGRAM,        // BAC_PRG = 6
+        'trendlog': EntryType.TABLE,         // BAC_TBL = 7
+        'alarm': EntryType.ALARMS,           // BAC_ALARMS = 15
       };
+
+      const entryType = entryTypeMap[type];
 
       console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
@@ -494,6 +498,42 @@ export class PanelDataRefreshService {
    */
   static async refreshSingleHoliday(serialNumber: number, index: number): Promise<RefreshResult> {
     return this.refreshFromDevice({ serialNumber, type: 'holiday', index });
+  }
+
+  // =============================================================================
+  // Trendlog Refresh Methods
+  // =============================================================================
+
+  /**
+   * Refresh all trendlogs for a device
+   */
+  static async refreshAllTrendlogs(serialNumber: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'trendlog' });
+  }
+
+  /**
+   * Refresh single trendlog for a device
+   */
+  static async refreshSingleTrendlog(serialNumber: number, index: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'trendlog', index });
+  }
+
+  // =============================================================================
+  // Alarm Refresh Methods
+  // =============================================================================
+
+  /**
+   * Refresh all alarms for a device
+   */
+  static async refreshAllAlarms(serialNumber: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'alarm' });
+  }
+
+  /**
+   * Refresh single alarm for a device
+   */
+  static async refreshSingleAlarm(serialNumber: number, index: number): Promise<RefreshResult> {
+    return this.refreshFromDevice({ serialNumber, type: 'alarm', index });
   }
 }
 
