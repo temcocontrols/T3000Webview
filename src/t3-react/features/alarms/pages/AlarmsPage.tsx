@@ -35,7 +35,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { AlarmRefreshApiService } from '../services/alarmRefreshApi';
+import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
@@ -145,12 +145,9 @@ const AlarmsPage: React.FC = () => {
       console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
-        const response = await AlarmRefreshApiService.refreshAllAlarms(serial);
+        const response = await AlarmRefreshApi.refreshAllFromDevice(serial);
         console.log('✅ Auto-refresh response:', response);
-        if (response && response.items) {
-          await AlarmRefreshApiService.saveRefreshedAlarms(serial, response.items);
-          await fetchAlarms();
-        }
+        await fetchAlarms();
         setAutoRefreshed(true);
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
@@ -169,13 +166,9 @@ const AlarmsPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       console.log('🔄 Refreshing all alarms from device...');
-      const response = await AlarmRefreshApiService.refreshAllAlarms(serial);
+      const response = await AlarmRefreshApi.refreshAllFromDevice(serial);
       console.log('✅ Device refresh response:', response);
-
-      if (response && response.items) {
-        await AlarmRefreshApiService.saveRefreshedAlarms(serial, response.items);
-        await fetchAlarms();
-      }
+      await fetchAlarms();
     } catch (err) {
       console.error('❌ Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
@@ -196,13 +189,9 @@ const AlarmsPage: React.FC = () => {
       const alarmIndex = parseInt(item.alarm_id);
       console.log(`🔄 Refreshing single alarm from device: ${alarmIndex}`);
 
-      const response = await AlarmRefreshApiService.refreshAlarm(serial, alarmIndex);
+      const response = await AlarmRefreshApi.refreshSingleFromDevice(serial, alarmIndex);
       console.log('✅ Single alarm refresh response:', response);
-
-      if (response && response.items) {
-        await AlarmRefreshApiService.saveRefreshedAlarms(serial, response.items);
-        await fetchAlarms();
-      }
+      await fetchAlarms();
     } catch (err) {
       console.error('❌ Single alarm refresh failed:', err);
     } finally {

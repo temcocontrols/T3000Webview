@@ -34,7 +34,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { TrendlogRefreshApiService } from '../services/trendlogRefreshApi';
+import { TrendlogRefreshApi } from '../services/trendlogRefreshApi';
 import { API_BASE_URL } from '../../../config/constants';
 import { TrendChartDrawer } from '../components/TrendChartDrawer';
 import styles from './TrendLogsPage.module.css';
@@ -420,15 +420,9 @@ export const TrendLogsPage: React.FC = () => {
     const timer = setTimeout(async () => {
       try {
         console.log('[TrendLogsPage] Auto-refreshing from device...');
-        const refreshResponse = await TrendlogRefreshApiService.refreshAllTrendlogs(selectedDevice.serialNumber);
+        const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
         console.log('[TrendLogsPage] Refresh response:', refreshResponse);
-
-        if (refreshResponse.items && refreshResponse.items.length > 0) {
-          await TrendlogRefreshApiService.saveRefreshedTrendlogs(selectedDevice.serialNumber, refreshResponse.items);
-          await fetchTrendLogs();
-        } else {
-          console.warn('[TrendLogsPage] Auto-refresh: No items received, keeping existing data');
-        }
+        await fetchTrendLogs();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[TrendLogsPage] Auto-refresh failed:', error);
@@ -446,19 +440,9 @@ export const TrendLogsPage: React.FC = () => {
     setRefreshing(true);
     try {
       console.log('[TrendLogsPage] Refreshing all trendlogs from device...');
-      const refreshResponse = await TrendlogRefreshApiService.refreshAllTrendlogs(selectedDevice.serialNumber);
+      const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
-
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await TrendlogRefreshApiService.saveRefreshedTrendlogs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[TrendLogsPage] Save response:', saveResponse);
-        await fetchTrendLogs();
-      } else {
-        console.warn('[TrendLogsPage] No items received from refresh, keeping existing data');
-      }
+      await fetchTrendLogs();
     } catch (error) {
       console.error('[TrendLogsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
@@ -480,17 +464,8 @@ export const TrendLogsPage: React.FC = () => {
     setRefreshingItems(prev => new Set(prev).add(trendlogIndex));
     try {
       console.log(`[TrendLogsPage] Refreshing trendlog ${index} from device...`);
-      const refreshResponse = await TrendlogRefreshApiService.refreshTrendlog(selectedDevice.serialNumber, index);
+      const refreshResponse = await TrendlogRefreshApi.refreshSingleFromDevice(selectedDevice.serialNumber, index);
       console.log('[TrendLogsPage] Refresh response:', refreshResponse);
-
-      if (refreshResponse.items && refreshResponse.items.length > 0) {
-        const saveResponse = await TrendlogRefreshApiService.saveRefreshedTrendlogs(
-          selectedDevice.serialNumber,
-          refreshResponse.items
-        );
-        console.log('[TrendLogsPage] Save response:', saveResponse);
-      }
-
       await fetchTrendLogs();
     } catch (error) {
       console.error(`[TrendLogsPage] Failed to refresh trendlog ${index}:`, error);

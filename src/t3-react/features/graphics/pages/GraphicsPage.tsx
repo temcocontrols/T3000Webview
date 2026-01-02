@@ -34,23 +34,14 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
-import { GraphicRefreshApiService } from '../services/graphicRefreshApi';
+import { GraphicRefreshApi } from '../services/graphicRefreshApi';
+import type { Graphic } from '../../../../lib/t3-database/types/graphics.types';
 import styles from './GraphicsPage.module.css';
-
-// Types based on Rust entity (graphics.rs)
-interface GraphicPoint {
-  serialNumber: number;
-  graphicId?: string;
-  switchNode?: string;
-  graphicLabel?: string;
-  graphicPictureFile?: string;
-  graphicTotalPoint?: string;
-}
 
 export const GraphicsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
 
-  const [graphics, setGraphics] = useState<GraphicPoint[]>([]);
+  const [graphics, setGraphics] = useState<Graphic[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,8 +81,8 @@ export const GraphicsPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await GraphicRefreshApiService.getGraphics(selectedDevice.serialNumber);
-      setGraphics(response.data || []);
+      const graphics = await GraphicRefreshApi.loadAllFromDB(selectedDevice.serialNumber);
+      setGraphics(graphics || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load graphics';
       setError(errorMessage);
@@ -111,21 +102,10 @@ export const GraphicsPage: React.FC = () => {
 
     const timer = setTimeout(async () => {
       try {
-        console.log('[GraphicsPage] Auto-loading graphics using GET_INITIAL_DATA...');
-
-        // Use GET_INITIAL_DATA (Action 1) to load and save graphics
-        // This will load graphic screen data and parse items to save to database
-        const saveResponse = await GraphicRefreshApiService.loadAndSaveGraphics(
-          selectedDevice.serialNumber,
-          0 // viewitem index - can be 0-7 for different graphic screens
-        );
-        console.log('[GraphicsPage] Load and save response:', saveResponse);
-
-        if (saveResponse.savedCount > 0) {
-          await fetchGraphics();
-        } else {
-          console.warn('[GraphicsPage] Auto-load: No items saved, keeping existing data');
-        }
+        console.log('[GraphicsPage] Auto-loading graphics from database...');
+        // TODO: Implement GraphicRefreshApi.refreshAllFromDevice() using Action 0/1
+        // Graphics use different FFI actions than Action 17
+        await fetchGraphics();
         setAutoRefreshed(true);
       } catch (error) {
         console.error('[GraphicsPage] Auto-load failed:', error);
@@ -136,24 +116,61 @@ export const GraphicsPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [loading, selectedDevice, autoRefreshed, fetchGraphics]);
 
+  // Load next device in tree (auto-scroll feature)
+  const loadNextDevice = useCallback(() => {
+    const nextDevice = getNextDevice();
+    if (nextDevice) {
+      setIsLoadingNextDevice(true);
+      selectDevice(nextDevice);
+      setTimeout(() => {
+        setIsLoadingNextDevice(false);
+      }, 500);
+    }
+  }, [getNextDevice, selectDevice]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading) return;
+
+    const target = e.currentTarget;
+    const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const isAtBottom = scrollBottom <= 1;
+
+    if (isAtBottom && graphics.length > 0) {
+      isAtBottomRef.current = true;
+    } else {
+      isAtBottomRef.current = false;
+    }
+  }, [isLoadingNextDevice, loading, graphics.length]);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (isLoadingNextDevice || loading || graphics.length === 0) return;
+
+    if (e.deltaY > 0 && isAtBottomRef.current) {
+      isAtBottomRef.current = false;
+      loadNextDevice();
+    }
+  }, [isLoadingNextDevice, loading, graphics.length, loadNextDevice]);
+
+  // Auto-scroll to top after device change
+  useEffect(() => {
+    if (selectedDevice && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+      });
+    }
+  }, [selectedDevice, isLoadingNextDevice]);
+
   // Refresh all graphics from device
   const handleRefreshFromDevice = async () => {
     if (!selectedDevice) return;
 
     setRefreshing(true);
     try {
-      console.log('[GraphicsPage] Manually loading graphics using GET_INITIAL_DATA...');
-
-      // Use GET_INITIAL_DATA (Action 1) to load and save graphics
-      const saveResponse = await GraphicRefreshApiService.loadAndSaveGraphics(
-        selectedDevice.serialNumber,
-        0 // viewitem index
-      );
-      console.log('[GraphicsPage] Load and save response:', saveResponse);
-
-      if (saveResponse.savedCount > 0) {
-        await fetchGraphics();
-      }
+      console.log('[GraphicsPage] Manually loading graphics from database...');
+      // TODO: Implement GraphicRefreshApi.refreshAllFromDevice() using Action 0/1
+      // Graphics use different FFI actions than Action 17
+      await fetchGraphics();
     } catch (error) {
       console.error('[GraphicsPage] Refresh failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh graphics');
@@ -166,13 +183,14 @@ export const GraphicsPage: React.FC = () => {
     if (graphics.length === 0) return;
 
     const csvContent = [
-      ['Graphic ID', 'Label', 'Picture File', 'Switch Node', 'Total Points'].join(','),
+      ['Graphic ID', 'Label', 'Full Label', 'Picture File', 'Panel', 'Element Count'].join(','),
       ...graphics.map(g => [
-        g.graphicId || '',
-        g.graphicLabel || '',
-        g.graphicPictureFile || '',
-        g.switchNode || '',
-        g.graphicTotalPoint || '',
+        g.Graphic_ID || '',
+        g.Label || '',
+        g.Full_Label || '',
+        g.Picture_File || '',
+        g.Panel || '',
+        g.Element_Count?.toString() || '',
       ].join(',')),
     ].join('\n');
 
@@ -185,16 +203,16 @@ export const GraphicsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleViewWebview = useCallback((graphic: GraphicPoint) => {
-    if (!selectedDevice || !graphic.graphicId) return;
+  const handleViewWebview = useCallback((graphic: Graphic) => {
+    if (!selectedDevice || !graphic.Graphic_ID) return;
 
     // Construct the webview URL for this graphic
-    const webviewUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/graphics/${graphic.graphicId}/webview`;
+    const webviewUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/graphics/${graphic.Graphic_ID}/webview`;
 
     console.log('🖼️ [GraphicsPage] Opening webview for graphic:', {
       serialNumber: selectedDevice.serialNumber,
-      graphicId: graphic.graphicId,
-      label: graphic.graphicLabel,
+      graphicId: graphic.Graphic_ID,
+      label: graphic.Label,
       url: webviewUrl,
     });
 
@@ -222,9 +240,10 @@ export const GraphicsPage: React.FC = () => {
   // Filter and sort graphics
   const filteredGraphics = graphics.filter(g =>
     searchQuery === '' ||
-    (g.graphicLabel?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (g.graphicId?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (g.graphicPictureFile?.toLowerCase().includes(searchQuery.toLowerCase()))
+    (g.Label?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (g.Full_Label?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (g.Graphic_ID?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (g.Picture_File?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const sortedGraphics = [...filteredGraphics].sort((a, b) => {
@@ -244,28 +263,30 @@ export const GraphicsPage: React.FC = () => {
   const displayGraphics = React.useMemo(() => {
     if (sortedGraphics.length === 0) {
       return Array(10).fill(null).map((_, index) => ({
-        serialNumber: selectedDevice?.serialNumber || 0,
-        graphicId: '',
-        switchNode: '',
-        graphicLabel: '',
-        graphicPictureFile: '',
-        graphicTotalPoint: '',
+        SerialNumber: selectedDevice?.serialNumber || 0,
+        Graphic_ID: '',
+        Panel: '',
+        Label: '',
+        Full_Label: '',
+        Picture_File: '',
+        Element_Count: 0,
+        Status: '',
       }));
     }
     return sortedGraphics;
   }, [sortedGraphics, selectedDevice]);
 
   // Helper to identify empty rows
-  const isEmptyRow = (item: GraphicPoint) => !item.graphicId && sortedGraphics.length === 0;
+  const isEmptyRow = (item: Graphic) => !item.Graphic_ID && sortedGraphics.length === 0;
 
   // Define columns matching C++ BacnetScreen columns
-  const columns: TableColumnDefinition<GraphicPoint>[] = [
-    createTableColumn<GraphicPoint>({
-      columnId: 'graphicId',
+  const columns: TableColumnDefinition<Graphic>[] = [
+    createTableColumn<Graphic>({
+      columnId: 'Graphic_ID',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicId')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('Graphic_ID')}>
           <span>Graphic #</span>
-          {sortColumn === 'graphicId' ? (
+          {sortColumn === 'Graphic_ID' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular className={styles.sortIconFaded} />
@@ -274,16 +295,16 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicId || '---')}
+          {!isEmptyRow(item) && (item.Graphic_ID || '---')}
         </TableCellLayout>
       ),
     }),
-    createTableColumn<GraphicPoint>({
-      columnId: 'switchNode',
+    createTableColumn<Graphic>({
+      columnId: 'Panel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('switchNode')}>
-          <span>Full Label</span>
-          {sortColumn === 'switchNode' ? (
+        <div className={styles.headerCellSort} onClick={() => handleSort('Panel')}>
+          <span>Panel</span>
+          {sortColumn === 'Panel' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular className={styles.sortIconFaded} />
@@ -292,16 +313,16 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.switchNode || '---')}
+          {!isEmptyRow(item) && (item.Panel || '---')}
         </TableCellLayout>
       ),
     }),
-    createTableColumn<GraphicPoint>({
-      columnId: 'graphicLabel',
+    createTableColumn<Graphic>({
+      columnId: 'Label',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicLabel')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('Label')}>
           <span>Label</span>
-          {sortColumn === 'graphicLabel' ? (
+          {sortColumn === 'Label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular className={styles.sortIconFaded} />
@@ -310,16 +331,16 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicLabel || '---')}
+          {!isEmptyRow(item) && (item.Label || '---')}
         </TableCellLayout>
       ),
     }),
-    createTableColumn<GraphicPoint>({
-      columnId: 'graphicPictureFile',
+    createTableColumn<Graphic>({
+      columnId: 'Picture_File',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicPictureFile')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('Picture_File')}>
           <span>Picture File</span>
-          {sortColumn === 'graphicPictureFile' ? (
+          {sortColumn === 'Picture_File' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular className={styles.sortIconFaded} />
@@ -328,16 +349,16 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicPictureFile || '---')}
+          {!isEmptyRow(item) && (item.Picture_File || '---')}
         </TableCellLayout>
       ),
     }),
-    createTableColumn<GraphicPoint>({
-      columnId: 'graphicTotalPoint',
+    createTableColumn<Graphic>({
+      columnId: 'Element_Count',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('graphicTotalPoint')}>
+        <div className={styles.headerCellSort} onClick={() => handleSort('Element_Count')}>
           <span>Element Count</span>
-          {sortColumn === 'graphicTotalPoint' ? (
+          {sortColumn === 'Element_Count' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular className={styles.sortIconFaded} />
@@ -346,12 +367,12 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicTotalPoint || '0')}
+          {!isEmptyRow(item) && (item.Element_Count?.toString() || '0')}
         </TableCellLayout>
       ),
     }),
     // Actions column - View Webview
-    createTableColumn<GraphicPoint>({
+    createTableColumn<Graphic>({
       columnId: 'actions',
       renderHeaderCell: () => <span>Action</span>,
       renderCell: (item) => {
@@ -463,70 +484,81 @@ export const GraphicsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className={styles.horizontalDivider}></div>
+              {/* ========================================
+                  HORIZONTAL DIVIDER
+                  Matches: ext-overview-hr
+                  ======================================== */}
+              <div className={styles.noPadding}>
+                <hr className={styles.overviewHr} />
+              </div>
               </>
               )}
 
-              <div className={styles.noPadding}>
-                {!selectedDevice ? (
+              {/* ========================================
+                  DOCKING BODY - Main Content
+                  Matches: msportalfx-docking-body
+                  ======================================== */}
+              <div className={styles.dockingBody}>
+
+                {/* Loading State */}
+                {loading && graphics.length === 0 && (
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading graphics...</Text>
+                  </div>
+                )}
+
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
                   <div className={styles.noData}>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className={styles.centerText}>
                       <Text size={400} weight="semibold">No device selected</Text>
                       <br />
                       <Text size={200}>Please select a device from the tree to view graphics</Text>
                     </div>
                   </div>
-                ) : loading && graphics.length === 0 ? (
-                  <div className={styles.loadingState}>
-                    <Spinner size="large" label="Loading graphics..." />
-                  </div>
-                ) : graphics.length === 0 ? (
-                  <div className={styles.emptyStateContainer}>
-                    <div className={styles.emptyStateHeader}>
-                      <InfoRegular className={styles.iconSmall} />
-                      <Text size={300} weight="semibold" className={styles.textSemibold}>
-                        No graphics found for this device
-                      </Text>
-                    </div>
-                    <Text size={200} className={styles.textSmall}>
-                      Graphics may not have been configured yet
-                    </Text>
-                  </div>
-                ) : (
-                  <div className={styles.scrollContainerAuto}>
-                    <DataGrid
+                )}
+
+                {/* Data Grid - Always show with header (even when there's an error) */}
+                {selectedDevice && !loading && (
+                  <div
+                    ref={scrollContainerRef}
+                    className={styles.scrollContainer}
+                    onScroll={handleScroll}
+                    onWheel={handleWheel}
+                  >
+                  <DataGrid
                       items={displayGraphics}
                       columns={columns}
                       sortable
                       resizableColumns
-                      className={styles.fullWidth}
                       columnSizingOptions={{
-                        graphicId: {
+                        Graphic_ID: {
+                          minWidth: 70,
+                          idealWidth: '10%',
+                        },
+                        Panel: {
                           minWidth: 80,
                           idealWidth: '10%',
                         },
-                        switchNode: {
+                        Label: {
+                          minWidth: 150,
+                          idealWidth: '20%',
+                        },
+                        Picture_File: {
                           minWidth: 150,
                           idealWidth: '25%',
                         },
-                        graphicLabel: {
-                          minWidth: 120,
-                          idealWidth: '15%',
-                        },
-                        graphicPictureFile: {
-                          minWidth: 150,
-                          idealWidth: '25%',
-                        },
-                        graphicTotalPoint: {
+                        Element_Count: {
                           minWidth: 100,
-                          idealWidth: '10%',
+                          idealWidth: '15%',
                         },
                         actions: {
                           minWidth: 100,
-                          idealWidth: '15%',
+                          idealWidth: '20%',
                         },
                       }}
-                      getRowId={(item) => `${item.serialNumber}-${item.graphicId}`}
+                      getRowId={(item) => `${item.SerialNumber}-${item.Graphic_ID}`}
                     >
                       <DataGridHeader>
                         <DataGridRow>
@@ -535,9 +567,9 @@ export const GraphicsPage: React.FC = () => {
                           )}
                         </DataGridRow>
                       </DataGridHeader>
-                      <DataGridBody<GraphicPoint>>
+                      <DataGridBody<Graphic>>
                         {({ item, rowId }) => (
-                          <DataGridRow<GraphicPoint> key={rowId}>
+                          <DataGridRow<Graphic> key={rowId}>
                             {({ renderCell }) => (
                               <DataGridCell>{renderCell(item)}</DataGridCell>
                             )}
@@ -547,6 +579,15 @@ export const GraphicsPage: React.FC = () => {
                     </DataGrid>
                   </div>
                 )}
+
+                {/* Auto-load indicator */}
+                {isLoadingNextDevice && (
+                  <div className={styles.autoLoadIndicator}>
+                    <Spinner size="tiny" />
+                    <Text size={200}>Loading next device...</Text>
+                  </div>
+                )}
+
               </div>
             </div>
           </div>
