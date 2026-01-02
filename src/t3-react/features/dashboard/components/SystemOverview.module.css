@@ -16,63 +16,44 @@
 .card {
   background: #ffffff;
   border: 1px solid #edebe9;
-  border-radius: 4px;
-  padding: 16px;
+  border-radius: 2px;
+  padding: 12px;
   display: flex;
-  gap: 12px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
   cursor: pointer;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.cardIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
+  border-color: #0078d4;
 }
 
 .cardContent {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.cardValue {
-  font-size: 28px;
-  font-weight: 600;
-  color: #323130;
-  line-height: 1;
+  gap: 2px;
 }
 
 .cardLabel {
-  font-size: 13px;
+  font-size: 10px;
   color: #605e5c;
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.cardValue {
+  font-size: 24px;
+  font-weight: 600;
+  color: #323130;
+  line-height: 1;
+  margin-bottom: 2px;
 }
 
 .cardDetail {
-  font-size: 12px;
-  margin-top: 4px;
-}
-
-.online {
-  color: #107c10;
-  font-weight: 500;
-}
-
-.offline {
-  color: #a4262c;
-  font-weight: 500;
+  font-size: 11px;
+  color: #8a8886;
+  margin-top: 2px;
 }
 
 .success {

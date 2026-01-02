@@ -55,60 +55,41 @@ export const SystemOverview: React.FC = () => {
   return (
     <div className={styles.overview}>
       <div className={styles.card}>
-        <div className={styles.cardIcon} style={{ backgroundColor: '#0078d4' }}>
-          <span>📱</span>
-        </div>
         <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>DEVICES</div>
           <div className={styles.cardValue}>{stats.totalDevices}</div>
-          <div className={styles.cardLabel}>Devices</div>
           <div className={styles.cardDetail}>
-            <span className={styles.online}>● {stats.onlineDevices} Online</span>
-            {stats.offlineDevices > 0 && (
-              <span className={styles.offline}> • {stats.offlineDevices} Offline</span>
-            )}
+            {stats.onlineDevices} online • {stats.offlineDevices} offline
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
-        <div className={styles.cardIcon} style={{ backgroundColor: '#d13438' }}>
-          <span>🔔</span>
-        </div>
         <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>ALARMS</div>
           <div className={styles.cardValue}>{stats.activeAlarms}</div>
-          <div className={styles.cardLabel}>Active Alarms</div>
           <div className={styles.cardDetail}>
-            {stats.activeAlarms === 0 ? (
-              <span className={styles.success}>✓ All Clear</span>
-            ) : (
-              <span className={styles.warning}>⚠️ Attention Needed</span>
-            )}
+            {stats.activeAlarms === 0 ? 'All clear' : 'Attention needed'}
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
-        <div className={styles.cardIcon} style={{ backgroundColor: '#107c10' }}>
-          <span>📊</span>
-        </div>
         <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>POINTS</div>
           <div className={styles.cardValue}>{stats.totalPoints}</div>
-          <div className={styles.cardLabel}>Total Points</div>
           <div className={styles.cardDetail}>
-            <span className={styles.muted}>All Types</span>
+            All types monitored
           </div>
         </div>
       </div>
 
       <div className={styles.card}>
-        <div className={styles.cardIcon} style={{ backgroundColor: '#8764b8' }}>
-          <span>🖼️</span>
-        </div>
         <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>GRAPHICS</div>
           <div className={styles.cardValue}>{stats.graphics}</div>
-          <div className={styles.cardLabel}>Graphics</div>
           <div className={styles.cardDetail}>
-            <span className={styles.link}>View All →</span>
+            View all →
           </div>
         </div>
       </div>

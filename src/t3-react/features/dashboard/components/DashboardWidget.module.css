@@ -3,31 +3,33 @@
 .widget {
   background: #ffffff;
   border: 1px solid #edebe9;
-  border-radius: 4px;
-  padding: 16px;
+  border-radius: 2px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .widget:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #c8c6c4;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #f3f2f1;
 }
 
 .title {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
   color: #323130;
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .actions {

@@ -112,20 +112,20 @@
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 12px;
 }
 
 /* Overview section - always visible at top */
 .overviewSection {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 /* Main grid layout */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 /* Scrollbar styling */
