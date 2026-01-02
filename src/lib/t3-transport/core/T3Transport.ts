@@ -293,6 +293,24 @@ export class T3Transport {
         case 6: // BAC_PRG / PROGRAM
           endIndex = 15;  // BAC_PROGRAM_ITEM_COUNT (16 items, 0-15)
           break;
+        case 7: // BAC_TBL / TABLE / TRENDLOG
+          endIndex = 15;  // BAC_TRENDLOG_COUNT (16 items, 0-15)
+          break;
+        case 8: // BAC_DMON / DIGITAL MONITOR
+          endIndex = 31;  // BAC_MONITOR_COUNT (32 items, 0-31)
+          break;
+        case 9: // BAC_AMON / ANALOG MONITOR
+          endIndex = 31;  // BAC_MONITOR_COUNT (32 items, 0-31)
+          break;
+        case 10: // BAC_GRP / GROUP
+          endIndex = 15;  // BAC_GROUP_COUNT (16 items, 0-15)
+          break;
+        case 12: // BAC_ALARMM / ALARM MONITOR
+          endIndex = 31;  // BAC_ALARM_COUNT (32 items, 0-31)
+          break;
+        case 15: // BAC_ALARMS / ALARM SETTINGS
+          endIndex = 31;  // BAC_ALARM_COUNT (32 items, 0-31)
+          break;
         default:
           endIndex = 63;  // Default fallback
           break;

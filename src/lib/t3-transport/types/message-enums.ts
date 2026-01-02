@@ -71,6 +71,12 @@ export const EntryType = {
   SCHEDULE: 4,    // BAC_SCH
   ANNUAL: 5,      // BAC_HOL (Holidays)
   PROGRAM: 6,     // BAC_PRG
+  TABLE: 7,       // BAC_TBL (Trendlog)
+  DMON: 8,        // BAC_DMON (Digital Monitors)
+  AMON: 9,        // BAC_AMON (Analog Monitors)
+  GROUP: 10,      // BAC_GRP (Groups)
+  ALARMM: 12,     // BAC_ALARMM (Alarm Monitors)
+  ALARMS: 15,     // BAC_ALARMS (Alarm Settings)
 } as const;
 
 export type EntryTypeValue = typeof EntryType[keyof typeof EntryType];

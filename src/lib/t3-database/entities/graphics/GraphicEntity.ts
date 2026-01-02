@@ -30,7 +30,8 @@ export class GraphicEntity extends BaseEntity<Graphic> {
 
   async getAll(serialNumber: number): Promise<Graphic[]> {
     const url = this.buildUrl(String(serialNumber));
-    return await this.getData<Graphic[]>(url);
+    const response = await this.getData<{ success: boolean; count: number; data: Graphic[]; timestamp: string }>(url);
+    return response.data || [];
   }
 
   async update(serialNumber: number, graphicId: number, data: Partial<Graphic>): Promise<void> {
