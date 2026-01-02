@@ -1865,10 +1865,12 @@ async fn get_project_point_tree(
 ) -> Result<Json<ProjectTreeNode>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    // Get all devices
+    // Get all devices - Sort by show_label_name/Screen_Name to match Equipment View
     let devices_query = Statement::from_string(
         DatabaseBackend::Sqlite,
-        "SELECT SerialNumber, Product_Name, Product_Class_ID, show_label_name, Screen_Name FROM DEVICES ORDER BY Product_Name".to_string()
+        "SELECT SerialNumber, Product_Name, Product_Class_ID, show_label_name, Screen_Name
+         FROM DEVICES
+         ORDER BY COALESCE(show_label_name, Screen_Name, Product_Name)".to_string()
     );
 
     let devices_result = db.query_all(devices_query).await
