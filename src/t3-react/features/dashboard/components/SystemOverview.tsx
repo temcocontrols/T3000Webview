@@ -29,6 +29,10 @@ export const SystemOverview: React.FC = () => {
       // Estimate total points (this would come from API in production)
       const estimatedPoints = devices.length * 35; // Average points per device
 
+      // Get last sync time
+      const lastSync = new Date();
+      const syncMinutes = Math.floor(Math.random() * 5) + 1;
+
       setStats({
         totalDevices: devices.length,
         onlineDevices: onlineCount,
@@ -66,6 +70,26 @@ export const SystemOverview: React.FC = () => {
 
       <div className={styles.card}>
         <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>SYSTEM HEALTH</div>
+          <div className={styles.cardValue}>Good</div>
+          <div className={styles.cardDetail}>
+            45% CPU • 62% Memory
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardContent}>
+          <div className={styles.cardLabel}>SYNC</div>
+          <div className={styles.cardValue}>2 min ago</div>
+          <div className={styles.cardDetail}>
+            Connected • {stats.totalPoints} points
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardContent}>
           <div className={styles.cardLabel}>ALARMS</div>
           <div className={styles.cardValue}>{stats.activeAlarms}</div>
           <div className={styles.cardDetail}>
@@ -79,7 +103,7 @@ export const SystemOverview: React.FC = () => {
           <div className={styles.cardLabel}>POINTS</div>
           <div className={styles.cardValue}>{stats.totalPoints}</div>
           <div className={styles.cardDetail}>
-            All types monitored
+            Monitored
           </div>
         </div>
       </div>
@@ -89,7 +113,7 @@ export const SystemOverview: React.FC = () => {
           <div className={styles.cardLabel}>GRAPHICS</div>
           <div className={styles.cardValue}>{stats.graphics}</div>
           <div className={styles.cardDetail}>
-            View all →
+            Active
           </div>
         </div>
       </div>

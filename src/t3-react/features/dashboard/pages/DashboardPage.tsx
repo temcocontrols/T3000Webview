@@ -87,40 +87,31 @@ export const DashboardPage: React.FC = () => {
 
       {/* Main Content */}
       <div className={styles.content}>
-        {/* System Overview - Full Width */}
-        <div className={styles.overviewSection}>
+        {/* System Status Section */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>System Status</h2>
           <SystemOverview />
         </div>
 
-        {/* Main Grid - Two Columns */}
-        <div className={styles.grid}>
-          {/* Recent Alarms */}
-          <DashboardWidget title="Recent Alarms" size="medium">
-            <RecentAlarms />
-          </DashboardWidget>
+        {/* Monitoring Section */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Monitoring</h2>
+          <div className={styles.monitoringGrid}>
+            <DashboardWidget title="Recent Alarms" size="medium">
+              <RecentAlarms />
+            </DashboardWidget>
 
-          {/* System Health */}
-          <DashboardWidget title="System Health" size="medium">
-            <SystemHealth />
-          </DashboardWidget>
-
-          {/* Recent Activity */}
-          <DashboardWidget title="Recent Activity" size="medium">
-            <RecentActivity />
-          </DashboardWidget>
-
-          {/* Placeholder for future widgets */}
-          <DashboardWidget title="Network Status" size="medium">
-            <div style={{ padding: '32px', textAlign: 'center', color: '#8a8886' }}>
-              <Text>Coming Soon</Text>
-            </div>
-          </DashboardWidget>
+            <DashboardWidget title="Recent Activity" size="medium">
+              <RecentActivity />
+            </DashboardWidget>
+          </div>
         </div>
 
-        {/* Quick Access - Full Width */}
-        <DashboardWidget title="Quick Access" size="full">
+        {/* Quick Access Section */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Quick Access</h2>
           <QuickAccess />
-        </DashboardWidget>
+        </div>
       </div>
     </div>
   );

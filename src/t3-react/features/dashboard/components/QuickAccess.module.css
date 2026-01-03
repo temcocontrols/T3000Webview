@@ -1,16 +1,36 @@
 /* Quick Access Styles */
 
 .container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.category {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+}
+
+.categoryTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #605e5c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .quickButton {
   height: auto;
   flex-direction: row;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 8px 16px;
   background: #faf9f8;
   border: 1px solid #edebe9;
   border-radius: 2px;
