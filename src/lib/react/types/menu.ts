@@ -96,6 +96,11 @@ export enum MenuAction {
 
   // Help menu
   Help = 'help',
+  OpenDocumentation = 'open-documentation',
+  OpenQuickStart = 'open-quick-start',
+  ReportBug = 'report-bug',
+  SendFeedback = 'send-feedback',
+  ShowAbout = 'show-about',
   About = 'about',
   CheckUpdates = 'check-updates',
 }

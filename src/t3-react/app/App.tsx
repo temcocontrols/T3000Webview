@@ -75,6 +75,9 @@ const BuildingsPage = React.lazy(() =>
 const HvacDesignerPage = React.lazy(() =>
   import('../features/hvac-designer/pages/HvacDesignerPage').then((m) => ({ default: m.HvacDesignerPage }))
 );
+const DocumentationPage = React.lazy(() =>
+  import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
+);
 
 // Develop section - special layout
 const DevelopLayoutWrapper = React.lazy(() =>
@@ -297,6 +300,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <BuildingsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="documentation"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DocumentationPage />
                     </React.Suspense>
                   }
                 />

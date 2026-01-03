@@ -1,0 +1,12 @@
+/* Documentation Breadcrumb Styles */
+
+.container {
+  padding: 12px 24px;
+  background: #faf9f8;
+  border-bottom: 1px solid #edebe9;
+}
+
+.current {
+  color: #323130;
+  font-size: 12px;
+}
