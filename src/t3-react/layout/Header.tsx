@@ -173,6 +173,19 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       action();
     } else {
       console.log('Menu action:', action);
+
+      // Handle specific menu actions
+      switch (action) {
+        case MenuAction.OpenDocumentation:
+          navigate('/t3000/documentation');
+          break;
+        case MenuAction.OpenQuickStart:
+          navigate('/t3000/documentation'); // Will open to quick start section
+          break;
+        // Add other menu actions as needed
+        default:
+          console.log('Unhandled menu action:', action);
+      }
     }
   };
 
