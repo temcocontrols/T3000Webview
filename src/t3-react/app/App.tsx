@@ -304,14 +304,6 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="documentation"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DocumentationPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
                   path="system/sync"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
@@ -323,7 +315,7 @@ export const App: React.FC = () => {
                 {/* Develop Routes - Special layout with left navigation */}
               </Route>
 
-              {/* HVAC Designer - Minimal layout with just top menu bar */}
+              {/* HVAC Designer & Documentation - Minimal layout with just top menu bar */}
               <Route path="/t3000" element={<MinimalLayout />}>
                 <Route
                   path="hvac-designer/:graphicId?"
@@ -335,6 +327,14 @@ export const App: React.FC = () => {
                       </div>
                     }>
                       <HvacDesignerPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="documentation"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <DocumentationPage />
                     </React.Suspense>
                   }
                 />

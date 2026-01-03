@@ -3,22 +3,47 @@
 .sidebar {
   width: 240px;
   height: 100%;
-  background: #f3f2f1;
+  background: #ffffff;
   border-right: 1px solid #edebe9;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .header {
-  padding: 16px;
+  padding: 0 16px;
   border-bottom: 1px solid #edebe9;
-  background: #ffffff;
+  background: #fafafa;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .nav {
   flex: 1;
   padding: 8px 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
+}
+
+.nav::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.nav::-webkit-scrollbar-track {
+  background: #f3f2f1 !important;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  background: #c8c6c4 !important;
+  border-radius: 3px !important;
+}
+
+.nav::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d !important;
 }
 
 .section {
@@ -30,11 +55,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 4px 12px;
   background: transparent;
   border: none;
   cursor: pointer;
   text-align: left;
+  font-size: 11px;
+  font-weight: 600;
   transition: background-color 0.2s;
 }
 
@@ -63,6 +90,7 @@
   cursor: pointer;
   text-align: left;
   transition: all 0.2s;
+  font-size: 12px;
   color: #323130;
 }
 
@@ -72,7 +100,7 @@
 }
 
 .item.active {
-  background: #ffffff;
+  background: #f3f9fd;
   border-left-color: #0078d4;
   color: #0078d4;
   font-weight: 600;

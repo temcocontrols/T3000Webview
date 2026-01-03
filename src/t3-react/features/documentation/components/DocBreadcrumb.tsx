@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbButton } from '@fluentui/react-components';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbButton, BreadcrumbDivider } from '@fluentui/react-components';
 import { getBreadcrumbs } from '../utils/docStructure';
 import styles from './DocBreadcrumb.module.css';
 
@@ -20,15 +20,18 @@ export const DocBreadcrumb: React.FC<DocBreadcrumbProps> = ({ currentPath, onNav
     <div className={styles.container}>
       <Breadcrumb size="small">
         {breadcrumbs.map((crumb, index) => (
-          <BreadcrumbItem key={index}>
-            {crumb.path !== undefined ? (
-              <BreadcrumbButton onClick={() => onNavigate(crumb.path || '')}>
-                {crumb.title}
-              </BreadcrumbButton>
-            ) : (
-              <span className={styles.current}>{crumb.title}</span>
-            )}
-          </BreadcrumbItem>
+          <React.Fragment key={index}>
+            <BreadcrumbItem>
+              {crumb.path !== undefined ? (
+                <BreadcrumbButton onClick={() => onNavigate(crumb.path || '')}>
+                  {crumb.title}
+                </BreadcrumbButton>
+              ) : (
+                <span className={styles.current}>{crumb.title}</span>
+              )}
+            </BreadcrumbItem>
+            {index < breadcrumbs.length - 1 && <BreadcrumbDivider />}
+          </React.Fragment>
         ))}
       </Breadcrumb>
     </div>
