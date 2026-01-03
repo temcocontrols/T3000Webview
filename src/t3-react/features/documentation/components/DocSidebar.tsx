@@ -43,7 +43,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                 ) : (
                   <ChevronRightRegular className={styles.chevron} />
                 )}
-                <Text weight="semibold" size={300}>{section.title}</Text>
+                <Text weight="semibold" size={200}>{section.title}</Text>
               </button>
 
               {isExpanded && (

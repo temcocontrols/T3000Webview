@@ -57,7 +57,7 @@
 }
 
 .markdown h1 {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
   margin: 0 0 16px 0;
   padding-bottom: 8px;
@@ -66,21 +66,21 @@
 }
 
 .markdown h2 {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 600;
   margin: 24px 0 12px 0;
   color: #323130;
 }
 
 .markdown h3 {
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 600;
   margin: 20px 0 10px 0;
   color: #323130;
 }
 
 .markdown h4 {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   margin: 20px 0 10px 0;
   color: #323130;
@@ -88,7 +88,7 @@
 
 .markdown p {
   margin: 0 0 16px 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .markdown ul,
@@ -99,7 +99,7 @@
 
 .markdown li {
   margin: 4px 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .markdown code {
@@ -107,7 +107,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 13px;
+  font-size: 12px;
   color: #d13438;
 }
 
@@ -124,14 +124,14 @@
   background: transparent;
   padding: 0;
   color: #323130;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .markdown table {
   width: 100%;
   border-collapse: collapse;
   margin: 0 0 16px 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .markdown thead {
