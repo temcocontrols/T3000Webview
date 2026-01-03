@@ -8,6 +8,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 44px;
 }
 
 .header {
@@ -17,8 +22,37 @@
   min-height: 44px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   font-size: 13px;
   flex-shrink: 0;
+}
+
+.sidebar.collapsed .header {
+  padding: 0 8px;
+  justify-content: center;
+}
+
+.collapseButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #605e5c;
+  border-radius: 4px;
+  transition: background 0.1s ease;
+  font-size: 18px;
+}
+
+.collapseButton:hover {
+  background: #edebe9;
+  color: #323130;
+}
+
+.collapseButton:active {
+  background: #e1dfdd;
 }
 
 .nav {

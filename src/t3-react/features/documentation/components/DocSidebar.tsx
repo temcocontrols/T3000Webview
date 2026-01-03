@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Text, Button } from '@fluentui/react-components';
-import { ChevronDownRegular, ChevronRightRegular } from '@fluentui/react-icons';
+import { ChevronDownRegular, ChevronRightRegular, ChevronDoubleLeftRegular, ChevronDoubleRightRegular } from '@fluentui/react-icons';
 import { docStructure } from '../utils/docStructure';
 import styles from './DocSidebar.module.css';
 
@@ -14,6 +14,8 @@ interface DocSidebarProps {
   onNavigate: (path: string) => void;
   expandedSections: Set<string>;
   onToggleSection: (title: string) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const DocSidebar: React.FC<DocSidebarProps> = ({
@@ -21,14 +23,21 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
   onNavigate,
   expandedSections,
   onToggleSection,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   return (
-    <div className={styles.sidebar}>
+    <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.header}>
-        <Text weight="semibold" size={400}>Documentation</Text>
+        {!isCollapsed && <Text weight="semibold" size={400}>Documentation</Text>}
+        {onToggleCollapse && (
+          <button className={styles.collapseButton} onClick={onToggleCollapse} title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {isCollapsed ? <ChevronDoubleRightRegular /> : <ChevronDoubleLeftRegular />}
+          </button>
+        )}
       </div>
 
-      <nav className={styles.nav}>
+      {!isCollapsed && <nav className={styles.nav}>
         {docStructure.map((section) => {
           const isExpanded = expandedSections.has(section.title);
 
@@ -66,7 +75,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
             </div>
           );
         })}
-      </nav>
+      </nav>}
     </div>
   );
 };

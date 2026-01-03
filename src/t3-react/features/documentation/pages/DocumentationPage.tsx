@@ -3,12 +3,14 @@
  * Main layout with sidebar, breadcrumb, and content area
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { DocSidebar, DocContent, DocBreadcrumb } from '../components';
 import { useDocNavigation } from '../hooks/useDocNavigation';
 import styles from './DocumentationPage.module.css';
 
 export const DocumentationPage: React.FC = () => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   const {
     currentPath,
     navigateToDoc,
@@ -30,6 +32,8 @@ export const DocumentationPage: React.FC = () => {
         onNavigate={navigateToDoc}
         expandedSections={expandedSections}
         onToggleSection={toggleSection}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
       />
 
       <div className={styles.main}>
