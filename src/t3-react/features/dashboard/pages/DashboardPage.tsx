@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { Text } from '@fluentui/react-components';
 import { InfoLabel } from '@fluentui/react-components';
 import { GaugeRegular } from '@fluentui/react-icons';
+import { ChevronRightRegular } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import {
   DashboardWidget,
@@ -104,11 +105,35 @@ export const DashboardPage: React.FC = () => {
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Data & Planning</div>
           <div className={styles.dataPlanningGrid}>
-            <DashboardWidget title="Trend Logs" size="large">
+            <DashboardWidget
+              title="Trend Logs"
+              size="large"
+              actions={
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#0078d4' }}
+                  onClick={() => window.location.href = '/t3000/trendlog'}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 500 }}>View All</span>
+                  <ChevronRightRegular style={{ fontSize: '14px' }} />
+                </div>
+              }
+            >
               <TrendLogs />
             </DashboardWidget>
 
-            <DashboardWidget title="Schedules" size="medium">
+            <DashboardWidget
+              title="Schedules"
+              size="medium"
+              actions={
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#0078d4' }}
+                  onClick={() => window.location.href = '/t3000/schedule'}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 500 }}>View All</span>
+                  <ChevronRightRegular style={{ fontSize: '14px' }} />
+                </div>
+              }
+            >
               <Schedules />
             </DashboardWidget>
           </div>
