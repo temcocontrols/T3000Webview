@@ -87,9 +87,14 @@ export const DashboardPage: React.FC = () => {
 
       {/* Main Content */}
       <div className={styles.content}>
-        {/* System Status Section */}
+        {/* Quick Access - Horizontal Scroll */}
+        <div className={styles.quickAccessSection}>
+          <QuickAccess />
+        </div>
+
+        {/* System Overview Section */}
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>System Status</h2>
+          <h2 className={styles.sectionTitle}>System Overview</h2>
           <SystemOverview />
         </div>
 
@@ -105,12 +110,6 @@ export const DashboardPage: React.FC = () => {
               <RecentActivity />
             </DashboardWidget>
           </div>
-        </div>
-
-        {/* Quick Access Section */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Quick Access</h2>
-          <QuickAccess />
         </div>
       </div>
     </div>

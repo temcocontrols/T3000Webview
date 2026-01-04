@@ -1,58 +1,82 @@
-/* Quick Access Styles */
+/* Quick Access Styles - Aliyun Style */
 
 .container {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
 }
 
-.category {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.container::-webkit-scrollbar {
+  height: 6px;
 }
 
-.categoryTitle {
-  font-size: 12px;
-  font-weight: 600;
-  color: #605e5c;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.buttonGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.quickButton {
-  height: auto;
-  flex-direction: row;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #faf9f8;
-  border: 1px solid #edebe9;
-  border-radius: 2px;
-  transition: all 0.2s ease;
-  font-size: 12px;
-  font-weight: 500;
-  color: #323130;
-  justify-content: flex-start;
-}
-
-.quickButton:hover {
+.container::-webkit-scrollbar-track {
   background: #f3f2f1;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-color: #0078d4;
 }
 
-.quickButton:active {
+.container::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border-radius: 3px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d;
+}
+
+.serviceCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 100px;
+  padding: 20px 16px;
+  background: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.serviceCard:hover {
+  border-color: #0078d4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.serviceCard:active {
   transform: translateY(0);
 }
 
-.quickButton svg {
-  width: 20px;
-  height: 20px;
+.iconWrapper {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f2f1;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.serviceCard:hover .iconWrapper {
+  background: #e1dfdd;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #323130;
+  text-align: center;
+  white-space: nowrap;
 }
