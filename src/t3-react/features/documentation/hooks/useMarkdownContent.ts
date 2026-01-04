@@ -23,8 +23,16 @@ export function useMarkdownContent(path: string): MarkdownResult {
       setError(null);
 
       try {
-        // Construct the path to the markdown file
-        const mdPath = `/docs/user-guide/${path}.md`;
+        // Determine the path based on whether it's legacy or user-guide
+        let mdPath: string;
+
+        if (path.startsWith('legacy/')) {
+          // Legacy docs are in /docs folder with their full path structure
+          mdPath = `/docs/${path.replace('legacy/', '')}`;
+        } else {
+          // User guide docs are in /docs/user-guide
+          mdPath = `/docs/user-guide/${path}.md`;
+        }
 
         // Fetch the markdown file
         const response = await fetch(mdPath);

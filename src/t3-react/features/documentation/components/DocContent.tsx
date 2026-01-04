@@ -40,12 +40,16 @@ export const DocContent: React.FC<DocContentProps> = ({ path }) => {
   }
 
   if (error) {
+    const errorPath = path.startsWith('legacy/')
+      ? `/docs/${path.replace('legacy/', '')}`
+      : `/docs/user-guide/${path}.md`;
+
     return (
       <div className={styles.error}>
         <Text weight="semibold" size={500}>Error loading documentation</Text>
         <Text size={300}>{error.message}</Text>
         <Text size={200} className={styles.errorHint}>
-          Make sure the markdown file exists at: /docs/user-guide/{path}.md
+          Make sure the markdown file exists at: {errorPath}
         </Text>
       </div>
     );

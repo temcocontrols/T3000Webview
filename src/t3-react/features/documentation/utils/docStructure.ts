@@ -96,6 +96,48 @@ export function findDocByPath(path: string): DocItem | undefined {
 export function getBreadcrumbs(path: string): Array<{ title: string; path?: string }> {
   const breadcrumbs = [{ title: 'Documentation', path: '' }];
 
+  // Handle legacy docs
+  if (path.startsWith('legacy/')) {
+    breadcrumbs.push({ title: 'Legacy Docs' });
+
+    const legacyPath = path.replace('legacy/', '');
+    const parts = legacyPath.split('/');
+
+    if (parts.length > 0) {
+      // Add folder name as section
+      const folderName = parts[0];
+      const folderTitles: Record<string, string> = {
+        'analysis': 'Analysis & Planning',
+        'api': 'API Documentation',
+        'bacnet': 'BACnet Protocol',
+        'bugs': 'Bug Tracking & Fixes',
+        'data-flow': 'Data Flow & Architecture',
+        'data-mnt': 'Data Maintenance',
+        'database': 'Database',
+        'develop': 'Developer Tools',
+        'hvac': 'HVAC Design',
+        'new-ui': 'New UI Development',
+        'project': 'Project Documentation',
+        't3000': 'T3000 Legacy',
+        't3-bas-web': 'T3 BAS Web',
+        't3-vue': 'T3 Vue Components',
+        'trend-log': 'Trend Log System',
+        'revnotes': 'Release Notes',
+      };
+
+      breadcrumbs.push({ title: folderTitles[folderName] || folderName });
+
+      // Add file name as final crumb
+      if (parts.length > 1) {
+        const fileName = parts[parts.length - 1].replace('.md', '');
+        breadcrumbs.push({ title: fileName });
+      }
+    }
+
+    return breadcrumbs;
+  }
+
+  // Handle user guide docs
   const parts = path.split('/');
   if (parts.length > 0) {
     const section = docStructure.find((s) =>

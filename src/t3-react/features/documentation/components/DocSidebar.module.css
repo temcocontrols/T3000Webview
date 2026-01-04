@@ -55,6 +55,48 @@
   background: #e1dfdd;
 }
 
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #edebe9;
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f3f2f1;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #605e5c;
+  transition: all 0.15s ease;
+}
+
+.tab:hover {
+  background: #e1dfdd;
+  color: #323130;
+}
+
+.tab.tabActive {
+  background: #ffffff;
+  border-bottom-color: #0078d4;
+  color: #0078d4;
+  font-weight: 600;
+}
+
+.tabIcon {
+  font-size: 16px;
+}
+
 .nav {
   flex: 1;
   padding: 8px 0;

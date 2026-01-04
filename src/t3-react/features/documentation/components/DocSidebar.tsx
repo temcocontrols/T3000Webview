@@ -1,12 +1,13 @@
 /**
  * Documentation Sidebar
- * Left navigation tree with collapsible sections
+ * Left navigation tree with collapsible sections and tab switching
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, Button } from '@fluentui/react-components';
-import { ChevronDownRegular, ChevronRightRegular, ChevronDoubleLeftRegular, ChevronDoubleRightRegular } from '@fluentui/react-icons';
+import { ChevronDownRegular, ChevronRightRegular, ChevronDoubleLeftRegular, ChevronDoubleRightRegular, BookRegular, ArchiveRegular } from '@fluentui/react-icons';
 import { docStructure } from '../utils/docStructure';
+import { LegacyDocSidebar } from './LegacyDocSidebar';
 import styles from './DocSidebar.module.css';
 
 interface DocSidebarProps {
@@ -18,6 +19,8 @@ interface DocSidebarProps {
   onToggleCollapse?: () => void;
 }
 
+type DocTab = 'user-guide' | 'legacy';
+
 export const DocSidebar: React.FC<DocSidebarProps> = ({
   currentPath,
   onNavigate,
@@ -26,6 +29,24 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
   isCollapsed = false,
   onToggleCollapse,
 }) => {
+  const [activeTab, setActiveTab] = useState<DocTab>(
+    currentPath.startsWith('legacy/') ? 'legacy' : 'user-guide'
+  );
+
+  const [legacyExpandedSections, setLegacyExpandedSections] = useState<Set<string>>(
+    new Set(['api', 'bacnet', 'bugs'])  // Default expanded sections
+  );
+
+  const handleLegacyToggleSection = (folder: string) => {
+    const newExpanded = new Set(legacyExpandedSections);
+    if (newExpanded.has(folder)) {
+      newExpanded.delete(folder);
+    } else {
+      newExpanded.add(folder);
+    }
+    setLegacyExpandedSections(newExpanded);
+  };
+
   return (
     <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.header}>
@@ -37,45 +58,94 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
         )}
       </div>
 
-      {!isCollapsed && <nav className={styles.nav}>
-        {docStructure.map((section) => {
-          const isExpanded = expandedSections.has(section.title);
+      {!isCollapsed && (
+        <div className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${activeTab === 'user-guide' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('user-guide')}
+          >
+            <BookRegular className={styles.tabIcon} />
+            <span>User Guide</span>
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'legacy' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('legacy')}
+          >
+            <ArchiveRegular className={styles.tabIcon} />
+            <span>Legacy Docs</span>
+          </button>
+        </div>
+      )}
 
-          return (
-            <div key={section.title} className={styles.section}>
-              <button
-                className={styles.sectionHeader}
-                onClick={() => onToggleSection(section.title)}
-              >
-                {isExpanded ? (
-                  <ChevronDownRegular className={styles.chevron} />
-                ) : (
-                  <ChevronRightRegular className={styles.chevron} />
+      {!isCollapsed && (
+        <div className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${activeTab === 'user-guide' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('user-guide')}
+          >
+            <BookRegular className={styles.tabIcon} />
+            <span>User Guide</span>
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'legacy' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('legacy')}
+          >
+            <ArchiveRegular className={styles.tabIcon} />
+            <span>Legacy Docs</span>
+          </button>
+        </div>
+      )}
+
+      {!isCollapsed && activeTab === 'user-guide' && (
+        <nav className={styles.nav}>
+          {docStructure.map((section) => {
+            const isExpanded = expandedSections.has(section.title);
+
+            return (
+              <div key={section.title} className={styles.section}>
+                <button
+                  className={styles.sectionHeader}
+                  onClick={() => onToggleSection(section.title)}
+                >
+                  {isExpanded ? (
+                    <ChevronDownRegular className={styles.chevron} />
+                  ) : (
+                    <ChevronRightRegular className={styles.chevron} />
+                  )}
+                  <Text weight="semibold" size={200}>{section.title}</Text>
+                </button>
+
+                {isExpanded && (
+                  <div className={styles.items}>
+                    {section.items.map((item) => {
+                      const isActive = currentPath === item.path;
+
+                      return (
+                        <button
+                          key={item.path}
+                          className={`${styles.item} ${isActive ? styles.active : ''}`}
+                          onClick={() => onNavigate(item.path)}
+                        >
+                          <Text size={200}>{item.title}</Text>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-                <Text weight="semibold" size={200}>{section.title}</Text>
-              </button>
+              </div>
+            );
+          })}
+        </nav>
+      )}
 
-              {isExpanded && (
-                <div className={styles.items}>
-                  {section.items.map((item) => {
-                    const isActive = currentPath === item.path;
-
-                    return (
-                      <button
-                        key={item.path}
-                        className={`${styles.item} ${isActive ? styles.active : ''}`}
-                        onClick={() => onNavigate(item.path)}
-                      >
-                        <Text size={200}>{item.title}</Text>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </nav>}
+      {!isCollapsed && activeTab === 'legacy' && (
+        <LegacyDocSidebar
+          currentPath={currentPath}
+          onNavigate={onNavigate}
+          expandedSections={legacyExpandedSections}
+          onToggleSection={handleLegacyToggleSection}
+        />
+      )}
     </div>
   );
 };

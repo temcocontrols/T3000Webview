@@ -6,3 +6,4 @@
 export { DocSidebar } from './DocSidebar';
 export { DocContent } from './DocContent';
 export { DocBreadcrumb } from './DocBreadcrumb';
+export { LegacyDocSidebar } from './LegacyDocSidebar';
