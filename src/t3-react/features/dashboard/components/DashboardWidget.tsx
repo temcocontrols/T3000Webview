@@ -25,7 +25,7 @@ export const DashboardWidget: React.FC<DashboardWidgetProps> = ({
   return (
     <Card className={`${styles.widget} ${styles[size]} ${className}`}>
       <div className={styles.header}>
-        <h3 className={styles.title}>{title}</h3>
+        <div className={styles.title}>{title}</div>
         {actions && <div className={styles.actions}>{actions}</div>}
       </div>
       <div className={styles.content}>{children}</div>

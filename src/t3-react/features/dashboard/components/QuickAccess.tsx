@@ -1,9 +1,10 @@
 /**
  * Quick Access Widget
- * Aliyun-style horizontal scrollable service icons
+ * Aliyun-style horizontal scrollable service icons with detailed info
  */
 
 import React from 'react';
+import { Text } from '@fluentui/react-components';
 import { useNavigate } from 'react-router-dom';
 import {
   WrenchRegular,
@@ -24,22 +25,24 @@ interface QuickLink {
   path: string;
   icon: React.ReactElement;
   color: string;
+  count: number;
+  lastSync: string;
 }
 
 export const QuickAccess: React.FC = () => {
   const navigate = useNavigate();
 
   const links: QuickLink[] = [
-    { label: 'Inputs', path: '/t3000/inputs', icon: <WrenchRegular />, color: '#0078d4' },
-    { label: 'Outputs', path: '/t3000/outputs', icon: <OptionsRegular />, color: '#107c10' },
-    { label: 'Variables', path: '/t3000/variables', icon: <CircleMultipleConcentricRegular />, color: '#8764b8' },
-    { label: 'Programs', path: '/t3000/programs', icon: <DeveloperBoardRegular />, color: '#d13438' },
-    { label: 'PID Loops', path: '/t3000/pidloops', icon: <FlowRegular />, color: '#f7630c' },
-    { label: 'Schedules', path: '/t3000/schedules', icon: <CalendarRegular />, color: '#00a4a4' },
-    { label: 'Holidays', path: '/t3000/holidays', icon: <CalendarDateRegular />, color: '#8a8886' },
-    { label: 'Graphics', path: '/t3000/graphics', icon: <ImageRegular />, color: '#5c2d91' },
-    { label: 'Trends', path: '/t3000/trendlogs', icon: <ChartMultipleRegular />, color: '#0078d4' },
-    { label: 'Alarms', path: '/t3000/alarms', icon: <AlertRegular />, color: '#d13438' },
+    { label: 'Inputs', path: '/t3000/inputs', icon: <WrenchRegular />, color: '#0078d4', count: 48, lastSync: '2 min ago' },
+    { label: 'Outputs', path: '/t3000/outputs', icon: <OptionsRegular />, color: '#107c10', count: 32, lastSync: '2 min ago' },
+    { label: 'Variables', path: '/t3000/variables', icon: <CircleMultipleConcentricRegular />, color: '#8764b8', count: 64, lastSync: '2 min ago' },
+    { label: 'Programs', path: '/t3000/programs', icon: <DeveloperBoardRegular />, color: '#d13438', count: 12, lastSync: '5 min ago' },
+    { label: 'PID Loops', path: '/t3000/pidloops', icon: <FlowRegular />, color: '#f7630c', count: 8, lastSync: '3 min ago' },
+    { label: 'Graphics', path: '/t3000/graphics', icon: <ImageRegular />, color: '#5c2d91', count: 12, lastSync: '10 min ago' },
+    { label: 'Schedules', path: '/t3000/schedules', icon: <CalendarRegular />, color: '#00a4a4', count: 15, lastSync: '1 min ago' },
+    { label: 'Holidays', path: '/t3000/holidays', icon: <CalendarDateRegular />, color: '#8a8886', count: 6, lastSync: '1 hr ago' },
+    { label: 'Trends', path: '/t3000/trendlogs', icon: <ChartMultipleRegular />, color: '#0078d4', count: 24, lastSync: '1 min ago' },
+    { label: 'Alarms', path: '/t3000/alarms', icon: <AlertRegular />, color: '#d13438', count: 0, lastSync: 'Just now' },
   ];
 
   return (
@@ -50,10 +53,13 @@ export const QuickAccess: React.FC = () => {
           className={styles.serviceCard}
           onClick={() => navigate(link.path)}
         >
-          <div className={styles.iconWrapper} style={{ color: link.color }}>
-            {React.cloneElement(link.icon, { className: styles.icon })}
+          <div className={styles.cardHeader}>
+            <div className={styles.iconWrapper}>
+              {React.cloneElement(link.icon, { className: styles.icon, style: { color: link.color } })}
+            </div>
+            <span className={styles.label}>{link.label}</span>
           </div>
-          <span className={styles.label}>{link.label}</span>
+          <Text className={styles.sync}>{link.count} items • {link.lastSync}</Text>
         </button>
       ))}
     </div>

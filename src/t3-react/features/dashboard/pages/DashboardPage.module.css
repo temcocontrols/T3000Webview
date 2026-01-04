@@ -16,7 +16,7 @@
   background: #faf9f8;
   border-bottom: 1px solid #edebe9;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .infoBarLeft {
@@ -120,15 +120,18 @@
 
 /* Quick Access Section - No padding, full width */
 .quickAccessSection {
-  padding: 20px 24px;
+  padding: 12px 10px 10px 10px;
   background: #fafafa;
-  border-bottom: 1px solid #edebe9;
+  /* border-bottom: 1px solid #edebe9; */
 }
 
 /* Section styling */
 .section {
-  padding: 24px;
+  padding: 12px;
+  margin-top: 12px;
   margin-bottom: 0;
+  background: #fafafa;
+  /* border-bottom: 1px solid #edebe9; */
 }
 
 .sectionTitle {
@@ -140,11 +143,11 @@
   border-bottom: none;
 }
 
-/* Monitoring grid - 2 columns */
+/* Monitoring grid - 3 columns */
 .monitoringGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 /* Scrollbar styling */

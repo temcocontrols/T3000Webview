@@ -106,6 +106,10 @@ export const DashboardPage: React.FC = () => {
               <RecentAlarms />
             </DashboardWidget>
 
+            <DashboardWidget title="System Health" size="medium">
+              <SystemHealth />
+            </DashboardWidget>
+
             <DashboardWidget title="Recent Activity" size="medium">
               <RecentActivity />
             </DashboardWidget>

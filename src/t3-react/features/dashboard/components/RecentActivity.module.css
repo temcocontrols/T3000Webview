@@ -41,8 +41,16 @@
 }
 
 .activityIcon {
-  font-size: 18px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
 }
 
 .activityContent {
@@ -50,6 +58,13 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.activityTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .activityDevice {
@@ -68,4 +83,10 @@
   color: #8a8886;
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.activityTimestamp {
+  font-size: 11px;
+  color: #a19f9d;
+  font-family: 'Consolas', 'Courier New', monospace;
 }
