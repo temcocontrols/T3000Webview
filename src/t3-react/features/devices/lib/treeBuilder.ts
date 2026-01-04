@@ -14,7 +14,7 @@ import type { DeviceInfo, TreeNode, DeviceStatus } from '../../../types/device';
 
 /**
  * Sort comparator for devices
- * Prioritizes: building �?serial number �?name
+ * Prioritizes: building → name (alphabetically)
  */
 function sortDevices(a: DeviceInfo, b: DeviceInfo): number {
   // First by building
@@ -24,8 +24,8 @@ function sortDevices(a: DeviceInfo, b: DeviceInfo): number {
     return buildingA.localeCompare(buildingB);
   }
 
-  // Then by serial number
-  return a.serialNumber - b.serialNumber;
+  // Then by name (alphabetically)
+  return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
 }
 
 /**
