@@ -50,12 +50,12 @@
 
 .medium {
   grid-column: span 1;
-  min-height: 220px;
+  min-height: 180px;
 }
 
 .large {
   grid-column: span 2;
-  min-height: 260px;
+  min-height: 180px;
 }
 
 .full {

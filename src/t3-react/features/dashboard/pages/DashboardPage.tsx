@@ -17,6 +17,8 @@ import {
   SystemHealth,
   QuickAccess,
   RecentActivity,
+  TrendLogs,
+  Schedules,
 } from '../components';
 import styles from './DashboardPage.module.css';
 
@@ -96,6 +98,20 @@ export const DashboardPage: React.FC = () => {
         <div className={styles.section}>
           <div className={styles.sectionTitle}>System Overview</div>
           <SystemOverview />
+        </div>
+
+        {/* Data & Planning Section */}
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Data & Planning</div>
+          <div className={styles.dataPlanningGrid}>
+            <DashboardWidget title="Trend Logs" size="large">
+              <TrendLogs />
+            </DashboardWidget>
+
+            <DashboardWidget title="Schedules" size="medium">
+              <Schedules />
+            </DashboardWidget>
+          </div>
         </div>
 
         {/* Monitoring Section */}

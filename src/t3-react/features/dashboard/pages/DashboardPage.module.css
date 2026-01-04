@@ -139,26 +139,35 @@
   font-weight: 600;
   color: #323130;
   margin: 0 0 16px 0;
-  padding-bottom: 0;
-  padding-left: 12px;
+  padding: 8px 12px;
   border-bottom: none;
   position: relative;
   line-height: 1.2;
+  background: #f3f2f1;
+  border-radius: 2px;
 }
 
 .sectionTitle::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 3px;
+  height: 14px;
   background: #0078d4;
   border-radius: 2px;
 }
 
 /* Monitoring grid - 3 columns */
 .monitoringGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* Data & Planning grid - same as monitoring, widgets use size to span columns */
+.dataPlanningGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;

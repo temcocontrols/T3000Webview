@@ -9,3 +9,5 @@ export { RecentAlarms } from './RecentAlarms';
 export { SystemHealth } from './SystemHealth';
 export { QuickAccess } from './QuickAccess';
 export { RecentActivity } from './RecentActivity';
+export { TrendLogs } from './TrendLogs';
+export { Schedules } from './Schedules';
