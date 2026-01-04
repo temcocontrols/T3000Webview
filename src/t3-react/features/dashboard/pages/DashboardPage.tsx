@@ -94,13 +94,13 @@ export const DashboardPage: React.FC = () => {
 
         {/* System Overview Section */}
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>System Overview</h2>
+          <div className={styles.sectionTitle}>System Overview</div>
           <SystemOverview />
         </div>
 
         {/* Monitoring Section */}
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Monitoring</h2>
+          <div className={styles.sectionTitle}>Monitoring</div>
           <div className={styles.monitoringGrid}>
             <DashboardWidget title="Recent Alarms" size="medium">
               <RecentAlarms />

@@ -140,7 +140,21 @@
   color: #323130;
   margin: 0 0 16px 0;
   padding-bottom: 0;
+  padding-left: 12px;
   border-bottom: none;
+  position: relative;
+  line-height: 1.2;
+}
+
+.sectionTitle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #0078d4;
+  border-radius: 2px;
 }
 
 /* Monitoring grid - 3 columns */
