@@ -31,7 +31,7 @@ export const RecentActivity: React.FC = () => {
       const mockActivities: Activity[] = devices.slice(0, 5).map((device, index) => {
         const minutesAgo = index * 3 + 2;
         const activityTime = new Date(now.getTime() - minutesAgo * 60000);
-        
+
         // Format: yyyy-mm-dd hh:mm:ss AM/PM
         const year = activityTime.getFullYear();
         const month = String(activityTime.getMonth() + 1).padStart(2, '0');
@@ -41,10 +41,10 @@ export const RecentActivity: React.FC = () => {
         const seconds = String(activityTime.getSeconds()).padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
         const hours12 = hours % 12 || 12;
-        
+
         const timestamp = `${year}-${month}-${day} ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
         const timeAgo = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)} hr ago`;
-        
+
         return {
           id: `activity-${index}`,
           type: 'sync',
@@ -75,10 +75,9 @@ export const RecentActivity: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>Ago}</div>
-                </div>
-                <div className={styles.activityMessage}>{activity.message} • {activity.syncType}</div>
-                <div className={styles.activityTimestamp}>{activity.timestamp
+    <div className={styles.container}>
+      {activities.length === 0 ? (
+        <div className={styles.emptyState}>
           <Text className={styles.emptyText}>No recent activity</Text>
         </div>
       ) : (
@@ -89,9 +88,15 @@ export const RecentActivity: React.FC = () => {
               <div className={styles.activityContent}>
                 <div className={styles.activityTop}>
                   <div className={styles.activityDevice}>{activity.device}</div>
-                  <div className={styles.activityTime}>{activity.timestamp}</div>
+                  <div className={styles.activityMessage}>{activity.message}</div>
                 </div>
-                <div className={styles.activityMessage}>{activity.message} • {activity.syncType}</div>
+                <div className={styles.activityTimeInfo}>
+                  <span className={styles.activityTimestamp}>{activity.timestamp}</span>
+                  <span className={styles.timeDivider}>•</span>
+                  <span className={styles.activityTime}>{activity.timeAgo}</span>
+                  <span className={styles.timeDivider}>•</span>
+                  <span className={styles.activitySyncType}>{activity.syncType}</span>
+                </div>
               </div>
             </div>
           ))}

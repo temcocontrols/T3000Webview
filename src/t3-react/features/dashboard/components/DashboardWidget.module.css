@@ -4,7 +4,7 @@
   background: #ffffff;
   border: 1px solid #edebe9;
   border-radius: 2px;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   transition: border-color 0.2s ease;
@@ -18,8 +18,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
   border-bottom: 1px solid #f3f2f1;
 }
 
@@ -45,20 +45,20 @@
 /* Size variants */
 .small {
   grid-column: span 1;
-  min-height: 200px;
+  min-height: 180px;
 }
 
 .medium {
   grid-column: span 1;
-  min-height: 280px;
+  min-height: 220px;
 }
 
 .large {
   grid-column: span 2;
-  min-height: 320px;
+  min-height: 260px;
 }
 
 .full {
   grid-column: 1 / -1;
-  min-height: 280px;
+  min-height: 240px;
 }

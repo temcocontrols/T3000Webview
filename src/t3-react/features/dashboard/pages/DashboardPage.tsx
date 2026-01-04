@@ -106,7 +106,22 @@ export const DashboardPage: React.FC = () => {
               <RecentAlarms />
             </DashboardWidget>
 
-            <DashboardWidget title="System Health" size="medium">
+            <DashboardWidget
+              title="System Health"
+              size="medium"
+              actions={
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#107c10' }}></span>
+                    <span style={{ fontSize: '12px', color: '#605e5c' }}>API Server</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#107c10' }}></span>
+                    <span style={{ fontSize: '12px', color: '#605e5c' }}>Database</span>
+                  </div>
+                </div>
+              }
+            >
               <SystemHealth />
             </DashboardWidget>
 

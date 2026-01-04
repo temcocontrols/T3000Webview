@@ -85,17 +85,6 @@ export const SystemHealth: React.FC = () => {
           />
         </div>
       </div>
-
-      <div className={styles.statusRow}>
-        <div className={styles.statusItem}>
-          <span className={styles.statusDot} style={{ backgroundColor: '#107c10' }}></span>
-          <Text className={styles.statusText}>API Server</Text>
-        </div>
-        <div className={styles.statusItem}>
-          <span className={styles.statusDot} style={{ backgroundColor: '#107c10' }}></span>
-          <Text className={styles.statusText}>Database</Text>
-        </div>
-      </div>
     </div>
   );
 };

@@ -76,17 +76,41 @@
 .activityMessage {
   font-size: 12px;
   color: #605e5c;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.activityTimeInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .activityTime {
-  font-size: 11px;
+  font-size: 12px;
   color: #8a8886;
-  flex-shrink: 0;
   white-space: nowrap;
+  line-height: 18px;
 }
 
 .activityTimestamp {
-  font-size: 11px;
+  font-size: 12px;
   color: #a19f9d;
   font-family: 'Consolas', 'Courier New', monospace;
+  white-space: nowrap;
+  line-height: 18px;
+}
+
+.timeDivider {
+  font-size: 12px;
+  color: #c8c6c4;
+  line-height: 18px;
+}
+
+.activitySyncType {
+  font-size: 12px;
+  color: #8a8886;
+  white-space: nowrap;
+  line-height: 18px;
 }
