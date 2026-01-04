@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Text, Button } from '@fluentui/react-components';
+import { ErrorCircleRegular, WarningRegular, InfoRegular, CheckmarkCircleRegular } from '@fluentui/react-icons';
 import styles from './RecentAlarms.module.css';
 
 interface Alarm {
@@ -37,13 +38,13 @@ export const RecentAlarms: React.FC = () => {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'high':
-        return '🔴';
+        return <ErrorCircleRegular style={{ color: '#d13438', fontSize: '16px' }} />;
       case 'medium':
-        return '⚠️';
+        return <WarningRegular style={{ color: '#f7630c', fontSize: '16px' }} />;
       case 'low':
-        return '🟡';
+        return <InfoRegular style={{ color: '#ffc83d', fontSize: '16px' }} />;
       default:
-        return '⚪';
+        return <InfoRegular style={{ color: '#a19f9d', fontSize: '16px' }} />;
     }
   };
 
@@ -51,7 +52,9 @@ export const RecentAlarms: React.FC = () => {
     <div className={styles.container}>
       {alarms.length === 0 ? (
         <div className={styles.empty}>
-          <div className={styles.emptyIcon}>✓</div>
+          <div className={styles.emptyIcon}>
+            <CheckmarkCircleRegular style={{ fontSize: '32px', color: '#107c10' }} />
+          </div>
           <Text className={styles.emptyText}>No active alarms</Text>
           <Text className={styles.emptySubtext}>System is running normally</Text>
         </div>
