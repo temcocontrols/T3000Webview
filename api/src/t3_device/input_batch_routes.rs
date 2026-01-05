@@ -178,8 +178,14 @@ async fn execute_batch_save(
                         }
                     }
                     Err(e) => {
+                        let error_msg = format!("{}", e);
+                        // If database is locked, abort immediately to trigger retry
+                        if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                            error!("🔒 Database locked during input {} update, aborting transaction", index);
+                            return Err(error_msg);
+                        }
                         failed_count += 1;
-                        errors.push(format!("Input {}: {}", index, e));
+                        errors.push(format!("Input {}: {}", index, error_msg));
                         error!("Failed to update input {}: {:?}", index, e);
                     }
                 }
@@ -209,13 +215,25 @@ async fn execute_batch_save(
                         updated_count += 1;
                     }
                     Err(e) => {
+                        let error_msg = format!("{}", e);
+                        // If database is locked, abort immediately to trigger retry
+                        if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                            error!("🔒 Database locked during input {} insert, aborting transaction", index);
+                            return Err(error_msg);
+                        }
                         failed_count += 1;
-                        errors.push(format!("Input {}: {}", index, e));
+                        errors.push(format!("Input {}: {}", index, error_msg));
                         error!("Failed to insert input {}: {:?}", index, e);
                     }
                 }
             }
             Err(e) => {
+                let error_msg = format!("{}", e);
+                // If database is locked, abort immediately to trigger retry
+                if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                    error!("🔒 Database locked during input {} find, aborting transaction", index);
+                    return Err(error_msg);
+                }
                 failed_count += 1;
                 errors.push(format!("Input {}: Database error", index));
                 error!("Database error for input {}: {:?}", index, e);

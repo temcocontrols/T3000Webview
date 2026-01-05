@@ -167,8 +167,14 @@ async fn execute_variable_batch_save(
                         }
                     }
                     Err(e) => {
+                        let error_msg = format!("{}", e);
+                        // If database is locked, abort immediately to trigger retry
+                        if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                            error!("🔒 Database locked during variable {} update, aborting transaction", index);
+                            return Err(error_msg);
+                        }
                         failed_count += 1;
-                        errors.push(format!("Variable {}: {}", index, e));
+                        errors.push(format!("Variable {}: {}", index, error_msg));
                         error!("Failed to update variable {}: {:?}", index, e);
                     }
                 }
@@ -196,13 +202,25 @@ async fn execute_variable_batch_save(
                         updated_count += 1;
                     }
                     Err(e) => {
+                        let error_msg = format!("{}", e);
+                        // If database is locked, abort immediately to trigger retry
+                        if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                            error!("🔒 Database locked during variable {} insert, aborting transaction", index);
+                            return Err(error_msg);
+                        }
                         failed_count += 1;
-                        errors.push(format!("Variable {}: {}", index, e));
+                        errors.push(format!("Variable {}: {}", index, error_msg));
                         error!("Failed to insert variable {}: {:?}", index, e);
                     }
                 }
             }
             Err(e) => {
+                let error_msg = format!("{}", e);
+                // If database is locked, abort immediately to trigger retry
+                if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                    error!("🔒 Database locked during variable {} find, aborting transaction", index);
+                    return Err(error_msg);
+                }
                 failed_count += 1;
                 errors.push(format!("Variable {}: Database error", index));
                 error!("Database error for variable {}: {:?}", index, e);

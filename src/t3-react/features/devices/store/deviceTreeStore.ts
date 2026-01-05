@@ -178,6 +178,14 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
           get().buildTreeStructure();
 
+          // Auto-select first device if none is selected
+          const { selectedDevice, selectDevice } = get();
+          if (!selectedDevice && response.devices.length > 0) {
+            const firstDevice = response.devices[0];
+            selectDevice(firstDevice);
+            console.log(`[fetchDevices] Auto-selected first device: ${firstDevice.nameShowOnTree}`);
+          }
+
           // Update status bar with success message
           useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
         } catch (error) {
@@ -255,18 +263,15 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                   const serialNumber = panel.serial_number || panel.serialNumber;
                   const panelName = panel.panel_name || panel.panelName || `Panel ${panel.panel_number}`;
                   const deviceData = {
-                    serialNumber,
-                    panelName: panelName,
-                    deviceType: panel.pid || 0,
-                    objectInstance: panel.object_instance || panel.objectInstance || 0,
-                    ipAddress: panel.ip_address || panel.ipAddress || '',
+                    SerialNumber: serialNumber,
+                    Product_Name: panelName,
+                    Product_ID: panel.pid || 0,
+                    Panel_Number: panel.panel_number || 0,
+                    MainBuilding_Name: 'Default_Building',
+                    Building_Name: 'Local View',
+                    show_label_name: panelName,
+                    ip_address: panel.ip_address || panel.ipAddress || '',
                     port: panel.port || 0,
-                    protocol: 'BACnet',
-                    mainBuildingName: 'Default_Building',
-                    subnetName: 'Local View',
-                    showLabelName: panelName,
-                    isOnline: true,
-                    lastOnlineTime: panel.online_time || Date.now(),
                   };
 
                   console.log(`[loadDevicesWithSync] Creating device ${serialNumber}:`, JSON.stringify(deviceData, null, 2));

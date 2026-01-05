@@ -95,7 +95,10 @@ export const InputsPage: React.FC = () => {
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
-  // Auto-select first device on page load if no device is selected
+  // Auto-select first device on page load - DISABLED
+  // TreePanel's loadDevicesWithSync already handles auto-selection
+  // This prevents conflicts where both components try to select different devices
+  /*
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
@@ -114,6 +117,7 @@ export const InputsPage: React.FC = () => {
       }
     }
   }, [selectedDevice, treeData, selectDevice, getFilteredDevices]);
+  */
 
   // Fetch inputs for selected device
   const fetchInputs = useCallback(async () => {
@@ -190,7 +194,7 @@ export const InputsPage: React.FC = () => {
         // Don't reload from database on error - preserve existing inputs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
-    }, 500);
+    }, 3000); // 3 second delay to let TreePanel device sync finish and avoid database locks
 
     return () => clearTimeout(timer);
   }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length, setMessage]);

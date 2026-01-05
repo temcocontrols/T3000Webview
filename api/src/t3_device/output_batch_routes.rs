@@ -171,8 +171,14 @@ async fn execute_output_batch_save(
                         }
                     }
                     Err(e) => {
+                        let error_msg = format!("{}", e);
+                        // If database is locked, abort immediately to trigger retry
+                        if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                            error!("🔒 Database locked during output {} update, aborting transaction", index);
+                            return Err(error_msg);
+                        }
                         failed_count += 1;
-                        errors.push(format!("Output {}: {}", index, e));
+                        errors.push(format!("Output {}: {}", index, error_msg));
                         error!("Failed to update output {}: {:?}", index, e);
                     }
                 }
@@ -202,13 +208,25 @@ async fn execute_output_batch_save(
                         updated_count += 1;
                     }
                     Err(e) => {
+                        let error_msg = format!("{}", e);
+                        // If database is locked, abort immediately to trigger retry
+                        if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                            error!("🔒 Database locked during output {} insert, aborting transaction", index);
+                            return Err(error_msg);
+                        }
                         failed_count += 1;
-                        errors.push(format!("Output {}: {}", index, e));
+                        errors.push(format!("Output {}: {}", index, error_msg));
                         error!("Failed to insert output {}: {:?}", index, e);
                     }
                 }
             }
             Err(e) => {
+                let error_msg = format!("{}", e);
+                // If database is locked, abort immediately to trigger retry
+                if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
+                    error!("🔒 Database locked during output {} find, aborting transaction", index);
+                    return Err(error_msg);
+                }
                 failed_count += 1;
                 errors.push(format!("Output {}: Database error", index));
                 error!("Database error for output {}: {:?}", index, e);
