@@ -1272,6 +1272,31 @@ impl T3000MainService {
                     serial_number, device_with_points.device_info.panel_name
                 ));
 
+                // Validate serial number - skip devices with invalid SerialNumber=0
+                if serial_number == 0 {
+                    sync_logger.warn(&format!(
+                        "⚠️ SKIPPING device with invalid SerialNumber=0 - Name: '{}', IP: '{}', Panel ID: {}",
+                        device_with_points.device_info.panel_name,
+                        device_with_points.device_info.ip_address.as_ref().unwrap_or(&"unknown".to_string()),
+                        device_with_points.device_info.panel_id
+                    ));
+                    sync_logger.warn("⚠️ This indicates missing or invalid panel_serial_number in JSON response - check C++ HandleWebViewMsg implementation");
+                    sync_logger.error(&format!(
+                        "🔍 DEBUG INFO for invalid device - Expected Serial: {} (from GET_PANELS_LIST), Got: {} (from LOGGING_DATA)",
+                        panel_info.serial_number, serial_number
+                    ));
+                    sync_logger.error(&format!(
+                        "💡 HINT: Device with Panel#{} probably has records in INPUTS/OUTPUTS/VARIABLES tables but won't show sync status due to SerialNumber=0",
+                        device_with_points.device_info.panel_id
+                    ));
+                    sync_logger.error(&format!(
+                        "💡 FIX: Update C++ code to properly set panel_serial_number field in LOGGING_DATA response for Panel#{}",
+                        device_with_points.device_info.panel_id
+                    ));
+                    skipped_devices += 1;
+                    continue;
+                }
+
                 // UPSERT device basic info (INSERT or UPDATE)
                 sync_logger.info(&format!(
                     "📝 Syncing device basic info - Serial: {}, Name: {}",

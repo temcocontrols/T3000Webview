@@ -93,6 +93,24 @@ pub async fn update_output_full(
         }
     };
 
+    // Read current output record from database to get existing values
+    let current_output = match output_points::Entity::find()
+        .filter(output_points::Column::SerialNumber.eq(serial))
+        .filter(output_points::Column::OutputIndex.eq(index))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(output)) => output,
+        Ok(None) => {
+            error!("Output record not found - serial: {}, index: {}", serial, index);
+            return Err((StatusCode::NOT_FOUND, format!("Output {} not found for serial {}", index, serial)));
+        }
+        Err(e) => {
+            error!("Database error reading output: {:?}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+        }
+    };
+
     // Collect updated field names before moving payload
     let mut updated_fields = Vec::new();
     if payload.full_label.is_some() {
@@ -119,22 +137,23 @@ pub async fn update_output_full(
     let label_clone = payload.label.clone();
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
+    // Note: C++ expects ALL fields, so we merge payload with current database values
     let input_json = json!({
         "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_OUT,  // 0 = OUTPUT
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),
-        "value": payload.value.unwrap_or(0.0),
-        "description": full_label_clone.unwrap_or_default(),
-        "label": label_clone.unwrap_or_default(),
-        "range": payload.range.unwrap_or(0),
-        "auto_manual": payload.auto_manual.unwrap_or(0),
-        "digital_analog": payload.digital_analog.unwrap_or(0),
+        "control": payload.control.unwrap_or(0),  // control not stored in database
+        "value": payload.value.unwrap_or_else(|| current_output.f_value.and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0)),
+        "description": full_label_clone.unwrap_or_else(|| current_output.full_label.unwrap_or_default()),
+        "label": label_clone.unwrap_or_else(|| current_output.label.unwrap_or_default()),
+        "range": payload.range.unwrap_or_else(|| current_output.range_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "auto_manual": payload.auto_manual.unwrap_or_else(|| current_output.auto_manual.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "digital_analog": payload.digital_analog.unwrap_or_else(|| current_output.digital_analog.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "decom": payload.decom.unwrap_or(0),
-        "low_voltage": payload.low_voltage.unwrap_or(0.0),
-        "high_voltage": payload.high_voltage.unwrap_or(0.0),
+        "low_voltage": payload.low_voltage.unwrap_or(0.0),  // not stored in database
+        "high_voltage": payload.high_voltage.unwrap_or(0.0),  // not stored in database
     });
 
     // Call FFI function

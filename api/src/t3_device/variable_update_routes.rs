@@ -91,6 +91,24 @@ pub async fn update_variable_full(
         }
     };
 
+    // Read current variable record from database to get existing values
+    let current_variable = match variable_points::Entity::find()
+        .filter(variable_points::Column::SerialNumber.eq(serial))
+        .filter(variable_points::Column::VariableIndex.eq(index))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(variable)) => variable,
+        Ok(None) => {
+            error!("Variable record not found - serial: {}, index: {}", serial, index);
+            return Err((StatusCode::NOT_FOUND, format!("Variable {} not found for serial {}", index, serial)));
+        }
+        Err(e) => {
+            error!("Database error reading variable: {:?}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+        }
+    };
+
     // Collect updated field names before moving payload
     let mut updated_fields = Vec::new();
     if payload.full_label.is_some() {
@@ -117,19 +135,20 @@ pub async fn update_variable_full(
     let label_clone = payload.label.clone();
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
+    // Note: C++ expects ALL fields, so we merge payload with current database values
     let input_json = json!({
         "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_VAR,  // 2 = VARIABLE
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),
-        "value": payload.value.unwrap_or(0.0),
-        "description": full_label_clone.unwrap_or_default(),
-        "label": label_clone.unwrap_or_default(),
-        "range": payload.range.unwrap_or(0),
-        "auto_manual": payload.auto_manual.unwrap_or(0),
-        "digital_analog": payload.digital_analog.unwrap_or(0),
+        "control": payload.control.unwrap_or(0),  // control not stored in database
+        "value": payload.value.unwrap_or_else(|| current_variable.f_value.and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0)),
+        "description": full_label_clone.unwrap_or_else(|| current_variable.full_label.unwrap_or_default()),
+        "label": label_clone.unwrap_or_else(|| current_variable.label.unwrap_or_default()),
+        "range": payload.range.unwrap_or_else(|| current_variable.range_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "auto_manual": payload.auto_manual.unwrap_or_else(|| current_variable.auto_manual.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "digital_analog": payload.digital_analog.unwrap_or_else(|| current_variable.digital_analog.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
         "decom": payload.decom.unwrap_or(0),
     });
 

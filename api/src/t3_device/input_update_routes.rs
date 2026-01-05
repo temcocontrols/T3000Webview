@@ -117,6 +117,30 @@ pub async fn update_input_full(
         }
     };
 
+    // Read current input record from database to get existing values
+    let current_input = match input_points::Entity::find()
+        .filter(input_points::Column::SerialNumber.eq(serial))
+        .filter(input_points::Column::InputIndex.eq(index))
+        .one(&db_connection)
+        .await
+    {
+        Ok(Some(input)) => input,
+        Ok(None) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("Input record not found - serial: {}, index: {}", serial, index));
+            }
+            error!("Input record not found - serial: {}, index: {}", serial, index);
+            return Err((StatusCode::NOT_FOUND, format!("Input {} not found for serial {}", index, serial)));
+        }
+        Err(e) => {
+            if let Ok(mut logger) = ServiceLogger::api_inputs() {
+                logger.error(&format!("Database error reading input: {:?}", e));
+            }
+            error!("Database error reading input: {:?}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
+        }
+    };
+
     // Collect updated field names before moving payload
     let mut updated_fields = Vec::new();
     if payload.full_label.is_some() {
@@ -143,24 +167,24 @@ pub async fn update_input_full(
     let label_clone = payload.label.clone();
 
     // Prepare input JSON for UPDATE_WEBVIEW_LIST action
-    // Note: C++ expects field names matching the structure
+    // Note: C++ expects ALL fields, so we merge payload with current database values
     let input_json = json!({
         "action": WebViewMessageType::UPDATE_WEBVIEW_LIST as i32,
         "panelId": panel_id,
         "serialNumber": serial,
         "entryType": BAC_IN,  // 1 = INPUT
         "entryIndex": index,
-        "control": payload.control.unwrap_or(0),
-        "value": payload.value.unwrap_or(0.0),
-        "description": full_label_clone.unwrap_or_default(),
-        "label": label_clone.unwrap_or_default(),
-        "range": payload.range.unwrap_or(0),
-        "auto_manual": payload.auto_manual.unwrap_or(0),
-        "filter": payload.filter.unwrap_or(0),
-        "digital_analog": payload.digital_analog.unwrap_or(0),
-        "calibration_sign": payload.calibration_sign.unwrap_or(0),
-        "calibration_h": payload.calibration_h.unwrap_or(0),
-        "calibration_l": payload.calibration_l.unwrap_or(0),
+        "control": payload.control.unwrap_or(0),  // control not stored in database
+        "value": payload.value.unwrap_or_else(|| current_input.f_value.and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0)),
+        "description": full_label_clone.unwrap_or_else(|| current_input.full_label.unwrap_or_default()),
+        "label": label_clone.unwrap_or_else(|| current_input.label.unwrap_or_default()),
+        "range": payload.range.unwrap_or_else(|| current_input.range_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "auto_manual": payload.auto_manual.unwrap_or_else(|| current_input.auto_manual.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "filter": payload.filter.unwrap_or_else(|| current_input.filter_field.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "digital_analog": payload.digital_analog.unwrap_or_else(|| current_input.digital_analog.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_sign": payload.calibration_sign.unwrap_or_else(|| current_input.sign.and_then(|v| v.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_h": payload.calibration_h.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').next()).and_then(|h| h.parse::<i32>().ok()).unwrap_or(0)),
+        "calibration_l": payload.calibration_l.unwrap_or_else(|| current_input.calibration.as_ref().and_then(|c| c.split('.').nth(1)).and_then(|l| l.parse::<i32>().ok()).unwrap_or(0)),
         "decom": payload.decom.unwrap_or(0),
     });
 
