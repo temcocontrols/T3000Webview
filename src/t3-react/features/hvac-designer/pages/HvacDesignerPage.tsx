@@ -21,6 +21,7 @@ import {
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { PropertiesPanel } from '../components/panels/PropertiesPanel';
+import { HvacDrawingArea } from '../components/HvacDrawingArea';
 import { useDrawing } from '../hooks/useDrawing';
 
 const useStyles = makeStyles({
@@ -210,22 +211,7 @@ export const HvacDesignerPage: React.FC = () => {
 
         {/* Drawing Area */}
         <div className={styles.drawingArea}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#999',
-            fontSize: '14px',
-            flexDirection: 'column',
-            gap: '8px',
-          }}>
-            <div>Drawing Area</div>
-            <div style={{ fontSize: '12px', color: '#ccc' }}>
-              (Implementation coming next)
-            </div>
-          </div>
+          <HvacDrawingArea />
         </div>
 
         {/* Bottom Message Bar */}

@@ -1,0 +1,60 @@
+/**
+ * HVAC Drawing Area Styles
+ * Ruler and SVG area positioning
+ */
+
+.documentArea {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #f5f5f5;
+}
+
+.rulerCorner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  user-select: none;
+  background-color: #e1e1e1;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.rulerHorizontal {
+  position: absolute;
+  left: 20px;
+  top: 0;
+  right: 0;
+  height: 20px;
+  overflow: hidden;
+  user-select: none;
+  background-color: #e1e1e1;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.rulerVertical {
+  position: absolute;
+  left: 0;
+  top: 20px;
+  bottom: 0;
+  width: 20px;
+  overflow: hidden;
+  user-select: none;
+  background-color: #e1e1e1;
+  border-right: 1px solid #d0d0d0;
+}
+
+.svgArea {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  user-select: none;
+  background-color: #ffffff;
+  border: 1px solid #e1e1e1;
+}
