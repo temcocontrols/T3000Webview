@@ -269,10 +269,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                     lastOnlineTime: panel.online_time || Date.now(),
                   };
 
+                  console.log(`[loadDevicesWithSync] Creating device ${serialNumber}:`, JSON.stringify(deviceData, null, 2));
                   await db.devices.create(deviceData);
+                  console.log(`[loadDevicesWithSync] ✅ Device ${serialNumber} saved successfully`);
                   savedCount++;
                 } catch (error: any) {
-                  console.warn(`[loadDevicesWithSync] Failed to save device:`, error.message);
+                  console.error(`[loadDevicesWithSync] Failed to save device ${serialNumber}:`, error);
+                  console.error('[loadDevicesWithSync] Device data was:', JSON.stringify(deviceData, null, 2));
                 }
               }
             } catch (dbError) {
@@ -284,14 +287,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             // Step 3: Reload from DB to get updated list
             await get().fetchDevices();
 
-            // Step 4: Auto-select first device and sync its points
+            // Step 4: Auto-select first device (point sync handled by each page)
             const { devices: updatedDevices, selectDevice } = get();
             if (updatedDevices.length > 0) {
               const firstDevice = updatedDevices[0];
               selectDevice(firstDevice);
-
-              // Step 5: Auto-sync first device's point data
-              await get().syncDevicePoints(firstDevice);
+              console.log(`[loadDevicesWithSync] Selected first device: ${firstDevice.nameShowOnTree}`);
             }
           } else {
             console.warn('[loadDevicesWithSync] No data in response:', response);

@@ -155,6 +155,7 @@ export const VariablesPage: React.FC = () => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
     // Wait for initial load to complete, then check if we need to refresh from device
+    // Delay 2000ms to avoid database lock conflicts with other pages' syncs
     const timer = setTimeout(async () => {
       try {
         // Check if database has variable data
@@ -165,21 +166,28 @@ export const VariablesPage: React.FC = () => {
         }
 
         console.log('[VariablesPage] Database empty, auto-refreshing from device...');
+        setLoading(true);
+        setMessage(`Syncing variables from ${selectedDevice.nameShowOnTree}...`, 'info');
+
         const result = await PanelDataRefreshService.refreshAllVariables(selectedDevice.serialNumber);
         console.log('[VariablesPage] Auto-refresh result:', result);
 
         // Reload from database after successful save
         await fetchVariables();
         setAutoRefreshed(true);
+        setLoading(false);
+        setMessage(`✓ Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[VariablesPage] Auto-refresh failed:', error);
+        setLoading(false);
+        setMessage(`Failed to sync variables: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
         // Don't reload from database on error - preserve existing variables
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchVariables, variables.length]);
+  }, [loading, selectedDevice, autoRefreshed, fetchVariables, variables.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {

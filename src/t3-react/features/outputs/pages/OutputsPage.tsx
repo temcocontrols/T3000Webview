@@ -162,6 +162,7 @@ export const OutputsPage: React.FC = () => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
     // Wait for initial load to complete, then check if we need to refresh from device
+    // Delay 1500ms to avoid database lock conflicts with InputsPage sync
     const timer = setTimeout(async () => {
       try {
         // Check if database has output data
@@ -172,21 +173,28 @@ export const OutputsPage: React.FC = () => {
         }
 
         console.log('[OutputsPage] Database empty, auto-refreshing from device...');
+        setLoading(true);
+        setMessage(`Syncing outputs from ${selectedDevice.nameShowOnTree}...`, 'info');
+
         const result = await PanelDataRefreshService.refreshAllOutputs(selectedDevice.serialNumber);
         console.log('[OutputsPage] Auto-refresh result:', result);
 
         // Reload from database after successful save
         await fetchOutputs();
         setAutoRefreshed(true);
+        setLoading(false);
+        setMessage(`✓ Synced ${result.itemCount} outputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[OutputsPage] Auto-refresh failed:', error);
+        setLoading(false);
+        setMessage(`Failed to sync outputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
         // Don't reload from database on error - preserve existing outputs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchOutputs, outputs.length]);
+  }, [loading, selectedDevice, autoRefreshed, fetchOutputs, outputs.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {

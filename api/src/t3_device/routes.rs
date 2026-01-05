@@ -476,7 +476,10 @@ async fn create_device(
             "device": device,
             "message": "Device created successfully"
         }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(err) => {
+            eprintln!("❌ [create_device] Error: {:?}", err);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 

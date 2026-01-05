@@ -31,6 +31,7 @@ import styles from './TreePanel.module.css';
 export const TreePanel: React.FC = () => {
   const { viewMode, fetchDevices, loadDevicesWithSync, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
+  const hasInitialized = React.useRef(false);
 
   // Background services
   // Status monitor: polls device status every 30s (C++ m_pCheck_net_device_online)
@@ -39,10 +40,34 @@ export const TreePanel: React.FC = () => {
   // Sync service: refreshes device list every 5 minutes (C++ m_pFreshTree)
   useDeviceSyncService({ enabled: true, intervalMs: 300000 });
 
-  // Initial data fetch
+  // Initial data fetch with auto-sync if database is empty
+  // Use ref to prevent React StrictMode from running this twice
   useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
+    const initializeDevices = async () => {
+      // Prevent duplicate runs in StrictMode
+      if (hasInitialized.current) {
+        console.log('[TreePanel] Already initialized, skipping...');
+        return;
+      }
+      hasInitialized.current = true;
+
+      console.log('[TreePanel] First-time initialization...');
+
+      // First, check database
+      await fetchDevices();
+
+      // If database is empty, auto-sync from T3000
+      const { devices } = useDeviceTreeStore.getState();
+      if (devices.length === 0) {
+        console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
+        await loadDevicesWithSync();
+      } else {
+        console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
+      }
+    };
+
+    initializeDevices();
+  }, []);
 
   const toggleFilter = () => {
     setShowFilter(!showFilter);

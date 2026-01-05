@@ -161,6 +161,7 @@ export const InputsPage: React.FC = () => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
     // Wait for initial load to complete, then check if we need to refresh from device
+    // Delay 1000ms to let TreePanel device sync finish first and avoid database locks
     const timer = setTimeout(async () => {
       try {
         // Check if database has input data
@@ -171,21 +172,28 @@ export const InputsPage: React.FC = () => {
         }
 
         console.log('[InputsPage] Database empty, auto-refreshing from device...');
+        setLoading(true);
+        setMessage(`Syncing inputs from ${selectedDevice.nameShowOnTree}...`, 'info');
+
         // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB
-        await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
+        const result = await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
 
         // Reload from database after refresh
         await fetchInputs();
         setAutoRefreshed(true);
+        setLoading(false);
+        setMessage(`✓ Synced ${result.itemCount} inputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[InputsPage] Auto-refresh failed:', error);
+        setLoading(false);
+        setMessage(`Failed to sync inputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
         // Don't reload from database on error - preserve existing inputs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length]);
+  }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length, setMessage]);
 
   // Handlers
   const handleRefresh = async () => {
