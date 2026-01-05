@@ -25,11 +25,42 @@
   justify-content: space-between;
   font-size: 13px;
   flex-shrink: 0;
+  gap: 8px;
+}
+
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sidebar.collapsed .header {
   padding: 0 8px;
   justify-content: center;
+}
+
+.expandCollapseButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #605e5c;
+  border-radius: 4px;
+  transition: background 0.1s ease;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.expandCollapseButton:hover {
+  background: #edebe9;
+  color: #0078d4;
+}
+
+.expandCollapseButton:active {
+  background: #e1dfdd;
 }
 
 .collapseButton {
@@ -70,31 +101,34 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
-  background: #f3f2f1;
+  padding: 10px 16px;
+  background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: #605e5c;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .tab:hover {
-  background: #e1dfdd;
   color: #323130;
+  background: #fafafa;
 }
 
 .tab.tabActive {
-  background: #ffffff;
-  border-bottom-color: #0078d4;
   color: #0078d4;
+  border-bottom-color: #0078d4;
   font-weight: 600;
 }
 
+.tab.tabActive:hover {
+  background: #f9f9f9;
+}
+
 .tabIcon {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .nav {
@@ -123,7 +157,7 @@
 }
 
 .section {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .sectionHeader {
@@ -131,53 +165,89 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 6px 12px;
   background: transparent;
   border: none;
   cursor: pointer;
   text-align: left;
   font-size: 11px;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s;
+  position: relative;
 }
 
 .sectionHeader:hover {
   background: #e1dfdd;
 }
 
+.sectionHeader:active {
+  background: #d2d0ce;
+}
+
 .chevron {
-  width: 16px;
-  height: 16px;
+  font-size: 12px;
   color: #605e5c;
   flex-shrink: 0;
 }
 
+.sectionIcon {
+  font-size: 14px;
+  color: #0078d4;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sectionTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemCount {
+  font-size: 10px;
+  color: #605e5c;
+  font-weight: 400;
+  margin-left: auto;
+  padding-left: 4px;
+}
+
 .items {
-  margin-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 8px;
+  margin-top: 2px;
+  margin-bottom: 4px;
 }
 
 .item {
   width: 100%;
-  display: block;
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  padding: 4px 12px 4px 24px;
   background: transparent;
   border: none;
-  border-left: 2px solid transparent;
   cursor: pointer;
   text-align: left;
-  transition: all 0.2s;
-  font-size: 12px;
-  color: #323130;
+  font-size: 11px;
+  transition: background-color 0.15s;
+  border-left: 2px solid transparent;
+  position: relative;
 }
 
 .item:hover {
   background: #e1dfdd;
-  border-left-color: #c8c6c4;
 }
 
 .item.active {
-  background: #f3f9fd;
+  background: #deecf9;
   border-left-color: #0078d4;
   color: #0078d4;
   font-weight: 600;
+}
+
+.item.active:hover {
+  background: #c7e0f4;
 }

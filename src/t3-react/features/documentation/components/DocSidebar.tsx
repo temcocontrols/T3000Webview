@@ -5,8 +5,24 @@
 
 import React, { useState } from 'react';
 import { Text, Button } from '@fluentui/react-components';
-import { ChevronDownRegular, ChevronRightRegular, ChevronDoubleLeftRegular, ChevronDoubleRightRegular, BookRegular, ArchiveRegular } from '@fluentui/react-icons';
+import {
+  ChevronDownRegular,
+  ChevronRightRegular,
+  ChevronDoubleLeftRegular,
+  ChevronDoubleRightRegular,
+  BookRegular,
+  ArchiveRegular,
+  RocketRegular,
+  DesktopRegular,
+  DataUsageRegular,
+  AppsListRegular,
+  CodeRegular,
+  BookOpenRegular,
+  ChevronDoubleDownRegular,
+  ChevronDoubleUpRegular,
+} from '@fluentui/react-icons';
 import { docStructure } from '../utils/docStructure';
+import { legacyDocsStructure } from '../utils/legacyDocsStructure';
 import { LegacyDocSidebar } from './LegacyDocSidebar';
 import styles from './DocSidebar.module.css';
 
@@ -47,15 +63,79 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
     setLegacyExpandedSections(newExpanded);
   };
 
+  // Handle expand/collapse all for user guide
+  const handleExpandCollapseAll = () => {
+    if (activeTab === 'user-guide') {
+      // Check if all sections are expanded
+      const allExpanded = docStructure.every(section => expandedSections.has(section.title));
+
+      if (allExpanded) {
+        // Collapse all
+        docStructure.forEach(section => onToggleSection(section.title));
+      } else {
+        // Expand all
+        docStructure.forEach(section => {
+          if (!expandedSections.has(section.title)) {
+            onToggleSection(section.title);
+          }
+        });
+      }
+    } else {
+      // Legacy docs - expand/collapse all
+      const allExpanded = legacyDocsStructure
+        .filter(section => section.items.length > 0)
+        .every(section => legacyExpandedSections.has(section.folder));
+
+      if (allExpanded) {
+        // Collapse all
+        setLegacyExpandedSections(new Set());
+      } else {
+        // Expand all
+        const allFolders = legacyDocsStructure
+          .filter(section => section.items.length > 0)
+          .map(section => section.folder);
+        setLegacyExpandedSections(new Set(allFolders));
+      }
+    }
+  };
+
+  // Check if all are expanded
+  const allExpanded = activeTab === 'user-guide'
+    ? docStructure.every(section => expandedSections.has(section.title))
+    : legacyDocsStructure
+        .filter(section => section.items.length > 0)
+        .every(section => legacyExpandedSections.has(section.folder));
+
+  // Icon mapping
+  const iconMap: Record<string, React.ReactElement> = {
+    Rocket: <RocketRegular />,
+    Desktop: <DesktopRegular />,
+    DataUsage: <DataUsageRegular />,
+    AppsList: <AppsListRegular />,
+    Code: <CodeRegular />,
+    BookOpen: <BookOpenRegular />,
+  };
+
   return (
     <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.header}>
         {!isCollapsed && <Text weight="semibold" size={400}>Documentation</Text>}
-        {onToggleCollapse && (
-          <button className={styles.collapseButton} onClick={onToggleCollapse} title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-            {isCollapsed ? <ChevronDoubleRightRegular /> : <ChevronDoubleLeftRegular />}
-          </button>
-        )}
+        <div className={styles.headerButtons}>
+          {!isCollapsed && (
+            <button
+              className={styles.expandCollapseButton}
+              onClick={handleExpandCollapseAll}
+              title={allExpanded ? 'Collapse all sections' : 'Expand all sections'}
+            >
+              {allExpanded ? <ChevronDoubleUpRegular /> : <ChevronDoubleDownRegular />}
+            </button>
+          )}
+          {onToggleCollapse && (
+            <button className={styles.collapseButton} onClick={onToggleCollapse} title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              {isCollapsed ? <ChevronDoubleRightRegular /> : <ChevronDoubleLeftRegular />}
+            </button>
+          )}
+        </div>
       </div>
 
       {!isCollapsed && (
@@ -65,33 +145,14 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
             onClick={() => setActiveTab('user-guide')}
           >
             <BookRegular className={styles.tabIcon} />
-            <span>User Guide</span>
+            <span>T3000</span>
           </button>
           <button
             className={`${styles.tab} ${activeTab === 'legacy' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('legacy')}
           >
             <ArchiveRegular className={styles.tabIcon} />
-            <span>Legacy Docs</span>
-          </button>
-        </div>
-      )}
-
-      {!isCollapsed && (
-        <div className={styles.tabs}>
-          <button
-            className={`${styles.tab} ${activeTab === 'user-guide' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('user-guide')}
-          >
-            <BookRegular className={styles.tabIcon} />
-            <span>User Guide</span>
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === 'legacy' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('legacy')}
-          >
-            <ArchiveRegular className={styles.tabIcon} />
-            <span>Legacy Docs</span>
+            <span>Legacy</span>
           </button>
         </div>
       )}
@@ -112,7 +173,16 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                   ) : (
                     <ChevronRightRegular className={styles.chevron} />
                   )}
-                  <Text weight="semibold" size={200}>{section.title}</Text>
+
+                  {section.icon && (
+                    <span className={styles.sectionIcon}>
+                      {iconMap[section.icon] || <BookRegular />}
+                    </span>
+                  )}
+
+                  <Text weight="semibold" size={200} className={styles.sectionTitle}>{section.title}</Text>
+
+                  <span className={styles.itemCount}>({section.items.length})</span>
                 </button>
 
                 {isExpanded && (

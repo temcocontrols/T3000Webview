@@ -116,17 +116,10 @@ export const LegacyDocSidebar: React.FC<LegacyDocSidebarProps> = ({
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <Text weight="semibold" size={300}>Legacy Documentation</Text>
-        <Text size={100} className={styles.subtitle}>Technical & Historical Docs</Text>
-      </div>
-
-      <nav className={styles.nav}>
-        {legacyDocsStructure
-          .filter(section => !section.collapsed || section.items.length > 0)
-          .map(renderSection)}
-      </nav>
-    </div>
+    <nav className={styles.nav}>
+      {legacyDocsStructure
+        .filter(section => !section.collapsed || section.items.length > 0)
+        .map(renderSection)}
+    </nav>
   );
 };

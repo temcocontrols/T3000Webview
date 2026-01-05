@@ -11,12 +11,14 @@ export interface DocItem {
 
 export interface DocSection {
   title: string;
+  icon?: string;
   items: DocItem[];
 }
 
 export const docStructure: DocSection[] = [
   {
     title: 'Quick Start',
+    icon: 'Rocket',
     items: [
       { title: 'Overview', path: 'quick-start/overview' },
       { title: 'Installation', path: 'quick-start/installation' },
@@ -25,6 +27,7 @@ export const docStructure: DocSection[] = [
   },
   {
     title: 'Device Management',
+    icon: 'Desktop',
     items: [
       { title: 'Connecting Devices', path: 'device-management/connecting-devices' },
       { title: 'Device Configuration', path: 'device-management/device-configuration' },
@@ -34,6 +37,7 @@ export const docStructure: DocSection[] = [
   },
   {
     title: 'Data Points',
+    icon: 'DataUsage',
     items: [
       { title: 'Inputs', path: 'data-points/inputs' },
       { title: 'Outputs', path: 'data-points/outputs' },
@@ -44,6 +48,7 @@ export const docStructure: DocSection[] = [
   },
   {
     title: 'Features',
+    icon: 'AppsList',
     items: [
       { title: 'Schedules', path: 'features/schedules' },
       { title: 'Holidays', path: 'features/holidays' },
@@ -54,6 +59,7 @@ export const docStructure: DocSection[] = [
   },
   {
     title: 'API Reference',
+    icon: 'Code',
     items: [
       { title: 'REST API', path: 'api-reference/rest-api' },
       { title: 'WebSocket API', path: 'api-reference/websocket-api' },
@@ -63,6 +69,7 @@ export const docStructure: DocSection[] = [
   },
   {
     title: 'Guides',
+    icon: 'BookOpen',
     items: [
       { title: 'Best Practices', path: 'guides/best-practices' },
       { title: 'Troubleshooting', path: 'guides/troubleshooting' },

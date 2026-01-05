@@ -1358,7 +1358,7 @@ export const SettingsPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <WarningRegular style={{ fontSize: '24px', color: '#f7630c', marginTop: '2px' }} />
                 <div>
-                  <Text weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>
+                  <Text style={{ display: 'block', marginBottom: '8px', color: '#d13438' }}>
                     Are you sure you want to reboot this device?
                   </Text>
                   <Text size={300} style={{ display: 'block', marginBottom: '8px' }}>
@@ -1376,10 +1376,10 @@ export const SettingsPage: React.FC = () => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowRebootDialog(false)} disabled={rebootCountdown > 0}>
+              <Button size="small" appearance="secondary" onClick={() => setShowRebootDialog(false)} disabled={rebootCountdown > 0} style={{ fontWeight: 'normal', fontSize: '13px' }}>
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handleRebootDevice} disabled={rebootCountdown > 0}>
+              <Button size="small" appearance="primary" onClick={handleRebootDevice} disabled={rebootCountdown > 0} style={{ fontWeight: 'normal', fontSize: '13px' }}>
                 Reboot Now
               </Button>
             </DialogActions>
