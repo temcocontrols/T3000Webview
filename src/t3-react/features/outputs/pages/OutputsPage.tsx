@@ -349,7 +349,7 @@ export const OutputsPage: React.FC = () => {
         console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
         console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
 
-        // Find the current output data to pass all fields for Action 16
+        // Use CURRENT UI STATE as baseline (has most recent changes)
         const currentOutput = outputs.find(
           output => output.serialNumber === editingCell.serialNumber && output.outputIndex === editingCell.outputIndex
         );
@@ -358,7 +358,9 @@ export const OutputsPage: React.FC = () => {
           throw new Error('Current output data not found');
         }
 
-        // Prepare payload with all required fields
+        console.log('[Action 16] Using current UI state as baseline:', currentOutput);
+
+        // Build payload with current UI values + the one changed field
         const payload = {
           fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentOutput.fullLabel || ''),
           label: currentOutput.label || '',
@@ -366,9 +368,10 @@ export const OutputsPage: React.FC = () => {
           range: parseInt(currentOutput.range || '0'),
           autoManual: parseInt(currentOutput.autoManual || '0'),
           control: 0,
-          lowVoltage: parseFloat(currentOutput.lowVoltage || '0'),
-          highVoltage: parseFloat(currentOutput.highVoltage || '0'),
-          pwmPeriod: parseInt(currentOutput.pwmPeriod || '0'),
+          digitalAnalog: parseInt(currentOutput.digitalAnalog || '0'),
+          decom: 0,
+          lowVoltage: 0,
+          highVoltage: 0,
         };
 
         console.log('[Action 16] Full payload:', payload);

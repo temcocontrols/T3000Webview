@@ -374,33 +374,23 @@ export const InputsPage: React.FC = () => {
     try {
       console.log(`[Action 16] Updating ${field} for Input ${inputIndex} (SN: ${serialNumber})`);
 
-      // Step 1: Read current values from DEVICE (not database) to avoid overwriting with stale data
-      console.log('[Action 16] Step 1: Reading current values from device...');
-      const deviceDataUrl = `${API_BASE_URL}/api/t3_device/inputs/${serialNumber}/${inputIndex}`;
-      const deviceResponse = await fetch(deviceDataUrl);
+      // Step 1: Use CURRENT UI STATE as baseline (has most recent changes)
+      // The currentInput parameter already reflects any previous edits made in the UI
+      console.log('[Action 16] Using current UI state as baseline:', currentInput);
 
-      if (!deviceResponse.ok) {
-        console.warn('[Action 16] Failed to read device values, using database values (may be stale)');
-      }
-
-      const deviceData = deviceResponse.ok ? await deviceResponse.json() : null;
-      const sourceData = deviceData || currentInput; // Prefer device data, fallback to database
-
-      console.log('[Action 16] Source data:', deviceData ? 'DEVICE (fresh)' : 'DATABASE (may be stale)', sourceData);
-
-      // Step 2: Build payload with current device values + the one changed field
+      // Step 2: Build payload with current UI values + the one changed field
       const payload = {
-        fullLabel: field === 'fullLabel' ? newValue : (sourceData.fullLabel || ''),
-        label: field === 'label' ? newValue : (sourceData.label || ''),
-        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(sourceData.fValue || '0'),
-        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(sourceData.rangeField || sourceData.range || '0', 10),
-        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(sourceData.autoManual || '0', 10),
+        fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
+        label: field === 'label' ? newValue : (currentInput.label || ''),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0'),
+        range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
+        autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
         control: 0, // control field not typically editable
-        filter: parseInt(sourceData.filterField || '0', 10),
-        digitalAnalog: parseInt(sourceData.digitalAnalog || '0', 10),
-        calibrationSign: parseInt(sourceData.sign || '0', 10),
-        calibrationH: parseInt(sourceData.calibration?.split('.')[0] || '0', 10),
-        calibrationL: parseInt(sourceData.calibration?.split('.')[1] || '0', 10),
+        filter: parseInt(currentInput.filterField || '0', 10),
+        digitalAnalog: parseInt(currentInput.digitalAnalog || '0', 10),
+        calibrationSign: parseInt(currentInput.sign || '0', 10),
+        calibrationH: parseInt(currentInput.calibration?.split('.')[0] || '0', 10),
+        calibrationL: parseInt(currentInput.calibration?.split('.')[1] || '0', 10),
         decom: 0,
       };
 
@@ -421,26 +411,7 @@ export const InputsPage: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 16 - Main API] Success:', result);
-      console.log('[Note] Main endpoint: FFI device update + database persistence');
-
-      // Also call database-only endpoint (/db) for verification
-      try {
-        const db = new T3Database(`${API_BASE_URL}/api`);
-        const dbUpdateData: any = { serialNumber, inputIndex: parseInt(inputIndex, 10) };
-
-        if (field === 'fullLabel') dbUpdateData.fullLabel = newValue;
-        if (field === 'label') dbUpdateData.label = newValue;
-        if (field === 'fValue') dbUpdateData.fValue = parseFloat(newValue);
-        if (field === 'range') dbUpdateData.range = parseInt(newValue, 10);
-        if (field === 'autoManual') dbUpdateData.autoManual = parseInt(newValue, 10);
-
-        console.log('[T3Database - /db API] Calling database-only endpoint:', dbUpdateData);
-        await db.inputs.update(serialNumber, parseInt(inputIndex, 10), dbUpdateData);
-        console.log('[T3Database - /db API] Database-only update succeeded');
-      } catch (dbError) {
-        console.warn('[T3Database - /db API] Database-only update failed:', dbError);
-      }
+      console.log('[Action 16] Success - Device updated via FFI and saved to database:', result);
 
       return result;
     } catch (error) {

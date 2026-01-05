@@ -342,7 +342,7 @@ export const VariablesPage: React.FC = () => {
         console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
         console.log('Using Action 16 (UPDATE_WEBVIEW_LIST)');
 
-        // Find the current variable data to pass all fields for Action 16
+        // Use CURRENT UI STATE as baseline (has most recent changes)
         const currentVariable = variables.find(
           variable => variable.serialNumber === editingCell.serialNumber && variable.variableIndex === editingCell.variableIndex
         );
@@ -351,7 +351,9 @@ export const VariablesPage: React.FC = () => {
           throw new Error('Current variable data not found');
         }
 
-        // Prepare payload with all required fields
+        console.log('[Action 16] Using current UI state as baseline:', currentVariable);
+
+        // Build payload with current UI values + the one changed field
         const payload = {
           fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentVariable.fullLabel || ''),
           label: currentVariable.label || '',
@@ -361,9 +363,7 @@ export const VariablesPage: React.FC = () => {
           control: 0,
           filter: parseInt(currentVariable.filterField || '0'),
           digitalAnalog: currentVariable.digitalAnalog === '1' ? 1 : 0,
-          calibrationSign: parseInt(currentVariable.sign || '0'),
-          calibrationH: 0,
-          calibrationL: 0,
+          decom: 0,
         };
 
         console.log('[Action 16] Full payload:', payload);
