@@ -22,9 +22,6 @@ import {
   ArrowSyncRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
-import { T3Transport } from '../../../../../lib/t3-transport/core/T3Transport';
-import { T3Database } from '../../../../../lib/t3-database';
-import { API_BASE_URL } from '../../../../config/constants';
 import { useStatusBarStore } from '../../../../store/statusBarStore';
 import styles from './TreeToolbar.module.css';
 
@@ -40,90 +37,18 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, refreshDevices } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setMessage('Refreshing devices from FFI...', 'info');
-
     try {
-      // Initialize T3Transport with FFI
-      const transport = new T3Transport({
-        apiBaseUrl: `${API_BASE_URL}/api`
-      });
-      await transport.connect('ffi');
-
-      // Call action 4: GET_PANELS_LIST
-      const response = await transport.getDeviceList();
-
-      // Check if response has data
-      if (response && response.data && response.data.data) {
-        const panels = response.data.data;
-        console.log('FFI returned panels:', panels);
-
-        // Try to save to database (best effort, don't fail if database has issues)
-        let savedCount = 0;
-        let failedCount = 0;
-
-        try {
-          const db = new T3Database(`${API_BASE_URL}/api`);
-
-          for (const panel of panels) {
-            try {
-              const serialNumber = panel.serial_number || panel.serialNumber;
-              const panelName = panel.panel_name || panel.panelName || `Panel ${panel.panel_number}`;
-              const deviceData = {
-                serialNumber,
-                panelName: panelName,
-                deviceType: panel.pid || 0,
-                objectInstance: panel.object_instance || panel.objectInstance || 0,
-                ipAddress: panel.ip_address || panel.ipAddress || '',
-                port: panel.port || 0,
-                protocol: 'BACnet',
-                mainBuildingName: 'Default_Building',
-                subnetName: 'Local View',
-                showLabelName: panelName, // Set showLabelName to the panel name
-                isOnline: true,
-                lastOnlineTime: panel.online_time || Date.now(),
-              };
-
-              // Try to create device directly (skip GET since it returns 405)
-              await db.devices.create(deviceData);
-              console.log(`Created device ${serialNumber}`);
-              savedCount++;
-            } catch (error: any) {
-              console.warn(`Failed to save device ${panel.serial_number || panel.serialNumber}:`, error.message);
-              failedCount++;
-            }
-          }
-        } catch (dbError) {
-          console.warn('Database operations failed:', dbError);
-          failedCount = panels.length;
-        }
-
-        // Show success message even if database save fails (FFI refresh succeeded)
-        if (failedCount > 0 && savedCount === 0) {
-          setMessage(`Refreshed ${panels.length} device(s) from FFI (database save unavailable)`, 'warning');
-        } else if (failedCount > 0) {
-          setMessage(`Refreshed ${panels.length} device(s), saved ${savedCount} to database`, 'success');
-        } else {
-          setMessage(`Refreshed ${panels.length} device(s) successfully`, 'success');
-        }
-      } else {
-        console.warn('No data in response:', response);
-        setMessage('No devices found', 'warning');
-      }
-
-      // Disconnect transport
-      await transport.disconnect();
-
-      // Refresh the tree view
-      await refreshDevices();
+      // Use the same full sync as "Load Devices" button
+      await loadDevicesWithSync();
     } catch (err) {
-      console.error('Failed to refresh panels:', err);
+      console.error('Failed to refresh devices:', err);
       setMessage('Failed to refresh device list. Please try again.', 'error');
     } finally {
       setIsRefreshing(false);
@@ -133,8 +58,8 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
   const handleToggleViewMode = async () => {
     const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
     setViewMode(newMode);
-    // Trigger refresh to load the device tree view by default
-    await refreshDevices();
+    // Trigger full sync to load the device tree view
+    await loadDevicesWithSync();
   };
 
   const handleToggleExpandCollapse = () => {
