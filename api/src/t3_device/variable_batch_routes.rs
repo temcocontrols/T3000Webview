@@ -72,8 +72,8 @@ pub async fn batch_save_variables(
         }
     };
 
-    // Retry entire transaction up to 5 times with exponential backoff
-    let max_retries = 5;
+    // Retry entire transaction up to 10 times with exponential backoff
+    let max_retries = 10;
     let mut last_error = String::new();
 
     for attempt in 1..=max_retries {
@@ -90,8 +90,8 @@ pub async fn batch_save_variables(
                 // Check if it's a database lock error
                 if e.contains("database is locked") {
                     if attempt < max_retries {
-                        // Exponential backoff: 50ms, 100ms, 200ms, 400ms, 800ms
-                        let delay_ms = 50 * (2_u64.pow(attempt - 1));
+                        // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms, 6400ms, 12800ms, 25600ms
+                        let delay_ms = 100 * (2_u64.pow(attempt - 1));
                         info!("⏳ Database locked (attempt {}/{}), retrying in {}ms", attempt, max_retries, delay_ms);
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                         continue;
