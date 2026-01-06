@@ -164,39 +164,43 @@ export const InputsPage: React.FC = () => {
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then check if we need to refresh from device
-    // Delay 1000ms to let TreePanel device sync finish first and avoid database locks
-    const timer = setTimeout(async () => {
-      try {
-        // Check if database has input data
-        if (inputs.length > 0) {
-          console.log('[InputsPage] Database has data, skipping auto-refresh');
-          setAutoRefreshed(true);
-          return;
-        }
-
-        console.log('[InputsPage] Database empty, auto-refreshing from device...');
-        setLoading(true);
-        setMessage(`Syncing inputs from ${selectedDevice.nameShowOnTree}...`, 'info');
-
-        // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB
-        const result = await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
-
-        // Reload from database after refresh
-        await fetchInputs();
+    // Check immediately if database has input data
+    const checkAndRefresh = async () => {
+      if (inputs.length > 0) {
+        console.log('[InputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
-        setLoading(false);
+        return;
+      }
+
+      console.log('[InputsPage] Database empty, auto-refreshing from device...');
+      setLoading(true);
+      setMessage(`Syncing inputs from ${selectedDevice.nameShowOnTree}...`, 'info');
+
+      try {
+        // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB
+        // Pass loading callback to show loading state during Action 17 FFI call
+        const result = await PanelDataRefreshService.refreshFromDevice({
+          serialNumber: selectedDevice.serialNumber,
+          type: 'input',
+          onLoadingChange: (loading) => {
+            if (loading) {
+              setMessage(`Loading inputs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
+            }
+          }
+        });
         setMessage(`✓ Synced ${result.itemCount} inputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         console.error('[InputsPage] Auto-refresh failed:', error);
-        setLoading(false);
         setMessage(`Failed to sync inputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-        // Don't reload from database on error - preserve existing inputs
-        setAutoRefreshed(true); // Mark as attempted to prevent retry loops
+      } finally {
+        // Always reload from database to show what was actually saved (even if batch had errors)
+        await fetchInputs();
+        setAutoRefreshed(true);
+        setLoading(false);
       }
-    }, 3000); // 3 second delay to let TreePanel device sync finish and avoid database locks
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchInputs, inputs.length, setMessage]);
 
   // Handlers
@@ -215,11 +219,17 @@ export const InputsPage: React.FC = () => {
 
     try {
       console.log('[InputsPage] Refreshing all inputs from device via FFI...');
-      const result = await PanelDataRefreshService.refreshAllInputs(selectedDevice.serialNumber);
+      // Pass loading callback to show loading state during Action 17 FFI call
+      const result = await PanelDataRefreshService.refreshFromDevice({
+        serialNumber: selectedDevice.serialNumber,
+        type: 'input',
+        onLoadingChange: (loading) => {
+          if (loading) {
+            setMessage('Loading data from device (Action 17)...', 'info');
+          }
+        }
+      });
       console.log('[InputsPage] Refresh result:', result);
-
-      // Reload from database after successful save
-      await fetchInputs();
       setMessage(result.message, 'success');
     } catch (error) {
       console.error('[InputsPage] Failed to refresh from device:', error);
@@ -227,6 +237,8 @@ export const InputsPage: React.FC = () => {
       setError(errorMsg);
       setMessage(errorMsg, 'error');
     } finally {
+      // Always reload from database to show what was actually saved
+      await fetchInputs();
       setRefreshing(false);
     }
   };  // Refresh single input from device (Trigger #3: Per-row refresh icon)

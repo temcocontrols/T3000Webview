@@ -141,7 +141,7 @@ const AlarmsPage: React.FC = () => {
   useEffect(() => {
     if (isLoading || !selectedDevice || autoRefreshed) return;
 
-    const timer = setTimeout(async () => {
+    const checkAndRefresh = async () => {
       console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
@@ -152,9 +152,9 @@ const AlarmsPage: React.FC = () => {
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [isLoading, selectedDevice, autoRefreshed, fetchAlarms]);
 
   // Refresh from device (Trigger #2 - Manual button)

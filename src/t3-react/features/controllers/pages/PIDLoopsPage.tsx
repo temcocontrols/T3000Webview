@@ -176,8 +176,8 @@ const PIDLoopsPage: React.FC = () => {
   useEffect(() => {
     if (isLoading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then check if we need to refresh from device
-    const timer = setTimeout(async () => {
+    // Check immediately if database has PID loop data
+    const checkAndRefresh = async () => {
       try {
         // Check if database has PID loop data
         if (pidLoops.length > 0) {
@@ -197,9 +197,9 @@ const PIDLoopsPage: React.FC = () => {
         // Don't reload from database on error - preserve existing PID loops
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [isLoading, selectedDevice, autoRefreshed, fetchPidLoops, pidLoops.length]);
 
   // Handle field edit

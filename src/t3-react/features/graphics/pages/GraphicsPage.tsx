@@ -100,7 +100,7 @@ export const GraphicsPage: React.FC = () => {
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    const timer = setTimeout(async () => {
+    const checkAndRefresh = async () => {
       try {
         console.log('[GraphicsPage] Auto-loading graphics from database...');
         // TODO: Implement GraphicRefreshApi.refreshAllFromDevice() using Action 0/1
@@ -111,9 +111,9 @@ export const GraphicsPage: React.FC = () => {
         console.error('[GraphicsPage] Auto-load failed:', error);
         setAutoRefreshed(true);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchGraphics]);
 
   // Load next device in tree (auto-scroll feature)

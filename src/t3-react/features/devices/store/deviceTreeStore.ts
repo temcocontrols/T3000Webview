@@ -179,11 +179,16 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           get().buildTreeStructure();
 
           // Auto-select first device if none is selected
-          const { selectedDevice, selectDevice } = get();
-          if (!selectedDevice && response.devices.length > 0) {
-            const firstDevice = response.devices[0];
+          const { selectedDevice, selectDevice, devices } = get();
+          console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
+          console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
+
+          if (!selectedDevice && devices.length > 0) {
+            // Sort devices alphabetically to match tree order
+            const sortedDevices = [...devices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+            const firstDevice = sortedDevices[0];
+            console.log(`[fetchDevices] Auto-selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
             selectDevice(firstDevice);
-            console.log(`[fetchDevices] Auto-selected first device: ${firstDevice.nameShowOnTree}`);
           }
 
           // Update status bar with success message
@@ -294,10 +299,14 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
             // Step 4: Auto-select first device (point sync handled by each page)
             const { devices: updatedDevices, selectDevice } = get();
+            console.log(`[loadDevicesWithSync] Devices after reload:`, updatedDevices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
+
             if (updatedDevices.length > 0) {
-              const firstDevice = updatedDevices[0];
+              // Sort devices alphabetically to match tree order
+              const sortedDevices = [...updatedDevices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+              const firstDevice = sortedDevices[0];
+              console.log(`[loadDevicesWithSync] Selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
               selectDevice(firstDevice);
-              console.log(`[loadDevicesWithSync] Selected first device: ${firstDevice.nameShowOnTree}`);
             }
           } else {
             console.warn('[loadDevicesWithSync] No data in response:', response);
@@ -555,6 +564,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Select tree node
       selectNode: (nodeId: string) => {
+        console.log(`[selectNode] Called with nodeId: ${nodeId}`);
         const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
           for (const node of nodes) {
             if (node.id === id) return node;
@@ -567,6 +577,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         };
 
         const node = findNode(get().treeData, nodeId);
+        console.log(`[selectNode] Found node:`, node?.data ? `${node.data.nameShowOnTree} (SN: ${node.data.serialNumber})` : 'none');
         set({
           selectedNodeId: nodeId,
           selectedDevice: node?.data || null,
@@ -575,6 +586,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Select device directly
       selectDevice: async (device: DeviceInfo | null) => {
+        console.log(`[selectDevice] Called with device:`, device ? `${device.nameShowOnTree} (SN: ${device.serialNumber})` : 'null');
         set({
           selectedDevice: device,
           selectedNodeId: device ? `device-${device.serialNumber}` : null,
