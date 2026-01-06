@@ -135,8 +135,8 @@ export const ProgramsPage: React.FC = () => {
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    // Wait for initial load to complete, then check if we need to refresh from device
-    const timer = setTimeout(async () => {
+    // Check immediately if database has program data
+    const checkAndRefresh = async () => {
       try {
         // Check if database has program data
         if (programs.length > 0) {
@@ -157,9 +157,9 @@ export const ProgramsPage: React.FC = () => {
         // Don't reload from database on error - preserve existing programs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchPrograms, programs.length]);
 
   // Handlers

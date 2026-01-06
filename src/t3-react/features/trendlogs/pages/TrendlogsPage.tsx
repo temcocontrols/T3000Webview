@@ -417,7 +417,7 @@ export const TrendLogsPage: React.FC = () => {
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    const timer = setTimeout(async () => {
+    const checkAndRefresh = async () => {
       try {
         console.log('[TrendLogsPage] Auto-refreshing from device...');
         const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);
@@ -428,9 +428,9 @@ export const TrendLogsPage: React.FC = () => {
         console.error('[TrendLogsPage] Auto-refresh failed:', error);
         setAutoRefreshed(true);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchTrendLogs]);
 
   // Refresh all trendlogs from device (Trigger #2: Manual "Refresh All" button)

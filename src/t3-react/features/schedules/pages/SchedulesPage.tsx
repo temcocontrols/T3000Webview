@@ -140,7 +140,7 @@ export const SchedulesPage: React.FC = () => {
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    const timer = setTimeout(async () => {
+    const checkAndRefresh = async () => {
       // Check if database has schedule data
       if (schedules.length > 0) {
         console.log('🔄 Database has data, skipping auto-refresh');
@@ -159,9 +159,9 @@ export const SchedulesPage: React.FC = () => {
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchSchedules, schedules.length]);
 
   // Refresh from database (toolbar button)

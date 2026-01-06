@@ -21,6 +21,7 @@ export interface RefreshOptions {
   serialNumber: number;
   type: PointType;
   index?: number;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export interface RefreshResult {
@@ -48,10 +49,13 @@ export class PanelDataRefreshService {
    * @returns Refresh result with counts
    */
   static async refreshFromDevice(options: RefreshOptions): Promise<RefreshResult> {
-    const { serialNumber, type, index } = options;
+    const { serialNumber, type, index, onLoadingChange } = options;
     const timestamp = new Date().toISOString();
 
     try {
+      // Set loading state to true before FFI call
+      onLoadingChange?.(true);
+
       // Initialize T3Transport with FFI
       const transport = new T3Transport({
         apiBaseUrl: `${API_BASE_URL}/api`
@@ -95,6 +99,9 @@ export class PanelDataRefreshService {
 
       // Disconnect transport
       await transport.disconnect();
+
+      // Set loading state to false after FFI call completes
+      onLoadingChange?.(false);
 
       // Check if response has data
       if (!response || !response.data) {
@@ -155,6 +162,8 @@ export class PanelDataRefreshService {
       };
 
     } catch (error) {
+      // Set loading state to false on error
+      onLoadingChange?.(false);
       console.error(`[PanelDataRefreshService] Refresh failed:`, error);
       throw error;
     }

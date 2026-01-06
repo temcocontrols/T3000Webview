@@ -132,7 +132,7 @@ export const HolidaysPage: React.FC = () => {
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed) return;
 
-    const timer = setTimeout(async () => {
+    const checkAndRefresh = async () => {
       // Check if database has holiday data
       if (holidays.length > 0) {
         console.log('🔄 Database has data, skipping auto-refresh');
@@ -151,9 +151,9 @@ export const HolidaysPage: React.FC = () => {
       } catch (err) {
         console.error('❌ Auto-refresh failed:', err);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
+    checkAndRefresh();
   }, [loading, selectedDevice, autoRefreshed, fetchHolidays, holidays.length]);
 
   // Refresh from database
