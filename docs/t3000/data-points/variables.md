@@ -44,5 +44,5 @@ Variables can be:
 
 ## Next Steps
 
-- [Programs](./programs.md) - Control logic
-- [PID Loops](./pid-loops.md) - PID control
+- [Programs](./programs) - Control logic
+- [PID Loops](./pid-loops) - PID control

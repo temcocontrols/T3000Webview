@@ -61,6 +61,6 @@ Trend logs automatically collect and store historical data from inputs, outputs,
 
 ## Next Steps
 
-- [Inputs](../data-points/inputs.md) - Input monitoring
-- [Alarms](./alarms.md) - Alarm analysis
-- [Monitoring](../device-management/device-monitoring.md) - Real-time monitoring
+- [Inputs](../data-points/inputs) - Input monitoring
+- [Alarms](./alarms) - Alarm analysis
+- [Monitoring](../device-management/device-monitoring) - Real-time monitoring

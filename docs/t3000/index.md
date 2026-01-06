@@ -4,9 +4,9 @@ Welcome to the T3000 Building Automation System documentation. T3000 is a compre
 
 ## Quick Links
 
-- [Getting Started](quick-start/overview.md) - Begin your journey with T3000
-- [Device Management](device-management/connecting-devices.md) - Learn how to connect and configure devices
-- [API Reference](api-reference/rest-api.md) - Explore the REST API
+- [Getting Started](quick-start/overview) - Begin your journey with T3000
+- [Device Management](device-management/connecting-devices) - Learn how to connect and configure devices
+- [API Reference](api-reference/rest-api) - Explore the REST API
 
 ## Key Features
 

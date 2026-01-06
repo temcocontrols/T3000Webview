@@ -38,5 +38,5 @@ Graphics provide intuitive visual representations of equipment, floor plans, and
 
 ## Next Steps
 
-- [Dashboard](../../quick-start/overview.md) - Main dashboard
-- [Monitoring](../device-management/device-monitoring.md) - Data monitoring
+- [Dashboard](../../quick-start/overview) - Main dashboard
+- [Monitoring](../device-management/device-monitoring) - Data monitoring

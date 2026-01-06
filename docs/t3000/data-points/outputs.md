@@ -350,7 +350,7 @@ Examples:
 
 ## Next Steps
 
-- [Variables](./variables.md) - Calculated variables
-- [Programs](./programs.md) - Control programs
-- [PID Loops](./pid-loops.md) - PID control
-- [Schedules](../features/schedules.md) - Time-based control
+- [Variables](./variables) - Calculated variables
+- [Programs](./programs) - Control programs
+- [PID Loops](./pid-loops) - PID control
+- [Schedules](../features/schedules) - Time-based control

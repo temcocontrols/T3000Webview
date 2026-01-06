@@ -202,6 +202,6 @@ Export monitored data:
 
 ## Next Steps
 
-- [Trend Logs](../features/trendlogs.md) - Detailed trend analysis
-- [Alarms](../features/alarms.md) - Alarm configuration
-- [Troubleshooting](./device-troubleshooting.md) - Resolve monitoring issues
+- [Trend Logs](../features/trendlogs) - Detailed trend analysis
+- [Alarms](../features/alarms) - Alarm configuration
+- [Troubleshooting](./device-troubleshooting) - Resolve monitoring issues

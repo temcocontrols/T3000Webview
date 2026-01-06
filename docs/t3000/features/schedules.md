@@ -31,5 +31,5 @@ Saturday-Sunday:
 
 ## Next Steps
 
-- [Holidays](./holidays.md) - Holiday/exception schedules
-- [Programs](../data-points/programs.md) - Schedule programs
+- [Holidays](./holidays) - Holiday/exception schedules
+- [Programs](../data-points/programs) - Schedule programs

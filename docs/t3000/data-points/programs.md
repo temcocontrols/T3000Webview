@@ -145,6 +145,6 @@ Common errors:
 
 ## Next Steps
 
-- [PID Loops](./pid-loops.md) - PID control
-- [Schedules](../features/schedules.md) - Time-based control
-- [Variables](./variables.md) - Program variables
+- [PID Loops](./pid-loops) - PID control
+- [Schedules](../features/schedules) - Time-based control
+- [Variables](./variables) - Program variables

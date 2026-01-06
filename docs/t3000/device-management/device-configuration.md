@@ -131,5 +131,5 @@ Enable/disable device features:
 
 ## Next Steps
 
-- [Device Monitoring](./device-monitoring.md) - Monitor device operation
-- [Troubleshooting](./device-troubleshooting.md) - Resolve configuration issues
+- [Device Monitoring](./device-monitoring) - Monitor device operation
+- [Troubleshooting](./device-troubleshooting) - Resolve configuration issues

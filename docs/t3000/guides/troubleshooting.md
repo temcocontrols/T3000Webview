@@ -38,5 +38,5 @@ Quick reference for common issues and solutions.
 
 ## Getting Help
 
-See [Device Troubleshooting](../device-management/device-troubleshooting.md) for detailed solutions.
+See [Device Troubleshooting](../device-management/device-troubleshooting) for detailed solutions.
 

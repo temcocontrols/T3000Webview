@@ -10,7 +10,7 @@ Holiday schedules override normal weekly schedules for special events, holidays,
 
 Define holidays and special days:
 - New Year's Day
-- Independence Day  
+- Independence Day
 - Thanksgiving
 - Christmas Day
 - Maintenance days
@@ -32,5 +32,5 @@ Define holidays and special days:
 
 ## Next Steps
 
-- [Schedules](./schedules.md) - Weekly schedules
-- [Programs](../data-points/programs.md) - Control programs
+- [Schedules](./schedules) - Weekly schedules
+- [Programs](../data-points/programs) - Control programs

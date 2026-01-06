@@ -77,6 +77,6 @@ Configure alarm notifications:
 
 ## Next Steps
 
-- [Inputs](../data-points/inputs.md) - Input alarms
-- [Monitoring](../device-management/device-monitoring.md) - Real-time monitoring
-- [Troubleshooting](../device-management/device-troubleshooting.md) - Resolve issues
+- [Inputs](../data-points/inputs) - Input alarms
+- [Monitoring](../device-management/device-monitoring) - Real-time monitoring
+- [Troubleshooting](../device-management/device-troubleshooting) - Resolve issues

@@ -56,9 +56,9 @@ Familiarize yourself with the main sections:
 
 ## Next Steps
 
-- [Installation Guide](installation.md) - Detailed installation instructions
-- [Configuration](configuration.md) - Configure your system settings
-- [Device Management](../device-management/connecting-devices.md) - Connect your first device
+- [Installation Guide](installation) - Detailed installation instructions
+- [Configuration](configuration) - Configure your system settings
+- [Device Management](../device-management/connecting-devices) - Connect your first device
 
 ## Common Use Cases
 
@@ -73,6 +73,6 @@ Familiarize yourself with the main sections:
 ## Getting Help
 
 If you encounter any issues:
-- Check the [FAQ](../guides/faq.md)
-- Review [Troubleshooting Guide](../guides/troubleshooting.md)
+- Check the [FAQ](../guides/faq)
+- Review [Troubleshooting Guide](../guides/troubleshooting)
 - Contact support@temcocontrols.com

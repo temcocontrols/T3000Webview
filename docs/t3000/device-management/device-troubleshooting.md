@@ -346,6 +346,6 @@ If issues persist:
 
 ## Next Steps
 
-- [Best Practices](../guides/best-practices.md) - Preventive measures
-- [Performance Tuning](../guides/performance-tuning.md) - Optimization tips
-- [FAQ](../guides/faq.md) - Frequently asked questions
+- [Best Practices](../guides/best-practices) - Preventive measures
+- [Performance Tuning](../guides/performance-tuning) - Optimization tips
+- [FAQ](../guides/faq) - Frequently asked questions

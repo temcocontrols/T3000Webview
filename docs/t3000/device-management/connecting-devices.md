@@ -96,6 +96,6 @@ Allow the following ports through your firewall:
 
 ## Next Steps
 
-- [Device Configuration](./device-configuration.md) - Configure device settings
-- [Device Monitoring](./device-monitoring.md) - Monitor device status and data
-- [Troubleshooting](./device-troubleshooting.md) - Resolve common issues
+- [Device Configuration](./device-configuration) - Configure device settings
+- [Device Monitoring](./device-monitoring) - Monitor device status and data
+- [Troubleshooting](./device-troubleshooting) - Resolve common issues

@@ -316,7 +316,7 @@ Manage all PID loops:
 
 ## Next Steps
 
-- [Programs](./programs.md) - Control programs
-- [Outputs](./outputs.md) - Output control
-- [Schedules](../features/schedules.md) - Setpoint scheduling
-- [Performance Tuning](../guides/performance-tuning.md) - Optimization
+- [Programs](./programs) - Control programs
+- [Outputs](./outputs) - Output control
+- [Schedules](../features/schedules) - Setpoint scheduling
+- [Performance Tuning](../guides/performance-tuning) - Optimization

@@ -258,7 +258,7 @@ Examples:
 
 ## Next Steps
 
-- [Outputs](./outputs.md) - Control output points
-- [Variables](./variables.md) - Calculated variables
-- [Trend Logs](../features/trendlogs.md) - Historical analysis
-- [Alarms](../features/alarms.md) - Alarm management
+- [Outputs](./outputs) - Control output points
+- [Variables](./variables) - Calculated variables
+- [Trend Logs](../features/trendlogs) - Historical analysis
+- [Alarms](../features/alarms) - Alarm management

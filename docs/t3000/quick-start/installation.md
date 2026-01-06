@@ -175,8 +175,8 @@ To remove T3000:
 
 ## Next Steps
 
-- [Configuration Guide](configuration.md) - Set up your system
-- [Connecting Devices](../device-management/connecting-devices.md) - Add your first device
+- [Configuration Guide](configuration) - Set up your system
+- [Connecting Devices](../device-management/connecting-devices) - Add your first device
 
 ## Support
 

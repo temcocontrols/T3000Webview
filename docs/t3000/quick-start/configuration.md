@@ -173,9 +173,9 @@ Schedule regular maintenance:
 
 ## Next Steps
 
-- [Connecting Devices](../device-management/connecting-devices.md)
-- [Creating Graphics](../features/graphics.md)
-- [Setting Up Schedules](../features/schedules.md)
+- [Connecting Devices](../device-management/connecting-devices)
+- [Creating Graphics](../features/graphics)
+- [Setting Up Schedules](../features/schedules)
 
 ## Configuration Best Practices
 
