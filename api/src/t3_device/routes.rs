@@ -81,7 +81,7 @@ fn get_valid_table_names() -> &'static [&'static str] {
     &[
         "DEVICES", "INPUTS", "OUTPUTS", "VARIABLES", "PROGRAMS",
         "SCHEDULES", "PID_TABLE", "HOLIDAYS", "GRAPHICS", "ALARMS",
-        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA"
+        "MONITORDATA", "TRENDLOGS", "TRENDLOG_INPUTS", "TRENDLOG_DATA", "ARRAYS"
     ]
 }
 
