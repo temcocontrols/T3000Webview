@@ -333,7 +333,12 @@ export const App: React.FC = () => {
                 <Route
                   path="documentation"
                   element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
+                    <React.Suspense fallback={
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
+                        <Spinner size="medium" />
+                        <span>Loading...</span>
+                      </div>
+                    }>
                       <DocumentationPage />
                     </React.Suspense>
                   }
