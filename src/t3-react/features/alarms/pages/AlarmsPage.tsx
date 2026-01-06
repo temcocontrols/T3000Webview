@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   DataGrid,
   DataGridProps,
@@ -74,6 +74,7 @@ const AlarmsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   const handleExport = () => {
     console.log('Export alarms to CSV');
@@ -135,13 +136,18 @@ const AlarmsPage: React.FC = () => {
 
   useEffect(() => {
     fetchAlarms();
+    // Reset auto-refresh flag when device changes
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [fetchAlarms]);
 
   // Auto-refresh on page load (Trigger #1)
   useEffect(() => {
-    if (isLoading || !selectedDevice || autoRefreshed) return;
+    if (isLoading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;

@@ -4,7 +4,7 @@
  * Manage trend log configurations with device refresh
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -76,6 +76,7 @@ export const TrendLogsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const [selectedMonitor, setSelectedMonitor] = useState<TrendLogData | null>(null);
   const [monitorInputs, setMonitorInputs] = useState<TrendLogInput[]>([]);
   const [loadingInputs, setLoadingInputs] = useState(false);
@@ -415,9 +416,11 @@ export const TrendLogsPage: React.FC = () => {
 
   // Auto-refresh once after page load (Trigger #1)
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
         console.log('[TrendLogsPage] Auto-refreshing from device...');
         const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(selectedDevice.serialNumber);

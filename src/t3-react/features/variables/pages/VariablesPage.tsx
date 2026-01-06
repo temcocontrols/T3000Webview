@@ -83,6 +83,7 @@ export const VariablesPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -152,14 +153,17 @@ export const VariablesPage: React.FC = () => {
   useEffect(() => {
     setVariables([]);
     setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     // Check immediately if database has variable data
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       if (variables.length > 0) {
         console.log('[VariablesPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
@@ -168,7 +172,6 @@ export const VariablesPage: React.FC = () => {
 
       console.log('[VariablesPage] Database empty, auto-refreshing from device...');
       setLoading(true);
-      setMessage(`Syncing variables from ${selectedDevice.nameShowOnTree}...`, 'info');
 
       try {
         // Pass loading callback to show loading state during Action 17 FFI call
@@ -1074,7 +1077,6 @@ export const VariablesPage: React.FC = () => {
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
                     <Text size={200} weight="regular">Loading variables...</Text>
-                    <Text>Loading variables...</Text>
                   </div>
                 )}
 

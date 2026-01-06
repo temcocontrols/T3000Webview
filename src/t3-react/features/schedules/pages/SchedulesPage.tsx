@@ -76,6 +76,7 @@ export const SchedulesPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -134,13 +135,16 @@ export const SchedulesPage: React.FC = () => {
   useEffect(() => {
     setSchedules([]);
     setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh on page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       // Check if database has schedule data
       if (schedules.length > 0) {
         console.log('🔄 Database has data, skipping auto-refresh');

@@ -449,38 +449,81 @@ export const SettingsPage: React.FC = () => {
       switch (selectedTab) {
         case 'basic':
           // Fetch protocol settings, hardware info, features, network (for MAC), and device info
-          const [protocolRes, hardwareRes, featuresRes, networkRes, deviceRes] = await Promise.all([
-            fetch(`/api/v1/devices/${serial}/settings/protocol`),
-            fetch(`/api/v1/devices/${serial}/settings/hardware`),
-            fetch(`/api/v1/devices/${serial}/settings/features`),
-            fetch(`/api/v1/devices/${serial}/settings/network`),
-            fetch(`/api/v1/devices/${serial}`),
-          ]);
-          if (protocolRes.ok) setProtocolSettings(await protocolRes.json());
-          if (hardwareRes.ok) setHardwareInfo(await hardwareRes.json());
-          if (featuresRes.ok) setFeatureFlags(await featuresRes.json());
-          if (networkRes.ok) setNetworkSettings(await networkRes.json());
-          if (deviceRes.ok) setDeviceInfo(await deviceRes.json());
+          try {
+            const [protocolRes, hardwareRes, featuresRes, networkRes, deviceRes] = await Promise.all([
+              fetch(`/api/v1/devices/${serial}/settings/protocol`),
+              fetch(`/api/v1/devices/${serial}/settings/hardware`),
+              fetch(`/api/v1/devices/${serial}/settings/features`),
+              fetch(`/api/v1/devices/${serial}/settings/network`),
+              fetch(`/api/v1/devices/${serial}`),
+            ]);
+            if (protocolRes.ok) {
+              const data = await protocolRes.json();
+              setProtocolSettings(data);
+            }
+            if (hardwareRes.ok) {
+              const data = await hardwareRes.json();
+              setHardwareInfo(data);
+            }
+            if (featuresRes.ok) {
+              const data = await featuresRes.json();
+              setFeatureFlags(data);
+            }
+            if (networkRes.ok) {
+              const data = await networkRes.json();
+              setNetworkSettings(data);
+            }
+            if (deviceRes.ok) {
+              const data = await deviceRes.json();
+              setDeviceInfo(data);
+            }
+          } catch (parseErr) {
+            console.warn('[SettingsPage] Basic tab: API endpoints not yet implemented', parseErr);
+          }
           break;
 
         case 'communication':
           // Fetch network and communication settings
-          const [commNetworkRes, commRes] = await Promise.all([
-            fetch(`/api/v1/devices/${serial}/settings/network`),
-            fetch(`/api/v1/devices/${serial}/settings/communication`),
-          ]);
-          if (commNetworkRes.ok) setNetworkSettings(await commNetworkRes.json());
-          if (commRes.ok) setCommSettings(await commRes.json());
+          try {
+            const [commNetworkRes, commRes] = await Promise.all([
+              fetch(`/api/v1/devices/${serial}/settings/network`),
+              fetch(`/api/v1/devices/${serial}/settings/communication`),
+            ]);
+            if (commNetworkRes.ok) {
+              const data = await commNetworkRes.json();
+              setNetworkSettings(data);
+            }
+            if (commRes.ok) {
+              const data = await commRes.json();
+              setCommSettings(data);
+            }
+          } catch (parseErr) {
+            console.warn('[SettingsPage] Communication tab: API endpoints not yet implemented', parseErr);
+          }
           break;
 
         case 'time':
-          const timeRes = await fetch(`/api/v1/devices/${serial}/settings/time`);
-          if (timeRes.ok) setTimeSettings(await timeRes.json());
+          try {
+            const timeRes = await fetch(`/api/v1/devices/${serial}/settings/time`);
+            if (timeRes.ok) {
+              const data = await timeRes.json();
+              setTimeSettings(data);
+            }
+          } catch (parseErr) {
+            console.warn('[SettingsPage] Time tab: API endpoint not yet implemented', parseErr);
+          }
           break;
 
         case 'dyndns':
-          const dyndnsRes = await fetch(`/api/v1/devices/${serial}/settings/dyndns`);
-          if (dyndnsRes.ok) setDyndnsSettings(await dyndnsRes.json());
+          try {
+            const dyndnsRes = await fetch(`/api/v1/devices/${serial}/settings/dyndns`);
+            if (dyndnsRes.ok) {
+              const data = await dyndnsRes.json();
+              setDyndnsSettings(data);
+            }
+          } catch (parseErr) {
+            console.warn('[SettingsPage] Dyndns tab: API endpoint not yet implemented', parseErr);
+          }
           break;
 
         case 'email':

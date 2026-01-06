@@ -75,6 +75,7 @@ export const ProgramsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -129,14 +130,17 @@ export const ProgramsPage: React.FC = () => {
   useEffect(() => {
     setPrograms([]);
     setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     // Check immediately if database has program data
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
         // Check if database has program data
         if (programs.length > 0) {

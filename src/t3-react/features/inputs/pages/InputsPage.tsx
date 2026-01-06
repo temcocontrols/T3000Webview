@@ -89,6 +89,7 @@ export const InputsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -158,14 +159,17 @@ export const InputsPage: React.FC = () => {
   useEffect(() => {
     setInputs([]);
     setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     // Check immediately if database has input data
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       if (inputs.length > 0) {
         console.log('[InputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
@@ -174,7 +178,6 @@ export const InputsPage: React.FC = () => {
 
       console.log('[InputsPage] Database empty, auto-refreshing from device...');
       setLoading(true);
-      setMessage(`Syncing inputs from ${selectedDevice.nameShowOnTree}...`, 'info');
 
       try {
         // Use PanelDataRefreshService which handles Action 17 without needing panel_id from DB

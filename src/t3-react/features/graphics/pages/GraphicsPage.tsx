@@ -46,6 +46,7 @@ export const GraphicsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -94,13 +95,18 @@ export const GraphicsPage: React.FC = () => {
 
   useEffect(() => {
     fetchGraphics();
+    // Reset auto-refresh flag when device changes
+    setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [fetchGraphics]);
 
   // Auto-refresh once after page load
   useEffect(() => {
-    if (loading || !selectedDevice || autoRefreshed) return;
+    if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
         console.log('[GraphicsPage] Auto-loading graphics from database...');
         // TODO: Implement GraphicRefreshApi.refreshAllFromDevice() using Action 0/1
