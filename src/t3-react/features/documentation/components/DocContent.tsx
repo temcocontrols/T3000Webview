@@ -123,16 +123,16 @@ export const DocContent: React.FC<DocContentProps> = ({ path }) => {
             onClick={() => setMode('user')}
             disabled={!parsedContent.hasUserGuide}
           >
-            <span className={styles.docTabIcon}>👤</span>
-            <span>User Guide</span>
+            <span className={styles.docTabIcon}>☰</span>
+            <span>Overview</span>
           </button>
           <button
             className={`${styles.docTab} ${mode === 'technical' ? styles.docTabActive : ''}`}
             onClick={() => setMode('technical')}
             disabled={!parsedContent.hasTechnical}
           >
-            <span className={styles.docTabIcon}>⚡</span>
-            <span>Technical</span>
+            <span className={styles.docTabIcon}>&lt;/&gt;</span>
+            <span>Developer</span>
           </button>
         </div>
       )}

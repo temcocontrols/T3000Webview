@@ -7,8 +7,8 @@ The documentation system now supports **dual-mode content** - allowing you to se
 ## How It Works
 
 When you add special HTML comments to your markdown files, the documentation viewer will display tabs at the top:
-- 👤 **User Guide** - Beginner-friendly, step-by-step instructions
-- ⚡ **Technical** - Code examples, API references, advanced configuration
+- ☰ **Overview** - Beginner-friendly, step-by-step instructions
+- </> **Developer** - Code examples, API references, advanced configuration
 
 ## Usage
 
