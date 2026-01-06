@@ -26,6 +26,52 @@
   background: #a19f9d !important;
 }
 
+/* Documentation Mode Tabs */
+.docTabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #edebe9;
+  padding-bottom: 0;
+}
+
+.docTab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #605e5c;
+  transition: all 0.2s ease;
+}
+
+.docTab:hover:not(:disabled) {
+  color: #323130;
+  background: #f3f2f1;
+}
+
+.docTab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.docTabActive {
+  color: #0078d4 !important;
+  border-bottom-color: #0078d4 !important;
+  background: transparent !important;
+}
+
+.docTabIcon {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .loading {
   display: flex;
   justify-content: center;
