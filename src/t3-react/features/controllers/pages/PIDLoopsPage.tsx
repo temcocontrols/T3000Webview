@@ -78,6 +78,7 @@ const PIDLoopsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
+  const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false);
@@ -170,14 +171,17 @@ const PIDLoopsPage: React.FC = () => {
   useEffect(() => {
     setPidLoops([]);
     setAutoRefreshed(false);
+    hasAutoRefreshedRef.current = false;
   }, [selectedDevice?.serialNumber]);
 
   // Auto-refresh once after page load (Trigger #1) - ONLY if database is empty
   useEffect(() => {
-    if (isLoading || !selectedDevice || autoRefreshed) return;
+    if (isLoading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     // Check immediately if database has PID loop data
     const checkAndRefresh = async () => {
+      hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
+
       try {
         // Check if database has PID loop data
         if (pidLoops.length > 0) {
