@@ -16,7 +16,7 @@ Output = P×Error + I×∫Error×dt + D×(dError/dt)
 
 Where:
 - **P** (Proportional): Immediate response to current error
-- **I** (Integral): Eliminates steady-state error over time  
+- **I** (Integral): Eliminates steady-state error over time
 - **D** (Derivative): Dampens oscillations and overshoot
 
 ### PID Components
