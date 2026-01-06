@@ -42,7 +42,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path }) => {
   if (error) {
     const errorPath = path.startsWith('legacy/')
       ? `/docs/${path.replace('legacy/', '')}`
-      : `/docs/user-guide/${path}.md`;
+      : `/docs/${path}.md`;
 
     return (
       <div className={styles.error}>

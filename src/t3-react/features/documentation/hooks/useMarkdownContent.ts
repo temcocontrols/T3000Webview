@@ -23,15 +23,18 @@ export function useMarkdownContent(path: string): MarkdownResult {
       setError(null);
 
       try {
-        // Determine the path based on whether it's legacy or user-guide
+        // Determine the path based on whether it's legacy or t3000
         let mdPath: string;
 
         if (path.startsWith('legacy/')) {
           // Legacy docs are in /docs folder with their full path structure
           mdPath = `/docs/${path.replace('legacy/', '')}`;
+        } else if (path.startsWith('t3000/')) {
+          // T3000 docs are in /docs/t3000
+          mdPath = `/docs/${path}.md`;
         } else {
-          // User guide docs are in /docs/user-guide
-          mdPath = `/docs/user-guide/${path}.md`;
+          // Fallback for any other paths
+          mdPath = `/docs/${path}.md`;
         }
 
         // Fetch the markdown file
