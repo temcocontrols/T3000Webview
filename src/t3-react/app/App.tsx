@@ -331,7 +331,7 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="documentation"
+                  path="documentation/*"
                   element={
                     <React.Suspense fallback={
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
