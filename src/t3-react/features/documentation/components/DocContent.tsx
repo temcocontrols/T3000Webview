@@ -61,16 +61,26 @@ export const DocContent: React.FC<DocContentProps> = ({ path }) => {
     // Extract user guide section
     let userGuideContent = '';
     if (hasUserGuide) {
-      const userGuideMatch = content.match(/<!-- USER-GUIDE -->([\s\S]*?)<!-- \/USER-GUIDE -->/);
-      if (userGuideMatch) {
-        userGuideContent = userGuideMatch[1].trim();
+      if (hasTechnical) {
+        // Extract content between USER-GUIDE and TECHNICAL
+        const userGuideMatch = content.match(/<!-- USER-GUIDE -->([\s\S]*?)<!-- TECHNICAL -->/);
+        if (userGuideMatch) {
+          userGuideContent = userGuideMatch[1].trim();
+        }
+      } else {
+        // No technical section, take everything after USER-GUIDE
+        const userGuideMatch = content.match(/<!-- USER-GUIDE -->([\s\S]*)/);
+        if (userGuideMatch) {
+          userGuideContent = userGuideMatch[1].trim();
+        }
       }
     }
 
     // Extract technical section
     let technicalContent = '';
     if (hasTechnical) {
-      const technicalMatch = content.match(/<!-- TECHNICAL -->([\s\S]*?)<!-- \/TECHNICAL -->/);
+      // Take everything after TECHNICAL marker
+      const technicalMatch = content.match(/<!-- TECHNICAL -->([\s\S]*)/);
       if (technicalMatch) {
         technicalContent = technicalMatch[1].trim();
       }
@@ -126,14 +136,15 @@ export const DocContent: React.FC<DocContentProps> = ({ path }) => {
             <span className={styles.docTabIcon}>☰</span>
             <span>Overview</span>
           </button>
-          <button
-            className={`${styles.docTab} ${mode === 'technical' ? styles.docTabActive : ''}`}
-            onClick={() => setMode('technical')}
-            disabled={!parsedContent.hasTechnical}
-          >
-            <span className={styles.docTabIcon}>&lt;/&gt;</span>
-            <span>Developer</span>
-          </button>
+          {parsedContent.hasTechnical && (
+            <button
+              className={`${styles.docTab} ${mode === 'technical' ? styles.docTabActive : ''}`}
+              onClick={() => setMode('technical')}
+            >
+              <span className={styles.docTabIcon}>&lt;/&gt;</span>
+              <span>Developer</span>
+            </button>
+          )}
         </div>
       )}
       <div
