@@ -1,5 +1,7 @@
 # Device Troubleshooting
 
+<!-- USER-GUIDE -->
+
 Common issues and solutions for T3000 device connectivity and operation.
 
 ## Connection Issues
@@ -348,4 +350,448 @@ If issues persist:
 
 - [Best Practices](../guides/best-practices) - Preventive measures
 - [Performance Tuning](../guides/performance-tuning) - Optimization tips
+- [FAQ](../guides/faq) - Frequently asked questions
+
+<!-- TECHNICAL -->
+
+# Device Troubleshooting
+
+## Diagnostic Tools
+
+### Network Diagnostics
+
+```bash
+# Test BACnet connectivity
+nc -u -v 192.168.1.100 47808
+
+# Send BACnet WhoIs packet
+echo -ne '\x81\x0a\x00\x11\x01\x20\xff\xff\x00\xff\x10\x08' | nc -u 192.168.1.100 47808
+
+# Test Modbus TCP
+nc -v 192.168.1.100 502
+
+# Capture BACnet traffic
+tcpdump -i eth0 -n udp port 47808 -w bacnet.pcap
+```
+
+### Connection Testing Script
+
+```typescript
+async function diagnost icsCheck(deviceIp: string): Promise<DiagnosticReport> {
+  const report: DiagnosticReport = {
+    timestamp: new Date(),
+    tests: []
+  };
+
+  // 1. Ping test
+  const pingResult = await testPing(deviceIp);
+  report.tests.push({
+    name: 'ICMP Ping',
+    passed: pingResult.reachable,
+    latency: pingResult.avgLatency,
+    details: `${pingResult.packetLoss}% packet loss`
+  });
+
+  // 2. BACnet port test
+  const bacnetResult = await testPort(deviceIp, 47808, 'udp');
+  report.tests.push({
+    name: 'BACnet Port (47808/UDP)',
+    passed: bacnetResult.open,
+    details: bacnetResult.message
+  });
+
+  // 3. Modbus port test
+  const modbusResult = await testPort(deviceIp, 502, 'tcp');
+  report.tests.push({
+    name: 'Modbus Port (502/TCP)',
+    passed: modbusResult.open,
+    details: modbusResult.message
+  });
+
+  // 4. BACnet WhoIs test
+  const whoIsResult = await sendBACnetWhoIs(deviceIp);
+  report.tests.push({
+    name: 'BACnet WhoIs Response',
+    passed: whoIsResult.responded,
+    details: `Device Instance: ${whoIsResult.deviceInstance || 'N/A'}`
+  });
+
+  return report;
+}
+```
+
+### Log Analysis
+
+```typescript
+class LogAnalyzer {
+  analyzeConnectionLogs(logs: LogEntry[]): ConnectionAnalysis {
+    const errors = logs.filter(l => l.level === 'error');
+    const warnings = logs.filter(l => l.level === 'warn');
+
+    // Detect patterns
+    const timeoutErrors = errors.filter(e =>
+      e.message.includes('timeout') || e.message.includes('ETIMEDOUT')
+    );
+
+    const authErrors = errors.filter(e =>
+      e.message.includes('auth') || e.message.includes('permission')
+    );
+
+    const networkErrors = errors.filter(e =>
+      e.message.includes('ECONNREFUSED') || e.message.includes('ENETUNREACH')
+    );
+
+    return {
+      totalErrors: errors.length,
+      totalWarnings: warnings.length,
+      commonIssues: {
+        timeouts: timeoutErrors.length,
+        authentication: authErrors.length,
+        network: networkErrors.length
+      },
+      recommendations: this.generateRecommendations({
+        timeoutErrors,
+        authErrors,
+        networkErrors
+      })
+    };
+  }
+
+  private generateRecommendations(issues: any): string[] {
+    const recs: string[] = [];
+
+    if (issues.timeoutErrors.length > 5) {
+      recs.push('Increase timeout settings or reduce polling frequency');
+    }
+
+    if (issues.authErrors.length > 0) {
+      recs.push('Verify device credentials and user permissions');
+    }
+
+    if (issues.networkErrors.length > 3) {
+      recs.push('Check network connectivity and firewall settings');
+    }
+
+    return recs;
+  }
+}
+```
+
+## Performance Debugging
+
+### Database Lock Investigation
+
+```typescript
+// Enable WAL mode to reduce locking
+import Database from 'better-sqlite3';
+
+const db = new Database('t3000.db');
+
+// Check current journal mode
+const journalMode = db.pragma('journal_mode', { simple: true });
+console.log('Journal mode:', journalMode);
+
+// Enable WAL for concurrent access
+db.pragma('journal_mode = WAL');
+
+// Monitor lock waits
+db.function('log_lock_wait', (duration: number) => {
+  console.warn(`Database lock waited ${duration}ms`);
+});
+
+// Set busy timeout
+db.pragma('busy_timeout = 5000');
+```
+
+### Query Performance Analysis
+
+```sql
+-- Enable query planner
+EXPLAIN QUERY PLAN
+SELECT * FROM trend_data
+WHERE device_id = 389001
+  AND point_id = 'IN1'
+  AND timestamp BETWEEN 1704067200 AND 1704153600
+ORDER BY timestamp DESC;
+
+-- Analyze table statistics
+ANALYZE trend_data;
+
+-- Check index usage
+SELECT * FROM sqlite_stat1 WHERE tbl = 'trend_data';
+
+-- Find missing indexes
+SELECT * FROM (
+  SELECT 'Missing index on trend_data(device_id)' as suggestion
+  WHERE NOT EXISTS (
+    SELECT 1 FROM sqlite_master
+    WHERE type = 'index'
+    AND tbl_name = 'trend_data'
+    AND sql LIKE '%device_id%'
+  )
+);
+```
+
+### Memory Profiling
+
+```typescript
+class MemoryProfiler {
+  private baseline: number = 0;
+
+  start() {
+    if (global.gc) global.gc();
+    this.baseline = process.memoryUsage().heapUsed;
+  }
+
+  checkpoint(label: string) {
+    const current = process.memoryUsage();
+    const delta = current.heapUsed - this.baseline;
+
+    console.log(`[${label}] Memory delta: ${(delta / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  Heap Used: ${(current.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  External: ${(current.external / 1024 / 1024).toFixed(2)} MB`);
+  }
+
+  detectLeaks(iterations: number = 100) {
+    const samples: number[] = [];
+
+    for (let i = 0; i < iterations; i++) {
+      if (global.gc) global.gc();
+      samples.push(process.memoryUsage().heapUsed);
+    }
+
+    // Check for upward trend
+    const slope = this.calculateSlope(samples);
+    if (slope > 1024 * 100) { // 100 KB per iteration
+      console.warn('Potential memory leak detected!');
+      console.warn(`Growth rate: ${(slope / 1024).toFixed(2)} KB per iteration`);
+    }
+  }
+
+  private calculateSlope(data: number[]): number {
+    const n = data.length;
+    const sumX = (n * (n - 1)) / 2;
+    const sumY = data.reduce((a, b) => a + b, 0);
+    const sumXY = data.reduce((sum, y, x) => sum + x * y, 0);
+    const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6;
+
+    return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  }
+}
+```
+
+## Automated Error Recovery
+
+### Retry Mechanism with Exponential Backoff
+
+```typescript
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    baseDelay?: number;
+    maxDelay?: number;
+    onRetry?: (attempt: number, error: Error) => void;
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    baseDelay = 1000,
+    maxDelay = 30000,
+    onRetry = () => {}
+  } = options;
+
+  let lastError: Error;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+
+      if (attempt < maxRetries - 1) {
+        const delay = Math.min(
+          baseDelay * Math.pow(2, attempt),
+          maxDelay
+        );
+
+        onRetry(attempt + 1, error as Error);
+        await sleep(delay);
+      }
+    }
+  }
+
+  throw new Error(`Failed after ${maxRetries} attempts: ${lastError.message}`);
+}
+```
+
+### Circuit Breaker Pattern
+
+```typescript
+class CircuitBreaker {
+  private failures = 0;
+  private lastFailureTime = 0;
+  private state: 'closed' | 'open' | 'half-open' = 'closed';
+
+  constructor(
+    private threshold: number = 5,
+    private timeout: number = 60000,
+    private resetTimeout: number = 30000
+  ) {}
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      if (Date.now() - this.lastFailureTime > this.resetTimeout) {
+        this.state = 'half-open';
+      } else {
+        throw new Error('Circuit breaker is OPEN');
+      }
+    }
+
+    try {
+      const result = await fn();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  private onSuccess() {
+    this.failures = 0;
+    this.state = 'closed';
+  }
+
+  private onFailure() {
+    this.failures++;
+    this.lastFailureTime = Date.now();
+
+    if (this.failures >= this.threshold) {
+      this.state = 'open';
+      console.warn('Circuit breaker opened due to failures');
+    }
+  }
+}
+```
+
+### Self-Healing Connection Manager
+
+```typescript
+class SelfHealingConnectionManager {
+  private connections = new Map<number, DeviceConnection>();
+  private healthChecks = new Map<number, NodeJS.Timeout>();
+
+  async ensureConnection(deviceId: number): Promise<DeviceConnection> {
+    let conn = this.connections.get(deviceId);
+
+    if (!conn || !conn.isHealthy()) {
+      // Reconnect
+      try {
+        conn = await this.reconnect(deviceId);
+        this.connections.set(deviceId, conn);
+        this.startHealthCheck(deviceId);
+      } catch (error) {
+        console.error(`Failed to connect to device ${deviceId}:`, error);
+        throw error;
+      }
+    }
+
+    return conn;
+  }
+
+  private async reconnect(deviceId: number): Promise<DeviceConnection> {
+    const device = await this.getDeviceConfig(deviceId);
+
+    return await withRetry(
+      () => this.createConnection(device),
+      {
+        maxRetries: 3,
+        baseDelay: 2000,
+        onRetry: (attempt, error) => {
+          console.log(`Reconnecting to device ${deviceId}, attempt ${attempt}`);
+        }
+      }
+    );
+  }
+
+  private startHealthCheck(deviceId: number) {
+    const interval = setInterval(async () => {
+      const conn = this.connections.get(deviceId);
+      if (!conn) return;
+
+      try {
+        await conn.ping();
+      } catch (error) {
+        console.warn(`Health check failed for device ${deviceId}`);
+        await this.reconnect(deviceId);
+      }
+    }, 30000); // Every 30 seconds
+
+    this.healthChecks.set(deviceId, interval);
+  }
+}
+```
+
+## Debugging Tools
+
+### Packet Capture Analysis
+
+```bash
+# Capture BACnet traffic
+tcpdump -i any -n udp port 47808 -w bacnet.pcap
+
+# Analyze with tshark
+tshark -r bacnet.pcap -Y bacnet -T fields \
+  -e frame.time -e ip.src -e ip.dst -e bacnet.type
+
+# Decode BACnet packet
+tshark -r bacnet.pcap -Y bacnet -V | less
+```
+
+### Debug Logging Configuration
+
+```typescript
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error'
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log'
+    }),
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    })
+  ]
+});
+
+// Enable debug logging
+logger.level = 'debug';
+
+// Log with context
+logger.debug('Reading point', {
+  deviceId: 389001,
+  pointId: 'IN1',
+  protocol: 'bacnet'
+});
+```
+
+## Next Steps
+
+- [Performance Tuning](../guides/performance-tuning)
+- [REST API Debugging](../api-reference/rest-api)
+- [System Monitoring](./device-monitoring)
 - [FAQ](../guides/faq) - Frequently asked questions

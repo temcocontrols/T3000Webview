@@ -1,5 +1,7 @@
 # Programs
 
+<!-- USER-GUIDE -->
+
 Control programs for automation, sequences, and custom logic.
 
 ## Overview
@@ -148,3 +150,217 @@ Common errors:
 - [PID Loops](./pid-loops) - PID control
 - [Schedules](../features/schedules) - Time-based control
 - [Variables](./variables) - Program variables
+
+<!-- TECHNICAL -->
+
+# Programs
+
+## Program Execution Engine
+
+### Script Interpreter
+
+```typescript
+class ProgramInterpreter {
+  private variables = new Map<string, number>();
+  private labels = new Map<string, number>();
+  private callStack: number[] = [];
+
+  async execute(code: string): Promise<void> {
+    const lines = code.split('\n');
+    let currentLine = 0;
+
+    // Parse labels
+    this.parseLabels(lines);
+
+    while (currentLine < lines.length) {
+      const line = lines[currentLine].trim();
+
+      if (line.startsWith('REM') || line === '') {
+        currentLine++;
+        continue;
+      }
+
+      const result = await this.executeLine(line);
+
+      if (result.type === 'GOTO') {
+        currentLine = result.target;
+      } else if (result.type === 'GOSUB') {
+        this.callStack.push(currentLine + 1);
+        currentLine = result.target;
+      } else if (result.type === 'RETURN') {
+        currentLine = this.callStack.pop() || lines.length;
+      } else {
+        currentLine++;
+      }
+    }
+  }
+
+  private async executeLine(line: string): Promise<ExecutionResult> {
+    // Parse and execute line
+    if (line.startsWith('IF')) {
+      return this.executeIf(line);
+    } else if (line.startsWith('GOTO')) {
+      return this.executeGoto(line);
+    } else if (line.includes('=')) {
+      return this.executeAssignment(line);
+    }
+
+    return { type: 'CONTINUE' };
+  }
+}
+```
+
+### Control Flow
+
+```typescript
+interface ExecutionResult {
+  type: 'CONTINUE' | 'GOTO' | 'GOSUB' | 'RETURN';
+  target?: number;
+}
+
+class ControlFlow {
+  executeIf(condition: string, thenClause: string): ExecutionResult {
+    const conditionMet = this.evaluateCondition(condition);
+
+    if (conditionMet) {
+      if (thenClause.startsWith('GOTO')) {
+        const target = parseInt(thenClause.split(' ')[1]);
+        return { type: 'GOTO', target };
+      } else {
+        this.executeLine(thenClause);
+      }
+    }
+
+    return { type: 'CONTINUE' };
+  }
+
+  private evaluateCondition(condition: string): boolean {
+    // Parse condition like "TEMP > 72"
+    const match = condition.match(/(.+?)\s*([><=!]+)\s*(.+)/);
+    if (!match) return false;
+
+    const [, left, op, right] = match;
+    const leftVal = this.getValue(left.trim());
+    const rightVal = this.getValue(right.trim());
+
+    switch (op) {
+      case '>': return leftVal > rightVal;
+      case '<': return leftVal < rightVal;
+      case '>=': return leftVal >= rightVal;
+      case '<=': return leftVal <= rightVal;
+      case '=': return leftVal === rightVal;
+      case '<>': return leftVal !== rightVal;
+      default: return false;
+    }
+  }
+}
+```
+
+## Program API
+
+### Load and Execute Programs
+
+```typescript
+// Get program list
+const programs = await fetch(
+  `http://localhost:9103/api/devices/389001/programs`
+).then(r => r.json());
+
+// Get program code
+const program = await fetch(
+  `http://localhost:9103/api/devices/389001/programs/1`
+).then(r => r.json());
+
+// Update program
+await fetch(`http://localhost:9103/api/devices/389001/programs/1`, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    code: `REM Updated program\nIF TEMP > 75 THEN COOLING = ON`,
+    enabled: true
+  })
+});
+```
+
+### Program Validation
+
+```typescript
+class ProgramValidator {
+  validate(code: string): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const lines = code.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // Check syntax
+      if (line.startsWith('IF') && !line.includes('THEN')) {
+        errors.push(`Line ${i + 1}: IF without THEN`);
+      }
+
+      // Check for undefined variables
+      const vars = this.extractVariables(line);
+      for (const v of vars) {
+        if (!this.isDefined(v)) {
+          warnings.push(`Line ${i + 1}: Undefined variable ${v}`);
+        }
+      }
+
+      // Check goto targets
+      if (line.startsWith('GOTO')) {
+        const target = parseInt(line.split(' ')[1]);
+        if (!this.isValidLabel(target, lines)) {
+          errors.push(`Line ${i + 1}: Invalid GOTO target ${target}`);
+        }
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+}
+```
+
+## Scheduler Integration
+
+### Time-Based Execution
+
+```typescript
+class ProgramScheduler {
+  private programs = new Map<number, NodeJS.Timeout>();
+
+  schedule(programId: number, interval: number) {
+    // Cancel existing schedule
+    if (this.programs.has(programId)) {
+      clearInterval(this.programs.get(programId)!);
+    }
+
+    // Schedule program execution
+    const timer = setInterval(async () => {
+      try {
+        await this.executeProgram(programId);
+      } catch (error) {
+        console.error(`Program ${programId} error:`, error);
+      }
+    }, interval);
+
+    this.programs.set(programId, timer);
+  }
+
+  async executeProgram(programId: number) {
+    const program = await this.loadProgram(programId);
+    const interpreter = new ProgramInterpreter();
+    await interpreter.execute(program.code);
+  }
+}
+```
+
+## Next Steps
+
+- [REST API Reference](../api-reference/rest-api)
+- [WebSocket API](../api-reference/websocket-api)
+- [Variables](./variables)

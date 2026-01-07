@@ -1,5 +1,7 @@
 # Device Monitoring
 
+<!-- USER-GUIDE -->
+
 Monitor real-time device status, data points, and system health.
 
 ## Overview
@@ -204,4 +206,441 @@ Export monitored data:
 
 - [Trend Logs](../features/trendlogs) - Detailed trend analysis
 - [Alarms](../features/alarms) - Alarm configuration
+- [Troubleshooting](./device-troubleshooting) - Resolve monitoring issues
+
+<!-- TECHNICAL -->
+
+# Device Monitoring
+
+## Real-Time Data Streaming
+
+### WebSocket Subscriptions
+
+```typescript
+const ws = new WebSocket('ws://localhost:9103/ws');
+
+// Subscribe to specific points
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: 'subscribe',
+    deviceId: 389001,
+    points: ['IN1', 'IN2', 'OUT1'],
+    interval: 5000  // Update interval in ms
+  }));
+};
+
+// Handle real-time updates
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  switch (data.type) {
+    case 'point-update':
+      updatePointValue(data.point, data.value, data.timestamp);
+      break;
+    case 'alarm':
+      handleAlarm(data.alarm);
+      break;
+    case 'device-status':
+      updateDeviceStatus(data.deviceId, data.status);
+      break;
+  }
+};
+```
+
+### REST API Polling
+
+```typescript
+class DataPoller {
+  private intervals = new Map<string, NodeJS.Timeout>();
+
+  async pollPoints(deviceId: number, points: string[], interval: number) {
+    const pollerId = `${deviceId}:${points.join(',')}`;
+
+    // Clear existing poller
+    if (this.intervals.has(pollerId)) {
+      clearInterval(this.intervals.get(pollerId)!);
+    }
+
+    // Start new poller
+    const timer = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:9103/api/devices/${deviceId}/points?ids=${points.join(',')}`
+        );
+        const data = await response.json();
+
+        data.points.forEach(point => {
+          this.emit('update', point);
+        });
+      } catch (error) {
+        this.emit('error', error);
+      }
+    }, interval);
+
+    this.intervals.set(pollerId, timer);
+  }
+
+  stopPolling(deviceId: number, points: string[]) {
+    const pollerId = `${deviceId}:${points.join(',')}`;
+    const timer = this.intervals.get(pollerId);
+    if (timer) {
+      clearInterval(timer);
+      this.intervals.delete(pollerId);
+    }
+  }
+}
+```
+
+## Data Aggregation and Caching
+
+### In-Memory Cache
+
+```typescript
+interface CachedPoint {
+  value: number;
+  timestamp: number;
+  quality: string;
+  ttl: number;
+}
+
+class PointCache {
+  private cache = new Map<string, CachedPoint>();
+  private readonly defaultTTL = 10000; // 10 seconds
+
+  set(pointId: string, value: number, quality: string = 'good') {
+    this.cache.set(pointId, {
+      value,
+      timestamp: Date.now(),
+      quality,
+      ttl: this.defaultTTL
+    });
+  }
+
+  get(pointId: string): CachedPoint | null {
+    const cached = this.cache.get(pointId);
+    if (!cached) return null;
+
+    // Check if expired
+    if (Date.now() - cached.timestamp > cached.ttl) {
+      this.cache.delete(pointId);
+      return null;
+    }
+
+    return cached;
+  }
+
+  invalidate(pointId: string) {
+    this.cache.delete(pointId);
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+```
+
+### Batch Reading Optimization
+
+```typescript
+async function batchReadPoints(
+  deviceId: number,
+  points: string[],
+  maxBatchSize: number = 50
+): Promise<Map<string, number>> {
+  const results = new Map<string, number>();
+
+  // Split into batches
+  for (let i = 0; i < points.length; i += maxBatchSize) {
+    const batch = points.slice(i, i + maxBatchSize);
+
+    const response = await fetch(
+      `http://localhost:9103/api/devices/${deviceId}/points/batch`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: batch })
+      }
+    );
+
+    const data = await response.json();
+    data.values.forEach((value, index) => {
+      results.set(batch[index], value);
+    });
+  }
+
+  return results;
+}
+```
+
+## Trend Data Storage
+
+### SQLite Trend Table
+
+```sql
+CREATE TABLE trend_data (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_id INTEGER NOT NULL,
+  point_id TEXT NOT NULL,
+  value REAL NOT NULL,
+  quality TEXT DEFAULT 'good',
+  timestamp INTEGER NOT NULL,
+  FOREIGN KEY (device_id) REFERENCES devices(id)
+);
+
+CREATE INDEX idx_trends_device_point
+  ON trend_data(device_id, point_id);
+CREATE INDEX idx_trends_timestamp
+  ON trend_data(timestamp DESC);
+
+-- Partitioning by time for better performance
+CREATE INDEX idx_trends_time_device
+  ON trend_data(timestamp DESC, device_id, point_id);
+```
+
+### Trend Data Insertion
+
+```typescript
+import Database from 'better-sqlite3';
+
+class TrendLogger {
+  private db: Database.Database;
+  private insertStmt: Database.Statement;
+
+  constructor(dbPath: string) {
+    this.db = new Database(dbPath);
+    this.insertStmt = this.db.prepare(`
+      INSERT INTO trend_data (device_id, point_id, value, quality, timestamp)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+  }
+
+  log(deviceId: number, pointId: string, value: number, quality: string = 'good') {
+    this.insertStmt.run(
+      deviceId,
+      pointId,
+      value,
+      quality,
+      Date.now()
+    );
+  }
+
+  logBatch(entries: Array<{deviceId: number, pointId: string, value: number}>) {
+    const transaction = this.db.transaction((entries) => {
+      for (const entry of entries) {
+        this.insertStmt.run(
+          entry.deviceId,
+          entry.pointId,
+          entry.value,
+          'good',
+          Date.now()
+        );
+      }
+    });
+
+    transaction(entries);
+  }
+}
+```
+
+### Trend Data Query and Aggregation
+
+```typescript
+interface TrendQuery {
+  deviceId: number;
+  pointId: string;
+  startTime: number;
+  endTime: number;
+  interval?: number;  // Aggregation interval in seconds
+}
+
+async function queryTrendData(query: TrendQuery) {
+  const db = new Database('t3000.db');
+
+  let sql: string;
+
+  if (query.interval) {
+    // Aggregated query
+    sql = `
+      SELECT
+        (timestamp / ${query.interval * 1000}) * ${query.interval * 1000} as bucket,
+        AVG(value) as avg_value,
+        MIN(value) as min_value,
+        MAX(value) as max_value,
+        COUNT(*) as sample_count
+      FROM trend_data
+      WHERE device_id = ?
+        AND point_id = ?
+        AND timestamp BETWEEN ? AND ?
+      GROUP BY bucket
+      ORDER BY bucket
+    `;
+  } else {
+    // Raw data query
+    sql = `
+      SELECT timestamp, value, quality
+      FROM trend_data
+      WHERE device_id = ?
+        AND point_id = ?
+        AND timestamp BETWEEN ? AND ?
+      ORDER BY timestamp
+    `;
+  }
+
+  return db.prepare(sql).all(
+    query.deviceId,
+    query.pointId,
+    query.startTime,
+    query.endTime
+  );
+}
+```
+
+## Performance Monitoring
+
+### Metrics Collection
+
+```typescript
+class PerformanceMonitor {
+  private metrics = {
+    apiLatency: [] as number[],
+    databaseQueries: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+    activeConnections: 0
+  };
+
+  recordApiLatency(latency: number) {
+    this.metrics.apiLatency.push(latency);
+    if (this.metrics.apiLatency.length > 1000) {
+      this.metrics.apiLatency.shift();
+    }
+  }
+
+  getStats() {
+    const latencies = this.metrics.apiLatency;
+    return {
+      avgLatency: latencies.reduce((a, b) => a + b, 0) / latencies.length,
+      p95Latency: this.percentile(latencies, 0.95),
+      p99Latency: this.percentile(latencies, 0.99),
+      databaseQps: this.metrics.databaseQueries,
+      cacheHitRate: this.metrics.cacheHits /
+        (this.metrics.cacheHits + this.metrics.cacheMisses),
+      activeConnections: this.metrics.activeConnections
+    };
+  }
+
+  private percentile(arr: number[], p: number): number {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const index = Math.ceil(sorted.length * p) - 1;
+    return sorted[index];
+  }
+}
+```
+
+### Automated Performance Optimization
+
+```typescript
+class AdaptivePolling {
+  private currentInterval = 5000;
+  private readonly minInterval = 1000;
+  private readonly maxInterval = 30000;
+
+  async adjustPollingRate(stats: PerformanceStats) {
+    if (stats.avgLatency > 1000) {
+      // High latency - reduce polling frequency
+      this.currentInterval = Math.min(
+        this.currentInterval * 1.5,
+        this.maxInterval
+      );
+    } else if (stats.avgLatency < 200 && stats.cacheHitRate > 0.8) {
+      // Good performance - can increase polling
+      this.currentInterval = Math.max(
+        this.currentInterval * 0.8,
+        this.minInterval
+      );
+    }
+
+    return this.currentInterval;
+  }
+}
+```
+
+## Alarm Processing
+
+### Alarm Detection Engine
+
+```typescript
+interface AlarmRule {
+  pointId: string;
+  highLimit?: number;
+  lowLimit?: number;
+  deadband?: number;
+  delay?: number;
+  priority: 'high' | 'medium' | 'low';
+}
+
+class AlarmDetector {
+  private rules = new Map<string, AlarmRule>();
+  private states = new Map<string, {inAlarm: boolean, since: number}>();
+
+  checkValue(pointId: string, value: number) {
+    const rule = this.rules.get(pointId);
+    if (!rule) return;
+
+    let shouldAlarm = false;
+    let message = '';
+
+    if (rule.highLimit !== undefined && value > rule.highLimit) {
+      shouldAlarm = true;
+      message = `High limit exceeded: ${value} > ${rule.highLimit}`;
+    } else if (rule.lowLimit !== undefined && value < rule.lowLimit) {
+      shouldAlarm = true;
+      message = `Low limit exceeded: ${value} < ${rule.lowLimit}`;
+    }
+
+    const state = this.states.get(pointId) || {inAlarm: false, since: 0};
+
+    if (shouldAlarm && !state.inAlarm) {
+      // New alarm
+      const now = Date.now();
+      if (rule.delay) {
+        // Check if alarm persisted long enough
+        if (!state.since) {
+          state.since = now;
+        } else if (now - state.since >= rule.delay * 1000) {
+          this.triggerAlarm(pointId, message, rule.priority);
+          state.inAlarm = true;
+        }
+      } else {
+        this.triggerAlarm(pointId, message, rule.priority);
+        state.inAlarm = true;
+      }
+    } else if (!shouldAlarm && state.inAlarm) {
+      // Alarm cleared
+      this.clearAlarm(pointId);
+      state.inAlarm = false;
+      state.since = 0;
+    }
+
+    this.states.set(pointId, state);
+  }
+
+  private triggerAlarm(pointId: string, message: string, priority: string) {
+    // Store alarm in database
+    // Send notifications
+    // Emit event
+  }
+
+  private clearAlarm(pointId: string) {
+    // Update alarm status
+    // Send notification
+  }
+}
+```
+
+## Next Steps
+
+- [REST API Reference](../api-reference/rest-api)
+- [WebSocket API](../api-reference/websocket-api)
+- [Performance Tuning](../guides/performance-tuning)
 - [Troubleshooting](./device-troubleshooting) - Resolve monitoring issues

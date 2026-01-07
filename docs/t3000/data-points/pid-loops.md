@@ -1,5 +1,7 @@
 # PID Loops
 
+<!-- USER-GUIDE -->
+
 Proportional-Integral-Derivative control loops for precise automatic control.
 
 ## Overview
@@ -319,4 +321,229 @@ Manage all PID loops:
 - [Programs](./programs) - Control programs
 - [Outputs](./outputs) - Output control
 - [Schedules](../features/schedules) - Setpoint scheduling
+
+<!-- TECHNICAL -->
+
+# PID Loops
+
+## PID Controller Implementation
+
+### Full PID Class
+
+```typescript
+interface PIDConfig {
+  kp: number;
+  ki: number;
+  kd: number;
+  setpoint: number;
+  outputMin: number;
+  outputMax: number;
+  deadband?: number;
+  sampleTime?: number;  // milliseconds
+}
+
+class PIDController {
+  private integral = 0;
+  private lastError = 0;
+  private lastTime = Date.now();
+  private lastOutput = 0;
+
+  constructor(private config: PIDConfig) {}
+
+  update(processValue: number): number {
+    const now = Date.now();
+    const dt = (now - this.lastTime) / 1000; // seconds
+
+    // Skip if sample time not elapsed
+    if (this.config.sampleTime &&
+        (now - this.lastTime) < this.config.sampleTime) {
+      return this.lastOutput;
+    }
+
+    const error = this.config.setpoint - processValue;
+
+    // Deadband
+    if (this.config.deadband && Math.abs(error) < this.config.deadband) {
+      return this.lastOutput;
+    }
+
+    // P term
+    const pTerm = this.config.kp * error;
+
+    // I term with anti-windup
+    this.integral += error * dt;
+    const iTerm = this.config.ki * this.integral;
+
+    // D term on measurement (avoids derivative kick)
+    const dInput = (processValue - (this.config.setpoint - this.lastError)) / dt;
+    const dTerm = -this.config.kd * dInput;
+
+    // Calculate output
+    let output = pTerm + iTerm + dTerm;
+
+    // Clamp output and handle anti-windup
+    if (output > this.config.outputMax) {
+      output = this.config.outputMax;
+      this.integral -= error * dt;  // Anti-windup
+    } else if (output < this.config.outputMin) {
+      output = this.config.outputMin;
+      this.integral -= error * dt;  // Anti-windup
+    }
+
+    // Update state
+    this.lastError = error;
+    this.lastTime = now;
+    this.lastOutput = output;
+
+    return output;
+  }
+
+  setSetpoint(setpoint: number) {
+    this.config.setpoint = setpoint;
+  }
+
+  reset() {
+    this.integral = 0;
+    this.lastError = 0;
+    this.lastOutput = 0;
+  }
+
+  getState() {
+    return {
+      integral: this.integral,
+      lastError: this.lastError,
+      output: this.lastOutput
+    };
+  }
+}
+```
+
+### Auto-Tuning Algorithm
+
+```typescript
+class PIDAutoTuner {
+  async tune(input: string, output: string): Promise<PIDConfig> {
+    console.log('Starting auto-tune...');
+
+    // 1. Relay feedback test
+    const relayAmplitude = 10;  // % output
+    const measurements: number[] = [];
+    const timestamps: number[] = [];
+
+    // Run relay test for ~10 cycles
+    for (let i = 0; i < 100; i++) {
+      const pv = await this.readInput(input);
+      measurements.push(pv);
+      timestamps.push(Date.now());
+
+      // Toggle output based on error
+      const error = 72 - pv;  // Assume 72°F setpoint
+      const outValue = error > 0 ? 50 + relayAmplitude : 50 - relayAmplitude;
+      await this.writeOutput(output, outValue);
+
+      await this.sleep(1000);  // 1 second samples
+    }
+
+    // 2. Analyze oscillations
+    const analysis = this.analyzeOscillations(measurements, timestamps);
+
+    // 3. Calculate PID parameters using Ziegler-Nichols
+    const ku = (4 * relayAmplitude) / (Math.PI * analysis.amplitude);
+    const tu = analysis.period / 1000;  // Convert to seconds
+
+    return {
+      kp: 0.6 * ku,
+      ki: 1.2 * ku / tu,
+      kd: 0.075 * ku * tu,
+      setpoint: 72,
+      outputMin: 0,
+      outputMax: 100
+    };
+  }
+
+  private analyzeOscillations(data: number[], times: number[]) {
+    // Find peaks and calculate period
+    const peaks: number[] = [];
+    const peakTimes: number[] = [];
+
+    for (let i = 1; i < data.length - 1; i++) {
+      if (data[i] > data[i-1] && data[i] > data[i+1]) {
+        peaks.push(data[i]);
+        peakTimes.push(times[i]);
+      }
+    }
+
+    const avgPeriod = peakTimes.length > 1 ?
+      (peakTimes[peakTimes.length - 1] - peakTimes[0]) / (peakTimes.length - 1) :
+      0;
+
+    const avgAmplitude = peaks.reduce((a, b) => a + b, 0) / peaks.length;
+
+    return {
+      period: avgPeriod,
+      amplitude: avgAmplitude
+    };
+  }
+}
+```
+
+## Cascade Control
+
+```typescript
+class CascadeController {
+  private primary: PIDController;
+  private secondary: PIDController;
+
+  constructor(
+    primaryConfig: PIDConfig,
+    secondaryConfig: PIDConfig
+  ) {
+    this.primary = new PIDController(primaryConfig);
+    this.secondary = new PIDController(secondaryConfig);
+  }
+
+  update(primaryPV: number, secondaryPV: number): number {
+    // Primary loop output becomes secondary loop setpoint
+    const secondarySetpoint = this.primary.update(primaryPV);
+    this.secondary.setSetpoint(secondarySetpoint);
+
+    // Secondary loop controls the actual output
+    return this.secondary.update(secondaryPV);
+  }
+}
+
+// Example: Zone temp controls supply temp setpoint,
+// supply temp controls valve position
+const cascade = new CascadeController(
+  { kp: 2.0, ki: 0.5, kd: 0.1, setpoint: 72, outputMin: 50, outputMax: 65 },
+  { kp: 3.0, ki: 1.0, kd: 0.2, setpoint: 55, outputMin: 0, outputMax: 100 }
+);
+```
+
+## PID Monitoring
+
+```typescript
+class PIDMonitor {
+  logState(controller: PIDController, pv: number) {
+    const state = controller.getState();
+
+    console.log({
+      timestamp: new Date().toISOString(),
+      processValue: pv,
+      setpoint: controller.config.setpoint,
+      error: state.lastError,
+      integral: state.integral,
+      output: state.output,
+      pTerm: controller.config.kp * state.lastError,
+      iTerm: controller.config.ki * state.integral
+    });
+  }
+}
+```
+
+## Next Steps
+
+- [Outputs](./outputs)
+- [REST API](../api-reference/rest-api)
+- [Performance Tuning](../guides/performance-tuning)
 - [Performance Tuning](../guides/performance-tuning) - Optimization
