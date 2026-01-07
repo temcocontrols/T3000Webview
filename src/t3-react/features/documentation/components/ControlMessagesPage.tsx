@@ -11,6 +11,7 @@ type MessageCategory = 'all' | 'data-retrieval' | 'updates' | 'graphics' | 'disc
 interface Message {
   name: string;
   action: string;
+  number: number;
   description: string;
   usage: string;
   path: string;
@@ -20,78 +21,168 @@ const messages: Message[] = [
   {
     name: 'GET_PANEL_DATA',
     action: 'GET_PANEL_DATA',
+    number: 0,
     description: 'Load all cached data for a panel',
     usage: 'Initial panel view load',
     path: 't3000/building-platform/control-messages/message-get-panel-data',
   },
   {
-    name: 'GET_WEBVIEW_LIST',
-    action: 'GET_WEBVIEW_LIST',
-    description: 'Read specific entry type with range',
-    usage: 'Loading inputs, outputs, programs, etc.',
-    path: 't3000/building-platform/control-messages/message-17',
-  },
-  {
-    name: 'GET_ENTRIES',
-    action: 'GET_ENTRIES',
-    description: 'Get multiple specific entries',
-    usage: 'Batch data retrieval',
-    path: 't3000/building-platform/control-messages/message-get-entries',
-  },
-  {
-    name: 'UPDATE_WEBVIEW_LIST',
-    action: 'UPDATE_WEBVIEW_LIST',
-    description: 'Write values to device entries',
-    usage: 'Updating setpoints, outputs, variables',
-    path: 't3000/building-platform/control-messages/message-update-webview-list',
-  },
-  {
-    name: 'UPDATE_ENTRY',
-    action: 'UPDATE_ENTRY',
-    description: 'Update single entry field',
-    usage: 'Quick field update',
-    path: 't3000/building-platform/control-messages/message-update-entry',
-  },
-  {
     name: 'GET_INITIAL_DATA',
     action: 'GET_INITIAL_DATA',
+    number: 1,
     description: 'Load graphics screen data',
     usage: 'Opening graphics editor',
     path: 't3000/building-platform/control-messages/message-get-initial-data',
   },
   {
-    name: 'LOAD_GRAPHIC_ENTRY',
-    action: 'LOAD_GRAPHIC_ENTRY',
-    description: 'Load specific graphic entry',
-    usage: 'Graphics screen display',
-    path: 't3000/building-platform/control-messages/message-get-initial-data',
-  },
-  {
     name: 'SAVE_GRAPHIC_DATA',
     action: 'SAVE_GRAPHIC_DATA',
+    number: 2,
     description: 'Save graphics screen changes',
     usage: 'Saving graphics edits',
     path: 't3000/building-platform/control-messages/message-save-graphic-data',
   },
   {
+    name: 'UPDATE_ENTRY',
+    action: 'UPDATE_ENTRY',
+    number: 3,
+    description: 'Update single entry field',
+    usage: 'Quick field update',
+    path: 't3000/building-platform/control-messages/message-update-entry',
+  },
+  {
     name: 'GET_PANELS_LIST',
     action: 'GET_PANELS_LIST',
+    number: 4,
     description: 'Get all online panels',
     usage: 'Device list refresh',
     path: 't3000/building-platform/control-messages/message-get-panels-list',
+  },
+  {
+    name: 'GET_PANEL_RANGE_INFO',
+    action: 'GET_PANEL_RANGE_INFO',
+    number: 5,
+    description: 'Get panel range information',
+    usage: 'Panel capability detection',
+    path: 't3000/building-platform/control-messages/message-5-get-panel-range-info',
+  },
+  {
+    name: 'GET_ENTRIES',
+    action: 'GET_ENTRIES',
+    number: 6,
+    description: 'Get multiple specific entries',
+    usage: 'Batch data retrieval',
+    path: 't3000/building-platform/control-messages/message-get-entries',
+  },
+  {
+    name: 'LOAD_GRAPHIC_ENTRY',
+    action: 'LOAD_GRAPHIC_ENTRY',
+    number: 7,
+    description: 'Load specific graphic entry',
+    usage: 'Graphics screen display',
+    path: 't3000/building-platform/control-messages/message-get-initial-data',
+  },
+  {
+    name: 'OPEN_ENTRY_EDIT_WINDOW',
+    action: 'OPEN_ENTRY_EDIT_WINDOW',
+    number: 8,
+    description: 'Open entry edit dialog',
+    usage: 'UI interaction',
+    path: 't3000/building-platform/control-messages/message-8-open-entry-edit-window',
+  },
+  {
+    name: 'SAVE_IMAGE',
+    action: 'SAVE_IMAGE',
+    number: 9,
+    description: 'Save graphic image file',
+    usage: 'Graphics asset management',
+    path: 't3000/building-platform/control-messages/message-9-save-image',
+  },
+  {
+    name: 'SAVE_LIBRARY_DATA',
+    action: 'SAVE_LIBRARY_DATA',
+    number: 10,
+    description: 'Save library data',
+    usage: 'Library management',
+    path: 't3000/building-platform/control-messages/message-10-save-library-data',
+  },
+  {
+    name: 'DELETE_IMAGE',
+    action: 'DELETE_IMAGE',
+    number: 11,
+    description: 'Delete graphic image file',
+    usage: 'Graphics asset cleanup',
+    path: 't3000/building-platform/control-messages/message-11-delete-image',
+  },
+  {
+    name: 'GET_SELECTED_DEVICE_INFO',
+    action: 'GET_SELECTED_DEVICE_INFO',
+    number: 12,
+    description: 'Get selected device information',
+    usage: 'Device context retrieval',
+    path: 't3000/building-platform/control-messages/message-12-get-selected-device-info',
+  },
+  {
+    name: 'BIND_DEVICE',
+    action: 'BIND_DEVICE',
+    number: 13,
+    description: 'Bind device to panel',
+    usage: 'Device association',
+    path: 't3000/building-platform/control-messages/message-13-bind-device',
+  },
+  {
+    name: 'SAVE_NEW_LIBRARY_DATA',
+    action: 'SAVE_NEW_LIBRARY_DATA',
+    number: 14,
+    description: 'Save new library data',
+    usage: 'Library creation',
+    path: 't3000/building-platform/control-messages/message-14-save-new-library-data',
+  },
+  {
+    name: 'LOGGING_DATA',
+    action: 'LOGGING_DATA',
+    number: 15,
+    description: 'Bulk data collection (Action 15)',
+    usage: 'Comprehensive data logging',
+    path: 't3000/building-platform/control-messages/message-15-logging-data',
+  },
+  {
+    name: 'UPDATE_WEBVIEW_LIST',
+    action: 'UPDATE_WEBVIEW_LIST',
+    number: 16,
+    description: 'Write values to device entries',
+    usage: 'Updating setpoints, outputs, variables',
+    path: 't3000/building-platform/control-messages/message-update-webview-list',
+  },
+  {
+    name: 'GET_WEBVIEW_LIST',
+    action: 'GET_WEBVIEW_LIST',
+    number: 17,
+    description: 'Read specific entry type with range',
+    usage: 'Loading inputs, outputs, programs, etc.',
+    path: 't3000/building-platform/control-messages/message-17',
   },
 ];
 
 const messageCategories: Record<string, MessageCategory[]> = {
   'GET_PANEL_DATA': ['data-retrieval'],
-  'GET_WEBVIEW_LIST': ['data-retrieval'],
-  'GET_ENTRIES': ['data-retrieval'],
-  'UPDATE_WEBVIEW_LIST': ['updates'],
-  'UPDATE_ENTRY': ['updates'],
   'GET_INITIAL_DATA': ['graphics'],
-  'LOAD_GRAPHIC_ENTRY': ['graphics'],
   'SAVE_GRAPHIC_DATA': ['graphics'],
+  'UPDATE_ENTRY': ['updates'],
   'GET_PANELS_LIST': ['discovery'],
+  'GET_PANEL_RANGE_INFO': ['discovery'],
+  'GET_ENTRIES': ['data-retrieval'],
+  'LOAD_GRAPHIC_ENTRY': ['graphics'],
+  'OPEN_ENTRY_EDIT_WINDOW': ['updates'],
+  'SAVE_IMAGE': ['graphics'],
+  'SAVE_LIBRARY_DATA': ['updates'],
+  'DELETE_IMAGE': ['graphics'],
+  'GET_SELECTED_DEVICE_INFO': ['discovery'],
+  'BIND_DEVICE': ['discovery'],
+  'SAVE_NEW_LIBRARY_DATA': ['updates'],
+  'LOGGING_DATA': ['data-retrieval'],
+  'UPDATE_WEBVIEW_LIST': ['updates'],
+  'GET_WEBVIEW_LIST': ['data-retrieval'],
 };
 
 interface ControlMessagesPageProps {
@@ -179,7 +270,10 @@ export const ControlMessagesPage: React.FC<ControlMessagesPageProps> = ({ onNavi
               onClick={() => onNavigate(message.path)}
             >
               <div className={styles.messageHeader}>
-                <h3>{message.name}</h3>
+                <h3>
+                  <span className={styles.messageNumber}>{message.number}</span>
+                  {message.name}
+                </h3>
                 <span className={styles.messageAction}>{message.action}</span>
               </div>
               <p className={styles.messageDescription}>{message.description}</p>

@@ -188,7 +188,10 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                 {isExpanded && (
                   <div className={styles.items}>
                     {section.items.map((item) => {
-                      const isActive = currentPath === item.path;
+                      // Highlight menu item if exact match OR if current path contains key part of item path
+                      const isActive = currentPath === item.path ||
+                                     currentPath.startsWith(item.path + '/') ||
+                                     (item.path.includes('control-messages') && currentPath.includes('control-messages'));
 
                       return (
                         <button

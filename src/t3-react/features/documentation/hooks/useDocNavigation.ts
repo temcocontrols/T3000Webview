@@ -43,6 +43,8 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
       setExpandedSections(prev => new Set(prev).add('API Reference'));
     } else if (pathFromUrl.includes('guides')) {
       setExpandedSections(prev => new Set(prev).add('Guides'));
+    } else if (pathFromUrl.includes('building-platform')) {
+      setExpandedSections(prev => new Set(prev).add('Building Platform'));
     }
   }, [getDocPathFromUrl]);
 
