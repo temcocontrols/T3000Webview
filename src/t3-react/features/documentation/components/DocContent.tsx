@@ -29,11 +29,6 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
   const { content, loading, error } = useMarkdownContent(path);
   const [mode, setMode] = useState<DocMode>('user');
 
-  // Show custom Control Messages component for the message index
-  if (path === 't3000/building-platform/control-messages/message-index' && onNavigate) {
-    return <ControlMessagesPage onNavigate={onNavigate} />;
-  }
-
   const parsedContent = useMemo<ParsedContent>(() => {
     if (!content) {
       return {
@@ -101,6 +96,11 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
       fullHtml: marked.parse(content) as string,
     };
   }, [content]);
+
+  // Show custom Control Messages component for the message index
+  if (path === 't3000/building-platform/control-messages/message-index' && onNavigate) {
+    return <ControlMessagesPage onNavigate={onNavigate} />;
+  }
 
   if (loading) {
     return (
