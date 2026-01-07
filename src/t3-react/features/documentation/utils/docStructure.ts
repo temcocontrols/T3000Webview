@@ -77,6 +77,16 @@ export const docStructure: DocSection[] = [
       { title: 'FAQ', path: 't3000/guides/faq' },
     ],
   },
+  {
+    title: 'Building Platform',
+    icon: 'Settings',
+    items: [
+      { title: 'Overview', path: 't3000/building-platform/overview' },
+      { title: 'Control Messages', path: 't3000/building-platform/control-messages/message-index' },
+      { title: 'BACnet Commands', path: 't3000/building-platform/bacnet-commands' },
+      { title: 'Data Structures', path: 't3000/building-platform/data-structures' },
+    ],
+  },
 ];
 
 /**

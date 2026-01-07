@@ -7,10 +7,12 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Text, Spinner } from '@fluentui/react-components';
 import { Marked } from 'marked';
 import { useMarkdownContent } from '../hooks/useMarkdownContent';
+import { ControlMessagesPage } from './ControlMessagesPage';
 import styles from './DocContent.module.css';
 
 interface DocContentProps {
   path: string;
+  onNavigate?: (path: string) => void;
 }
 
 type DocMode = 'user' | 'technical';
@@ -23,9 +25,14 @@ interface ParsedContent {
   fullHtml: string;
 }
 
-export const DocContent: React.FC<DocContentProps> = ({ path }) => {
+export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
   const { content, loading, error } = useMarkdownContent(path);
   const [mode, setMode] = useState<DocMode>('user');
+
+  // Show custom Control Messages component for the message index
+  if (path === 't3000/building-platform/control-messages/message-index' && onNavigate) {
+    return <ControlMessagesPage onNavigate={onNavigate} />;
+  }
 
   const parsedContent = useMemo<ParsedContent>(() => {
     if (!content) {

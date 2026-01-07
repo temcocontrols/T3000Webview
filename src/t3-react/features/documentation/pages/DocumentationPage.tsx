@@ -20,7 +20,7 @@ export const DocumentationPage: React.FC = () => {
 
   // Get all expanded sections as a Set
   const expandedSections = new Set(
-    ['Quick Start', 'Device Management', 'Data Points', 'Features', 'API Reference', 'Guides'].filter(
+    ['Quick Start', 'Device Management', 'Data Points', 'Features', 'API Reference', 'Guides', 'Building Platform'].filter(
       (title) => isSectionExpanded(title)
     )
   );
@@ -38,7 +38,7 @@ export const DocumentationPage: React.FC = () => {
 
       <div className={styles.main}>
         <DocBreadcrumb currentPath={currentPath} onNavigate={navigateToDoc} />
-        <DocContent path={currentPath} />
+        <DocContent path={currentPath} onNavigate={navigateToDoc} />
       </div>
     </div>
   );
