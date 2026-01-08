@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Text, Button, Spinner, Tooltip, Dropdown, Option } from '@fluentui/react-components';
+import { Text, Button, Spinner, Tooltip, Dropdown, Option, Drawer, DrawerHeader, DrawerBody } from '@fluentui/react-components';
 import Editor from '@monaco-editor/react';
 import * as databaseApi from '../services/databaseApi';
 import {
@@ -27,6 +27,10 @@ import {
   WindowMultipleRegular,
   ChevronDoubleLeftRegular,
   ChevronDoubleRightRegular,
+  ArrowExpand20Regular,
+  DismissRegular,
+  ArrowUpRegular,
+  ArrowDownRegular,
 } from '@fluentui/react-icons';
 import styles from './DatabaseViewerPage.module.css';
 
@@ -69,6 +73,9 @@ export const DatabaseViewerPage: React.FC = () => {
   const [queryEditorHeight, setQueryEditorHeight] = useState(200);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [sortColumn, setSortColumn] = useState<number | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Load databases and tables on mount
   useEffect(() => {
@@ -232,6 +239,42 @@ export const DatabaseViewerPage: React.FC = () => {
         next.add(tableName);
       }
       return next;
+    });
+  };
+
+  const handleSort = (columnIndex: number) => {
+    if (sortColumn === columnIndex) {
+      // Toggle direction or clear sort
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortColumn(null);
+        setSortDirection('asc');
+      }
+    } else {
+      setSortColumn(columnIndex);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedRows = (rows: any[][]) => {
+    if (sortColumn === null) return rows;
+
+    return [...rows].sort((a, b) => {
+      const aVal = a[sortColumn];
+      const bVal = b[sortColumn];
+
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+
+      let comparison = 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        comparison = aVal - bVal;
+      } else {
+        comparison = String(aVal).localeCompare(String(bVal));
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
     });
   };
 
@@ -501,6 +544,17 @@ export const DatabaseViewerPage: React.FC = () => {
                 <WindowMultipleRegular style={{ fontSize: '14px', marginRight: '6px' }} />
                 Execution Plan
               </button>
+              {result && activeTab === 'results' && (
+                <Tooltip content="View in Larger Panel" relationship="label">
+                  <button
+                    className={styles.resultsTab}
+                    onClick={() => setIsDrawerOpen(true)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    <ArrowExpand20Regular style={{ fontSize: '10px' }} />
+                  </button>
+                </Tooltip>
+              )}
             </div>
 
             {/* Results Content */}
@@ -516,13 +570,24 @@ export const DatabaseViewerPage: React.FC = () => {
                   <table>
                     <thead>
                       <tr>
-                        {result.columns.map((col) => (
-                          <th key={col}>{col}</th>
+                        {result.columns.map((col, idx) => (
+                          <th key={col} onClick={() => handleSort(idx)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {col}
+                              {sortColumn === idx ? (
+                                sortDirection === 'asc' ?
+                                  <ArrowUpRegular style={{ fontSize: '10px' }} /> :
+                                  <ArrowDownRegular style={{ fontSize: '10px' }} />
+                              ) : (
+                                <ArrowUpRegular style={{ fontSize: '10px', opacity: 0.3 }} />
+                              )}
+                            </div>
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {result.rows.map((row, i) => (
+                      {getSortedRows(result.rows).map((row, i) => (
                         <tr key={i}>
                           {row.map((cell, j) => (
                             <td key={j}>{String(cell)}</td>
@@ -582,6 +647,70 @@ export const DatabaseViewerPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Results Drawer */}
+      <Drawer
+        open={isDrawerOpen}
+        onOpenChange={(_, { open }) => setIsDrawerOpen(open)}
+        position="end"
+        size="large"
+        style={{ width: '90vw', maxWidth: '2000px' }}
+      >
+        <DrawerHeader style={{ minHeight: '32px', padding: '8px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TableLightningRegular style={{ fontSize: '16px', color: '#0078d4' }} />
+              <Text size={400} weight="semibold">Query Results</Text>
+              {result && (
+                <Text size={200} style={{ color: '#605e5c' }}>
+                  {result.rowCount} rows • {result.executionTimeMs}ms
+                </Text>
+              )}
+            </div>
+            <Button
+              appearance="subtle"
+              icon={<DismissRegular />}
+              onClick={() => setIsDrawerOpen(false)}
+              size="small"
+            />
+          </div>
+        </DrawerHeader>
+        <DrawerBody style={{ padding: 0 }}>
+          {result && (
+            <div className={styles.resultsTable} style={{ height: '100%' }}>
+              <table>
+                <thead>
+                  <tr>
+                    {result.columns.map((col, idx) => (
+                      <th key={col} onClick={() => handleSort(idx)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {col}
+                          {sortColumn === idx ? (
+                            sortDirection === 'asc' ?
+                              <ArrowUpRegular style={{ fontSize: '10px' }} /> :
+                              <ArrowDownRegular style={{ fontSize: '10px' }} />
+                          ) : (
+                            <ArrowUpRegular style={{ fontSize: '10px', opacity: 0.3 }} />
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {getSortedRows(result.rows).map((row, i) => (
+                    <tr key={i}>
+                      {row.map((cell, j) => (
+                        <td key={j}>{String(cell)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DrawerBody>
+      </Drawer>
     </div>
   );
 };
