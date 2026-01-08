@@ -23,6 +23,8 @@ import {
   TableLightningRegular,
   ChatRegular,
   WindowMultipleRegular,
+  ChevronDoubleLeftRegular,
+  ChevronDoubleRightRegular,
 } from '@fluentui/react-icons';
 import styles from './DatabaseViewerPage.module.css';
 
@@ -62,6 +64,7 @@ export const DatabaseViewerPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('results');
   const [objectExplorerWidth, setObjectExplorerWidth] = useState(280);
   const [queryEditorHeight, setQueryEditorHeight] = useState(300);
+  const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
 
   // Mock data
   useEffect(() => {
@@ -210,6 +213,7 @@ export const DatabaseViewerPage: React.FC = () => {
         <div className={styles.toolbarLeft}>
           <DatabaseRegular style={{ fontSize: '20px', color: '#0078d4' }} />
           <Text size={400} weight="semibold">Database</Text>
+          <Text size={300} style={{ color: '#605e5c', marginLeft: '8px' }}>- {selectedDb}</Text>
         </div>
         <div className={styles.toolbarRight}>
           <Tooltip content="New Query" relationship="label">
@@ -239,19 +243,31 @@ export const DatabaseViewerPage: React.FC = () => {
       {/* Main Content Area */}
       <div className={styles.mainContent}>
         {/* Left: Object Explorer */}
-        <div className={styles.objectExplorer} style={{ width: `${objectExplorerWidth}px` }}>
+        <div className={`${styles.objectExplorer} ${isExplorerCollapsed ? styles.collapsed : ''}`} style={{ width: isExplorerCollapsed ? '40px' : `${objectExplorerWidth}px` }}>
           <div className={styles.explorerHeader}>
-            <FolderOpenRegular style={{ fontSize: '16px' }} />
-            <Text size={300} weight="semibold">Object Explorer</Text>
+            {!isExplorerCollapsed && (
+              <>
+                <FolderOpenRegular style={{ fontSize: '16px' }} />
+                <Text size={300} weight="semibold">Object Explorer</Text>
+              </>
+            )}
+            <button
+              className={styles.collapseButton}
+              onClick={() => setIsExplorerCollapsed(!isExplorerCollapsed)}
+              title={isExplorerCollapsed ? 'Expand Object Explorer' : 'Collapse Object Explorer'}
+            >
+              {isExplorerCollapsed ? <ChevronDoubleRightRegular /> : <ChevronDoubleLeftRegular />}
+            </button>
           </div>
 
-          <div className={styles.explorerContent}>
-            {/* Database Node */}
-            <div className={styles.treeNode}>
-              <div
-                className={styles.treeNodeHeader}
-                onClick={() => toggleSection('Database')}
-              >
+          {!isExplorerCollapsed && (
+            <div className={styles.explorerContent}>
+              {/* Database Node */}
+              <div className={styles.treeNode}>
+                <div
+                  className={styles.treeNodeHeader}
+                  onClick={() => toggleSection('Database')}
+                >
                 {expandedSections.has('Database') ? <ChevronDownRegular /> : <ChevronRightRegular />}
                 <DatabaseRegular style={{ fontSize: '14px', color: '#0078d4' }} />
                 <Text size={200} weight="semibold">{selectedDb}</Text>
@@ -340,11 +356,12 @@ export const DatabaseViewerPage: React.FC = () => {
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Properties Panel */}
-          {selectedTable && (
+          {!isExplorerCollapsed && selectedTable && (
             <div className={styles.propertiesPanel}>
               <div className={styles.propertiesPanelHeader}>
                 <Text size={200} weight="semibold">Properties</Text>
@@ -366,9 +383,6 @@ export const DatabaseViewerPage: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Resize Handle */}
-        <div className={styles.resizeHandle} />
 
         {/* Right: Query Editor and Results */}
         <div className={styles.queryArea}>

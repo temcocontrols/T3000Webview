@@ -36,6 +36,9 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  gap: 8px;
+  padding: 8px;
+  background: #f3f2f1;
 }
 
 /* Object Explorer */
@@ -43,10 +46,22 @@
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border-right: 1px solid #d1d1d1;
+  border-right: none;
   overflow: hidden;
-  min-width: 200px;
+  min-width: 40px;
   max-width: 500px;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.objectExplorer.collapsed {
+  width: 40px !important;
+}
+
+.objectExplorer.collapsed .explorerContent,
+.objectExplorer.collapsed .propertiesPanel {
+  display: none;
 }
 
 .explorerHeader {
@@ -58,22 +73,73 @@
   border-bottom: 1px solid #d1d1d1;
   min-height: 29px;
   height: 29px;
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  position: relative;
+  justify-content: space-between;
 }
 
 .explorerHeader svg {
   font-size: 14px;
+  color: #605e5c;
 }
 
 .explorerHeader span {
   font-size: 11px;
   font-weight: 600;
+  color: #323130;
+  letter-spacing: 0.2px;
+}
+
+.collapseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #605e5c;
+  border-radius: 3px;
+  transition: all 0.2s;
+  padding: 0;
+  margin-left: auto;
+}
+
+.collapseButton:hover {
+  background: #e1dfdd;
+  color: #323130;
+}
+
+.collapseButton svg {
+  font-size: 14px;
 }
 
 .explorerContent {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 0;
+  padding: 8px;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #c8c6c4 #f3f2f1; /* Firefox */
+}
+
+.explorerContent::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.explorerContent::-webkit-scrollbar-track {
+  background: #f3f2f1 !important;
+}
+
+.explorerContent::-webkit-scrollbar-thumb {
+  background: #c8c6c4 !important;
+  border-radius: 3px !important;
+}
+
+.explorerContent::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d !important;
 }
 
 /* Tree View */
@@ -89,6 +155,9 @@
   cursor: pointer;
   transition: background-color 0.1s;
   font-size: 11px;
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  font-weight: 500;
+  color: #323130;
 }
 
 .treeNodeHeader:hover {
@@ -98,6 +167,7 @@
 .treeNodeHeader svg {
   flex-shrink: 0;
   font-size: 12px;
+  color: #605e5c;
 }
 
 .treeNodeChildren {
@@ -112,6 +182,9 @@
   cursor: pointer;
   transition: background-color 0.1s;
   font-size: 11px;
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  font-weight: 400;
+  color: #323130;
 }
 
 .treeNodeItem:hover {
@@ -121,11 +194,13 @@
 .treeNodeItem.selected {
   background: #e1f3ff;
   border-left: 2px solid #0078d4;
+  font-weight: 500;
 }
 
 .treeNodeItem svg {
   flex-shrink: 0;
   font-size: 11px;
+  color: #605e5c;
 }
 
 .columnItem {
@@ -134,23 +209,29 @@
   gap: 4px;
   padding: 2px 6px;
   font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-weight: 400;
   color: #605e5c;
 }
 
 .columnItem svg {
   flex-shrink: 0;
   font-size: 9px;
+  color: #8a8886;
 }
 
 .itemCount,
 .rowCount {
   margin-left: auto;
   color: #8a8886;
+  font-size: 10px;
+  font-weight: 400;
 }
 
 .columnType {
   color: #8a8886;
   font-style: italic;
+  font-size: 9px;
 }
 
 .pkBadge {
@@ -176,6 +257,9 @@
   background: #f3f2f1;
   border-bottom: 1px solid #d1d1d1;
   font-size: 11px;
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  font-weight: 600;
+  color: #323130;
 }
 
 .propertiesPanelContent {
@@ -184,6 +268,8 @@
   flex-direction: column;
   gap: 4px;
   font-size: 10px;
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  color: #323130;
 }
 
 .propertyRow {
@@ -221,6 +307,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Query Editor */
@@ -258,12 +347,20 @@
   border: none;
   border-radius: 0;
   background: #ffffff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
 }
 
 .sqlTextarea textarea {
-  padding: 12px;
+  padding: 16px;
   background: #ffffff !important;
   resize: none;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
 }
 
 /* Results Panel */
@@ -311,12 +408,16 @@
   flex: 1;
   overflow: auto;
   background: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
 }
 
 .resultsTable {
   width: 100%;
   height: 100%;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #f3f2f1;
 }
 
 .resultsTable table {
@@ -409,30 +510,50 @@
 }
 
 /* Scrollbar Styling */
+.objectExplorer::-webkit-scrollbar,
 .explorerContent::-webkit-scrollbar,
+.propertiesPanel::-webkit-scrollbar,
+.propertiesPanelContent::-webkit-scrollbar,
 .resultsContent::-webkit-scrollbar,
-.resultsTable::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+.resultsTable::-webkit-scrollbar,
+.sqlTextarea::-webkit-scrollbar,
+.sqlTextarea textarea::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
 }
 
+.objectExplorer::-webkit-scrollbar-track,
 .explorerContent::-webkit-scrollbar-track,
+.propertiesPanel::-webkit-scrollbar-track,
+.propertiesPanelContent::-webkit-scrollbar-track,
 .resultsContent::-webkit-scrollbar-track,
-.resultsTable::-webkit-scrollbar-track {
-  background: #f3f2f1;
+.resultsTable::-webkit-scrollbar-track,
+.sqlTextarea::-webkit-scrollbar-track,
+.sqlTextarea textarea::-webkit-scrollbar-track {
+  background: #f3f2f1 !important;
 }
 
+.objectExplorer::-webkit-scrollbar-thumb,
 .explorerContent::-webkit-scrollbar-thumb,
+.propertiesPanel::-webkit-scrollbar-thumb,
+.propertiesPanelContent::-webkit-scrollbar-thumb,
 .resultsContent::-webkit-scrollbar-thumb,
-.resultsTable::-webkit-scrollbar-thumb {
-  background: #c8c6c4;
-  border-radius: 6px;
+.resultsTable::-webkit-scrollbar-thumb,
+.sqlTextarea::-webkit-scrollbar-thumb,
+.sqlTextarea textarea::-webkit-scrollbar-thumb {
+  background: #c8c6c4 !important;
+  border-radius: 3px !important;
 }
 
+.objectExplorer::-webkit-scrollbar-thumb:hover,
 .explorerContent::-webkit-scrollbar-thumb:hover,
+.propertiesPanel::-webkit-scrollbar-thumb:hover,
+.propertiesPanelContent::-webkit-scrollbar-thumb:hover,
 .resultsContent::-webkit-scrollbar-thumb:hover,
-.resultsTable::-webkit-scrollbar-thumb:hover {
-  background: #a19f9d;
+.resultsTable::-webkit-scrollbar-thumb:hover,
+.sqlTextarea::-webkit-scrollbar-thumb:hover,
+.sqlTextarea textarea::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d !important;
 }
 
 /* Responsive */
