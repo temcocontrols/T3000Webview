@@ -267,21 +267,31 @@ export const ControlMessagesPage: React.FC<ControlMessagesPageProps> = ({ onNavi
             <div
               key={message.action}
               className={styles.messageCard}
-              onClick={() => onNavigate(message.path)}
             >
-              <div className={styles.messageHeader}>
-                <h3>
-                  <span className={styles.messageNumber}>{message.number}</span>
-                  {message.name}
-                </h3>
-                <span className={styles.messageAction}>{message.action}</span>
+              <div className={styles.cardBody} onClick={() => onNavigate(message.path)}>
+                <div className={styles.messageHeader}>
+                  <h3>
+                    <span className={styles.messageNumber}>{message.number}</span>
+                    {message.name}
+                  </h3>
+                  <span className={styles.messageAction}>{message.action}</span>
+                </div>
+                <p className={styles.messageDescription}>{message.description}</p>
+                <div className={styles.messageFooter}>
+                  <span className={styles.messageUsage}>
+                    <strong>Use case:</strong> {message.usage}
+                  </span>
+                  <span className={styles.messageLink}>View details →</span>
+                </div>
               </div>
-              <p className={styles.messageDescription}>{message.description}</p>
-              <div className={styles.messageFooter}>
-                <span className={styles.messageUsage}>
-                  <strong>Use case:</strong> {message.usage}
-                </span>
-                <span className={styles.messageLink}>View details →</span>
+              <div className={styles.cardActions}>
+                <a
+                  href="/#/t3000/develop/transport"
+                  className={styles.testButton}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Test in Transport
+                </a>
               </div>
             </div>
           ))}
