@@ -460,7 +460,7 @@
 .resultsTable table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .resultsTable thead {
@@ -471,10 +471,10 @@
 
 .resultsTable th {
   background: #f3f2f1;
-  padding: 8px 12px;
+  padding: 4px 10px;
   text-align: left;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 10px;
   color: #323130;
   border-bottom: 2px solid #d1d1d1;
   border-right: 1px solid #edebe9;
@@ -483,11 +483,11 @@
 }
 
 .resultsTable td {
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-bottom: 1px solid #edebe9;
   border-right: 1px solid #edebe9;
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: #323130;
 }
 

@@ -110,12 +110,12 @@ export async function executeQuery(request: QueryRequest): Promise<QueryResult> 
 
   const data = await response.json();
 
-  // Convert snake_case to camelCase
+  // Backend uses camelCase serialization
   return {
     columns: data.columns,
     rows: data.rows,
-    rowCount: data.row_count,
-    executionTimeMs: data.execution_time_ms,
+    rowCount: data.rowCount,
+    executionTimeMs: data.executionTimeMs,
   };
 }
 

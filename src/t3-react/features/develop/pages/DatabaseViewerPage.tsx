@@ -58,14 +58,14 @@ export const DatabaseViewerPage: React.FC = () => {
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Database', 'Tables']));
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [query, setQuery] = useState<string>('SELECT * FROM panels LIMIT 100;');
+  const [query, setQuery] = useState<string>('');
   const [result, setResult] = useState<QueryResult | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('results');
   const [objectExplorerWidth, setObjectExplorerWidth] = useState(280);
-  const [queryEditorHeight, setQueryEditorHeight] = useState(300);
+  const [queryEditorHeight, setQueryEditorHeight] = useState(200);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -128,6 +128,13 @@ export const DatabaseViewerPage: React.FC = () => {
       );
 
       setTables(tablesWithSchema);
+      
+      // Set default query to first table if query is empty
+      if (!query && tablesWithSchema.length > 0) {
+        const firstTable = tablesWithSchema[0].name;
+        setQuery(`SELECT * FROM ${firstTable} LIMIT 100;`);
+        setSelectedTable(firstTable);
+      }
     } catch (err) {
       console.error('Failed to load tables:', err);
       setError(err instanceof Error ? err.message : 'Failed to load tables');
