@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Text, Button, Textarea, Spinner, Tooltip } from '@fluentui/react-components';
+import { Text, Button, Spinner, Tooltip } from '@fluentui/react-components';
+import Editor from '@monaco-editor/react';
 import {
   PlayRegular,
   ArrowSyncRegular,
@@ -396,12 +397,34 @@ export const DatabaseViewerPage: React.FC = () => {
                 </Tooltip>
               </div>
             </div>
-            <Textarea
+            <Editor
+              height="100%"
+              defaultLanguage="sql"
               value={query}
-              onChange={(_, data) => setQuery(data.value)}
-              className={styles.sqlTextarea}
-              placeholder="-- Enter SQL query here"
-              spellCheck={false}
+              onChange={(value) => setQuery(value || '')}
+              theme="vs"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 11,
+                lineHeight: 18,
+                fontFamily: 'Consolas, "Courier New", monospace',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                wordWrap: 'on',
+                wrappingIndent: 'same',
+                lineNumbers: 'on',
+                glyphMargin: false,
+                folding: false,
+                lineDecorationsWidth: 10,
+                lineNumbersMinChars: 3,
+                renderLineHighlight: 'all',
+                scrollbar: {
+                  vertical: 'visible',
+                  horizontal: 'hidden',
+                  verticalScrollbarSize: 6,
+                  horizontalScrollbarSize: 6,
+                },
+              }}
             />
           </div>
 

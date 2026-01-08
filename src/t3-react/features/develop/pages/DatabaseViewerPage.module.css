@@ -313,6 +313,7 @@
   border-bottom: 1px solid #d1d1d1;
   min-height: 150px;
   max-height: 600px;
+  overflow: hidden;
 }
 
 .queryEditorHeader {
@@ -335,25 +336,67 @@
 .sqlTextarea {
   flex: 1;
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
   border: none;
   border-radius: 0;
   background: #ffffff;
+  color: #000000;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 #f3f2f1;
+  scrollbar-color: #c8c6c4 #ffffff;
 }
 
 .sqlTextarea textarea {
-  padding: 12px;
+  padding: 16px;
   background: #ffffff !important;
+  color: #000000 !important;
   resize: none;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: thin;
-  scrollbar-color: #c8c6c4 #f3f2f1;
+  scrollbar-color: #c8c6c4 #ffffff;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+}
+
+/* Webkit scrollbar for textarea */
+.sqlTextarea textarea::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.sqlTextarea textarea::-webkit-scrollbar-track {
+  background: #ffffff !important;
+}
+
+.sqlTextarea textarea::-webkit-scrollbar-thumb {
+  background: #c8c6c4 !important;
+  border-radius: 3px !important;
+}
+
+.sqlTextarea textarea::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d !important;
+}
+
+.sqlTextarea::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.sqlTextarea::-webkit-scrollbar-track {
+  background: #ffffff !important;
+}
+
+.sqlTextarea::-webkit-scrollbar-thumb {
+  background: #c8c6c4 !important;
+  border-radius: 3px !important;
+}
+
+.sqlTextarea::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d !important;
 }
 
 /* Results Panel */
