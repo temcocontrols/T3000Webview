@@ -12,10 +12,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 0 12px;
   background: #ffffff;
   border-bottom: 1px solid #d1d1d1;
-  min-height: 48px;
+  min-height: 40px;
+  height: 40px;
 }
 
 .toolbarLeft {
@@ -51,10 +52,21 @@
 .explorerHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 6px 12px;
   background: #f3f2f1;
   border-bottom: 1px solid #d1d1d1;
+  min-height: 29px;
+  height: 29px;
+}
+
+.explorerHeader svg {
+  font-size: 14px;
+}
+
+.explorerHeader span {
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .explorerContent {
@@ -73,9 +85,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 3px 6px;
   cursor: pointer;
   transition: background-color 0.1s;
+  font-size: 11px;
 }
 
 .treeNodeHeader:hover {
@@ -84,6 +97,7 @@
 
 .treeNodeHeader svg {
   flex-shrink: 0;
+  font-size: 12px;
 }
 
 .treeNodeChildren {
@@ -94,9 +108,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 3px 6px;
   cursor: pointer;
   transition: background-color 0.1s;
+  font-size: 11px;
 }
 
 .treeNodeItem:hover {
@@ -110,19 +125,21 @@
 
 .treeNodeItem svg {
   flex-shrink: 0;
+  font-size: 11px;
 }
 
 .columnItem {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 2px 6px;
+  font-size: 10px;
   color: #605e5c;
 }
 
 .columnItem svg {
   flex-shrink: 0;
+  font-size: 9px;
 }
 
 .itemCount,
@@ -155,16 +172,18 @@
 }
 
 .propertiesPanelHeader {
-  padding: 6px 12px;
+  padding: 4px 12px;
   background: #f3f2f1;
   border-bottom: 1px solid #d1d1d1;
+  font-size: 11px;
 }
 
 .propertiesPanelContent {
-  padding: 8px 12px;
+  padding: 6px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  font-size: 10px;
 }
 
 .propertyRow {
@@ -221,6 +240,9 @@
   padding: 6px 12px;
   background: #f3f2f1;
   border-bottom: 1px solid #d1d1d1;
+  min-height: 29px;
+  height: 29px;
+  font-size: 11px;
 }
 
 .queryEditorActions {
@@ -368,10 +390,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 12px;
-  background: #0078d4;
-  color: #ffffff;
+  background: #f3f2f1;
+  color: #323130;
   font-size: 11px;
   min-height: 24px;
+  border-top: 1px solid #d1d1d1;
 }
 
 .statusLeft,

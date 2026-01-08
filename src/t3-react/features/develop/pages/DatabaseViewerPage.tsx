@@ -20,6 +20,9 @@ import {
   AddRegular,
   SaveRegular,
   FolderOpenRegular,
+  TableLightningRegular,
+  ChatRegular,
+  WindowMultipleRegular,
 } from '@fluentui/react-icons';
 import styles from './DatabaseViewerPage.module.css';
 
@@ -49,7 +52,7 @@ export const DatabaseViewerPage: React.FC = () => {
   const [selectedDb] = useState<string>('T3000.db');
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Tables']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Database', 'Tables']));
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [query, setQuery] = useState<string>('SELECT * FROM panels LIMIT 100;');
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -399,19 +402,22 @@ export const DatabaseViewerPage: React.FC = () => {
                 className={`${styles.resultsTab} ${activeTab === 'results' ? styles.activeTab : ''}`}
                 onClick={() => setActiveTab('results')}
               >
-                ⚡ Results
+                <TableLightningRegular style={{ fontSize: '14px', marginRight: '6px' }} />
+                Results
               </button>
               <button
                 className={`${styles.resultsTab} ${activeTab === 'messages' ? styles.activeTab : ''}`}
                 onClick={() => setActiveTab('messages')}
               >
-                📝 Messages
+                <ChatRegular style={{ fontSize: '14px', marginRight: '6px' }} />
+                Messages
               </button>
               <button
                 className={`${styles.resultsTab} ${activeTab === 'execution-plan' ? styles.activeTab : ''}`}
                 onClick={() => setActiveTab('execution-plan')}
               >
-                ℹ️ Execution Plan
+                <WindowMultipleRegular style={{ fontSize: '14px', marginRight: '6px' }} />
+                Execution Plan
               </button>
             </div>
 
@@ -447,13 +453,21 @@ export const DatabaseViewerPage: React.FC = () => {
               )}
 
               {!loading && activeTab === 'messages' && (
-                <div className={styles.messagesContent}>
-                  {messages.map((msg, i) => (
-                    <div key={i} className={styles.messageItem}>
-                      <Text size={200} family="monospace">{msg}</Text>
+                <>
+                  {messages.length > 0 ? (
+                    <div className={styles.messagesContent}>
+                      {messages.map((msg, i) => (
+                        <div key={i} className={styles.messageItem}>
+                          <Text size={200} family="monospace">{msg}</Text>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <div className={styles.resultsPlaceholder}>
+                      <Text size={200}>No messages</Text>
+                    </div>
+                  )}
+                </>
               )}
 
               {!loading && activeTab === 'execution-plan' && (
@@ -464,26 +478,26 @@ export const DatabaseViewerPage: React.FC = () => {
 
               {!loading && !result && activeTab === 'results' && (
                 <div className={styles.resultsPlaceholder}>
-                  <Text size={300}>Execute a query to see results</Text>
+                  <Text size={200}>Execute a query to see results</Text>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Status Bar */}
-      <div className={styles.statusBar}>
-        <div className={styles.statusLeft}>
-          <span className={styles.statusIndicator}>🟢</span>
-          <Text size={200}>Connected: {selectedDb} • SQLite 3.x • Ready</Text>
-        </div>
-        <div className={styles.statusRight}>
-          {result && (
-            <Text size={200}>
-              Query executed successfully • {result.rowCount} rows • {result.executionTimeMs}ms
-            </Text>
-          )}
+          {/* Status Bar - Under Query Area */}
+          <div className={styles.statusBar}>
+            <div className={styles.statusLeft}>
+              <span className={styles.statusIndicator}>🟢</span>
+              <Text size={200}>Connected: {selectedDb} • SQLite 3.x • Ready</Text>
+            </div>
+            <div className={styles.statusRight}>
+              {result && (
+                <Text size={200}>
+                  Query executed successfully • {result.rowCount} rows • {result.executionTimeMs}ms
+                </Text>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
