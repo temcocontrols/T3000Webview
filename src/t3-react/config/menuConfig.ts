@@ -523,7 +523,7 @@ const systemMenu: MenuItem = {
     },
     {
       id: 'system-database',
-      label: 'Database Viewer',
+      label: 'Database',
       type: 'item',
       action: () => window.location.hash = '#/t3000/develop/database',
       icon: 'Database',

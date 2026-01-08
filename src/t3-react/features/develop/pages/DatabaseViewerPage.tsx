@@ -206,7 +206,7 @@ export const DatabaseViewerPage: React.FC = () => {
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <DatabaseRegular style={{ fontSize: '20px', color: '#0078d4' }} />
-          <Text size={400} weight="semibold">Database Management</Text>
+          <Text size={400} weight="semibold">Database</Text>
         </div>
         <div className={styles.toolbarRight}>
           <Tooltip content="New Query" relationship="label">

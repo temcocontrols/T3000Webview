@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'database',
-    label: 'Database Viewer',
+    label: 'Database',
     icon: DatabaseRegular,
     path: '/t3000/develop/database',
   },
