@@ -17,8 +17,14 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   margin-right: 5px;
+  transition: width 0.2s ease, min-width 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 52px;
+  min-width: 52px;
 }
 
 .content {

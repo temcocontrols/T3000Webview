@@ -8,6 +8,7 @@
   flex-direction: column;
   height: 100%;
   font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
 }
 
 .header {
@@ -17,6 +18,8 @@
   min-height: 40px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .title {
@@ -24,6 +27,36 @@
   font-weight: 600;
   color: #292827;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.collapseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #605e5c;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.1s ease;
+}
+
+.collapseButton:hover {
+  background-color: #f3f2f1;
+  color: #0078d4;
+}
+
+.collapseButton:active {
+  background-color: #e1dfdd;
 }
 
 .navList {
@@ -77,6 +110,9 @@
 
 .label {
   font-weight: 400;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.15s ease;
 }
 
 .navButton.active .label {

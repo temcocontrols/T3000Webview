@@ -11,6 +11,8 @@ import {
   DatabaseRegular,
   PlugConnectedRegular,
   DocumentTextRegular,
+  ChevronDoubleLeftRegular,
+  ChevronDoubleRightRegular,
 } from '@fluentui/react-icons';
 import styles from './DevelopNav.module.css';
 
@@ -48,7 +50,12 @@ const navItems: NavItem[] = [
   },
 ];
 
-export const DevelopNav: React.FC = () => {
+interface DevelopNavProps {
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+export const DevelopNav: React.FC<DevelopNavProps> = ({ isCollapsed, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -59,7 +66,14 @@ export const DevelopNav: React.FC = () => {
   return (
     <nav className={styles.nav}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Developer Tools</h2>
+        <h2 className={styles.title}>{!isCollapsed && 'Developer Tools'}</h2>
+        <button
+          className={styles.collapseButton}
+          onClick={onToggleCollapse}
+          title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
+        >
+          {isCollapsed ? <ChevronDoubleRightRegular /> : <ChevronDoubleLeftRegular />}
+        </button>
       </div>
       <ul className={styles.navList}>
         {navItems.map((item) => {
@@ -71,11 +85,12 @@ export const DevelopNav: React.FC = () => {
               <button
                 className={`${styles.navButton} ${isActive ? styles.active : ''}`}
                 onClick={() => handleNavClick(item.path)}
+                title={isCollapsed ? item.label : undefined}
               >
                 <span className={styles.iconWrapper}>
                   <Icon />
                 </span>
-                <span className={styles.label}>{item.label}</span>
+                {!isCollapsed && <span className={styles.label}>{item.label}</span>}
               </button>
             </li>
           );
