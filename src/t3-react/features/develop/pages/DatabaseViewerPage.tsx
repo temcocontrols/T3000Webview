@@ -66,11 +66,47 @@ export const DatabaseViewerPage: React.FC = () => {
   const [objectExplorerWidth, setObjectExplorerWidth] = useState(280);
   const [queryEditorHeight, setQueryEditorHeight] = useState(300);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
 
   // Mock data
   useEffect(() => {
     loadTables();
   }, []);
+
+  // Resize handler for query editor height
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const queryArea = document.querySelector(`.${styles.queryArea}`) as HTMLElement;
+      if (!queryArea) return;
+
+      const queryAreaRect = queryArea.getBoundingClientRect();
+      const newHeight = e.clientY - queryAreaRect.top;
+
+      // Min height 100px, max height 80% of query area
+      const minHeight = 100;
+      const maxHeight = queryAreaRect.height * 0.8;
+
+      if (newHeight >= minHeight && newHeight <= maxHeight) {
+        setQueryEditorHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const loadTables = async () => {
     // Mock tables with detailed structure
@@ -183,6 +219,14 @@ export const DatabaseViewerPage: React.FC = () => {
     setQuery(`SELECT * FROM ${tableName} LIMIT 100;`);
   };
 
+  const handleNewQuery = () => {
+    setQuery('');
+    setResult(null);
+    setMessages([]);
+    setSelectedTable(null);
+    setActiveTab('results');
+  };
+
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
@@ -212,20 +256,20 @@ export const DatabaseViewerPage: React.FC = () => {
       {/* Top Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <DatabaseRegular style={{ fontSize: '20px', color: '#0078d4' }} />
-          <Text size={400} weight="semibold">Database</Text>
-          <Text size={300} style={{ color: '#605e5c', marginLeft: '8px' }}>- {selectedDb}</Text>
+          <DatabaseRegular style={{ fontSize: '16px', color: '#0078d4' }} />
+          <Text size={300} weight="semibold">Database</Text>
+          <Text size={200} style={{ color: '#605e5c', marginLeft: '8px' }}>- {selectedDb}</Text>
         </div>
         <div className={styles.toolbarRight}>
           <Tooltip content="New Query" relationship="label">
-            <Button appearance="subtle" icon={<AddRegular />} size="small">
+            <Button appearance="subtle" icon={<AddRegular style={{ fontSize: '14px' }} />} size="small" onClick={handleNewQuery}>
               New Query
             </Button>
           </Tooltip>
           <Tooltip content="Execute (F5)" relationship="label">
             <Button
               appearance="primary"
-              icon={<PlayRegular />}
+              icon={<PlayRegular style={{ fontSize: '14px' }} />}
               onClick={executeQuery}
               disabled={loading}
               size="small"
@@ -234,7 +278,7 @@ export const DatabaseViewerPage: React.FC = () => {
             </Button>
           </Tooltip>
           <Tooltip content="Refresh" relationship="label">
-            <Button appearance="subtle" icon={<ArrowSyncRegular />} onClick={loadTables} size="small">
+            <Button appearance="subtle" icon={<ArrowSyncRegular style={{ fontSize: '14px' }} />} onClick={loadTables} size="small">
               Refresh
             </Button>
           </Tooltip>
@@ -429,7 +473,11 @@ export const DatabaseViewerPage: React.FC = () => {
           </div>
 
           {/* Resize Handle */}
-          <div className={styles.horizontalResizeHandle} />
+          <div
+            className={styles.horizontalResizeHandle}
+            onMouseDown={() => setIsResizing(true)}
+            style={{ cursor: 'row-resize' }}
+          />
 
           {/* Results Panel */}
           <div className={styles.resultsPanel}>
