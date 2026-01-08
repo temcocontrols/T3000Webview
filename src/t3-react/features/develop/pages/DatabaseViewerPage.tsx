@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Text, Button, Spinner, Tooltip } from '@fluentui/react-components';
+import { Text, Button, Spinner, Tooltip, Dropdown, Option } from '@fluentui/react-components';
 import Editor from '@monaco-editor/react';
 import * as databaseApi from '../services/databaseApi';
 import {
@@ -53,7 +53,8 @@ interface QueryResult {
 type TabType = 'results' | 'messages' | 'execution-plan';
 
 export const DatabaseViewerPage: React.FC = () => {
-  const [selectedDb] = useState<string>('T3000.db');
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [selectedDb, setSelectedDb] = useState<string>('webview_t3_device.db');
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Database', 'Tables']));
@@ -69,10 +70,16 @@ export const DatabaseViewerPage: React.FC = () => {
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
 
-  // Mock data
+  // Load databases and tables on mount
   useEffect(() => {
-    loadTables();
+    loadDatabases();
   }, []);
+
+  useEffect(() => {
+    if (selectedDb) {
+      loadTables();
+    }
+  }, [selectedDb]);
 
   // Resize handler for query editor height
   useEffect(() => {
@@ -109,6 +116,19 @@ export const DatabaseViewerPage: React.FC = () => {
     };
   }, [isResizing]);
 
+  const loadDatabases = async () => {
+    try {
+      const dbList = await databaseApi.getDatabases();
+      const dbNames = dbList.map(db => db.name);
+      setDatabases(dbNames);
+      if (dbNames.length > 0 && !selectedDb) {
+        setSelectedDb(dbNames[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load databases:', err);
+    }
+  };
+
   const loadTables = async () => {
     try {
       setLoading(true);
@@ -128,7 +148,7 @@ export const DatabaseViewerPage: React.FC = () => {
       );
 
       setTables(tablesWithSchema);
-      
+
       // Set default query to first table if query is empty
       if (!query && tablesWithSchema.length > 0) {
         const firstTable = tablesWithSchema[0].name;
@@ -222,7 +242,20 @@ export const DatabaseViewerPage: React.FC = () => {
         <div className={styles.toolbarLeft}>
           <DatabaseRegular style={{ fontSize: '16px', color: '#0078d4' }} />
           <Text size={300} weight="semibold">Database</Text>
-          <Text size={200} style={{ color: '#605e5c', marginLeft: '8px' }}>- {selectedDb}</Text>
+          <Text size={200} style={{ color: '#605e5c', marginLeft: '4px' }}>({databases.length})</Text>
+          <Dropdown
+            value={selectedDb}
+            selectedOptions={[selectedDb]}
+            onOptionSelect={(_, data) => setSelectedDb(data.optionValue as string)}
+            size="small"
+            style={{ minWidth: '200px', marginLeft: '8px' }}
+          >
+            {databases.map((db) => (
+              <Option key={db} value={db}>
+                {db}
+              </Option>
+            ))}
+          </Dropdown>
         </div>
         <div className={styles.toolbarRight}>
           <Tooltip content="New Query" relationship="label">

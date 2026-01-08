@@ -213,7 +213,11 @@ fn get_database_path() -> PathBuf {
     std::env::var("T3000_DATABASE_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
-            PathBuf::from(r"D:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\Database")
+            // Get the current executable's directory and append Database folder
+            std::env::current_exe()
+                .ok()
+                .and_then(|exe_path| exe_path.parent().map(|p| p.join("Database")))
+                .unwrap_or_else(|| PathBuf::from("Database"))
         })
 }
 
