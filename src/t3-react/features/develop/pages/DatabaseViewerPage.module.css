@@ -1,164 +1,424 @@
+/* Container */
 .container {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  background: #f3f2f1;
 }
 
-.header {
+/* Toolbar */
+.toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid #edebe9;
-  background-color: #ffffff;
+  padding: 8px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #d1d1d1;
+  min-height: 48px;
 }
 
-.headerLeft {
+.toolbarLeft {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.headerRight {
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Main Content */
+.mainContent {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Object Explorer */
+.objectExplorer {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-right: 1px solid #d1d1d1;
+  overflow: hidden;
+  min-width: 200px;
+  max-width: 500px;
+}
+
+.explorerHeader {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 12px;
+  background: #f3f2f1;
+  border-bottom: 1px solid #d1d1d1;
 }
 
-.content {
+.explorerContent {
   flex: 1;
-  overflow: hidden;
-  background-color: #faf9f8;
-}
-
-.dbSplitView {
-  display: flex;
-  height: 100%;
-}
-
-/* Tables List Panel */
-.tablesList {
-  width: 220px;
-  border-right: 1px solid #edebe9;
-  background-color: #ffffff;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
 }
 
-.tableItem {
+/* Tree View */
+.treeNode {
+  user-select: none;
+}
+
+.treeNodeHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.treeNodeHeader:hover {
+  background: #f3f2f1;
+}
+
+.treeNodeHeader svg {
+  flex-shrink: 0;
+}
+
+.treeNodeChildren {
+  padding-left: 16px;
+}
+
+.treeNodeItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.treeNodeItem:hover {
+  background: #f3f2f1;
+}
+
+.treeNodeItem.selected {
+  background: #e1f3ff;
+  border-left: 2px solid #0078d4;
+}
+
+.treeNodeItem svg {
+  flex-shrink: 0;
+}
+
+.columnItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #605e5c;
+}
+
+.columnItem svg {
+  flex-shrink: 0;
+}
+
+.itemCount,
+.rowCount {
+  margin-left: auto;
+  color: #8a8886;
+}
+
+.columnType {
+  color: #8a8886;
+  font-style: italic;
+}
+
+.pkBadge {
+  margin-left: 4px;
+  padding: 1px 4px;
+  background: #0078d4;
+  color: #ffffff;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Properties Panel */
+.propertiesPanel {
+  border-top: 1px solid #d1d1d1;
+  background: #faf9f8;
+  min-height: 100px;
+  max-height: 150px;
+}
+
+.propertiesPanelHeader {
+  padding: 6px 12px;
+  background: #f3f2f1;
+  border-bottom: 1px solid #d1d1d1;
+}
+
+.propertiesPanelContent {
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid #f3f2f1;
-  transition: background-color 0.15s ease;
+  gap: 6px;
 }
 
-.tableItem:hover {
-  background-color: #f3f2f1;
+.propertyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.tableItem:active {
-  background-color: #e1dfdd;
+/* Resize Handles */
+.resizeHandle {
+  width: 4px;
+  background: #d1d1d1;
+  cursor: col-resize;
+  transition: background 0.2s;
 }
 
-/* Query Panel */
-.queryPanel {
+.resizeHandle:hover {
+  background: #0078d4;
+}
+
+.horizontalResizeHandle {
+  height: 4px;
+  background: #d1d1d1;
+  cursor: row-resize;
+  transition: background 0.2s;
+}
+
+.horizontalResizeHandle:hover {
+  background: #0078d4;
+}
+
+/* Query Area */
+.queryArea {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+/* Query Editor */
 .queryEditor {
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid #edebe9;
-  background-color: #ffffff;
+  background: #ffffff;
+  border-bottom: 1px solid #d1d1d1;
+  min-height: 150px;
+  max-height: 600px;
 }
 
-.queryHeader {
+.queryEditorHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid #edebe9;
+  padding: 6px 12px;
+  background: #f3f2f1;
+  border-bottom: 1px solid #d1d1d1;
+}
+
+.queryEditorActions {
+  display: flex;
+  gap: 4px;
 }
 
 .sqlTextarea {
-  min-height: 150px;
+  flex: 1;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 13px;
+  line-height: 1.6;
   border: none;
   border-radius: 0;
+  background: #ffffff;
 }
 
 .sqlTextarea textarea {
   padding: 12px;
-  line-height: 1.5;
+  background: #ffffff !important;
+  resize: none;
 }
 
 /* Results Panel */
-.queryResults {
+.resultsPanel {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #ffffff;
 }
 
-.resultsHeader {
-  padding: 8px 12px;
-  border-bottom: 1px solid #edebe9;
-  background-color: #ffffff;
+.resultsTabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px 0;
+  background: #f3f2f1;
+  border-bottom: 2px solid #d1d1d1;
+}
+
+.resultsTab {
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #605e5c;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.resultsTab:hover {
+  background: #e1dfdd;
+  color: #323130;
+}
+
+.resultsTab.activeTab {
+  background: #ffffff;
+  color: #0078d4;
+  border-bottom-color: #0078d4;
+}
+
+.resultsContent {
+  flex: 1;
+  overflow: auto;
+  background: #ffffff;
 }
 
 .resultsTable {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   overflow: auto;
-  background-color: #ffffff;
 }
 
 .resultsTable table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.resultsTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .resultsTable th {
-  position: sticky;
-  top: 0;
-  background-color: #f3f2f1;
+  background: #f3f2f1;
   padding: 8px 12px;
   text-align: left;
   font-weight: 600;
-  border-bottom: 2px solid #edebe9;
+  font-size: 11px;
+  color: #323130;
+  border-bottom: 2px solid #d1d1d1;
+  border-right: 1px solid #edebe9;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .resultsTable td {
   padding: 6px 12px;
-  border-bottom: 1px solid #f3f2f1;
+  border-bottom: 1px solid #edebe9;
+  border-right: 1px solid #edebe9;
   font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: #323130;
 }
 
 .resultsTable tbody tr:hover {
-  background-color: #f3f2f1;
+  background: #f3f2f1;
+}
+
+.resultsTable tbody tr:nth-child(even) {
+  background: #faf9f8;
+}
+
+.resultsTable tbody tr:nth-child(even):hover {
+  background: #f3f2f1;
+}
+
+.messagesContent {
+  padding: 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.messageItem {
+  padding: 4px 0;
+  color: #323130;
 }
 
 .resultsPlaceholder {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 100%;
   padding: 40px;
-  background-color: #faf9f8;
+  color: #8a8886;
 }
 
-.error {
-  padding: 16px;
-  background-color: #fef6f6;
-  border: 1px solid #d13438;
-  margin: 16px;
-  border-radius: 4px;
+/* Status Bar */
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: #0078d4;
+  color: #ffffff;
+  font-size: 11px;
+  min-height: 24px;
+}
+
+.statusLeft,
+.statusRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusIndicator {
+  font-size: 10px;
+}
+
+/* Scrollbar Styling */
+.explorerContent::-webkit-scrollbar,
+.resultsContent::-webkit-scrollbar,
+.resultsTable::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.explorerContent::-webkit-scrollbar-track,
+.resultsContent::-webkit-scrollbar-track,
+.resultsTable::-webkit-scrollbar-track {
+  background: #f3f2f1;
+}
+
+.explorerContent::-webkit-scrollbar-thumb,
+.resultsContent::-webkit-scrollbar-thumb,
+.resultsTable::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border-radius: 6px;
+}
+
+.explorerContent::-webkit-scrollbar-thumb:hover,
+.resultsContent::-webkit-scrollbar-thumb:hover,
+.resultsTable::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .objectExplorer {
+    width: 220px !important;
+  }
+
+  .queryEditor {
+    height: 200px !important;
+  }
 }
