@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Button, Spinner, Tooltip } from '@fluentui/react-components';
 import Editor from '@monaco-editor/react';
+import * as databaseApi from '../services/databaseApi';
 import {
   PlayRegular,
   ArrowSyncRegular,
@@ -109,99 +110,55 @@ export const DatabaseViewerPage: React.FC = () => {
   }, [isResizing]);
 
   const loadTables = async () => {
-    // Mock tables with detailed structure
-    const mockTables: TableInfo[] = [
-      {
-        name: 'panels',
-        rowCount: 45,
-        columns: [
-          { name: 'id', type: 'INTEGER', notnull: true, pk: true },
-          { name: 'serial_number', type: 'INTEGER', notnull: true, pk: false },
-          { name: 'product_name', type: 'TEXT', notnull: false, pk: false },
-          { name: 'ip_address', type: 'TEXT', notnull: false, pk: false },
-          { name: 'location', type: 'TEXT', notnull: false, pk: false },
-        ],
-      },
-      {
-        name: 'inputs',
-        rowCount: 320,
-        columns: [
-          { name: 'id', type: 'INTEGER', notnull: true, pk: true },
-          { name: 'panel_id', type: 'INTEGER', notnull: true, pk: false },
-          { name: 'number', type: 'INTEGER', notnull: true, pk: false },
-          { name: 'label', type: 'TEXT', notnull: false, pk: false },
-          { name: 'value', type: 'REAL', notnull: false, pk: false },
-        ],
-      },
-      {
-        name: 'outputs',
-        rowCount: 160,
-        columns: [
-          { name: 'id', type: 'INTEGER', notnull: true, pk: true },
-          { name: 'panel_id', type: 'INTEGER', notnull: true, pk: false },
-          { name: 'number', type: 'INTEGER', notnull: true, pk: false },
-          { name: 'label', type: 'TEXT', notnull: false, pk: false },
-        ],
-      },
-      {
-        name: 'variables',
-        rowCount: 80,
-      },
-      {
-        name: 'programs',
-        rowCount: 24,
-      },
-      {
-        name: 'schedules',
-        rowCount: 52,
-      },
-      {
-        name: 'holidays',
-        rowCount: 12,
-      },
-      {
-        name: 'graphics',
-        rowCount: 8,
-      },
-      {
-        name: 'users',
-        rowCount: 5,
-      },
-      {
-        name: 'trendlog_data',
-        rowCount: 12504,
-      },
-    ];
-    setTables(mockTables);
+    try {
+      setLoading(true);
+      const fetchedTables = await databaseApi.getTables(selectedDb);
+
+      // Fetch detailed schema for tables with columns
+      const tablesWithSchema = await Promise.all(
+        fetchedTables.map(async (table) => {
+          try {
+            const schema = await databaseApi.getTableSchema(table.name, selectedDb);
+            return schema;
+          } catch (err) {
+            console.error(`Failed to fetch schema for ${table.name}:`, err);
+            return table;
+          }
+        })
+      );
+
+      setTables(tablesWithSchema);
+    } catch (err) {
+      console.error('Failed to load tables:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load tables');
+      setMessages([`Error loading tables: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const executeQuery = async () => {
+    if (!query.trim()) {
+      setMessages(['Please enter a query']);
+      setActiveTab('messages');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setMessages([]);
 
-    const startTime = Date.now();
-
     try {
-      // Mock query execution
-      await new Promise(resolve => setTimeout(resolve, 450));
+      const queryResult = await databaseApi.executeQuery({
+        database: selectedDb,
+        query: query,
+      });
 
-      const mockResult: QueryResult = {
-        columns: ['id', 'serial_number', 'product_name', 'ip_address', 'location', 'status'],
-        rows: [
-          [1, 237219, 'T3-BB', '192.168.1.100', 'Room 101', 'online'],
-          [2, 237451, 'T3-TB', '192.168.1.101', 'Room 202', 'online'],
-          [3, 245612, 'T3-LB', '192.168.1.102', 'Room 303', 'offline'],
-        ],
-        rowCount: 3,
-        executionTimeMs: Date.now() - startTime,
-      };
-
-      setResult(mockResult);
+      setResult(queryResult);
       setMessages([
         `Query executed successfully`,
-        `Rows affected: ${mockResult.rowCount}`,
-        `Execution time: ${mockResult.executionTimeMs}ms`,
+        `Rows: ${queryResult.rowCount}`,
+        `Execution time: ${queryResult.executionTimeMs.toFixed(2)}ms`,
       ]);
       setActiveTab('results');
     } catch (err) {
