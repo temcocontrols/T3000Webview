@@ -1,5 +1,7 @@
 # T3000 WebView System Architecture
 
+<!-- USER-GUIDE -->
+
 ## Overview
 
 The T3000 WebView is a modern web-based building automation system that provides real-time monitoring and control of HVAC devices through a hybrid desktop/web architecture.
@@ -12,7 +14,98 @@ The T3000 WebView is a modern web-based building automation system that provides
 
 ## System Components
 
-### 1. Frontend Layer (Client)
+### Frontend Layer (Client)
+The web interface you interact with runs in your browser or embedded WebView.
+
+- **Vue.js Application**: Main user interface for device control
+- **React Modules**: Database viewer and developer tools
+- **Quasar Framework**: Responsive UI components
+
+### Backend Layer (Rust API Server)
+The backend server runs on port 9103 and handles all communication.
+
+- **REST API**: Device management, configuration, and database queries
+- **WebSocket**: Real-time updates and control messages
+- **BACnet Bridge**: Connects to physical devices via FFI layer
+
+### Data Layer (SQLite Databases)
+Three databases store all system data:
+
+- **T3000.db**: Main configuration, devices, users, settings
+- **webview_t3_device.db**: Device data cache (inputs, outputs, variables)
+- **T3000_Trendlog.db**: Historical trend data and time-series records
+
+### Device Layer (BACnet Network)
+Physical building controllers communicate via BACnet/IP protocol:
+
+- T3-BB (BACnet Building Controller)
+- T3-TB (Thermostat Controller)
+- T3-LB (Lighting Controller)
+
+---
+
+## How Device Loading Works
+
+### Step 1: Network Scan
+When you open the app, it scans the network for BACnet devices by broadcasting a "Who-Is" message.
+
+### Step 2: Device Discovery
+Devices respond with "I-Am" messages containing their IP address, device ID, and model information.
+
+### Step 3: Data Retrieval
+When you select a device:
+1. Frontend sends a SELECT_PANEL message via WebSocket
+2. Backend connects to the device's IP address
+3. BACnet layer reads all data points (inputs, outputs, variables)
+4. Data is cached in the database
+5. Frontend receives the data and displays it in tables/grids
+
+### Step 4: Real-Time Updates
+Changes are monitored and updated automatically:
+- Device value changes trigger WebSocket broadcasts
+- Frontend updates the UI without page refresh
+- Database cache stays synchronized
+
+---
+
+## User Interface
+
+### Device Tree
+Browse all discovered devices in a hierarchical tree view organized by location or type.
+
+### Data Points
+View and edit device data in organized tabs:
+- **Inputs**: Temperature sensors, humidity, pressure
+- **Outputs**: Relays, dampers, valves
+- **Variables**: Setpoints, calculations, custom values
+- **Programs**: Control logic and automation
+- **Schedules**: Time-based control
+- **Graphics**: Visual building layouts
+
+### Trend Logs
+Historical data visualization with customizable time ranges and multiple data series.
+
+---
+
+## Configuration
+
+### Network Settings
+Configure IP addresses, subnets, and protocol ports in Settings → Network.
+
+### User Management
+Create operator and administrator accounts with role-based permissions.
+
+### Backups
+Enable automatic daily backups to protect your configuration and historical data.
+
+---
+
+<!-- TECHNICAL -->
+
+#### Detailed System Architecture
+
+##### Component Architecture Diagram
+
 ```
 ┌─────────────────────────────────────────┐
 │         Web Browser / WebView           │
@@ -27,10 +120,6 @@ The T3000 WebView is a modern web-based building automation system that provides
 └─────────────────────────────────────────┘
          │ HTTP/WS
          ▼
-```
-
-### 2. Backend Layer (Rust API Server)
-```
 ┌─────────────────────────────────────────┐
 │       Axum HTTP Server (:9103)          │
 │  ┌────────────────────────────────────┐ │
@@ -52,10 +141,6 @@ The T3000 WebView is a modern web-based building automation system that provides
 └─────────────────────────────────────────┘
          │
          ▼
-```
-
-### 3. Data Layer
-```
 ┌─────────────────────────────────────────┐
 │         SQLite Databases                │
 │  ┌────────────────────────────────────┐ │
@@ -76,10 +161,6 @@ The T3000 WebView is a modern web-based building automation system that provides
 └─────────────────────────────────────────┘
          │
          ▼
-```
-
-### 4. Device Layer
-```
 ┌─────────────────────────────────────────┐
 │     Physical BACnet Devices             │
 │  ┌──────┐  ┌──────┐  ┌──────┐          │
@@ -88,16 +169,6 @@ The T3000 WebView is a modern web-based building automation system that provides
 │       BACnet/IP Protocol                │
 └─────────────────────────────────────────┘
 ```
-
----
-
-## Data Flow: Device Loading
-
-### Initial Scan Flow
-
-```
-┌──────────────┐
-│  User Opens  │
 │  WebView App │
 └──────┬───────┘
        │

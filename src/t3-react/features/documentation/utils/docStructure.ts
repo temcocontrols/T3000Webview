@@ -30,6 +30,7 @@ export const docStructure: DocSection[] = [
     icon: 'AppFolder',
     items: [
       { title: 'System Overview', path: 't3000/architecture/system-overview' },
+      { title: 'Device Loading', path: 't3000/architecture/device-loading' },
     ],
   },
   {
