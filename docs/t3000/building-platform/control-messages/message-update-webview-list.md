@@ -21,7 +21,7 @@ UPDATE_WEBVIEW_LIST writes values to device entries in bulk. Use this to update 
 
 ```json
 {
-  "action": 18,
+  "action": 16,
   "source": 1,
   "panelId": 0,
   "serialNumber": 12345,
@@ -44,7 +44,7 @@ UPDATE_WEBVIEW_LIST writes values to device entries in bulk. Use this to update 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `action` | Integer | ✅ | Must be 18 |
+| `action` | Integer | ✅ | Must be 16 |
 | `source` | Integer | ✅ | Message source: 0=T3000, 1=WebUI |
 | `panelId` | Integer | ✅ | Panel number (0-254) |
 | `serialNumber` | Integer | ✅ | Device serial number |
