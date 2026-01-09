@@ -33,6 +33,8 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
     // Auto-expand the section containing the current page
     if (pathFromUrl.includes('quick-start')) {
       setExpandedSections(prev => new Set(prev).add('Quick Start'));
+    } else if (pathFromUrl.includes('architecture')) {
+      setExpandedSections(prev => new Set(prev).add('Architecture'));
     } else if (pathFromUrl.includes('device-management')) {
       setExpandedSections(prev => new Set(prev).add('Device Management'));
     } else if (pathFromUrl.includes('data-points')) {
