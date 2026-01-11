@@ -3,7 +3,9 @@ import T3Svg from '../Util/T3Svg';
 import Container from './B.Container';
 import Group from "./B.Group";
 import Element from './B.Element';
-import { useQuasar } from 'quasar';
+// import { useQuasar } from 'quasar';
+// Placeholder: Quasar not used in React
+const useQuasar: any = () => ({ notify: () => {}, dialog: {} });
 import T3Util from '../Util/T3Util';
 
 /**
@@ -149,7 +151,7 @@ class ForeignObject extends Element {
    */
   setSecureHTML(content: string) {
     // Dynamic import to avoid circular dependencies
-    import('../../Security/T3SecurityUtil').then(({ T3Security }) => {
+    import('../Security/T3SecurityUtil').then(({ T3Security }) => {
       const sanitizedContent = T3Security.sanitizeHTML(content, true);
       this.svgObj.node.innerHTML = sanitizedContent;
     }).catch(() => {

@@ -7,7 +7,9 @@ import Instance from '../Data/Instance/Instance'
 import $ from 'jquery'
 import T3Util from "../Util/T3Util"
 import ToolSvgData from "../Opt/Tool/ToolSvgData"
-import { TouchSwipe } from "quasar"
+// import { TouchSwipe } from "quasar"
+// Placeholder: Quasar TouchSwipe not used in React
+const TouchSwipe: any = {};
 import LogUtil from "../Util/LogUtil"
 
 /**
