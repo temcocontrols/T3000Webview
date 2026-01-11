@@ -3,7 +3,7 @@
  * Left sidebar with drawing tools organized in expandable sections
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ToolbarButton,
   Tooltip,
@@ -15,83 +15,15 @@ import {
 } from '@fluentui/react-components';
 import {
   CursorRegular,
-  NavigationRegular,
-  LineRegular,
-  RectangleLandscapeRegular,
-  CircleRegular,
-  SquareRegular,
-  ShapesRegular,
-  DrawShapeRegular,
-  TextTRegular,
-  ImageRegular,
-  LibraryRegular,
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
-import { ToolType } from '../../types/tool.types';
+import { NewTool, toolsCategories, selectedTool } from '@/lib/t3-hvac';
 
-interface Tool {
-  type: ToolType;
-  icon: JSX.Element;
-  label: string;
-}
-
-interface ToolCategory {
-  name: string;
-  tools: Tool[];
-}
-
-const toolCategories: ToolCategory[] = [
-  {
-    name: 'Basic',
-    tools: [
-      { type: 'select', icon: <CursorRegular />, label: 'Select' },
-      { type: 'pan', icon: <NavigationRegular />, label: 'Pan' },
-      { type: 'line', icon: <LineRegular />, label: 'Line' },
-      { type: 'rectangle', icon: <RectangleLandscapeRegular />, label: 'Rectangle' },
-    ],
-  },
-  {
-    name: 'General',
-    tools: [
-      { type: 'circle', icon: <CircleRegular />, label: 'Circle' },
-      { type: 'ellipse', icon: <CircleRegular />, label: 'Ellipse' },
-      { type: 'polygon', icon: <ShapesRegular />, label: 'Polygon' },
-      { type: 'polyline', icon: <DrawShapeRegular />, label: 'Polyline' },
-      { type: 'text', icon: <TextTRegular />, label: 'Text' },
-      { type: 'image', icon: <ImageRegular />, label: 'Image' },
-    ],
-  },
-  {
-    name: 'Pipe',
-    tools: [
-      // Empty for now - will add pipe-specific tools
-    ],
-  },
-  {
-    name: 'Duct',
-    tools: [
-      // Empty for now - will add duct-specific tools
-    ],
-  },
-  {
-    name: 'Room',
-    tools: [
-      // Empty for now - will add room-specific tools
-    ],
-  },
-  {
-    name: 'Metrics',
-    tools: [
-      // Empty for now - will add metrics-specific tools
-    ],
-  },
-  {
-    name: 'User',
-    tools: [
-      // Empty for now - will be populated with user objects
-    ],
-  },
-];
+// Map tool names to Fluent UI icons
+const getToolIcon = (iconName: string) => {
+  // For now, use a default icon - you can map specific icons later
+  return <CursorRegular />;
+};
 
 const useStyles = makeStyles({
   container: {
@@ -165,6 +97,25 @@ export const ToolsPanel: React.FC = () => {
   const styles = useStyles();
   const { activeTool, setActiveTool } = useHvacDesignerStore();
   const [openItems, setOpenItems] = useState<string[]>(['Basic', 'General', 'Pipe', 'Duct', 'Room', 'Metrics', 'User']);
+  const [selectedToolLocal, setSelectedToolLocal] = useState(NewTool[0]); // Local state for UI
+
+  // Group tools by category
+  const toolsByCategory = useMemo(() => {
+    const grouped: { [key: string]: any[] } = {};
+    toolsCategories.forEach(cat => {
+      grouped[cat] = NewTool.filter((tool: any) => tool.cat.includes(cat));
+    });
+    return grouped;
+  }, []);
+
+  const handleToolClick = (tool: any) => {
+    setSelectedToolLocal(tool);
+    // Update the library's selectedTool (this is what the drawing logic uses)
+    selectedTool.value = { ...tool, type: 'default' };
+    // Also update the local store for React state
+    setActiveTool(tool.name.toLowerCase() as any);
+    console.log('🔧 Tool selected:', tool.name);
+  };
 
   return (
     <div className={styles.container}>
@@ -177,23 +128,23 @@ export const ToolsPanel: React.FC = () => {
           setOpenItems(data.openItems as string[]);
         }}
       >
-        {toolCategories.map((category) => (
-          <AccordionItem key={category.name} value={category.name}>
-            <AccordionHeader size="small">{category.name}</AccordionHeader>
+        {toolsCategories.map((category) => (
+          <AccordionItem key={category} value={category}>
+            <AccordionHeader size="small">{category}</AccordionHeader>
             <AccordionPanel>
-              {category.tools.length > 0 ? (
+              {toolsByCategory[category] && toolsByCategory[category].length > 0 ? (
                 <div className={styles.toolGrid}>
-                  {category.tools.map((tool) => (
+                  {toolsByCategory[category].map((tool: any) => (
                     <Tooltip
-                      key={tool.type}
+                      key={tool.name}
                       content={{ children: tool.label, className: styles.tooltipContent }}
                       relationship="label"
                       positioning="after"
                     >
                       <ToolbarButton
-                        icon={tool.icon}
-                        appearance={activeTool === tool.type ? 'primary' : 'subtle'}
-                        onClick={() => setActiveTool(tool.type)}
+                        icon={getToolIcon(tool.icon)}
+                        appearance={selectedToolLocal.name === tool.name ? 'primary' : 'subtle'}
+                        onClick={() => handleToolClick(tool)}
                         className={styles.toolButton}
                       />
                     </Tooltip>
@@ -201,7 +152,7 @@ export const ToolsPanel: React.FC = () => {
                 </div>
               ) : (
                 <div className={styles.emptyMessage}>
-                  {category.name === 'User' ? (
+                  {category === 'User' ? (
                     <>
                       Library is empty.<br />
                       Select objects and save<br />

@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Hvac from '@/lib/t3-hvac';
 import {
   Spinner,
   Text,
@@ -103,6 +104,14 @@ export const HvacDesignerPage: React.FC = () => {
   const [message, setMessage] = useState('Ready');
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(115); // Default width
+
+  // Initialize HVAC UI system once when page mounts
+  useEffect(() => {
+    // Initialize the HVAC library (pass null for Quasar since we use Fluent UI)
+    // This creates DocUtil which sets up rulers, SVG area, grid, etc.
+    Hvac.UI.Initialize(null);
+    console.log('✅ HVAC Designer UI initialized');
+  }, []);
 
   useEffect(() => {
     if (graphicId) {

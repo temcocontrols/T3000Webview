@@ -1,9 +1,9 @@
 /**
- * Canvas Types
- * Defines canvas properties and state
+ * Viewport Types
+ * Defines viewport/drawing area properties and state
  */
 
-export interface CanvasState {
+export interface ViewportState {
   width: number;
   height: number;
   zoom: number;

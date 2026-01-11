@@ -57,4 +57,26 @@
   user-select: none;
   background-color: #ffffff;
   border: 1px solid #e1e1e1;
+  /* Firefox thin scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+
+/* Thin scrollbars for drawing area - Chrome/Edge/Safari */
+.svgArea::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.svgArea::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+
+.svgArea::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
+}
+
+.svgArea::-webkit-scrollbar-thumb:hover {
+  background-color: #a1a1a1;
 }

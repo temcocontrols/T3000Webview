@@ -7,13 +7,13 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { Shape } from '../types/shape.types';
-import { CanvasState } from '../types/canvas.types';
+import { ViewportState } from '../types/viewport.types';
 import { ToolType, ToolOptions } from '../types/tool.types';
 import { Layer, Symbol } from '../types/drawing.types';
 
 interface HvacDesignerState {
-  // Canvas state
-  canvas: CanvasState;
+  // Viewport state
+  viewport: ViewportState;
 
   // Shapes
   shapes: Shape[];
@@ -107,7 +107,7 @@ interface HvacDesignerActions {
   markClean: () => void;
 }
 
-const initialCanvasState: CanvasState = {
+const initialViewportState: ViewportState = {
   width: 3000,
   height: 2000,
   zoom: 1,
@@ -120,7 +120,7 @@ const initialCanvasState: CanvasState = {
 };
 
 const initialState: HvacDesignerState = {
-  canvas: initialCanvasState,
+  viewport: initialViewportState,
   shapes: [],
   selectedShapeIds: [],
   clipboard: [],
@@ -157,41 +157,41 @@ export const useHvacDesignerStore = create<HvacDesignerState & HvacDesignerActio
     immer((set, get) => ({
       ...initialState,
 
-      // Canvas actions
+      // Viewport actions
       setZoom: (zoom) =>
         set((state) => {
-          state.canvas.zoom = Math.max(0.1, Math.min(5, zoom));
+          state.viewport.zoom = Math.max(0.1, Math.min(5, zoom));
         }),
 
       setPan: (x, y) =>
         set((state) => {
-          state.canvas.pan = { x, y };
+          state.viewport.pan = { x, y };
         }),
 
       setGridSize: (size) =>
         set((state) => {
-          state.canvas.gridSize = size;
+          state.viewport.gridSize = size;
         }),
 
       toggleGrid: () =>
         set((state) => {
-          state.canvas.showGrid = !state.canvas.showGrid;
+          state.viewport.showGrid = !state.viewport.showGrid;
         }),
 
       toggleRulers: () =>
         set((state) => {
-          state.canvas.showRulers = !state.canvas.showRulers;
+          state.viewport.showRulers = !state.viewport.showRulers;
         }),
 
       toggleSnapToGrid: () =>
         set((state) => {
-          state.canvas.snapToGrid = !state.canvas.snapToGrid;
+          state.viewport.snapToGrid = !state.viewport.snapToGrid;
         }),
 
       resetView: () =>
         set((state) => {
-          state.canvas.zoom = 1;
-          state.canvas.pan = { x: 0, y: 0 };
+          state.viewport.zoom = 1;
+          state.viewport.pan = { x: 0, y: 0 };
         }),
 
       // Shape actions

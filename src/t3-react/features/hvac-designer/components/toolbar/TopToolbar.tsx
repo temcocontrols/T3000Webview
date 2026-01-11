@@ -52,7 +52,7 @@ import {
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { useDrawing } from '../../hooks/useDrawing';
-import { useCanvas } from '../../hooks/useCanvas';
+import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
 
 const useStyles = makeStyles({
   container: {
@@ -153,7 +153,9 @@ export const TopToolbar: React.FC = () => {
   } = useHvacDesignerStore();
 
   const { saveDrawing, exportAs, createNew, isSaving } = useDrawing();
-  const { zoomIn, zoomOut } = useCanvas();
+  // Use existing Hvac library for zoom operations
+  const zoomIn = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil.zoom.value || 100) + 10);
+  const zoomOut = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil.zoom.value || 100) - 10);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showRotateMenu, setShowRotateMenu] = useState(false);
   const [showAlignMenu, setShowAlignMenu] = useState(false);

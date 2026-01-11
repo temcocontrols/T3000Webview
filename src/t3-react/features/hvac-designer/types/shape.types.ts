@@ -3,7 +3,7 @@
  * Defines all drawable shapes on the canvas
  */
 
-import { Point, Transform } from './canvas.types';
+import { Point, Transform } from './viewport.types';
 
 export type ShapeType =
   | 'line'
