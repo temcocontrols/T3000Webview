@@ -1,6 +1,11 @@
 
-import { ref } from "vue";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
+// import { ref } from "vue";
+// Placeholder: Vue ref - will need React equivalent
+const ref = <T = any>(val?: T) => ({ value: val as T });
+// import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
+// Migrated: Import tools from T3Data instead of common.js
+import { NewTool as tools } from "../T3Data";
+const demoDeviceData: any = null;
 import { EventFormState, CalendarEvent } from "../Constant/T3Interface"
 
 // Interface definition for context menu configuration

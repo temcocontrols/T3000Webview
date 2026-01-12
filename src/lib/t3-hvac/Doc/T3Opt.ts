@@ -9,7 +9,9 @@ import EvtOpt from '../Event/EvtOpt';
 import KeyboardOpt from '../Opt/Keyboard/KeyboardOpt';
 import UserOpt from '../Opt/User/UserOpt';
 import SvgUtil from '../Opt/Opt/SvgUtil';
-import Quasar from 'quasar';
+// import Quasar from 'quasar';
+// Placeholder: Quasar not used in React migration
+const Quasar: any = null;
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 import Basic from '../Data/Instance/Basic';
 import Shape from '../Data/Instance/Shape';

@@ -119,6 +119,18 @@ class DocUtil {
   constructor() {
     this.InitDocConfig();
     this.rulerConfig = new RulerConfig();
+    
+    // Bind event handler methods to maintain correct 'this' context
+    this.HandleResizeEvent = this.HandleResizeEvent.bind(this);
+    this.HandleScrollEvent = this.HandleScrollEvent.bind(this);
+    this.RulerTopDoubleClick = this.RulerTopDoubleClick.bind(this);
+    this.RulerLeftDoubleClick = this.RulerLeftDoubleClick.bind(this);
+    this.RulerCenterDoubleClick = this.RulerCenterDoubleClick.bind(this);
+    this.RulerDragStart = this.RulerDragStart.bind(this);
+    this.RulerTopDrag = this.RulerTopDrag.bind(this);
+    this.RulerLeftDrag = this.RulerLeftDrag.bind(this);
+    this.RulerCenterDrag = this.RulerCenterDrag.bind(this);
+    this.RulerDragEnd = this.RulerDragEnd.bind(this);
   }
 
   /**
@@ -1191,6 +1203,20 @@ class DocUtil {
       isReadOnly: this.IsReadOnly()
     });
 
+    // Check if DOM elements exist
+    const hRulerElem = $(this.hRulerAreaId)[0];
+    const vRulerElem = $(this.vRulerAreaId)[0];
+    const cRulerElem = $(this.cRulerAreaId)[0];
+    
+    LogUtil.Info("🔍 SetUpRulers - DOM elements check:", {
+      hRulerExists: !!hRulerElem,
+      vRulerExists: !!vRulerElem,
+      cRulerExists: !!cRulerElem,
+      hRulerElement: hRulerElem,
+      vRulerElement: vRulerElem,
+      cRulerElement: cRulerElem
+    });
+
     // Initialize horizontal ruler document if not already set
     if (!this.hRulerDoc) {
       this.hRulerDoc = new Document(this.hRulerAreaId, []);
@@ -1210,21 +1236,42 @@ class DocUtil {
 
     // Attach Hammer.js event handlers if not read-only
     if (!this.IsReadOnly()) {
-      new Hammer($(this.hRulerAreaId)[0]).on('doubletap', this.RulerTopDoubleClick);
-      new Hammer($(this.vRulerAreaId)[0]).on('doubletap', this.RulerLeftDoubleClick);
-      new Hammer($(this.cRulerAreaId)[0]).on('doubletap', this.RulerCenterDoubleClick);
-
-      new Hammer($(this.hRulerAreaId)[0]).on('dragstart', this.RulerDragStart);
-      new Hammer($(this.vRulerAreaId)[0]).on('dragstart', this.RulerDragStart);
-      new Hammer($(this.cRulerAreaId)[0]).on('dragstart', this.RulerDragStart);
-
-      new Hammer($(this.hRulerAreaId)[0]).on('drag', this.RulerTopDrag);
-      new Hammer($(this.vRulerAreaId)[0]).on('drag', this.RulerLeftDrag);
-      new Hammer($(this.cRulerAreaId)[0]).on('drag', this.RulerCenterDrag);
-
-      new Hammer($(this.hRulerAreaId)[0]).on('dragend', this.RulerDragEnd);
-      new Hammer($(this.vRulerAreaId)[0]).on('dragend', this.RulerDragEnd);
-      new Hammer($(this.cRulerAreaId)[0]).on('dragend', this.RulerDragEnd);
+      LogUtil.Info("🔧 SetUpRulers - Attaching Hammer.js events...");
+      
+      if (hRulerElem) {
+        const hHammer = new Hammer(hRulerElem);
+        hHammer.on('doubletap', this.RulerTopDoubleClick);
+        hHammer.on('dragstart', this.RulerDragStart);
+        hHammer.on('drag', this.RulerTopDrag);
+        hHammer.on('dragend', this.RulerDragEnd);
+        LogUtil.Info("✅ Horizontal ruler events attached");
+      } else {
+        LogUtil.Error("❌ Horizontal ruler element not found!");
+      }
+      
+      if (vRulerElem) {
+        const vHammer = new Hammer(vRulerElem);
+        vHammer.on('doubletap', this.RulerLeftDoubleClick);
+        vHammer.on('dragstart', this.RulerDragStart);
+        vHammer.on('drag', this.RulerLeftDrag);
+        vHammer.on('dragend', this.RulerDragEnd);
+        LogUtil.Info("✅ Vertical ruler events attached");
+      } else {
+        LogUtil.Error("❌ Vertical ruler element not found!");
+      }
+      
+      if (cRulerElem) {
+        const cHammer = new Hammer(cRulerElem);
+        cHammer.on('doubletap', this.RulerCenterDoubleClick);
+        cHammer.on('dragstart', this.RulerDragStart);
+        cHammer.on('drag', this.RulerCenterDrag);
+        cHammer.on('dragend', this.RulerDragEnd);
+        LogUtil.Info("✅ Center ruler events attached");
+      } else {
+        LogUtil.Error("❌ Center ruler element not found!");
+      }
+    } else {
+      LogUtil.Info("⚠️ SetUpRulers - Document is read-only, events not attached");
     }
 
     // Reset rulers to update display
@@ -1801,7 +1848,7 @@ class DocUtil {
    * @returns void
    */
   RulerTopDoubleClick(event: any): void {
-    LogUtil.Debug("= U.DocUtil: RulerTopDoubleClick - Input:", { event });
+    LogUtil.Info("🖱️ RulerTopDoubleClick - Event received:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerHandleDoubleClick(event, false, true);
@@ -1816,7 +1863,7 @@ class DocUtil {
    * @returns void
    */
   RulerLeftDoubleClick(event: any): void {
-    LogUtil.Debug("= U.DocUtil: RulerLeftDoubleClick - Input:", { event });
+    LogUtil.Info("🖱️ RulerLeftDoubleClick - Event received:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerHandleDoubleClick(event, true, false);
@@ -1831,7 +1878,7 @@ class DocUtil {
    * @returns void
    */
   RulerCenterDoubleClick(event: any): void {
-    LogUtil.Debug("= U.DocUtil: RulerCenterDoubleClick - Input:", { event });
+    LogUtil.Info("🖱️ RulerCenterDoubleClick - Event received:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerHandleDoubleClick(event, true, true);
@@ -1847,7 +1894,7 @@ class DocUtil {
    * @returns void
    */
   RulerDragStart(dragEvent: any): void {
-    LogUtil.Debug("= U.DocUtil: RulerDragStart - Input:", { dragEvent });
+    LogUtil.Info("🖱️ RulerDragStart - Event received:", { dragEvent });
 
     if (!T3Gv.docUtil.IsReadOnly()) {
       if (MouseUtil.IsRightClick(dragEvent)) {
@@ -2325,11 +2372,8 @@ class DocUtil {
    * @returns boolean - False if document is editable, true if read-only
    */
   IsReadOnly(): boolean {
-    // LogUtil.Debug("= U.DocUtil: IsReadOnly - Input: Checking document read-only state");
-
     const readOnlyState = false;
-
-    // LogUtil.Debug("= U.DocUtil: IsReadOnly - Output:", readOnlyState);
+    LogUtil.Info("🔒 IsReadOnly check:", { readOnlyState });
     return readOnlyState;
   }
 

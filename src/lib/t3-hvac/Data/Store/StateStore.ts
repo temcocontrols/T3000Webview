@@ -5,7 +5,15 @@
  * Uses Vue's reactivity system with proper encapsulation and type safety
  */
 
-import { ref, computed, reactive, type Ref } from "vue";
+// import { ref, computed, reactive, type Ref } from "vue";
+// Placeholder: Vue reactivity - will need React equivalent
+const ref = (val?: any) => ({ value: val });
+const computed = (fnOrOptions: any) => {
+  if (typeof fnOrOptions === 'function') return { value: fnOrOptions() };
+  return { get value() { return fnOrOptions.get?.() || null; }, set value(v) { fnOrOptions.set?.(v); } };
+};
+const reactive = (val: any) => val;
+type Ref<T> = { value: T };
 import { cloneDeep } from "lodash";
 import type GlobalMsgModel from "../../Model/GlobalMsgModel";
 
@@ -166,9 +174,9 @@ class StateStore {
   public readonly globalMsg: Ref<GlobalMsgModel[]> = ref([]);
 
   // Settings and version
-  public readonly devVersion: Ref<string> = ref("V:26.0109.01");
+  public readonly devVersion: Ref<string> = ref("V:25.1226.01");
   public readonly localSettings: Ref<LocalSettings> = ref({
-    version: "V:26.0109.01",
+    version: "V:25.1226.01",
     transform: 0
   });
 

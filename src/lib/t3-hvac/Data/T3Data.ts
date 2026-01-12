@@ -1,5 +1,7 @@
 
-import { ref } from "vue";
+// import { ref } from "vue";
+// Placeholder: Vue ref - will need React equivalent
+const ref = <T = any>(val?: T) => ({ value: val as T });
 import { cloneDeep } from "lodash";
 import GlobalMsgModel from "../Model/GlobalMsgModel";
 
@@ -642,14 +644,16 @@ console.log('= T3Data: STORE INITIALIZATION - T3000_Data reactive store created:
 */
 
 // Add a watcher to track all changes to T3000_Data
-import { watch } from 'vue';
+// import { watch } from 'vue';
+// Placeholder: Vue watch - will need React equivalent
+const watch = (_source: any, _cb: any, _options?: any) => {};
 
-watch(T3000_Data, (newValue, oldValue) => {
+watch(T3000_Data, (_newValue: any, _oldValue: any) => {
   // Track T3000_Data store changes for reactive updates
 }, { deep: true });
 
 // Utility function to log complete T3000_Data flow state
-export const logT3000DataFlowState = (context: string, additionalInfo?: any) => {
+export const logT3000DataFlowState = (_context: string, _additionalInfo?: any) => {
   // Log T3000_Data state for debugging when needed
 };
 
@@ -675,9 +679,9 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:26.0109.01");
+export const devVersion = ref("V:25.1226.01");
 
-export const localSettings = ref({ version: "V:26.0109.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.1226.01", transform: 0 });
 
 export const T3Data = {
   deviceList: ref([]),

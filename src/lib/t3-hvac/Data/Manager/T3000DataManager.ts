@@ -10,7 +10,10 @@
  * Purpose: Generic data manager for panel data with flow tracking
  */
 
-import { ref, watch } from 'vue'
+// import { ref, watch } from 'vue'
+// Placeholder: Vue reactivity - will need React equivalent
+const ref = (val: any) => ({ value: val });
+const watch = (source: any, cb: any) => {};
 import { T3000_Data } from '../T3Data'
 import LogUtil from '../../Util/LogUtil'
 
