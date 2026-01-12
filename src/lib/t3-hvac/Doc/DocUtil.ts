@@ -119,7 +119,7 @@ class DocUtil {
   constructor() {
     this.InitDocConfig();
     this.rulerConfig = new RulerConfig();
-    
+
     // Bind event handler methods to maintain correct 'this' context
     this.HandleResizeEvent = this.HandleResizeEvent.bind(this);
     this.HandleScrollEvent = this.HandleScrollEvent.bind(this);
@@ -1207,7 +1207,7 @@ class DocUtil {
     const hRulerElem = $(this.hRulerAreaId)[0];
     const vRulerElem = $(this.vRulerAreaId)[0];
     const cRulerElem = $(this.cRulerAreaId)[0];
-    
+
     LogUtil.Info("🔍 SetUpRulers - DOM elements check:", {
       hRulerExists: !!hRulerElem,
       vRulerExists: !!vRulerElem,
@@ -1237,7 +1237,7 @@ class DocUtil {
     // Attach Hammer.js event handlers if not read-only
     if (!this.IsReadOnly()) {
       LogUtil.Info("🔧 SetUpRulers - Attaching Hammer.js events...");
-      
+
       if (hRulerElem) {
         const hHammer = new Hammer(hRulerElem);
         hHammer.on('doubletap', this.RulerTopDoubleClick);
@@ -1248,7 +1248,7 @@ class DocUtil {
       } else {
         LogUtil.Error("❌ Horizontal ruler element not found!");
       }
-      
+
       if (vRulerElem) {
         const vHammer = new Hammer(vRulerElem);
         vHammer.on('doubletap', this.RulerLeftDoubleClick);
@@ -1259,7 +1259,7 @@ class DocUtil {
       } else {
         LogUtil.Error("❌ Vertical ruler element not found!");
       }
-      
+
       if (cRulerElem) {
         const cHammer = new Hammer(cRulerElem);
         cHammer.on('doubletap', this.RulerCenterDoubleClick);
