@@ -1942,6 +1942,93 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				}
 				break;
 			}
+
+			// Double TODO
+			case BAC_PRG:
+			{
+				if (entry_index_end >= entry_index_start)
+				{
+					// Calculate number of groups needed (round up)
+					int totalCount = entry_index_end - entry_index_start + 1;
+					int groupSize = BAC_READ_PROGRAM_GROUP_NUMBER;
+					int read_program_group = (totalCount + groupSize - 1) / groupSize;
+
+					for (int i = 0; i < read_program_group; ++i)
+					{
+						int temp_start = entry_index_start + i * groupSize;
+						if (temp_start > entry_index_end) // Prevent overflow
+							break;
+
+						int temp_end = temp_start + groupSize - 1;
+						if (temp_end > entry_index_end)
+							temp_end = entry_index_end;
+
+						// Ensure not exceeding global max count
+						if (temp_start >= BAC_PROGRAM_ITEM_COUNT)
+							break;
+						if (temp_end >= BAC_PROGRAM_ITEM_COUNT)
+							temp_end = BAC_PROGRAM_ITEM_COUNT - 1;
+
+						// Blocking read for each group
+						if (GetPrivateDataSaveSPBlocking(entry_objectinstance, READPROGRAM_T3000,
+							(uint8_t)temp_start, (uint8_t)temp_end, sizeof(Str_program_point), 4) > 0)
+						{
+							// Copy read data to global cache
+							for (int idx = temp_start; idx <= temp_end; ++idx)
+							{
+								if (idx < BAC_PROGRAM_ITEM_COUNT) {
+									g_Program_data[temp_panel_id].at(idx) = m_Program_data.at(idx);
+								}
+							}
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								int elementCount = temp_end - temp_start + 1;
+								CString dbg;
+								dbg.Format(_T("obj=%d,program ,Chunk %d: temp_start=%d, temp_end=%d, count=%d\r\n"),
+									entry_objectinstance, i, temp_start, temp_end, elementCount);
+								DFTrace(dbg);
+							}
+							Sleep(SEND_COMMAND_DELAY_TIME);
+						}
+						else
+						{
+							CString errorLog;
+							errorLog.Format(_T("ERROR: Read program failed start=%d, end=%d"),
+								temp_start, temp_end);
+							WriteHandleWebViewMsgLog(_T("GET_WEBVIEW_LIST"), errorLog, 0);
+
+							if (msg_source == 0)
+								SetPaneString(BAC_SHOW_MISSION_RESULTS, errorLog);
+							WrapErrorMessage(builder, tempjson, outmsg, errorLog);
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								DFTrace(errorLog);
+							}
+							continue;
+						}
+
+						int npanel_id = temp_panel_id;
+						for (int idx = temp_start; idx <= temp_end; idx++)
+						{
+							int prg_idx = idx;
+							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
+							tempjson["data"]["device_data"][point_idx]["type"] = "PROGRAM";
+							tempjson["data"]["device_data"][point_idx]["index"] = prg_idx;
+							tempjson["data"]["device_data"][point_idx]["id"] = "PRG" + to_string(prg_idx + 1);
+							tempjson["data"]["device_data"][point_idx]["command"] = to_string(npanel_id) + "PRG" + to_string(prg_idx + 1);
+							tempjson["data"]["device_data"][point_idx]["description"] = (char*)g_Program_data[npanel_id].at(prg_idx).description;
+							tempjson["data"]["device_data"][point_idx]["label"] = (char*)g_Program_data[npanel_id].at(prg_idx).label;
+							tempjson["data"]["device_data"][point_idx]["auto_manual"] = g_Program_data[npanel_id].at(prg_idx).auto_manual;
+							tempjson["data"]["device_data"][point_idx]["status"] = g_Program_data[npanel_id].at(prg_idx).on_off;
+							tempjson["data"]["device_data"][point_idx]["unused"] = g_Program_data[npanel_id].at(prg_idx).unused;
+							point_idx++;
+						}
+
+					} // for groups
+				}
+				break;
+			}
+
 			default:
 				break;
 		}
@@ -3114,7 +3201,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			tempjson["data"][device_count]["panel_id"] = npanel_id;
 			tempjson["data"][device_count]["panel_name"] = (char*)g_Device_Basic_Setting[npanel_id].reg.panel_name;
 
-			// Fix: g_Device_Basic_Setting not initialized when panel_number=0, use g_bacnet_panel_info instead
+			// Double TODO Fix: g_Device_Basic_Setting not initialized when panel_number=0, use g_bacnet_panel_info instead
 			//tempjson["data"][device_count]["panel_serial_number"] = g_Device_Basic_Setting[npanel_id].reg.n_serial_number;
 			tempjson["data"][device_count]["panel_serial_number"] = g_bacnet_panel_info.at(panel_idx).nseiral_number;
 
