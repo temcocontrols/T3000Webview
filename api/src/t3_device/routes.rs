@@ -25,6 +25,10 @@ use crate::t3_device::variable_update_routes::create_variable_update_routes;
 use crate::t3_device::input_batch_routes::create_input_batch_routes;
 use crate::t3_device::output_batch_routes::create_output_batch_routes;
 use crate::t3_device::variable_batch_routes::create_variable_batch_routes;
+use crate::t3_device::programs_batch_routes::create_programs_batch_routes;
+use crate::t3_device::schedules_batch_routes::create_schedules_batch_routes;
+use crate::t3_device::holidays_batch_routes::create_holidays_batch_routes;
+use crate::t3_device::pid_batch_routes::create_pid_batch_routes;
 use crate::t3_device::input_refresh_routes::create_input_refresh_routes;
 use crate::t3_device::output_refresh_routes::create_output_refresh_routes;
 use crate::t3_device::variable_refresh_routes::create_variable_refresh_routes;
@@ -1192,6 +1196,10 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_input_batch_routes())
         .merge(create_output_batch_routes())
         .merge(create_variable_batch_routes())
+        .merge(create_programs_batch_routes())  // ✅ NEW
+        .merge(create_schedules_batch_routes())  // ✅ NEW
+        .merge(create_holidays_batch_routes())  // ✅ NEW
+        .merge(create_pid_batch_routes())  // ✅ NEW
         .merge(create_arrays_update_routes())  // ✅ PASSED
         .merge(create_conversion_tables_update_routes())  // ✅ ENABLED (renamed from tables)
         .merge(create_users_update_routes())  // ✅ PASSED
