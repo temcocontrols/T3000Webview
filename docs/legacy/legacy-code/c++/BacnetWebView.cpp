@@ -3113,7 +3113,11 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			// Add device main info to data array
 			tempjson["data"][device_count]["panel_id"] = npanel_id;
 			tempjson["data"][device_count]["panel_name"] = (char*)g_Device_Basic_Setting[npanel_id].reg.panel_name;
-			tempjson["data"][device_count]["panel_serial_number"] = g_Device_Basic_Setting[npanel_id].reg.n_serial_number;
+
+			// Fix: g_Device_Basic_Setting not initialized when panel_number=0, use g_bacnet_panel_info instead
+			//tempjson["data"][device_count]["panel_serial_number"] = g_Device_Basic_Setting[npanel_id].reg.n_serial_number;
+			tempjson["data"][device_count]["panel_serial_number"] = g_bacnet_panel_info.at(panel_idx).nseiral_number;
+
 			tempjson["data"][device_count]["panel_ipaddress"] = ipStr;
 			tempjson["data"][device_count]["input_logging_time"] = g_logging_time[npanel_id].input_log_time;
 			tempjson["data"][device_count]["output_logging_time"] = g_logging_time[npanel_id].output_log_time;
