@@ -1,6 +1,10 @@
 /**
  * HVAC Drawing Area Component
  * Contains rulers and main SVG drawing area
+ *
+ * NOTE: This component provides the DOM structure that the t3-hvac library manipulates.
+ * The library uses Hammer.js for all drawing interactions via its internal event system.
+ * We do NOT need to manually handle click events - Hammer.js does this automatically.
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -13,11 +17,9 @@ export const HvacDrawingArea: React.FC = () => {
   const svgAreaRef = useRef<HTMLDivElement>(null);
   const { activeTool } = useHvacDesignerStore();
 
-  // Handle viewport left click - create objects using library logic
-  const handleViewportClick = (ev: React.MouseEvent<HTMLDivElement>) => {
-    // Call the library's viewportLeftClick method which handles the drawing logic
-    Hvac.IdxPage2.viewportLeftClick(ev.nativeEvent);
-  };
+  // NOTE: Viewport clicks are handled by Hammer.js via Evt_WorkAreaHammerClick
+  // which is bound in UIUtil.InitT3GvOpt() during library initialization.
+  // We do NOT need handleViewportClick - the library's event system handles it automatically.
 
   // Handle viewport mouse move - for continuous drawing (lines, ducts, walls)
   const handleViewportMouseMove = (ev: React.MouseEvent<HTMLDivElement>) => {
@@ -62,11 +64,8 @@ export const HvacDrawingArea: React.FC = () => {
     }
   };
 
-  // Handle right click - cancel drawing using library logic
-  const handleRightClick = (ev: React.MouseEvent<HTMLDivElement>) => {
-    // Call the library's viewportRightClick method
-    Hvac.IdxPage2.viewportRightClick(ev.nativeEvent);
-  };
+  // NOTE: Right-click is also handled by Hammer.js via MouseUtil.IsRightClick check
+  // in Evt_WorkAreaHammerClick. No need for React event handler.
 
   return (
     <div id="document-area" className={styles.documentArea}>
@@ -79,17 +78,16 @@ export const HvacDrawingArea: React.FC = () => {
       {/* Vertical ruler (left) */}
       <div id="v-ruler" className={styles.rulerVertical} />
 
-      {/* Main SVG drawing area */}
+      {/* Main SVG drawing area - Events handled by Hammer.js (library manages all interactions) */}
       <div
         id="svg-area"
         className={styles.svgArea}
         ref={svgAreaRef}
-        onClick={handleViewportClick}
         onMouseMove={handleViewportMouseMove}
-        onContextMenu={handleRightClick}
         tabIndex={0}
       >
-        {/* SVG content will be rendered here by the existing logic */}
+        {/* SVG content is created and managed by the t3-hvac library via DOM manipulation */}
+        {/* Drawing interactions are handled via Hammer.js events bound in UIUtil.InitT3GvOpt() */}
       </div>
     </div>
   );

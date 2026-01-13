@@ -114,9 +114,9 @@ const useStyles = makeStyles({
     '&::-webkit-scrollbar-thumb': {
       backgroundColor: '#c1c1c1',
       borderRadius: '3px',
-    },
-    '&::-webkit-scrollbar-thumb:hover': {
-      backgroundColor: '#a1a1a1',
+      '&:hover': {
+        backgroundColor: '#a1a1a1',
+      },
     },
   },
   section: {
