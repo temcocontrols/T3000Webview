@@ -6,6 +6,7 @@
 import { BaseEntity } from '../base/BaseEntity';
 import { HttpClient } from '../../utils/T3ApiClient';
 import { Schedule } from '../../types/control.types';
+import { BatchSaveResponse } from '../../types/points.types';
 
 export class ScheduleEntity extends BaseEntity<Schedule> {
   constructor(httpClient: HttpClient, baseUrl: string) {
@@ -46,5 +47,14 @@ export class ScheduleEntity extends BaseEntity<Schedule> {
   async delete(serialNumber: number, scheduleId: number): Promise<void> {
     const url = this.buildUrl(`${serialNumber}/${scheduleId}`);
     await this.deleteData<void>(url);
+  }
+
+  /**
+   * Batch save schedules (for efficient bulk updates from C++ GET_WEBVIEW_LIST)
+   */
+  async batchSave(serialNumber: number, schedules: Schedule[]): Promise<BatchSaveResponse> {
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { schedules }; // Backend expects {schedules: [...]}
+    return await this.postData<BatchSaveResponse>(url, request);
   }
 }

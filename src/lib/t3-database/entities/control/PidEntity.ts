@@ -6,6 +6,7 @@
 import { BaseEntity } from '../base/BaseEntity';
 import { HttpClient } from '../../utils/T3ApiClient';
 import { Pid } from '../../types/control.types';
+import { BatchSaveResponse } from '../../types/points.types';
 
 export class PidEntity extends BaseEntity<Pid> {
   constructor(httpClient: HttpClient, baseUrl: string) {
@@ -46,5 +47,14 @@ export class PidEntity extends BaseEntity<Pid> {
   async delete(serialNumber: number, pidId: number): Promise<void> {
     const url = this.buildUrl(`${serialNumber}/${pidId}`);
     await this.deleteData<void>(url);
+  }
+
+  /**
+   * Batch save PIDs (for efficient bulk updates from C++ GET_WEBVIEW_LIST)
+   */
+  async batchSave(serialNumber: number, pids: Pid[]): Promise<BatchSaveResponse> {
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { pids }; // Backend expects {pids: [...]}
+    return await this.postData<BatchSaveResponse>(url, request);
   }
 }

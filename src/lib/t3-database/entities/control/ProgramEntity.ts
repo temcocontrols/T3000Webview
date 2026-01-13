@@ -5,6 +5,7 @@
 import { BaseEntity } from '../base/BaseEntity';
 import { HttpClient } from '../../utils/T3ApiClient';
 import { Program } from '../../types/control.types';
+import { BatchSaveResponse } from '../../types/points.types';
 
 export class ProgramEntity extends BaseEntity<Program> {
   constructor(httpClient: HttpClient, baseUrl: string) {
@@ -38,5 +39,14 @@ export class ProgramEntity extends BaseEntity<Program> {
   async delete(serialNumber: number, programId: string): Promise<void> {
     const url = `${this.buildUrl(String(serialNumber))}/${programId}`;
     await this.deleteData<void>(url);
+  }
+
+  /**
+   * Batch save programs (for efficient bulk updates from C++ GET_WEBVIEW_LIST)
+   */
+  async batchSave(serialNumber: number, programs: Program[]): Promise<BatchSaveResponse> {
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { programs }; // Backend expects {programs: [...]}
+    return await this.postData<BatchSaveResponse>(url, request);
   }
 }
