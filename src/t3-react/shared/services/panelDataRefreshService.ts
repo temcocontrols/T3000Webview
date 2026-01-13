@@ -367,45 +367,54 @@ export class PanelDataRefreshService {
       transformed.label = item.label;
       transformed.digitalAnalog = item.digital_analog?.toString() || item.digitalAnalog;
     } else if (type === 'program') {
-      // Program transformation - pass through for now, backend will handle
+      // Program transformation - map C++ fields to database format
       const indexValue = item.index?.toString() || item.programIndex;
-      transformed.programIndex = indexValue;
-      transformed.programId = indexValue ? `PRG${parseInt(indexValue) + 1}` : undefined;
+      transformed.Program_ID = indexValue ? `PRG${parseInt(indexValue) + 1}` : undefined;
       transformed.panel = item.pid?.toString() || item.panel;
-      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
-      transformed.label = item.label;
-      // Copy all other fields as-is
-      Object.assign(transformed, item);
+      transformed.label = item.label ?? '';  // Use nullish coalescing to preserve empty strings
+      transformed.full_label = item.description ?? item.full_label ?? item.fullLabel ?? '';  // Preserve empty strings
+      transformed.status = item.status?.toString() ?? '';  // Convert integer to string
+      transformed.auto_manual = item.auto_manual?.toString() ?? item.autoManual?.toString() ?? '';
+      transformed.size = item.size?.toString() ?? '';
+      transformed.execution_time = item.execution_time?.toString() ?? '';
+      transformed.program_code = item.program_code ?? item.programCode ?? '';
     } else if (type === 'schedule') {
-      // Schedule transformation - pass through for now, backend will handle
+      // Schedule transformation - map C++ fields to database format
       const indexValue = item.index?.toString() || item.scheduleIndex;
-      transformed.scheduleIndex = indexValue;
-      transformed.scheduleId = indexValue ? `SCH${parseInt(indexValue) + 1}` : undefined;
+      transformed.Schedule_ID = indexValue ? `SCH${parseInt(indexValue) + 1}` : undefined;
       transformed.panel = item.pid?.toString() || item.panel;
-      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
       transformed.label = item.label;
-      // Copy all other fields as-is
-      Object.assign(transformed, item);
+      transformed.full_label = item.description || item.full_label || item.fullLabel;
+      transformed.auto_manual = item.auto_manual?.toString() || item.autoManual?.toString();
+      transformed.output = item.output?.toString();
+      transformed.status = item.status?.toString();
+      transformed.holiday1 = item.holiday1?.toString();
+      transformed.holiday2 = item.holiday2?.toString();
     } else if (type === 'pidloop') {
-      // PID Loop transformation - pass through for now, backend will handle
+      // PID Loop transformation - map C++ fields to database format
       const indexValue = item.index?.toString() || item.pidLoopIndex;
-      transformed.pidLoopIndex = indexValue;
-      transformed.pidLoopId = indexValue ? `PID${parseInt(indexValue) + 1}` : undefined;
+      transformed.PID_ID = indexValue ? `PID${parseInt(indexValue) + 1}` : undefined;
       transformed.panel = item.pid?.toString() || item.panel;
-      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
       transformed.label = item.label;
-      // Copy all other fields as-is
-      Object.assign(transformed, item);
+      transformed.full_label = item.description || item.full_label || item.fullLabel;
+      transformed.auto_manual = item.auto_manual?.toString() || item.autoManual?.toString();
+      transformed.input = item.input?.toString();
+      transformed.output = item.output?.toString();
+      transformed.setpoint = item.setpoint?.toString();
+      transformed.proportional = item.proportional?.toString();
+      transformed.integral = item.integral?.toString();
+      transformed.derivative = item.derivative?.toString();
+      transformed.status = item.status?.toString();
     } else if (type === 'holiday') {
-      // Holiday transformation - pass through for now, backend will handle
+      // Holiday transformation - map C++ fields to database format
       const indexValue = item.index?.toString() || item.holidayIndex;
-      transformed.holidayIndex = indexValue;
-      transformed.holidayId = indexValue ? `HOL${parseInt(indexValue) + 1}` : undefined;
+      transformed.Holiday_ID = indexValue ? `HOL${parseInt(indexValue) + 1}` : undefined;
       transformed.panel = item.pid?.toString() || item.panel;
-      transformed.fullLabel = item.description || item.full_label || item.fullLabel;
       transformed.label = item.label;
-      // Copy all other fields as-is
-      Object.assign(transformed, item);
+      transformed.full_label = item.description || item.full_label || item.fullLabel;
+      transformed.auto_manual = item.auto_manual?.toString() || item.autoManual?.toString();
+      transformed.value = item.value?.toString();
+      transformed.status = item.status?.toString();
     }
 
     return transformed;

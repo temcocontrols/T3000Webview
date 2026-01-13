@@ -448,10 +448,10 @@ export const ProgramsPage: React.FC = () => {
             ) : (
               <div
                 className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'programLabel', item.programLabel || '')}
+                onDoubleClick={() => handleCellDoubleClick(item, 'programLabel', item.programLabel ?? '')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.programLabel || 'Unnamed'}</Text>
+                <Text size={200} weight="regular">{item.programLabel ?? ''}</Text>
               </div>
             )}
           </TableCellLayout>
