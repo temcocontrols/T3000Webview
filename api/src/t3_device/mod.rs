@@ -28,6 +28,7 @@ pub mod programs_batch_routes;  // ✅ T3000 Programs Batch Save API Routes (bat
 pub mod schedules_batch_routes; // ✅ T3000 Schedules Batch Save API Routes (batch update multiple schedules)
 pub mod holidays_batch_routes;  // ✅ T3000 Holidays Batch Save API Routes (batch update multiple holidays)
 pub mod pid_batch_routes;       // ✅ T3000 PID Batch Save API Routes (batch update multiple PIDs)
+pub mod graphics_batch_routes;  // ✅ T3000 Graphics Batch Save API Routes (batch update multiple graphics)
 pub mod arrays_update_routes;   // ✅ T3000 Arrays Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)
 pub mod conversion_tables_update_routes;   // ✅ T3000 Conversion Tables Update (renamed from tables)
 pub mod users_update_routes;    // ✅ T3000 Users Update API Routes using UPDATE_WEBVIEW_LIST (Action 16)

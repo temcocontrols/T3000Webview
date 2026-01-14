@@ -297,6 +297,7 @@ pub async fn save_refreshed_graphics(
                 serial_number: Set(serial),
                 graphic_id: Set(graphic_id.clone()),
                 graphic_label: Set(graphic_label),
+                graphic_full_label: Set(None),
                 graphic_picture_file: Set(graphic_picture_file),
                 switch_node: Set(switch_node),
                 graphic_total_point: Set(graphic_total_point),
@@ -689,6 +690,7 @@ pub async fn load_and_save_graphics(
                     graphic_id: Set(Some(graphic_id_str.clone())),
                     switch_node: Set(Some(switch_node.clone())),
                     graphic_label: Set(Some(final_label.clone())),
+                    graphic_full_label: Set(None),
                     graphic_picture_file: Set(Some(picture_file.clone())),
                     graphic_total_point: Set(Some(total_point_str.clone())),
                     ..Default::default()

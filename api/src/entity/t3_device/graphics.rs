@@ -14,7 +14,9 @@ pub struct Model {
     #[sea_orm(column_name = "Switch_Node")]
     pub switch_node: Option<String>,            // C++ Switch_Node
     #[sea_orm(column_name = "Graphic_Label")]
-    pub graphic_label: Option<String>,          // C++ Graphic_Label
+    pub graphic_label: Option<String>,          // C++ Graphic_Label (short)
+    #[sea_orm(column_name = "Graphic_Full_Label")]
+    pub graphic_full_label: Option<String>,     // C++ Graphic_Full_Label (full description)
     #[sea_orm(column_name = "Graphic_Picture_File")]
     pub graphic_picture_file: Option<String>,   // C++ Graphic_Picture_File
     #[sea_orm(column_name = "Graphic_Total_Point")]
