@@ -189,7 +189,8 @@ CREATE TABLE IF NOT EXISTS GRAPHICS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)
     Graphic_ID TEXT,                           -- C++ Graphic_ID
     Switch_Node TEXT,                          -- C++ Switch_Node
-    Graphic_Label TEXT,                        -- C++ Graphic_Label
+    Graphic_Label TEXT,                        -- C++ Graphic_Label (short label)
+    Graphic_Full_Label TEXT,                   -- C++ Graphic_Full_Label (full description)
     Graphic_Picture_File TEXT,                 -- C++ Graphic_Picture_File
     Graphic_Total_Point TEXT                   -- C++ Graphic_Total_Point
 );
