@@ -2,7 +2,9 @@ import DataObj from '../Data/State/DataObj'
 import T3Gv from '../Data/T3Gv'
 import SegmentData from '../Model/SegmentData'
 import StateConstant from '../Data/State/StateConstant'
-import { Dialog } from 'quasar'
+// import { Dialog } from 'quasar'
+// Placeholder: Quasar Dialog not used in React
+const Dialog: any = { create: () => ({}) };
 import LogUtil from './LogUtil'
 
 interface AlertOptions {
