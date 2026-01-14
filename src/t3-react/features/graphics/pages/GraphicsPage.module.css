@@ -215,18 +215,7 @@
 }
 
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to GraphicsPage only */
-.container :global(.fui-DataGrid) {
-  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  color: #292827;
-  border: none;
-  background-color: #ffffff;
-  display: flex;
-  flex-direction: column;
-  min-height: fit-content;
-  min-width: max-content;
-}
+/* Grid structure moved to scrollContainer section above */
 
 /* Header row styling - matches fxc-gc-columnheaderrow */
 .container :global(.fui-DataGridHeader) {
@@ -237,12 +226,6 @@
   top: 0;
   z-index: 10;
   width: 100%;
-}
-
-/* Data body - scrollable area */
-.container :global(.fui-DataGridBody) {
-  flex: 1 1 auto;
-  min-height: 0;
 }
 
 /* Header cell styling - matches fxc-gc-columnheader fxc-gc-bold */
@@ -516,30 +499,51 @@
 /* Scrollable Container for DataGrid */
 .scrollContainer {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: auto;
+  overflow: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Data Grid - with scrollable body */
+.container :global(.fui-DataGrid) {
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #292827;
+  border: none;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Data body - scrollable area with custom scrollbar */
+.container :global(.fui-DataGridBody) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #c1c1c1 #f5f5f5;
 }
 
-.scrollContainer::-webkit-scrollbar {
+.container :global(.fui-DataGridBody)::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.scrollContainer::-webkit-scrollbar-track {
+.container :global(.fui-DataGridBody)::-webkit-scrollbar-track {
   background-color: #f5f5f5;
 }
 
-.scrollContainer::-webkit-scrollbar-thumb {
+.container :global(.fui-DataGridBody)::-webkit-scrollbar-thumb {
   background-color: #c1c1c1;
   border-radius: 3px;
 }
 
-.scrollContainer::-webkit-scrollbar-thumb:hover {
+.container :global(.fui-DataGridBody)::-webkit-scrollbar-thumb:hover {
   background-color: #a1a1a1;
 }
 
