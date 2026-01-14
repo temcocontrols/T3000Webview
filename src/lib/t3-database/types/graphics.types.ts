@@ -6,14 +6,22 @@
 // GRAPHICS Table
 export interface Graphic {
   GraphicId?: number;
-  SerialNumber: number;
-  Graphic_ID: string;
-  Panel: string;
-  Label: string;
-  Full_Label: string;
-  Picture_File: string;
-  Element_Count: number;
-  Status: string;
+  serialNumber: number;
+  graphicId: string;           // API returns graphicId (camelCase)
+  switchNode: string;           // API returns switchNode
+  graphicLabel: string;         // API returns graphicLabel (short label)
+  graphicFullLabel: string;     // API returns graphicFullLabel (full description)
+  graphicPictureFile: string;   // API returns graphicPictureFile
+  graphicTotalPoint: string;    // API returns graphicTotalPoint (element count)
+  
+  // Deprecated field names (kept for backward compatibility)
+  Graphic_ID?: string;
+  Panel?: string;
+  Label?: string;
+  Full_Label?: string;
+  Picture_File?: string;
+  Element_Count?: number;
+  Status?: string;
 }
 
 // GRAPHIC_LABELS Table
