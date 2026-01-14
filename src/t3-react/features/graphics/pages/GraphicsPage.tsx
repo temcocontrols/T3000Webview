@@ -328,11 +328,12 @@ export const GraphicsPage: React.FC = () => {
 
   // Define columns matching C++ BacnetScreen columns
   const columns: TableColumnDefinition<Graphic>[] = [
+    // 1. Graphic # (10%)
     createTableColumn<Graphic>({
       columnId: 'Graphic_ID',
       renderHeaderCell: () => (
         <div className={styles.headerCellSort} onClick={() => handleSort('Graphic_ID')}>
-          <span>Graphic #</span>
+          <span>Graphic</span>
           {sortColumn === 'Graphic_ID' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
@@ -346,12 +347,13 @@ export const GraphicsPage: React.FC = () => {
         </TableCellLayout>
       ),
     }),
+    // 2. Full Label (25%)
     createTableColumn<Graphic>({
-      columnId: 'Panel',
+      columnId: 'Full_Label',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('Panel')}>
-          <span>Panel</span>
-          {sortColumn === 'Panel' ? (
+        <div className={styles.headerCellSort} onClick={() => handleSort('Full_Label')}>
+          <span>Full Label</span>
+          {sortColumn === 'Full_Label' ? (
             sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
           ) : (
             <ArrowSortRegular className={styles.sortIconFaded} />
@@ -360,10 +362,11 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.Panel || '---')}
+          {!isEmptyRow(item) && (item.Full_Label || '---')}
         </TableCellLayout>
       ),
     }),
+    // 3. Label (15%)
     createTableColumn<Graphic>({
       columnId: 'Label',
       renderHeaderCell: () => (
@@ -382,6 +385,7 @@ export const GraphicsPage: React.FC = () => {
         </TableCellLayout>
       ),
     }),
+    // 4. Picture File (20%)
     createTableColumn<Graphic>({
       columnId: 'Picture_File',
       renderHeaderCell: () => (
@@ -578,33 +582,6 @@ export const GraphicsPage: React.FC = () => {
                       items={displayGraphics}
                       columns={columns}
                       sortable
-                      resizableColumns
-                      columnSizingOptions={{
-                        Graphic_ID: {
-                          minWidth: 70,
-                          idealWidth: '10%',
-                        },
-                        Panel: {
-                          minWidth: 80,
-                          idealWidth: '10%',
-                        },
-                        Label: {
-                          minWidth: 150,
-                          idealWidth: '20%',
-                        },
-                        Picture_File: {
-                          minWidth: 150,
-                          idealWidth: '25%',
-                        },
-                        Element_Count: {
-                          minWidth: 100,
-                          idealWidth: '15%',
-                        },
-                        actions: {
-                          minWidth: 100,
-                          idealWidth: '20%',
-                        },
-                      }}
                       getRowId={(item) => {
                         const id = item.GraphicId ?? item.Graphic_ID ?? `empty-${displayGraphics.indexOf(item)}`;
                         return `${item.SerialNumber ?? 'unknown'}-${id}`;
