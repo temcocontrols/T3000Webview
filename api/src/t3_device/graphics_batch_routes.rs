@@ -23,7 +23,6 @@ pub struct BatchSaveGraphicsRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct GraphicUpdate {
     #[serde(rename = "Graphic_ID")]
     pub graphic_id: Option<String>,
