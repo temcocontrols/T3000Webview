@@ -6,6 +6,7 @@
 import { BaseEntity } from '../base/BaseEntity';
 import { HttpClient } from '../../utils/T3ApiClient';
 import { Graphic } from '../../types/graphics.types';
+import { BatchSaveResponse } from '../../types/points.types';
 
 export class GraphicEntity extends BaseEntity<Graphic> {
   constructor(httpClient: HttpClient, baseUrl: string) {
@@ -47,5 +48,14 @@ export class GraphicEntity extends BaseEntity<Graphic> {
   async delete(serialNumber: number, graphicId: number): Promise<void> {
     const url = this.buildUrl(`${serialNumber}/${graphicId}`);
     await this.deleteData<void>(url);
+  }
+
+  /**
+   * Batch save graphics (for efficient bulk updates from C++ GET_WEBVIEW_LIST)
+   */
+  async batchSave(serialNumber: number, graphics: Graphic[]): Promise<BatchSaveResponse> {
+    const url = `${this.buildUrl(String(serialNumber))}/batch_save`;
+    const request = { graphics }; // Backend expects {graphics: [...]}
+    return await this.postData<BatchSaveResponse>(url, request);
   }
 }

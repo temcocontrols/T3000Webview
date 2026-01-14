@@ -36,10 +36,13 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { GraphicRefreshApi } from '../services/graphicRefreshApi';
 import type { Graphic } from '../../../../lib/t3-database/types/graphics.types';
+import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './GraphicsPage.module.css';
 
 export const GraphicsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [graphics, setGraphics] = useState<Graphic[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,27 +103,48 @@ export const GraphicsPage: React.FC = () => {
     hasAutoRefreshedRef.current = false;
   }, [fetchGraphics]);
 
-  // Auto-refresh once after page load
+  // Auto-refresh once after page load - ONLY if database is empty
   useEffect(() => {
     if (loading || !selectedDevice || autoRefreshed || hasAutoRefreshedRef.current) return;
 
     const checkAndRefresh = async () => {
       hasAutoRefreshedRef.current = true; // Mark as started to prevent duplicate runs
 
-      try {
-        console.log('[GraphicsPage] Auto-loading graphics from database...');
-        // TODO: Implement GraphicRefreshApi.refreshAllFromDevice() using Action 0/1
-        // Graphics use different FFI actions than Action 17
-        await fetchGraphics();
+      if (graphics.length > 0) {
+        console.log('[GraphicsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
+        return;
+      }
+
+      console.log('[GraphicsPage] Database empty, auto-refreshing from device using Action 17...');
+      setLoading(true);
+
+      try {
+        // Use PanelDataRefreshService with Action 17 (GET_WEBVIEW_LIST)
+        // EntryType.GROUP = 10 (BAC_GRP)
+        const result = await PanelDataRefreshService.refreshFromDevice({
+          serialNumber: selectedDevice.serialNumber,
+          type: 'graphic',
+          onLoadingChange: (loading) => {
+            if (loading) {
+              setMessage(`Loading graphics from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
+            }
+          }
+        });
+        setMessage(`✓ Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
-        console.error('[GraphicsPage] Auto-load failed:', error);
+        console.error('[GraphicsPage] Auto-refresh failed:', error);
+        setMessage(`Failed to sync graphics: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      } finally {
+        // Always reload from database to show what was actually saved
+        await fetchGraphics();
+        setLoading(false);
         setAutoRefreshed(true);
       }
     };
 
     checkAndRefresh();
-  }, [loading, selectedDevice, autoRefreshed, fetchGraphics]);
+  }, [loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
 
   // Load next device in tree (auto-scroll feature)
   const loadNextDevice = useCallback(() => {
@@ -157,6 +181,40 @@ export const GraphicsPage: React.FC = () => {
     }
   }, [isLoadingNextDevice, loading, graphics.length, loadNextDevice]);
 
+  // Refresh all graphics from device using Action 17
+  const handleRefreshFromDevice = async () => {
+    if (!selectedDevice) return;
+
+    setRefreshing(true);
+    try {
+      console.log('[GraphicsPage] Refreshing graphics from device using Action 17...');
+
+      // Use PanelDataRefreshService with Action 17 (GET_WEBVIEW_LIST)
+      // EntryType.GROUP = 10 (BAC_GRP)
+      const result = await PanelDataRefreshService.refreshFromDevice({
+        serialNumber: selectedDevice.serialNumber,
+        type: 'graphic',
+        onLoadingChange: (loading) => {
+          if (loading) {
+            setMessage(`Loading graphics from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
+          }
+        }
+      });
+
+      setMessage(`✓ Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+
+      // Reload from database to show saved data
+      await fetchGraphics();
+    } catch (error) {
+      console.error('[GraphicsPage] Refresh failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh graphics';
+      setError(errorMsg);
+      setMessage(`Failed to sync graphics: ${errorMsg}`, 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
@@ -166,24 +224,6 @@ export const GraphicsPage: React.FC = () => {
       });
     }
   }, [selectedDevice, isLoadingNextDevice]);
-
-  // Refresh all graphics from device
-  const handleRefreshFromDevice = async () => {
-    if (!selectedDevice) return;
-
-    setRefreshing(true);
-    try {
-      console.log('[GraphicsPage] Manually loading graphics from database...');
-      // TODO: Implement GraphicRefreshApi.refreshAllFromDevice() using Action 0/1
-      // Graphics use different FFI actions than Action 17
-      await fetchGraphics();
-    } catch (error) {
-      console.error('[GraphicsPage] Refresh failed:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh graphics');
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   const handleExport = () => {
     if (graphics.length === 0) return;
@@ -269,6 +309,7 @@ export const GraphicsPage: React.FC = () => {
   const displayGraphics = React.useMemo(() => {
     if (sortedGraphics.length === 0) {
       return Array(10).fill(null).map((_, index) => ({
+        GraphicId: -(index + 1), // Negative IDs for empty rows
         SerialNumber: selectedDevice?.serialNumber || 0,
         Graphic_ID: '',
         Panel: '',
@@ -564,7 +605,10 @@ export const GraphicsPage: React.FC = () => {
                           idealWidth: '20%',
                         },
                       }}
-                      getRowId={(item) => `${item.SerialNumber}-${item.Graphic_ID}`}
+                      getRowId={(item) => {
+                        const id = item.GraphicId ?? item.Graphic_ID ?? `empty-${displayGraphics.indexOf(item)}`;
+                        return `${item.SerialNumber ?? 'unknown'}-${id}`;
+                      }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

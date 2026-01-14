@@ -15,7 +15,7 @@ import { EntryType, WebViewMessageType } from '../../../lib/t3-transport/types/m
 import { T3Database } from '../../../lib/t3-database';
 import { API_BASE_URL } from '../../config/constants';
 
-export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday' | 'trendlog' | 'alarm';
+export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday' | 'trendlog' | 'alarm' | 'graphic';
 
 export interface RefreshOptions {
   serialNumber: number;
@@ -63,7 +63,7 @@ export class PanelDataRefreshService {
 
       await transport.connect('ffi');
 
-      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 3=CONTROLLER, 4=SCHEDULE, 5=ANNUAL, 6=PROGRAM, 7=TABLE, 15=ALARMS
+      // Map type to entryType: 0=OUTPUT, 1=INPUT, 2=VARIABLE, 3=CONTROLLER, 4=SCHEDULE, 5=ANNUAL, 6=PROGRAM, 7=TABLE, 10=GROUP, 15=ALARMS
       const entryTypeMap: Record<PointType, EntryType> = {
         'output': EntryType.OUTPUT,          // BAC_OUT = 0
         'input': EntryType.INPUT,            // BAC_IN = 1
@@ -73,6 +73,7 @@ export class PanelDataRefreshService {
         'holiday': EntryType.ANNUAL,         // BAC_HOL = 5
         'program': EntryType.PROGRAM,        // BAC_PRG = 6
         'trendlog': EntryType.TABLE,         // BAC_TBL = 7
+        'graphic': EntryType.GROUP,          // BAC_GRP = 10
         'alarm': EntryType.ALARMS,           // BAC_ALARMS = 15
       };
 
@@ -284,6 +285,7 @@ export class PanelDataRefreshService {
       'schedule': db.schedules,
       'pidloop': db.pidLoops,
       'holiday': db.holidays,
+      'graphic': db.graphics,
     };
 
     const entity = entityMap[type];
@@ -410,11 +412,20 @@ export class PanelDataRefreshService {
       const indexValue = item.index?.toString() || item.holidayIndex;
       transformed.Holiday_ID = indexValue ? `HOL${parseInt(indexValue) + 1}` : undefined;
       transformed.panel = item.pid?.toString() || item.panel;
-      transformed.label = item.label;
-      transformed.full_label = item.description || item.full_label || item.fullLabel;
-      transformed.auto_manual = item.auto_manual?.toString() || item.autoManual?.toString();
-      transformed.value = item.value?.toString();
-      transformed.status = item.status?.toString();
+      transformed.label = item.label ?? '';
+      transformed.full_label = item.description ?? item.full_label ?? item.fullLabel ?? '';
+      transformed.auto_manual = item.auto_manual?.toString() ?? item.autoManual?.toString() ?? '';
+      transformed.value = item.value?.toString() ?? '';
+      transformed.status = item.status?.toString() ?? '';
+    } else if (type === 'graphic') {
+      // Graphic transformation - map C++ fields to database format
+      const indexValue = item.index?.toString() || item.graphicIndex;
+      transformed.Graphic_ID = indexValue ? `GRP${parseInt(indexValue) + 1}` : undefined;
+      transformed.panel = item.pid?.toString() || item.panel;
+      transformed.label = item.label ?? '';
+      transformed.full_label = item.description ?? item.full_label ?? item.fullLabel ?? '';
+      transformed.picture_file = item.picture_file ?? item.pictureFile ?? '';
+      transformed.total_point = item.count?.toString() ?? item.total_point ?? item.totalPoint ?? '';
     }
 
     return transformed;
