@@ -46,11 +46,13 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
+  CodeRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 import { SyncStatusBar } from '../../../shared/components/SyncStatusBar';
+import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
@@ -76,6 +78,10 @@ export const ProgramsPage: React.FC = () => {
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const hasAutoRefreshedRef = useRef(false); // Prevent React Strict Mode duplicate runs
+
+  // Programming drawer state
+  const [isProgrammingOpen, setIsProgrammingOpen] = useState(false);
+  const [selectedProgramForProgramming, setSelectedProgramForProgramming] = useState<ProgramPoint | null>(null);
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -340,6 +346,13 @@ export const ProgramsPage: React.FC = () => {
       setSortDirection('ascending');
     }
   };
+
+  const handleOpenProgramming = useCallback((program: ProgramPoint) => {
+    if (!program.programId) return;
+    setSelectedProgramForProgramming(program);
+    setIsProgrammingOpen(true);
+    console.log('📝 [ProgramsPage] Opening programming for program:', program.programId);
+  }, []);
 
   // Display data with 10 empty rows when no programs
   const displayPrograms = React.useMemo(() => {
@@ -634,6 +647,33 @@ export const ProgramsPage: React.FC = () => {
         );
       },
     }),
+    // 8. Programming column (last position)
+    createTableColumn<ProgramPoint>({
+      columnId: 'programming',
+      renderHeaderCell: () => <span>Programming</span>,
+      renderCell: (item) => {
+        if (isEmptyRow(item)) {
+          return <TableCellLayout></TableCellLayout>;
+        }
+
+        return (
+          <TableCellLayout>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<CodeRegular />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenProgramming(item);
+              }}
+              title="Open programming editor"
+            >
+              Edit
+            </Button>
+          </TableCellLayout>
+        );
+      },
+    }),
   ];
 
   // ========================================
@@ -796,12 +836,16 @@ export const ProgramsPage: React.FC = () => {
                         defaultWidth: 80,
                       },
                       executionTime: {
-                        minWidth: 100,
-                        defaultWidth: 130,
+                        minWidth: 120,
+                        defaultWidth: 180,
                       },
                       label: {
-                        minWidth: 100,
-                        defaultWidth: 150,
+                        minWidth: 130,
+                        defaultWidth: 200,
+                      },
+                      programming: {
+                        minWidth: 80,
+                        defaultWidth: 100,
                       },
                     }}
                   >
@@ -849,6 +893,13 @@ export const ProgramsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Programming Drawer */}
+      <ProgrammingDrawer
+        open={isProgrammingOpen}
+        onOpenChange={setIsProgrammingOpen}
+        selectedProgram={selectedProgramForProgramming}
+      />
     </div>
   );
 };
