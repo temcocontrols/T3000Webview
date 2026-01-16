@@ -15,18 +15,11 @@ const fileMenu: MenuItem = {
   type: 'submenu',
   children: [
     {
-      id: 'file-save',
-      label: 'Save',
-      type: 'item',
-      action: MenuAction.Save,
-      shortcut: 'Ctrl+S',
-      icon: 'Save',
-    },
-    {
       id: 'file-save-as',
       label: 'Save As...',
       type: 'item',
       action: MenuAction.SaveAs,
+      shortcut: 'Ctrl+S',
       icon: 'SaveAs',
     },
     {

@@ -1,8 +1,9 @@
 /**
- * Save Configuration Dialog
+ * Save As Configuration Dialog
  *
  * Based on C++ SaveConfigFile() implementation
  * C++ Reference: MainFrm.cpp Line 15695-15770
+ * Note: C++ only has "Save As" - always prompts for file location
  *
  * Shows file save dialog for *.prog files (Bacnet protocol)
  * Triggers device data refresh before saving
@@ -23,7 +24,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { Save24Regular, DocumentRegular } from '@fluentui/react-icons';
-import { saveConfigFile, saveFileDialog, FileType } from '../services/fileOperations';
+import { saveAsConfigFile, saveFileDialog, FileType } from '../services/fileOperations';
 
 interface SaveConfigDialogProps {
   open: boolean;
@@ -59,7 +60,7 @@ export const SaveConfigDialog: React.FC<SaveConfigDialogProps> = ({
 
     // C++ first reads all data via Show_Wait_Dialog_And_ReadBacnet()
     // Then saves the binary file
-    const result = await saveConfigFile(fullFileName);
+    const result = await saveAsConfigFile(fullFileName);
 
     setLoading(false);
 
@@ -89,7 +90,7 @@ export const SaveConfigDialog: React.FC<SaveConfigDialogProps> = ({
         <DialogBody>
           <DialogTitle>
             <Save24Regular style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-            Save Configuration
+            Save As Configuration
           </DialogTitle>
           <DialogContent>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

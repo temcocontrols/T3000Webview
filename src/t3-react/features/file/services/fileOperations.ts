@@ -73,9 +73,10 @@ export async function createNewProject(projectName: string): Promise<{ success: 
 }
 
 /**
- * Save Configuration File
+ * Save As Configuration File
  *
  * C++ Implementation: SaveConfigFile() (Line 15695)
+ * Note: C++ only has "Save As" functionality - always prompts for file location
  * - Opens file save dialog for *.prog files (Bacnet)
  * - Reads all device data from device before saving
  * - Saves binary format for Bacnet protocol
@@ -85,7 +86,7 @@ export async function createNewProject(projectName: string): Promise<{ success: 
  * @param fileName - Optional filename, if not provided shows save dialog
  * @returns Promise with save result
  */
-export async function saveConfigFile(fileName?: string): Promise<{ success: boolean; message: string; filePath?: string }> {
+export async function saveAsConfigFile(fileName?: string): Promise<{ success: boolean; message: string; filePath?: string }> {
   try {
     // C++ checks protocol type (PROTOCOL_BACNET_IP, PROTOCOL_BIP_TO_MSTP, MODBUS_BACNET_MSTP)
     // For Bacnet, it reads all data first before saving
