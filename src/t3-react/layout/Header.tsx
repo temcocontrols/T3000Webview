@@ -63,8 +63,18 @@ import {
   FullScreenMaximizeRegular,
   PanelLeftRegular,
   PlugConnectedRegular,
+  PlugDisconnectedRegular,
   ShareScreenStartRegular,
   DocumentAddRegular,
+  NumberSymbolRegular,
+  ChartMultipleRegular,
+  TableRegular,
+  TableSimpleRegular,
+  FolderDatabaseRegular,
+  FlashRegular,
+  TemperatureRegular,
+  LineHorizontal3Regular,
+  PersonAccountsRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -75,6 +85,7 @@ import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
 import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
+import { useToolsMenu } from '@t3-react/shared/hooks/useToolsMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
 
@@ -183,7 +194,36 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     }
   );
 
+  // Tools menu handlers
+  const { handlers: toolsHandlers, state: toolsState } = useToolsMenu(
+    (message) => {
+      // Show success notification
+      console.log('✅ Tools operation success:', message);
+      // TODO: Show toast notification
+    },
+    (error) => {
+      // Show error notification
+      console.error('❌ Tools operation error:', error);
+      // TODO: Show error toast
+    }
+  );
+
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
+
+  // Helper function to convert TreeNode to DeviceInfo
+  const convertTreeNodeToDeviceInfo = (node: any): DeviceInfo => ({
+    serialNumber: node.id,
+    productName: node.label,
+    nameShowOnTree: node.label,
+    protocol: node.data?.protocol || 'MODBUS',
+    parentId: node.data?.parentId || 0,
+    buildingName: node.data?.buildingName || '',
+    mainSubName: node.data?.mainSubName || '',
+    screenName: node.data?.screenName || '',
+    stationNumber: node.data?.stationNumber || 0,
+    portNumber: node.data?.portNumber || 0,
+    onlineStatus: node.data?.onlineStatus || 0,
+  });
 
   // Handle menu item clicks
   const handleMenuClick = (action?: MenuAction | (() => void)) => {
@@ -200,21 +240,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           break;
         case MenuAction.SaveAs:
           if (selectedDevice) {
-            // Convert TreeNode to DeviceInfo format
-            const deviceInfo: DeviceInfo = {
-              serialNumber: selectedDevice.id,
-              productName: selectedDevice.label,
-              nameShowOnTree: selectedDevice.label,
-              protocol: selectedDevice.data?.protocol || 'MODBUS',
-              // Add other required DeviceInfo fields with defaults
-              parentId: selectedDevice.data?.parentId || 0,
-              buildingName: selectedDevice.data?.buildingName || '',
-              mainSubName: selectedDevice.data?.mainSubName || '',
-              screenName: selectedDevice.data?.screenName || '',
-              stationNumber: selectedDevice.data?.stationNumber || 0,
-              portNumber: selectedDevice.data?.portNumber || 0,
-              onlineStatus: selectedDevice.data?.onlineStatus || 0,
-            };
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
             fileHandlers.handleSaveAs(deviceInfo);
           } else {
             console.warn('No device selected for Save As operation');
@@ -223,20 +249,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           break;
         case MenuAction.Load:
           if (selectedDevice) {
-            // Convert TreeNode to DeviceInfo format
-            const deviceInfo: DeviceInfo = {
-              serialNumber: selectedDevice.id,
-              productName: selectedDevice.label,
-              nameShowOnTree: selectedDevice.label,
-              protocol: selectedDevice.data?.protocol || 'MODBUS',
-              parentId: selectedDevice.data?.parentId || 0,
-              buildingName: selectedDevice.data?.buildingName || '',
-              mainSubName: selectedDevice.data?.mainSubName || '',
-              screenName: selectedDevice.data?.screenName || '',
-              stationNumber: selectedDevice.data?.stationNumber || 0,
-              portNumber: selectedDevice.data?.portNumber || 0,
-              onlineStatus: selectedDevice.data?.onlineStatus || 0,
-            };
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
             fileHandlers.handleLoadFile(deviceInfo);
           } else {
             console.warn('No device selected for Load operation');
@@ -249,6 +262,69 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         case MenuAction.Exit:
           fileHandlers.handleExit();
           break;
+
+        // Tools menu
+        case MenuAction.Connect:
+          toolsHandlers.handleConnect();
+          break;
+        case MenuAction.Disconnect:
+          toolsHandlers.handleDisconnect();
+          break;
+        case MenuAction.ChangeModbusId:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            toolsHandlers.handleChangeModbusId(deviceInfo);
+          } else {
+            console.warn('No device selected for Change Modbus ID');
+          }
+          break;
+        case MenuAction.BacnetTool:
+          toolsHandlers.handleBacnetTool();
+          break;
+        case MenuAction.ModbusPoll:
+          toolsHandlers.handleModbusPoll();
+          break;
+        case MenuAction.RegisterViewer:
+          toolsHandlers.handleRegisterViewer();
+          break;
+        case MenuAction.ModbusRegisterV2:
+          toolsHandlers.handleModbusRegisterV2();
+          break;
+        case MenuAction.RegisterListDatabaseFolder:
+          toolsHandlers.handleRegisterListFolder();
+          break;
+        case MenuAction.LoadFirmwareSingle:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            toolsHandlers.handleLoadFirmwareSingle(deviceInfo);
+          } else {
+            console.warn('No device selected for firmware upload');
+          }
+          break;
+        case MenuAction.LoadFirmwareMany:
+          toolsHandlers.handleLoadFirmwareMany();
+          break;
+        case MenuAction.FlashSN:
+          if (selectedDevice) {
+            const deviceInfo = convertTreeNodeToDeviceInfo(selectedDevice);
+            toolsHandlers.handleFlashSN(deviceInfo);
+          } else {
+            console.warn('No device selected for Flash SN');
+          }
+          break;
+        case MenuAction.Psychrometry:
+          toolsHandlers.handlePsychrometry();
+          break;
+        case MenuAction.PhChart:
+          toolsHandlers.handlePhChart();
+          break;
+        case MenuAction.Options:
+          toolsHandlers.handleOptions();
+          break;
+        case MenuAction.LoginMyAccount:
+          toolsHandlers.handleLoginMyAccount();
+          break;
+
         case MenuAction.OpenDocumentation:
           navigate('/t3000/documentation');
           break;
@@ -308,9 +384,21 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'ToolbarSettings': SettingsRegular,
       'StatusBar': PanelLeftRegular,
       'PlugConnected': PlugConnectedRegular,
+      'PlugDisconnected': PlugDisconnectedRegular,
       'DataConnection': PlugConnectedRegular,
       'Network': ShareScreenStartRegular,
       'SignOut': SignOutRegular,
+      'DocumentAdd': DocumentAddRegular,
+      'NumberSymbol': NumberSymbolRegular,
+      'ChartMultiple': ChartMultipleRegular,
+      'Table': TableRegular,
+      'TableSimple': TableSimpleRegular,
+      'FolderDatabase': FolderDatabaseRegular,
+      'ArrowUploadMultiple': ArrowUploadRegular,
+      'Flash': FlashRegular,
+      'Temperature': TemperatureRegular,
+      'ChartLine': LineHorizontal3Regular,
+      'PersonAccounts': PersonAccountsRegular,
     };
     return iconMap[icon];
   };
