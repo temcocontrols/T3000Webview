@@ -15,6 +15,13 @@ const fileMenu: MenuItem = {
   type: 'submenu',
   children: [
     {
+      id: 'file-new-project',
+      label: 'New Project',
+      type: 'item',
+      action: MenuAction.NewProject,
+      icon: 'DocumentAdd',
+    },
+    {
       id: 'file-save-as',
       label: 'Save As...',
       type: 'item',
@@ -24,15 +31,11 @@ const fileMenu: MenuItem = {
     },
     {
       id: 'file-load',
-      label: 'Load',
+      label: 'Load File',
       type: 'item',
       action: MenuAction.Load,
       shortcut: 'Ctrl+L',
       icon: 'FolderOpen',
-    },
-    {
-      id: 'file-divider-1',
-      type: 'divider',
     },
     {
       id: 'file-import',
@@ -41,29 +44,6 @@ const fileMenu: MenuItem = {
       action: MenuAction.Import,
       shortcut: 'Ctrl+I',
       icon: 'ArrowUpload',
-    },
-    {
-      id: 'file-export',
-      label: 'Export',
-      type: 'item',
-      action: MenuAction.Export,
-      icon: 'ArrowDownload',
-    },
-    {
-      id: 'file-divider-2',
-      type: 'divider',
-    },
-    {
-      id: 'file-print',
-      label: 'Print',
-      type: 'item',
-      action: MenuAction.Print,
-      shortcut: 'Ctrl+P',
-      icon: 'Print',
-    },
-    {
-      id: 'file-divider-3',
-      type: 'divider',
     },
     {
       id: 'file-exit',

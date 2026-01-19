@@ -61,6 +61,7 @@ export interface ToolbarConfig {
 // Menu action types
 export enum MenuAction {
   // File menu
+  NewProject = 'new-project',
   NewBuilding = 'new-building',
   Open = 'open',
   Save = 'save',
