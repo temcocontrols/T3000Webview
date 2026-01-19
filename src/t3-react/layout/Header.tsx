@@ -64,6 +64,7 @@ import {
   PanelLeftRegular,
   PlugConnectedRegular,
   ShareScreenStartRegular,
+  DocumentAddRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -73,6 +74,9 @@ import { useAuthStore } from '@t3-react/store';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
+import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
+import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
+import type { DeviceInfo } from '@t3-react/shared/types/device';
 
 const useStyles = makeStyles({
   header: {
@@ -163,6 +167,21 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const { theme } = useTheme();
+  const { selectedDevice, getDeviceById } = useDeviceData();
+
+  // File menu handlers
+  const { handlers: fileHandlers, state: fileState } = useFileMenu(
+    (message) => {
+      // Show success notification
+      console.log('✅ File operation success:', message);
+      // TODO: Show toast notification
+    },
+    (error) => {
+      // Show error notification
+      console.error('❌ File operation error:', error);
+      // TODO: Show error toast
+    }
+  );
 
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
@@ -176,6 +195,60 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
       // Handle specific menu actions
       switch (action) {
+        case MenuAction.NewProject:
+          fileHandlers.handleNewProject();
+          break;
+        case MenuAction.SaveAs:
+          if (selectedDevice) {
+            // Convert TreeNode to DeviceInfo format
+            const deviceInfo: DeviceInfo = {
+              serialNumber: selectedDevice.id,
+              productName: selectedDevice.label,
+              nameShowOnTree: selectedDevice.label,
+              protocol: selectedDevice.data?.protocol || 'MODBUS',
+              // Add other required DeviceInfo fields with defaults
+              parentId: selectedDevice.data?.parentId || 0,
+              buildingName: selectedDevice.data?.buildingName || '',
+              mainSubName: selectedDevice.data?.mainSubName || '',
+              screenName: selectedDevice.data?.screenName || '',
+              stationNumber: selectedDevice.data?.stationNumber || 0,
+              portNumber: selectedDevice.data?.portNumber || 0,
+              onlineStatus: selectedDevice.data?.onlineStatus || 0,
+            };
+            fileHandlers.handleSaveAs(deviceInfo);
+          } else {
+            console.warn('No device selected for Save As operation');
+            // TODO: Show notification to select a device
+          }
+          break;
+        case MenuAction.Load:
+          if (selectedDevice) {
+            // Convert TreeNode to DeviceInfo format
+            const deviceInfo: DeviceInfo = {
+              serialNumber: selectedDevice.id,
+              productName: selectedDevice.label,
+              nameShowOnTree: selectedDevice.label,
+              protocol: selectedDevice.data?.protocol || 'MODBUS',
+              parentId: selectedDevice.data?.parentId || 0,
+              buildingName: selectedDevice.data?.buildingName || '',
+              mainSubName: selectedDevice.data?.mainSubName || '',
+              screenName: selectedDevice.data?.screenName || '',
+              stationNumber: selectedDevice.data?.stationNumber || 0,
+              portNumber: selectedDevice.data?.portNumber || 0,
+              onlineStatus: selectedDevice.data?.onlineStatus || 0,
+            };
+            fileHandlers.handleLoadFile(deviceInfo);
+          } else {
+            console.warn('No device selected for Load operation');
+            // TODO: Show notification to select a device
+          }
+          break;
+        case MenuAction.Import:
+          fileHandlers.handleImport();
+          break;
+        case MenuAction.Exit:
+          fileHandlers.handleExit();
+          break;
         case MenuAction.OpenDocumentation:
           navigate('/t3000/documentation');
           break;
@@ -195,6 +268,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     const iconMap: Record<string, React.ComponentType> = {
       'Save': SaveRegular,
       'SaveAs': SaveRegular, // Use Save icon for SaveAs
+      'DocumentAdd': DocumentAddRegular,
       'FolderOpen': FolderOpenRegular,
       'ArrowUpload': ArrowUploadRegular,
       'ArrowDownload': ArrowDownloadRegular,
