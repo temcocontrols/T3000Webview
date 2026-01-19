@@ -22,6 +22,10 @@ const fileMenu: MenuItem = {
       icon: 'DocumentAdd',
     },
     {
+      id: 'file-divider-1',
+      type: 'divider',
+    },
+    {
       id: 'file-save-as',
       label: 'Save As...',
       type: 'item',
@@ -44,6 +48,10 @@ const fileMenu: MenuItem = {
       action: MenuAction.Import,
       shortcut: 'Ctrl+I',
       icon: 'ArrowUpload',
+    },
+    {
+      id: 'file-divider-2',
+      type: 'divider',
     },
     {
       id: 'file-exit',
@@ -73,11 +81,19 @@ const toolsMenu: MenuItem = {
       icon: 'PlugConnected',
     },
     {
+      id: 'tools-divider-1',
+      type: 'divider',
+    },
+    {
       id: 'tools-change-modbus-id',
       label: 'Change Modbus ID',
       type: 'item',
       action: MenuAction.ChangeModbusId,
       icon: 'NumberSymbol',
+    },
+    {
+      id: 'tools-divider-2',
+      type: 'divider',
     },
     {
       id: 'tools-bacnet-tool',
@@ -115,6 +131,10 @@ const toolsMenu: MenuItem = {
       icon: 'FolderDatabase',
     },
     {
+      id: 'tools-divider-3',
+      type: 'divider',
+    },
+    {
       id: 'tools-load-firmware-single',
       label: 'Load firmware for a single device',
       type: 'item',
@@ -139,6 +159,10 @@ const toolsMenu: MenuItem = {
       icon: 'Flash',
     },
     {
+      id: 'tools-divider-4',
+      type: 'divider',
+    },
+    {
       id: 'tools-psychrometry',
       label: 'Psychrometry',
       type: 'item',
@@ -153,11 +177,19 @@ const toolsMenu: MenuItem = {
       icon: 'ChartLine',
     },
     {
+      id: 'tools-divider-5',
+      type: 'divider',
+    },
+    {
       id: 'tools-options',
       label: 'Options',
       type: 'item',
       action: MenuAction.Options,
       icon: 'Settings',
+    },
+    {
+      id: 'tools-divider-6',
+      type: 'divider',
     },
     {
       id: 'tools-disconnect',

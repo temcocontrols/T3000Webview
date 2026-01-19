@@ -109,7 +109,6 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     fontSize: 'var(--t3-font-size-body)',
     color: 'var(--t3-color-header-text)',
-    minWidth: '300px',
     '&:hover': {
       backgroundColor: 'var(--t3-color-primary-hover)',
       borderRadius: 'var(--t3-border-radius)',
@@ -164,6 +163,12 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+  },
+  menuPopover: {
+    minWidth: '300px',
+  },
+  menuItemWide: {
+    minWidth: '300px',
   },
 });
 
@@ -436,7 +441,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
             <MenuTrigger>
               <div className={styles.menuItem}>{menu.label}</div>
             </MenuTrigger>
-            <MenuPopover>
+            <MenuPopover className={menu.id === 'tools' ? styles.menuPopover : undefined}>
               <MenuList>
                 {menu.children?.map((item) => {
                   if (item.type === 'divider') {
@@ -452,6 +457,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                       onClick={() => handleMenuClick(item.action)}
                       disabled={item.disabled}
                       icon={IconComponent ? <IconComponent /> : undefined}
+                      className={menu.id === 'tools' ? styles.menuItemWide : undefined}
                       style={{
                         fontSize: 'var(--t3-font-size-small)', // 12px for dropdown items
                         padding: '8px 16px',
