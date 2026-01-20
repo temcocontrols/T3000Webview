@@ -2112,6 +2112,195 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				break;
 			}
 
+			case BAC_PID:  // PID Controllers / Loops
+			{
+				if (entry_index_end >= entry_index_start)
+				{
+					// Calculate number of groups needed (round up)
+					int totalCount = entry_index_end - entry_index_start + 1;
+					int groupSize = BAC_READ_PID_GROUP_NUMBER;  // 10
+					int read_pid_group = (totalCount + groupSize - 1) / groupSize;
+
+					for (int i = 0; i < read_pid_group; ++i)
+					{
+						int temp_start = entry_index_start + i * groupSize;
+						if (temp_start > entry_index_end) // Prevent overflow
+							break;
+
+						int temp_end = temp_start + groupSize - 1;
+						if (temp_end > entry_index_end)
+							temp_end = entry_index_end;
+
+						// Ensure not exceeding global max count
+						if (temp_start >= BAC_PID_COUNT)
+							break;
+						if (temp_end >= BAC_PID_COUNT)
+							temp_end = BAC_PID_COUNT - 1;
+
+						// Blocking read for each group
+						if (GetPrivateDataSaveSPBlocking(entry_objectinstance, READCONTROLLER_T3000,
+							(uint8_t)temp_start, (uint8_t)temp_end, sizeof(Str_controller_point), 4) > 0)
+						{
+							// Copy read data to global cache
+							for (int idx = temp_start; idx <= temp_end; ++idx)
+							{
+								if (idx < BAC_PID_COUNT) {
+									g_controller_data[temp_panel_id].at(idx) = m_controller_data.at(idx);
+								}
+							}
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								int elementCount = temp_end - temp_start + 1;
+								CString dbg;
+								dbg.Format(_T("obj=%d,controller ,Chunk %d: temp_start=%d, temp_end=%d, count=%d\r\n"),
+									entry_objectinstance, i, temp_start, temp_end, elementCount);
+								DFTrace(dbg);
+							}
+							Sleep(SEND_COMMAND_DELAY_TIME);
+						}
+						else
+						{
+							CString errorLog;
+							errorLog.Format(_T("ERROR: Read controller failed start=%d, end=%d"),
+								temp_start, temp_end);
+							WriteHandleWebViewMsgLog(_T("GET_WEBVIEW_LIST"), errorLog, 0);
+
+							if (msg_source == 0)
+								SetPaneString(BAC_SHOW_MISSION_RESULTS, errorLog);
+							WrapErrorMessage(builder, tempjson, outmsg, errorLog);
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								DFTrace(errorLog);
+							}
+							continue;
+						}
+
+						int npanel_id = temp_panel_id;
+						for (int idx = temp_start; idx <= temp_end; idx++)
+						{
+							int pid_idx = idx;
+							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
+							tempjson["data"]["device_data"][point_idx]["type"] = "PID";
+							tempjson["data"]["device_data"][point_idx]["index"] = pid_idx;
+							tempjson["data"]["device_data"][point_idx]["id"] = "PID" + to_string(pid_idx + 1);
+							tempjson["data"]["device_data"][point_idx]["command"] = to_string(npanel_id) + "PID" + to_string(pid_idx + 1);
+
+							// PID Controller specific fields
+							tempjson["data"]["device_data"][point_idx]["input_panel"] = g_controller_data[npanel_id].at(pid_idx).input.panel;
+							tempjson["data"]["device_data"][point_idx]["input_type"] = g_controller_data[npanel_id].at(pid_idx).input.point_type;
+							tempjson["data"]["device_data"][point_idx]["input_number"] = g_controller_data[npanel_id].at(pid_idx).input.number;
+							tempjson["data"]["device_data"][point_idx]["input_value"] = g_controller_data[npanel_id].at(pid_idx).input_value;
+							tempjson["data"]["device_data"][point_idx]["units"] = g_controller_data[npanel_id].at(pid_idx).units;
+							tempjson["data"]["device_data"][point_idx]["auto_manual"] = g_controller_data[npanel_id].at(pid_idx).auto_manual;
+							tempjson["data"]["device_data"][point_idx]["output_value"] = g_controller_data[npanel_id].at(pid_idx).value;
+							tempjson["data"]["device_data"][point_idx]["setpoint_panel"] = g_controller_data[npanel_id].at(pid_idx).setpoint.panel;
+							tempjson["data"]["device_data"][point_idx]["setpoint_type"] = g_controller_data[npanel_id].at(pid_idx).setpoint.point_type;
+							tempjson["data"]["device_data"][point_idx]["setpoint_number"] = g_controller_data[npanel_id].at(pid_idx).setpoint.number;
+							tempjson["data"]["device_data"][point_idx]["time_type"] = g_controller_data[npanel_id].at(pid_idx).repeats_per_min;
+							tempjson["data"]["device_data"][point_idx]["action"] = g_controller_data[npanel_id].at(pid_idx).action;
+							tempjson["data"]["device_data"][point_idx]["proportional"] = g_controller_data[npanel_id].at(pid_idx).proportional;
+							tempjson["data"]["device_data"][point_idx]["integral"] = g_controller_data[npanel_id].at(pid_idx).reset;
+							tempjson["data"]["device_data"][point_idx]["differential"] = g_controller_data[npanel_id].at(pid_idx).rate;
+							tempjson["data"]["device_data"][point_idx]["bias"] = g_controller_data[npanel_id].at(pid_idx).bias;
+
+							point_idx++;
+						}
+
+					} // for groups
+				}
+				break;
+			}
+
+			case BAC_SCH:  // Schedules / Weekly Routines
+			{
+				if (entry_index_end >= entry_index_start)
+				{
+					// Calculate number of groups needed (round up)
+					int totalCount = entry_index_end - entry_index_start + 1;
+					int groupSize = BAC_READ_SCHEDULE_GROUP_NUMBER;  // 10
+					int read_schedule_group = (totalCount + groupSize - 1) / groupSize;
+
+					for (int i = 0; i < read_schedule_group; ++i)
+					{
+						int temp_start = entry_index_start + i * groupSize;
+						if (temp_start > entry_index_end) // Prevent overflow
+							break;
+
+						int temp_end = temp_start + groupSize - 1;
+						if (temp_end > entry_index_end)
+							temp_end = entry_index_end;
+
+						// Ensure not exceeding global max count
+						if (temp_start >= BAC_SCHEDULE_COUNT)
+							break;
+						if (temp_end >= BAC_SCHEDULE_COUNT)
+							temp_end = BAC_SCHEDULE_COUNT - 1;
+
+						// Blocking read for each group
+						if (GetPrivateDataSaveSPBlocking(entry_objectinstance, READWEEKLYROUTINE_T3000,
+							(uint8_t)temp_start, (uint8_t)temp_end, sizeof(Str_weekly_routine_point), 4) > 0)
+						{
+							// Copy read data to global cache
+							for (int idx = temp_start; idx <= temp_end; ++idx)
+							{
+								if (idx < BAC_SCHEDULE_COUNT) {
+									g_Weekly_data[temp_panel_id].at(idx) = m_Weekly_data.at(idx);
+								}
+							}
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								int elementCount = temp_end - temp_start + 1;
+								CString dbg;
+								dbg.Format(_T("obj=%d,schedule ,Chunk %d: temp_start=%d, temp_end=%d, count=%d\r\n"),
+									entry_objectinstance, i, temp_start, temp_end, elementCount);
+								DFTrace(dbg);
+							}
+							Sleep(SEND_COMMAND_DELAY_TIME);
+						}
+						else
+						{
+							CString errorLog;
+							errorLog.Format(_T("ERROR: Read schedule failed start=%d, end=%d"),
+								temp_start, temp_end);
+							WriteHandleWebViewMsgLog(_T("GET_WEBVIEW_LIST"), errorLog, 0);
+
+							if (msg_source == 0)
+								SetPaneString(BAC_SHOW_MISSION_RESULTS, errorLog);
+							WrapErrorMessage(builder, tempjson, outmsg, errorLog);
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								DFTrace(errorLog);
+							}
+							continue;
+						}
+
+						int npanel_id = temp_panel_id;
+						for (int idx = temp_start; idx <= temp_end; idx++)
+						{
+							int sch_idx = idx;
+							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
+							tempjson["data"]["device_data"][point_idx]["type"] = "SCHEDULE";
+							tempjson["data"]["device_data"][point_idx]["index"] = sch_idx;
+							tempjson["data"]["device_data"][point_idx]["id"] = "SCH" + to_string(sch_idx + 1);
+							tempjson["data"]["device_data"][point_idx]["command"] = to_string(npanel_id) + "SCH" + to_string(sch_idx + 1);
+
+							// Schedule specific fields (matching GET_PANEL_DATA structure)
+							tempjson["data"]["device_data"][point_idx]["description"] = (char*)g_Weekly_data[npanel_id].at(sch_idx).description;
+							tempjson["data"]["device_data"][point_idx]["label"] = (char*)g_Weekly_data[npanel_id].at(sch_idx).label;
+							tempjson["data"]["device_data"][point_idx]["auto_manual"] = g_Weekly_data[npanel_id].at(sch_idx).auto_manual;
+							tempjson["data"]["device_data"][point_idx]["output"] = g_Weekly_data[npanel_id].at(sch_idx).value;
+							tempjson["data"]["device_data"][point_idx]["state1"] = g_Weekly_data[npanel_id].at(sch_idx).override_1_value;
+							tempjson["data"]["device_data"][point_idx]["state2"] = g_Weekly_data[npanel_id].at(sch_idx).override_2_value;
+							tempjson["data"]["device_data"][point_idx]["unused"] = g_Weekly_data[npanel_id].at(sch_idx).unused;
+
+							point_idx++;
+						}
+
+					} // for groups
+				}
+				break;
+			}
+
 			default:
 				break;
 		}

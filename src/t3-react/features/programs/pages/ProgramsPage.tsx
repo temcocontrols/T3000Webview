@@ -787,7 +787,7 @@ export const ProgramsPage: React.FC = () => {
 
                 {loading && programs.length === 0 && (
                   <div className={styles.loadingBar}>
-                    <Spinner size="tiny" />
+                    <ArrowSyncRegular />
                     <Text size={200} weight="regular">Loading programs...</Text>
                   </div>
                 )}
