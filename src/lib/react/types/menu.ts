@@ -133,6 +133,11 @@ export enum MenuAction {
   StartControl = 'start-control',
   StopControl = 'stop-control',
 
+  // Miscellaneous menu
+  LoadDescriptors = 'load-descriptors',
+  WriteIntoFlash = 'write-into-flash',
+  GSMConnection = 'gsm-connection',
+
   // Help menu
   Help = 'help',
   OpenDocumentation = 'open-documentation',

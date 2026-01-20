@@ -18,3 +18,6 @@ export { ControlMenuService } from './controlMenuService';
 // Tools Menu Service Exports
 export { ToolsMenuService } from './toolsMenuService';
 export type { ConnectionInfo, ModbusIdChangeRequest, FirmwareUploadRequest } from './toolsMenuService';
+
+// Miscellaneous Menu Service Exports
+export { MiscellaneousMenuService } from './miscellaneousMenuService';

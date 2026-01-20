@@ -104,6 +104,7 @@ import { useToolsMenu } from '@t3-react/shared/hooks/useToolsMenu';
 import { useViewMenu } from '@t3-react/shared/hooks/useViewMenu';
 import { useDatabaseMenu } from '@t3-react/shared/hooks/useDatabaseMenu';
 import { useControlMenu } from '@t3-react/shared/hooks/useControlMenu';
+import { useMiscellaneousMenu } from '@t3-react/shared/hooks/useMiscellaneousMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
 
@@ -240,6 +241,9 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
   // Control menu handlers
   const { handlers: controlHandlers } = useControlMenu();
+
+  // Miscellaneous menu handlers
+  const { handlers: miscHandlers } = useMiscellaneousMenu();
 
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
@@ -434,6 +438,17 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           break;
         case MenuAction.ControlConfiguration:
           controlHandlers.handleConfiguration();
+          break;
+
+        // Miscellaneous menu
+        case MenuAction.LoadDescriptors:
+          miscHandlers.handleLoadDescriptors();
+          break;
+        case MenuAction.WriteIntoFlash:
+          miscHandlers.handleWriteIntoFlash();
+          break;
+        case MenuAction.GSMConnection:
+          miscHandlers.handleGSMConnection();
           break;
 
         case MenuAction.OpenDocumentation:
