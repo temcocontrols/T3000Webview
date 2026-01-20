@@ -65,6 +65,94 @@ const fileMenu: MenuItem = {
 };
 
 /**
+ * View Menu
+ */
+const viewMenu: MenuItem = {
+  id: 'view',
+  label: 'View',
+  type: 'submenu',
+  children: [
+    {
+      id: 'view-toolbars',
+      label: 'Toolbars and Docking Windows',
+      type: 'submenu',
+      children: [
+        {
+          id: 'view-toolbar',
+          label: 'Tool Bar',
+          type: 'checkbox',
+          action: MenuAction.ShowToolBar,
+          checked: true,
+        },
+        {
+          id: 'view-building-pane',
+          label: 'Building Pane',
+          type: 'checkbox',
+          action: MenuAction.ShowBuildingPane,
+          checked: true,
+        },
+      ],
+    },
+    {
+      id: 'view-status-bar',
+      label: 'Status Bar',
+      type: 'checkbox',
+      action: MenuAction.ShowStatusBar,
+      checked: true,
+    },
+    {
+      id: 'view-divider-1',
+      type: 'divider',
+    },
+    {
+      id: 'view-application-look',
+      label: 'Application Look',
+      type: 'submenu',
+      icon: 'ColorBackground',
+      children: [
+        {
+          id: 'view-theme-office-2003',
+          label: 'Office 2003',
+          type: 'item',
+          action: MenuAction.ThemeOffice2003,
+        },
+        {
+          id: 'view-theme-office-2007',
+          label: 'Office 2007',
+          type: 'submenu',
+          children: [
+            {
+              id: 'view-theme-office-2007-blue',
+              label: 'Blue Style',
+              type: 'item',
+              action: MenuAction.ThemeOffice2007Blue,
+            },
+            {
+              id: 'view-theme-office-2007-silver',
+              label: 'Silver Style',
+              type: 'item',
+              action: MenuAction.ThemeOffice2007Silver,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'view-divider-2',
+      type: 'divider',
+    },
+    {
+      id: 'view-refresh',
+      label: 'Refresh',
+      type: 'item',
+      action: MenuAction.ViewRefresh,
+      shortcut: 'F2',
+      icon: 'ArrowClockwise',
+    },
+  ],
+};
+
+/**
  * Tools Menu
  */
 const toolsMenu: MenuItem = {
@@ -205,65 +293,6 @@ const toolsMenu: MenuItem = {
       type: 'item',
       action: MenuAction.LoginMyAccount,
       icon: 'PersonAccounts',
-    },
-  ],
-};
-
-/**
- * View Menu
- */
-const viewMenu: MenuItem = {
-  id: 'view',
-  label: 'View',
-  type: 'submenu',
-  children: [
-    {
-      id: 'view-refresh',
-      label: 'Refresh',
-      type: 'item',
-      action: MenuAction.Refresh,
-      shortcut: 'F5',
-      icon: 'ArrowClockwise',
-    },
-    {
-      id: 'view-divider-1',
-      type: 'divider',
-    },
-    {
-      id: 'view-tree-panel',
-      label: 'Show Tree Panel',
-      type: 'checkbox',
-      action: MenuAction.ToggleTreePanel,
-      checked: true,
-      icon: 'TreeView',
-    },
-    {
-      id: 'view-toolbar',
-      label: 'Show Toolbar',
-      type: 'checkbox',
-      action: MenuAction.ToggleToolbar,
-      checked: true,
-      icon: 'ToolbarSettings',
-    },
-    {
-      id: 'view-status-bar',
-      label: 'Show Status Bar',
-      type: 'checkbox',
-      action: MenuAction.ToggleStatusBar,
-      checked: true,
-      icon: 'StatusBar',
-    },
-    {
-      id: 'view-divider-2',
-      type: 'divider',
-    },
-    {
-      id: 'view-full-screen',
-      label: 'Full Screen',
-      type: 'item',
-      action: MenuAction.ToggleFullScreen,
-      shortcut: 'F11',
-      icon: 'FullScreen',
     },
   ],
 };

@@ -94,8 +94,14 @@ export enum MenuAction {
   Settings = 'settings',
 
   // View menu
-  ShowLeftPanel = 'show-left-panel',
+  ShowToolBar = 'show-tool-bar',
+  ShowBuildingPane = 'show-building-pane',
   ShowStatusBar = 'show-status-bar',
+  ThemeOffice2003 = 'theme-office-2003',
+  ThemeOffice2007Blue = 'theme-office-2007-blue',
+  ThemeOffice2007Silver = 'theme-office-2007-silver',
+  ViewRefresh = 'view-refresh',
+  ShowLeftPanel = 'show-left-panel',
   ZoomIn = 'zoom-in',
   ZoomOut = 'zoom-out',
   ResetZoom = 'reset-zoom',

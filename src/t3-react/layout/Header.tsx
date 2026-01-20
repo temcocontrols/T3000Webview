@@ -74,6 +74,7 @@ import {
   TemperatureRegular,
   LineHorizontal3Regular,
   PersonAccountsRegular,
+  ColorBackgroundRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -85,6 +86,7 @@ import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
 import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
 import { useToolsMenu } from '@t3-react/shared/hooks/useToolsMenu';
+import { useViewMenu } from '@t3-react/shared/hooks/useViewMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
 
@@ -213,6 +215,9 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     }
   );
 
+  // View menu handlers
+  const { handlers: viewHandlers, viewState } = useViewMenu();
+
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
   // Helper function to convert TreeNode to DeviceInfo
@@ -328,6 +333,29 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           break;
         case MenuAction.LoginMyAccount:
           toolsHandlers.handleLoginMyAccount();
+          break;
+
+        // View menu
+        case MenuAction.ShowToolBar:
+          viewHandlers.handleShowToolBar();
+          break;
+        case MenuAction.ShowBuildingPane:
+          viewHandlers.handleShowBuildingPane();
+          break;
+        case MenuAction.ShowStatusBar:
+          viewHandlers.handleShowStatusBar();
+          break;
+        case MenuAction.ThemeOffice2003:
+          viewHandlers.handleThemeOffice2003();
+          break;
+        case MenuAction.ThemeOffice2007Blue:
+          viewHandlers.handleThemeOffice2007Blue();
+          break;
+        case MenuAction.ThemeOffice2007Silver:
+          viewHandlers.handleThemeOffice2007Silver();
+          break;
+        case MenuAction.ViewRefresh:
+          viewHandlers.handleRefresh();
           break;
 
         case MenuAction.OpenDocumentation:
