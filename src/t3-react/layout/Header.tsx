@@ -90,6 +90,7 @@ import {
   ImageRegular,
   ListRegular,
   NetworkCheckRegular,
+  HistoryRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -105,6 +106,7 @@ import { useViewMenu } from '@t3-react/shared/hooks/useViewMenu';
 import { useDatabaseMenu } from '@t3-react/shared/hooks/useDatabaseMenu';
 import { useControlMenu } from '@t3-react/shared/hooks/useControlMenu';
 import { useMiscellaneousMenu } from '@t3-react/shared/hooks/useMiscellaneousMenu';
+import { useHelpMenu } from '@t3-react/shared/hooks/useHelpMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
 
@@ -244,6 +246,9 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
   // Miscellaneous menu handlers
   const { handlers: miscHandlers } = useMiscellaneousMenu();
+
+  // Help menu handlers
+  const { handlers: helpHandlers } = useHelpMenu();
 
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
@@ -451,6 +456,20 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           miscHandlers.handleGSMConnection();
           break;
 
+        // Help menu
+        case MenuAction.HelpContents:
+          helpHandlers.handleContents();
+          break;
+        case MenuAction.VersionHistory:
+          helpHandlers.handleVersionHistory();
+          break;
+        case MenuAction.AboutSoftware:
+          helpHandlers.handleAboutSoftware();
+          break;
+        case MenuAction.CheckUpdates:
+          helpHandlers.handleCheckUpdates();
+          break;
+
         case MenuAction.OpenDocumentation:
           navigate('/t3000/documentation');
           break;
@@ -543,6 +562,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'Image': ImageRegular,
       'List': ListRegular,
       'NetworkCheck': NetworkCheckRegular,
+      'History': HistoryRegular,
     };
     return iconMap[icon];
   };

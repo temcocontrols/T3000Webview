@@ -508,6 +508,38 @@ const helpMenu: MenuItem = {
   type: 'submenu',
   children: [
     {
+      id: 'help-contents',
+      label: 'Contents',
+      type: 'item',
+      action: MenuAction.HelpContents,
+      icon: 'Book',
+    },
+    {
+      id: 'help-version-history',
+      label: 'Version History',
+      type: 'item',
+      action: MenuAction.VersionHistory,
+      icon: 'History',
+    },
+    {
+      id: 'help-about-software',
+      label: 'About Software',
+      type: 'item',
+      action: MenuAction.AboutSoftware,
+      icon: 'Info',
+    },
+    {
+      id: 'help-check-updates',
+      label: 'Check For Updates',
+      type: 'item',
+      action: MenuAction.CheckUpdates,
+      icon: 'ArrowDownload',
+    },
+    {
+      id: 'help-divider-1',
+      type: 'divider',
+    },
+    {
       id: 'help-documentation',
       label: 'Documentation',
       type: 'item',
@@ -521,17 +553,6 @@ const helpMenu: MenuItem = {
       type: 'item',
       action: MenuAction.OpenQuickStart,
       icon: 'Lightbulb',
-    },
-    {
-      id: 'help-divider-1',
-      type: 'divider',
-    },
-    {
-      id: 'help-check-updates',
-      label: 'Check for Updates',
-      type: 'item',
-      action: MenuAction.CheckUpdates,
-      icon: 'ArrowDownload',
     },
     {
       id: 'help-divider-2',
@@ -550,17 +571,6 @@ const helpMenu: MenuItem = {
       type: 'item',
       action: MenuAction.SendFeedback,
       icon: 'Comment',
-    },
-    {
-      id: 'help-divider-3',
-      type: 'divider',
-    },
-    {
-      id: 'help-about',
-      label: 'About T3000',
-      type: 'item',
-      action: MenuAction.ShowAbout,
-      icon: 'Info',
     },
   ],
 };

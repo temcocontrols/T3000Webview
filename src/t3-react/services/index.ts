@@ -21,3 +21,6 @@ export type { ConnectionInfo, ModbusIdChangeRequest, FirmwareUploadRequest } fro
 
 // Miscellaneous Menu Service Exports
 export { MiscellaneousMenuService } from './miscellaneousMenuService';
+
+// Help Menu Service Exports
+export { HelpMenuService } from './helpMenuService';

@@ -139,6 +139,9 @@ export enum MenuAction {
   GSMConnection = 'gsm-connection',
 
   // Help menu
+  HelpContents = 'help-contents',
+  VersionHistory = 'version-history',
+  AboutSoftware = 'about-software',
   Help = 'help',
   OpenDocumentation = 'open-documentation',
   OpenQuickStart = 'open-quick-start',
