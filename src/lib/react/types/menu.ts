@@ -107,11 +107,28 @@ export enum MenuAction {
   ResetZoom = 'reset-zoom',
 
   // Database menu
+  BuildingConfigDatabase = 'building-config-database',
+  AllNodesDatabase = 'all-nodes-database',
+  IONameConfig = 'ioname-config',
+  LogDetail = 'log-detail',
   DatabaseManagement = 'database-management',
   BackupDatabase = 'backup-database',
   RestoreDatabase = 'restore-database',
 
   // Control menu
+  ControlGraphics = 'control-graphics',
+  ControlPrograms = 'control-programs',
+  ControlInputs = 'control-inputs',
+  ControlOutputs = 'control-outputs',
+  ControlVariables = 'control-variables',
+  ControlLoops = 'control-loops',
+  ControlSchedules = 'control-schedules',
+  ControlHolidays = 'control-holidays',
+  ControlTrendLogs = 'control-trend-logs',
+  ControlAlarms = 'control-alarms',
+  ControlNetworkPanel = 'control-network-panel',
+  ControlRemotePoints = 'control-remote-points',
+  ControlConfiguration = 'control-configuration',
   ControlSettings = 'control-settings',
   StartControl = 'start-control',
   StopControl = 'stop-control',

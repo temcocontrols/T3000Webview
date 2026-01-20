@@ -75,6 +75,21 @@ import {
   LineHorizontal3Regular,
   PersonAccountsRegular,
   ColorBackgroundRegular,
+  ColorRegular,
+  ToolboxRegular,
+  CodeRegular,
+  DataHistogramRegular,
+  CalendarRegular,
+  CalendarDateRegular,
+  DataLineRegular,
+  RemoteRegular,
+  OptionsRegular,
+  DeveloperBoardRegular,
+  CircleMultipleConcentricRegular,
+  FlowRegular,
+  ImageRegular,
+  ListRegular,
+  NetworkCheckRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
@@ -87,6 +102,8 @@ import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
 import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
 import { useToolsMenu } from '@t3-react/shared/hooks/useToolsMenu';
 import { useViewMenu } from '@t3-react/shared/hooks/useViewMenu';
+import { useDatabaseMenu } from '@t3-react/shared/hooks/useDatabaseMenu';
+import { useControlMenu } from '@t3-react/shared/hooks/useControlMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
 
@@ -217,6 +234,12 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
   // View menu handlers
   const { handlers: viewHandlers, viewState } = useViewMenu();
+
+  // Database menu handlers
+  const { handlers: databaseHandlers } = useDatabaseMenu();
+
+  // Control menu handlers
+  const { handlers: controlHandlers } = useControlMenu();
 
   console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
@@ -358,6 +381,61 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           viewHandlers.handleRefresh();
           break;
 
+        // Database menu
+        case MenuAction.BuildingConfigDatabase:
+          databaseHandlers.handleBuildingConfigDatabase();
+          break;
+        case MenuAction.AllNodesDatabase:
+          databaseHandlers.handleAllNodesDatabase();
+          break;
+        case MenuAction.IONameConfig:
+          databaseHandlers.handleIONameConfig();
+          break;
+        case MenuAction.LogDetail:
+          databaseHandlers.handleLogDetail();
+          break;
+
+        // Control menu
+        case MenuAction.ControlGraphics:
+          controlHandlers.handleGraphics();
+          break;
+        case MenuAction.ControlPrograms:
+          controlHandlers.handlePrograms();
+          break;
+        case MenuAction.ControlInputs:
+          controlHandlers.handleInputs();
+          break;
+        case MenuAction.ControlOutputs:
+          controlHandlers.handleOutputs();
+          break;
+        case MenuAction.ControlVariables:
+          controlHandlers.handleVariables();
+          break;
+        case MenuAction.ControlLoops:
+          controlHandlers.handleLoops();
+          break;
+        case MenuAction.ControlSchedules:
+          controlHandlers.handleSchedules();
+          break;
+        case MenuAction.ControlHolidays:
+          controlHandlers.handleHolidays();
+          break;
+        case MenuAction.ControlTrendLogs:
+          controlHandlers.handleTrendLogs();
+          break;
+        case MenuAction.ControlAlarms:
+          controlHandlers.handleAlarms();
+          break;
+        case MenuAction.ControlNetworkPanel:
+          controlHandlers.handleNetworkPanel();
+          break;
+        case MenuAction.ControlRemotePoints:
+          controlHandlers.handleRemotePoints();
+          break;
+        case MenuAction.ControlConfiguration:
+          controlHandlers.handleConfiguration();
+          break;
+
         case MenuAction.OpenDocumentation:
           navigate('/t3000/documentation');
           break;
@@ -408,6 +486,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'Stop': StopRegular,
       'Power': PowerRegular,
       'PowerOff': PowerRegular,
+      'Alert': AlertRegular,
       'AlertCheck': AlertRegular,
       'AlertOff': AlertRegular,
       'RecordStart': PlayRegular,
@@ -430,8 +509,25 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'ArrowUploadMultiple': ArrowUploadRegular,
       'Flash': FlashRegular,
       'Temperature': TemperatureRegular,
-      'ChartLine': LineHorizontal3Regular,
+      'ChartLine': DataLineRegular,
       'PersonAccounts': PersonAccountsRegular,
+      'ColorBackground': ColorBackgroundRegular,
+      'Color': ColorRegular,
+      'Toolbox': ToolboxRegular,
+      'StatusBar': PanelLeftRegular,
+      'Code': CodeRegular,
+      'DataHistogram': DataHistogramRegular,
+      'Calendar': CalendarRegular,
+      'CalendarEvent': CalendarDateRegular,
+      'CalendarDate': CalendarDateRegular,
+      'Remote': RemoteRegular,
+      'Options': OptionsRegular,
+      'DeveloperBoard': DeveloperBoardRegular,
+      'CircleMultipleConcentric': CircleMultipleConcentricRegular,
+      'Flow': FlowRegular,
+      'Image': ImageRegular,
+      'List': ListRegular,
+      'NetworkCheck': NetworkCheckRegular,
     };
     return iconMap[icon];
   };
