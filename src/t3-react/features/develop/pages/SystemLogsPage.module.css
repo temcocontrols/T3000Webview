@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 8px;
+  padding: 8px 0;
   background-color: #f3f2f1;
   border-bottom: 1px solid #edebe9;
   flex-wrap: wrap;
@@ -70,6 +70,23 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.fileList::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.fileList::-webkit-scrollbar-track {
+  background: #faf9f8;
+}
+
+.fileList::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border-radius: 3px;
+}
+
+.fileList::-webkit-scrollbar-thumb:hover {
+  background: #8a8886;
 }
 
 .fileListPlaceholder {
@@ -213,8 +230,8 @@
 
 /* Scrollbar styling for dark log viewer */
 .logViewer::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 6px;
+  height: 6px;
 }
 
 .logViewer::-webkit-scrollbar-track {
@@ -223,7 +240,7 @@
 
 .logViewer::-webkit-scrollbar-thumb {
   background: #424242;
-  border-radius: 6px;
+  border-radius: 3px;
 }
 
 .logViewer::-webkit-scrollbar-thumb:hover {

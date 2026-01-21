@@ -83,15 +83,15 @@ export const SystemLogsPage: React.FC = () => {
 
   // Get log category from filename
   const getLogCategory = (filename: string): { category: LogCategory; icon: string; displayName: string } => {
-    if (filename.includes('T3_Webview_API_')) return { category: 'api', icon: '🌐', displayName: 'API Logs' };
-    if (filename.includes('T3_CppMsg_BacnetWebView_')) return { category: 'cpp_msg', icon: '⚙️', displayName: 'C++ Messages' };
-    if (filename.includes('T3_CppMsg_HandWebViewMsg_')) return { category: 'handler', icon: '📨', displayName: 'Message Handler' };
-    if (filename.includes('T3_DatabaseSizeMonitor_')) return { category: 'database', icon: '💾', displayName: 'Database Monitor' };
-    if (filename.includes('T3_PartitionMonitor_')) return { category: 'partition', icon: '📊', displayName: 'Partition Monitor' };
-    if (filename.includes('T3_Webview_FFI_')) return { category: 'ffi', icon: '🔌', displayName: 'FFI Operations' };
-    if (filename.includes('T3_Webview_Initialize_')) return { category: 'initialize', icon: '🚀', displayName: 'Initialize' };
-    if (filename.includes('T3_Webview_Socket_')) return { category: 'socket', icon: '🔗', displayName: 'Socket Logs' };
-    return { category: 'all', icon: '📄', displayName: 'Other' };
+    if (filename.includes('T3_Webview_API_')) return { category: 'api', icon: 'globe', displayName: 'API Logs' };
+    if (filename.includes('T3_CppMsg_BacnetWebView_')) return { category: 'cpp_msg', icon: 'settings', displayName: 'C++ Messages' };
+    if (filename.includes('T3_CppMsg_HandWebViewMsg_')) return { category: 'handler', icon: 'mail', displayName: 'Message Handler' };
+    if (filename.includes('T3_DatabaseSizeMonitor_')) return { category: 'database', icon: 'database', displayName: 'Database Monitor' };
+    if (filename.includes('T3_PartitionMonitor_')) return { category: 'partition', icon: 'storage', displayName: 'Partition Monitor' };
+    if (filename.includes('T3_Webview_FFI_')) return { category: 'ffi', icon: 'plug', displayName: 'FFI Operations' };
+    if (filename.includes('T3_Webview_Initialize_')) return { category: 'initialize', icon: 'rocket', displayName: 'Initialize' };
+    if (filename.includes('T3_Webview_Socket_')) return { category: 'socket', icon: 'connector', displayName: 'Socket Logs' };
+    return { category: 'all', icon: 'document', displayName: 'Other' };
   };
 
   // Extract PID from filename (e.g., T3_Webview_API_1619.txt -> 1619)
@@ -477,7 +477,6 @@ export const SystemLogsPage: React.FC = () => {
         {/* Left Panel - File Browser */}
         <div className={styles.filePanel}>
           <div className={styles.filePanelHeader}>
-            <DocumentRegular />
             <Text size={200} weight="semibold">Log Categories</Text>
           </div>
 
@@ -497,7 +496,17 @@ export const SystemLogsPage: React.FC = () => {
                   className={`${styles.fileItem} ${selectedFile?.name === file.name ? styles.fileItemActive : ''}`}
                   onClick={() => setSelectedFile(file)}
                 >
-                  <div className={styles.fileIcon}>{file.icon}</div>
+                  <div className={styles.fileIcon}>
+                    {file.icon === 'globe' && <GlobeRegular />}
+                    {file.icon === 'settings' && <SettingsRegular />}
+                    {file.icon === 'mail' && <MailRegular />}
+                    {file.icon === 'database' && <DatabaseRegular />}
+                    {file.icon === 'storage' && <StorageRegular />}
+                    {file.icon === 'plug' && <PlugConnectedRegular />}
+                    {file.icon === 'rocket' && <RocketRegular />}
+                    {file.icon === 'connector' && <PlugDisconnectedRegular />}
+                    {file.icon === 'document' && <DocumentRegular />}
+                  </div>
                   <div className={styles.fileInfo}>
                     <Text size={200} weight="semibold">
                       {file.displayName}
@@ -546,26 +555,26 @@ export const SystemLogsPage: React.FC = () => {
               ))}
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Footer Stats */}
-      <div className={styles.footer}>
-        <Text size={200} style={{ color: '#605e5c' }}>
-          {selectedFile ? (
-            <>
-              {selectedFile.displayName} • {filteredLogs.length} entries
-              {searchQuery && ` • Search: "${searchQuery}"`}
-            </>
-          ) : (
-            `${logFiles.length} log files available • ${formatSize(totalSize)} total`
-          )}
-        </Text>
-        {selectedDate && (
-          <Text size={200} style={{ color: '#605e5c' }}>
-            {selectedDate}
-          </Text>
-        )}
+          {/* Footer Stats */}
+          <div className={styles.footer}>
+            <Text size={200} style={{ color: '#605e5c' }}>
+              {selectedFile ? (
+                <>
+                  {selectedFile.displayName} • {filteredLogs.length} entries
+                  {searchQuery && ` • Search: "${searchQuery}"`}
+                </>
+              ) : (
+                `${logFiles.length} log files available • ${formatSize(totalSize)} total`
+              )}
+            </Text>
+            {selectedDate && (
+              <Text size={200} style={{ color: '#605e5c' }}>
+                {selectedDate}
+              </Text>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
