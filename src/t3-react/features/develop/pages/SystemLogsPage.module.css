@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 8px;
   background-color: #f3f2f1;
   border-bottom: 1px solid #edebe9;
   flex-wrap: wrap;
@@ -203,11 +203,12 @@
 .footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 6px 16px;
   border-top: 1px solid #edebe9;
   background-color: #f3f2f1;
   min-height: 32px;
+  gap: 16px;
 }
 
 /* Scrollbar styling for dark log viewer */

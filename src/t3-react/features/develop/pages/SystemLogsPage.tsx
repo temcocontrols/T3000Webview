@@ -12,7 +12,7 @@ import {
   Input,
   Checkbox,
   Spinner,
-  Badge,
+  Tag,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -337,11 +337,11 @@ export const SystemLogsPage: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <ClipboardTextLtrRegular style={{ fontSize: '18px', marginRight: '8px' }} />
+          <ClipboardTextLtrRegular style={{ fontSize: '18px', marginRight: '4px' }} />
           <Text size={400} weight="semibold">T3000 Logs - Live Monitor</Text>
-          <Badge appearance="filled" color="informative" size="small">
+          <Tag appearance="filled" color="informative" size="extra-small" shape="square" style={{ fontSize: '11px', padding: '2px 6px' }}>
             {logFiles.length} files • {formatSize(totalSize)}
-          </Badge>
+          </Tag>
         </div>
 
         <div className={styles.headerActions}>
