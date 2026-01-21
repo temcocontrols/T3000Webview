@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
  */
 export const openGraphics = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/graphics';
+    window.location.hash = '#/t3000/graphics';
   } catch (error) {
     console.error('Failed to open graphics:', error);
     throw error;
@@ -22,7 +22,7 @@ export const openGraphics = async (): Promise<void> => {
  */
 export const openPrograms = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/programs';
+    window.location.hash = '#/t3000/programs';
   } catch (error) {
     console.error('Failed to open programs:', error);
     throw error;
@@ -34,7 +34,7 @@ export const openPrograms = async (): Promise<void> => {
  */
 export const openInputs = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/inputs';
+    window.location.hash = '#/t3000/inputs';
   } catch (error) {
     console.error('Failed to open inputs:', error);
     throw error;
@@ -46,7 +46,7 @@ export const openInputs = async (): Promise<void> => {
  */
 export const openOutputs = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/outputs';
+    window.location.hash = '#/t3000/outputs';
   } catch (error) {
     console.error('Failed to open outputs:', error);
     throw error;
@@ -58,7 +58,7 @@ export const openOutputs = async (): Promise<void> => {
  */
 export const openVariables = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/variables';
+    window.location.hash = '#/t3000/variables';
   } catch (error) {
     console.error('Failed to open variables:', error);
     throw error;
@@ -70,7 +70,7 @@ export const openVariables = async (): Promise<void> => {
  */
 export const openLoops = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/loops';
+    window.location.hash = '#/t3000/pidloops';
   } catch (error) {
     console.error('Failed to open loops:', error);
     throw error;
@@ -82,7 +82,7 @@ export const openLoops = async (): Promise<void> => {
  */
 export const openSchedules = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/schedules';
+    window.location.hash = '#/t3000/schedules';
   } catch (error) {
     console.error('Failed to open schedules:', error);
     throw error;
@@ -94,7 +94,7 @@ export const openSchedules = async (): Promise<void> => {
  */
 export const openHolidays = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/holidays';
+    window.location.hash = '#/t3000/holidays';
   } catch (error) {
     console.error('Failed to open holidays:', error);
     throw error;
@@ -106,7 +106,7 @@ export const openHolidays = async (): Promise<void> => {
  */
 export const openTrendLogs = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/trend-logs';
+    window.location.hash = '#/t3000/trendlogs';
   } catch (error) {
     console.error('Failed to open trend logs:', error);
     throw error;
@@ -118,7 +118,7 @@ export const openTrendLogs = async (): Promise<void> => {
  */
 export const openAlarms = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/alarms';
+    window.location.hash = '#/t3000/alarms';
   } catch (error) {
     console.error('Failed to open alarms:', error);
     throw error;
@@ -130,7 +130,7 @@ export const openAlarms = async (): Promise<void> => {
  */
 export const openNetworkPanel = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/network-panel';
+    window.location.hash = '#/t3000/network';
   } catch (error) {
     console.error('Failed to open network panel:', error);
     throw error;
@@ -154,7 +154,7 @@ export const openRemotePoints = async (): Promise<void> => {
  */
 export const openConfiguration = async (): Promise<void> => {
   try {
-    window.location.hash = '#/t3000/control/configuration';
+    window.location.hash = '#/t3000/settings';
   } catch (error) {
     console.error('Failed to open configuration:', error);
     throw error;
