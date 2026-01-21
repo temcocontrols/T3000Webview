@@ -29,4 +29,8 @@ where
         .route("/database/query", post(database_viewer::routes::execute_query))
         // System logs routes
         .route("/logs/get", get(system_logs::routes::get_logs))
+        .route("/logs/dates", get(system_logs::routes::get_dates))
+        .route("/logs/files", get(system_logs::routes::get_files))
+        .route("/logs/content", get(system_logs::routes::get_content))
+        .route("/logs/clear", post(system_logs::routes::clear_logs))
 }

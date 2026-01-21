@@ -101,21 +101,31 @@ export const SystemLogsPage: React.FC = () => {
   // Load available dates from T3WebLog folder
   const loadAvailableDates = async () => {
     try {
+      console.log('📅 Loading available dates from /api/develop/logs/dates');
       const response = await fetch('http://localhost:9103/api/develop/logs/dates');
+      console.log('📅 Response status:', response.status);
+
       if (response.ok) {
         const dates: DateFolder[] = await response.json();
+        console.log('📅 Loaded dates:', dates);
         setAvailableDates(dates);
         if (dates.length > 0 && !selectedDate) {
+          console.log('📅 Auto-selecting first date:', dates[0]);
           setSelectedDate(dates[0].path);
         }
+      } else {
+        console.error('📅 Failed to load dates, status:', response.status);
       }
     } catch (error) {
-      console.error('Failed to load dates:', error);
+      console.error('📅 Failed to load dates:', error);
       // Fallback to today's date
       const today = new Date();
       const yearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
       const day = String(today.getDate()).padStart(2, '0');
-      setSelectedDate(`${yearMonth}/${day.substring(2)}`);
+      const mmdd = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+      const fallbackDate = `${yearMonth}/${mmdd}`;
+      console.log('📅 Using fallback date:', fallbackDate);
+      setSelectedDate(fallbackDate);
     }
   };
 
@@ -125,9 +135,13 @@ export const SystemLogsPage: React.FC = () => {
 
     setLoading(true);
     try {
+      console.log('📁 Loading log files for date:', datePath);
       const response = await fetch(`http://localhost:9103/api/develop/logs/files?date=${encodeURIComponent(datePath)}`);
+      console.log('📁 Response status:', response.status);
+
       if (response.ok) {
         const files: { name: string; size: number }[] = await response.json();
+        console.log('📁 Loaded files:', files);
 
         const logFileList: LogFile[] = files.map(file => {
           const { category, icon, displayName } = getLogCategory(file.name);
@@ -146,30 +160,41 @@ export const SystemLogsPage: React.FC = () => {
 
         // Auto-select first file
         if (logFileList.length > 0 && !selectedFile) {
+          console.log('📁 Auto-selecting first file:', logFileList[0]);
           setSelectedFile(logFileList[0]);
         }
+      } else {
+        console.error('📁 Failed to load files, status:', response.status);
       }
     } catch (error) {
-      console.error('Failed to load log files:', error);
+      console.error('📁 Failed to load log files:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load log file content
+  // Load log content
   const loadLogContent = async (file: LogFile, datePath: string) => {
     setLoading(true);
     try {
+      console.log('📄 Loading log content:', file.name, 'for date:', datePath);
       const response = await fetch(
         `http://localhost:9103/api/develop/logs/content?date=${encodeURIComponent(datePath)}&file=${encodeURIComponent(file.name)}`
       );
+      console.log('📄 Response status:', response.status);
+
       if (response.ok) {
         const content = await response.text();
+        console.log('📄 Loaded content, length:', content.length);
         setLogContent(content);
         parseLogContent(content);
+      } else {
+        console.error('📄 Failed to load content, status:', response.status);
+        setLogContent('');
+        setParsedLogs([]);
       }
     } catch (error) {
-      console.error('Failed to load log content:', error);
+      console.error('📄 Failed to load log content:', error);
       setLogContent('');
       setParsedLogs([]);
     } finally {
@@ -297,39 +322,41 @@ export const SystemLogsPage: React.FC = () => {
     return styles[`level${level}`] || styles.levelINFO;
   };
 
+  // Render component
   return (
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <Text size={500} weight="semibold">📊 T3000 Logs - Live Monitor</Text>
-          <Badge appearance="filled" color="informative">
+          <Text size={400} weight="semibold">📊 T3000 Logs - Live Monitor</Text>
+          <Badge appearance="filled" color="informative" size="small">
             {logFiles.length} files • {formatSize(totalSize)}
           </Badge>
         </div>
 
         <div className={styles.headerActions}>
-          <Checkbox
-            label="Auto"
-            checked={autoRefresh}
-            onChange={(_, data) => setAutoRefresh(!!data.checked)}
-          />
+              <Text size={200}>Auto</Text>
+              <Checkbox
+                checked={autoRefresh}
+                onChange={(_, data) => setAutoRefresh(!!data.checked)}
+              />
+              <Button
+                appearance="subtle"
+                icon={<ArrowSyncRegular fontSize={14} />}
+                onClick={() => selectedFile && selectedDate && loadLogContent(selectedFile, selectedDate)}
+                disabled={loading || !selectedFile}
+                size="small"
+              />
+              <Button
+                appearance="subtle"
+                icon={<ArrowDownloadRegular fontSize={14} />}
+                onClick={downloadLogFile}
+                disabled={!selectedFile}
+                size="small"
+              />
           <Button
             appearance="subtle"
-            icon={<ArrowSyncRegular />}
-            onClick={() => selectedFile && selectedDate && loadLogContent(selectedFile, selectedDate)}
-            disabled={loading || !selectedFile}
-            size="small"
-          />
-          <Button
-            appearance="subtle"
-            icon={<ArrowDownloadRegular />}
-            onClick={clearLogs}
-            size="small"
-          />
-          <Button
-            appearance="subtle"
-            icon={<DismissRegular />}
+            icon={<DismissRegular fontSize={14} />}
             onClick={clearLogs}
             size="small"
           />
@@ -338,87 +365,91 @@ export const SystemLogsPage: React.FC = () => {
 
       {/* Filter Bar */}
       <div className={styles.filterBar}>
-        <Menu>
-          <MenuTrigger disableButtonEnhancement>
-            <Button
-              appearance="subtle"
-              icon={<CalendarRegular />}
-              size="small"
-            >
-              {selectedDate || 'Select Date'}
-            </Button>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              {availableDates.map((date) => (
-                <MenuItem
-                  key={date.path}
-                  onClick={() => setSelectedDate(date.path)}
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button
+                  appearance="subtle"
+                  icon={<CalendarRegular />}
+                  size="small"
                 >
-                  {date.displayDate}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </MenuPopover>
-        </Menu>
+                  {availableDates.find(d => d.path === selectedDate)?.displayDate || selectedDate || 'Select Date'}
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  {availableDates.length === 0 ? (
+                    <MenuItem disabled>No dates available</MenuItem>
+                  ) : (
+                    availableDates.map((date) => (
+                      <MenuItem
+                        key={date.path}
+                        onClick={() => setSelectedDate(date.path)}
+                      >
+                        {date.displayDate}
+                      </MenuItem>
+                    ))
+                  )}
+                </MenuList>
+              </MenuPopover>
+            </Menu>
 
-        <Menu>
-          <MenuTrigger disableButtonEnhancement>
-            <Button appearance="subtle" size="small">
-              Category: {categoryFilter === 'all' ? 'All' : categoryFilter}
-            </Button>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              <MenuItem onClick={() => setCategoryFilter('all')}>All Categories</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('api')}>🌐 API</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('cpp_msg')}>⚙️ C++ Messages</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('handler')}>📨 Handler</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('database')}>💾 Database</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('partition')}>📊 Partition</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('ffi')}>🔌 FFI</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('initialize')}>🚀 Initialize</MenuItem>
-              <MenuItem onClick={() => setCategoryFilter('socket')}>🔗 Socket</MenuItem>
-            </MenuList>
-          </MenuPopover>
-        </Menu>
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button appearance="subtle" size="small">
+                  Category: {categoryFilter === 'all' ? 'All' : categoryFilter}
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  <MenuItem onClick={() => setCategoryFilter('all')}>All Categories</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('api')}>🌐 API</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('cpp_msg')}>⚙️ C++ Messages</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('handler')}>📨 Handler</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('database')}>💾 Database</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('partition')}>📊 Partition</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('ffi')}>🔌 FFI</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('initialize')}>🚀 Initialize</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('socket')}>🔗 Socket</MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
 
-        <Menu>
-          <MenuTrigger disableButtonEnhancement>
-            <Button appearance="subtle" size="small">
-              Level: {levelFilter === 'all' ? 'All' : levelFilter}
-            </Button>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              <MenuItem onClick={() => setLevelFilter('all')}>All Levels</MenuItem>
-              <MenuItem onClick={() => setLevelFilter('ERROR')}>ERROR</MenuItem>
-              <MenuItem onClick={() => setLevelFilter('WARN')}>WARN</MenuItem>
-              <MenuItem onClick={() => setLevelFilter('INFO')}>INFO</MenuItem>
-              <MenuItem onClick={() => setLevelFilter('DEBUG')}>DEBUG</MenuItem>
-            </MenuList>
-          </MenuPopover>
-        </Menu>
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button appearance="subtle" size="small">
+                  Level: {levelFilter === 'all' ? 'All' : levelFilter}
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  <MenuItem onClick={() => setLevelFilter('all')}>All Levels</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('ERROR')}>ERROR</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('WARN')}>WARN</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('INFO')}>INFO</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('DEBUG')}>DEBUG</MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
 
-        {uniquePids.length > 1 && (
-          <Menu>
-            <MenuTrigger disableButtonEnhancement>
-              <Button appearance="subtle" size="small">
-                PID: {selectedPid === 'all' ? 'All' : selectedPid}
-              </Button>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem onClick={() => setSelectedPid('all')}>All PIDs</MenuItem>
-                {uniquePids.map(pid => (
-                  <MenuItem key={pid} onClick={() => setSelectedPid(pid)}>
-                    {pid}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-        )}
+            {uniquePids.length > 1 && (
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <Button appearance="subtle" size="small">
+                    PID: {selectedPid === 'all' ? 'All' : selectedPid}
+                  </Button>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem onClick={() => setSelectedPid('all')}>All PIDs</MenuItem>
+                    {uniquePids.map(pid => (
+                      <MenuItem key={pid} onClick={() => setSelectedPid(pid)}>
+                        {pid}
+                      </MenuItem>
+                    ))}
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+            )}
 
         <Input
           placeholder="Search logs..."
