@@ -125,7 +125,8 @@ pub async fn get_files(Query(query): Query<FilesQuery>) -> impl IntoResponse {
 
     (StatusCode::OK, Json(files))
 }
-T3WebLog path
+
+/// Get T3WebLog path
 fn get_t3weblog_path() -> PathBuf {
     std::env::var("T3WEBLOG_PATH")
         .map(PathBuf::from)
@@ -134,7 +135,6 @@ fn get_t3weblog_path() -> PathBuf {
         })
 }
 
-/// Get log path (legacy)
 /// Get log file content
 pub async fn get_content(Query(query): Query<ContentQuery>) -> impl IntoResponse {
     let log_base = get_t3weblog_path();

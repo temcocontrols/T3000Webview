@@ -27,6 +27,15 @@ import {
   CalendarRegular,
   DocumentRegular,
   ChevronRightRegular,
+  ClipboardTextLtrRegular,
+  GlobeRegular,
+  SettingsRegular,
+  MailRegular,
+  DatabaseRegular,
+  StorageRegular,
+  PlugConnectedRegular,
+  RocketRegular,
+  PlugDisconnectedRegular,
 } from '@fluentui/react-icons';
 import styles from './SystemLogsPage.module.css';
 
@@ -328,7 +337,8 @@ export const SystemLogsPage: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <Text size={400} weight="semibold">📊 T3000 Logs - Live Monitor</Text>
+          <ClipboardTextLtrRegular style={{ fontSize: '18px', marginRight: '8px' }} />
+          <Text size={400} weight="semibold">T3000 Logs - Live Monitor</Text>
           <Badge appearance="filled" color="informative" size="small">
             {logFiles.length} files • {formatSize(totalSize)}
           </Badge>
@@ -371,6 +381,7 @@ export const SystemLogsPage: React.FC = () => {
                   appearance="subtle"
                   icon={<CalendarRegular />}
                   size="small"
+                  style={{ fontSize: '12px' }}
                 >
                   {availableDates.find(d => d.path === selectedDate)?.displayDate || selectedDate || 'Select Date'}
                 </Button>
@@ -378,12 +389,13 @@ export const SystemLogsPage: React.FC = () => {
               <MenuPopover>
                 <MenuList>
                   {availableDates.length === 0 ? (
-                    <MenuItem disabled>No dates available</MenuItem>
+                    <MenuItem disabled style={{ fontSize: '12px' }}>No dates available</MenuItem>
                   ) : (
                     availableDates.map((date) => (
                       <MenuItem
                         key={date.path}
                         onClick={() => setSelectedDate(date.path)}
+                        style={{ fontSize: '12px' }}
                       >
                         {date.displayDate}
                       </MenuItem>
@@ -395,38 +407,38 @@ export const SystemLogsPage: React.FC = () => {
 
             <Menu>
               <MenuTrigger disableButtonEnhancement>
-                <Button appearance="subtle" size="small">
+                <Button appearance="subtle" size="small" style={{ fontSize: '12px' }}>
                   Category: {categoryFilter === 'all' ? 'All' : categoryFilter}
                 </Button>
               </MenuTrigger>
               <MenuPopover>
                 <MenuList>
-                  <MenuItem onClick={() => setCategoryFilter('all')}>All Categories</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('api')}>🌐 API</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('cpp_msg')}>⚙️ C++ Messages</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('handler')}>📨 Handler</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('database')}>💾 Database</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('partition')}>📊 Partition</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('ffi')}>🔌 FFI</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('initialize')}>🚀 Initialize</MenuItem>
-                  <MenuItem onClick={() => setCategoryFilter('socket')}>🔗 Socket</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('all')} style={{ fontSize: '12px' }}>All Categories</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('api')} style={{ fontSize: '12px' }} icon={<GlobeRegular />}>API</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('cpp_msg')} style={{ fontSize: '12px' }} icon={<SettingsRegular />}>C++ Messages</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('handler')} style={{ fontSize: '12px' }} icon={<MailRegular />}>Handler</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('database')} style={{ fontSize: '12px' }} icon={<DatabaseRegular />}>Database</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('partition')} style={{ fontSize: '12px' }} icon={<StorageRegular />}>Partition</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('ffi')} style={{ fontSize: '12px' }} icon={<PlugConnectedRegular />}>FFI</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('initialize')} style={{ fontSize: '12px' }} icon={<RocketRegular />}>Initialize</MenuItem>
+                  <MenuItem onClick={() => setCategoryFilter('socket')} style={{ fontSize: '12px' }} icon={<PlugDisconnectedRegular />}>Socket</MenuItem>
                 </MenuList>
               </MenuPopover>
             </Menu>
 
             <Menu>
               <MenuTrigger disableButtonEnhancement>
-                <Button appearance="subtle" size="small">
+                <Button appearance="subtle" size="small" style={{ fontSize: '12px' }}>
                   Level: {levelFilter === 'all' ? 'All' : levelFilter}
                 </Button>
               </MenuTrigger>
               <MenuPopover>
                 <MenuList>
-                  <MenuItem onClick={() => setLevelFilter('all')}>All Levels</MenuItem>
-                  <MenuItem onClick={() => setLevelFilter('ERROR')}>ERROR</MenuItem>
-                  <MenuItem onClick={() => setLevelFilter('WARN')}>WARN</MenuItem>
-                  <MenuItem onClick={() => setLevelFilter('INFO')}>INFO</MenuItem>
-                  <MenuItem onClick={() => setLevelFilter('DEBUG')}>DEBUG</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('all')} style={{ fontSize: '12px' }}>All Levels</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('ERROR')} style={{ fontSize: '12px' }}>ERROR</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('WARN')} style={{ fontSize: '12px' }}>WARN</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('INFO')} style={{ fontSize: '12px' }}>INFO</MenuItem>
+                  <MenuItem onClick={() => setLevelFilter('DEBUG')} style={{ fontSize: '12px' }}>DEBUG</MenuItem>
                 </MenuList>
               </MenuPopover>
             </Menu>
@@ -434,15 +446,15 @@ export const SystemLogsPage: React.FC = () => {
             {uniquePids.length > 1 && (
               <Menu>
                 <MenuTrigger disableButtonEnhancement>
-                  <Button appearance="subtle" size="small">
+                  <Button appearance="subtle" size="small" style={{ fontSize: '12px' }}>
                     PID: {selectedPid === 'all' ? 'All' : selectedPid}
                   </Button>
                 </MenuTrigger>
                 <MenuPopover>
                   <MenuList>
-                    <MenuItem onClick={() => setSelectedPid('all')}>All PIDs</MenuItem>
+                    <MenuItem onClick={() => setSelectedPid('all')} style={{ fontSize: '12px' }}>All PIDs</MenuItem>
                     {uniquePids.map(pid => (
-                      <MenuItem key={pid} onClick={() => setSelectedPid(pid)}>
+                      <MenuItem key={pid} onClick={() => setSelectedPid(pid)} style={{ fontSize: '12px' }}>
                         {pid}
                       </MenuItem>
                     ))}
@@ -466,7 +478,7 @@ export const SystemLogsPage: React.FC = () => {
         <div className={styles.filePanel}>
           <div className={styles.filePanelHeader}>
             <DocumentRegular />
-            <Text size={300} weight="semibold">Log Categories</Text>
+            <Text size={200} weight="semibold">Log Categories</Text>
           </div>
 
           <div className={styles.fileList}>
