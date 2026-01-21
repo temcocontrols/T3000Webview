@@ -199,7 +199,7 @@ export const t3000Routes: T3000Route[] = [
   {
     path: '/develop/logs',
     element: SystemLogsPage,
-    title: 'System Logs',
+    title: 'T3000 Logs',
   },
 ];
 
