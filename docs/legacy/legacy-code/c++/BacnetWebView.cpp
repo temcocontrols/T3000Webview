@@ -2301,6 +2301,94 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				break;
 			}
 
+			case BAC_HOL:  // Holidays / Annual Routines
+			{
+				if (entry_index_end >= entry_index_start)
+				{
+					// Calculate number of groups needed (round up)
+					int totalCount = entry_index_end - entry_index_start + 1;
+					int groupSize = BAC_READ_HOLIDAY_GROUP_NUMBER;  // 8
+					int read_holiday_group = (totalCount + groupSize - 1) / groupSize;
+
+					for (int i = 0; i < read_holiday_group; ++i)
+					{
+						int temp_start = entry_index_start + i * groupSize;
+						if (temp_start > entry_index_end) // Prevent overflow
+							break;
+
+						int temp_end = temp_start + groupSize - 1;
+						if (temp_end > entry_index_end)
+							temp_end = entry_index_end;
+
+						// Ensure not exceeding global max count
+						if (temp_start >= BAC_HOLIDAY_COUNT)
+							break;
+						if (temp_end >= BAC_HOLIDAY_COUNT)
+							temp_end = BAC_HOLIDAY_COUNT - 1;
+
+						// Blocking read for each group
+						if (GetPrivateDataSaveSPBlocking(entry_objectinstance, READANNUALROUTINE_T3000,
+							(uint8_t)temp_start, (uint8_t)temp_end, sizeof(Str_annual_routine_point), 4) > 0)
+						{
+							// Copy read data to global cache
+							for (int idx = temp_start; idx <= temp_end; ++idx)
+							{
+								if (idx < BAC_HOLIDAY_COUNT) {
+									g_Annual_data[temp_panel_id].at(idx) = m_Annual_data.at(idx);
+								}
+							}
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								int elementCount = temp_end - temp_start + 1;
+								CString dbg;
+								dbg.Format(_T("obj=%d,holiday ,Chunk %d: temp_start=%d, temp_end=%d, count=%d\r\n"),
+									entry_objectinstance, i, temp_start, temp_end, elementCount);
+								DFTrace(dbg);
+							}
+							Sleep(SEND_COMMAND_DELAY_TIME);
+						}
+						else
+						{
+							CString errorLog;
+							errorLog.Format(_T("ERROR: Read holiday failed start=%d, end=%d"),
+								temp_start, temp_end);
+							WriteHandleWebViewMsgLog(_T("GET_WEBVIEW_LIST"), errorLog, 0);
+
+							if (msg_source == 0)
+								SetPaneString(BAC_SHOW_MISSION_RESULTS, errorLog);
+							WrapErrorMessage(builder, tempjson, outmsg, errorLog);
+							if ((debug_item_show == DEBUG_SHOW_MESSAGE_THREAD) || (debug_item_show == DEBUG_SHOW_ALL))
+							{
+								DFTrace(errorLog);
+							}
+							continue;
+						}
+
+						int npanel_id = temp_panel_id;
+						for (int idx = temp_start; idx <= temp_end; idx++)
+						{
+							int hol_idx = idx;
+							tempjson["data"]["device_data"][point_idx]["pid"] = npanel_id;
+							tempjson["data"]["device_data"][point_idx]["type"] = "HOLIDAY";
+							tempjson["data"]["device_data"][point_idx]["index"] = hol_idx;
+							tempjson["data"]["device_data"][point_idx]["id"] = "CAL" + to_string(hol_idx + 1);
+							tempjson["data"]["device_data"][point_idx]["command"] = to_string(npanel_id) + "CAL" + to_string(hol_idx + 1);
+
+							// Holiday specific fields (matching GET_PANEL_DATA structure)
+							tempjson["data"]["device_data"][point_idx]["description"] = (char*)g_Annual_data[npanel_id].at(hol_idx).description;
+							tempjson["data"]["device_data"][point_idx]["label"] = (char*)g_Annual_data[npanel_id].at(hol_idx).label;
+							tempjson["data"]["device_data"][point_idx]["auto_manual"] = g_Annual_data[npanel_id].at(hol_idx).auto_manual;
+							tempjson["data"]["device_data"][point_idx]["value"] = g_Annual_data[npanel_id].at(hol_idx).value;
+							tempjson["data"]["device_data"][point_idx]["unused"] = g_Annual_data[npanel_id].at(hol_idx).unused;
+
+							point_idx++;
+						}
+
+					} // for groups
+				}
+				break;
+			}
+
 			default:
 				break;
 		}
