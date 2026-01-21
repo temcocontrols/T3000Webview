@@ -342,7 +342,7 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicId || '---')}
+          {!isEmptyRow(item) && (item.graphicId || '')}
         </TableCellLayout>
       ),
     }),
@@ -361,7 +361,7 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicFullLabel || '---')}
+          {!isEmptyRow(item) && (item.graphicFullLabel || '')}
         </TableCellLayout>
       ),
     }),
@@ -380,7 +380,7 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicLabel || '---')}
+          {!isEmptyRow(item) && (item.graphicLabel || '')}
         </TableCellLayout>
       ),
     }),
@@ -399,7 +399,7 @@ export const GraphicsPage: React.FC = () => {
       ),
       renderCell: (item) => (
         <TableCellLayout>
-          {!isEmptyRow(item) && (item.graphicPictureFile || '---')}
+          {!isEmptyRow(item) && (item.graphicPictureFile || '')}
         </TableCellLayout>
       ),
     }),

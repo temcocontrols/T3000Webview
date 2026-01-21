@@ -70,6 +70,8 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c6c4 #faf9f8;
 }
 
 .fileList::-webkit-scrollbar {
@@ -171,6 +173,8 @@
   padding: 12px 16px;
   background-color: #1e1e1e;
   color: #d4d4d4;
+  scrollbar-width: thin;
+  scrollbar-color: #424242 #1e1e1e;
 }
 
 .logLine {
