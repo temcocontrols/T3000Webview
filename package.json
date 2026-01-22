@@ -8,8 +8,8 @@
   "scripts": {
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
-    "build": "quasar build",
-    "build:analyze": "cross-env ANALYZE=true quasar build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 quasar build",
+    "build:analyze": "cross-env NODE_OPTIONS=--max-old-space-size=8192 ANALYZE=true quasar build",
     "client-dev": "quasar dev",
     "api-dev": "cd api && cargo watch -x \"run --example run_server\"",
     "api": "cd api && cargo run --example run_server",
