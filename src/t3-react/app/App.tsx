@@ -334,9 +334,9 @@ export const App: React.FC = () => {
                   path="documentation/*"
                   element={
                     <React.Suspense fallback={
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
-                        <Spinner size="medium" />
-                        <span>Loading...</span>
+                      <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', gap: '8px' }}>
+                        <Spinner size="tiny" />
+                        <span style={{ fontSize: '13px', color: '#323130' }}>Loading...</span>
                       </div>
                     }>
                       <DocumentationPage />

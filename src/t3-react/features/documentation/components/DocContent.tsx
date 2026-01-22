@@ -104,8 +104,11 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
 
   if (loading) {
     return (
-      <div className={styles.loading}>
-        <Spinner size="medium" label="Loading documentation..." />
+      <div className={styles.contentLoading}>
+        <div className={styles.loading}>
+          <Spinner size="tiny" />
+          <Text size={200} weight="regular">Loading documentation...</Text>
+        </div>
       </div>
     );
   }
