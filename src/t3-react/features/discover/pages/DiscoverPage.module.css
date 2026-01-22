@@ -222,9 +222,13 @@
 .noData {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
+  padding-top: 48px;
+}
+
+.centerText {
+  text-align: center;
 }
 
 /* Azure Portal Grid - fxc-gc-dataGrid styling - SCOPED to DiscoverPage only */

@@ -24,6 +24,7 @@ import {
   ArrowSortRegular,
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
+import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './DiscoverPage.module.css';
 
@@ -43,6 +44,7 @@ interface Device {
 }
 
 export const DiscoverPage: React.FC = () => {
+  const { selectedDevice } = useDeviceTreeStore();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -363,6 +365,8 @@ export const DiscoverPage: React.FC = () => {
               )}
 
               {/* Toolbar */}
+              {selectedDevice && (
+              <>
               <div className={styles.toolbar}>
                 <div className={styles.toolbarContainer}>
                   <button
@@ -417,6 +421,8 @@ export const DiscoverPage: React.FC = () => {
               <div style={{ padding: '0' }}>
                 <hr className={styles.overviewHr} />
               </div>
+              </>
+              )}
 
               <div className={styles.dockingBody}>
                 {/* Loading State */}
@@ -427,8 +433,19 @@ export const DiscoverPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* No Device Selected */}
+                {!selectedDevice && !loading && (
+                  <div className={styles.noData}>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No device selected</Text>
+                      <br />
+                      <Text size={200}>Please select a device from the tree to view inputs</Text>
+                    </div>
+                  </div>
+                )}
+
                 {/* Data Grid - Always show grid with headers */}
-                {!loading && (
+                {selectedDevice && !loading && (
                   <>
                   <DataGrid
                     items={displayDevices}
