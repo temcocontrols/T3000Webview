@@ -43,8 +43,8 @@ const useStyles = makeStyles({
     height: '100%',
   },
   rxTxPane: {
-    width: '140px',
-    minWidth: '140px',
+    width: '250px',
+    minWidth: '250px',
     flexShrink: 0,
   },
   connectionPane: {
