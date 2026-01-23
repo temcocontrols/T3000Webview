@@ -525,8 +525,9 @@ export const SystemLogsPage: React.FC = () => {
         {/* Right Panel - Log Viewer */}
         <div className={styles.logPanel}>
           {loading && !logContent ? (
-            <div className={styles.logPlaceholder}>
-              <Spinner label="Loading log content..." />
+            <div className={styles.logLoading}>
+              <Spinner size="tiny" />
+              <Text size={200} weight="regular">Loading log content...</Text>
             </div>
           ) : !selectedFile ? (
             <div className={styles.logPlaceholder}>

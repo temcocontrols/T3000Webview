@@ -163,6 +163,15 @@
   color: #605e5c;
 }
 
+.logLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: #323130;
+}
+
 .logViewer {
   flex: 1;
   overflow-y: auto;

@@ -778,9 +778,9 @@ export const SettingsPage: React.FC = () => {
 
     if (loading && Object.keys(networkSettings).length === 0) {
       return (
-        <div className={styles.loadingContainer}>
-          <Spinner size="small" />
-          <Text>Loading settings...</Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', marginBottom: '12px' }}>
+          <Spinner size="tiny" />
+          <Text size={200} weight="regular">Loading settings...</Text>
         </div>
       );
     }

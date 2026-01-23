@@ -305,8 +305,9 @@ const TablesPage: React.FC = () => {
               {/* Data Grid */}
               <div className={styles.dockingBody}>
                 {loading ? (
-                  <div className={styles.loading}>
-                    <Spinner size="medium" label="Loading tables..." />
+                  <div className={styles.loadingBar}>
+                    <Spinner size="tiny" />
+                    <Text size={200} weight="regular">Loading tables...</Text>
                   </div>
                 ) : tables.length === 0 ? (
                   <div className={styles.noData}>
