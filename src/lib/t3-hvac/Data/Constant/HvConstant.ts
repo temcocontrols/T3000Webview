@@ -39,20 +39,30 @@ class HvConstant {
   }
 
   /**
-   * Configuration object for controlling log output levels in the HVAC system.
+   * Log configuration settings - Override defaults for local development
    *
-   * @property {boolean} Debug - When true, debug-level messages will be logged. Default: true
-   * @property {boolean} Info - When true, informational messages will be logged. Default: true
-   * @property {boolean} Error - When true, error messages will be logged. Default: true
+   * Console logging behavior (automatic via import.meta.env.DEV):
+   * - undefined (default): Auto-detect based on environment
+   *   - Development mode (npm run dev): Debug=true, Info=true, Error=true
+   *   - Production build (npm run build): Debug=false, Info=false, Error=true
+   * - true: Force enable
+   * - false: Force disable
    *
-   * @example
-   * // Disable debug logs but keep info and error logs
-   * HvConstant.LogConfig.Debug = false;
+   * File logging control:
+   * - undefined (default): File logging enabled
+   * - false: Disable file logging during local development
+   * - true: Explicitly enable file logging
+   *
+   * To override at runtime, set localStorage 't3.config':
+   * localStorage.setItem('t3.config', JSON.stringify({
+   *   log: { debug: true, info: true, error: true }
+   * }));
    */
   static LogConfig = {
-    Debug: false,
-    Info: false,
-    Error: true,
+    Debug: undefined,          // Console - undefined = auto-detect, false = force disable, true = force enable
+    Info: undefined,           // Console - undefined = auto-detect, false = force disable, true = force enable
+    Error: undefined,          // Console - undefined = auto-detect (always true), false = force disable
+    FileLogging: undefined,    // File logging - undefined = enabled, false = disabled locally
   }
 
   static T3Config = {
