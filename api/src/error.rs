@@ -40,7 +40,9 @@ impl From<sea_orm::DbErr> for Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         // Print the error type for debugging purposes.
-        println!("->> {:<12} - {self:?}", "INTO_RES");
+        // Log error in debug mode only
+        #[cfg(debug_assertions)]
+        eprintln!("->> {:<12} - {self:?}", "INTO_RES");
 
         // Match the error type to generate the appropriate HTTP response.
         let response = match self {

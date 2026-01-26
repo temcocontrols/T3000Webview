@@ -494,24 +494,23 @@ async fn update_database_config(
     State(app_state): State<T3AppState>,
     Json(config): Json<database_partition_config::DatabasePartitionConfig>,
 ) -> Result<Json<database_partition_config::DatabasePartitionConfig>> {
-    println!("📝 [DatabaseConfig] Received update request: strategy={:?}, retention={}:{:?}",
-        config.strategy, config.retention_value, config.retention_unit);
+    crate::logger::write_structured_log("T3_Database", &format!("[DatabaseConfig] Received update request: strategy={:?}, retention={}:{:?}", config.strategy, config.retention_value, config.retention_unit)).ok();
 
     let db = match &app_state.t3_device_conn {
         Some(conn) => &*conn.lock().await,
         None => {
-            eprintln!("❌ [DatabaseConfig] T3 device database not available");
+            crate::logger::write_structured_log_with_level("T3_Database", "[DatabaseConfig] T3 device database not available", crate::logger::LogLevel::Error).ok();
             return Err(crate::error::Error::ServerError("T3 device database not available".to_string()));
         }
     };
 
     match DatabaseConfigService::save_config(db, &config).await {
         Ok(updated_config) => {
-            println!("✅ [DatabaseConfig] Configuration saved successfully: id={:?}", updated_config.id);
+            crate::logger::write_structured_log("T3_Database", &format!("[DatabaseConfig] Configuration saved successfully: id={:?}", updated_config.id)).ok();
             Ok(Json(updated_config))
         },
         Err(e) => {
-            eprintln!("❌ [DatabaseConfig] Failed to save configuration: {:?}", e);
+            crate::logger::write_structured_log_with_level("T3_Database", &format!("[DatabaseConfig] Failed to save configuration: {:?}", e), crate::logger::LogLevel::Error).ok();
             Err(e)
         }
     }

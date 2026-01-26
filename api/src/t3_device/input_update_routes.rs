@@ -487,7 +487,7 @@ pub async fn get_input_by_serial_index(
     };
 
     // Find device by serial number
-    let device = match devices::Entity::find()
+    let _device = match devices::Entity::find()
         .filter(devices::Column::SerialNumber.eq(serial))
         .one(&db_connection)
         .await

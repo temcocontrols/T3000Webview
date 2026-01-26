@@ -102,6 +102,7 @@ pub async fn batch_save_graphics(
 
 /// Helper to convert Option<String> to proper database value
 /// Empty strings should be stored as empty strings, not NULL
+#[allow(dead_code)]
 fn to_db_value(opt: &Option<String>) -> Option<String> {
     opt.clone()
 }

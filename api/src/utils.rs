@@ -36,7 +36,7 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
     // Create the destination directory if it doesn't exist.
     if !destination_dir.exists() {
         fs::create_dir_all(destination_dir)?;
-        println!("Created destination directory: {:?}", destination_dir);
+        crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("Created destination directory: {:?}", destination_dir), crate::logger::LogLevel::Info).ok();
     }
 
     // Copy the database file if it doesn't exist in the destination directory.
@@ -50,10 +50,7 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
         }
         // Copy the source database file to the destination.
         fs::copy(&source_db_path, &destination_db_path)?;
-        println!(
-            "Copied database file from {:?} to {:?}",
-            source_db_path, destination_db_path
-        );
+        crate::logger::write_structured_log("T3_Database_Migration", &format!("Copied database file from {:?} to {:?}", source_db_path, destination_db_path)).ok();
     }
 
     Ok(())
@@ -87,7 +84,7 @@ lazy_static! {
 
 /// Abstracted enhanced logging for T3000 operations
 pub fn t3_enhanced_logging(message: &str) {
-    println!("{}", message);
+    crate::logger::write_structured_log("T3_Database_Migration", &message).ok();
 }
 
 /// Abstracted T3000 device database copy functionality
@@ -385,7 +382,7 @@ pub fn log_message(message: &str, log_to_file: bool) {
     }
 
     if print_to_console {
-        println!("{}", formatted_message);
+        crate::logger::write_structured_log("T3_Database_Migration", &formatted_message).ok();
     }
 }
 
@@ -418,7 +415,7 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
 
     let conn = establish_connection().await?;
 
-    println!("🧹 Cleaning up orphaned migration records...");
+    crate::logger::write_structured_log("T3_Database_Migration", "Cleaning up orphaned migration records...").ok();
 
     // Get applied migrations from database - using direct SQL to avoid missing file issues
     let applied_migrations: Vec<String> = {
@@ -441,8 +438,8 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
         .map(|m| m.name().to_string())
         .collect();
 
-    println!("   Applied migrations: {}", applied_migrations.len());
-    println!("   Available migration files: {}", available_migrations.len());
+    crate::logger::write_structured_log("T3_Database_Migration", &format!("   Applied migrations: {}", applied_migrations.len())).ok();
+    crate::logger::write_structured_log("T3_Database_Migration", &format!("   Available migration files: {}", available_migrations.len())).ok();
 
     // Find orphaned migrations (applied but file missing)
     let orphaned: Vec<String> = applied_migrations
@@ -452,11 +449,11 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
         .collect();
 
     if orphaned.is_empty() {
-        println!("   ✅ No orphaned migration records found");
+        crate::logger::write_structured_log("T3_Database_Migration", "   No orphaned migration records found").ok();
     } else {
-        println!("   🗑️  Found {} orphaned migration(s):", orphaned.len());
+        crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("   Found {} orphaned migration(s):", orphaned.len()), crate::logger::LogLevel::Warn).ok();
         for version in &orphaned {
-            println!("      - {}", version);
+            crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("      - {}", version), crate::logger::LogLevel::Warn).ok();
         }
 
         // Remove orphaned migrations
@@ -468,13 +465,12 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
                 )
             ).await?;
 
-            println!("      ✅ Removed migration record: {} ({} row(s) affected)",
-                     version, result.rows_affected());
+            crate::logger::write_structured_log("T3_Database_Migration", &format!("      ✅ Removed migration record: {} ({} row(s) affected)", version, result.rows_affected())).ok();
         }
     }
 
     drop(conn);
-    println!("✅ Migration cleanup completed");
+    crate::logger::write_structured_log("T3_Database_Migration", "✅ Migration cleanup completed").ok();
     Ok(())
 }
 
@@ -482,29 +478,29 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
 pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error>> {
     // First, cleanup any orphaned migration records
     if let Err(e) = cleanup_orphaned_migrations().await {
-        println!("⚠️  Could not cleanup orphaned migrations: {}", e);
-        println!("   Continuing with migration check...");
+        crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("⚠️  Could not cleanup orphaned migrations: {}", e), crate::logger::LogLevel::Warn).ok();
+        crate::logger::write_structured_log("T3_Database_Migration", "   Continuing with migration check...").ok();
     }
 
     match has_pending_migrations().await {
         Ok(true) => {
-            println!("🔄 New migrations detected, running...");
+            crate::logger::write_structured_log("T3_Database_Migration", "🔄 New migrations detected, running...").ok();
             match run_migrations().await {
-                Ok(_) => println!("✅ Database migrations completed"),
+                Ok(_) => crate::logger::write_structured_log("T3_Database_Migration", "✅ Database migrations completed").ok(),
                 Err(e) => {
-                    println!("⚠️  Migration error encountered: {}", e);
-                    println!("   This might be due to missing migration files or schema inconsistencies.");
-                    println!("   The system will continue without applying migrations.");
+                    crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("⚠️  Migration error encountered: {}", e), crate::logger::LogLevel::Warn).ok();
+                    crate::logger::write_structured_log("T3_Database_Migration", "   This might be due to missing migration files or schema inconsistencies.").ok();
+                    crate::logger::write_structured_log("T3_Database_Migration", "   The system will continue without applying migrations.").ok();
                 }
             }
         },
         Ok(false) => {
-            println!("✅ Database schema up to date, no migrations needed");
+            crate::logger::write_structured_log("T3_Database_Migration", "✅ Database schema up to date, no migrations needed").ok();
         },
         Err(e) => {
-            println!("⚠️  Could not check migration status: {}", e);
-            println!("   This might be due to missing migration files or database issues.");
-            println!("   The system will continue without applying migrations.");
+            crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("⚠️  Could not check migration status: {}", e), crate::logger::LogLevel::Warn).ok();
+            crate::logger::write_structured_log("T3_Database_Migration", "   This might be due to missing migration files or database issues.").ok();
+            crate::logger::write_structured_log("T3_Database_Migration", "   The system will continue without applying migrations.").ok();
         }
     }
     Ok(())

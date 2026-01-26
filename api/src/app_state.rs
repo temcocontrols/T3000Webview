@@ -98,7 +98,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
                 T3_DEVICE_DATABASE_URL.as_str(), e
             );
             let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_message, LogLevel::Warn);
-            println!("⚠️  Warning: WebView T3000 database unavailable - Core HTTP/WebSocket services starting anyway");
+            crate::logger::write_structured_log_with_level("T3_Webview_API", "WebView T3000 database unavailable - Core HTTP/WebSocket services starting anyway", crate::logger::LogLevel::Warn).ok();
             None
         }
     };
