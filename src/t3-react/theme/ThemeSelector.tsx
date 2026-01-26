@@ -28,6 +28,10 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    fontSize: '12px',
+  },
+  icon: {
+    marginRight: '8px',
   },
 });
 
@@ -71,7 +75,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
               onClick={() => setTheme(option.name)}
               disabled={themeName === option.name}
             >
-              {option.icon}
+              <span className={styles.icon}>{option.icon}</span>
               <span>{option.label}</span>
               {themeName === option.name && <span> ✓</span>}
             </MenuItem>
