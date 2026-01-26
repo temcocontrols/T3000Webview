@@ -114,13 +114,6 @@ export const MainLayout: React.FC = () => {
   const statusMessage = useStatusBarStore((state) => state.message);
   const statusMessageType = useStatusBarStore((state) => state.messageType);
 
-  console.log('🏗️ MainLayout rendering...', {
-    isLeftPanelVisible,
-    isRightPanelVisible,
-    leftPanelWidth,
-    rightPanelWidth,
-  });
-
   // Handle left panel resize
   const handleLeftPanelResize = (e: React.MouseEvent) => {
     e.preventDefault();

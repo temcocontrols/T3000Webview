@@ -14,6 +14,7 @@ import { T3Transport } from '../../../lib/t3-transport/core/T3Transport';
 import { EntryType, WebViewMessageType } from '../../../lib/t3-transport/types/message-enums';
 import { T3Database } from '../../../lib/t3-database';
 import { API_BASE_URL } from '../../config/constants';
+import LogUtil from '../../../lib/t3-hvac/Util/LogUtil';
 
 export type PointType = 'input' | 'output' | 'variable' | 'program' | 'schedule' | 'pidloop' | 'holiday' | 'trendlog' | 'alarm' | 'graphic';
 
@@ -79,7 +80,7 @@ export class PanelDataRefreshService {
 
       const entryType = entryTypeMap[type];
 
-      console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
+      LogUtil.Debug(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
       // Call Action 17: GET_WEBVIEW_LIST
       let response;
@@ -110,7 +111,7 @@ export class PanelDataRefreshService {
       }
 
       // Debug: Log the response structure
-      console.log('[PanelDataRefreshService] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
+      LogUtil.Debug('[PanelDataRefreshService] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
 
       // Extract items from response - Action 17 returns device_data array
       // Response structure can be: response.data.device_data OR response.data.data.device_data
@@ -118,12 +119,12 @@ export class PanelDataRefreshService {
 
       if (response.data.device_data && Array.isArray(response.data.device_data)) {
         items = response.data.device_data;
-        console.log('[PanelDataRefreshService] Found items at response.data.device_data');
+        LogUtil.Debug('[PanelDataRefreshService] Found items at response.data.device_data');
       } else if (response.data.data?.device_data && Array.isArray(response.data.data.device_data)) {
         items = response.data.data.device_data;
-        console.log('[PanelDataRefreshService] Found items at response.data.data.device_data');
+        LogUtil.Debug('[PanelDataRefreshService] Found items at response.data.data.device_data');
       } else {
-        console.error('[PanelDataRefreshService] Could not find device_data array in response:', response);
+        LogUtil.Error('[PanelDataRefreshService] Could not find device_data array in response:', response);
       }
 
       /* COMMENTED OUT - Action 15 data extraction
@@ -139,7 +140,9 @@ export class PanelDataRefreshService {
       }
       */
 
-      console.log(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
+      if (import.meta.env.DEV) {
+        console.log(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
+      }
 
       if (items.length === 0) {
         return {
@@ -165,7 +168,7 @@ export class PanelDataRefreshService {
     } catch (error) {
       // Set loading state to false on error
       onLoadingChange?.(false);
-      console.error(`[PanelDataRefreshService] Refresh failed:`, error);
+      LogUtil.Error(`[PanelDataRefreshService] Refresh failed:`, error);
       throw error;
     }
   }
@@ -191,7 +194,7 @@ export class PanelDataRefreshService {
                         type === 'input' ? EntryType.INPUT :
                         EntryType.VARIABLE;
 
-      console.log(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
+      LogUtil.Debug(`[PanelDataRefreshService] Calling Action 17 (GET_WEBVIEW_LIST) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
       // Call Action 17: GET_WEBVIEW_LIST
       let response;
@@ -227,7 +230,7 @@ export class PanelDataRefreshService {
         items = response.data.variables;
       }
 
-      console.log(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
+      LogUtil.Debug(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
 
       if (items.length === 0) {
         return {
@@ -251,7 +254,7 @@ export class PanelDataRefreshService {
       };
 
     } catch (error) {
-      console.error(`[PanelDataRefreshService] Refresh failed:`, error);
+      LogUtil.Error(`[PanelDataRefreshService] Refresh failed:`, error);
       throw error;
     }
   }
@@ -298,10 +301,10 @@ export class PanelDataRefreshService {
       // Use batch save for efficient database operations
       const result = await entity.batchSave(serialNumber, transformedItems);
       const savedCount = result.updatedCount;
-      console.log(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} ${type}(s) to database (${result.updatedCount} updated, ${result.failedCount} failed)`);
+      LogUtil.Info(`[PanelDataRefreshService] Saved ${savedCount}/${items.length} ${type}(s) to database (${result.updatedCount} updated, ${result.failedCount} failed)`);
       return savedCount;
     } catch (error) {
-      console.error(`[PanelDataRefreshService] Failed to batch save ${type}s:`, error);
+      LogUtil.Error(`[PanelDataRefreshService] Failed to batch save ${type}s:`, error);
       throw error;
     }
   }
