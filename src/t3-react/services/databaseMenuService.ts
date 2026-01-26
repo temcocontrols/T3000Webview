@@ -3,7 +3,7 @@
  * Handles database-related operations matching C++ T3000 Database menu
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '../config/constants';
 
 /**
  * Open Building Config Database

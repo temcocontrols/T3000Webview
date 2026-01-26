@@ -3,7 +3,7 @@
  * Handles control panel operations matching C++ T3000 Control menu
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '../config/constants';
 
 /**
  * Open Graphics screen (Alt + G)

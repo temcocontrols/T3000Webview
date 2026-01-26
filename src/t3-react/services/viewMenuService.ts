@@ -3,7 +3,7 @@
  * Handles view-related operations matching C++ T3000 View menu
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '../config/constants';
 
 export interface ViewState {
   toolBarVisible: boolean;
