@@ -110,6 +110,9 @@ pub async fn start_partition_monitor_service() -> Result<()> {
 
 /// Check on startup for any missing partitions (called with 10s delay after T3000 starts)
 pub async fn check_startup_migrations() -> Result<()> {
+    let mut logger = ServiceLogger::new("T3_PartitionMonitor")
+        .unwrap_or_else(|_| ServiceLogger::new("fallback_partition").unwrap());
+
     logger.info("Checking for pending partition migrations on startup...");
 
     // First, clean up any orphaned WAL/SHM files for partition databases
@@ -185,7 +188,7 @@ pub async fn check_startup_migrations() -> Result<()> {
     for (index, period_date) in periods_to_migrate.iter().enumerate() {
         let partition_id = generate_partition_identifier(&config, period_date);
         logger.info(&format!("Migrating period {}/{}: {} ({})",
-                 index + 1, periods_to_migrate.len(), period_date, partition_id);
+                 index + 1, periods_to_migrate.len(), period_date, partition_id));
 
         match migrate_single_period(&db, &config, &partition_id, *period_date).await {
             Ok(count) => {

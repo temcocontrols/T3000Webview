@@ -48,6 +48,7 @@ pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
             modbus_register_routes()
                 .merge(user_routes())
                 .merge(file_routes())
+                .merge(crate::log::log_routes())
                 .route("/health", get(health_check_handler)),
         )
         .with_state(app_state)
@@ -74,6 +75,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
             modbus_register_routes()
                 .merge(user_routes())
                 .merge(file_routes())
+                .merge(crate::log::log_routes())
                 .route("/health", get(health_check_handler))
                 .with_state(original_state)
                 .merge(

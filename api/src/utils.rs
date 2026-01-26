@@ -486,9 +486,11 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
         Ok(true) => {
             crate::logger::write_structured_log("T3_Database_Migration", "🔄 New migrations detected, running...").ok();
             match run_migrations().await {
-                Ok(_) => crate::logger::write_structured_log("T3_Database_Migration", "✅ Database migrations completed").ok(),
+                Ok(_) => {
+                    crate::logger::write_structured_log("T3_Database_Migration", "OK Database migrations completed").ok();
+                },
                 Err(e) => {
-                    crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("⚠️  Migration error encountered: {}", e), crate::logger::LogLevel::Warn).ok();
+                    crate::logger::write_structured_log_with_level("T3_Database_Migration", &format!("WARNING Migration error encountered: {}", e), crate::logger::LogLevel::Warn).ok();
                     crate::logger::write_structured_log("T3_Database_Migration", "   This might be due to missing migration files or schema inconsistencies.").ok();
                     crate::logger::write_structured_log("T3_Database_Migration", "   The system will continue without applying migrations.").ok();
                 }

@@ -29,6 +29,10 @@ pub struct CreateDeviceRequest {
     pub serial_number: Option<i32>,                // T3000: SerialNumber (primary key, renamed from Serial_ID)
     #[serde(rename = "PanelId", alias = "panelId")]
     pub panel_id: Option<i32>,                     // T3000: PanelId (new column for panel identification)
+    #[serde(rename = "Panel_Number", alias = "panelNumber")]
+    pub panel_number: Option<i32>,                 // T3000: Panel_Number
+    #[serde(rename = "Network_Number", alias = "networkNumber")]
+    pub network_number: Option<i32>,               // T3000: Network_Number
     #[serde(rename = "MainBuilding_Name", alias = "mainBuildingName")]
     pub main_building_name: Option<String>,        // T3000: MainBuilding_Name
     #[serde(rename = "Building_Name", alias = "buildingName", alias = "subnetName")]
@@ -222,6 +226,12 @@ impl T3DeviceService {
             if device_data.panel_id.is_some() {
                 device.panel_id = Set(device_data.panel_id);
             }
+            if device_data.panel_number.is_some() {
+                device.panel_number = Set(device_data.panel_number);
+            }
+            if device_data.network_number.is_some() {
+                device.network_number = Set(device_data.network_number);
+            }
             if device_data.main_building_name.is_some() {
                 device.main_building_name = Set(device_data.main_building_name);
             }
@@ -294,8 +304,8 @@ impl T3DeviceService {
                 building_name: Set(device_data.building_name),
                 floor_name: Set(device_data.floor_name),
                 room_name: Set(device_data.room_name),
-                panel_number: Set(None),
-                network_number: Set(None),
+                panel_number: Set(device_data.panel_number),
+                network_number: Set(device_data.network_number),
                 product_name: Set(device_data.product_name),
                 product_class_id: Set(device_data.product_class_id),
                 product_id: Set(device_data.product_id),

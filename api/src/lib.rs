@@ -9,6 +9,7 @@ pub mod db_connection;
 pub mod entity;
 pub mod error;
 pub mod file;
+pub mod log;
 pub mod logger;
 pub mod modbus_register;
 pub mod server;
