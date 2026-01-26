@@ -73,6 +73,7 @@ interface DeviceTreeState {
   refreshDevices: () => Promise<void>;
   scanForDevices: (options?: ScanOptions) => Promise<void>;
   loadDevicesWithSync: () => Promise<void>;
+  syncDatabaseWithCpp: () => Promise<void>; // Manual cleanup: sync DB with C++ side
   syncDevicePoints: (device: DeviceInfo) => Promise<void>;
   checkIfDeviceNeedsSync: (serialNumber: number) => Promise<boolean>;
 
@@ -335,6 +336,41 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         } catch (error) {
           console.warn('[checkIfDeviceNeedsSync] Failed:', error);
           return false; // On error, don't auto-sync
+        }
+      },
+
+      // Clear all devices from database via API
+      syncDatabaseWithCpp: async () => {
+        const { setMessage } = useStatusBarStore.getState();
+
+        try {
+          setMessage('Clearing all devices from database...', 'info');
+
+          // Call API to delete all devices
+          const response = await fetch(`${API_BASE_URL}/api/t3_device/devices`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const deletedCount = result.rows_affected || 0;
+
+          if (deletedCount > 0) {
+            setMessage(`Cleared ${deletedCount} device(s) from database`, 'success');
+          } else {
+            setMessage('No devices to clear', 'info');
+          }
+
+          // Clear the state and reload
+          set({ devices: [], selectedDevice: null, selectedNodeId: null });
+          get().buildTreeStructure();
+
+        } catch (error) {
+          console.error('[syncDatabaseWithCpp] Error:', error);
+          setMessage('Failed to clear database', 'error');
         }
       },
 

@@ -12,6 +12,14 @@ import {
   Toolbar,
   ToolbarButton,
   Tooltip,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+  DialogContent,
+  Button,
 } from '@fluentui/react-components';
 import {
   ChevronDoubleDown20Regular,
@@ -20,6 +28,7 @@ import {
   BuildingRegular,
   DatabaseRegular,
   ArrowSyncRegular,
+  DismissCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
 import { useStatusBarStore } from '../../../../store/statusBarStore';
@@ -37,10 +46,11 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync, syncDatabaseWithCpp } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -72,6 +82,22 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     }
   };
 
+  const handleCleanDatabase = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setShowDeleteConfirm(false);
+    try {
+      console.log('[TreeToolbar] Starting clear all devices...');
+      await syncDatabaseWithCpp();
+      console.log('[TreeToolbar] Clear all devices completed');
+    } catch (error) {
+      console.error('[TreeToolbar] Clear all devices failed:', error);
+      setMessage('Failed to clear devices', 'error');
+    }
+  };
+
   const isProjectMode = viewMode === 'projectPoint';
 
   return (
@@ -80,6 +106,20 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
         <div className={styles.title}>Devices</div>
       </div>
       <Toolbar aria-label="Device tree toolbar" size="small">
+        <Tooltip
+          content="Clear all devices"
+          relationship="label"
+          positioning="below-start"
+          size="small"
+        >
+          <ToolbarButton
+            aria-label="Clear all devices"
+            icon={<DismissCircleRegular fontSize={18} />}
+            onClick={handleCleanDatabase}
+            appearance="subtle"
+          />
+        </Tooltip>
+
         <Tooltip content="Refresh" relationship="label" positioning="below-start" size="small">
           <ToolbarButton
             aria-label="Refresh devices"
@@ -135,6 +175,25 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
           />
         </Tooltip>
       </Toolbar>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={(e, data) => setShowDeleteConfirm(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle style={{ fontSize: '16px', fontWeight: 'normal' }}>Clear device cache?</DialogTitle>
+            <DialogContent>
+              This will clear all cached device data from the local database. You can reload devices from the connected panels anytime.
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowDeleteConfirm(false)} style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={handleConfirmDelete} style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                Clear cache
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };

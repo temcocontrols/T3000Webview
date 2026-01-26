@@ -536,6 +536,24 @@ async fn delete_device(
     }
 }
 
+async fn delete_all_devices(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    // Delete all devices using raw SQL for efficiency
+    match db.execute_unprepared("DELETE FROM DEVICES").await {
+        Ok(result) => Ok(Json(json!({
+            "message": "All devices deleted successfully",
+            "rows_affected": result.rows_affected()
+        }))),
+        Err(err) => {
+            eprintln!("❌ [delete_all_devices] Error: {:?}", err);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 async fn get_device_with_points(
     State(state): State<T3AppState>,
     Path(device_id): Path<i32>,
@@ -1120,6 +1138,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // T3000 Device endpoints
         .route("/devices", get(get_devices_with_stats))
         .route("/devices", post(create_device))
+        .route("/devices", delete(delete_all_devices))  // DELETE all devices
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))
         .route("/devices/:id", delete(delete_device))
