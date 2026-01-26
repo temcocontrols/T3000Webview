@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { DOCS_CONFIG } from '@t3-react/config/constants';
 
 interface MarkdownResult {
   content: string;
@@ -28,13 +29,13 @@ export function useMarkdownContent(path: string): MarkdownResult {
 
         if (path.startsWith('legacy/')) {
           // Legacy docs are in /docs folder with their full path structure
-          mdPath = `/docs/${path.replace('legacy/', '')}`;
+          mdPath = `${DOCS_CONFIG.baseUrl}/${path.replace('legacy/', '')}`;
         } else if (path.startsWith('t3000/')) {
           // T3000 docs are in /docs/t3000
-          mdPath = `/docs/${path}.md`;
+          mdPath = `${DOCS_CONFIG.baseUrl}/${path}.md`;
         } else {
           // Fallback for any other paths
-          mdPath = `/docs/${path}.md`;
+          mdPath = `${DOCS_CONFIG.baseUrl}/${path}.md`;
         }
 
         // Fetch the markdown file

@@ -8,6 +8,7 @@ import { Text, Spinner } from '@fluentui/react-components';
 import { Marked } from 'marked';
 import { useMarkdownContent } from '../hooks/useMarkdownContent';
 import { ControlMessagesPage } from './ControlMessagesPage';
+import { DOCS_CONFIG } from '@t3-react/config/constants';
 import styles from './DocContent.module.css';
 
 interface DocContentProps {
@@ -115,8 +116,8 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
 
   if (error) {
     const errorPath = path.startsWith('legacy/')
-      ? `/docs/${path.replace('legacy/', '')}`
-      : `/docs/${path}.md`;
+      ? `${DOCS_CONFIG.baseUrl}/${path.replace('legacy/', '')}`
+      : `${DOCS_CONFIG.baseUrl}/${path}.md`;
 
     return (
       <div className={styles.error}>
