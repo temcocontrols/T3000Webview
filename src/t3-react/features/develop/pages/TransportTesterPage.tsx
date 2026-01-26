@@ -150,7 +150,8 @@ const JsonTreeViewer: React.FC<{ json: string }> = ({ json }) => {
 };
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:9103/api';
+import { API_BASE_URL as BASE_URL } from '../../../config/constants';
+const API_BASE_URL = `${BASE_URL}/api`;
 
 type TransportType = 'websocket' | 'ffi' | 'webview2';
 

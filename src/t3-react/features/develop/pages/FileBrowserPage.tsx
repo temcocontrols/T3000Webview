@@ -38,8 +38,8 @@ export const FileBrowserPage: React.FC = () => {
 
     try {
       const url = path
-        ? `http://localhost:9103/api/develop/files/list?path=${encodeURIComponent(path)}`
-        : 'http://localhost:9103/api/develop/files/list';
+        ? `${API_BASE_URL}/list?path=${encodeURIComponent(path)}`
+        : `${API_BASE_URL}/list`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -176,7 +176,7 @@ export const FileBrowserPage: React.FC = () => {
   const loadFileContent = async (filePath: string) => {
     try {
       const relativePath = filePath.replace(/\\/g, '/');
-      const response = await fetch(`http://localhost:9103/api/develop/files/read?path=${encodeURIComponent(relativePath)}`);
+      const response = await fetch(`${API_BASE_URL}/read?path=${encodeURIComponent(relativePath)}`);
       if (!response.ok) {
         throw new Error('Failed to load file content');
       }

@@ -110,16 +110,12 @@ export const SystemLogsPage: React.FC = () => {
   // Load available dates from T3WebLog folder
   const loadAvailableDates = async () => {
     try {
-      console.log('📅 Loading available dates from /api/develop/logs/dates');
-      const response = await fetch('http://localhost:9103/api/develop/logs/dates');
-      console.log('📅 Response status:', response.status);
+      const response = await fetch(`${API_BASE_URL}/dates`);
 
       if (response.ok) {
         const dates: DateFolder[] = await response.json();
-        console.log('📅 Loaded dates:', dates);
         setAvailableDates(dates);
         if (dates.length > 0 && !selectedDate) {
-          console.log('📅 Auto-selecting first date:', dates[0]);
           setSelectedDate(dates[0].path);
         }
       } else {
@@ -145,7 +141,7 @@ export const SystemLogsPage: React.FC = () => {
     setLoading(true);
     try {
       console.log('📁 Loading log files for date:', datePath);
-      const response = await fetch(`http://localhost:9103/api/develop/logs/files?date=${encodeURIComponent(datePath)}`);
+      const response = await fetch(`${API_BASE_URL}/files?date=${encodeURIComponent(datePath)}`);
       console.log('📁 Response status:', response.status);
 
       if (response.ok) {
@@ -188,7 +184,7 @@ export const SystemLogsPage: React.FC = () => {
     try {
       console.log('📄 Loading log content:', file.name, 'for date:', datePath);
       const response = await fetch(
-        `http://localhost:9103/api/develop/logs/content?date=${encodeURIComponent(datePath)}&file=${encodeURIComponent(file.name)}`
+        `${API_BASE_URL}/content?date=${encodeURIComponent(datePath)}&file=${encodeURIComponent(file.name)}`
       );
       console.log('📄 Response status:', response.status);
 
@@ -318,7 +314,7 @@ export const SystemLogsPage: React.FC = () => {
 
   const clearLogs = async () => {
     try {
-      await fetch('http://localhost:9103/api/develop/logs/clear', { method: 'POST' });
+      await fetch(`${API_BASE_URL}/clear`, { method: 'POST' });
       setLogContent('');
       setParsedLogs([]);
       loadLogFiles(selectedDate);

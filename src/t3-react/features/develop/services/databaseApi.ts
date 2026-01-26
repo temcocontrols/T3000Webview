@@ -5,7 +5,9 @@
  * Uses existing /api/develop/database/* endpoints.
  */
 
-const API_BASE_URL = 'http://localhost:9103/api/develop/database';
+import { API_BASE_URL as BASE_URL } from '../../../config/constants';
+
+const API_BASE_URL = `${BASE_URL}/api/develop/database`;
 
 export interface TableInfo {
   name: string;
