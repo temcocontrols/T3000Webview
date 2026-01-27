@@ -32,6 +32,16 @@ import { T3Database } from '../../../../lib/t3-database';
 import PanelDataRefreshService from '../../../shared/services/panelDataRefreshService';
 
 /**
+ * Clean device name: remove null bytes and garbage characters from C++ buffers
+ */
+const cleanDeviceName = (name: string | undefined | null, fallback: string = 'Unknown'): string => {
+  if (!name) return fallback;
+  // Remove null bytes and everything after, then trim
+  const cleaned = name.split('\0')[0].trim();
+  return cleaned || fallback;
+};
+
+/**
  * Device Tree State Interface
  */
 interface DeviceTreeState {
@@ -154,8 +164,16 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await DeviceApiService.getAllDevices();
+
+          // Clean device names from database (remove null bytes and garbage from C++ buffers)
+          const cleanedDevices = response.devices.map(device => ({
+            ...device,
+            nameShowOnTree: cleanDeviceName(device.nameShowOnTree, `Device ${device.serialNumber}`),
+            productName: cleanDeviceName(device.productName, ''),
+          }));
+
           set({
-            devices: response.devices,
+            devices: cleanedDevices,
             isLoading: false,
             lastSyncTime: new Date(),
           });
@@ -267,18 +285,27 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               for (const panel of panels) {
                 try {
                   const serialNumber = panel.serial_number || panel.serialNumber;
-                  const panelName = panel.panel_name || panel.panelName || `Panel ${panel.panel_number}`;
+
+                  // Clean panel name using utility function
+                  const panelName = cleanDeviceName(
+                    panel.panel_name || panel.panelName,
+                    `Panel ${panel.panel_number}`
+                  );
+
                   const deviceData = {
                     SerialNumber: serialNumber,
                     Product_Name: panelName,
-                    Product_ID: panel.pid || 0,
-                    Panel_Number: panel.panel_number || 0,
+                    Product_ID: panel.pid || null,
+                    Panel_Number: panel.panel_number || null,
                     MainBuilding_Name: 'Default_Building',
                     Building_Name: 'Local View',
                     show_label_name: panelName,
-                    ip_address: panel.ip_address || panel.ipAddress || '',
-                    port: panel.port || 0,
                   };
+
+                  // Only add BACnet_MSTP_MAC_ID if available (from object_instance)
+                  if (panel.object_instance) {
+                    deviceData.BACnet_MSTP_MAC_ID = panel.object_instance;
+                  }
 
                   console.log(`[loadDevicesWithSync] Creating device ${serialNumber}:`, JSON.stringify(deviceData, null, 2));
                   await db.devices.create(deviceData);
