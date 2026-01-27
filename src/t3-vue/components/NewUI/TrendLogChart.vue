@@ -3055,21 +3055,14 @@
       // Start timeout for this refresh attempt
       startLoadingTimeout()
 
-      console.log('🔄 Step 2: Calling initializeRealDataSeries...')
-      // Reload data based on current mode - this will regenerate series internally
-      if (isRealTime.value) {
-        await initializeRealDataSeries()
-        console.log('🔄 Step 3a: After initializeRealDataSeries, dataSeries length:', dataSeries.value.length)
-        await loadHistoricalDataFromDatabase()
-        console.log('🔄 Step 4a: After loadHistoricalDataFromDatabase')
-        if (!realtimeInterval) {
-          startRealTimeUpdates()
-        }
-      } else {
-        await initializeRealDataSeries()
-        console.log('🔄 Step 3b: After initializeRealDataSeries, dataSeries length:', dataSeries.value.length)
-        await loadHistoricalDataFromDatabase()
-        console.log('🔄 Step 4b: After loadHistoricalDataFromDatabase')
+      console.log('🔄 Step 2: Loading historical data...')
+      // Just reload historical data - it will populate the series
+      await loadHistoricalDataFromDatabase()
+      console.log('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
+
+      // Restart real-time updates if needed
+      if (isRealTime.value && !realtimeInterval) {
+        startRealTimeUpdates()
       }
 
       // Success - clear timeout and error state
@@ -5354,14 +5347,15 @@
         throw new Error(historyResponse.error)
       }
 
-      // Check if response indicates no data or error via message field
+      // Check if response has no data
       if (!historyResponse.data || historyResponse.data.length === 0) {
-        const errorMsg = historyResponse.message || 'No historical data available for the selected time range'
-        LogUtil.Warn('📊 No historical data returned:', errorMsg)
+        const errorMsg = 'No historical data available for the selected time range'
+        LogUtil.Warn('📊 No historical data returned')
         hasConnectionError.value = true
         throw new Error(errorMsg)
       }
 
+      // Data exists, process it
       if (historyResponse.data.length > 0) {
         LogUtil.Info('📚 Historical data loaded:', {
           dataPointsCount: historyResponse.data.length,
@@ -6297,14 +6291,10 @@
 
     if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
       try {
-        // Step 1: Initialize real-time data series structure
-        LogUtil.Info('🔧 Initializing data series structure')
-        await initializeRealDataSeries()
-
-        LogUtil.Info('✅ Data series structure initialized, history will load via panelsData watcher')
-
-        // Note: Historical data loading happens in the panelsData watcher
-        // when charts are ready. This ensures proper timing.
+        // Try to load historical data - this will create series structure if successful
+        LogUtil.Info('🔧 Loading historical data from database')
+        await loadHistoricalDataFromDatabase()
+        LogUtil.Info('✅ Historical data loaded successfully')
 
       } catch (error) {
         LogUtil.Error('= TLChart: Error in data initialization:', error)
@@ -10871,16 +10861,17 @@
     top: 60px;
     left: 0;
     right: 0;
-    background: rgba(255, 255, 255, 0.95);
-    border-bottom: 1px solid #d9d9d9;
-    padding: 8px 16px;
+    background: linear-gradient(to right, #e6f7ff, #bae7ff);
+    border-bottom: 2px solid #1890ff;
+    padding: 10px 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
     z-index: 1000;
     font-size: 13px;
-    color: #595959;
+    font-weight: 500;
+    color: #096dd9;
   }
 
   .timeseries-container {
