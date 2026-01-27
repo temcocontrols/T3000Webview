@@ -3043,7 +3043,7 @@
 
       console.log('🔄 Step 2: Loading historical data...')
       // Just reload historical data - it will populate the series
-      await loadHistoricalDataFromDatabase()
+      await loadHistoricalDataFromDatabase(true) // Force reload from device
       console.log('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
 
       // Restart real-time updates if needed
@@ -5031,11 +5031,12 @@
   /**
    * Load historical data from database based on current timebase
    */
-  const loadHistoricalDataFromDatabase = async () => {
+  const loadHistoricalDataFromDatabase = async (forceReload: boolean = false) => {
     LogUtil.Info('🔍 loadHistoricalDataFromDatabase CALLED', {
       hasMonitorConfig: !!monitorConfig.value,
       monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
       dataSeriesLength: dataSeries.value.length,
+      forceReload: forceReload,
       timestamp: new Date().toISOString()
     })
 
@@ -5109,12 +5110,12 @@
       const offsetEndTime = new Date(chartTimeWindow.max)
       const timeRangeMinutes = Math.round((offsetEndTime.getTime() - offsetStartTime.getTime()) / 60000)
 
-      // 🆕 SMART LOADING: Check if we already have data in this time range
-      const existingDataRange = getExistingDataTimeRange()
+      // 🆕 SMART LOADING: Check if we already have data in this time range (unless force reload)
+      const existingDataRange = !forceReload ? getExistingDataTimeRange() : null
       let actualStartTime = offsetStartTime
       let actualEndTime = offsetEndTime
 
-      if (existingDataRange) {
+      if (existingDataRange && !forceReload) {
         LogUtil.Info('📊 Existing data detected - optimizing load range', {
           requestedRange: {
             start: offsetStartTime.toISOString(),
@@ -5136,12 +5137,20 @@
             gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
           })
         } else {
-          LogUtil.Info('�?All requested data already exists in memory - skipping database load', {
+          LogUtil.Info('✅All requested data already exists in memory - skipping database load', {
             requestedStart: offsetStartTime.toISOString(),
             existingStart: new Date(existingDataRange.earliest).toISOString()
           })
           return // No need to load anything
         }
+      } else if (forceReload) {
+        LogUtil.Info('🔄 Force reload requested - skipping existing data optimization', {
+          requestedRange: {
+            start: offsetStartTime.toISOString(),
+            end: offsetEndTime.toISOString(),
+            durationMinutes: timeRangeMinutes
+          }
+        })
       }
 
       const endTime = actualEndTime
