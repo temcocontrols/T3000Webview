@@ -280,13 +280,13 @@
                   </div>
                   <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
                   <div v-else-if="hasConnectionError" class="empty-state-icon">
-                    <ExclamationCircleOutlined :style="{ fontSize: '48px' }" />
+                    <ExclamationCircleOutlined :style="{ fontSize: '32px' }" />
                   </div>
                   <div v-else class="empty-state-icon">📊</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
                   <div v-else-if="showLoadingTimeout" class="empty-state-text">Loading Timeout</div>
-                  <div v-else-if="hasConnectionError" class="empty-state-text">Data Connection Error</div>
+                  <div v-else-if="hasConnectionError" class="empty-state-text" style="font-size: 14px; font-weight: 500;">Data Connection Error</div>
                   <div v-else class="empty-state-text">No valid analog data available</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-subtitle">
@@ -295,7 +295,7 @@
                   <div v-else-if="showLoadingTimeout" class="empty-state-subtitle">
                     Loading took too long (>30s). The system may be busy or experiencing connection issues.
                   </div>
-                  <div v-else-if="hasConnectionError" class="empty-state-subtitle">
+                  <div v-else-if="hasConnectionError" class="empty-state-subtitle" style="font-size: 12px;">
                     Unable to load real-time or historical data. Check system connections.
                   </div>
                   <div v-else class="empty-state-subtitle">
@@ -400,11 +400,11 @@
           <div class="oscilloscope-container" @wheel="handleMouseWheel">
             <!-- Show error message if connection error -->
             <div v-if="hasConnectionError" class="empty-chart-message">
-              <div class="empty-state-icon" style="font-size: 48px;">
-                <ExclamationCircleOutlined :style="{ fontSize: '48px' }" />
+              <div class="empty-state-icon" style="font-size: 32px;">
+                <ExclamationCircleOutlined :style="{ fontSize: '32px' }" />
               </div>
-              <div class="empty-state-text" style="font-size: 16px; font-weight: 600;">Data Connection Error</div>
-              <div class="empty-state-subtitle" style="margin-top: 8px;">Unable to load panel data. The panel may not have cached data available.</div>
+              <div class="empty-state-text" style="font-size: 14px; font-weight: 500;">Data Connection Error</div>
+              <div class="empty-state-subtitle" style="margin-top: 8px; font-size: 12px;">Unable to load panel data. The panel may not have cached data available.</div>
               <div style="margin-top: 16px;">
                 <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
                   <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Retry Connection
