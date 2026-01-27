@@ -7,8 +7,15 @@
       colorBorder: '#d9d9d9',
     },
   }">
-    <!-- Remove the modal wrapper - this is now just the chart content -->
-    <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
+    <div style="position: relative;">
+      <!-- Global loading indicator -->
+      <div v-show="shouldShowLoading" class="global-loading-indicator">
+        <a-spin size="small" />
+        <span style="margin-left: 8px;">Loading trend data...</span>
+      </div>
+
+      <!-- Remove the modal wrapper - this is now just the chart content -->
+      <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
     <div class="top-controls-bar">
       <a-flex wrap="wrap" gap="small" class="controls-main-flex">
         <!-- Time Base Control -->
@@ -272,7 +279,9 @@
                     <a-spin size="small" />
                   </div>
                   <div v-else-if="showLoadingTimeout" class="empty-state-icon">⏱️</div>
-                  <div v-else-if="hasConnectionError" class="empty-state-icon">⚠️</div>
+                  <div v-else-if="hasConnectionError" class="empty-state-icon">
+                    <ExclamationCircleOutlined :style="{ fontSize: '48px' }" />
+                  </div>
                   <div v-else class="empty-state-icon">📊</div>
 
                   <div v-if="shouldShowLoading" class="empty-state-text">Loading T3000 device data...</div>
@@ -296,11 +305,8 @@
                   <!-- Refresh button for timeout and error states -->
                   <div v-if="showLoadingTimeout || hasConnectionError" class="empty-state-actions"
                        style="margin-top: 16px;">
-                    <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small">
-                      <template #icon>
-                        <ReloadOutlined />
-                      </template>
-                      Refresh Data
+                    <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
+                      <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Refresh Data
                     </a-button>
                   </div>
                 </div>
@@ -392,8 +398,21 @@
         <!-- Right Panel: Analog Chart Only -->
         <div class="right-panel">
           <div class="oscilloscope-container" @wheel="handleMouseWheel">
+            <!-- Show error message if connection error -->
+            <div v-if="hasConnectionError" class="empty-chart-message">
+              <div class="empty-state-icon" style="font-size: 48px;">
+                <ExclamationCircleOutlined :style="{ fontSize: '48px' }" />
+              </div>
+              <div class="empty-state-text" style="font-size: 16px; font-weight: 600;">Data Connection Error</div>
+              <div class="empty-state-subtitle" style="margin-top: 8px;">Unable to load panel data. The panel may not have cached data available.</div>
+              <div style="margin-top: 16px;">
+                <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
+                  <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Retry Connection
+                </a-button>
+              </div>
+            </div>
             <!-- Combined Analog Chart with Multiple Signals -->
-            <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
+            <div v-else-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
               <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
             </div>
             <div v-else class="empty-chart-message">
@@ -1092,7 +1111,7 @@
         </div>
       </template>
     </a-drawer>
-
+    </div>
   </a-config-provider>
 </template>
 
@@ -1134,6 +1153,7 @@
     CloseOutlined,
     DatabaseOutlined,
     SaveOutlined,
+    ExclamationCircleOutlined,
     ThunderboltOutlined,
     ThunderboltFilled,
     DeleteOutlined
@@ -2884,8 +2904,23 @@
   })
 
   // Enhanced loading state - show loading when waiting for valid T3000 device data
+  // Show global loading when:
+  // 1. Actually loading (isLoading is true) OR
+  // 2. We have no data yet but also no confirmed error (neither timeout nor connection error)
   const shouldShowLoading = computed(() => {
-    return (isLoading.value || hasInputDataButNoValidSeries.value) && !showLoadingTimeout.value
+    const noDataYet = analogSeriesList.value.length === 0
+    const noConfirmedError = !showLoadingTimeout.value && !hasConnectionError.value
+    const result = isLoading.value || (noDataYet && noConfirmedError)
+
+    console.log('🔍 shouldShowLoading:', result, {
+      isLoading: isLoading.value,
+      noDataYet,
+      noConfirmedError,
+      hasTimeout: showLoadingTimeout.value,
+      hasError: hasConnectionError.value,
+      seriesCount: analogSeriesList.value.length
+    })
+    return result
   })
 
   const allAnalogEnabled = computed(() => {
@@ -2941,7 +2976,11 @@
   })
 
   // NEW: Scenario detection for conditional display - based on tracked/selected items
-  const showAnalogArea = computed(() => analogSeriesList.value.length > 0)
+  const showAnalogArea = computed(() => {
+    // Always show analog area if there's a connection error (to show error message)
+    // or if there are analog series available
+    return hasConnectionError.value || analogSeriesList.value.length > 0;
+  })
   const showDigitalArea = computed(() => digitalSeriesList.value.length > 0)
   const showResizableDivider = computed(() => analogSeriesList.value.length > 0 && digitalSeriesList.value.length > 0)
   const showAnalogXAxis = computed(() => {
@@ -2999,6 +3038,7 @@
 
   // Manual refresh function
   const manualRefresh = async () => {
+    console.log('🔄 === MANUAL REFRESH START ===')
     LogUtil.Info('🔄 Manual refresh initiated')
 
     // Reset all states
@@ -3007,40 +3047,59 @@
     hasConnectionError.value = false
     startLoading()
 
-    // Clear existing data
-    dataSeries.value.forEach(series => {
-      series.data = []
-    })
+    // Clear existing data completely
+    dataSeries.value = []
+    console.log('🔄 Step 1: Cleared dataSeries, length:', dataSeries.value.length)
 
     try {
       // Start timeout for this refresh attempt
       startLoadingTimeout()
 
-      // Regenerate data series and reload data
-      regenerateDataSeries()
-
-      // Reload data based on current mode
+      console.log('🔄 Step 2: Calling initializeRealDataSeries...')
+      // Reload data based on current mode - this will regenerate series internally
       if (isRealTime.value) {
         await initializeRealDataSeries()
+        console.log('🔄 Step 3a: After initializeRealDataSeries, dataSeries length:', dataSeries.value.length)
         await loadHistoricalDataFromDatabase()
+        console.log('🔄 Step 4a: After loadHistoricalDataFromDatabase')
         if (!realtimeInterval) {
           startRealTimeUpdates()
         }
       } else {
+        await initializeRealDataSeries()
+        console.log('🔄 Step 3b: After initializeRealDataSeries, dataSeries length:', dataSeries.value.length)
         await loadHistoricalDataFromDatabase()
+        console.log('🔄 Step 4b: After loadHistoricalDataFromDatabase')
       }
 
-      // Success - clear timeout
+      // Success - clear timeout and error state
       clearLoadingTimeout()
+      hasConnectionError.value = false
       stopLoading()
+      console.log('🔄 === MANUAL REFRESH SUCCESS ===', {
+        dataSeriesLength: dataSeries.value.length,
+        analogSeriesLength: analogSeriesList.value.length
+      })
 
     } catch (error) {
-      LogUtil.Error('�?Manual refresh failed:', error)
+      console.log('🔄 === MANUAL REFRESH ERROR ===')
+      LogUtil.Error('❌ Manual refresh failed:', error)
       clearLoadingTimeout()
       hasConnectionError.value = true
+      dataSeries.value = [] // Ensure series is cleared on error
       stopLoading()
+
+      console.log('❌ Error state set:', {
+        hasConnectionError: hasConnectionError.value,
+        isLoading: isLoading.value,
+        analogSeriesCount: analogSeriesList.value.length,
+        dataSeriesCount: dataSeries.value.length,
+        error: error
+      })
     }
   }
+
+  // Helper to get the data interval (in minutes) for the current time base
 
   // Helper to get the data interval (in minutes) for the current time base
   const getDataPointInterval = (timeBase: string): number => {
@@ -5014,19 +5073,23 @@
       })
 
       if (!currentSN) {
-        LogUtil.Warn('�?loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+        const errorMsg = 'No serial number available - cannot load historical data'
+        LogUtil.Error('❌ loadHistoricalDataFromDatabase: No serial number from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
-        return
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
       }
 
       if (!currentPanelId) {
-        LogUtil.Warn('�?loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+        const errorMsg = 'No panel ID available - cannot load historical data'
+        LogUtil.Error('❌ loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
-        return
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
       }
 
       // 🆕 FIX: Don't require monitorConfig - use dataseries as fallback
@@ -5042,8 +5105,10 @@
 
         // If no dataseries either, we can't determine what to load
         if (dataSeries.value.length === 0) {
-          LogUtil.Warn('�?loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
-          return
+          const errorMsg = 'No monitor configuration or data series available - cannot load historical data'
+          LogUtil.Error('❌ loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
+          hasConnectionError.value = true
+          throw new Error(errorMsg)
         }
       }
 
@@ -5275,7 +5340,29 @@
       // Fetch historical data
       const historyResponse = await trendlogAPI.getTrendlogHistory(historyRequest)
 
-      if (historyResponse?.data?.length > 0) {
+      // Check for errors in response
+      if (!historyResponse) {
+        const errorMsg = 'Failed to fetch historical data - API returned null'
+        LogUtil.Error('Historical data fetch failed:', errorMsg)
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
+      }
+
+      if (historyResponse?.error) {
+        LogUtil.Error('Historical data fetch returned error:', historyResponse.error)
+        hasConnectionError.value = true
+        throw new Error(historyResponse.error)
+      }
+
+      // Check if response indicates no data or error via message field
+      if (!historyResponse.data || historyResponse.data.length === 0) {
+        const errorMsg = historyResponse.message || 'No historical data available for the selected time range'
+        LogUtil.Warn('📊 No historical data returned:', errorMsg)
+        hasConnectionError.value = true
+        throw new Error(errorMsg)
+      }
+
+      if (historyResponse.data.length > 0) {
         LogUtil.Info('📚 Historical data loaded:', {
           dataPointsCount: historyResponse.data.length,
           timeRange: `${timeRangeMinutes} minutes`,
@@ -5304,6 +5391,8 @@
 
     } catch (error) {
       LogUtil.Error('Failed to load historical data from database:', error)
+      hasConnectionError.value = true
+      throw error // Re-throw so manualRefresh can handle it properly
     }
   }
 
@@ -10192,6 +10281,9 @@
 
       if (!analogChartCanvas.value) {
         LogUtil.Error('❌ Canvas not available after waiting, cannot create charts')
+        // Don't return - show error message instead of blank page
+        hasConnectionError.value = true
+        stopLoading()
         return
       }
 
@@ -10773,6 +10865,24 @@
 </script>
 
 <style scoped>
+  /* Global loading indicator */
+  .global-loading-indicator {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid #d9d9d9;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    font-size: 13px;
+    color: #595959;
+  }
+
   .timeseries-container {
     display: flex;
     flex-direction: column;
@@ -10948,9 +11058,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     height: 100%;
-    padding: 40px 20px;
+    padding: 40px 20px 20px;
+    min-height: 200px;
   }
 
   .empty-chart-message .empty-state-icon {
@@ -11188,9 +11299,9 @@
   .series-empty-state {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 200px;
-    padding: 20px;
+    padding: 40px 20px 20px;
   }
 
   .empty-state-content {

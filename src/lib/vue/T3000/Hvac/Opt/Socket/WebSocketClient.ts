@@ -17,6 +17,12 @@ class WebSocketClient {
   private pingInterval: number = 10000; // 10 seconds
   private pingIntervalId: NodeJS.Timeout | null = null;
   private reconnectTimeoutId: NodeJS.Timeout | null = null;
+
+  // Error tracking for data requests
+  private dataRequestErrorCount: number = 0; // Track consecutive errors
+  private maxDataRequestErrors: number = 3; // Stop after 3 consecutive errors
+  private lastErrorTime: number = 0; // Track when last error occurred
+
   private uri: string;
   public messageModel: MessageModel;
   public messageData: string;
@@ -515,7 +521,7 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
-  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES âœ?
+  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES ï¿½?
   public SaveGraphic(panelId, graphicId, data?: {}) {
     this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, data);
     this.sendMessage(this.messageData);
@@ -907,6 +913,9 @@ class WebSocketClient {
 
     LogUtil.Debug('= ws: HandleGetInitialDataRes / msgData:', msgData);
 
+    // Reset error count on successful response
+    this.dataRequestErrorCount = 0;
+
     const isCrtDevice = this.deviceOpt?.isCurrentDeviceMessage(msgData);
 
     if (!isCrtDevice) {
@@ -1103,13 +1112,13 @@ class WebSocketClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' â†?'${item[field]}'`);
+              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating field '${field}': '${existingItem[field]}' ï¿½?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`âœ?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
+          // LogUtil.Info(`ï¿½?HandleGetEntriesRes / Smart partial update applied for ${item.id}: ${updatedCount} fields updated, ${criticalFields.length} critical fields protected`);
         } else if (potentialDataLoss) {
           // Handle other types of potential data loss (not just monitors)
           // LogUtil.Warn(`âš ï¸ POTENTIAL DATA LOSS DETECTED! Applying smart update for ${item.type} item:`, {
@@ -1130,17 +1139,17 @@ class WebSocketClient {
           let updatedCount = 0;
           fieldsToUpdate.forEach(field => {
             if (existingItem[field] !== item[field]) {
-              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' â†?'${item[field]}'`);
+              // LogUtil.Debug(`ðŸ”„ HandleGetEntriesRes / Updating ${item.type} field '${field}': '${existingItem[field]}' ï¿½?'${item[field]}'`);
               existingItem[field] = item[field];
               updatedCount++;
             }
           });
 
-          // LogUtil.Info(`âœ?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
+          // LogUtil.Info(`ï¿½?HandleGetEntriesRes / Smart update for ${item.type} ${item.id}: ${updatedCount} fields updated, ${complexFields.length} complex fields protected`);
         } else {
           // Safe to do full replacement
           T3000_Data.value.panelsData[itemIndex] = item;
-          // LogUtil.Debug(`âœ?HandleGetEntriesRes / Full replacement done for ${item.id}`);
+          // LogUtil.Debug(`ï¿½?HandleGetEntriesRes / Full replacement done for ${item.id}`);
         }
       } else {
         // LogUtil.Debug(`= ws: HandleGetEntriesRes / item ${itemIdx}: NOT FOUND in panelsData:`, {
@@ -1305,22 +1314,56 @@ class WebSocketClient {
     // GET_PANEL_DATA_RES | GET_INITIAL_DATA_RES | GET_PANELS_LIST_RES
     const action = messageData.action;
 
-    if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
-      const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
-      // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
-      T3UIUtil.ShowWebSocketError(errorMsg);
+    // Track consecutive errors and stop retrying after limit
+    const now = Date.now();
+    const timeSinceLastError = now - this.lastErrorTime;
 
-      this.GetPanelsList();
+    // Reset error count if more than 60 seconds since last error
+    if (timeSinceLastError > 60000) {
+      this.dataRequestErrorCount = 0;
+    }
+
+    this.dataRequestErrorCount++;
+    this.lastErrorTime = now;
+
+    // Stop retrying if we've hit the error limit
+    if (this.dataRequestErrorCount > this.maxDataRequestErrors) {
+      LogUtil.Warn(`âš ï¸ Stopped retrying after ${this.maxDataRequestErrors} consecutive errors for action: ${action}`);
+      LogUtil.Warn(`Error message: ${messageData.error}`);
+      // Show a single error message and stop
+      if (this.dataRequestErrorCount === this.maxDataRequestErrors + 1) {
+        const errorMsg = `Unable to load panel data after ${this.maxDataRequestErrors} attempts. ${messageData.error}`;
+        T3UIUtil.ShowWebSocketError(errorMsg);
+      }
+      return; // Don't retry anymore
+    }
+
+    if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
+      const errorMsg = `Load device data failed with error: "${messageData.error}". Retry ${this.dataRequestErrorCount}/${this.maxDataRequestErrors}`;
+      LogUtil.Warn(errorMsg);
+      // Only show error on last retry
+      if (this.dataRequestErrorCount === this.maxDataRequestErrors) {
+        T3UIUtil.ShowWebSocketError(errorMsg);
+      }
+
+      // Add delay before retry to prevent flooding
+      setTimeout(() => {
+        this.GetPanelsList();
+      }, 5000); // Wait 5 seconds before retry
     }
 
     if (action == MessageType.GET_INITIAL_DATA_RES) {
-      const errorMsg = `Load initial data failed with error: "${messageData.error}". Please try not update the graphic area, this may cause data loss. Please check whether the T3000 application is running or not.`;
-      // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
-      T3UIUtil.ShowWebSocketError(errorMsg);
-      this.reloadInitialData();
+      const errorMsg = `Load initial data failed with error: "${messageData.error}". Retry ${this.dataRequestErrorCount}/${this.maxDataRequestErrors}`;
+      LogUtil.Warn(errorMsg);
+      // Only show error on last retry
+      if (this.dataRequestErrorCount === this.maxDataRequestErrors) {
+        T3UIUtil.ShowWebSocketError(errorMsg);
+        // add global error message for blocking auto save
+        this.quasarUtil?.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
+      }
 
-      // add global error message for blocking auto save
-      this.quasarUtil?.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
+      // Don't call reloadInitialData here - let the existing interval handle it
+      // this.reloadInitialData(); // REMOVED - causes infinite loop
     }
   }
 
@@ -1331,7 +1374,7 @@ class WebSocketClient {
 
     // LogUtil.Debug('= ws: reload-initial-interval start', this.reloadInitialDataInterval);
 
-    // Set a timer to reload the initial data every 5 minutes
+    // Set a timer to reload the initial data every 30 seconds (reduced from 2 seconds to prevent flooding)
     this.reloadInitialDataInterval = setInterval(() => {
       const currentDevice = this.deviceOpt?.getCurrentDevice();
       const panelId = currentDevice?.deviceId;
@@ -1340,7 +1383,7 @@ class WebSocketClient {
       if (panelId && graphicId) {
         this.GetInitialData(panelId, graphicId);
       }
-    }, 2000);
+    }, 30000); // 30 seconds instead of 2 seconds
 
     // LogUtil.Debug('= ws: reload-initial-interval end', this.reloadInitialDataInterval);
   }
