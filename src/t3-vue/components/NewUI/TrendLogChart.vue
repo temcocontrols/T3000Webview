@@ -1096,15 +1096,15 @@
 
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="toggleSelectAll" :type="isAllSelected ? 'default' : 'primary'" class="select-toggle-btn">
+          <a-button @click="toggleSelectAll" :type="isAllSelected ? 'default' : 'primary'" class="select-toggle-btn" :disabled="dataSeries.length === 0">
             {{ isAllSelected ? 'Unselect All' : 'Select All' }}
           </a-button>
 
           <div class="footer-actions">
-            <a-button @click="showItemSelector = false">
+            <a-button @click="showItemSelector = false" :disabled="dataSeries.length === 0">
               Cancel
             </a-button>
-            <a-button type="primary" @click="applyAndCloseDrawer">
+            <a-button type="primary" @click="applyAndCloseDrawer" :disabled="dataSeries.length === 0">
               Apply Selection
             </a-button>
           </div>
