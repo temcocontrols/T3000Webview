@@ -364,9 +364,21 @@ pub struct DeviceInfo {
     pub connection_type: Option<String>, // from communication type
 }
 
-/// Clean C++ buffer garbage: remove null bytes and everything after
+/// Clean C++ buffer garbage: remove null bytes, control characters, and everything after
 fn clean_cpp_string(input: &str, fallback: &str) -> String {
-    let cleaned = input.split('\0').next().unwrap_or("").trim().to_string();
+    let cleaned = input
+        .split('\0')
+        .next()
+        .unwrap_or("")
+        .chars()
+        .filter(|c| {
+            // Keep only printable ASCII and common whitespace
+            c.is_ascii_graphic() || *c == ' ' || *c == '\t'
+        })
+        .collect::<String>()
+        .trim()
+        .to_string();
+
     if cleaned.is_empty() {
         fallback.to_string()
     } else {
@@ -2374,6 +2386,12 @@ impl T3000MainService {
                                     .map(|arr| {
                                         arr.iter()
                                             .filter_map(|panel_json| {
+                                                let panel_name = clean_cpp_string(
+                                                    panel_json
+                                                        .get("panel_name")?
+                                                        .as_str()?,
+                                                    "(Unknown)" // Keep "(Unknown)" as-is from C++
+                                                );
                                                 Some(PanelInfo {
                                                     panel_number: panel_json
                                                         .get("panel_number")?
@@ -2383,12 +2401,7 @@ impl T3000MainService {
                                                         .get("serial_number")?
                                                         .as_i64()?
                                                         as i32,
-                                                    panel_name: clean_cpp_string(
-                                                        panel_json
-                                                            .get("panel_name")?
-                                                            .as_str()?,
-                                                        "(Unknown)" // Keep "(Unknown)" as-is from C++
-                                                    ),
+                                                    panel_name,
                                                     pid: panel_json
                                                         .get("pid")
                                                         .and_then(|v| v.as_i64())
