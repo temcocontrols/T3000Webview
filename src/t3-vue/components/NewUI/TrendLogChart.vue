@@ -8,12 +8,6 @@
     },
   }">
     <div style="position: relative;">
-      <!-- Global loading indicator -->
-      <div v-show="shouldShowLoading" class="global-loading-indicator">
-        <a-spin size="small" />
-        <span style="margin-left: 8px;">Loading trend data...</span>
-      </div>
-
       <!-- Remove the modal wrapper - this is now just the chart content -->
       <!-- Top Controls Bar - Flexible Layout with Individual Item Wrapping -->
     <div class="top-controls-bar">
@@ -181,6 +175,12 @@
       </div>
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
+      <!-- Global loading indicator -->
+      <div v-show="shouldShowLoading" class="global-loading-indicator">
+        <a-spin size="small" />
+        <span style="margin-left: 8px;">Loading trend data...</span>
+      </div>
+
       <!-- ANALOG AREA (Top Section) -->
       <div v-if="showAnalogArea" class="analog-area">
         <div class="left-panel">
@@ -2397,22 +2397,8 @@
           // Auto Scroll ON: Load real-time + historical data
           // LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
 
-          // 🆕 FIX: Only initialize series structure if we don't already have it
-          // This prevents unnecessary loading state when switching back to 5m
-          const needsSeriesInit = dataSeries.value.length === 0 ||
-            dataSeries.value.every(s => s.data.length === 0)
-
-          if (needsSeriesInit) {
-            // Step 1: Initialize real-time data series structure
-            await initializeRealDataSeries()
-          } else {
-            LogUtil.Info('�?Series structure already exists, skipping initializeRealDataSeries', {
-              seriesCount: dataSeries.value.length,
-              dataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-            })
-          }
-
-          // Step 2: Load historical data to populate the series
+          // Load historical data directly - this will create series only if data exists
+          // No need to call initializeRealDataSeries which creates placeholder series
           await loadHistoricalDataFromDatabase()
 
           // Step 3: Ensure real-time updates are active
@@ -5363,6 +5349,12 @@
           actualTimeRange: `${formattedStartTime} to ${formattedEndTime}`
         })
 
+        // 🆕 If dataSeries is empty, create series from historical data
+        if (dataSeries.value.length === 0) {
+          LogUtil.Info('📊 Creating series from historical data (no existing series)')
+          await createSeriesFromHistoricalData(historyResponse.data)
+        }
+
         // 🆕 Convert historical data to chart format and populate data series (now async)
         await populateDataSeriesWithHistoricalData(historyResponse.data)
 
@@ -5387,6 +5379,83 @@
       LogUtil.Error('Failed to load historical data from database:', error)
       hasConnectionError.value = true
       throw error // Re-throw so manualRefresh can handle it properly
+    }
+  }
+
+  /**
+   * Create data series structure from historical data
+   * Used when dataSeries is empty and we have historical data to display
+   */
+  const createSeriesFromHistoricalData = async (historicalData: any[]) => {
+    try {
+      // Group data by unique point identifiers
+      const pointsMap = new Map<string, any>()
+
+      historicalData.forEach(item => {
+        const key = `${item.point_id}_${item.point_type}`
+        if (!pointsMap.has(key)) {
+          pointsMap.set(key, item)
+        }
+      })
+
+      LogUtil.Info('📊 Creating series from historical data:', {
+        totalDataPoints: historicalData.length,
+        uniquePoints: pointsMap.size,
+        points: Array.from(pointsMap.keys())
+      })
+
+      // Create series for each unique point
+      const newSeries: DataSeries[] = []
+      let colorIndex = 0
+
+      for (const [key, firstItem] of pointsMap) {
+        const pointId = firstItem.point_id
+        const pointType = firstItem.point_type
+
+        // Get device description for better naming
+        const description = await getDeviceDescription(
+          firstItem.panel_id,
+          pointId,
+          pointType,
+          firstItem.point_index || 0
+        )
+
+        // Create series with proper naming
+        const seriesName = description && description.trim() &&
+          !description.includes('(P0)') &&
+          !description.match(/^\d+\s*\([P]\d+\)$/)
+          ? description
+          : pointId
+
+        const series: DataSeries = {
+          id: pointId,
+          panelId: firstItem.panel_id,
+          name: seriesName,
+          description: description || pointId,
+          color: chartColors[colorIndex % chartColors.length],
+          data: [],
+          visible: true,
+          pointType: mapPointTypeToNumber(pointType),
+          pointNumber: firstItem.point_index || 0,
+          unit: firstItem.unit || '',
+          digital_analog: firstItem.digital_analog || 1
+        }
+
+        newSeries.push(series)
+        colorIndex++
+      }
+
+      // Assign the new series
+      dataSeries.value = newSeries
+
+      LogUtil.Info('✅ Series created from historical data:', {
+        seriesCount: newSeries.length,
+        seriesNames: newSeries.map(s => s.name)
+      })
+
+    } catch (error) {
+      LogUtil.Error('Error creating series from historical data:', error)
+      throw error
     }
   }
 
@@ -10857,10 +10926,6 @@
 <style scoped>
   /* Global loading indicator */
   .global-loading-indicator {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    right: 0;
     background: linear-gradient(to right, #e6f7ff, #bae7ff);
     border-bottom: 2px solid #1890ff;
     padding: 10px 16px;
@@ -10868,7 +10933,6 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
-    z-index: 1000;
     font-size: 13px;
     font-weight: 500;
     color: #096dd9;
