@@ -38,6 +38,10 @@ size_t thread_local BacnetWebViewAppWindow::s_appInstances = 0;
 char* base64_decode(char const* base64Str, char* debase64Str, int encodeStrLen);
 extern int Read_Webview_Data_Special(int panelid, UINT nserialnumber, int nscreenindex);
 extern int Write_Webview_Data_Special(int panelid, UINT nserialnumber, int nscreenindex, int element_count);
+
+// ❌ Set to false to disable all T3WebLog logging
+static bool enable_t3_web_logging = true;
+
 //enum WEBVIEW_MESSAGE_TYPE
 //{
 //    READ_VARIABLES = 0,
@@ -86,6 +90,16 @@ enum WEBVIEW_MESSAGE_TYPE
 int save_button_click = 0;
 extern char* ispoint_ex(char* token, int* num_point, byte* var_type, byte* point_type, int* num_panel, int* num_net, int network, unsigned char& sub_panel, byte panel, int* netpresent);
 
+static inline bool IsNullOrEmptyOrWhitespace(const char* s) noexcept
+{
+	if (s == nullptr) return true;
+	const unsigned char* us = reinterpret_cast<const unsigned char*>(s);
+	while (*us != '\0') {
+		if (!isspace(*us)) return false;
+		++us;
+	}
+	return true;
+}
 
 void DeleteDirectoryRecursive(const std::wstring& dir_path) {
 	std::wstring file_search_path = dir_path + L"\\*";
@@ -773,9 +787,9 @@ void WrapErrorMessage(Json::StreamWriterBuilder& builder, const Json::Value& tem
 	}
 }
 
-// ❌ Set to false to disable all T3WebLog logging
-static bool enable_t3_web_logging = true;
- 
+
+
+
 // Helper function to write HandleWebViewMsg logs to T3WebLog directory
 // Creates organized logs in pattern: T3WebLog/YYYY-MM/MMDD/T3_CppMsg_HandWebViewMsg_MMDD_HHMM.txt
 // Logs are grouped into 4-hour buckets (00-03, 04-07, 08-11, 12-15, 16-19, 20-23)
@@ -1942,8 +1956,6 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				}
 				break;
 			}
-
-			// Double TODO
 			case BAC_PRG:
 			{
 				if (entry_index_end >= entry_index_start)
@@ -2970,17 +2982,26 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 				int temp_panel = g_bacnet_panel_info.at(i).panel_number;
 				if ((temp_panel == 0) || (temp_panel >= 255))
 					continue;
-				if (temp_panel != g_Device_Basic_Setting[temp_panel].reg.panel_number)
-					continue;
-				if (g_bacnet_panel_info.at(i).nseiral_number != g_Device_Basic_Setting[temp_panel].reg.n_serial_number)
-					continue;
+				//if (temp_panel != g_Device_Basic_Setting[temp_panel].reg.panel_number)
+				//	continue;
+				//if (g_bacnet_panel_info.at(i).nseiral_number != g_Device_Basic_Setting[temp_panel].reg.n_serial_number)
+				//	continue;
 
 				tempjson["data"][send_index]["panel_number"] = temp_panel;
-				tempjson["data"][send_index]["object_instance"] = g_Device_Basic_Setting[temp_panel].reg.object_instance;
-				tempjson["data"][send_index]["serial_number"] = g_Device_Basic_Setting[temp_panel].reg.n_serial_number;
+				tempjson["data"][send_index]["object_instance"] = g_bacnet_panel_info.at(i).object_instance;// g_Device_Basic_Setting[temp_panel].reg.object_instance;
+				tempjson["data"][send_index]["serial_number"] = g_bacnet_panel_info.at(i).nseiral_number;// g_Device_Basic_Setting[temp_panel].reg.n_serial_number;
 				tempjson["data"][send_index]["online_time"] = g_bacnet_panel_info.at(i).online_time; //Last response time .4bytes.   0  means 1970 1 1 0 
-				tempjson["data"][send_index]["pid"] = g_Device_Basic_Setting[temp_panel].reg.panel_type;
-				tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
+				tempjson["data"][send_index]["pid"] = g_bacnet_panel_info.at(i).npid;// g_Device_Basic_Setting[temp_panel].reg.panel_type;
+				//判断g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name 是否是空字符
+				const char* panelNamePtr = reinterpret_cast<const char*>(g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name);
+
+				if (IsNullOrEmptyOrWhitespace(panelNamePtr)) {
+					tempjson["data"][send_index]["panel_name"] = std::string("(Unknown)");
+				}
+				else {
+					tempjson["data"][send_index]["panel_name"] = panelNamePtr;
+				}
+				//tempjson["data"][send_index]["panel_name"] = (char*)g_Device_Basic_Setting[g_bacnet_panel_info.at(i).panel_number].reg.panel_name;
 				send_index++;
 			}
 		}
@@ -2989,8 +3010,10 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 		//m_webView->PostWebMessageAsJson(temp_cs);
 
+
+
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
+			WriteHandleWebViewMsgLog(_T("GET_PANELS_LIST"), outmsg, g_bacnet_panel_info.size());
 		
 		break;
 	}
@@ -3514,7 +3537,8 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			break; // Ignore the command if within 15 minutes
 		}
 		last_logging_time = current_time;
-		 
+
+
 		Json::Value tempjson;
 		tempjson["action"] = "LOGGING_DATA_RES";
 
@@ -3560,11 +3584,8 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 			// Add device main info to data array
 			tempjson["data"][device_count]["panel_id"] = npanel_id;
 			tempjson["data"][device_count]["panel_name"] = (char*)g_Device_Basic_Setting[npanel_id].reg.panel_name;
-
-			// Double TODO Fix: g_Device_Basic_Setting not initialized when panel_number=0, use g_bacnet_panel_info instead
 			//tempjson["data"][device_count]["panel_serial_number"] = g_Device_Basic_Setting[npanel_id].reg.n_serial_number;
 			tempjson["data"][device_count]["panel_serial_number"] = g_bacnet_panel_info.at(panel_idx).nseiral_number;
-
 			tempjson["data"][device_count]["panel_ipaddress"] = ipStr;
 			tempjson["data"][device_count]["input_logging_time"] = g_logging_time[npanel_id].input_log_time;
 			tempjson["data"][device_count]["output_logging_time"] = g_logging_time[npanel_id].output_log_time;
@@ -3642,7 +3663,7 @@ void HandleWebViewMsg(CString msg, CString& outmsg, int msg_source = 0)
 		outmsg = temp_cs;
 
 		// Final log message - write to T3WebLog\YYYY-MM\MMDD\ if logging enabled
-		WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count); 
+			WriteHandleWebViewMsgLog(_T("LOGGING_DATA"), outmsg, device_count);
 	}
 	break;
 	default:
