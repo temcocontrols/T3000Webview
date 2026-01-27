@@ -79,3 +79,46 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Model {
+    /// Clean device name: remove null bytes and garbage characters from C++ buffers
+    pub fn clean_show_label_name(&mut self) {
+        if let Some(name) = &self.show_label_name {
+            // Split on null byte and take first part
+            let cleaned = name.split('\0')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string();
+
+            self.show_label_name = if cleaned.is_empty() {
+                Some(format!("Device {}", self.serial_number))
+            } else {
+                Some(cleaned)
+            };
+        }
+    }
+
+    /// Clean product name: remove null bytes and garbage characters
+    pub fn clean_product_name(&mut self) {
+        if let Some(name) = &self.product_name {
+            let cleaned = name.split('\0')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string();
+
+            self.product_name = if cleaned.is_empty() {
+                None
+            } else {
+                Some(cleaned)
+            };
+        }
+    }
+
+    /// Clean all string fields that may contain C++ buffer garbage
+    pub fn clean_all_fields(&mut self) {
+        self.clean_show_label_name();
+        self.clean_product_name();
+    }
+}

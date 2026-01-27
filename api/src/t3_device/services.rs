@@ -135,7 +135,10 @@ impl T3DeviceService {
         let devices_list = devices::Entity::find().all(db).await?;
         let mut devices_with_stats = Vec::new();
 
-        for device in devices_list {
+        for mut device in devices_list {
+            // Clean C++ buffer garbage from device names
+            device.clean_all_fields();
+
             let serial_id = device.serial_number;
 
             // Count related points using the correct foreign key
@@ -175,7 +178,11 @@ impl T3DeviceService {
             .one(db)
             .await?;
 
-        Ok(device)
+        // Clean C++ buffer garbage from device names
+        Ok(device.map(|mut d| {
+            d.clean_all_fields();
+            d
+        }))
     }
 
     /// Get device with its points
@@ -293,7 +300,8 @@ impl T3DeviceService {
                 device.connection_type = Set(device_data.connection_type);
             }
 
-            let updated_device = device.update(db).await?;
+            let mut updated_device = device.update(db).await?;
+            updated_device.clean_all_fields();
             Ok(updated_device)
         } else {
             // Device doesn't exist - create new one
@@ -334,7 +342,8 @@ impl T3DeviceService {
                 connection_type: Set(device_data.connection_type),
             };
 
-            let device = new_device.insert(db).await?;
+            let mut device = new_device.insert(db).await?;
+            device.clean_all_fields();
             Ok(device)
         }
     }

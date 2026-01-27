@@ -361,6 +361,16 @@ pub struct DeviceInfo {
     pub connection_type: Option<String>, // from communication type
 }
 
+/// Clean C++ buffer garbage: remove null bytes and everything after
+fn clean_cpp_string(input: &str, fallback: &str) -> String {
+    let cleaned = input.split('\0').next().unwrap_or("").trim().to_string();
+    if cleaned.is_empty() {
+        fallback.to_string()
+    } else {
+        cleaned
+    }
+}
+
 /// Point data structure from T3000 LOGGING_DATA JSON
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PointData {
@@ -879,7 +889,7 @@ impl T3000MainService {
                         device_info.show_label_name = settings_value
                             .get("panel_name")
                             .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
+                            .map(|s| clean_cpp_string(s, "Unknown"));
 
                         // Try to get BACnet object instance for BACnet devices
                         if let Some(obj_instance) = settings_value
@@ -914,7 +924,7 @@ impl T3000MainService {
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
                 device_info.port = Some(device_info.panel_id);
-                device_info.show_label_name = Some(device_info.panel_name.clone());
+                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "Unknown"));
                 device_info.connection_type = Some("LOGGING_DATA".to_string()); // Indicate data source
             }
             Err(e) => {
@@ -928,7 +938,7 @@ impl T3000MainService {
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
                 device_info.port = Some(device_info.panel_id);
-                device_info.show_label_name = Some(device_info.panel_name.clone());
+                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "Unknown"));
                 device_info.connection_type = Some("FALLBACK".to_string()); // Indicate fallback data source
             }
         }
@@ -2364,7 +2374,7 @@ impl T3000MainService {
                                     .map(|arr| {
                                         arr.iter()
                                             .filter_map(|panel_json| {
-                                                Some(PanelInfo {
+                                Some(PanelInfo {
                                                     panel_number: panel_json
                                                         .get("panel_number")?
                                                         .as_i64()?
@@ -2373,10 +2383,12 @@ impl T3000MainService {
                                                         .get("serial_number")?
                                                         .as_i64()?
                                                         as i32,
-                                                    panel_name: panel_json
-                                                        .get("panel_name")?
-                                                        .as_str()?
-                                                        .to_string(),
+                                                    panel_name: clean_cpp_string(
+                                                        panel_json
+                                                            .get("panel_name")?
+                                                            .as_str()?,
+                                                        "Unknown"
+                                                    ),
                                                 })
                                             })
                                             .collect()
@@ -2671,11 +2683,13 @@ impl T3000MainService {
                         .get("panel_id")
                         .and_then(|v| v.as_i64())
                         .unwrap_or(0) as i32,
-                    panel_name: device_json
-                        .get("panel_name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown")
-                        .to_string(),
+                    panel_name: clean_cpp_string(
+                        device_json
+                            .get("panel_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown"),
+                        "Unknown"
+                    ),
                     panel_serial_number,
                     panel_ipaddress: device_json
                         .get("panel_ipaddress")
