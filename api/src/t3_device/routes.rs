@@ -542,13 +542,15 @@ async fn delete_all_devices(
     let db = get_t3_device_conn!(state);
 
     // Delete all devices using raw SQL for efficiency
-    match db.execute_unprepared("DELETE FROM DEVICES").await {
+    let query = Statement::from_string(DatabaseBackend::Sqlite, "DELETE FROM DEVICES".to_string());
+
+    match db.execute(query).await {
         Ok(result) => Ok(Json(json!({
             "message": "All devices deleted successfully",
             "rows_affected": result.rows_affected()
         }))),
         Err(err) => {
-            eprintln!("❌ [delete_all_devices] Error: {:?}", err);
+            eprintln!("[delete_all_devices] Error: {:?}", err);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
