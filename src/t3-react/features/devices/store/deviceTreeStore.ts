@@ -276,51 +276,75 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           if (response && response.data && response.data.data) {
             const panels = response.data.data;
             console.log('[loadDevicesWithSync] FFI returned panels:', panels);
+            console.log(`[loadDevicesWithSync] Total panels: ${panels.length}`);
+
+            // Log detailed panel information for debugging
+            panels.forEach((panel: any, idx: number) => {
+              console.log(`[loadDevicesWithSync] Panel ${idx + 1}:`, {
+                panel_name: panel.panel_name,
+                panel_number: panel.panel_number,
+                serial_number: panel.serial_number,
+                pid: panel.pid,
+                object_instance: panel.object_instance,
+                online_time: panel.online_time
+              });
+            });
 
             // Save to database (best effort)
             let savedCount = 0;
+            let failedCount = 0;
             try {
               const db = new T3Database(`${API_BASE_URL}/api`);
 
               for (const panel of panels) {
+                let serialNumber: number | undefined;
+                let deviceData: any = undefined;
                 try {
-                  const serialNumber = panel.serial_number || panel.serialNumber;
+                  serialNumber = panel.serial_number || panel.serialNumber;
 
-                  // Clean panel name using utility function
-                  const panelName = cleanDeviceName(
-                    panel.panel_name || panel.panelName,
-                    `Panel ${panel.panel_number}`
-                  );
+                  // Clean panel name - keep "(Unknown)" as-is, don't generate fake names
+                  const rawPanelName = panel.panel_name || panel.panelName;
+                  const panelName = cleanDeviceName(rawPanelName, '(Unknown)');
 
-                  const deviceData = {
+                  deviceData = {
                     SerialNumber: serialNumber,
                     Product_Name: panelName,
-                    Product_ID: panel.pid || null,
-                    Panel_Number: panel.panel_number || null,
+                    Product_ID: panel.pid || panel.Product_ID || null,
+                    Panel_Number: panel.panel_number || panel.Panel_Number || null,
                     MainBuilding_Name: 'Default_Building',
                     Building_Name: 'Local View',
                     show_label_name: panelName,
+                    // Don't set description - let backend handle it or leave null
                   };
 
-                  // Only add BACnet_MSTP_MAC_ID if available (from object_instance)
-                  if (panel.object_instance) {
+                  // Add BACnet_MSTP_MAC_ID if available (from object_instance)
+                  if (panel.object_instance !== undefined && panel.object_instance !== null) {
                     deviceData.BACnet_MSTP_MAC_ID = panel.object_instance;
+                    console.log(`[loadDevicesWithSync] Panel ${serialNumber} - Setting BACnet_MSTP_MAC_ID = ${panel.object_instance}`);
                   }
 
                   console.log(`[loadDevicesWithSync] Creating device ${serialNumber}:`, JSON.stringify(deviceData, null, 2));
                   await db.devices.create(deviceData);
-                  console.log(`[loadDevicesWithSync] ✅ Device ${serialNumber} saved successfully`);
+                  console.log(`[loadDevicesWithSync] ✅ Device ${serialNumber} (${panelName}) saved successfully`);
                   savedCount++;
                 } catch (error: any) {
-                  console.error(`[loadDevicesWithSync] Failed to save device ${serialNumber}:`, error);
-                  console.error('[loadDevicesWithSync] Device data was:', JSON.stringify(deviceData, null, 2));
+                  failedCount++;
+                  console.error(`[loadDevicesWithSync] ❌ Failed to save device ${serialNumber ?? 'UNKNOWN'}:`, error);
+                  console.error('[loadDevicesWithSync] Device data was:', deviceData ?? 'NOT_SET');
+                  console.error('[loadDevicesWithSync] Error details:', error?.message || error);
                 }
               }
             } catch (dbError) {
               console.warn('[loadDevicesWithSync] Database operations failed:', dbError);
             }
 
-            setMessage(`Found ${panels.length} device(s)`, 'success');
+            // Show detailed statistics
+            console.log(`[loadDevicesWithSync] Save statistics: ${savedCount} saved, ${failedCount} failed out of ${panels.length} total`);
+            if (savedCount > 0) {
+              setMessage(`Found ${panels.length} device(s), saved ${savedCount} successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, savedCount === panels.length ? 'success' : 'warning');
+            } else {
+              setMessage(`Found ${panels.length} device(s) but failed to save any to database`, 'error');
+            }
 
             // Step 3: Reload from DB to get updated list
             await get().fetchDevices();

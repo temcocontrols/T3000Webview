@@ -334,6 +334,9 @@ struct PanelInfo {
     panel_number: i32,
     serial_number: i32,
     panel_name: String,
+    pid: Option<i32>,              // Product ID from GET_PANELS_LIST
+    object_instance: Option<i32>,  // BACnet object instance (used for MSTP MAC ID)
+    online_time: Option<i64>,      // Last online timestamp
 }
 
 /// Device information structure from T3000 LOGGING_DATA JSON
@@ -889,7 +892,7 @@ impl T3000MainService {
                         device_info.show_label_name = settings_value
                             .get("panel_name")
                             .and_then(|v| v.as_str())
-                            .map(|s| clean_cpp_string(s, "Unknown"));
+                            .map(|s| clean_cpp_string(s, "(Unknown)")); // Keep "(Unknown)" as-is from C++
 
                         // Try to get BACnet object instance for BACnet devices
                         if let Some(obj_instance) = settings_value
@@ -924,7 +927,7 @@ impl T3000MainService {
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
                 device_info.port = Some(device_info.panel_id);
-                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "Unknown"));
+                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "(Unknown)")); // Keep "(Unknown)" as-is from C++
                 device_info.connection_type = Some("LOGGING_DATA".to_string()); // Indicate data source
             }
             Err(e) => {
@@ -938,7 +941,7 @@ impl T3000MainService {
                 // Fallback: populate what we can from existing LOGGING_DATA
                 device_info.ip_address = Some(device_info.panel_ipaddress.clone());
                 device_info.port = Some(device_info.panel_id);
-                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "Unknown"));
+                device_info.show_label_name = Some(clean_cpp_string(&device_info.panel_name, "(Unknown)")); // Keep "(Unknown)" as-is from C++
                 device_info.connection_type = Some("FALLBACK".to_string()); // Indicate fallback data source
             }
         }
@@ -1654,13 +1657,10 @@ impl T3000MainService {
             serial_number: Set(serial_number),
             panel_id: Set(Some(device_info.panel_id)),
             building_name: Set(Some(device_info.panel_name.clone())),
-            product_name: Set(Some("T3000 Panel".to_string())),
+            product_name: Set(Some(device_info.panel_name.clone())), // Use actual panel name from C++
             address: Set(Some(device_info.panel_ipaddress.clone())),
             status: Set(Some("Online".to_string())),
-            description: Set(Some(format!(
-                "Panel {} - {}",
-                device_info.panel_id, device_info.panel_name
-            ))),
+            description: Set(None), // Don't generate fake descriptions - keep what C++ provides
 
             // Extended network configuration fields from Device_Basic_Setting
             ip_address: Set(device_info.ip_address.clone()),
@@ -2374,7 +2374,7 @@ impl T3000MainService {
                                     .map(|arr| {
                                         arr.iter()
                                             .filter_map(|panel_json| {
-                                Some(PanelInfo {
+                                                Some(PanelInfo {
                                                     panel_number: panel_json
                                                         .get("panel_number")?
                                                         .as_i64()?
@@ -2387,8 +2387,19 @@ impl T3000MainService {
                                                         panel_json
                                                             .get("panel_name")?
                                                             .as_str()?,
-                                                        "Unknown"
+                                                        "(Unknown)" // Keep "(Unknown)" as-is from C++
                                                     ),
+                                                    pid: panel_json
+                                                        .get("pid")
+                                                        .and_then(|v| v.as_i64())
+                                                        .map(|v| v as i32),
+                                                    object_instance: panel_json
+                                                        .get("object_instance")
+                                                        .and_then(|v| v.as_i64())
+                                                        .map(|v| v as i32),
+                                                    online_time: panel_json
+                                                        .get("online_time")
+                                                        .and_then(|v| v.as_i64()),
                                                 })
                                             })
                                             .collect()
