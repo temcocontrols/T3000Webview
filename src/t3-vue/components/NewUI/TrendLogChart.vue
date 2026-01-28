@@ -1162,11 +1162,10 @@
   import { scheduleItemData } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant'
   import { T3000_Data, devVersion } from '@/lib/vue/T3000/Hvac/Data/T3Data'
   import { ranges as rangeDefinitions, T3_Types } from '@/lib/vue/T3000/Hvac/Data/Constant/T3Range'
-  import WebViewClient from '@/lib/vue/T3000/Hvac/Opt/Webview2/WebViewClient'
-  import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
   import { t3000DataManager, DataReadiness, type DataValidationResult } from '@/lib/vue/T3000/Hvac/Data/Manager/T3000DataManager'
-  import { useTrendlogDataAPI, type RealtimeDataRequest } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
+  import { useTrendlogDataAPI, type RealtimeDataRequest, type TrendlogHistoryRequest } from '@/lib/vue/T3000/Hvac/Opt/FFI/TrendlogDataAPI'
   import { databaseService, DatabaseUtils, DatabaseConfigAPI, FfiSyncConfigAPI, RediscoverConfigAPI, type DatabaseConfig } from '@/lib/vue/T3000/Hvac/Opt/FFI/DatabaseApi'
+  import { useT3000FfiApi } from '@/lib/vue/T3000/Hvac/Opt/FFI/T3000FfiApi'
 
   // BAC Units Constants - Digital/Analog Type Indicators
   const BAC_UNITS_DIGITAL = 0
@@ -1765,6 +1764,7 @@
 
   // API integration for timebase data fetching
   const trendlogAPI = useTrendlogDataAPI()
+  const ffiApi = useT3000FfiApi()
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
@@ -2447,9 +2447,13 @@
           return
         }
 
-        LogUtil.Error('Error loading data for new timebase:', error)
+        // Don't treat initialization delays as connection errors
+        LogUtil.Info('ℹ️ Timebase change skipped (component still initializing)', {
+          error: error?.message,
+          timeBase: newTimeBase
+        })
         clearLoadingTimeout() // Clear timeout on error
-        hasConnectionError.value = true
+        // Don't set hasConnectionError - component is just initializing
       } finally {
         clearLoadingTimeout() // Always clear timeout when done
         stopLoading()
@@ -2963,9 +2967,14 @@
 
   // NEW: Scenario detection for conditional display - based on tracked/selected items
   const showAnalogArea = computed(() => {
-    // Always show analog area if there's a connection error (to show error message)
-    // or if there are analog series available
-    return hasConnectionError.value || analogSeriesList.value.length > 0;
+    // Show analog area if:
+    // 1. There are analog series available, OR
+    // 2. There's a connection error AND no data at all (truly failed state)
+    const hasAnalogSeries = analogSeriesList.value.length > 0
+    const hasAnyData = dataSeries.value.some(s => s.data && s.data.length > 0)
+    const shouldShowError = hasConnectionError.value && !hasAnyData
+
+    return hasAnalogSeries || shouldShowError
   })
   const showDigitalArea = computed(() => digitalSeriesList.value.length > 0)
   const showResizableDivider = computed(() => analogSeriesList.value.length > 0 && digitalSeriesList.value.length > 0)
@@ -3799,21 +3808,12 @@
 
 
   /**
-   * Initialize WebSocket and WebView clients for data communication
+   * Initialize FFI API client for data communication
+   * Now using HTTP-based FFI API for all operations instead of WebSocket
    */
   const initializeDataClients = () => {
-    // Check if we're running in built-in browser (WebView) or external browser (WebSocket)
-    const isBuiltInBrowser = window.location.protocol === 'ms-appx-web:' ||
-      (window as any).chrome?.webview !== undefined ||
-      (window as any).external?.sendMessage !== undefined
-
-    if (isBuiltInBrowser) {
-      // Use WebView client for built-in browser
-      return new WebViewClient()
-    } else {
-      // Use WebSocket client for external browser
-      return Hvac.WsClient
-    }
+    // Return FFI API instance for all data operations
+    return ffiApi
   }
 
   /**
@@ -3833,6 +3833,71 @@
     }
 
     return false
+  }
+
+  /**
+   * Process GET_PANEL_DATA (Action 0) response to extract point metadata and values
+   * Matches points from monitor config with current values from panel data
+   */
+  const processPanelDataResponse = (response: any, monitorConfigData: any): DataPoint[][] => {
+    const results: DataPoint[][] = []
+
+    if (!response?.data) {
+      LogUtil.Warn('⚠️ processPanelDataResponse: No data in response')
+      return results
+    }
+
+    LogUtil.Info('📊 Processing GET_PANEL_DATA response (Action 0)', {
+      hasInputs: !!response.data.inputs,
+      hasOutputs: !!response.data.outputs,
+      hasVariables: !!response.data.variables,
+      inputItemsCount: monitorConfigData.inputItems?.length || 0
+    })
+
+    // Combine all point types into single array (Action 0 returns separate arrays)
+    const allPoints = [
+      ...(response.data.inputs || []),
+      ...(response.data.outputs || []),
+      ...(response.data.variables || [])
+    ]
+
+    // Match each monitor input item with corresponding point from panel data
+    monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
+      const rangeValue = monitorConfigData.ranges[index] || 0
+
+      // Find matching point by panel, point_number, and point_type
+      const matchingPoint = allPoints.find((point: any) => {
+        const pointPanel = point.panel || point.pid
+        const pointIndex = point.index
+        // point_type: 1=INPUT, 2=OUTPUT, 3=VARIABLE
+        const expectedIndex = inputItem.point_number
+
+        return pointPanel === inputItem.panel && pointIndex === expectedIndex
+      })
+
+      if (matchingPoint) {
+        const processedValue = processDeviceValue(matchingPoint, rangeValue)
+        results.push([{
+          timestamp: Date.now(),
+          value: processedValue.value
+        }])
+
+        LogUtil.Info(`✅ Matched point ${index}:`, {
+          inputItem,
+          matchingPoint: { index: matchingPoint.index, value: matchingPoint.value, label: matchingPoint.label }
+        })
+      } else {
+        // Default data point for unmatched items
+        results.push([{
+          timestamp: Date.now(),
+          value: 0
+        }])
+
+        LogUtil.Warn(`⚠️ No matching point for item ${index}`, { inputItem })
+      }
+    })
+
+    return results
   }
 
   /**
@@ -3899,32 +3964,37 @@
       // Note: Database storage is handled by T3000_Data watcher instead of custom handlers
       // setupGetEntriesResponseHandlers(dataClient) // Removed - doesn't work with bound methods
 
-      // Get current device for panelId - use the first available panel as fallback
-      const panelsList = T3000_Data.value.panelsList || []
-      const currentPanelId = panelsList.length > 0 ? panelsList[0].panel_number : 1
+      // 🆕 FFI API: Get panel ID from URL or monitor config
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
+      const panelId = urlPanelId || monitorConfigData.pid || 1
 
-      // Get panels data for device mapping
-      const panelsData = T3000_Data.value.panelsData || []
-
-      // Instead of finding a single panel, return all panelData for the currentPanelId
-      const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
-
-      if (!currentPanelData) {
-        return []
-      }
-
-      // Use currentPanelData directly as devicesArray
-      let devicesArray = currentPanelData
-
-      if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
-        return []
-      }
-
-      // Fetch data for all input items using BATCH REQUEST (optimized approach)
-      const allDataResults = await fetchAllItemsDataBatch(dataClient, monitorConfigData, {
-        panelId: currentPanelId,
-        panelData: devicesArray
+      LogUtil.Info('📡 FFI API: Using GET_PANEL_DATA (Action 0) for initial data fetch', {
+        panelId,
+        urlPanelId,
+        monitorConfigPid: monitorConfigData.pid,
+        inputItemsCount: monitorConfigData.inputItems?.length || 0
       })
+
+      // 🆕 FFI API: Call Action 0 (GET_PANEL_DATA) to get initial point metadata and values
+      const panelDataResponse = await ffiApi.ffiGetPanelData(panelId)
+
+      if (!panelDataResponse || !panelDataResponse.data) {
+        LogUtil.Error('❌ FFI API: GET_PANEL_DATA returned no data', { panelId })
+        if (!hasExistingData) stopLoading()
+        return []
+      }
+
+      LogUtil.Info('✅ FFI API: GET_PANEL_DATA response received', {
+        hasInputs: !!panelDataResponse.data.inputs,
+        hasOutputs: !!panelDataResponse.data.outputs,
+        hasVariables: !!panelDataResponse.data.variables,
+        inputsCount: panelDataResponse.data.inputs?.length || 0,
+        outputsCount: panelDataResponse.data.outputs?.length || 0,
+        variablesCount: panelDataResponse.data.variables?.length || 0
+      })
+
+      // Process response and match with monitor config to extract point values
+      const allDataResults = processPanelDataResponse(panelDataResponse, monitorConfigData)
 
       return allDataResults
 
@@ -4176,16 +4246,16 @@
         return
       }
 
-      // Send GET_ENTITIES request
-      if (dataClient.GetEntries) {
-        LogUtil.Info('📡 sendGetEntitiesForDataSeries: Sending GET_ENTITIES request (dataseries fallback)', {
-          panelId: currentPanelId,
-          itemCount: batchRequestData.length,
+      // Send LOGGING_DATA request
+      if (dataClient.GetLoggingData) {
+        LogUtil.Info('📡 sendGetEntitiesForDataSeries: Sending LOGGING_DATA request (dataseries fallback)', {
+          serialNumber: currentSN,
+          seriesCount: dataSeries.value.length,
           timestamp: new Date().toISOString()
         })
-        dataClient.GetEntries(currentPanelId, null, batchRequestData)
+        dataClient.GetLoggingData(currentSN)
       } else {
-        LogUtil.Error('�?sendGetEntitiesForDataSeries: GetEntries method not available')
+        LogUtil.Error('❌ sendGetEntitiesForDataSeries: GetLoggingData method not available')
       }
     } catch (error) {
       LogUtil.Error('�?sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
@@ -4193,110 +4263,79 @@
   }
 
   /**
-   * Send batch GET_ENTRIES request for periodic real-time updates
-   * Used by interval timer to efficiently update all monitored items at once
+   * 🆕 FFI API: Get logging data directly using synchronous FFI call
+   * Uses action 15 (LOGGING_DATA) - gets all inputs, outputs, variables in one call
    */
   const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
-    LogUtil.Info('🚀 sendPeriodicBatchRequest CALLED', {
+    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=15)', {
       hasMonitorConfig: !!monitorConfigData,
       inputItemsCount: monitorConfigData?.inputItems?.length || 0,
       timestamp: new Date().toISOString()
     })
 
     try {
-      // 🆕 FIX: Use query parameters as PRIMARY source for panelId (most reliable)
-      let currentPanelId: number | null = null
+      // Get serial number and panel ID for LOGGING_DATA request
+      const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+      const panelsList = T3000_Data.value.panelsList || []
+      const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
+      const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
 
-      // FIRST PRIORITY: Query parameters from URL (most reliable - user specified)
-      currentPanelId = getPanelIdFromQuery()
-      if (currentPanelId !== null) {
-        LogUtil.Debug('🔧 sendPeriodicBatchRequest: Using panelId from query parameters (RELIABLE)', {
-          queryPanelId: currentPanelId,
-          source: 'route.query.panel_id'
-        })
-      } else {
-        // SECOND PRIORITY: Monitor config pid (if available)
-        if (monitorConfigData.pid !== undefined && monitorConfigData.pid !== null) {
-          currentPanelId = monitorConfigData.pid
-          LogUtil.Debug('🔧 sendPeriodicBatchRequest: Using panelId from monitor config', {
-            monitorConfigPid: monitorConfigData.pid,
-            isTemporary: monitorConfigData.isTemporary || false
-          })
-        } else {
-          // CRITICAL ERROR: No panelId available from reliable sources
-          LogUtil.Error('�?sendPeriodicBatchRequest: No panelId available from query params or monitor config', {
-            queryPanelId: route.query.panel_id,
-            monitorConfigPid: monitorConfigData.pid,
-            hasMonitorConfig: !!monitorConfigData
-          })
-          return // Don't fallback to unreliable sources
-        }
-      }
-
-      // Get panels data for device mapping using the determined panelId
-      const panelsData = T3000_Data.value.panelsData || []
-      const currentPanelData = panelsData.filter(panel => String(panel.pid) === String(currentPanelId))
-
-      LogUtil.Debug('🔧 sendPeriodicBatchRequest: PanelId determination result', {
-        finalPanelId: currentPanelId,
-        panelsDataCount: panelsData.length,
-        matchingPanelDataCount: currentPanelData.length,
-        monitorConfigHasPid: monitorConfigData.pid !== undefined
-      })
-
-      if (!currentPanelData || currentPanelData.length === 0) {
-        LogUtil.Debug('GET_ENTRIES Batch Request -> No panel data available')
+      if (!currentSN) {
+        LogUtil.Error('❌ No serial number available for LOGGING_DATA')
         return
       }
 
-      // Initialize data client
-      const dataClient = initializeDataClients()
-      if (!dataClient) {
-        LogUtil.Debug('GET_ENTRIES Batch Request -> No data client available')
-        return
-      }
-
-      // Build batch request for ALL monitored items
-      const batchRequestData: any[] = []
-
-      monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
-        const matchingDevice = findPanelDataDevice(inputItem, currentPanelData)
-
-        if (matchingDevice) {
-          batchRequestData.push({
-            panelId: currentPanelId,
-            index: parseInt(matchingDevice.index) || 0,
-            type: TransferTdlPointType(inputItem.point_type) // Adjusted for TrendLog
-          })
-        }
-      })
-
-      LogUtil.Debug('GET_ENTRIES Batch Request -> Sending periodic batch:', {
-        itemCount: batchRequestData.length,
+      // 🆕 Use FFI API with action 15 (LOGGING_DATA) - single synchronous call
+      // C++ expects both panelId and serialNumber in the JSON payload
+      LogUtil.Info('📡 FFI API ffiGetLoggingData (action=15, single call)', {
         panelId: currentPanelId,
-        batchSample: batchRequestData.slice(0, 3),
-        timestamp: new Date().toISOString(),
-        monitorConfigData: monitorConfigData
+        serialNumber: currentSN
       })
 
-      if (batchRequestData.length === 0) {
-        LogUtil.Debug('GET_ENTRIES Batch Request -> No valid items for batch request')
-        return
+      const response = await ffiApi.ffiGetLoggingData(currentPanelId, currentSN)
+
+      if (response && response.data) {
+        // LOGGING_DATA returns: response.data = [{ panel_id, panel_name, device_data: [...] }]
+        // Extract device_data from all devices
+        let allPanelItems: any[] = []
+
+        if (Array.isArray(response.data)) {
+          response.data.forEach((device: any) => {
+            if (device.device_data && Array.isArray(device.device_data)) {
+              allPanelItems = allPanelItems.concat(device.device_data)
+            }
+          })
+        }
+
+        LogUtil.Info('📊 LOGGING_DATA extracted items', {
+          deviceCount: response.data.length,
+          totalItems: allPanelItems.length
+        })
+
+        const validDataItems = allPanelItems.filter(item =>
+          item &&
+          typeof item === 'object' &&
+          item.hasOwnProperty('value') &&
+          item.value !== null &&
+          item.value !== undefined &&
+          item.id
+        )
+
+        if (validDataItems.length > 0) {
+          updateChartWithNewData(validDataItems)
+          await storeRealtimeDataToDatabase(validDataItems)
+        }
+
+        lastSyncTime.value = new Date().toLocaleTimeString()
+        if (hasConnectionError.value) {
+          hasConnectionError.value = false
+        }
       }
 
-      // Send single batch GET_ENTRIES request for ALL items
-      if (dataClient.GetEntries) {
-        LogUtil.Info('📡 Sending GET_ENTRIES request', {
-          panelId: currentPanelId,
-          itemCount: batchRequestData.length,
-          timestamp: new Date().toISOString()
-        })
-        dataClient.GetEntries(null, null, batchRequestData)
-      } else {
-        LogUtil.Error('GET_ENTRIES Batch Request -> ERROR: GetEntries method not available')
-      }
     } catch (error) {
-      LogUtil.Error('GET_ENTRIES Batch Request -> ERROR in sendBatchGetEntriesRequest:', error)
+      LogUtil.Error('❌ FFI API (action=15) failed:', error)
+      hasConnectionError.value = true
     }
   }
 
@@ -4418,8 +4457,13 @@
 
       // 🆕 NOW fetch real-time data in background to populate the series
       // This happens AFTER series structure is created, so it won't block historical load
-      LogUtil.Info('📡 Fetching real-time data in background (non-blocking)')
+      LogUtil.Info('📡 Fetching real-time data in background (non-blocking) - THIS WILL CALL ACTION 0')
       fetchRealTimeMonitorData().then(realTimeData => {
+        LogUtil.Info('✅ fetchRealTimeMonitorData completed', {
+          hasData: !!realTimeData,
+          dataLength: realTimeData?.length || 0,
+          dataItemsCount: realTimeData ? realTimeData.reduce((sum, arr) => sum + arr.length, 0) : 0
+        })
         if (realTimeData && realTimeData.length > 0) {
           // Merge real-time data into existing series
           realTimeData.forEach((itemData, index) => {
@@ -4430,9 +4474,11 @@
             }
           })
           updateCharts()
+        } else {
+          LogUtil.Warn('⚠️ fetchRealTimeMonitorData returned no data')
         }
       }).catch(error => {
-        LogUtil.Warn('Real-time data fetch failed (will retry on next interval)', error)
+        LogUtil.Error('❌ fetchRealTimeMonitorData failed (will retry on next interval)', error)
       })
 
     } catch (error) {
@@ -4639,6 +4685,34 @@
       case 16: return 'WR_TIME'  // BAC_WR_TIME = 16
       case 17: return 'AR_Y'     // BAC_AR_Y = 17
       default: return 'UNKNOWN'
+    }
+  }
+
+  /**
+   * Map point type string back to number (reverse of mapPointTypeFromNumber)
+   * Used when loading data from database that stores point types as strings
+   */
+  const mapPointTypeToNumber = (pointTypeStr: string): number => {
+    switch (pointTypeStr?.toUpperCase()) {
+      case 'OUTPUT': return 1    // BAC_OUT = 0, T3000 = 1
+      case 'INPUT': return 2     // BAC_IN = 1, T3000 = 2
+      case 'VARIABLE': return 3  // BAC_VAR = 2, T3000 = 3
+      case 'PID': return 4       // BAC_PID = 3, T3000 = 4
+      case 'SCHEDULE': return 5  // BAC_SCH = 4, T3000 = 5
+      case 'HOLIDAY': return 6   // BAC_HOL = 5, T3000 = 6
+      case 'PROGRAM': return 7   // BAC_PRG = 6, T3000 = 7
+      case 'TABLE': return 8     // BAC_TBL = 7, T3000 = 8
+      case 'DMON': return 9      // BAC_DMON = 8, T3000 = 9
+      case 'AMON': return 10     // BAC_AMON = 9, T3000 = 10
+      case 'GROUP': return 11    // BAC_GRP = 10, T3000 = 11
+      case 'ARRAY': return 12    // BAC_AY = 11, T3000 = 12
+      case 'ALARMM': return 13   // BAC_ALARMM = 12, T3000 = 13
+      case 'UNIT': return 14     // BAC_UNIT = 13, T3000 = 14
+      case 'USER_NAME': return 15 // BAC_USER_NAME = 14, T3000 = 15
+      case 'ALARMS': return 16   // BAC_ALARMS = 15, T3000 = 16
+      case 'WR_TIME': return 17  // BAC_WR_TIME = 16, T3000 = 17
+      case 'AR_Y': return 18     // BAC_AR_Y = 17, T3000 = 18
+      default: return 2          // Default to INPUT if unknown
     }
   }
 
@@ -4995,7 +5069,7 @@
           limit: 10000 // Reasonable limit for backfill
         }
 
-        const response = await DatabaseQueryAPI.queryTrendlogData(queryOptions)
+        const response = await trendlogAPI.getTrendlogHistory(queryOptions)
 
         if (response && response.data && response.data.length > 0) {
           // Merge new data into existing series
@@ -5083,12 +5157,15 @@
         })
         shouldUseDataSeriesForPoints = true
 
-        // If no dataseries either, we can't determine what to load
+        // If no dataseries either, we can't determine what to load - just return empty gracefully
         if (dataSeries.value.length === 0) {
-          const errorMsg = 'No monitor configuration or data series available - cannot load historical data'
-          LogUtil.Error('❌ loadHistoricalDataFromDatabase: No monitor config AND no dataseries available')
-          hasConnectionError.value = true
-          throw new Error(errorMsg)
+          LogUtil.Info('ℹ️ loadHistoricalDataFromDatabase: No monitor config or dataseries yet - skipping load (component still initializing)', {
+            hasMonitorConfig: !!monitorConfigData,
+            dataSeriesLength: dataSeries.value.length
+          })
+          // Don't set connection error - this is normal during initialization
+          // Just return empty structure
+          return
         }
       }
 
@@ -5441,7 +5518,7 @@
           panelId: firstItem.panel_id,
           name: seriesName,
           description: description || pointId,
-          color: chartColors[colorIndex % chartColors.length],
+          color: SERIES_COLORS[colorIndex % SERIES_COLORS.length],
           data: [],
           visible: true,
           pointType: mapPointTypeToNumber(pointType),
@@ -8317,6 +8394,14 @@
     }
 
     if (dataSeries.value[index].isEmpty) return
+
+    // Clear connection error when user interacts with series that has data
+    // This prevents error state from showing when data is already loaded
+    if (hasConnectionError.value && dataSeries.value[index].data?.length > 0) {
+      hasConnectionError.value = false
+      LogUtil.Info('Cleared connection error - series has valid data')
+    }
+
     dataSeries.value[index].visible = !dataSeries.value[index].visible
     updateCharts()
     LogUtil.Debug(`Toggled visibility for series ${dataSeries.value[index].name} to ${dataSeries.value[index].visible}`)
@@ -10248,6 +10333,129 @@
         }
       } catch (error) {
         LogUtil.Warn('⚠️ TrendLogChart: Partition check failed (continuing with normal initialization)', error)
+      }
+
+      // 🆕 STEP 0: Call Action 0 FIRST to get fresh monitor configuration from device
+      // This provides the interval settings (hour_interval_time, minute_interval_time, second_interval_time)
+      // that determine how often we should poll with Action 15
+      console.log('═══════════════════════════════════════════════════════════════')
+      console.log('🔄 STEP 0: Calling Action 0 to get fresh monitor configuration')
+      console.log('═══════════════════════════════════════════════════════════════')
+
+      // Log full query string
+      const fullQueryString = window.location.href
+      const queryParams = Object.fromEntries(new URLSearchParams(window.location.hash.split('?')[1] || ''))
+      console.log('📋 Full URL Query String:', fullQueryString)
+      console.log('📋 Parsed Query Parameters:', queryParams)
+      console.log('  - sn (serial_number):', route.query.sn)
+      console.log('  - panel_id:', route.query.panel_id)
+      console.log('  - trendlog_id:', route.query.trendlog_id)
+      console.log('  - all_data:', route.query.all_data ? JSON.parse(decodeURIComponent(route.query.all_data as string)) : null)
+      console.log('─────────────────────────────────────────────────────────────')
+
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
+      const urlTrendlogId = route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
+
+      if (urlPanelId) {
+        try {
+          const action0Response = await ffiApi.ffiGetPanelData(urlPanelId)
+
+          if (action0Response && action0Response.data) {
+            console.log('✅ Action 0 Response Received')
+            console.log('  - Total items:', action0Response.data?.length)
+            console.log('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId ? urlTrendlogId - 1 : 'N/A', ')')
+            console.log('─────────────────────────────────────────────────────────────')
+
+            // Find the specific monitor configuration using trendlog_id from URL
+            let matchingMonitor = null
+            if (urlTrendlogId && action0Response.data) {
+              // Search through the data array for matching monitor
+              for (const item of action0Response.data) {
+                if (item.type === 'MON' && item.index === (urlTrendlogId - 1)) {
+                  matchingMonitor = item
+                  break
+                }
+              }
+            }
+
+            if (matchingMonitor) {
+              console.log('✅ MATCHED TRENDLOG INFO FROM ACTION 0:')
+              console.log('  - FULL MONITOR DATA:', JSON.stringify(matchingMonitor, null, 2))
+              console.log('─────────────────────────────────────────────────────────────')
+              console.log('  - id:', matchingMonitor.id)
+              console.log('  - label:', matchingMonitor.label)
+              console.log('  - index:', matchingMonitor.index)
+              console.log('  - pid:', matchingMonitor.pid)
+              console.log('  - type:', matchingMonitor.type)
+              console.log('  - status:', matchingMonitor.status)
+              console.log('  - num_inputs:', matchingMonitor.num_inputs)
+              console.log('  - an_inputs:', matchingMonitor.an_inputs)
+              console.log('  - INTERVAL SETTINGS:')
+              console.log('    * hour_interval_time:', matchingMonitor.hour_interval_time)
+              console.log('    * minute_interval_time:', matchingMonitor.minute_interval_time)
+              console.log('    * second_interval_time:', matchingMonitor.second_interval_time)
+              console.log('─────────────────────────────────────────────────────────────')
+
+              // Store interval configuration for later use
+              // This will be used by calculateT3000Interval() and updateInterval computed property
+              if (monitorConfig.value) {
+                monitorConfig.value.hour_interval_time = matchingMonitor.hour_interval_time || 0
+                monitorConfig.value.minute_interval_time = matchingMonitor.minute_interval_time || 0
+                monitorConfig.value.second_interval_time = matchingMonitor.second_interval_time || 0
+
+                const calculatedIntervalMs = calculateT3000Interval(monitorConfig.value)
+                const calculatedIntervalSec = calculatedIntervalMs / 1000
+                const rawTotalSeconds = (matchingMonitor.hour_interval_time * 3600 +
+                                        matchingMonitor.minute_interval_time * 60 +
+                                        matchingMonitor.second_interval_time)
+
+                console.log('📊 CALCULATED POLLING INTERVAL:')
+                console.log('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
+                console.log('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
+                           matchingMonitor.minute_interval_time + ' * 60 + ' +
+                           matchingMonitor.second_interval_time + ') * 1000')
+                console.log('  - Raw total seconds:', rawTotalSeconds)
+                console.log('  - Raw total milliseconds:', rawTotalSeconds * 1000)
+                console.log('  - Minimum enforced: 15 seconds (15000 ms)')
+                console.log('  - Final interval (ms):', calculatedIntervalMs)
+                console.log('  - Final interval (seconds):', calculatedIntervalSec)
+                if (rawTotalSeconds * 1000 < 15000) {
+                  console.log('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (15s), using 15s')
+                }
+                console.log('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
+                console.log('═══════════════════════════════════════════════════════════════')
+              }
+            } else {
+              console.warn('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
+              console.log('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId ? urlTrendlogId - 1 : 'N/A', ')')
+              console.log('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
+              console.log('  - Available monitors (FULL DATA):')
+              action0Response.data?.filter((d: any) => d.type === 'MON').forEach((mon: any) => {
+                console.log('    Monitor:', JSON.stringify({
+                  id: mon.id,
+                  index: mon.index,
+                  label: mon.label,
+                  type: mon.type,
+                  hour_interval_time: mon.hour_interval_time,
+                  minute_interval_time: mon.minute_interval_time,
+                  second_interval_time: mon.second_interval_time
+                }, null, 2))
+              })
+              console.log('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+              console.log('═══════════════════════════════════════════════════════════════')
+            }
+          }
+        } catch (error) {
+          console.error('❌ ACTION 0 CALL FAILED')
+          console.error('  - Error:', error)
+          console.log('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+          console.log('═══════════════════════════════════════════════════════════════')
+        }
+      } else {
+        console.warn('⚠️ NO PANEL_ID IN URL')
+        console.log('  - Cannot call Action 0 without panel_id')
+        console.log('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+        console.log('═══════════════════════════════════════════════════════════════')
       }
 
       // Initialize monitor configuration

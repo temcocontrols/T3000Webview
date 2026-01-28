@@ -617,6 +617,25 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
   }
 
+  public GetLoggingData(serialNumber?: number) {
+    // action: 15, // LOGGING_DATA
+    console.log('= ws: GetLoggingData / serialNumber:', serialNumber);
+
+    const currentDevice = this.deviceOpt?.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
+    const panelId = currentDevice.deviceId;
+    const graphicId = currentDevice.graphic;
+    const sn = serialNumber || currentDevice.serialNumber;
+
+    this.FormatMessageData(MessageType.LOGGING_DATA, panelId, graphicId, null);
+    this.messageModel.message.serialNumber = sn;
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+    this.sendMessage(this.messageData);
+  }
+
   public LoadGraphicEntry(data) {
     // action: 7, // LOAD_GRAPHIC_ENTRY
 
@@ -736,6 +755,7 @@ class WebSocketClient {
     [MessageType.UPDATE_ENTRY_RES]: this.HandleUpdateEntryRes.bind(this),
     [MessageType.GET_PANELS_LIST_RES]: this.HandleGetPanelsListRes.bind(this),
     [MessageType.GET_ENTRIES_RES]: this.HandleGetEntriesRes.bind(this),
+    [MessageType.LOGGING_DATA_RES]: this.HandleLoggingDataRes.bind(this),
     [MessageType.LOAD_GRAPHIC_ENTRY_RES]: this.HandleLoadGraphicEntryRes.bind(this),
     [MessageType.OPEN_ENTRY_EDIT_WINDOW_RES]: this.HandleOpenEntryEditWindowRes.bind(this),
     [MessageType.SAVE_IMAGE_RES]: this.HandleSaveImageRes.bind(this),
@@ -1169,6 +1189,129 @@ class WebSocketClient {
 
     // LogUtil.Debug('= ws: HandleGetEntriesRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
     // LogUtil.Debug('= ws: HandleGetEntriesRes END ===================');
+  }
+
+  public HandleLoggingDataRes(msgData) {
+    // action: 15, // LOGGING_DATA_RES
+    LogUtil.Debug('= ws: HandleLoggingDataRes START =================');
+    LogUtil.Debug('= ws: HandleLoggingDataRes / response structure:', {
+      hasData: !!(msgData?.data),
+      dataLength: msgData?.data?.length || 0,
+    });
+
+    // Extract and flatten device_data arrays from nested structure
+    let allPoints = [];
+
+    if (msgData.data && Array.isArray(msgData.data)) {
+      msgData.data.forEach((device, deviceIdx) => {
+        LogUtil.Debug(`= ws: HandleLoggingDataRes / device ${deviceIdx}:`, {
+          panel_id: device.panel_id,
+          panel_name: device.panel_name,
+          panel_serial_number: device.panel_serial_number,
+          hasDeviceData: !!(device.device_data),
+          deviceDataLength: device.device_data?.length || 0
+        });
+
+        if (device.device_data && Array.isArray(device.device_data)) {
+          allPoints = allPoints.concat(device.device_data);
+        }
+      });
+    }
+
+    LogUtil.Debug('= ws: HandleLoggingDataRes / total points extracted:', allPoints.length);
+
+    // Normalize fields to match GET_ENTRIES_RES format
+    allPoints.forEach((item, itemIdx) => {
+      // Fix 1: Rename "unit" → "units"
+      if (item.unit !== undefined && item.units === undefined) {
+        item.units = item.unit;
+        delete item.unit;
+      }
+
+      // Fix 2: Convert type format: "INPUT" → "IN", "OUTPUT" → "OUT", "VARIABLE" → "VAR"
+      if (item.type) {
+        const typeMap = {
+          'INPUT': 'IN',
+          'OUTPUT': 'OUT',
+          'VARIABLE': 'VAR'
+        };
+        if (typeMap[item.type]) {
+          item.type = typeMap[item.type];
+        }
+      }
+
+      // Fix 3: Rename calibration fields (for compatibility)
+      if (item.calibration_h !== undefined && item.calibration === undefined) {
+        item.calibration = item.calibration_h;
+      }
+      if (item.calibration_sign !== undefined && item.sign === undefined) {
+        item.sign = item.calibration_sign;
+      }
+
+      // Update T3000_Data.panelsData (same logic as GET_ENTRIES_RES)
+      const itemIndex = T3000_Data.value.panelsData.findIndex(
+        (ii) =>
+          ii.index === item.index &&
+          ii.type === item.type &&
+          ii.pid === item.pid
+      );
+
+      if (itemIndex !== -1) {
+        const existingItem = T3000_Data.value.panelsData[itemIndex];
+
+        // Same smart update logic as GET_ENTRIES_RES
+        const existingIsDetailedMonitor = existingItem.type === 'MON' &&
+          (Array.isArray(existingItem.input) || Array.isArray(existingItem.range) || existingItem.num_inputs > 0);
+        const newIsSimplifiedMonitor = item.type === 'MON' &&
+          !Array.isArray(item.input) && !Array.isArray(item.range) && !item.num_inputs;
+
+        const existingHasComplexData = this.hasComplexDataStructures(existingItem);
+        const newLacksComplexData = !this.hasComplexDataStructures(item);
+        const potentialDataLoss = existingHasComplexData && newLacksComplexData;
+
+        if (existingIsDetailedMonitor && newIsSimplifiedMonitor) {
+          LogUtil.Warn(`🚨 DATA CORRUPTION PREVENTED! [LOGGING_DATA] Attempted to replace detailed monitor with simplified version:`, {
+            id: item.id,
+            pid: item.pid
+          });
+
+          const criticalFields = ['input', 'range', 'num_inputs', 'an_inputs'];
+          const existingKeys = Object.keys(existingItem);
+          const newKeys = Object.keys(item);
+          const commonFields = existingKeys.filter(key => newKeys.includes(key));
+          const fieldsToUpdate = commonFields.filter(key => !criticalFields.includes(key));
+
+          fieldsToUpdate.forEach(field => {
+            if (existingItem[field] !== item[field]) {
+              existingItem[field] = item[field];
+            }
+          });
+        } else if (potentialDataLoss) {
+          const complexFields = this.getComplexFields(existingItem);
+          const existingKeys = Object.keys(existingItem);
+          const newKeys = Object.keys(item);
+          const commonFields = existingKeys.filter(key => newKeys.includes(key));
+          const fieldsToUpdate = commonFields.filter(key => !complexFields.includes(key));
+
+          fieldsToUpdate.forEach(field => {
+            if (existingItem[field] !== item[field]) {
+              existingItem[field] = item[field];
+            }
+          });
+        } else {
+          T3000_Data.value.panelsData[itemIndex] = item;
+        }
+      }
+    });
+
+    if (!linkT3EntryDialog.value.active) {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+    }
+    IdxUtils.refreshLinkedEntries(allPoints);
+    IdxUtils.refreshLinkedEntries2(allPoints);
+
+    LogUtil.Debug('= ws: HandleLoggingDataRes / AFTER - panelsData length:', T3000_Data.value.panelsData.length);
+    LogUtil.Debug('= ws: HandleLoggingDataRes END ===================');
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
