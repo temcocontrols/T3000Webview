@@ -8,6 +8,7 @@ import T3Util from "../../Util/T3Util"
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg, locked, rulersGridVisible } from '../../Data/T3Data'
 import T3UIUtil from "../UI/T3UIUtil"
 import LogUtil from "../../Util/LogUtil"
+import { demoDeviceData } from '../../../../common'
 
 class WebSocketClient {
 
@@ -307,6 +308,31 @@ class WebSocketClient {
     this.cleanup();
     this.messageQueue = [];
     LogUtil.Debug('= ws: WebSocketClient destroyed');
+  }
+
+  /**
+   * Load demo data as fallback when real panel data is unavailable
+   */
+  private async loadDemoDataFallback() {
+    try {
+      LogUtil.Info('📦 Loading demo device data as fallback');
+      const demoData = await demoDeviceData();
+
+      if (demoData && demoData.data) {
+        T3000_Data.value.panelsData = demoData.data;
+        selectPanelOptions.value = demoData.data;
+
+        if (demoData.ranges) {
+          T3000_Data.value.panelsRanges = demoData.ranges;
+        }
+
+        LogUtil.Info(`✅ Demo data loaded successfully: ${demoData.data.length} panels`);
+      } else {
+        LogUtil.Warn('⚠️ Demo data load returned empty or invalid data');
+      }
+    } catch (error) {
+      LogUtil.Error('❌ Failed to load demo data:', error);
+    }
   }
 
   //#region  Format Message
@@ -1478,12 +1504,40 @@ class WebSocketClient {
         const errorMsg = `Unable to load panel data after ${this.maxDataRequestErrors} attempts. ${messageData.error}`;
         T3UIUtil.ShowWebSocketError(errorMsg);
       }
+
+      // Load demo data as fallback if panel data is empty
+      if (action == MessageType.GET_PANEL_DATA_RES && T3000_Data.value.panelsData.length === 0) {
+        LogUtil.Info('📦 Loading demo data as fallback after max retries');
+        this.loadDemoDataFallback();
+      }
+
       return; // Don't retry anymore
     }
 
     if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
       const errorMsg = `Load device data failed with error: "${messageData.error}". Retry ${this.dataRequestErrorCount}/${this.maxDataRequestErrors}`;
       LogUtil.Warn(errorMsg);
+
+      // Check if this is a 'no cached data' error - don't retry since data doesn't exist
+      if (messageData.error && messageData.error.includes('No cached data')) {
+        LogUtil.Info('📦 No cached data available for this panel, dismissing loading and stopping retry');
+
+        // Clear loading state to dismiss the loading dialog
+        T3000_Data.value.loadingPanel = null;
+
+        // Load demo data as fallback ONLY if we have no data at all
+        if (T3000_Data.value.panelsData.length === 0) {
+          LogUtil.Info('📦 No panel data exists, loading demo data as fallback');
+          this.loadDemoDataFallback();
+        }
+
+        // Reset error count since this is expected behavior, not a real error
+        this.dataRequestErrorCount = 0;
+
+        // Don't retry - data genuinely doesn't exist for this panel
+        return;
+      }
+
       // Only show error on last retry
       if (this.dataRequestErrorCount === this.maxDataRequestErrors) {
         T3UIUtil.ShowWebSocketError(errorMsg);
