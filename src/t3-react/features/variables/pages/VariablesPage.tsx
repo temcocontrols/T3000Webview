@@ -384,7 +384,7 @@ export const VariablesPage: React.FC = () => {
         const payload = {
           fullLabel: editingCell.field === 'fullLabel' ? editValue : (currentVariable.fullLabel || ''),
           label: currentVariable.label || '',
-          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') : parseFloat(currentVariable.fValue || '0'),
+          value: editingCell.field === 'fValue' ? parseFloat(editValue || '0') * 1000 : parseFloat(currentVariable.fValue || '0'),
           range: parseInt(currentVariable.rangeField || '0'),
           autoManual: parseInt(currentVariable.autoManual || '0'),
           control: 0,
@@ -905,10 +905,10 @@ export const VariablesPage: React.FC = () => {
             ) : (
               <div
                 className={styles.editableCell}
-                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue?.toString() || '0')}
+                onDoubleClick={() => handleCellDoubleClick(item, 'fValue', item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(1) : '0')}
                 title="Double-click to edit"
               >
-                <Text size={200} weight="regular">{item.fValue || '---'}</Text>
+                <Text size={200} weight="regular">{item.fValue ? (parseFloat(item.fValue) / 1000).toFixed(1) : '---'}</Text>
               </div>
             )}
           </TableCellLayout>
