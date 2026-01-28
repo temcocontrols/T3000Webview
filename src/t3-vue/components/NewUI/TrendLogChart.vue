@@ -1848,8 +1848,14 @@
       return ''
     }
 
-    // Priority order: description (contains full label) → fullLabel → label → command → id
-    const description = device.description || device.fullLabel || device.label || device.command || device.id || ''
+    // Priority order: label (if not empty) → description → fullLabel → command → id
+    // Use label first if it exists and is not empty, otherwise fall back to description
+    const description = (device.label && device.label.trim())
+      || device.description
+      || device.fullLabel
+      || device.command
+      || device.id
+      || ''
 
     if (!description) {
       LogUtil.Debug('⚠️ TrendLogChart: Device found but no description fields available', { device })
