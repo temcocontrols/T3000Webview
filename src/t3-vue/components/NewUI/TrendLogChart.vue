@@ -398,23 +398,11 @@
         <!-- Right Panel: Analog Chart Only -->
         <div class="right-panel">
           <div class="oscilloscope-container" @wheel="handleMouseWheel">
-            <!-- Show error message if connection error -->
-            <div v-if="hasConnectionError" class="empty-chart-message">
-              <div class="empty-state-icon" style="font-size: 32px;">
-                <ExclamationCircleOutlined :style="{ fontSize: '32px' }" />
-              </div>
-              <div class="empty-state-text" style="font-size: 14px; font-weight: 500;">Data Connection Error</div>
-              <div class="empty-state-subtitle" style="margin-top: 8px; font-size: 12px;">Unable to load panel data. The panel may not have cached data available.</div>
-              <div style="margin-top: 16px;">
-                <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
-                  <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Retry Connection
-                </a-button>
-              </div>
-            </div>
-            <!-- Combined Analog Chart with Multiple Signals -->
-            <div v-else-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
+            <!-- Always show canvas when there are visible series, never show error on canvas -->
+            <div v-if="visibleAnalogSeries.length > 0" class="combined-analog-chart">
               <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
             </div>
+            <!-- Show empty state when no series are visible (user disabled all) -->
             <div v-else class="empty-chart-message">
               <div class="empty-state-icon">📈</div>
               <div class="empty-state-text">No analog series enabled</div>
