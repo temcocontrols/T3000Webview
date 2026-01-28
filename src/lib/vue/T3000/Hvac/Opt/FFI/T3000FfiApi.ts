@@ -196,7 +196,14 @@ export function useT3000FfiApi() {
 
     try {
       const payload = createMessagePayload(MessageType.GET_PANELS_LIST)
+      console.log('📡 FFI API Call - Action 4 (GET_PANELS_LIST)', {
+        action: 4,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
       const response = await callWithRetry(payload)
+      console.log('✅ FFI API Response - Action 4 (GET_PANELS_LIST)', response)
       lastResponse.value = response
       return response
     } catch (err) {
@@ -215,7 +222,16 @@ export function useT3000FfiApi() {
 
     try {
       const payload = createMessagePayload(MessageType.GET_PANEL_DATA, panelId)
+      console.log('📡 FFI API Call - Action 0 (GET_PANEL_DATA)', {
+        action: 0,
+        panelId,
+        serialNumber: payload.serialNumber,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
       const response = await callWithRetry(payload)
+      console.log('✅ FFI API Response - Action 0 (GET_PANEL_DATA)', response)
       lastResponse.value = response
       return response
     } catch (err) {
@@ -234,7 +250,17 @@ export function useT3000FfiApi() {
 
     try {
       const payload = createMessagePayload(MessageType.GET_INITIAL_DATA, panelId, graphicId)
+      console.log('📡 FFI API Call - Action 1 (GET_INITIAL_DATA)', {
+        action: 1,
+        panelId,
+        graphicId,
+        serialNumber: payload.serialNumber,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
       const response = await callWithRetry(payload)
+      console.log('✅ FFI API Response - Action 1 (GET_INITIAL_DATA)', response)
       lastResponse.value = response
       return response
     } catch (err) {
@@ -253,7 +279,17 @@ export function useT3000FfiApi() {
 
     try {
       const payload = createMessagePayload(MessageType.GET_ENTRIES, panelId, graphicId)
+      console.log('📡 FFI API Call - Action 6 (GET_ENTRIES)', {
+        action: 6,
+        panelId,
+        graphicId,
+        serialNumber: payload.serialNumber,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
       const response = await callWithRetry(payload)
+      console.log('✅ FFI API Response - Action 6 (GET_ENTRIES)', response)
       lastResponse.value = response
       return response
     } catch (err) {
@@ -272,13 +308,54 @@ export function useT3000FfiApi() {
 
     try {
       const payload = createMessagePayload(MessageType.GET_SELECTED_DEVICE_INFO, panelId)
+      console.log('📡 FFI API Call - Action 12 (GET_SELECTED_DEVICE_INFO)', {
+        action: 12,
+        panelId,
+        serialNumber: payload.serialNumber,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
       const response = await callWithRetry(payload)
+      console.log('✅ FFI API Response - Action 12 (GET_SELECTED_DEVICE_INFO)', response)
       lastResponse.value = response
       return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       error.value = errorMessage
       throw new Error(`GetSelectedDeviceInfo failed: ${errorMessage}`)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /// GetLoggingData - Action 15 (LOGGING_DATA - gets all inputs, outputs, variables)
+  const ffiGetLoggingData = async (panelId: number, serialNumber: number): Promise<any> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // LOGGING_DATA requires both panelId and serialNumber per C++ code:
+      // int temp_panel_id = json.get("panelId", Json::nullValue).asInt();
+      // int temp_serial_number = json.get("serialNumber", Json::nullValue).asInt();
+      const payload = createMessagePayload(MessageType.LOGGING_DATA, panelId, null, null)
+      payload.serialNumber = serialNumber
+      console.log('📡 FFI API Call - Action 15 (LOGGING_DATA)', {
+        action: 15,
+        panelId,
+        serialNumber,
+        msgId: payload.msgId,
+        timestamp: new Date().toISOString(),
+        payload
+      })
+      const response = await callWithRetry(payload)
+      console.log('✅ FFI API Response - Action 15 (LOGGING_DATA)', response)
+      lastResponse.value = response
+      return response
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      error.value = errorMessage
+      throw new Error(`GetLoggingData failed: ${errorMessage}`)
     } finally {
       isLoading.value = false
     }
@@ -363,6 +440,7 @@ export function useT3000FfiApi() {
     ffiGetInitialData,
     ffiGetEntries,
     ffiGetSelectedDeviceInfo,
+    ffiGetLoggingData,
     getSystemStatus,
     getDeviceRealtimeData,
     getDeviceById,
