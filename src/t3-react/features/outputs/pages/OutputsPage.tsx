@@ -426,7 +426,12 @@ export const OutputsPage: React.FC = () => {
         prevOutputs.map(output =>
           output.serialNumber === editingCell.serialNumber &&
           output.outputIndex === editingCell.outputIndex
-            ? { ...output, [editingCell.field]: editValue }
+            ? {
+                ...output,
+                [editingCell.field]: editingCell.field === 'fValue'
+                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                  : editValue
+              }
             : output
         )
       );

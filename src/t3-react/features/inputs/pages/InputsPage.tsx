@@ -493,7 +493,12 @@ export const InputsPage: React.FC = () => {
         prevInputs.map(input =>
           input.serialNumber === editingCell.serialNumber &&
           input.inputIndex === editingCell.inputIndex
-            ? { ...input, [editingCell.field]: editValue }
+            ? {
+                ...input,
+                [editingCell.field]: editingCell.field === 'fValue'
+                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                  : editValue
+              }
             : input
         )
       );

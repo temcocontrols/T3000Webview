@@ -418,7 +418,12 @@ export const VariablesPage: React.FC = () => {
         prevVariables.map(variable =>
           variable.serialNumber === editingCell.serialNumber &&
           variable.variableIndex === editingCell.variableIndex
-            ? { ...variable, [editingCell.field]: editValue }
+            ? {
+                ...variable,
+                [editingCell.field]: editingCell.field === 'fValue'
+                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                  : editValue
+              }
             : variable
         )
       );
