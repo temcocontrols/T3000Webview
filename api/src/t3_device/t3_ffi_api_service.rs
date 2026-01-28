@@ -147,22 +147,33 @@ impl T3000FfiApiService {
                 );
 
                 match result {
-                    0 => {
-                        // Success - extract response from buffer
+                    code if code >= 0 => {
+                        // Non-negative codes (0, 1, 2, etc.) are success or "no data" states
+                        // Extract response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
-                        api_logger.info(&format!("📡 FFI Response - {} bytes", null_pos));
+                        if code == 0 {
+                            api_logger.info(&format!("✅ FFI Success - {} bytes", null_pos));
+                        } else {
+                            // Positive codes often mean "no new data" for trendlog/polling operations
+                            api_logger.info(&format!("ℹ️  FFI returned code {} (no new data/empty result) - {} bytes", code, null_pos));
+                        }
 
-                        // Parse and log response action
+                        // Parse and log response action if JSON
                         if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(&response) {
                             let response_action = response_json.get("action")
                                 .and_then(|a| a.as_str())
                                 .unwrap_or("UNKNOWN");
                             api_logger.info(&format!("🔍 C++ Response Action: {}", response_action));
-                            api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
+
+                            // Only log full response for code 0 (actual success), not for "no data" codes
+                            if code == 0 {
+                                api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
+                            }
                         }
 
+                        // Return response even if buffer is empty (frontend can handle empty responses)
                         Ok(response)
                     }
                     -2 => {
@@ -178,7 +189,7 @@ impl T3000FfiApiService {
 
                         // If buffer has JSON content, return it (allows frontend to parse error)
                         if !response.is_empty() && (response.starts_with('{') || response.starts_with('[')) {
-                            api_logger.info(&format!("⚠️ FFI returned -1 with JSON response: {}", response));
+                            api_logger.info(&format!("⚠️  FFI returned -1 with JSON response: {}", response));
                             Ok(response)  // Return the JSON error response
                         } else {
                             let error_msg = format!("FFI call returned error code: -1");
@@ -187,6 +198,7 @@ impl T3000FfiApiService {
                         }
                     }
                     code => {
+                        // Only negative codes < -2 are treated as hard errors
                         let error_msg = format!("FFI call returned error code: {}", code);
                         api_logger.error(&format!("❌ {}", error_msg));
                         Err(Error::ServerError(error_msg))

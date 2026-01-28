@@ -207,13 +207,20 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         let _ = write_structured_log_with_level("T3_Webview_Initialize", "Partition monitor service started (checks every hour)", LogLevel::Info);
     }
 
-    // Schedule startup partition migration check (10 second delay)
+    // Schedule startup partition migration check (5 minute delay to allow database stabilization)
     tokio::spawn(async {
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        let wait_secs = 300; // 5 minutes
+        let _ = write_structured_log_with_level(
+            "T3_Webview_Initialize",
+            &format!("⏳ Scheduled partition check in {} seconds ({} minutes) to allow database stabilization...", wait_secs, wait_secs / 60),
+            LogLevel::Info
+        );
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(wait_secs)).await;
 
         let _ = write_structured_log_with_level(
             "T3_Webview_Initialize",
-            "🔍 Checking for pending partition migrations on startup...",
+            "🔍 Starting scheduled partition migration check (after 5-minute stabilization period)...",
             LogLevel::Info
         );
 

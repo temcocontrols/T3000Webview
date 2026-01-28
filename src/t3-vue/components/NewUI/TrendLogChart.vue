@@ -6540,99 +6540,108 @@
   }
 
   const addRealtimeDataPoint = async () => {
-    LogUtil.Info('🔄 addRealtimeDataPoint CALLED', {
-      isRealTime: isRealTime.value,
-      dataSeriesLength: dataSeries.value.length,
-      hasMonitorConfig: !!monitorConfig.value,
-      timestamp: new Date().toISOString()
-    })
-
-    // Only add data if we're in real-time mode
-    if (!isRealTime.value) {
-      LogUtil.Warn('�?addRealtimeDataPoint: Not in real-time mode')
-      return
-    }
-
-    // Safety check: If no data series exist, skip processing
-    if (dataSeries.value.length === 0) {
-      LogUtil.Warn('�?addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
-
-      // 🆕 FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
-      if (props.itemData?.t3Entry?.input?.length > 0) {
-        LogUtil.Info('🔄 addRealtimeDataPoint: Attempting to regenerate dataSeries from props.itemData')
-        regenerateDataSeries()
-
-        // If still no data series after regeneration, exit
-        if (dataSeries.value.length === 0) {
-          LogUtil.Warn('�?addRealtimeDataPoint: No data series exist after regeneration attempt')
-          return
-        }
-      } else {
-        LogUtil.Warn('�?addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
-        return
-      }
-    }
-
-    // Check if we have real monitor configuration for live data
-    const monitorConfigData = monitorConfig.value
-
-    if (!monitorConfigData) {
-      LogUtil.Info('🔄 addRealtimeDataPoint: No monitor config - sending GET_ENTITIES based on existing dataseries', {
+    // 🛡️ CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
+    // Even if any error occurs (network, parsing, backend errors), the interval must continue
+    try {
+      LogUtil.Info('🔄 addRealtimeDataPoint CALLED', {
+        isRealTime: isRealTime.value,
         dataSeriesLength: dataSeries.value.length,
-        hasPropsItemData: !!props.itemData?.t3Entry,
-        propsInputItemsLength: props.itemData?.t3Entry?.input?.length || 0
+        hasMonitorConfig: !!monitorConfig.value,
+        timestamp: new Date().toISOString()
       })
 
-      // 🆕 FIX: Send GET_ENTITIES using existing dataseries info (keep data flowing even without monitorConfig)
-      await sendGetEntitiesForDataSeries()
-      return
-    }
+      // Only add data if we're in real-time mode
+      if (!isRealTime.value) {
+        LogUtil.Warn('⏸️ addRealtimeDataPoint: Not in real-time mode')
+        return
+      }
 
-    if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-      LogUtil.Warn('�?addRealtimeDataPoint: No input items in monitor config')
-      return
-    }
+      // Safety check: If no data series exist, skip processing
+      if (dataSeries.value.length === 0) {
+        LogUtil.Warn('⚠️ addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
 
-    try {
-      LogUtil.Info('📡 addRealtimeDataPoint: About to send batch request')
+        // 🆕 FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
+        if (props.itemData?.t3Entry?.input?.length > 0) {
+          LogUtil.Info('🔄 addRealtimeDataPoint: Attempting to regenerate dataSeries from props.itemData')
+          regenerateDataSeries()
 
-      // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
-      // This ensures history API is called when real-time monitoring starts
-      if (!hasLoadedInitialHistory.value && monitorConfigData) {
-        LogUtil.Info('📚 addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
-        hasLoadedInitialHistory.value = true // Set flag immediately to prevent duplicate calls
-
-        try {
-          await loadHistoricalDataFromDatabase()
-          LogUtil.Info('✅ addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
-        } catch (error) {
-          LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
+          // If still no data series after regeneration, exit
+          if (dataSeries.value.length === 0) {
+            LogUtil.Warn('⚠️ addRealtimeDataPoint: No data series exist after regeneration attempt')
+            return
+          }
+        } else {
+          LogUtil.Warn('⚠️ addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
+          return
         }
       }
 
-      // Send batch GET_ENTRIES request for ALL items at once
-      await sendPeriodicBatchRequest(monitorConfigData)
+      // Check if we have real monitor configuration for live data
+      const monitorConfigData = monitorConfig.value
 
-      // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
-      // which calls updateChartWithNewData() to update dataSeries automatically
+      if (!monitorConfigData) {
+        LogUtil.Info('🔄 addRealtimeDataPoint: No monitor config - sending GET_ENTITIES based on existing dataseries', {
+          dataSeriesLength: dataSeries.value.length,
+          hasPropsItemData: !!props.itemData?.t3Entry,
+          propsInputItemsLength: props.itemData?.t3Entry?.input?.length || 0
+        })
 
-      // Update sync time since batch request was sent successfully
-      lastSyncTime.value = new Date().toLocaleTimeString()
-
-      // If we had connection error but successfully sent request, clear error state
-      if (hasConnectionError.value) {
-        LogUtil.Info('TrendLogChart: Auto-recovering from connection error - batch request sent successfully')
-        hasConnectionError.value = false
+        // 🆕 FIX: Send GET_ENTITIES using existing dataseries info (keep data flowing even without monitorConfig)
+        await sendGetEntitiesForDataSeries()
+        return
       }
 
-    } catch (error) {
-      LogUtil.Warn('TrendLogChart: Failed to send batch request, setting connection error:', error)
-      // Set connection error state - but keep accumulated data
-      hasConnectionError.value = true
-      // Don't clear data - let accumulated points remain visible
-    }
+      if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
+        LogUtil.Warn('⚠️ addRealtimeDataPoint: No input items in monitor config')
+        return
+      }
 
-    updateCharts()
+      try {
+        LogUtil.Info('📡 addRealtimeDataPoint: About to send batch request')
+
+        // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
+        // This ensures history API is called when real-time monitoring starts
+        if (!hasLoadedInitialHistory.value && monitorConfigData) {
+          LogUtil.Info('📚 addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
+          hasLoadedInitialHistory.value = true // Set flag immediately to prevent duplicate calls
+
+          try {
+            await loadHistoricalDataFromDatabase()
+            LogUtil.Info('✅ addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
+          } catch (error) {
+            LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
+          }
+        }
+
+        // Send batch GET_ENTRIES request for ALL items at once
+        await sendPeriodicBatchRequest(monitorConfigData)
+
+        // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
+        // which calls updateChartWithNewData() to update dataSeries automatically
+
+        // Update sync time since batch request was sent successfully
+        lastSyncTime.value = new Date().toLocaleTimeString()
+
+        // If we had connection error but successfully sent request, clear error state
+        if (hasConnectionError.value) {
+          LogUtil.Info('TrendLogChart: Auto-recovering from connection error - batch request sent successfully')
+          hasConnectionError.value = false
+        }
+
+      } catch (error) {
+        LogUtil.Warn('TrendLogChart: Failed to send batch request, setting connection error:', error)
+        // Set connection error state - but keep accumulated data
+        hasConnectionError.value = true
+        // Don't clear data - let accumulated points remain visible
+      }
+
+      updateCharts()
+    } catch (error) {
+      // 🛡️ CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
+      // This ensures the polling continues even if there are unexpected errors
+      LogUtil.Error('❌ CRITICAL: addRealtimeDataPoint encountered unexpected error (interval will continue):', error)
+      hasConnectionError.value = true
+    }
   }
 
   // Demo data generation function completely removed - only real T3000 data allowed
