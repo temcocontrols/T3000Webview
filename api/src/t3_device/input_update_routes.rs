@@ -328,7 +328,10 @@ async fn save_input_to_db(
             active_model.label = Set(Some(val));
         }
         if let Some(val) = payload.value {
-            active_model.f_value = Set(Some(val.to_string()));
+            // C++ receives human-readable value (e.g., 2.1)
+            // Database stores multiplied value (e.g., "2100")
+            let db_value = (val * 1000.0).to_string();
+            active_model.f_value = Set(Some(db_value));
         }
         if let Some(val) = payload.range {
             active_model.range_field = Set(Some(val.to_string()));

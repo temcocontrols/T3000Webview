@@ -409,7 +409,7 @@ export const InputsPage: React.FC = () => {
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
         label: field === 'label' ? newValue : (currentInput.label || ''),
-        value: field === 'fValue' ? parseFloat(newValue || '0') * 1000 : parseFloat(currentInput.fValue || '0'),
+        value: field === 'fValue' ? parseFloat(newValue || '0') : parseFloat(currentInput.fValue || '0') / 1000,
         range: field === 'range' ? parseInt(newValue || '0', 10) : parseInt(currentInput.rangeField || currentInput.range || '0', 10),
         autoManual: field === 'autoManual' ? parseInt(newValue || '0', 10) : parseInt(currentInput.autoManual || '0', 10),
         control: 0, // control field not typically editable
