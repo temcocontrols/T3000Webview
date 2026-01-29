@@ -103,9 +103,21 @@ export function useT3000FfiApi() {
   const lastResponse = ref<any>(null)
   const isReady = ref(true) // FFI API is always ready if server is running
 
+  // Dynamic API base URL - matches React implementation
+  const getApiBaseUrl = (): string => {
+    if (typeof window !== 'undefined') {
+      const protocol = window.location.protocol // http: or https:
+      const hostname = window.location.hostname // localhost, 192.168.x.x, etc.
+      return `${protocol}//${hostname}:9103`
+    }
+    // Fallback for SSR or build time
+    return 'http://localhost:9103'
+  }
+
   // Configuration
   const apiConfig = {
-    baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:9103' : '',
+    // Dynamic baseURL - works on any IP address (localhost, 192.168.x.x, etc.)
+    baseURL: getApiBaseUrl(),
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000

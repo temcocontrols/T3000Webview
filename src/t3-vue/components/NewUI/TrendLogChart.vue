@@ -10366,15 +10366,16 @@
           if (action0Response && action0Response.data) {
             console.log('✅ Action 0 Response Received')
             console.log('  - Total items:', action0Response.data?.length)
-            console.log('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId ? urlTrendlogId - 1 : 'N/A', ')')
+            console.log('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
             console.log('─────────────────────────────────────────────────────────────')
 
             // Find the specific monitor configuration using trendlog_id from URL
             let matchingMonitor = null
-            if (urlTrendlogId && action0Response.data) {
+            if (urlTrendlogId !== undefined && urlTrendlogId !== null && action0Response.data) {
               // Search through the data array for matching monitor
+              // trendlog_id is 0-based and directly matches monitor.index
               for (const item of action0Response.data) {
-                if (item.type === 'MON' && item.index === (urlTrendlogId - 1)) {
+                if (item.type === 'MON' && item.index === urlTrendlogId) {
                   matchingMonitor = item
                   break
                 }
@@ -10430,7 +10431,7 @@
               }
             } else {
               console.warn('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
-              console.log('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId ? urlTrendlogId - 1 : 'N/A', ')')
+              console.log('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
               console.log('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
               console.log('  - Available monitors (FULL DATA):')
               action0Response.data?.filter((d: any) => d.type === 'MON').forEach((mon: any) => {
