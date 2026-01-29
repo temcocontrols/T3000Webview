@@ -2214,6 +2214,13 @@
         */
 
         // OPTION 1: Filter chartDataFormat to only include items from current chart series
+        // Get current panel ID and serial number from URL or first panel in list
+        const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
+        const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+        const panelsList = T3000_Data.value.panelsList || []
+        const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
+        const currentPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 1)
+
         // Get chart series identifiers for filtering
         const chartSeriesItems = dataSeries.value.map(series => ({
           id: series.id,
@@ -2242,6 +2249,9 @@
           item.value !== null &&
           item.value !== undefined &&
           item.id &&
+          item.pid === currentPanelId &&  // Only save items for current panel
+          (!item.serial_number || item.serial_number === currentSN) &&  // If serial_number exists, it must match
+          (!item.sn || item.sn === currentSN) &&  // If sn exists, it must match
           // Only include items that match current chart series
           chartSeriesItems.some(chartItem =>
             item.id === chartItem.id && item.pid === chartItem.panelId
@@ -4325,6 +4335,8 @@
           totalItems: allPanelItems.length
         })
 
+        // Note: Action 15 already queries specific device by currentPanelId + currentSN
+        // So items returned are already filtered to current device - just validate data quality
         const validDataItems = allPanelItems.filter(item =>
           item &&
           typeof item === 'object' &&
@@ -5862,8 +5874,38 @@
         return
       }
 
+      // Filter items to only include those matching current device (serial_number and panel_id from URL query)
+      const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+      const queryPanelId = urlPanelId || currentPanelId
+
+      const currentDeviceItems = validDataItems.filter(item => {
+        const itemPanelId = item.pid || item.panel_id
+        const itemSerialNumber = item.serial_number || item.sn
+
+        // Match panel_id (required)
+        const panelMatches = itemPanelId === queryPanelId
+
+        // Match serial_number (if item has it, it must match; if item doesn't have it, allow through)
+        const serialMatches = !itemSerialNumber || itemSerialNumber === currentSN
+
+        return panelMatches && serialMatches
+      })
+
+      LogUtil.Info('🔍 Filtered items for current device', {
+        originalCount: validDataItems.length,
+        filteredCount: currentDeviceItems.length,
+        currentSN,
+        queryPanelId,
+        dropped: validDataItems.length - currentDeviceItems.length
+      })
+
+      if (currentDeviceItems.length === 0) {
+        LogUtil.Warn('⚠️ No items match current device after filtering - skipping batch save')
+        return
+      }
+
       // Convert GET_ENTRIES response to RealtimeDataRequest format
-      const realtimeDataPoints: RealtimeDataRequest[] = validDataItems.map(item => {
+      const realtimeDataPoints: RealtimeDataRequest[] = currentDeviceItems.map(item => {
         // Enhanced debugging for point type determination
         const pointId = item.id || 'UNKNOWN'
         const pointType = getCorrectPointTypeFromId(pointId, item.point_type)
