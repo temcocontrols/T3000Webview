@@ -559,8 +559,10 @@ impl T3TrendlogDataService {
         let count = detail_records.len() as u64;
 
         // Step 3: Batch insert with retry logic for database locks
-        // Retry configuration: max 5 attempts with exponential backoff (50ms, 100ms, 200ms, 400ms)
-        let max_retries = 5;
+        // Fast-fail strategy: 3 attempts with short delays (100ms, 200ms)
+        // WAL mode + busy_timeout should handle most locks automatically
+        // If all retries fail, return error to frontend - it will retry on next poll
+        let max_retries = 3;
         let mut retry_count = 0;
         let mut last_error = None;
 
@@ -600,8 +602,10 @@ impl T3TrendlogDataService {
                         || error_string.contains("code: 5");
 
                     if is_lock_error && retry_count < max_retries - 1 {
-                        // Calculate exponential backoff delay: 50ms * 2^retry_count
-                        let delay_ms = 50 * (1 << retry_count);
+                        // Short exponential backoff: 100ms * 2^retry_count (100ms, 200ms)
+                        // Total max wait: ~300ms for fast API response
+                        // Frontend auto-retry will handle temporary lock failures
+                        let delay_ms = 100 * (1 << retry_count);
 
                         let retry_info = format!(
                             "⏳ [TrendlogDataService] Database locked, retrying in {}ms (attempt {}/{})",

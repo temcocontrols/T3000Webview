@@ -6599,14 +6599,11 @@
       const monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        LogUtil.Info('🔄 addRealtimeDataPoint: No monitor config - sending GET_ENTITIES based on existing dataseries', {
+        LogUtil.Warn('⚠️ addRealtimeDataPoint: No monitor config available - skipping real-time update', {
           dataSeriesLength: dataSeries.value.length,
           hasPropsItemData: !!props.itemData?.t3Entry,
           propsInputItemsLength: props.itemData?.t3Entry?.input?.length || 0
         })
-
-        // 🆕 FIX: Send GET_ENTITIES using existing dataseries info (keep data flowing even without monitorConfig)
-        await sendGetEntitiesForDataSeries()
         return
       }
 
