@@ -9,7 +9,7 @@
  * - Right panel (properties) - optional, collapsible
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
@@ -113,6 +113,11 @@ export const MainLayout: React.FC = () => {
   const connectionType = useStatusBarStore((state) => state.connectionType);
   const statusMessage = useStatusBarStore((state) => state.message);
   const statusMessageType = useStatusBarStore((state) => state.messageType);
+
+  // Set page title
+  useEffect(() => {
+    document.title = 'T3000 Building Automation System';
+  }, []);
 
   // Handle left panel resize
   const handleLeftPanelResize = (e: React.MouseEvent) => {

@@ -2,7 +2,7 @@
   "name": "t3-webview",
   "version": "0.8.1",
   "description": "T3 webview",
-  "productName": "T3 webview",
+  "productName": "T3000 Building Automation System",
   "author": "Alaa Rihan <alaa@temcocontrols.com>",
   "private": true,
   "scripts": {
