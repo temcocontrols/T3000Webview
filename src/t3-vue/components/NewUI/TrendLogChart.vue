@@ -3049,6 +3049,16 @@
       await loadHistoricalDataFromDatabase(true) // Force reload from device
       console.log('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
 
+      // 🔧 FIX: Check if chart was destroyed during refresh and recreate it
+      if (!analogChartInstance && analogSeriesList.value.length > 0) {
+        console.log('🔧 Recreating analog chart instance after refresh')
+        createAnalogChart()
+        await nextTick()
+      }
+
+      // 🔧 FIX: Call updateCharts to display the newly loaded data
+      updateCharts()
+
       // Restart real-time updates if needed
       if (isRealTime.value && !realtimeInterval) {
         startRealTimeUpdates()
@@ -3057,7 +3067,6 @@
       // Success - clear timeout and error state
       clearLoadingTimeout()
       hasConnectionError.value = false
-      stopLoading()
       console.log('🔄 === MANUAL REFRESH SUCCESS ===', {
         dataSeriesLength: dataSeries.value.length,
         analogSeriesLength: analogSeriesList.value.length
@@ -3069,7 +3078,6 @@
       clearLoadingTimeout()
       hasConnectionError.value = true
       dataSeries.value = [] // Ensure series is cleared on error
-      stopLoading()
 
       console.log('❌ Error state set:', {
         hasConnectionError: hasConnectionError.value,
@@ -3078,6 +3086,9 @@
         dataSeriesCount: dataSeries.value.length,
         error: error
       })
+    } finally {
+      // 🔧 FIX: Always ensure loading state is cleared
+      stopLoading()
     }
   }
 
@@ -5974,11 +5985,19 @@
       isRealTime: isRealTime.value
     })
 
-    if (!dataSeries.value?.length || !Array.isArray(validDataItems) || !validDataItems.length) {
-      LogUtil.Debug('📈 TrendLogChart: No data to process', {
-        hasSeriesConfig: !!dataSeries.value?.length,
-        dataItemsCount: validDataItems?.length || 0
-      })
+    if (!dataSeries.value?.length) {
+      LogUtil.Debug('📈 TrendLogChart: No series configured')
+      return
+    }
+
+    const hasData = Array.isArray(validDataItems) && validDataItems.length > 0
+
+    if (!hasData) {
+      LogUtil.Debug('📈 TrendLogChart: No new data points, but updating charts for time window scroll')
+      // Skip data processing but still update charts for x-axis scroll
+      if (isRealTime.value && (analogChartInstance || Object.keys(digitalChartInstances).length > 0)) {
+        updateCharts()  // ✅ CRITICAL: Keeps x-axis scrolling
+      }
       return
     }
 
