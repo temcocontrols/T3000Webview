@@ -3,8 +3,18 @@
  * Re-export window constants, routes, and other shared constants
  */
 
-// API Configuration
-export const API_BASE_URL = 'http://localhost:9103';
+// API Configuration - Dynamic based on current host
+const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol; // http: or https:
+    const hostname = window.location.hostname; // localhost, 192.168.x.x, etc.
+    return `${protocol}//${hostname}:9103`;
+  }
+  // Fallback for SSR or build time
+  return 'http://localhost:9103';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Documentation Configuration
