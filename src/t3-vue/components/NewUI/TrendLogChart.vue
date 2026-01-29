@@ -1708,7 +1708,7 @@
   // Dynamic interval calculation based on T3000 monitorConfig
   const calculateT3000Interval = (monitorConfig: any): number => {
     if (!monitorConfig) {
-      return 15000 // Default fallback: 1 minute
+      return 5000 // Default fallback: 5 seconds (TESTING)
     }
 
     const {
@@ -1722,10 +1722,10 @@
       (minute_interval_time * 60) +
       second_interval_time
 
-    // If no intervals specified at all, default to 1 minute, otherwise use calculated value
+    // If no intervals specified at all, default to 5 seconds, otherwise use calculated value
     const intervalMs = totalSeconds > 0
-      ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
-      : 15000  // Default 1 minute if all intervals are 0
+      ? Math.max(totalSeconds * 1000, 5000)  // Minimum 5 seconds (TESTING)
+      : 5000  // Default 5 seconds if all intervals are 0 (TESTING)
 
     return intervalMs
   }
@@ -2191,14 +2191,18 @@
       updateChartWithNewData(chartDataFormat)
 
       // Store real-time data to database if in real-time mode
+      // 🔥 FIX: Only save Action 15 real-time data, NOT Action 0 initial data
+      // Skip batch save on initial load - let history load first
       LogUtil.Info('💾 T3000_Data watcher: Checking storage conditions', {
         isRealTime: isRealTime.value,
         chartDataLength: chartDataFormat.length,
         dataSeriesLength: dataSeries.value?.length || 0,
-        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0
+        hasLoadedInitialHistory: hasLoadedInitialHistory.value,
+        willStore: isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value
       })
 
-      if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0) {
+      // Only batch save after initial history is loaded (prevents blocking history load with Action 0 data)
+      if (isRealTime.value && chartDataFormat.length > 0 && dataSeries.value?.length > 0 && hasLoadedInitialHistory.value) {
 
         /*
         LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
@@ -2266,7 +2270,10 @@
         validateFilteringResults(chartDataFormat.length, chartRelevantItems.length, dataSeries.value.length)
 
         if (chartRelevantItems.length > 0) {
-          storeRealtimeDataToDatabase(chartRelevantItems)
+          // Fire and forget - don't await, don't block history loading
+          storeRealtimeDataToDatabase(chartRelevantItems).catch(err => {
+            LogUtil.Warn('Background batch save failed (non-critical)', err)
+          })
         } else {
           LogUtil.Warn('⚠️ No chart-relevant items found for storage', {
             totalItems: chartDataFormat.length,
@@ -4329,7 +4336,7 @@
 
         if (validDataItems.length > 0) {
           updateChartWithNewData(validDataItems)
-          await storeRealtimeDataToDatabase(validDataItems)
+          // Batch save is done inside updateChartWithNewData - no duplicate call needed
         }
 
         lastSyncTime.value = new Date().toLocaleTimeString()
@@ -6132,13 +6139,12 @@
       validDataItems: validDataItems
     })
 
-    // 💾 Store real-time data to database if in real-time mode
+    // 💾 Store real-time data to database if in real-time mode (async, non-blocking)
     if (isRealTime.value && validDataItems.length > 0) {
-      LogUtil.Info('💾 updateChartWithNewData: Storing to database', {
-        isRealTime: isRealTime.value,
-        itemsCount: validDataItems.length
+      // Fire and forget - don't await, don't block chart updates
+      storeRealtimeDataToDatabase(validDataItems).catch(err => {
+        LogUtil.Warn('Background batch save failed (non-critical)', err)
       })
-      storeRealtimeDataToDatabase(validDataItems)
     }
 
     // Update charts if instances exist
@@ -6562,59 +6568,36 @@
     // 🛡️ CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
     // Even if any error occurs (network, parsing, backend errors), the interval must continue
     try {
-      LogUtil.Info('🔄 addRealtimeDataPoint CALLED', {
-        isRealTime: isRealTime.value,
-        dataSeriesLength: dataSeries.value.length,
-        hasMonitorConfig: !!monitorConfig.value,
-        timestamp: new Date().toISOString()
-      })
+      console.log('⏰ addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
       // Only add data if we're in real-time mode
       if (!isRealTime.value) {
-        LogUtil.Warn('⏸️ addRealtimeDataPoint: Not in real-time mode')
+        console.log('❌ EXIT: Not in real-time mode')
         return
       }
 
       // Safety check: If no data series exist, skip processing
       if (dataSeries.value.length === 0) {
-        LogUtil.Warn('⚠️ addRealtimeDataPoint: No data series exist, trying to regenerate from props.itemData')
-
-        // 🆕 FIX: Try to regenerate dataseries from props if monitorConfig is not ready yet
-        if (props.itemData?.t3Entry?.input?.length > 0) {
-          LogUtil.Info('🔄 addRealtimeDataPoint: Attempting to regenerate dataSeries from props.itemData')
-          regenerateDataSeries()
-
-          // If still no data series after regeneration, exit
-          if (dataSeries.value.length === 0) {
-            LogUtil.Warn('⚠️ addRealtimeDataPoint: No data series exist after regeneration attempt')
-            return
-          }
-        } else {
-          LogUtil.Warn('⚠️ addRealtimeDataPoint: No props.itemData available for dataseries regeneration')
-          return
-        }
+        console.log('❌ EXIT: No data series exist')
+        return
       }
 
       // Check if we have real monitor configuration for live data
       const monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        LogUtil.Warn('⚠️ addRealtimeDataPoint: No monitor config available - skipping real-time update', {
-          dataSeriesLength: dataSeries.value.length,
-          hasPropsItemData: !!props.itemData?.t3Entry,
-          propsInputItemsLength: props.itemData?.t3Entry?.input?.length || 0
-        })
+        console.log('❌ EXIT: No monitor config')
         return
       }
 
       if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-        LogUtil.Warn('⚠️ addRealtimeDataPoint: No input items in monitor config')
+        console.log('❌ EXIT: No input items in monitor config')
         return
       }
 
-      try {
-        LogUtil.Info('📡 addRealtimeDataPoint: About to send batch request')
+      console.log('✅ All checks passed - calling sendPeriodicBatchRequest')
 
+      try {
         // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
         // This ensures history API is called when real-time monitoring starts
         if (!hasLoadedInitialHistory.value && monitorConfigData) {
@@ -8161,6 +8144,12 @@
         LogUtil.Debug('= TLChart DataFlow: 5m timebase - using real-time data initialization')
         await initializeData()
       }
+
+      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change
+      if (isRealTime.value && monitorConfig.value) {
+        LogUtil.Info('🔄 Restarting realtime updates after timebase change')
+        startRealTimeUpdates()
+      }
     }
   }
 
@@ -8442,47 +8431,21 @@
   }
 
   const startRealTimeUpdates = () => {
-    LogUtil.Info('🔄 startRealTimeUpdates CALLED', {
-      hasExistingInterval: !!realtimeInterval,
-      isRealTime: isRealTime.value,
-      hasMonitorConfig: !!monitorConfig.value,
-      timestamp: new Date().toISOString()
-    })
+    console.log('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
     if (realtimeInterval) {
+      console.log('⚠️ Clearing existing interval:', realtimeInterval)
       clearInterval(realtimeInterval)
+      realtimeInterval = null
     }
 
     // Use monitor config data interval if available, otherwise fallback to default
     const monitorConfigData = monitorConfig.value
     const dataInterval = monitorConfigData?.dataIntervalMs || updateInterval.value
 
-    // 🔍 DEBUG: Add detailed logging to trace interval calculation
-    const setupTime = new Date()
-    const setupTimeString = setupTime.toLocaleTimeString() + '.' + setupTime.getMilliseconds().toString().padStart(3, '0')
-
-    LogUtil.Info(`🔄 TrendLogModal: Starting real-time updates [${setupTimeString}] with detailed interval analysis:`, {
-      'monitorConfig.value exists': !!monitorConfig.value,
-      'monitorConfigData': monitorConfigData,
-      'monitorConfigData?.dataIntervalMs': monitorConfigData?.dataIntervalMs,
-      'updateInterval.value (computed)': updateInterval.value,
-      'actualInterval selected': dataInterval,
-      intervalSeconds: dataInterval / 1000,
-      intervalMinutes: dataInterval / 60000,
-      'Raw monitorConfig': monitorConfig.value
-    })
-
-    // 🔍 If using computed updateInterval, log the calculation details
-    if (!monitorConfigData?.dataIntervalMs) {
-      LogUtil.Info('📊 TrendLogModal: Using computed updateInterval, calculating from monitorConfig:')
-      const calculatedInterval = calculateT3000Interval(monitorConfig.value)
-      LogUtil.Info('📊 TrendLogModal: Calculated interval result:', calculatedInterval)
-    }
-
-    // Track when timer starts
-    LogUtil.Info(`�?TrendLogModal: Setting up polling timer [${setupTimeString}] - Next request expected at: ${new Date(Date.now() + dataInterval).toLocaleTimeString()}`)
-
+    console.log('📡 Creating new interval with', dataInterval, 'ms interval')
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
+    console.log('✅ Interval created - ID:', realtimeInterval)
   }
 
   const stopRealTimeUpdates = () => {
@@ -10416,34 +10379,71 @@
               console.log('    * second_interval_time:', matchingMonitor.second_interval_time)
               console.log('─────────────────────────────────────────────────────────────')
 
-              // Store interval configuration for later use
-              // This will be used by calculateT3000Interval() and updateInterval computed property
-              if (monitorConfig.value) {
+              // 🆕 FIX: Create temporary monitor config from Action 0 response
+              // This is needed because monitorConfig.value hasn't been set yet (set later at line ~10507)
+              const tempMonitorConfig = {
+                hour_interval_time: matchingMonitor.hour_interval_time || 0,
+                minute_interval_time: matchingMonitor.minute_interval_time || 0,
+                second_interval_time: matchingMonitor.second_interval_time || 0,
+                pid: matchingMonitor.pid,
+                id: matchingMonitor.id,
+                label: matchingMonitor.label,
+                status: matchingMonitor.status,
+                inputItems: matchingMonitor.input || []  // 🔥 FIX: Add inputItems from Action 0 response
+              }
+
+              console.log('✅ Created temporary monitor config from Action 0:', tempMonitorConfig)
+
+              // Calculate interval using temporary config since monitorConfig.value is still null
+              const calculatedIntervalMs = calculateT3000Interval(tempMonitorConfig)
+              const calculatedIntervalSec = calculatedIntervalMs / 1000
+              const rawTotalSeconds = (matchingMonitor.hour_interval_time * 3600 +
+                                      matchingMonitor.minute_interval_time * 60 +
+                                      matchingMonitor.second_interval_time)
+
+              console.log('📊 CALCULATED POLLING INTERVAL:')
+              console.log('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
+              console.log('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
+                         matchingMonitor.minute_interval_time + ' * 60 + ' +
+                         matchingMonitor.second_interval_time + ') * 1000')
+              console.log('  - Raw total seconds:', rawTotalSeconds)
+              console.log('  - Raw total milliseconds:', rawTotalSeconds * 1000)
+              console.log('  - Minimum enforced: 5 seconds (5000 ms) [TESTING]')
+              console.log('  - Final interval (ms):', calculatedIntervalMs)
+              console.log('  - Final interval (seconds):', calculatedIntervalSec)
+              if (rawTotalSeconds * 1000 < 5000) {
+                console.log('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (5s), using 5s [TESTING]')
+              }
+              console.log('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
+              console.log('═══════════════════════════════════════════════════════════════')
+
+              // 🔥 CRITICAL FIX: Set monitorConfig.value to tempMonitorConfig so startRealTimeUpdates() can access it
+              console.log('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
+              if (!monitorConfig.value) {
+                monitorConfig.value = tempMonitorConfig
+                console.log('✅ monitorConfig.value set from tempMonitorConfig')
+              } else {
+                // If it already exists, update the interval fields
                 monitorConfig.value.hour_interval_time = matchingMonitor.hour_interval_time || 0
                 monitorConfig.value.minute_interval_time = matchingMonitor.minute_interval_time || 0
                 monitorConfig.value.second_interval_time = matchingMonitor.second_interval_time || 0
+                console.log('✅ Updated existing monitorConfig.value with interval settings')
+              }
 
-                const calculatedIntervalMs = calculateT3000Interval(monitorConfig.value)
-                const calculatedIntervalSec = calculatedIntervalMs / 1000
-                const rawTotalSeconds = (matchingMonitor.hour_interval_time * 3600 +
-                                        matchingMonitor.minute_interval_time * 60 +
-                                        matchingMonitor.second_interval_time)
+              // 🆕 FORCE START: Always start realtime updates after setting monitorConfig
+              console.log('🔄 FORCING startRealTimeUpdates after Action 0 response...')
+              console.log('  - isRealTime.value:', isRealTime.value)
+              console.log('  - monitorConfig.value:', monitorConfig.value)
+              console.log('  - typeof startRealTimeUpdates:', typeof startRealTimeUpdates)
+              console.log('  - startRealTimeUpdates function:', startRealTimeUpdates)
+              console.log('  - Calling startRealTimeUpdates() now...')
 
-                console.log('📊 CALCULATED POLLING INTERVAL:')
-                console.log('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
-                console.log('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
-                           matchingMonitor.minute_interval_time + ' * 60 + ' +
-                           matchingMonitor.second_interval_time + ') * 1000')
-                console.log('  - Raw total seconds:', rawTotalSeconds)
-                console.log('  - Raw total milliseconds:', rawTotalSeconds * 1000)
-                console.log('  - Minimum enforced: 15 seconds (15000 ms)')
-                console.log('  - Final interval (ms):', calculatedIntervalMs)
-                console.log('  - Final interval (seconds):', calculatedIntervalSec)
-                if (rawTotalSeconds * 1000 < 15000) {
-                  console.log('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (15s), using 15s')
-                }
-                console.log('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
-                console.log('═══════════════════════════════════════════════════════════════')
+              try {
+                startRealTimeUpdates()
+                console.log('✅ startRealTimeUpdates() returned successfully')
+                console.log('  - realtimeInterval is now:', realtimeInterval)
+              } catch (error) {
+                console.error('❌ ERROR calling startRealTimeUpdates():', error)
               }
             } else {
               console.warn('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')

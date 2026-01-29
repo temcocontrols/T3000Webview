@@ -95,6 +95,7 @@ export const InputsPage: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
   const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  const savedScrollPosition = useRef<number>(0); // Save scroll position for restoration
 
   // Auto-select first device on page load - DISABLED
   // TreePanel's loadDevicesWithSync already handles auto-selection
@@ -208,6 +209,11 @@ export const InputsPage: React.FC = () => {
 
   // Handlers
   const handleRefresh = async () => {
+    // Save current scroll position before refresh
+    if (scrollContainerRef.current) {
+      savedScrollPosition.current = scrollContainerRef.current.scrollTop;
+    }
+
     setRefreshing(true);
     await fetchInputs();
     setRefreshing(false);
@@ -216,6 +222,11 @@ export const InputsPage: React.FC = () => {
   // Refresh all inputs from device (Trigger #2: Manual "Refresh All" button)
   const handleRefreshFromDevice = async () => {
     if (!selectedDevice) return;
+
+    // Save current scroll position before refresh
+    if (scrollContainerRef.current) {
+      savedScrollPosition.current = scrollContainerRef.current.scrollTop;
+    }
 
     setRefreshing(true);
     setMessage('Refreshing inputs from device...', 'info');
@@ -346,6 +357,21 @@ export const InputsPage: React.FC = () => {
       });
     }
   }, [selectedDevice, isLoadingNextDevice]);
+
+  // Restore scroll position after data refresh (but not on device change)
+  useEffect(() => {
+    if (!refreshing && !loading && savedScrollPosition.current > 0 && scrollContainerRef.current) {
+      // Restore scroll position after a short delay to ensure DOM is ready
+      const timeoutId = setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = savedScrollPosition.current;
+          savedScrollPosition.current = 0; // Reset after restoration
+        }
+      }, 50);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [inputs, refreshing, loading]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: InputPoint, field: string, currentValue: string) => {
@@ -1266,7 +1292,18 @@ export const InputsPage: React.FC = () => {
                   </div>
                 )}
 
-                {selectedDevice && !loading && (
+                {/* Device Selected but No Data */}
+                {selectedDevice && !loading && inputs.length === 0 && (
+                  <div className={styles.noData}>
+                    <div className={styles.centerText}>
+                      <Text size={400} weight="semibold">No inputs found</Text>
+                      <br />
+                      <Text size={200}>This device has no configured input points</Text>
+                    </div>
+                  </div>
+                )}
+
+                {selectedDevice && !loading && inputs.length > 0 && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
@@ -1362,27 +1399,6 @@ export const InputsPage: React.FC = () => {
                       <Text size={200} weight="regular">Loading next device...</Text>
                     </div>
                   )}
-
-                  {/* No Data Message - Show below grid when empty */}
-                  {/* {inputs.length === 0 && (
-                    <div className={styles.emptyStateContainer}>
-                      <div className={styles.emptyStateHeader}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.emptyStateIcon}>
-                          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4ZM10 8V16H14V8H10Z" fill="currentColor"/>
-                        </svg>
-                        <Text size={400} weight="semibold">No inputs found</Text>
-                      </div>
-                      <Text size={300} className={styles.emptyStateText}>This device has no configured input points</Text>
-                      <Button
-                        appearance="subtle"
-                        icon={<ArrowSyncRegular />}
-                        onClick={handleRefresh}
-                        className={styles.refreshButton}
-                      >
-                        Refresh
-                      </Button>
-                    </div>
-                  )} */}
                   </div>
                 )}
 
