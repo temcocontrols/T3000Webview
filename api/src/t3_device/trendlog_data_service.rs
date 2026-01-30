@@ -250,10 +250,14 @@ impl T3TrendlogDataService {
             }
         }
 
-        // Apply time range filter if provided
+        // PERFORMANCE OPTIMIZATION: Apply time range filter if provided
+        // If no time filter provided, default to last 24 hours to prevent scanning all historical data
+        let mut applied_time_filter = false;
+
         if let Some(start_time) = &request.start_time {
             sql.push_str(" AND d.LoggingTime_Fmt >= ?");
             params.push(start_time.clone().into());
+            applied_time_filter = true;
 
             let time_filter_info = format!(
                 "⏰ [TrendlogDataService] Applied start time filter: {}",
@@ -265,6 +269,7 @@ impl T3TrendlogDataService {
         if let Some(end_time) = &request.end_time {
             sql.push_str(" AND d.LoggingTime_Fmt <= ?");
             params.push(end_time.clone().into());
+            applied_time_filter = true;
 
             let time_filter_info = format!(
                 "⏰ [TrendlogDataService] Applied end time filter: {}",
@@ -273,10 +278,25 @@ impl T3TrendlogDataService {
             let _ = write_structured_log_with_level("T3_Webview_API", &time_filter_info, LogLevel::Info);
         }
 
+        // SAFETY: If no time filters provided, default to last 24 hours to prevent slow queries
+        if !applied_time_filter {
+            let default_start = chrono::Local::now() - chrono::Duration::hours(24);
+            let default_start_str = default_start.format("%Y-%m-%d %H:%M:%S").to_string();
+            sql.push_str(" AND d.LoggingTime_Fmt >= ?");
+            params.push(default_start_str.clone().into());
+
+            let safety_info = format!(
+                "🛡️ [TrendlogDataService] No time filter provided - applying 24-hour safety limit from: {}",
+                default_start_str
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &safety_info, LogLevel::Warn);
+        }
+
         // Order by logging time (newest first)
         sql.push_str(" ORDER BY d.LoggingTime_Fmt DESC");
 
-        // Apply limit if provided
+        // PERFORMANCE: Apply default limit if not provided to prevent huge result sets
+        let default_limit = 50000; // Safety limit to prevent OOM on huge datasets
         if let Some(limit) = request.limit {
             sql.push_str(&format!(" LIMIT {}", limit));
             let limit_info = format!(
@@ -284,6 +304,13 @@ impl T3TrendlogDataService {
                 limit
             );
             let _ = write_structured_log_with_level("T3_Webview_API", &limit_info, LogLevel::Info);
+        } else {
+            sql.push_str(&format!(" LIMIT {}", default_limit));
+            let safety_info = format!(
+                "🛡️ [TrendlogDataService] No limit provided - applying safety limit: {}",
+                default_limit
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &safety_info, LogLevel::Warn);
         }
 
         // Log query execution start
@@ -332,17 +359,18 @@ impl T3TrendlogDataService {
 
         // Format the data for the TrendLogChart component
         let format_start_time = std::time::Instant::now();
+
+        // Track scaling statistics instead of logging each one
+        let mut scaling_stats = (0usize, 0usize); // (total_scaled, total_records)
+
         let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
             // Scale value if needed (divide by 1000 if >= 1000)
             let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
 
-            // Log scaling operations for debugging
+            // Count scaling operations instead of logging each one
+            scaling_stats.1 += 1;
             if was_scaled {
-                let scale_info = format!(
-                    "📏 [TrendlogDataService] Value scaled - Point: {}, Original: {:.2}, Scaled: {:.3}",
-                    data.point_id, original_value, scaled_value
-                );
-                let _ = write_structured_log_with_level("T3_Webview_API", &scale_info, LogLevel::Info);
+                scaling_stats.0 += 1;
             }
 
             serde_json::json!({
@@ -360,6 +388,16 @@ impl T3TrendlogDataService {
             })
         }).collect();
         let format_duration = format_start_time.elapsed();
+
+        // Log scaling summary instead of individual operations
+        if scaling_stats.0 > 0 {
+            let scale_summary = format!(
+                "📏 [TrendlogDataService] Value scaling summary - Scaled: {}/{} records ({:.1}%)",
+                scaling_stats.0, scaling_stats.1,
+                (scaling_stats.0 as f64 / scaling_stats.1 as f64 * 100.0)
+            );
+            let _ = write_structured_log_with_level("T3_Webview_API", &scale_summary, LogLevel::Info);
+        }
 
         // Log data formatting completion
         let format_info = format!(
