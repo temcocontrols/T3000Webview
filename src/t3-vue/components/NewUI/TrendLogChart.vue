@@ -3162,6 +3162,15 @@
         const axisId = dataset.yAxisID || 'y'
         const key = `${series.unit}_${axisId}`
 
+        // 🐛 DEBUG: Log each dataset's axis assignment
+        console.log('📊 Dataset axis check:', {
+          label: dataset.label,
+          unit: series.unit,
+          yAxisID: dataset.yAxisID,
+          axisId: axisId,
+          key: key
+        })
+
         if (!unitGroups.has(key)) {
           unitGroups.set(key, {
             unit: series.unit,
@@ -3191,6 +3200,16 @@
       const leftGroups = groups.filter(g => g.axisId === 'y')
       const rightGroups = groups.filter(g => g.axisId === 'y1')
 
+      // 🐛 DEBUG: Log header grouping
+      LogUtil.Info('📊 Header label groups:', {
+        totalGroups: groups.length,
+        leftCount: leftGroups.length,
+        rightCount: rightGroups.length,
+        leftUnits: leftGroups.map(g => g.unit),
+        rightUnits: rightGroups.map(g => g.unit),
+        allGroups: groups.map(g => ({ unit: g.unit, axis: g.axisId, count: g.count }))
+      })
+
       // ✅ Draw LEFT axis units on the LEFT side
       if (leftGroups.length > 0) {
         let xOffset = yScale.left
@@ -3200,12 +3219,14 @@
         ctx.fillText('[L] ', xOffset, y)
         xOffset += ctx.measureText('[L] ').width
 
-        leftGroups.forEach((group, index) => {
-          ctx.fillStyle = group.color
-          ctx.fillText(group.unit, xOffset, y)
-          xOffset += ctx.measureText(group.unit).width
-
-          if (index < leftGroups.length - 1) {
+        // Only show unique units for left axis
+        const uniqueLeftUnits = Array.from(new Set(leftGroups.map(g => g.unit)))
+        uniqueLeftUnits.forEach((unit, index) => {
+          const group = leftGroups.find(g => g.unit === unit)
+          ctx.fillStyle = group?.color || '#666666'
+          ctx.fillText(unit, xOffset, y)
+          xOffset += ctx.measureText(unit).width
+          if (index < uniqueLeftUnits.length - 1) {
             ctx.fillStyle = '#666666'
             ctx.fillText(', ', xOffset, y)
             xOffset += ctx.measureText(', ').width
@@ -3223,18 +3244,20 @@
         ctx.fillText('[R] ', xOffset, y)
         xOffset -= ctx.measureText('[R] ').width
 
-        // Draw units from right to left
-        rightGroups.slice().reverse().forEach((group, index) => {
+        // Only show unique units for right axis
+        const uniqueRightUnits = Array.from(new Set(rightGroups.map(g => g.unit))).reverse()
+        uniqueRightUnits.forEach((unit, index) => {
           if (index > 0) {
             ctx.fillStyle = '#666666'
             const separatorWidth = ctx.measureText(', ').width
             xOffset -= separatorWidth
+            ctx.fillText(', ', xOffset, y)
           }
-
-          ctx.fillStyle = group.color
-          const unitWidth = ctx.measureText(group.unit).width
+          const group = rightGroups.find(g => g.unit === unit)
+          ctx.fillStyle = group?.color || '#1890ff'
+          const unitWidth = ctx.measureText(unit).width
           xOffset -= unitWidth
-          ctx.fillText(group.unit, xOffset, y)
+          ctx.fillText(unit, xOffset, y)
         })
       }
 
@@ -6990,7 +7013,7 @@
       seriesRanges.push({ series, min, max, magnitude })
     }
 
-    // 🆕 STEP 2: Group by magnitude and determine axis assignment
+    // 🆕 STEP 2: Group by magnitude to determine axis assignment
     const rangeGroups: { [key: string]: any[] } = {}
     seriesRanges.forEach(item => {
       const groupKey = `mag_${item.magnitude}`
@@ -7030,6 +7053,21 @@
         axisAssignment.set(item.series.id, 'y')
       })
     }
+
+    // 🐛 DEBUG: Log axis assignments
+    LogUtil.Info('📊 Axis assignments:', {
+      useMultipleAxes,
+      groupCount: groups.length,
+      assignments: Array.from(axisAssignment.entries()).map(([id, axis]) => {
+        const series = visibleAnalog.find(s => s.id === id)
+        return {
+          id,
+          name: series?.name,
+          unit: series?.unit,
+          axis
+        }
+      })
+    })
 
     // 🆕 STEP 4: Create datasets with assigned yAxisID
     for (let i = 0; i < visibleAnalog.length; i++) {
