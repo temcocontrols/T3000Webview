@@ -46,6 +46,15 @@ yarn-error.log*
 *.db-shm
 *.db-wal
 
+# Debug folders and large build artifacts
+*DEBUG/
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.mdb
+*.ldb
+
 .vs
 .vscode
 
