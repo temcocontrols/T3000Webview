@@ -3214,31 +3214,21 @@
       }
 
       // ✅ Draw RIGHT axis units on the RIGHT side (near right Y-axis)
-      if (rightGroups.length > 0 && y1Scale) {
+      if (rightGroups.length > 0 && y1Scale && y1Scale.display !== false) {
         let xOffset = y1Scale.right
         ctx.textAlign = 'right'
 
-        // Build text from right to left
-        const rightText: string[] = []
-
-        rightGroups.forEach((group, index) => {
-          if (index > 0) {
-            rightText.unshift(', ')
-          }
-          rightText.unshift(group.unit)
-        })
-        rightText.unshift('[R] ')
-
-        // Draw each part with appropriate color
-        ctx.fillStyle = '#ff6b6b'
+        // Draw [R] indicator in blue to match right Y-axis
+        ctx.fillStyle = '#1890ff'
         ctx.fillText('[R] ', xOffset, y)
         xOffset -= ctx.measureText('[R] ').width
 
+        // Draw units from right to left
         rightGroups.slice().reverse().forEach((group, index) => {
           if (index > 0) {
             ctx.fillStyle = '#666666'
-            xOffset -= ctx.measureText(', ').width
-            ctx.fillText(', ', xOffset, y)
+            const separatorWidth = ctx.measureText(', ').width
+            xOffset -= separatorWidth
           }
 
           ctx.fillStyle = group.color
@@ -3357,6 +3347,8 @@
                 if (totalRangeSec > 0) {
                   zoomLevel.value = Math.max(1, Math.round(totalRangeSec / currentRangeSec))
                 }
+                // Force chart update to recalculate Y-axis and header with resize mode
+                setTimeout(() => chart.update('resize'), 10)
               }
             }
           },
@@ -3481,7 +3473,7 @@
             display: false
           },
           ticks: {
-            color: '#ff6b6b', // Different color to distinguish from primary axis
+            color: '#1890ff', // Blue color to distinguish from primary axis (left)
             font: {
               size: 11,
               family: 'Inter, Helvetica, Arial, sans-serif'
@@ -7215,9 +7207,9 @@
     })
 
     // 🆕 FIX: Update chart without blocking UI thread
-    // Using 'none' mode prevents animations but still allows async rendering
-    // Removed synchronous render() call that was blocking the entire application
-    analogChartInstance.update('none')
+    // Using 'resize' mode forces Y-axis recalculation and header redraw
+    // This ensures dynamic updates when zooming or changing time series
+    analogChartInstance.update('resize')
 
     // Scroll right-panel to bottom by default
     nextTick(() => {
