@@ -96,18 +96,14 @@ impl T3TrendlogDataService {
         &PARENT_CACHE
     }
 
-    /// Scale large values: if value >= 1000, divide by 1000
-    /// Returns (scaled_value, original_value, was_scaled)
-    fn scale_value_if_needed(raw_value: &str) -> (f64, f64, bool) {
+    /// Always divide values by 1000 when reading from database
+    /// Database stores raw values, API returns scaled values
+    /// Returns (scaled_value, original_value)
+    fn scale_value_from_db(raw_value: &str) -> (f64, f64) {
         let original_value = raw_value.parse::<f64>().unwrap_or(0.0);
-        let mut scaled_value = original_value;
-        let was_scaled = original_value >= 1000.0;
+        let scaled_value = original_value / 1000.0;
 
-        if was_scaled {
-            scaled_value = original_value / 1000.0;
-        }
-
-        (scaled_value, original_value, was_scaled)
+        (scaled_value, original_value)
     }
 
     /// Get historical trendlog data for a specific device and trendlog
@@ -360,18 +356,9 @@ impl T3TrendlogDataService {
         // Format the data for the TrendLogChart component
         let format_start_time = std::time::Instant::now();
 
-        // Track scaling statistics instead of logging each one
-        let mut scaling_stats = (0usize, 0usize); // (total_scaled, total_records)
-
         let formatted_data: Vec<serde_json::Value> = trendlog_data_list.iter().map(|data| {
-            // Scale value if needed (divide by 1000 if >= 1000)
-            let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
-
-            // Count scaling operations instead of logging each one
-            scaling_stats.1 += 1;
-            if was_scaled {
-                scaling_stats.0 += 1;
-            }
+            // Always divide by 1000 when reading from database
+            let (scaled_value, original_value) = Self::scale_value_from_db(&data.value);
 
             serde_json::json!({
                 "time": data.logging_time_fmt,
@@ -382,22 +369,13 @@ impl T3TrendlogDataService {
                 "units": data.units,
                 "range": data.range_field,
                 "raw_value": data.value,
-                "original_value": original_value, // Include original value for reference
-                "was_scaled": was_scaled, // Indicate if value was scaled
+                "original_value": original_value,
                 "is_analog": data.digital_analog.as_ref().map(|da| da == "1").unwrap_or(true)
             })
         }).collect();
         let format_duration = format_start_time.elapsed();
 
-        // Log scaling summary instead of individual operations
-        if scaling_stats.0 > 0 {
-            let scale_summary = format!(
-                "📏 [TrendlogDataService] Value scaling summary - Scaled: {}/{} records ({:.1}%)",
-                scaling_stats.0, scaling_stats.1,
-                (scaling_stats.0 as f64 / scaling_stats.1 as f64 * 100.0)
-            );
-            let _ = write_structured_log_with_level("T3_Webview_API", &scale_summary, LogLevel::Info);
-        }
+
 
         // Log data formatting completion
         let format_info = format!(
@@ -991,9 +969,9 @@ impl T3TrendlogDataService {
             raw_data
         };
 
-        // Format data with scaling
+        // Format data - always divide by 1000
         let formatted_data: Vec<serde_json::Value> = final_data.into_iter().map(|data| {
-            let (scaled_value, original_value, was_scaled) = Self::scale_value_if_needed(&data.value);
+            let (scaled_value, original_value) = Self::scale_value_from_db(&data.value);
 
             serde_json::json!({
                 "time": data.logging_time_fmt,
@@ -1005,7 +983,6 @@ impl T3TrendlogDataService {
                 "range": data.range_field,
                 "raw_value": data.value,
                 "original_value": original_value,
-                "was_scaled": was_scaled,
                 "is_analog": data.digital_analog.as_deref() == Some("1"),
                 "data_source": "N/A",  // Not queried in JOIN
                 "sync_interval": 30     // Not queried in JOIN

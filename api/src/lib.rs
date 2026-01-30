@@ -1,6 +1,7 @@
 use std::panic;
 use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 use db_connection::establish_t3_device_connection;
+use database_management::partition_monitor_service;
 
 pub mod app_state;
 pub mod auth;
@@ -189,8 +190,8 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
-    if crate::constants::ENABLE_FFI_SYNC_SERVICE {
-        let main_service_handle = tokio::spawn(async move {
+    let main_service_handle = if crate::constants::ENABLE_FFI_SYNC_SERVICE {
+        let handle = tokio::spawn(async move {
             if let Err(e) = start_logging_sync().await {
                 let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
                 let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
@@ -198,13 +199,14 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         });
 
         let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ T3000 FFI Sync Service started in background (15-minute sync intervals with immediate startup sync)", LogLevel::Info);
+        Some(handle)
     } else {
         let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  T3000 FFI Sync Service DISABLED by constant (ENABLE_FFI_SYNC_SERVICE = false)", LogLevel::Warn);
-    }
+        None
+    };
 
     // Start partition monitor service (hourly background checks)
     if crate::constants::ENABLE_PARTITION_MONITOR_SERVICE {
-        use crate::database_management::partition_monitor_service;
         if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
             let error_msg = format!("Partition monitor service initialization failed: {}", e);
             let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
@@ -264,7 +266,9 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
 
     // If HTTP server stops, we should stop background services too
     websocket_handle.abort();
-    main_service_handle.abort();
+    if let Some(handle) = main_service_handle {
+        handle.abort();
+    }
 
     http_result
 }
