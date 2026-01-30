@@ -189,22 +189,30 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Start T3000 FFI Sync Service in background with immediate trigger
-    let main_service_handle = tokio::spawn(async move {
-        if let Err(e) = start_logging_sync().await {
-            let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
-            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
-        }
-    });
+    if crate::constants::ENABLE_FFI_SYNC_SERVICE {
+        let main_service_handle = tokio::spawn(async move {
+            if let Err(e) = start_logging_sync().await {
+                let error_msg = format!("T3000 FFI Sync Service (FFI + DeviceSync + WebSocket) failed: {}", e);
+                let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Error);
+            }
+        });
 
-    let _ = write_structured_log_with_level("T3_Webview_Initialize", "T3000 FFI Sync Service started in background (1-minute sync intervals with immediate startup sync)", LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ T3000 FFI Sync Service started in background (15-minute sync intervals with immediate startup sync)", LogLevel::Info);
+    } else {
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  T3000 FFI Sync Service DISABLED by constant (ENABLE_FFI_SYNC_SERVICE = false)", LogLevel::Warn);
+    }
 
     // Start partition monitor service (hourly background checks)
-    use crate::database_management::partition_monitor_service;
-    if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
-        let error_msg = format!("Partition monitor service initialization failed: {}", e);
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+    if crate::constants::ENABLE_PARTITION_MONITOR_SERVICE {
+        use crate::database_management::partition_monitor_service;
+        if let Err(e) = partition_monitor_service::start_partition_monitor_service().await {
+            let error_msg = format!("Partition monitor service initialization failed: {}", e);
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", &error_msg, LogLevel::Warn);
+        } else {
+            let _ = write_structured_log_with_level("T3_Webview_Initialize", "✅ Partition monitor service started (hourly checks)", LogLevel::Info);
+        }
     } else {
-        let _ = write_structured_log_with_level("T3_Webview_Initialize", "Partition monitor service started (checks every hour)", LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_Webview_Initialize", "⏸️  Partition monitor service DISABLED by constant (ENABLE_PARTITION_MONITOR_SERVICE = false)", LogLevel::Warn);
     }
 
     // Schedule startup partition migration check (5 minute delay to allow database stabilization)

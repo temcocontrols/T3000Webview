@@ -1,5 +1,13 @@
 use std::path::PathBuf;
 
+/// Enable/disable T3000 FFI Sync Service (calls C++ LOGGING_DATA every 15 min)
+/// Set to false to disable automatic device data syncing from T3000.exe
+pub const ENABLE_FFI_SYNC_SERVICE: bool = false;
+
+/// Enable/disable Partition Monitor Service (hourly database maintenance)
+/// Set to false to disable partition checks, WAL cleanup, and size monitoring
+pub const ENABLE_PARTITION_MONITOR_SERVICE: bool = false;
+
 /// Get the base runtime directory where T3000 application stores its files
 /// Checks TEMCO_T3000_PATH environment variable first, then falls back to exe directory
 pub fn get_t3000_runtime_path() -> PathBuf {
