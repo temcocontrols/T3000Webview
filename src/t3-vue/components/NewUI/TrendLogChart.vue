@@ -5404,7 +5404,7 @@
         trendlog_id: trendlogId,
         start_time: formattedStartTime,
         end_time: formattedEndTime,
-        // No limit - return all data in the time range
+        // No limit - return all data in the time range for timebase changes
         point_types: ['INPUT', 'OUTPUT', 'VARIABLE', 'MONITOR'], // All point types (matching working API)
         specific_points: specificPoints
       }
@@ -5414,15 +5414,6 @@
         timeRangeMinutes: timeRangeMinutes,
         pointsCount: specificPoints.length,
         noLimit: true,
-        trendlogId: trendlogId
-      })
-
-      LogUtil.Debug('🔍 Historical data request:', {
-        timeRange: `${formattedStartTime} to ${formattedEndTime}`,
-        timeRangeMinutes: timeRangeMinutes,
-        timeBase: timeBase.value,
-        pointsCount: specificPoints.length,
-        limit: historyRequest.limit,
         trendlogId: trendlogId
       })
 
