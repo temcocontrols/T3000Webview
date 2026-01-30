@@ -7090,6 +7090,11 @@
       // Get axis assignment (default to 'y' if not found)
       const yAxisID = axisAssignment.get(series.id) || 'y'
 
+      // Determine whether to show a point marker: respect global `showPoints`,
+      // but always show a marker when there is only a single data point to
+      // provide immediate feedback for single-point real-time updates.
+      const shouldShowPoint = showPoints.value || (sortedData.length === 1)
+
       datasets.push({
         label: series.name,
         data: sortedData,
@@ -7098,7 +7103,7 @@
         borderWidth: 2,
         fill: false,
         tension: smoothLines.value ? 0.4 : 0,
-        pointRadius: showPoints.value ? 3 : 0,
+        pointRadius: shouldShowPoint ? 3 : 0,
         pointHoverRadius: 6,
         pointBackgroundColor: series.color,
         pointBorderColor: '#fff',
