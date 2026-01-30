@@ -3139,31 +3139,38 @@
     }
   }
 
-  // Custom plugin for y-axis units
+  // Custom plugin for y-axis units with multi-axis indicators
   const yAxisUnitsPlugin = {
     id: 'yAxisUnits',
     afterDraw: (chart: any) => {
       const yScale = chart.scales.y
+      const y1Scale = chart.scales.y1
       if (!yScale) return
 
       const ctx = chart.ctx
       ctx.save()
 
-      // Get unit groups with colors from visible analog series (preserve original sequence)
+      // Get unit groups with colors and axis assignment from visible analog series
       const unitGroups = new Map()
       const visibleAnalog = visibleAnalogSeries.value
 
-      // Loop through series in original order to find first occurrence of each unit
-      visibleAnalog.forEach(series => {
-        if (series.unit && !unitGroups.has(series.unit)) {
-          unitGroups.set(series.unit, {
+      // Loop through datasets to determine axis assignment
+      chart.data.datasets.forEach((dataset: any) => {
+        const series = visibleAnalog.find(s => s.name === dataset.label)
+        if (!series || !series.unit) return
+
+        const axisId = dataset.yAxisID || 'y'
+        const key = `${series.unit}_${axisId}`
+
+        if (!unitGroups.has(key)) {
+          unitGroups.set(key, {
+            unit: series.unit,
             color: series.color,
+            axisId: axisId,
             count: 0
           })
         }
-        if (series.unit && unitGroups.has(series.unit)) {
-          unitGroups.get(series.unit).count++
-        }
+        unitGroups.get(key).count++
       })
 
       if (unitGroups.size === 0) {
@@ -3171,77 +3178,74 @@
         return
       }
 
-      // Build display text based on unit count
-      const units = Array.from(unitGroups.keys())
-      let displayText = ''
-      let xOffset = yScale.left
+      // Build display text with axis indicators
+      const groups = Array.from(unitGroups.values())
       const chartArea = chart.chartArea
       const y = chartArea.top - 15
 
       // Set font
       ctx.font = '11px Inter, Helvetica, Arial, sans-serif'
-      ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
 
-      if (units.length === 1) {
-        // Single unit: "°C" or "°C (14 sensors)" if all same
-        const unit = units[0]
-        const group = unitGroups.get(unit)
-        const totalSensors = visibleAnalog.length
+      // Group by axis for display
+      const leftGroups = groups.filter(g => g.axisId === 'y')
+      const rightGroups = groups.filter(g => g.axisId === 'y1')
 
-        ctx.fillStyle = group.color
-        if (group.count === totalSensors && totalSensors > 1) {
-          displayText = `${unit} (${totalSensors} sensors)`
-        } else {
-          displayText = unit
-        }
-        ctx.fillText(displayText, xOffset, y)
+      // ✅ Draw LEFT axis units on the LEFT side
+      if (leftGroups.length > 0) {
+        let xOffset = yScale.left
+        ctx.textAlign = 'left'
 
-      } else if (units.length <= 3) {
-        // 2-3 units: "°C | Pa | CFM" (each colored)
-        units.forEach((unit, index) => {
-          const group = unitGroups.get(unit)
+        ctx.fillStyle = '#666666'
+        ctx.fillText('[L] ', xOffset, y)
+        xOffset += ctx.measureText('[L] ').width
+
+        leftGroups.forEach((group, index) => {
           ctx.fillStyle = group.color
-          ctx.fillText(unit, xOffset, y)
+          ctx.fillText(group.unit, xOffset, y)
+          xOffset += ctx.measureText(group.unit).width
 
-          // Measure text width for next position
-          const textWidth = ctx.measureText(unit).width
-          xOffset += textWidth
-
-          // Add separator if not last
-          if (index < units.length - 1) {
+          if (index < leftGroups.length - 1) {
             ctx.fillStyle = '#666666'
-            ctx.fillText(' | ', xOffset, y)
-            xOffset += ctx.measureText(' | ').width
+            ctx.fillText(', ', xOffset, y)
+            xOffset += ctx.measureText(', ').width
           }
         })
+      }
 
-      } else {
-        // 4+ units: "°C | Pa ... +X more"
-        // Show first 2 units
-        for (let i = 0; i < 2; i++) {
-          const unit = units[i]
-          const group = unitGroups.get(unit)
-          ctx.fillStyle = group.color
-          ctx.fillText(unit, xOffset, y)
+      // ✅ Draw RIGHT axis units on the RIGHT side (near right Y-axis)
+      if (rightGroups.length > 0 && y1Scale) {
+        let xOffset = y1Scale.right
+        ctx.textAlign = 'right'
 
-          const textWidth = ctx.measureText(unit).width
-          xOffset += textWidth
+        // Build text from right to left
+        const rightText: string[] = []
 
-          if (i < 1) {
-            ctx.fillStyle = '#666666'
-            ctx.fillText(' | ', xOffset, y)
-            xOffset += ctx.measureText(' | ').width
+        rightGroups.forEach((group, index) => {
+          if (index > 0) {
+            rightText.unshift(', ')
           }
-        }
+          rightText.unshift(group.unit)
+        })
+        rightText.unshift('[R] ')
 
-        // Add "... +X more"
-        const moreCount = units.length - 2
-        ctx.fillStyle = '#999999'
-        ctx.fillText(` ... +${moreCount} more`, xOffset, y)
+        // Draw each part with appropriate color
+        ctx.fillStyle = '#ff6b6b'
+        ctx.fillText('[R] ', xOffset, y)
+        xOffset -= ctx.measureText('[R] ').width
 
-        // Store full unit info for tooltip (could be used later)
-        chart.fullUnitInfo = unitGroups
+        rightGroups.slice().reverse().forEach((group, index) => {
+          if (index > 0) {
+            ctx.fillStyle = '#666666'
+            xOffset -= ctx.measureText(', ').width
+            ctx.fillText(', ', xOffset, y)
+          }
+
+          ctx.fillStyle = group.color
+          const unitWidth = ctx.measureText(group.unit).width
+          xOffset -= unitWidth
+          ctx.fillText(group.unit, xOffset, y)
+        })
       }
 
       ctx.restore()
@@ -3314,7 +3318,15 @@
               const series = visibleAnalogSeries.value.find(s => s.name === context.dataset.label)
               if (!series) return `${context.parsed.y}`
 
-              return `   ${context.parsed.y.toFixed(2)}`
+              // Get unit text
+              const unitText = series.unit || ''
+
+              // Get axis indicator
+              const yAxisID = context.dataset.yAxisID || 'y'
+              const axisLabel = yAxisID === 'y1' ? '[R]' : '[L]'
+
+              // Format: "Series Name: 25.50 °C [L]"
+              return `${series.name}: ${context.parsed.y.toFixed(2)} ${unitText} ${axisLabel}`
             }
           }
         },
@@ -3407,14 +3419,18 @@
           afterFit: function(scale: any) {
             scale.width = 50; // Fixed width for Y-axis to ensure alignment
           },
-          // Dynamic Y-axis scaling with round grid numbers
+          // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
             if (data.length === 0) return
 
-            // Get all data values
+            // Filter datasets assigned to this axis (y)
+            const yDatasets = data.filter((ds: any) => !ds.yAxisID || ds.yAxisID === 'y')
+            if (yDatasets.length === 0) return
+
+            // Get all values for left Y-axis
             const allValues: number[] = []
-            data.forEach((dataset: any) => {
+            yDatasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
                   if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
@@ -3450,8 +3466,87 @@
 
             // Calculate nice step size for more ticks
             const newRange = scale.max - scale.min
-            const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
             const roughStep = newRange / 10 // Target 10 grid lines for more ticks
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
+          }
+        },
+        // 🆕 Secondary Y-axis for different scale values (right side)
+        y1: {
+          display: true,
+          position: 'right' as const,
+          grid: {
+            drawOnChartArea: false, // Don't draw grid lines for secondary axis
+            display: false
+          },
+          ticks: {
+            color: '#ff6b6b', // Different color to distinguish from primary axis
+            font: {
+              size: 11,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 2,
+            autoSkip: false,
+            align: 'start',
+            callback: function (value: any) {
+              const formatted = Number(value).toFixed(2);
+              return formatted.padStart(6, ' ');
+            }
+          },
+          afterFit: function(scale: any) {
+            scale.width = 50;
+          },
+          afterDataLimits: function (scale: any) {
+            const data = scale.chart.data.datasets
+            const y1Datasets = data.filter((ds: any) => ds.yAxisID === 'y1')
+
+            if (y1Datasets.length === 0) {
+              scale.display = false
+              return
+            }
+
+            scale.display = true
+
+            // Get all values for y1 axis
+            const allValues: number[] = []
+            y1Datasets.forEach((dataset: any) => {
+              if (dataset.data && dataset.data.length > 0) {
+                dataset.data.forEach((point: any) => {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
+                    allValues.push(point.y)
+                  }
+                })
+              }
+            })
+
+            if (allValues.length === 0) {
+              scale.display = false
+              return
+            }
+
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const range = max - min
+
+            if (range === 0) {
+              scale.min = min * 0.9
+              scale.max = max * 1.1
+            } else if (range < 2) {
+              const center = (min + max) / 2
+              const expandedRange = Math.max(range * 3, 1)
+              scale.min = center - expandedRange / 2
+              scale.max = center + expandedRange / 2
+            } else {
+              const padding = range * 0.1
+              scale.min = min - padding
+              scale.max = max + padding
+            }
+
+            // Calculate nice step size
+            const newRange = scale.max - scale.min
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
           }
@@ -6884,6 +6979,67 @@
     // Process each series sequentially with yield points for C++ WebView
     const datasets: any[] = []
 
+    // 🆕 STEP 1: Pre-analyze all series to determine axis assignment
+    const seriesRanges: { series: any, min: number, max: number, magnitude: number }[] = []
+
+    for (const series of visibleAnalog) {
+      if (!series.data || series.data.length === 0) continue
+
+      const values = series.data
+        .map((point: any) => point?.value)
+        .filter((y: any) => typeof y === 'number' && isFinite(y) && y > -99999 && y < 999999)
+
+      if (values.length === 0) continue
+
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      const magnitude = Math.floor(Math.log10(Math.max(Math.abs(max), Math.abs(min), 1)))
+
+      seriesRanges.push({ series, min, max, magnitude })
+    }
+
+    // 🆕 STEP 2: Group by magnitude and determine axis assignment
+    const rangeGroups: { [key: string]: any[] } = {}
+    seriesRanges.forEach(item => {
+      const groupKey = `mag_${item.magnitude}`
+      if (!rangeGroups[groupKey]) {
+        rangeGroups[groupKey] = []
+      }
+      rangeGroups[groupKey].push(item)
+    })
+
+    // 🆕 STEP 3: Assign axes (largest range group = left 'y', others = right 'y1')
+    const groups = Object.entries(rangeGroups)
+    let useMultipleAxes = groups.length > 1
+
+    // Sort groups by total range (largest first)
+    groups.sort((a, b) => {
+      const rangeA = Math.max(...a[1].map(item => item.max)) - Math.min(...a[1].map(item => item.min))
+      const rangeB = Math.max(...b[1].map(item => item.max)) - Math.min(...b[1].map(item => item.min))
+      return rangeB - rangeA
+    })
+
+    // Assign axis IDs to each series
+    const axisAssignment = new Map<string, string>()
+    if (useMultipleAxes) {
+      // Primary group uses left axis
+      groups[0][1].forEach(item => {
+        axisAssignment.set(item.series.id, 'y')
+      })
+      // Secondary groups use right axis
+      groups.slice(1).forEach(([key, items]) => {
+        items.forEach(item => {
+          axisAssignment.set(item.series.id, 'y1')
+        })
+      })
+    } else {
+      // All use left axis
+      seriesRanges.forEach(item => {
+        axisAssignment.set(item.series.id, 'y')
+      })
+    }
+
+    // 🆕 STEP 4: Create datasets with assigned yAxisID
     for (let i = 0; i < visibleAnalog.length; i++) {
       const series = visibleAnalog[i]
 
@@ -6901,6 +7057,9 @@
           y: point.value
         }))
 
+      // Get axis assignment (default to 'y' if not found)
+      const yAxisID = axisAssignment.get(series.id) || 'y'
+
       datasets.push({
         label: series.name,
         data: sortedData,
@@ -6915,7 +7074,8 @@
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointStyle: 'circle' as const,
-        spanGaps: false
+        spanGaps: false,
+        yAxisID: yAxisID // ✅ Assign axis here!
       })
     }
 
