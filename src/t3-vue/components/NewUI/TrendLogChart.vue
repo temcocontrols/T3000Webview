@@ -1708,7 +1708,7 @@
   // Dynamic interval calculation based on T3000 monitorConfig
   const calculateT3000Interval = (monitorConfig: any): number => {
     if (!monitorConfig) {
-      return 5000 // Default fallback: 5 seconds (TESTING)
+      return 15000 // Default fallback: 15 seconds
     }
 
     const {
@@ -1722,10 +1722,10 @@
       (minute_interval_time * 60) +
       second_interval_time
 
-    // If no intervals specified at all, default to 5 seconds, otherwise use calculated value
+    // If no intervals specified at all, default to 15 seconds, otherwise use calculated value
     const intervalMs = totalSeconds > 0
-      ? Math.max(totalSeconds * 1000, 5000)  // Minimum 5 seconds (TESTING)
-      : 5000  // Default 5 seconds if all intervals are 0 (TESTING)
+      ? Math.max(totalSeconds * 1000, 15000)  // Minimum 15 seconds
+      : 15000  // Default 15 seconds if all intervals are 0
 
     return intervalMs
   }
