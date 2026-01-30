@@ -178,7 +178,7 @@
       <!-- Global loading indicator -->
       <div v-show="shouldShowLoading" class="global-loading-indicator">
         <a-spin size="small" />
-        <span style="margin-left: 8px;">Loading trend data...</span>
+        <span style="margin-left: 8px;">Loading trendlog data...</span>
       </div>
 
       <!-- ANALOG AREA (Top Section) -->
@@ -4555,14 +4555,12 @@
   }
 
   /**
-   * Scale large values for display: if value >= 1000, divide by 1000
-   * Matches the backend scaling logic for consistency between real-time and historical data
+   * Scale raw value from T3000 integer format to decimal
+   * Database and C++ always store/return values as integers (multiplied by 1000)
+   * Examples: 5000 → 5, 500 → 0.5, 2500 → 2.5
    */
   const scaleValueIfNeeded = (rawValue: number): number => {
-    if (rawValue >= 1000) {
-      return rawValue / 1000
-    }
-    return rawValue
+    return rawValue / 1000
   }
 
   /**
@@ -4590,21 +4588,22 @@
   }
 
   /**
-   * Get the correct value from panel data based on device type
+   * Get the correct RAW value from panel data based on device type
+   * Returns raw value WITHOUT scaling - scaling is done later by processDeviceValue
    */
   const getDeviceValue = (panelData: any, isAnalog: boolean): number => {
     let rawValue: number
 
     if (isAnalog) {
-      // Analog devices: use 'value' field
-      rawValue = scaleValueIfNeeded(parseFloat(panelData.value) || 0)
+      // Analog devices: use 'value' field (raw value from C++)
+      rawValue = parseFloat(panelData.value) || 0
     } else {
       // Digital devices: For OUT1/OUT2, check multiple potential fields
       if (panelData.id === 'OUT1' || panelData.id === 'OUT2') {
         // Try different fields for digital outputs
-        const controlValue = scaleValueIfNeeded(parseFloat(panelData.control) || 0)
-        const valueValue = scaleValueIfNeeded(parseFloat(panelData.value) || 0)
-        const autoManualValue = scaleValueIfNeeded(parseFloat(panelData.auto_manual) || 0)
+        const controlValue = parseFloat(panelData.control) || 0
+        const valueValue = parseFloat(panelData.value) || 0
+        const autoManualValue = parseFloat(panelData.auto_manual) || 0
 
         // Use the field with the highest non-zero value, or control as fallback
         if (valueValue > 0) {
@@ -4616,7 +4615,7 @@
         }
       } else {
         // Regular digital devices: use 'control' field
-        rawValue = scaleValueIfNeeded(parseFloat(panelData.control) || 0)
+        rawValue = parseFloat(panelData.control) || 0
       }
     }
 
@@ -4755,14 +4754,9 @@
     const rawValue = getDeviceValue(panelData, isAnalog)
 
     if (isAnalog) {
-      // Analog processing: only divide by 1000 if value is larger than 1000
-      // This handles cases where some values are already in correct scale
-      let processedValue: number
-      if (rawValue > 1000) {
-        processedValue = rawValue / 1000
-      } else {
-        processedValue = rawValue
-      }
+      // Analog processing: always divide by 1000 (T3000 stores values as integers)
+      // Examples: 5000 → 5, 567 → 0.567, 2500 → 2.5
+      const processedValue = scaleValueIfNeeded(rawValue)
 
       const unit = getAnalogUnit(panelData.range, panelData.type)
 
@@ -4772,12 +4766,13 @@
         unit: unit
       }
     } else {
-      // Digital processing: use control value as-is with state labels
+      // Digital processing: divide by 1000 first, then use state labels
+      const scaledValue = scaleValueIfNeeded(rawValue)
       const digitalStates = getDigitalStatesFromRange(panelData.range)
-      const displayValue = rawValue > 0 ? `1 (${digitalStates[1]})` : `0 (${digitalStates[0]})`
+      const displayValue = scaledValue > 0 ? `1 (${digitalStates[1]})` : `0 (${digitalStates[0]})`
 
       return {
-        value: rawValue,
+        value: scaledValue,
         displayValue: displayValue,
         unit: ''
       }
