@@ -1406,7 +1406,7 @@
       String(d.pid) === String(panelId) && d.id === idToFind
     )
 
-    if (!device || device.unit === undefined) return ''
+    if (!device || device.range === undefined) return ''
 
     // Check for custom range data first
     if (panelsRanges?.length) {
@@ -1418,20 +1418,20 @@
       }
     }
 
-    // Use rangeDefinitions lookup
+    // Use rangeDefinitions lookup - use device.range instead of device.unit
     let ranges: any[] = []
     if (pointTypeInfo.category === 'IN') ranges = rangeDefinitions.analog.input
     else if (pointTypeInfo.category === 'OUT') ranges = rangeDefinitions.analog.output
     else if (pointTypeInfo.category === 'VAR') ranges = rangeDefinitions.analog.variable
 
-    const rangeInfo = ranges.find(r => r.id === device.unit)
+    const rangeInfo = ranges.find(r => r.id === device.range)
     if (rangeInfo) {
       // If unit is empty, return the label (e.g., "Unused")
       return rangeInfo.unit || rangeInfo.label
     }
 
-    // Check digital ranges
-    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.unit)
+    // Check digital ranges - use device.range instead of device.unit
+    const digitalRange = rangeDefinitions.digital.find(d => d.id === device.range)
     if (digitalRange) return `${digitalRange.off}/${digitalRange.on}`
 
     return ''
