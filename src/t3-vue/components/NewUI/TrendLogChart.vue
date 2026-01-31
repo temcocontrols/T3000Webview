@@ -3779,7 +3779,7 @@
           })(),
           y: {
             min: 0,
-            max: 1,
+            max: 1.4,
             display: true, // Show y-axis for digital charts
             grid: {
               color: '#F0F0F0',
