@@ -204,10 +204,10 @@
                     Loading...
                   </span>
                   <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
+                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
                   </span>
                   <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                    📚 Historical ({{ timeBase }})
+                    📚 Historical (Custom Date)
                   </span>
                   <span v-else-if="hasConnectionError" class="source-badge error">
                     ⚠️ Connection Error
@@ -441,10 +441,10 @@
                     Loading...
                   </span>
                   <span v-else-if="dataSource === 'realtime'" class="source-badge realtime">
-                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live
+                    <ThunderboltFilled :style="{ fontSize: '12px', marginRight: '4px' }" /> Live ({{ timeBase }})
                   </span>
                   <span v-else-if="dataSource === 'api'" class="source-badge historical">
-                    📚 Historical ({{ timeBase }})
+                    📚 Historical (Custom Date)
                   </span>
                   <span v-else-if="hasConnectionError" class="source-badge error">
                     ⚠️ Connection Error
@@ -2812,13 +2812,10 @@
       return
     }
 
-    // 🆕 FIX: Update isRealTime BEFORE changing timebase
-    // This ensures the timebase watcher sees the correct Auto Scroll state
-    if (value === '5m') {
-      isRealTime.value = true // Enable real-time UI mode (current time view, nav buttons disabled)
-    } else {
-      isRealTime.value = false // Enable historical UI mode (allows time navigation with arrow buttons)
-    }
+    // 🔧 FIX: Timebase only controls X-axis display range (5m, 10m, 30m, 1h)
+    // Real-time mode should stay active for all timebases - only 'custom' disables it
+    // The Auto Scroll toggle is the primary control for real-time mode
+    // Note: Custom date ranges will disable real-time mode separately
 
     // Now set timebase - the watcher will see the correct isRealTime value
     timeBase.value = value
@@ -7498,13 +7495,8 @@
     if (currentIndex > 0) {
       const newTimebase = timebaseProgression[currentIndex - 1]
 
-      // 🆕 FIX: Update isRealTime BEFORE changing timebase (same as setTimeBase)
-      if (newTimebase === '5m') {
-        isRealTime.value = true
-      } else {
-        isRealTime.value = false
-      }
-
+      // 🔧 FIX: Timebase only controls X-axis range, not real-time mode
+      // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
 
@@ -7521,13 +7513,8 @@
     if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
       const newTimebase = timebaseProgression[currentIndex + 1]
 
-      // 🆕 FIX: Update isRealTime BEFORE changing timebase (same as setTimeBase)
-      if (newTimebase === '5m') {
-        isRealTime.value = true
-      } else {
-        isRealTime.value = false
-      }
-
+      // 🔧 FIX: Timebase only controls X-axis range, not real-time mode
+      // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
 
