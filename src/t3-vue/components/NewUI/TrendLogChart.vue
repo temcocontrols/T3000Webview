@@ -41,11 +41,11 @@
         <!-- Scroll Left/Right Controls -->
         <a-flex align="center" class="control-group">
           <a-button-group size="small">
-            <a-button @click="moveTimeLeft" :disabled="isRealTime" title="Scroll Left (←)"
+            <a-button @click="moveTimeLeft" :disabled="!canScroll" title="Scroll Left (←)"
                       style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
               <ArrowLeftOutlined style="font-size: 12px;" />
             </a-button>
-            <a-button @click="moveTimeRight" :disabled="isRealTime" title="Scroll Right (→)"
+            <a-button @click="moveTimeRight" :disabled="!canScroll" title="Scroll Right (→)"
                       style="display: flex; align-items: center; justify-content: center; padding: 4px 8px;">
               <ArrowRightOutlined style="font-size: 12px;" />
             </a-button>
@@ -2316,6 +2316,48 @@
 
   // Watch timeBase for changes and hybrid data loading with debouncing and cancellation
   watch(timeBase, async (newTimeBase, oldTimeBase) => {
+    // 🛡️ SKIP: Custom timebase is handled by onCustomDateChange() separately
+    // This prevents duplicate API calls when custom date range is applied
+    if (newTimeBase === 'custom') {
+      LogUtil.Debug('⏭️ Skipping timebase watcher for custom - handled by onCustomDateChange()', {
+        oldTimeBase,
+        newTimeBase
+      })
+      return
+    }
+
+    // 🔄 RESET: When switching FROM custom TO regular timebase, re-enable real-time mode
+    if (oldTimeBase === 'custom' && newTimeBase !== 'custom') {
+      LogUtil.Info('🔄 Switching from custom date to regular timebase - re-enabling real-time mode', {
+        oldTimeBase,
+        newTimeBase
+      })
+      isRealTime.value = true
+      dataSource.value = 'realtime'
+
+      // 🧹 CLEANUP: Clear custom date values to prevent X-axis from using custom range
+      customStartDate.value = null
+      customEndDate.value = null
+      customStartTime.value = null
+      customEndTime.value = null
+
+      // 🔄 Reset time offset when returning to real-time
+      timeOffset.value = 0
+
+      // 🧹 CLEAR: Remove old custom range data from series
+      // This prevents the chart from showing stale custom date data with wrong X-axis
+      dataSeries.value.forEach(series => {
+        series.data = [] // Clear data, will be reloaded from database
+      })
+
+      LogUtil.Info('✅ Cleared custom date settings, data, and reset to current time', {
+        timeBase: newTimeBase,
+        isRealTime: isRealTime.value,
+        clearedSeries: dataSeries.value.length
+      })
+      // Real-time updates will be started in the timebase change logic below
+    }
+
     // 🆕 DEBOUNCE: Cancel previous pending timebase change
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
@@ -2760,13 +2802,23 @@
   // Timebase progression for zoom functionality (shorter to longer)
   const timebaseProgression = ['5m', '10m', '30m', '1h', '4h', '12h', '1d', '4d']
 
-  // Computed properties for zoom button states
+  // Computed properties for navigation button states
+  const canScroll = computed(() => {
+    // Scroll buttons only work for regular timebases in non-real-time mode
+    // Disabled for: real-time mode (always current) and custom dates (fixed range)
+    return !isRealTime.value && timeBase.value !== 'custom'
+  })
+
   const canZoomIn = computed(() => {
+    // Can't zoom for custom date ranges
+    if (timeBase.value === 'custom') return false
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     return currentIndex > 0 // Can zoom in if not already at shortest timebase
   })
 
   const canZoomOut = computed(() => {
+    // Can't zoom for custom date ranges
+    if (timeBase.value === 'custom') return false
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     return currentIndex >= 0 && currentIndex < timebaseProgression.length - 1 // Can zoom out if not at longest timebase
   })
@@ -3382,29 +3434,70 @@
         }
       },
       scales: {
-        x: {
-          type: 'time' as const,
-          display: true, // Keep x-axis displayed for grid lines
-          grid: {
-            color: showGrid.value ? '#e0e0e0' : 'transparent',
-            display: showGrid.value,
-            lineWidth: 1,
-            drawTicks: showAnalogXAxis.value // Only show tick marks when analog-only
-          },
-          ticks: {
-            display: showAnalogXAxis.value, // Show labels only when analog-only (no digital series)
-            color: '#595959',
-            font: {
-              size: 11,
-              family: 'Inter, Helvetica, Arial, sans-serif'
-            },
-            maxRotation: 0,
-            minRotation: 0,
-            maxTicksLimit: 14, // Show up to 14 ticks to accommodate all data points
-            autoSkip: false, // Don't skip ticks automatically
-            callback: formatXAxisTick
+        x: (() => {
+          // Get initial time window based on current timebase
+          const timeWindow = getCurrentTimeWindow()
+
+          // Get tick configuration
+          let tickConfig: any
+          let displayFormat: string
+          let maxTicks: number
+
+          if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+            const customConfig = getCustomTickConfig(
+              customStartDate.value.toDate(),
+              customEndDate.value.toDate()
+            )
+            tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+            displayFormat = customConfig.displayFormat
+            maxTicks = customConfig.maxTicks
+          } else {
+            tickConfig = getXAxisTickConfig(timeBase.value)
+            displayFormat = getDisplayFormat(timeBase.value)
+            const maxTicksConfigs = {
+              '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+              '4h': 9, '12h': 13, '1d': 13, '4d': 13
+            }
+            maxTicks = maxTicksConfigs[timeBase.value] || 7
           }
-        },
+
+          return {
+            type: 'time' as const,
+            display: true, // Keep x-axis displayed for grid lines
+            min: timeWindow.min,
+            max: timeWindow.max,
+            time: {
+              unit: tickConfig.unit,
+              stepSize: tickConfig.stepMinutes,
+              displayFormats: {
+                minute: displayFormat,
+                hour: displayFormat,
+                day: 'yyyy-MM-dd HH:mm'
+              },
+              minUnit: 'second'
+            },
+            grid: {
+              color: showGrid.value ? '#e0e0e0' : 'transparent',
+              display: showGrid.value,
+              lineWidth: 1,
+              drawTicks: showAnalogXAxis.value // Only show tick marks when analog-only
+            },
+            ticks: {
+              display: showAnalogXAxis.value, // Show labels only when analog-only (no digital series)
+              color: '#595959',
+              font: {
+                size: 11,
+                family: 'Inter, Helvetica, Arial, sans-serif'
+              },
+              maxRotation: 0,
+              minRotation: 0,
+              maxTicksLimit: maxTicks,
+              autoSkip: false, // Don't skip ticks automatically
+              callback: formatXAxisTick,
+              includeBounds: true
+            }
+          }
+        })(),
         y: {
           display: true,
           position: 'left' as const,
@@ -3629,28 +3722,71 @@
           }
         },
         scales: {
-          x: {
-            type: 'time' as const,
-            display: isLastChart, // Only show x-axis on last chart
-            grid: {
-              color: '#e0e0e0',
-              display: true,
-              lineWidth: 1, // Make vertical grid lines more visible
-              drawOnChartArea: true, // Ensure grid lines are drawn over chart area
-              drawTicks: isLastChart // Only draw tick marks on last chart
-            },
-            ticks: {
-              display: isLastChart, // Only display ticks on last chart
-              color: '#595959',
-              font: {
-                size: 10,
-                family: 'Inter, Helvetica, Arial, sans-serif'
-              },
-              maxRotation: 0,
-              minRotation: 0,
-              callback: formatXAxisTick
+          x: (() => {
+            // Get initial time window based on current timebase
+            const timeWindow = getCurrentTimeWindow()
+
+            // Get tick configuration
+            let tickConfig: any
+            let displayFormat: string
+            let maxTicks: number
+
+            if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+              const customConfig = getCustomTickConfig(
+                customStartDate.value.toDate(),
+                customEndDate.value.toDate()
+              )
+              tickConfig = { unit: customConfig.unit, stepMinutes: customConfig.stepSize }
+              displayFormat = customConfig.displayFormat
+              maxTicks = customConfig.maxTicks
+            } else {
+              tickConfig = getXAxisTickConfig(timeBase.value)
+              displayFormat = getDisplayFormat(timeBase.value)
+              const maxTicksConfigs = {
+                '5m': 6, '10m': 6, '30m': 7, '1h': 7,
+                '4h': 9, '12h': 13, '1d': 13, '4d': 13
+              }
+              maxTicks = maxTicksConfigs[timeBase.value] || 7
             }
-          },
+
+            return {
+              type: 'time' as const,
+              display: isLastChart, // Only show x-axis on last chart
+              min: timeWindow.min,
+              max: timeWindow.max,
+              time: {
+                unit: tickConfig.unit,
+                stepSize: tickConfig.stepMinutes,
+                displayFormats: {
+                  minute: displayFormat,
+                  hour: displayFormat,
+                  day: 'yyyy-MM-dd HH:mm'
+                },
+                minUnit: 'second'
+              },
+              grid: {
+                color: '#e0e0e0',
+                display: true,
+                lineWidth: 1, // Make vertical grid lines more visible
+                drawOnChartArea: true, // Ensure grid lines are drawn over chart area
+                drawTicks: isLastChart // Only draw tick marks on last chart
+              },
+              ticks: {
+                display: isLastChart, // Only display ticks on last chart
+                color: '#595959',
+                font: {
+                  size: 10,
+                  family: 'Inter, Helvetica, Arial, sans-serif'
+                },
+                maxRotation: 0,
+                minRotation: 0,
+                maxTicksLimit: maxTicks,
+                autoSkip: false,
+                callback: formatXAxisTick,
+                includeBounds: true
+              }
+            }
+          })(),
           y: {
             min: 0,
             max: 1,
@@ -3742,9 +3878,22 @@
   const getCurrentTimeWindow = () => {
     // For custom date range, use the exact start/end times selected by user
     if (timeBase.value === 'custom' && customStartDate.value && customEndDate.value) {
+      const minTime = customStartDate.value.valueOf()
+      const maxTime = customEndDate.value.valueOf()
+
+      LogUtil.Info('📅 Custom Date Range Time Window:', {
+        customStartDate: customStartDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        customEndDate: customEndDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        minTimestamp: minTime,
+        maxTimestamp: maxTime,
+        minISO: new Date(minTime).toISOString(),
+        maxISO: new Date(maxTime).toISOString(),
+        rangeDuration: `${Math.round((maxTime - minTime) / 60000)} minutes`
+      })
+
       return {
-        min: customStartDate.value.valueOf(), // Use Dayjs valueOf() to get timestamp
-        max: customEndDate.value.valueOf()
+        min: minTime,
+        max: maxTime
       }
     }
 
@@ -5536,18 +5685,27 @@
         throw new Error(historyResponse.error)
       }
 
+      // Extract the actual data array from the response
+      // Response structure: { count: N, data: [...], device_id: X, ... }
+      const historyData = historyResponse.data?.data || historyResponse.data
+
       // Check if response has no data
-      if (!historyResponse.data || historyResponse.data.length === 0) {
-        const errorMsg = 'No historical data available for the selected time range'
-        LogUtil.Warn('📊 No historical data returned')
-        hasConnectionError.value = true
-        throw new Error(errorMsg)
+      if (!historyData || historyData.length === 0) {
+        LogUtil.Info('📭 No historical data available for the selected time range - will rely on real-time data', {
+          timeRange: `${timeRangeMinutes} minutes`,
+          timeRangeFormatted: `${formattedStartTime} to ${formattedEndTime}`,
+          note: 'This is normal for new monitors or recent time ranges'
+        })
+        // Don't set connection error - no historical data is not an error
+        // Real-time data from Action 15 will populate the chart
+        return // Exit gracefully without throwing
       }
 
       // Data exists, process it
-      if (historyResponse.data.length > 0) {
+      if (historyData.length > 0) {
         LogUtil.Info('📚 Historical data loaded:', {
-          dataPointsCount: historyResponse.data.length,
+          dataPointsCount: historyData.length,
+          totalCount: historyResponse.data?.count || historyData.length,
           timeRange: `${timeRangeMinutes} minutes`,
           actualTimeRange: `${formattedStartTime} to ${formattedEndTime}`
         })
@@ -5555,11 +5713,11 @@
         // 🆕 If dataSeries is empty, create series from historical data
         if (dataSeries.value.length === 0) {
           LogUtil.Info('📊 Creating series from historical data (no existing series)')
-          await createSeriesFromHistoricalData(historyResponse.data)
+          await createSeriesFromHistoricalData(historyData)
         }
 
         // 🆕 Convert historical data to chart format and populate data series (now async)
-        await populateDataSeriesWithHistoricalData(historyResponse.data)
+        await populateDataSeriesWithHistoricalData(historyData)
 
         // 🆕 CRITICAL: Update charts immediately after historical data is populated
         LogUtil.Info('🎨 Updating charts to display historical data', {
@@ -7461,7 +7619,8 @@
 
   // New control functions - Updated to use timeOffset and regenerate data
   const moveTimeLeft = async () => {
-    if (isRealTime.value) return
+    // Guard: Don't allow scroll for real-time mode or custom date ranges
+    if (isRealTime.value || timeBase.value === 'custom') return
 
     // Move time window left by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
@@ -7476,7 +7635,8 @@
   }
 
   const moveTimeRight = async () => {
-    if (isRealTime.value) return
+    // Guard: Don't allow scroll for real-time mode or custom date ranges
+    if (isRealTime.value || timeBase.value === 'custom') return
 
     // Move time window right by exactly the timebase period
     const shiftMinutes = getTimeRangeMinutes(timeBase.value)
@@ -7491,6 +7651,9 @@
   }
 
   const zoomIn = () => {
+    // Guard: Don't allow zoom for custom date ranges
+    if (timeBase.value === 'custom') return
+
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     if (currentIndex > 0) {
       const newTimebase = timebaseProgression[currentIndex - 1]
@@ -7509,6 +7672,9 @@
   }
 
   const zoomOut = () => {
+    // Guard: Don't allow zoom for custom date ranges
+    if (timeBase.value === 'custom') return
+
     const currentIndex = timebaseProgression.indexOf(timeBase.value)
     if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
       const newTimebase = timebaseProgression[currentIndex + 1]
@@ -8465,6 +8631,15 @@
       customStartDate.value = startDateTime
       customEndDate.value = endDateTime
 
+      LogUtil.Info('📅 Custom Date Range Applied:', {
+        startDate: customStartDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        endDate: customEndDate.value.format('YYYY-MM-DD HH:mm:ss'),
+        startTimestamp: customStartDate.value.valueOf(),
+        endTimestamp: customEndDate.value.valueOf(),
+        durationMinutes: Math.round((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / 60000),
+        durationHours: Math.round((customEndDate.value.valueOf() - customStartDate.value.valueOf()) / (60000 * 60))
+      })
+
       // Set timebase to custom and apply changes
       timeBase.value = 'custom'
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
@@ -8966,19 +9141,19 @@
         if (itemType.includes('Input')) {
           pointType = 'INPUT'
           const indexMatch = itemType.match(/Input(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index // Convert to 0-based index
+          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
         } else if (itemType.includes('Output')) {
           pointType = 'OUTPUT'
           const indexMatch = itemType.match(/Output(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
+          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
         } else if (itemType.includes('VAR')) {
           pointType = 'VARIABLE'
           const indexMatch = itemType.match(/VAR(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
+          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
         } else if (itemType.includes('HOL')) {
           pointType = 'MONITOR'
           const indexMatch = itemType.match(/HOL(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : index
+          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
         } else {
           pointType = 'VARIABLE' // Default fallback
           pointIndex = index
@@ -8987,15 +9162,15 @@
         // Generate point_id in database-compatible format
         let pointId: string
         if (pointType === 'INPUT') {
-          pointId = `IN${pointIndex + 1}`
+          pointId = `IN${pointIndex}`
         } else if (pointType === 'OUTPUT') {
-          pointId = `OUT${pointIndex + 1}`
+          pointId = `OUT${pointIndex}`
         } else if (pointType === 'VARIABLE') {
-          pointId = `VAR${pointIndex + 1}`
+          pointId = `VAR${pointIndex}`
         } else if (pointType === 'MONITOR') {
-          pointId = `HOL${pointIndex + 1}`
+          pointId = `HOL${pointIndex}`
         } else {
-          pointId = `VAR${pointIndex + 1}`
+          pointId = `VAR${pointIndex}`
         }
 
         points.push({
