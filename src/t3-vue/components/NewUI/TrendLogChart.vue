@@ -2344,18 +2344,14 @@
       // 🔄 Reset time offset when returning to real-time
       timeOffset.value = 0
 
-      // 🧹 CLEAR: Remove old custom range data from series
-      // This prevents the chart from showing stale custom date data with wrong X-axis
-      dataSeries.value.forEach(series => {
-        series.data = [] // Clear data, will be reloaded from database
-      })
+      // 🆕 DESTROY CHARTS: Force complete recreation to reset x-axis scales
+      destroyAllCharts()
+      await nextTick()
 
-      LogUtil.Info('✅ Cleared custom date settings, data, and reset to current time', {
+      LogUtil.Info('✅ Cleared custom date settings and destroyed charts, will reload data for new timebase', {
         timeBase: newTimeBase,
-        isRealTime: isRealTime.value,
-        clearedSeries: dataSeries.value.length
+        isRealTime: isRealTime.value
       })
-      // Real-time updates will be started in the timebase change logic below
     }
 
     // 🆕 DEBOUNCE: Cancel previous pending timebase change
@@ -2448,30 +2444,24 @@
         // Load data based on current Auto Scroll state (preserve user's choice)
         if (isRealTime.value) {
           // Auto Scroll ON: Load real-time + historical data
-          // LogUtil.Info(`📊 ${newTimeBase} timebase: Auto Scroll ON - Loading real-time + historical data`)
-
-          // Load historical data directly - this will create series only if data exists
-          // No need to call initializeRealDataSeries which creates placeholder series
           await loadHistoricalDataFromDatabase()
 
           // Step 3: Ensure real-time updates are active
           if (!realtimeInterval) {
-            // LogUtil.Info(`🔄 Starting real-time updates for ${newTimeBase} timebase`)
             startRealTimeUpdates()
           }
         } else {
           // Auto Scroll OFF: Load historical data only
-          // LogUtil.Info(`📚 ${newTimeBase} timebase: Auto Scroll OFF - Loading historical data only`)
           await loadHistoricalDataFromDatabase()
         }
 
-        // Update charts with loaded data
-        LogUtil.Info('🎨 Updating charts with loaded data', {
-          totalSeries: dataSeries.value.length,
-          seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-          autoScrollEnabled: isRealTime.value,
-          totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-        })
+        // 🆕 RECREATE CHARTS: After data loaded, recreate charts if switching from custom date
+        if (oldTimeBase === 'custom' && newTimeBase !== 'custom') {
+          await nextTick()
+          LogUtil.Info('🎨 Recreating charts with fresh configuration after custom→regular transition')
+          createCharts()
+          await nextTick()
+        }
 
         // Force Vue reactivity update
         await nextTick()
@@ -5389,6 +5379,9 @@
       timestamp: new Date().toISOString()
     })
 
+    // Clear connection error flag when starting to load data
+    hasConnectionError.value = false
+
     try {
       // 🆕 FIX: Use extractDeviceParameters for reliable device info from query params
       const deviceParams = extractDeviceParameters()
@@ -5691,13 +5684,22 @@
 
       // Check if response has no data
       if (!historyData || historyData.length === 0) {
-        LogUtil.Info('📭 No historical data available for the selected time range - will rely on real-time data', {
+        LogUtil.Info('📭 No historical data available for the selected time range - keeping existing data', {
           timeRange: `${timeRangeMinutes} minutes`,
           timeRangeFormatted: `${formattedStartTime} to ${formattedEndTime}`,
-          note: 'This is normal for new monitors or recent time ranges'
+          existingSeriesCount: dataSeries.value.length,
+          note: 'Series list and existing data will remain visible'
         })
-        // Don't set connection error - no historical data is not an error
-        // Real-time data from Action 15 will populate the chart
+
+        // DON'T clear data arrays - keep the existing 14 items with their current values
+        // Just clear error and stop loading
+
+        // Clear connection error - successful API response with no data is NOT an error
+        hasConnectionError.value = false
+
+        // Stop loading indicator
+        stopLoading()
+
         return // Exit gracefully without throwing
       }
 
@@ -7553,12 +7555,19 @@
             y: sortedData[sortedData.length - 1].y
           } : null
         })
+
+        // Force recalculation of bounds
+        delete xScale._range
+        delete xScale._reversePixels
+        delete xScale._startValue
+        delete xScale._valueRange
       }
 
       // 🆕 FIX: Final check before update - chart might be destroyed during async processing
       if (chart && chart.canvas && chart.ctx) {
         try {
-          chart.update('none')
+          // Force full update to recalculate all scales including x-axis time window
+          chart.update()
         } catch (error) {
           LogUtil.Warn(`⚠️ updateDigitalCharts: Failed to update chart ${index}`, error)
         }
@@ -9362,13 +9371,14 @@
         lastSyncTime.value = dayjs().format('HH:mm:ss')
 
       } else {
-        LogUtil.Debug('= TLChart DataFlow: No historical data available - setting connection error')
-        hasConnectionError.value = true
-        // Clear all data when connection error occurs
-        dataSeries.value = []
+        LogUtil.Debug('= TLChart DataFlow: No historical data available for custom date range - keeping existing series')
 
-        // Fall back to standard initialization if API fails
-        await initializeData()
+        // DON'T set connection error - no data for a time range is not an error
+        // DON'T clear dataSeries - keep the 14 items visible
+        // Just keep existing data and UI state
+
+        // Clear connection error flag if it was set
+        hasConnectionError.value = false
       }
 
     } catch (error) {
