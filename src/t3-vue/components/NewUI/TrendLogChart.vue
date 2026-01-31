@@ -1099,7 +1099,7 @@
         </div>
       </template>
     </a-drawer>
-    </div>
+  </div>
   </a-config-provider>
 </template>
 
@@ -5893,7 +5893,12 @@
         totalHistoricalItems: historicalData.length,
         availableDataSeries: dataSeries.value.length,
         seriesIds: dataSeries.value.map(s => s.id),
-        dataGroupKeys: Array.from(dataByPoint.keys())
+        dataGroupKeys: Array.from(dataByPoint.keys()),
+        seriesDetails: dataSeries.value.map(s => ({
+          id: s.id,
+          pointType: s.pointType,
+          expectedKey: `${s.id}_${mapPointTypeFromNumber(s.pointType || 1)}`
+        }))
       })
 
       // 🆕 Process series asynchronously with yield points to prevent UI blocking
@@ -5908,13 +5913,15 @@
         const seriesKey = `${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
         const seriesHistoricalData = dataByPoint.get(seriesKey) || []
 
-        LogUtil.Debug(`📊 Processing series ${seriesIndex}: ${series.name}`, {
+        LogUtil.Info(`📊 Processing series ${seriesIndex}: ${series.name}`, {
           seriesId: series.id,
           seriesKey: seriesKey,
           pointType: series.pointType,
           mappedPointType: mapPointTypeFromNumber(series.pointType || 1),
           historicalDataCount: seriesHistoricalData.length,
-          currentDataCount: series.data?.length || 0
+          currentDataCount: series.data?.length || 0,
+          keyExists: dataByPoint.has(seriesKey),
+          availableKeys: Array.from(dataByPoint.keys())
         })
 
         if (seriesHistoricalData.length > 0) {
@@ -7352,6 +7359,8 @@
 
       LogUtil.Info('⏰ Chart Time Window Set:', {
         timeBase: timeBase.value,
+        customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
+        customEndDate: customEndDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
         min: new Date(timeWindow.min).toISOString(),
         max: new Date(timeWindow.max).toISOString(),
         rangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
@@ -7526,6 +7535,24 @@
         const timeWindow = getCurrentTimeWindow()
         xScale.min = timeWindow.min
         xScale.max = timeWindow.max
+
+        LogUtil.Info(`⏰ Digital Chart ${index} (${series.name}) Time Window Set:`, {
+          timeBase: timeBase.value,
+          customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
+          customEndDate: customEndDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
+          min: new Date(timeWindow.min).toISOString(),
+          max: new Date(timeWindow.max).toISOString(),
+          rangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
+          dataPoints: sortedData.length,
+          firstPoint: sortedData[0] ? {
+            x: new Date(sortedData[0].x).toISOString(),
+            y: sortedData[0].y
+          } : null,
+          lastPoint: sortedData[sortedData.length - 1] ? {
+            x: new Date(sortedData[sortedData.length - 1].x).toISOString(),
+            y: sortedData[sortedData.length - 1].y
+          } : null
+        })
       }
 
       // 🆕 FIX: Final check before update - chart might be destroyed during async processing
@@ -8645,9 +8672,8 @@
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
       customDateModalVisible.value = false
       onCustomDateChange()
-      message.success('Custom date range applied successfully')
     } else {
-      message.error('Please select both start and end date/time')
+      LogUtil.Warn('Custom date range incomplete - missing start or end date/time')
     }
   }
 
