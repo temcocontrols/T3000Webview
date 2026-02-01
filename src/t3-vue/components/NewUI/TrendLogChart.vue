@@ -2157,6 +2157,14 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
+    console.log('🔔 T3000_Data.panelsData watcher TRIGGERED', {
+      hasNewData: !!newPanelsData,
+      newDataLength: newPanelsData?.length || 0,
+      isRealTime: isRealTime.value,
+      timeBase: timeBase.value,
+      timestamp: new Date().toLocaleTimeString()
+    })
+
     LogUtil.Info('🔔 T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
@@ -2698,7 +2706,7 @@
   let analogChartInstance: Chart | null = null
   let digitalChartInstances: { [key: number]: Chart } = {}
   let realtimeInterval: NodeJS.Timeout | null = null
-  
+
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
   console.log(`📊 TrendLogChart instance created: ${instanceId}`)
@@ -3204,15 +3212,6 @@
 
         const axisId = dataset.yAxisID || 'y'
         const key = `${series.unit}_${axisId}`
-
-        // 🐛 DEBUG: Log each dataset's axis assignment
-        console.log('📊 Dataset axis check:', {
-          label: dataset.label,
-          unit: series.unit,
-          yAxisID: dataset.yAxisID,
-          axisId: axisId,
-          key: key
-        })
 
         if (!unitGroups.has(key)) {
           unitGroups.set(key, {
@@ -4567,6 +4566,13 @@
 
       const response = await ffiApi.ffiGetLoggingData(currentPanelId, currentSN)
 
+      console.log('📊 Action 15 response received:', {
+        hasResponse: !!response,
+        hasData: !!(response && response.data),
+        responseType: response?.debug ? 'empty' : 'data',
+        timestamp: new Date().toLocaleTimeString()
+      })
+
       if (response && response.data) {
         // LOGGING_DATA returns: response.data = [{ panel_id, panel_name, device_data: [...] }]
         // Extract device_data from all devices
@@ -4596,15 +4602,30 @@
           item.id
         )
 
+        console.log('📊 Action 15 processed:', {
+          totalItems: allPanelItems.length,
+          validItems: validDataItems.length,
+          willUpdate: validDataItems.length > 0,
+          timestamp: new Date().toLocaleTimeString()
+        })
+
         if (validDataItems.length > 0) {
+          console.log('✅ Calling updateChartWithNewData with', validDataItems.length, 'items')
           updateChartWithNewData(validDataItems)
           // Batch save is done inside updateChartWithNewData - no duplicate call needed
+        } else {
+          console.log('⚠️ No valid data items - chart will NOT be updated, only scrolled')
         }
 
         lastSyncTime.value = new Date().toLocaleTimeString()
         if (hasConnectionError.value) {
           hasConnectionError.value = false
         }
+      } else {
+        console.log('⚠️ Action 15 response is EMPTY - no data property', {
+          response: response,
+          timestamp: new Date().toLocaleTimeString()
+        })
       }
 
     } catch (error) {
@@ -6295,7 +6316,12 @@
     LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
-      isRealTime: isRealTime.value
+      isRealTime: isRealTime.value,
+      currentDataState: dataSeries.value.map(s => ({
+        name: s.name,
+        dataCount: s.data?.length || 0,
+        hasDataArray: !!s.data
+      }))
     })
 
     if (!dataSeries.value?.length) {
@@ -6318,14 +6344,71 @@
     let matched = 0
     let unmatched = 0
 
+    console.log('🔍 updateChartWithNewData matching attempt:', {
+      seriesCount: dataSeries.value.length,
+      incomingItemsCount: validDataItems.length,
+      firstSeries: dataSeries.value[0] ? {
+        name: dataSeries.value[0].name,
+        id: dataSeries.value[0].id,
+        panelId: dataSeries.value[0].panelId,
+        allKeys: Object.keys(dataSeries.value[0])
+      } : null,
+      firstIncomingItem: validDataItems[0] ? {
+        id: validDataItems[0].id,
+        pid: validDataItems[0].pid,
+        label: validDataItems[0].label
+      } : null
+    })
+
+    // 🔎 DEBUG: Show ALL properties of first series to understand structure
+    if (dataSeries.value[0]) {
+      console.log('🔎 First series FULL object:', dataSeries.value[0])
+    }
+
     // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
     dataSeries.value.forEach((series, seriesIndex) => {
+      // 🔧 DEFENSIVE FIX: Reconstruct id and panelId from itemType if missing
+      // itemType format: "144IN40" = panelId (144) + prefix (IN) + number (40)
+      if ((!series.id || !series.panelId) && series.itemType && series.prefix) {
+        const match = series.itemType.match(/^(\d+)([A-Z]+)(\d+)$/)
+        if (match) {
+          const extractedPanelId = parseInt(match[1])
+          const extractedPrefix = match[2]
+          const extractedNumber = match[3]
+          const extractedId = `${extractedPrefix}${extractedNumber}`
+
+          console.warn(`🔧 FIX: Reconstructing missing properties for series ${seriesIndex}:`, {
+            originalName: series.name,
+            itemType: series.itemType,
+            extractedPanelId,
+            extractedId,
+            beforeFix: { id: series.id, panelId: series.panelId },
+            willSetTo: { id: extractedId, panelId: extractedPanelId }
+          })
+
+          // Add the missing properties
+          series.id = extractedId
+          series.panelId = extractedPanelId
+        } else {
+          console.error(`❌ CRITICAL: Cannot parse itemType for series ${seriesIndex}:`, {
+            seriesName: series.name,
+            itemType: series.itemType,
+            prefix: series.prefix,
+            allProperties: Object.keys(series)
+          })
+          unmatched++
+          return
+        }
+      }
+
       // Skip empty series that don't have matching criteria
       if (!series.id || !series.panelId) {
-        LogUtil.Debug(`⚠️ Series ${seriesIndex} missing id or panelId`, {
+        console.error(`❌ CRITICAL: Series ${seriesIndex} STILL missing id or panelId after fix attempt!`, {
           seriesName: series.name,
-          hasId: !!series.id,
-          hasPanelId: !!series.panelId
+          itemType: series.itemType,
+          id: series.id,
+          panelId: series.panelId,
+          allProperties: Object.keys(series)
         })
         unmatched++
         return
@@ -6337,6 +6420,11 @@
       )
 
       if (!matchedItem) {
+        console.log(`❌ No match for series ${series.name}:`, {
+          searchingFor: { id: series.id, panelId: series.panelId },
+          seriesIndex,
+          sampleIncomingIds: validDataItems.slice(0, 3).map(item => ({ id: item.id, pid: item.pid }))
+        })
         LogUtil.Debug(`No match found for series ${series.name}`, {
           searchingFor: { id: series.id, panelId: series.panelId },
           seriesIndex
@@ -6344,6 +6432,11 @@
         unmatched++
         return
       }
+
+      console.log(`✅ MATCHED series ${series.name}:`, {
+        series: { id: series.id, panelId: series.panelId },
+        item: { id: matchedItem.id, pid: matchedItem.pid }
+      })
 
       // 🎯 VALUE SELECTION: Use correct field based on digital_analog
       let actualValue;
@@ -6400,12 +6493,27 @@
       if (existingIndex >= 0) {
         // Update existing data point
         series.data[existingIndex] = dataPoint
+        console.log(`🔄 Updated existing point in ${series.name}:`, {
+          timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
+          value: dataPoint.value,
+          totalPoints: series.data.length
+        })
       } else {
         // Add new data point
         series.data.push(dataPoint)
 
         // Sort data points by timestamp to maintain chronological order
         series.data.sort((a, b) => a.timestamp - b.timestamp)
+
+        console.log(`➕ Added NEW point to ${series.name}:`, {
+          timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
+          value: dataPoint.value,
+          totalPoints: series.data.length,
+          timeRange: series.data.length > 1 ? {
+            first: new Date(series.data[0].timestamp).toLocaleTimeString(),
+            last: new Date(series.data[series.data.length - 1].timestamp).toLocaleTimeString()
+          } : null
+        })
       }
 
       LogUtil.Debug(`📊 After adding batch point to ${series.name}:`, {
@@ -6919,7 +7027,9 @@
         }
 
         // Send batch GET_ENTRIES request for ALL items at once
+        console.log('📤 Sending batch request at', new Date().toLocaleTimeString())
         await sendPeriodicBatchRequest(monitorConfigData)
+        console.log('📥 Batch request completed, waiting for T3000_Data watcher to process response...')
 
         // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
         // which calls updateChartWithNewData() to update dataSeries automatically
@@ -7112,7 +7222,15 @@
       totalDataSeries: dataSeries.value.length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
       visibleAnalogCount: visibleAnalogSeries.value.length,
-      visibleDigitalCount: visibleDigitalSeries.value.length
+      visibleDigitalCount: visibleDigitalSeries.value.length,
+      // 🚨 CRITICAL: Log individual series data counts
+      seriesDataCounts: dataSeries.value.map(s => ({
+        name: s.name,
+        id: s.id,
+        dataCount: s.data?.length || 0,
+        hasDataArray: !!s.data,
+        visible: s.visible
+      }))
     })
 
     // Ensure analog chart exists if we have visible analog series
@@ -7146,6 +7264,24 @@
     }
 
     const visibleAnalog = visibleAnalogSeries.value.filter(series => series.data.length > 0)
+
+    // 🚨 CRITICAL DEBUG: Check if we're about to empty the chart
+    if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0) {
+      LogUtil.Error('🚨 CRITICAL: All visible analog series have NO DATA - chart will be empty!', {
+        totalVisibleSeries: visibleAnalogSeries.value.length,
+        allSeriesDetails: visibleAnalogSeries.value.map(s => ({
+          name: s.name,
+          id: s.id,
+          dataCount: s.data?.length || 0,
+          visible: s.visible,
+          hasDataArray: !!s.data,
+          dataType: typeof s.data
+        })),
+        timestamp: new Date().toISOString()
+      })
+      // Don't proceed with empty update - keep existing chart data
+      return
+    }
 
     LogUtil.Info('📊 updateAnalogChart: Processing analog series', {
       totalVisibleSeries: visibleAnalogSeries.value.length,
@@ -7255,6 +7391,16 @@
           y: point.value
         }))
 
+      console.log(`📊 Building dataset for ${series.name}:`, {
+        rawDataPoints: series.data.length,
+        sortedDataPoints: sortedData.length,
+        timeRange: sortedData.length > 0 ? {
+          first: new Date(sortedData[0].x).toLocaleTimeString(),
+          last: new Date(sortedData[sortedData.length - 1].x).toLocaleTimeString()
+        } : null,
+        samplePoints: sortedData.slice(-3) // Last 3 points
+      })
+
       // Get axis assignment (default to 'y' if not found)
       const yAxisID = axisAssignment.get(series.id) || 'y'
 
@@ -7363,6 +7509,16 @@
       xScale.min = timeWindow.min
       xScale.max = timeWindow.max
 
+      console.log('⏰ Chart Time Window:', {
+        timeBase: timeBase.value,
+        windowMin: new Date(timeWindow.min).toLocaleTimeString(),
+        windowMax: new Date(timeWindow.max).toLocaleTimeString(),
+        windowRangeMinutes: Math.round((timeWindow.max - timeWindow.min) / 60000),
+        currentTime: new Date().toLocaleTimeString(),
+        datasetsCount: datasets.length,
+        totalPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0)
+      })
+
       LogUtil.Info('⏰ Chart Time Window Set:', {
         timeBase: timeBase.value,
         customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
@@ -7438,6 +7594,23 @@
     if (Object.keys(digitalChartInstances).length === 0) {
       LogUtil.Debug('📊 updateDigitalCharts: No digital chart instances available')
       return
+    }
+
+    // 🚨 CRITICAL DEBUG: Check if all digital series have no data
+    const seriesWithData = visibleDigitalSeries.value.filter(s => s.data && s.data.length > 0)
+    if (seriesWithData.length === 0 && visibleDigitalSeries.value.length > 0) {
+      LogUtil.Error('🚨 CRITICAL: All visible digital series have NO DATA - charts will be empty!', {
+        totalVisibleSeries: visibleDigitalSeries.value.length,
+        allSeriesDetails: visibleDigitalSeries.value.map(s => ({
+          name: s.name,
+          id: s.id,
+          dataCount: s.data?.length || 0,
+          visible: s.visible,
+          hasDataArray: !!s.data,
+          dataType: typeof s.data
+        })),
+        timestamp: new Date().toISOString()
+      })
     }
 
     // 🆕 Process digital charts asynchronously to prevent UI blocking
