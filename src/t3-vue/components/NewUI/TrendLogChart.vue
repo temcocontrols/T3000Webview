@@ -2698,6 +2698,10 @@
   let analogChartInstance: Chart | null = null
   let digitalChartInstances: { [key: number]: Chart } = {}
   let realtimeInterval: NodeJS.Timeout | null = null
+  
+  // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
+  const instanceId = Math.random().toString(36).substring(7)
+  console.log(`📊 TrendLogChart instance created: ${instanceId}`)
 
   // Function to set digital chart refs from template
   const setDigitalChartRef = (el: Element | ComponentPublicInstance | null, index: number) => {
@@ -8870,6 +8874,7 @@
 
   const stopRealTimeUpdates = () => {
     if (realtimeInterval) {
+      console.log(`🛑 Stopping real-time updates for instance: ${instanceId}`)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
@@ -9157,70 +9162,100 @@
       return points
     }
 
+    console.log('🔍 CUSTOM DATE PAYLOAD - Extracting points from dataSeries:', {
+      totalSeries: dataSeries.value.length,
+      seriesTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, unitType: s.unitType }))
+    })
+
     LogUtil.Debug('= TLChart DataFlow: Extracting 14 panel items from series data')
 
     // Extract points from current series configuration
+    // 🔄 REFACTORED: Use same approach as loadHistoricalDataFromDatabase for consistency
+    const deviceParams = extractDeviceParameters()
+
     dataSeries.value.forEach((series, index) => {
       try {
-        // Parse the itemType format: "2Input1" -> Panel=2, Type=Input, Index=0
-        const itemType = series.itemType || `${extractDeviceParameters().panel_id}VAR${index + 1}`
+        // Method 1: Use pointType and pointNumber directly (same as default timebase)
+        if (series.pointType !== undefined && series.pointNumber !== undefined) {
+          const pointTypeString = mapPointTypeFromNumber(series.pointType)
+          const pointId = generateDeviceId(series.pointType, series.pointNumber)
 
-        // Extract panel ID from itemType (first digit(s))
-        const panelMatch = itemType.match(/^(\d+)/)
-        const panelId = panelMatch ? parseInt(panelMatch[1]) : extractDeviceParameters().panel_id || 2
+          points.push({
+            point_id: pointId,
+            point_type: pointTypeString,
+            point_index: series.pointNumber + 1, // Convert 0-based to 1-based
+            panel_id: series.panelId || deviceParams.panel_id
+          })
 
-        // Extract point type and convert to API format
-        let pointType: string
-        let pointIndex: number
-
-        if (itemType.includes('Input')) {
-          pointType = 'INPUT'
-          const indexMatch = itemType.match(/Input(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
-        } else if (itemType.includes('Output')) {
-          pointType = 'OUTPUT'
-          const indexMatch = itemType.match(/Output(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
-        } else if (itemType.includes('VAR')) {
-          pointType = 'VARIABLE'
-          const indexMatch = itemType.match(/VAR(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
-        } else if (itemType.includes('HOL')) {
-          pointType = 'MONITOR'
-          const indexMatch = itemType.match(/HOL(\d+)$/)
-          pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1 // Use actual index (1-based)
-        } else {
-          pointType = 'VARIABLE' // Default fallback
-          pointIndex = index
+          console.log('✅ Extracted point (method 1 - direct):', {
+            name: series.name,
+            pointType: series.pointType,
+            pointNumber: series.pointNumber,
+            result: { point_id: pointId, point_type: pointTypeString, point_index: series.pointNumber + 1 }
+          })
         }
+        // Method 2: Fallback to parsing itemType if pointType/pointNumber not available
+        else {
+          console.warn('⚠️ Series missing pointType/pointNumber, using itemType fallback:', series.name)
+          const itemType = series.itemType || `${deviceParams.panel_id}VAR${index + 1}`
+          const panelMatch = itemType.match(/^(\d+)/)
+          const panelId = panelMatch ? parseInt(panelMatch[1]) : deviceParams.panel_id || 2
 
-        // Generate point_id in database-compatible format
-        let pointId: string
-        if (pointType === 'INPUT') {
-          pointId = `IN${pointIndex}`
-        } else if (pointType === 'OUTPUT') {
-          pointId = `OUT${pointIndex}`
-        } else if (pointType === 'VARIABLE') {
-          pointId = `VAR${pointIndex}`
-        } else if (pointType === 'MONITOR') {
-          pointId = `HOL${pointIndex}`
-        } else {
-          pointId = `VAR${pointIndex}`
+          let pointType: string
+          let pointIndex: number
+
+          // Check for INPUT: supports both "144Input40" and "144IN40" formats
+          if (itemType.includes('Input') || /IN\d+/.test(itemType)) {
+            pointType = 'INPUT'
+            let indexMatch = itemType.match(/Input(\d+)$/)
+            if (!indexMatch) {
+              indexMatch = itemType.match(/IN(\d+)$/)
+            }
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          // Check for OUTPUT: supports both "144Output40" and "144OUT40" formats
+          else if (itemType.includes('Output') || /OUT\d+/.test(itemType)) {
+            pointType = 'OUTPUT'
+            let indexMatch = itemType.match(/Output(\d+)$/)
+            if (!indexMatch) {
+              indexMatch = itemType.match(/OUT(\d+)$/)
+            }
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          else if (itemType.includes('VAR')) {
+            pointType = 'VARIABLE'
+            const indexMatch = itemType.match(/VAR(\d+)$/)
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          else if (itemType.includes('HOL')) {
+            pointType = 'MONITOR'
+            const indexMatch = itemType.match(/HOL(\d+)$/)
+            pointIndex = indexMatch ? parseInt(indexMatch[1]) : index + 1
+          }
+          else {
+            pointType = 'VARIABLE'
+            pointIndex = index + 1
+          }
+
+          const pointId = pointType === 'INPUT' ? `IN${pointIndex}` :
+                         pointType === 'OUTPUT' ? `OUT${pointIndex}` :
+                         pointType === 'VARIABLE' ? `VAR${pointIndex}` :
+                         pointType === 'MONITOR' ? `HOL${pointIndex}` :
+                         `VAR${pointIndex}`
+
+          points.push({
+            point_id: pointId,
+            point_type: pointType,
+            point_index: pointIndex,
+            panel_id: panelId
+          })
+
+          console.log('✅ Extracted point (method 2 - itemType):', {
+            name: series.name,
+            itemType: itemType,
+            result: { point_id: pointId, point_type: pointType, point_index: pointIndex }
+          })
         }
-
-        points.push({
-          point_id: pointId,
-          point_type: pointType,
-          point_index: pointIndex,
-          panel_id: panelId
-        })
-
-        LogUtil.Debug('= TLChart DataFlow: Extracted panel item:', {
-          itemNumber: index + 1,
-          itemType: itemType,
-          pointId: pointId, // Database-compatible format like "IN1", "OUT2", "VAR3"
-          pointType: pointType
-        })
 
       } catch (error) {
         console.warn('= TLChart DataFlow: Failed to extract point info for item', index, ':', error)
@@ -9273,7 +9308,8 @@
     try {
       LogUtil.Debug('= TLChart DataFlow: Starting API request to fetch historical data for panel items')
 
-      startLoading()
+      // Don't show loading state for custom date - series already exist
+      // startLoading() - removed to prevent unnecessary loading indicator
       dataSource.value = 'api'
       isRealTime.value = false // Auto Scroll should be off for historical data
 
@@ -9397,7 +9433,7 @@
       // Fall back to standard initialization
       await initializeData()
     } finally {
-      stopLoading()
+      // stopLoading() - removed since we don't call startLoading() for custom date
     }
   }
 
@@ -11579,6 +11615,21 @@
       historyAbortController.abort()
     }
   })
+
+  // 🔥 HMR (Hot Module Reload) Cleanup - prevent multiple intervals when saving file
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      console.log('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
+      stopRealTimeUpdates()
+      destroyAllCharts()
+      if (timebaseChangeTimeout) {
+        clearTimeout(timebaseChangeTimeout)
+      }
+      if (historyAbortController) {
+        historyAbortController.abort()
+      }
+    })
+  }
 </script>
 
 <style scoped>
