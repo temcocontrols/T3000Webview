@@ -3406,26 +3406,31 @@
 
               // Render each axis group
               axisGroups.forEach((points, axisId) => {
-                // Get actual axis color from chart configuration
-                const axisColor = chart.options.scales?.[axisId]?.title?.color || '#000000'
-                const axisTitle = chart.options.scales?.[axisId]?.title?.text || axisId.toUpperCase()
-
-                // Axis header with color
-                html += `<div style="color: ${axisColor}; font-weight: 600; margin-top: 10px; margin-bottom: 4px;">
-                  ${axisId.toUpperCase()}-Axis (${axisTitle})
-                </div>`
-
-                // Sort data points - "Unused" items go to the end
+                // Sort data points first - "Unused" items go to the end
                 const sortedPoints = [...points].sort((a: any, b: any) => {
                   const aLabel = a.dataset.label || ''
                   const bLabel = b.dataset.label || ''
-                  const aIsUnused = aLabel.toLowerCase().includes('unused')
-                  const bIsUnused = bLabel.toLowerCase().includes('unused')
+                  const aSeries = visibleAnalogSeries.value.find(s => s.name === aLabel)
+                  const bSeries = visibleAnalogSeries.value.find(s => s.name === bLabel)
+                  const aUnit = aSeries?.unit || ''
+                  const bUnit = bSeries?.unit || ''
+
+                  const aIsUnused = aLabel.toLowerCase().includes('unused') || aUnit.toLowerCase().includes('unused')
+                  const bIsUnused = bLabel.toLowerCase().includes('unused') || bUnit.toLowerCase().includes('unused')
 
                   if (aIsUnused && !bIsUnused) return 1
                   if (!aIsUnused && bIsUnused) return -1
                   return 0
                 })
+
+                // Use the first item's color as the axis header color
+                const axisColor = sortedPoints[0]?.dataset?.borderColor || chart.options.scales?.[axisId]?.title?.color || '#000000'
+                const axisTitle = chart.options.scales?.[axisId]?.title?.text || axisId.toUpperCase()
+
+                // Axis header with color matching first item
+                html += `<div style="color: ${axisColor}; font-weight: 600; margin-top: 10px; margin-bottom: 4px;">
+                  ${axisId.toUpperCase()}-Axis (${axisTitle})
+                </div>`
 
                 // Data points for this axis
                 sortedPoints.forEach((point: any) => {
