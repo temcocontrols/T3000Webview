@@ -3252,14 +3252,10 @@
         allGroups: groups.map(g => ({ unit: g.unit, axis: g.axisId, count: g.count }))
       })
 
-      // ✅ Draw LEFT axis units on the LEFT side
+      // ✅ Draw LEFT axis units on the LEFT side (no [L] indicator)
       if (leftGroups.length > 0) {
         let xOffset = yScale.left
         ctx.textAlign = 'left'
-
-        ctx.fillStyle = '#666666'
-        ctx.fillText('[L] ', xOffset, y)
-        xOffset += ctx.measureText('[L] ').width
 
         // Only show unique units for left axis
         const uniqueLeftUnits = Array.from(new Set(leftGroups.map(g => g.unit)))
@@ -3276,15 +3272,10 @@
         })
       }
 
-      // ✅ Draw RIGHT axis units on the RIGHT side (near right Y-axis)
+      // ✅ Draw RIGHT axis units on the RIGHT side (no [R] indicator)
       if (rightGroups.length > 0 && y1Scale && y1Scale.display !== false) {
         let xOffset = y1Scale.right
         ctx.textAlign = 'right'
-
-        // Draw [R] indicator in blue to match right Y-axis
-        ctx.fillStyle = '#1890ff'
-        ctx.fillText('[R] ', xOffset, y)
-        xOffset -= ctx.measureText('[R] ').width
 
         // Only show unique units for right axis
         const uniqueRightUnits = Array.from(new Set(rightGroups.map(g => g.unit))).reverse()
@@ -3296,7 +3287,7 @@
             ctx.fillText(', ', xOffset, y)
           }
           const group = rightGroups.find(g => g.unit === unit)
-          ctx.fillStyle = group?.color || '#1890ff'
+          ctx.fillStyle = group?.color || group?.axisId === 'y1' ? '#1890ff' : '#666666'
           const unitWidth = ctx.measureText(unit).width
           xOffset -= unitWidth
           ctx.fillText(unit, xOffset, y)
@@ -3326,7 +3317,7 @@
       },
       layout: {
         padding: {
-          left: 2,
+          left: 5,
           right: 10,
           top: 25,
           bottom: 10
@@ -3376,12 +3367,8 @@
               // Get unit text
               const unitText = series.unit || ''
 
-              // Get axis indicator
-              const yAxisID = context.dataset.yAxisID || 'y'
-              const axisLabel = yAxisID === 'y1' ? '[R]' : '[L]'
-
-              // Format: "Series Name: 25.50 °C [L]"
-              return `${series.name}: ${context.parsed.y.toFixed(2)} ${unitText} ${axisLabel}`
+              // Format: "Series Name: 25.50 °C" (no axis indicator)
+              return `${series.name}: ${context.parsed.y.toFixed(2)} ${unitText}`
             }
           }
         },
@@ -3502,11 +3489,12 @@
           ticks: {
             color: '#595959',
             font: {
-              size: 11,
+              size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 2,
-            autoSkip: false,
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
             align: 'end',
             // stepSize will be calculated dynamically in afterDataLimits
             callback: function (value: any) {
@@ -3515,7 +3503,7 @@
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 50; // Fixed width for Y-axis to ensure alignment
+            scale.width = 55; // Slightly wider for better spacing
           },
           // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
@@ -3581,7 +3569,7 @@
             display: false
           },
           title: {
-            display: true,
+            display: false,
             text: '',
             color: '#1890ff',
             font: {
@@ -3592,18 +3580,19 @@
           ticks: {
             color: '#1890ff',
             font: {
-              size: 11,
+              size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 2,
-            autoSkip: false,
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 50;
+            scale.width = 55;
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -3670,7 +3659,7 @@
             display: false
           },
           title: {
-            display: true,
+            display: false,
             text: '',
             color: '#52c41a',
             font: {
@@ -3681,18 +3670,19 @@
           ticks: {
             color: '#52c41a',
             font: {
-              size: 11,
+              size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 2,
-            autoSkip: false,
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 50;
+            scale.width = 55;
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -3745,7 +3735,7 @@
             display: false
           },
           title: {
-            display: true,
+            display: false,
             text: '',
             color: '#fa8c16',
             font: {
@@ -3756,18 +3746,19 @@
           ticks: {
             color: '#fa8c16',
             font: {
-              size: 11,
+              size: 10,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
-            padding: 2,
-            autoSkip: false,
+            padding: 4,
+            autoSkip: true,
+            maxTicksLimit: 8,
             align: 'end',
             callback: function (value: any) {
               return Math.round(Number(value)).toString().padStart(5, ' ');
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 50;
+            scale.width = 55;
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
