@@ -3512,7 +3512,7 @@
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 55; // Slightly wider for better spacing
+            scale.width = 45;
           },
           // 🆕 ENHANCED: Smart Y-axis scaling (axis assignment done in updateAnalogChart)
           afterDataLimits: function (scale: any) {
@@ -3601,7 +3601,7 @@
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 55;
+            scale.width = 45;
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -3691,7 +3691,7 @@
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 55;
+            scale.width = 45;
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
@@ -3767,7 +3767,7 @@
             }
           },
           afterFit: function(scale: any) {
-            scale.width = 55;
+            scale.width = 45;
           },
           afterDataLimits: function (scale: any) {
             const data = scale.chart.data.datasets
