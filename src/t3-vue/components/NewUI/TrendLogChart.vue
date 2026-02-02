@@ -7576,7 +7576,7 @@
     // y = left position 0 (primary), y1 = left position 1, y2 = left position 2, y3 = left position 3
     const axisAssignment = new Map<string, string>()
     const axisColors = new Map<string, string>() // Axis ID → Color of first series
-    const axisUnits = new Map<string, string>() // Axis ID → Unit label
+    const axisUnits = new Map<string, Set<string>>() // Axis ID → Set of all units
 
     sortedGroups.forEach(([groupName, items], index) => {
       const axisId = index === 0 ? 'y' :
@@ -7584,12 +7584,22 @@
                      index === 2 ? 'y2' : 'y3'
 
       // 🎨 KEY: Use the color of the FIRST series in this unit group
-      const firstSeriesColor = items[0].color
-      axisColors.set(axisId, firstSeriesColor)
+      if (!axisColors.has(axisId)) {
+        const firstSeriesColor = items[0].color
+        axisColors.set(axisId, firstSeriesColor)
+      }
 
-      // Use first series' unit as the axis label
-      const representativeUnit = items[0].unit
-      axisUnits.set(axisId, representativeUnit)
+      // Collect all unique units for this axis
+      if (!axisUnits.has(axisId)) {
+        axisUnits.set(axisId, new Set<string>())
+      }
+      const unitSet = axisUnits.get(axisId)!
+      items.forEach(item => {
+        const unit = item.unit
+        if (unit && unit !== 'Unused' && unit !== 'Off') {
+          unitSet.add(unit)
+        }
+      })
 
       items.forEach(item => {
         axisAssignment.set(item.series.id, axisId)
@@ -7630,13 +7640,15 @@
     if (analogChartInstance.options.scales) {
       const scales = analogChartInstance.options.scales as any
 
-      axisUnits.forEach((unit, axisId) => {
+      axisUnits.forEach((unitSet, axisId) => {
         const axisColor = axisColors.get(axisId) || '#666666'
 
         if (scales[axisId]) {
-          // Update title
+          // Update title - join all units with " | " separator
           if (scales[axisId].title) {
-            scales[axisId].title.text = unit === 'Unused' || unit === 'Off' ? '' : unit
+            const unitsArray = Array.from(unitSet)
+            const unitText = unitsArray.length > 0 ? unitsArray.join(' | ') : ''
+            scales[axisId].title.text = unitText
             scales[axisId].title.color = axisColor
           }
 
