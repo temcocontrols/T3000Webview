@@ -3351,80 +3351,132 @@
           }
         },
         tooltip: {
-          enabled: true,
-          backgroundColor: '#ffffff',
-          titleColor: '#000000',
-          bodyColor: '#000000',
-          borderColor: '#d9d9d9',
-          borderWidth: 1,
-          cornerRadius: 4,
-          displayColors: true,
-          usePointStyle: true,
-          padding: 12,
-          boxWidth: 8,
-          boxHeight: 8,
-          boxPadding: 6,
-          callbacks: {
-            title: (context: any) => {
-              const timestamp = context[0].parsed.x
-              if (typeof timestamp === 'number' && timestamp > 1e9) {
-                return formatTimestampToLocal(timestamp)
-              }
-              return new Date(timestamp).toLocaleString()
-            },
-            afterTitle: (context: any) => {
-              return ''
-            },
-            beforeLabel: (context: any) => {
-              const yAxisID = context.dataset.yAxisID || 'y'
-              const allItems = context.chart.tooltip.dataPoints || []
-              const sameAxisItems = allItems.filter((item: any) => (item.dataset.yAxisID || 'y') === yAxisID)
-              const isFirstInAxis = sameAxisItems[0]?.datasetIndex === context.datasetIndex
+          enabled: false, // Disable default, use custom
+          position: 'nearest',
+          external: (context: any) => {
+            const { chart, tooltip } = context
 
-              if (isFirstInAxis) {
-                const chart = context.chart
-                const axisTitle = chart.options.scales?.[yAxisID]?.title?.text || yAxisID.toUpperCase()
-
-                // Add spacing before non-first groups
-                const firstAxisId = allItems[0]?.dataset?.yAxisID || 'y'
-                const lines = []
-                if (yAxisID !== firstAxisId) {
-                  lines.push('')
-                }
-
-                lines.push(`${yAxisID.toUpperCase()}-Axis (${axisTitle})`)
-                return lines
-              }
-
-              return []
-            },
-            label: (context: any) => {
-              const series = visibleAnalogSeries.value.find(s => s.name === context.dataset.label)
-              if (!series) return `${context.parsed.y}`
-
-              const unitText = series.unit || ''
-              return `${series.name}: ${context.parsed.y.toFixed(2)} ${unitText}`
-            },
-            labelTextColor: (context: any) => {
-              const yAxisID = context.dataset.yAxisID || 'y'
-              const allItems = context.chart.tooltip.dataPoints || []
-              const sameAxisItems = allItems.filter((item: any) => (item.dataset.yAxisID || 'y') === yAxisID)
-              const isFirstInAxis = sameAxisItems[0]?.datasetIndex === context.datasetIndex
-
-              if (isFirstInAxis) {
-                return '#000000'
-              }
-
-              return '#000000'
-            },
-            labelColor: (context: any) => {
-              return {
-                borderColor: context.dataset.borderColor || '#666',
-                backgroundColor: context.dataset.borderColor || '#666',
-                borderWidth: 1,
-                borderRadius: 4
-              }
+            // Get or create tooltip element
+            let tooltipEl = document.getElementById('chartjs-tooltip')
+            if (!tooltipEl) {
+              tooltipEl = document.createElement('div')
+              tooltipEl.id = 'chartjs-tooltip'
+              document.body.appendChild(tooltipEl)
             }
+
+            // Hide if no tooltip
+            if (tooltip.opacity === 0) {
+              tooltipEl.style.opacity = '0'
+              return
+            }
+
+            // Build tooltip content
+            if (tooltip.body) {
+              const dataPoints = tooltip.dataPoints || []
+
+              // Group by axis
+              const axisGroups = new Map<string, any[]>()
+              dataPoints.forEach((point: any) => {
+                const axisId = point.dataset.yAxisID || 'y'
+                if (!axisGroups.has(axisId)) {
+                  axisGroups.set(axisId, [])
+                }
+                axisGroups.get(axisId)!.push(point)
+              })
+
+              // Axis colors
+              const axisColors: Record<string, string> = {
+                'y': '#595959',
+                'y1': '#1890ff',
+                'y2': '#52c41a',
+                'y3': '#fa8c16'
+              }
+
+              let html = '<div style="background: white; border: 1px solid #d9d9d9; border-radius: 4px; padding: 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">'
+
+              // Title (timestamp)
+              const timestamp = dataPoints[0]?.parsed.x
+              let timeStr = ''
+              if (typeof timestamp === 'number' && timestamp > 1e9) {
+                timeStr = formatTimestampToLocal(timestamp)
+              } else {
+                timeStr = new Date(timestamp).toLocaleString()
+              }
+              html += `<div style="font-weight: 600; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px;">${timeStr}</div>`
+
+              // Render each axis group
+              axisGroups.forEach((points, axisId) => {
+                // Get actual axis color from chart configuration
+                const axisColor = chart.options.scales?.[axisId]?.title?.color || '#000000'
+                const axisTitle = chart.options.scales?.[axisId]?.title?.text || axisId.toUpperCase()
+
+                // Axis header with color
+                html += `<div style="color: ${axisColor}; font-weight: 600; margin-top: 10px; margin-bottom: 4px;">
+                  ${axisId.toUpperCase()}-Axis (${axisTitle})
+                </div>`
+
+                // Sort data points - "Unused" items go to the end
+                const sortedPoints = [...points].sort((a: any, b: any) => {
+                  const aLabel = a.dataset.label || ''
+                  const bLabel = b.dataset.label || ''
+                  const aIsUnused = aLabel.toLowerCase().includes('unused')
+                  const bIsUnused = bLabel.toLowerCase().includes('unused')
+
+                  if (aIsUnused && !bIsUnused) return 1
+                  if (!aIsUnused && bIsUnused) return -1
+                  return 0
+                })
+
+                // Data points for this axis
+                sortedPoints.forEach((point: any) => {
+                  const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
+                  const color = point.dataset.borderColor || '#666'
+                  const value = point.parsed.y.toFixed(2)
+                  const unit = series?.unit || ''
+
+                  html += `<div style="display: flex; align-items: center; padding: 2px 0; padding-left: 12px;">
+                    <span style="display: inline-block; width: 8px; height: 8px; background: ${color}; border-radius: 50%; margin-right: 8px; flex-shrink: 0;"></span>
+                    <span style="min-width: 50px; display: inline-block;">${point.dataset.label}:</span>
+                    <span style="font-weight: 500;">${value} ${unit}</span>
+                  </div>`
+                })
+              })
+
+              html += '</div>'
+              tooltipEl.innerHTML = html
+            }
+
+            // Position tooltip (match Chart.js behavior)
+            const position = chart.canvas.getBoundingClientRect()
+            const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+            tooltipEl.style.opacity = '1'
+            tooltipEl.style.position = 'absolute'
+            tooltipEl.style.pointerEvents = 'none'
+            tooltipEl.style.transition = 'all 0.1s ease'
+
+            // Calculate position
+            const tooltipWidth = tooltipEl.offsetWidth
+            const tooltipHeight = tooltipEl.offsetHeight
+
+            // Horizontal: follow mouse/data point
+            let left = position.left + scrollX + tooltip.caretX
+
+            // Vertical: always at chart area center
+            const chartArea = chart.chartArea
+            const chartCenterY = (chartArea.top + chartArea.bottom) / 2
+            let top = position.top + scrollY + chartCenterY - (tooltipHeight / 2)
+
+            // Adjust horizontal position to avoid going off screen
+            if (left + tooltipWidth + 10 > window.innerWidth) {
+              left = position.left + scrollX + tooltip.caretX - tooltipWidth - 10
+            } else {
+              left += 10
+            }
+
+            tooltipEl.style.left = left + 'px'
+            tooltipEl.style.top = top + 'px'
           }
         },
         zoom: {
