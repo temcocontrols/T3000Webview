@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <a-config-provider :theme="{
     token: {
       colorPrimary: '#0064c8',
@@ -404,8 +404,11 @@
             </div>
             <!-- Show empty state when no series are visible (user disabled all) -->
             <div v-else class="empty-chart-message">
-              <div class="empty-state-icon">📈</div>
-              <div class="empty-state-text">No analog series enabled</div>
+
+              <div class="empty-state-text">
+                <span class="empty-state-icon">🔍</span>
+                No analog series enabled
+              </div>
               <div class="empty-state-subtitle">Enable analog series from the left panel to see charts</div>
             </div>
           </div>
@@ -12303,8 +12306,9 @@
   }
 
   .empty-chart-message .empty-state-icon {
-    font-size: 48px;
-    margin-bottom: 12px;
+    font-size: 20px;
+    margin-right: 8px;
+    display: inline;
   }
 
   .empty-chart-message .empty-state-text {
@@ -12312,6 +12316,9 @@
     font-weight: 500;
     color: #595959;
     margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .empty-chart-message .empty-state-subtitle {
