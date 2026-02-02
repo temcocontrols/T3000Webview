@@ -3570,26 +3570,36 @@
             scale.options.ticks.stepSize = stepSize
           }
         },
-        // 🆕 Secondary Y-axis for different scale values (right side)
+        // 🆕 Y1 axis (left side, 2nd unit type)
         y1: {
           display: true,
-          position: 'right' as const,
+          position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
           grid: {
-            drawOnChartArea: false, // Don't draw grid lines for secondary axis
+            drawOnChartArea: false,
             display: false
           },
+          title: {
+            display: true,
+            text: '',
+            color: '#1890ff',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
           ticks: {
-            color: '#1890ff', // Blue color to distinguish from primary axis (left)
+            color: '#1890ff',
             font: {
               size: 11,
               family: 'Inter, Helvetica, Arial, sans-serif'
             },
             padding: 2,
             autoSkip: false,
-            align: 'start',
+            align: 'end',
             callback: function (value: any) {
-              const formatted = Number(value).toFixed(2);
-              return formatted.padStart(6, ' ');
+              return Math.round(Number(value)).toString().padStart(5, ' ');
             }
           },
           afterFit: function(scale: any) {
@@ -3647,6 +3657,156 @@
             const roughStep = newRange / 10
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
+          }
+        },
+        // 🆕 Y2 axis (left side, 3rd unit type)
+        y2: {
+          display: true,
+          position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
+          grid: {
+            drawOnChartArea: false,
+            display: false
+          },
+          title: {
+            display: true,
+            text: '',
+            color: '#52c41a',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
+          ticks: {
+            color: '#52c41a',
+            font: {
+              size: 11,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 2,
+            autoSkip: false,
+            align: 'end',
+            callback: function (value: any) {
+              return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterFit: function(scale: any) {
+            scale.width = 50;
+          },
+          afterDataLimits: function (scale: any) {
+            const data = scale.chart.data.datasets
+            const y2Datasets = data.filter((ds: any) => ds.yAxisID === 'y2')
+
+            if (y2Datasets.length === 0) {
+              scale.display = false
+              return
+            }
+
+            scale.display = true
+            const allValues: number[] = []
+            y2Datasets.forEach((dataset: any) => {
+              if (dataset.data && dataset.data.length > 0) {
+                dataset.data.forEach((point: any) => {
+                  if (point && typeof point.y === 'number' && isFinite(point.y)) {
+                    allValues.push(point.y)
+                  }
+                })
+              }
+            })
+
+            if (allValues.length === 0) {
+              scale.display = false
+              return
+            }
+
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const range = max - min
+
+            if (range === 0) {
+              scale.min = min * 0.9
+              scale.max = max * 1.1
+            } else {
+              const padding = range * 0.1
+              scale.min = min - padding
+              scale.max = max + padding
+            }
+          }
+        },
+        // 🆕 Y3 axis (left side, 4th unit type)
+        y3: {
+          display: true,
+          position: 'left' as const,
+          stack: 'y-axis' as const,
+          stackWeight: 1,
+          grid: {
+            drawOnChartArea: false,
+            display: false
+          },
+          title: {
+            display: true,
+            text: '',
+            color: '#fa8c16',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
+          ticks: {
+            color: '#fa8c16',
+            font: {
+              size: 11,
+              family: 'Inter, Helvetica, Arial, sans-serif'
+            },
+            padding: 2,
+            autoSkip: false,
+            align: 'end',
+            callback: function (value: any) {
+              return Math.round(Number(value)).toString().padStart(5, ' ');
+            }
+          },
+          afterFit: function(scale: any) {
+            scale.width = 50;
+          },
+          afterDataLimits: function (scale: any) {
+            const data = scale.chart.data.datasets
+            const y3Datasets = data.filter((ds: any) => ds.yAxisID === 'y3')
+
+            if (y3Datasets.length === 0) {
+              scale.display = false
+              return
+            }
+
+            scale.display = true
+            const allValues: number[] = []
+            y3Datasets.forEach((dataset: any) => {
+              if (dataset.data && dataset.data.length > 0) {
+                dataset.data.forEach((point: any) => {
+                  if (point && typeof point.y === 'number' && isFinite(point.y)) {
+                    allValues.push(point.y)
+                  }
+                })
+              }
+            })
+
+            if (allValues.length === 0) {
+              scale.display = false
+              return
+            }
+
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const range = max - min
+
+            if (range === 0) {
+              scale.min = min * 0.9
+              scale.max = max * 1.1
+            } else {
+              const padding = range * 0.1
+              scale.min = min - padding
+              scale.max = max + padding
+            }
           }
         }
       }
@@ -7298,9 +7458,81 @@
     // Process each series sequentially with yield points for C++ WebView
     const datasets: any[] = []
 
-    // 🆕 STEP 1: Pre-analyze all series to determine axis assignment
-    const seriesRanges: { series: any, min: number, max: number, magnitude: number }[] = []
+    // 🆕 ENHANCED MULTI-AXIS STRATEGY: Group by UNIT TYPE with color matching
+    // Each unit group's Y-axis will match the color of the FIRST series in that group
 
+    const seriesInfo: {
+      series: any,
+      min: number,
+      max: number,
+      unit: string,
+      unitGroup: string,
+      color: string
+    }[] = []
+
+    // Helper: Normalize units into groups
+    const normalizeUnitGroup = (unit: string): string => {
+      if (!unit || unit === 'Unused' || unit === 'Off') return 'dimensionless'
+
+      const unitLower = unit.toLowerCase()
+
+      // Temperature group
+      if (unitLower.includes('deg') || unitLower.includes('°') ||
+          unitLower.includes('f') || unitLower.includes('c') ||
+          unitLower.includes('temp')) {
+        return 'temperature'
+      }
+
+      // Electrical - Voltage
+      if (unitLower.includes('volt') || unitLower.includes('v') || unitLower === 'mv') {
+        return 'voltage'
+      }
+
+      // Electrical - Current
+      if (unitLower.includes('amp') || unitLower.includes('ma') || unitLower.includes('a')) {
+        return 'current'
+      }
+
+      // Electrical - Power
+      if (unitLower.includes('watt') || unitLower.includes('w') ||
+          unitLower.includes('kw') || unitLower.includes('mw')) {
+        return 'power'
+      }
+
+      // Pressure
+      if (unitLower.includes('pa') || unitLower.includes('psi') ||
+          unitLower.includes('bar') || unitLower.includes('pressure')) {
+        return 'pressure'
+      }
+
+      // Air Quality / Flow
+      if (unitLower.includes('ppm') || unitLower.includes('ppb') ||
+          unitLower.includes('co2') || unitLower.includes('voc') ||
+          unitLower.includes('fps') || unitLower.includes('fpm') ||
+          unitLower.includes('cfm')) {
+        return 'airquality'
+      }
+
+      // Humidity
+      if (unitLower.includes('rh') || unitLower.includes('humid') || unitLower.includes('%rh')) {
+        return 'humidity'
+      }
+
+      // Percentage
+      if (unitLower === '%' || unitLower === 'percent') {
+        return 'percentage'
+      }
+
+      // Frequency
+      if (unitLower.includes('hz') || unitLower.includes('hertz')) {
+        return 'frequency'
+      }
+
+      // Default: use the unit itself as group
+      return unit.toLowerCase().replace(/[^a-z0-9]/g, '')
+    }
+
+    // Analyze all series
     for (const series of visibleAnalog) {
       if (!series.data || series.data.length === 0) continue
 
@@ -7312,66 +7544,123 @@
 
       const min = Math.min(...values)
       const max = Math.max(...values)
-      const magnitude = Math.floor(Math.log10(Math.max(Math.abs(max), Math.abs(min), 1)))
+      const unit = series.unit || 'Unused'
+      const unitGroup = normalizeUnitGroup(unit)
+      const color = series.color || '#666666'
 
-      seriesRanges.push({ series, min, max, magnitude })
+      seriesInfo.push({ series, min, max, unit, unitGroup, color })
     }
 
-    // 🆕 STEP 2: Group by magnitude to determine axis assignment
-    const rangeGroups: { [key: string]: any[] } = {}
-    seriesRanges.forEach(item => {
-      const groupKey = `mag_${item.magnitude}`
-      if (!rangeGroups[groupKey]) {
-        rangeGroups[groupKey] = []
+    // Group by unit type
+    const unitGroups: { [key: string]: typeof seriesInfo } = {}
+    seriesInfo.forEach(item => {
+      if (!unitGroups[item.unitGroup]) {
+        unitGroups[item.unitGroup] = []
       }
-      rangeGroups[groupKey].push(item)
+      unitGroups[item.unitGroup].push(item)
     })
 
-    // 🆕 STEP 3: Assign axes (largest range group = left 'y', others = right 'y1')
-    const groups = Object.entries(rangeGroups)
-    let useMultipleAxes = groups.length > 1
-
-    // Sort groups by total range (largest first)
-    groups.sort((a, b) => {
-      const rangeA = Math.max(...a[1].map(item => item.max)) - Math.min(...a[1].map(item => item.min))
-      const rangeB = Math.max(...b[1].map(item => item.max)) - Math.min(...b[1].map(item => item.min))
+    // Sort groups by count (most series first) then by total range
+    const sortedGroups = Object.entries(unitGroups).sort((a, b) => {
+      // First by count
+      if (b[1].length !== a[1].length) {
+        return b[1].length - a[1].length
+      }
+      // Then by range
+      const rangeA = Math.max(...a[1].map(i => i.max)) - Math.min(...a[1].map(i => i.min))
+      const rangeB = Math.max(...b[1].map(i => i.max)) - Math.min(...b[1].map(i => i.min))
       return rangeB - rangeA
     })
 
-    // Assign axis IDs to each series
+// Assign axes: Support up to 4 axes (y, y1, y2, y3) ALL ON LEFT SIDE
+    // y = left position 0 (primary), y1 = left position 1, y2 = left position 2, y3 = left position 3
     const axisAssignment = new Map<string, string>()
-    if (useMultipleAxes) {
-      // Primary group uses left axis
-      groups[0][1].forEach(item => {
-        axisAssignment.set(item.series.id, 'y')
-      })
-      // Secondary groups use right axis
-      groups.slice(1).forEach(([key, items]) => {
-        items.forEach(item => {
-          axisAssignment.set(item.series.id, 'y1')
-        })
-      })
-    } else {
-      // All use left axis
-      seriesRanges.forEach(item => {
-        axisAssignment.set(item.series.id, 'y')
-      })
-    }
+    const axisColors = new Map<string, string>() // Axis ID → Color of first series
+    const axisUnits = new Map<string, string>() // Axis ID → Unit label
 
-    // 🐛 DEBUG: Log axis assignments
-    LogUtil.Info('📊 Axis assignments:', {
+    sortedGroups.forEach(([groupName, items], index) => {
+      const axisId = index === 0 ? 'y' :
+                     index === 1 ? 'y1' :
+                     index === 2 ? 'y2' : 'y3'
+
+      // 🎨 KEY: Use the color of the FIRST series in this unit group
+      const firstSeriesColor = items[0].color
+      axisColors.set(axisId, firstSeriesColor)
+
+      // Use first series' unit as the axis label
+      const representativeUnit = items[0].unit
+      axisUnits.set(axisId, representativeUnit)
+
+      items.forEach(item => {
+        axisAssignment.set(item.series.id, axisId)
+      })
+    })
+
+    const useMultipleAxes = sortedGroups.length > 1
+
+    // 🐛 DEBUG: Log unit-based axis assignments with colors
+    LogUtil.Info('📊 Unit-based axis assignments with color matching:', {
       useMultipleAxes,
-      groupCount: groups.length,
+      unitGroupCount: sortedGroups.length,
+      unitGroups: sortedGroups.map(([groupName, items]) => ({
+        groupName,
+        seriesCount: items.length,
+        unit: items[0].unit,
+        firstSeriesColor: items[0].color
+      })),
       assignments: Array.from(axisAssignment.entries()).map(([id, axis]) => {
         const series = visibleAnalog.find(s => s.id === id)
         return {
           id,
           name: series?.name,
           unit: series?.unit,
-          axis
+          axis,
+          axisColor: axisColors.get(axis)
+        }
+      }),
+      axisConfiguration: Array.from(axisUnits.entries()).map(([axisId, unit]) => ({
+        axisId,
+        unit,
+        color: axisColors.get(axisId),
+        position: 'left' // All axes on left side
+      }))
+    })
+
+    // 🎨 Update axis colors and titles dynamically
+    if (analogChartInstance.options.scales) {
+      const scales = analogChartInstance.options.scales as any
+
+      axisUnits.forEach((unit, axisId) => {
+        const axisColor = axisColors.get(axisId) || '#666666'
+
+        if (scales[axisId]) {
+          // Update title
+          if (scales[axisId].title) {
+            scales[axisId].title.text = unit === 'Unused' || unit === 'Off' ? '' : unit
+            scales[axisId].title.color = axisColor
+          }
+
+          // Update tick colors
+          if (scales[axisId].ticks) {
+            scales[axisId].ticks.color = axisColor
+          }
+
+          // Show the axis
+          scales[axisId].display = true
         }
       })
-    })
+
+      // Hide axes that aren't being used
+      const allAxes = ['y', 'y1', 'y2', 'y3']
+      allAxes.forEach(axisId => {
+        if (scales[axisId] && !axisUnits.has(axisId)) {
+          scales[axisId].display = false
+          if (scales[axisId].title) {
+            scales[axisId].title.text = ''
+          }
+        }
+      })
+    }
 
     // 🆕 STEP 4: Create datasets with assigned yAxisID
     for (let i = 0; i < visibleAnalog.length; i++) {
