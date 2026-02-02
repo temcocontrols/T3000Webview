@@ -3304,7 +3304,7 @@
     data: {
       datasets: [] // Will be populated in updateAnalogChart
     },
-    plugins: [yAxisUnitsPlugin],
+    plugins: [], // Removed yAxisUnitsPlugin - units now shown in y-axis titles
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -3481,6 +3481,15 @@
         y: {
           display: true,
           position: 'left' as const,
+          title: {
+            display: true,
+            text: '', // Will be set dynamically
+            color: '#595959',
+            font: {
+              size: 11,
+              weight: 'bold' as const
+            }
+          },
           grid: {
             color: showGrid.value ? '#e0e0e0' : 'transparent',
             display: showGrid.value,
@@ -3569,8 +3578,8 @@
             display: false
           },
           title: {
-            display: false,
-            text: '',
+            display: true,
+            text: '', // Will be set dynamically
             color: '#1890ff',
             font: {
               size: 11,
@@ -3659,8 +3668,8 @@
             display: false
           },
           title: {
-            display: false,
-            text: '',
+            display: true,
+            text: '', // Will be set dynamically
             color: '#52c41a',
             font: {
               size: 11,
@@ -3735,8 +3744,8 @@
             display: false
           },
           title: {
-            display: false,
-            text: '',
+            display: true,
+            text: '', // Will be set dynamically
             color: '#fa8c16',
             font: {
               size: 11,
