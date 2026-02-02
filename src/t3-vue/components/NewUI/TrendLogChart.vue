@@ -3316,6 +3316,11 @@
         line: {
           borderWidth: 2,
           skipNull: false
+        },
+        point: {
+          radius: 0,
+          hitRadius: 8,
+          hoverRadius: 4
         }
       },
       layout: {
@@ -3355,6 +3360,10 @@
           cornerRadius: 4,
           displayColors: true,
           usePointStyle: true,
+          padding: 12,
+          boxWidth: 8,
+          boxHeight: 8,
+          boxPadding: 6,
           callbacks: {
             title: (context: any) => {
               const timestamp = context[0].parsed.x
@@ -3363,15 +3372,58 @@
               }
               return new Date(timestamp).toLocaleString()
             },
+            afterTitle: (context: any) => {
+              return ''
+            },
+            beforeLabel: (context: any) => {
+              const yAxisID = context.dataset.yAxisID || 'y'
+              const allItems = context.chart.tooltip.dataPoints || []
+              const sameAxisItems = allItems.filter((item: any) => (item.dataset.yAxisID || 'y') === yAxisID)
+              const isFirstInAxis = sameAxisItems[0]?.datasetIndex === context.datasetIndex
+
+              if (isFirstInAxis) {
+                const chart = context.chart
+                const axisTitle = chart.options.scales?.[yAxisID]?.title?.text || yAxisID.toUpperCase()
+
+                // Add spacing before non-first groups
+                const firstAxisId = allItems[0]?.dataset?.yAxisID || 'y'
+                const lines = []
+                if (yAxisID !== firstAxisId) {
+                  lines.push('')
+                }
+
+                lines.push(`${yAxisID.toUpperCase()}-Axis (${axisTitle})`)
+                return lines
+              }
+
+              return []
+            },
             label: (context: any) => {
               const series = visibleAnalogSeries.value.find(s => s.name === context.dataset.label)
               if (!series) return `${context.parsed.y}`
 
-              // Get unit text
               const unitText = series.unit || ''
-
-              // Format: "Series Name: 25.50 °C" (no axis indicator)
               return `${series.name}: ${context.parsed.y.toFixed(2)} ${unitText}`
+            },
+            labelTextColor: (context: any) => {
+              const yAxisID = context.dataset.yAxisID || 'y'
+              const allItems = context.chart.tooltip.dataPoints || []
+              const sameAxisItems = allItems.filter((item: any) => (item.dataset.yAxisID || 'y') === yAxisID)
+              const isFirstInAxis = sameAxisItems[0]?.datasetIndex === context.datasetIndex
+
+              if (isFirstInAxis) {
+                return '#000000'
+              }
+
+              return '#000000'
+            },
+            labelColor: (context: any) => {
+              return {
+                borderColor: context.dataset.borderColor || '#666',
+                backgroundColor: context.dataset.borderColor || '#666',
+                borderWidth: 1,
+                borderRadius: 4
+              }
             }
           }
         },
