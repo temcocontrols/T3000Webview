@@ -2363,6 +2363,12 @@
         timeBase: newTimeBase,
         isRealTime: isRealTime.value
       })
+
+      // 🆕 FIX: When switching from custom back to preset, call API directly instead of relying on debounced logic
+      // This ensures fresh data is loaded immediately
+      LogUtil.Info('🔄 Calling onTimeBaseChange() directly for custom→preset transition')
+      await onTimeBaseChange()
+      return // Exit early - onTimeBaseChange handles everything
     }
 
     // 🆕 DEBOUNCE: Cancel previous pending timebase change
@@ -3925,7 +3931,7 @@
             y2Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
-                  if (point && typeof point.y === 'number' && isFinite(point.y)) {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
                     allValues.push(point.y)
                   }
                 })
@@ -3944,11 +3950,23 @@
             if (range === 0) {
               scale.min = min * 0.9
               scale.max = max * 1.1
+            } else if (range < 2) {
+              const center = (min + max) / 2
+              const expandedRange = Math.max(range * 3, 1)
+              scale.min = center - expandedRange / 2
+              scale.max = center + expandedRange / 2
             } else {
               const padding = range * 0.1
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Calculate nice step size
+            const newRange = scale.max - scale.min
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
           }
         },
         // 🆕 Y3 axis (left side, 4th unit type)
@@ -4010,7 +4028,7 @@
             y3Datasets.forEach((dataset: any) => {
               if (dataset.data && dataset.data.length > 0) {
                 dataset.data.forEach((point: any) => {
-                  if (point && typeof point.y === 'number' && isFinite(point.y)) {
+                  if (point && typeof point.y === 'number' && isFinite(point.y) && point.y > -99999 && point.y < 999999) {
                     allValues.push(point.y)
                   }
                 })
@@ -4029,11 +4047,23 @@
             if (range === 0) {
               scale.min = min * 0.9
               scale.max = max * 1.1
+            } else if (range < 2) {
+              const center = (min + max) / 2
+              const expandedRange = Math.max(range * 3, 1)
+              scale.min = center - expandedRange / 2
+              scale.max = center + expandedRange / 2
             } else {
               const padding = range * 0.1
               scale.min = min - padding
               scale.max = max + padding
             }
+
+            // Calculate nice step size
+            const newRange = scale.max - scale.min
+            const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+            const roughStep = newRange / 10
+            const stepSize = niceSteps.find(s => s >= roughStep) || 1
+            scale.options.ticks.stepSize = stepSize
           }
         }
       }
