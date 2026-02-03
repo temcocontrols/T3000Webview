@@ -150,40 +150,66 @@ Mouse hovering displays the full function name.
 
 ## 2025-12-21
 
-#### 1. Added new Trend Log Beta page for enhanced data visualization and monitoring.
+#### 1. Added new Trend Log Beta page with modern charting interface. Includes top control bar, left data panel, and large chart display area.
 
-![Screenshot: Trend Log Overview](./pic/2025-12-21/1.png)
+![1](./pic/2025-12-21/1.png)
 
-#### 2. Top control bar includes: time range selection (5m to 4d presets + custom), navigation arrows, zoom in/out, view selector (3 custom views), live/historical mode indicator, reset/config/export buttons.
+#### 2. Top control bar with time range presets (5m to 4d), custom date picker, navigation arrows, zoom controls, view selector, live/historical mode toggle, and export options.
 
-![Screenshot: Top Control Bar](./pic/2025-12-21/2.png)
+![2](./pic/2025-12-21/2.png)
 
-#### 3. Left data panel shows all trend items with checkboxes, color indicators, current values, and min/max ranges. Separated into analog (continuous) and digital (on/off) sections.
+#### 3. Left panel displays all trend items with checkboxes, color indicators, live values, and min/max ranges. Separated into analog and digital sections.
 
-![Screenshot: Left Data Panel](./pic/2025-12-21/3.png)
+![3](./pic/2025-12-21/3.png)
 
-#### 4. Right chart area displays time-series graphs: analog chart (top) with line plots and crosshair tooltip, digital chart (bottom) with step plots showing state changes.
+#### 4. Dual-chart display: analog chart (top) with line plots, digital chart (bottom) with step plots. Synchronized time axis and auto-scaling.
 
-![Screenshot: Chart Display Area](./pic/2025-12-21/4.png)
+![4](./pic/2025-12-21/4.png)
 
-#### 5. Features: real-time auto-refresh, historical data review with custom date/time selection, multi-item comparison, export to PNG/JPG/CSV/JSON formats.
+#### 5. Enhanced tooltips with gray background, collision detection, formatted time display, series names, and compact 11px font.
 
-![Screenshot: Custom Time Range Dialog](./pic/2025-12-21/5.1.png)
+![5](./pic/2025-12-21/5.png)
 
-![Screenshot: Custom Time Range Dialog](./pic/2025-12-21/5.2.png)
+#### 6. Vertical crosshair line appears on hover, connecting data points to time axis for precise alignment.
 
-![Screenshot: Export Options](./pic/2025-12-21/6.1.png)
+![6](./pic/2025-12-21/6.png)
 
-![Screenshot: Export Options](./pic/2025-12-21/6.2.png)
+#### 7. Individual tooltips for each data series with smart positioning to avoid overlaps and chart boundaries.
 
-#### 6. User can create custom monitoring views (View 2 & 3) by selecting specific items to track.
+![7](./pic/2025-12-21/7.png)
 
-![Screenshot: Custom View Selector](./pic/2025-12-21/7.1.png)
+#### 8. Colored Y-axis labels with rounded bordered boxes (6px radius) and white text. Colors: gray (#595959), blue (#1890ff), green (#52c41a), orange (#fa8c16).
 
-![Screenshot: Custom View Selector](./pic/2025-12-21/7.2.png)
+![8](./pic/2025-12-21/8.png)
 
-![Screenshot: Custom View Selector](./pic/2025-12-21/7.3.png)
+#### 9. Multi-axis support for up to 4 independent Y-axes, allowing different units (°F, %, PSI, CFM) on one chart.
 
-![Screenshot: Custom View Selector](./pic/2025-12-21/7.4.png)
+![9](./pic/2025-12-21/9.png)
 
-![Screenshot: Custom View Selector](./pic/2025-12-21/7.5.png)
+#### 10. Flexible time ranges with quick presets and custom selection. Auto-refresh intervals (5s, 10s, 30s, 1min, 5min) for live monitoring.
+
+![10_1](./pic/2025-12-21/10_1.png)
+
+![10_2](./pic/2025-12-21/10_2.png)
+
+#### 11. Export data to PNG, JPG, CSV, or JSON formats for reports and analysis.
+
+![11_1](./pic/2025-12-21/11_1.png)
+
+![11_2](./pic/2025-12-21/11_2.png)
+
+#### 12. Create up to 3 custom views to save different data point configurations for various monitoring scenarios.
+
+![12_1](./pic/2025-12-21/12_1.png)
+
+![12_2](./pic/2025-12-21/12_2.png)
+
+![12_3](./pic/2025-12-21/12_3.png)
+
+![12_4](./pic/2025-12-21/12_4.png)
+
+![12_5](./pic/2025-12-21/12_5.png)
+
+#### 13. Interactive controls: zoom with mouse wheel, pan by dragging, double-click to reset, legend toggle to show/hide series.
+
+![13](./pic/2025-12-21/13.png)
