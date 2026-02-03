@@ -3387,7 +3387,7 @@
               crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
               crosshairEl.style.width = '0px'
               crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
-              crosshairEl.style.borderLeft = '1px dashed #d9d9d9'
+              crosshairEl.style.borderLeft = '2px dashed #999'
               crosshairEl.style.pointerEvents = 'none'
               crosshairEl.style.zIndex = '999'
 
