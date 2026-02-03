@@ -3392,6 +3392,36 @@
               crosshairEl.style.zIndex = '999'
 
               document.body.appendChild(crosshairEl)
+
+              // Create time display at top of crosshair
+              const timeEl = document.createElement('div')
+              timeEl.className = 'chartjs-crosshair'
+              timeEl.style.position = 'absolute'
+              timeEl.style.left = (pointX - 30) + 'px' // Center the time box
+              timeEl.style.top = (position.top + scrollY + chart.chartArea.top - 20) + 'px'
+              timeEl.style.pointerEvents = 'none'
+              timeEl.style.zIndex = '1000'
+
+              // Get time from the data point
+              const timeLabel = tooltip.dataPoints[0].label || ''
+
+              timeEl.innerHTML = `
+                <div style="
+                  background: white;
+                  color: #000;
+                  border: 1px solid #ff4d4f;
+                  border-radius: 3px;
+                  padding: 2px 6px;
+                  font-size: 10px;
+                  font-weight: 500;
+                  white-space: nowrap;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                ">
+                  ${timeLabel}
+                </div>
+              `
+
+              document.body.appendChild(timeEl)
             }
 
             // Create individual tooltip for each data point
