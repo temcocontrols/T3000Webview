@@ -44,6 +44,7 @@ import {
   SaveRegular,
   SettingsRegular,
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   ErrorCircleRegular,
   InfoRegular,
   ArrowResetRegular,
@@ -53,6 +54,7 @@ import {
   DeleteRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { SettingsRefreshApi, type DeviceSettings } from '../services/settingsRefreshApi';
 import cssStyles from './SettingsPage.module.css';
 
 const useStyles = makeStyles({
@@ -85,17 +87,33 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  tabList: {
-    padding: '0',
+  tabHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    paddingRight: '8px',
+  },
+  tabList: {
+    padding: '0',
+    borderBottom: 'none',
+    backgroundColor: tokens.colorNeutralBackground1,
     fontSize: '5px',
+    flex: 1,
     '& button': {
       fontSize: '5px',
     },
     '& .fui-Tab': {
       fontSize: '5px',
     },
+  },
+  refreshButton: {
+    fontSize: '12px',
+    height: '28px',
+    minWidth: '28px',
+    padding: '0 8px',
+    fontWeight: 'normal',
   },
   tabContent: {
     flex: 1,
@@ -446,118 +464,150 @@ export const SettingsPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
 
-      switch (selectedTab) {
-        case 'basic':
-          // Fetch protocol settings, hardware info, features, network (for MAC), and device info
-          try {
-            const [protocolRes, hardwareRes, featuresRes, networkRes, deviceRes] = await Promise.all([
-              fetch(`/api/v1/devices/${serial}/settings/protocol`),
-              fetch(`/api/v1/devices/${serial}/settings/hardware`),
-              fetch(`/api/v1/devices/${serial}/settings/features`),
-              fetch(`/api/v1/devices/${serial}/settings/network`),
-              fetch(`/api/v1/devices/${serial}`),
-            ]);
-            if (protocolRes.ok) {
-              const data = await protocolRes.json();
-              setProtocolSettings(data);
-            }
-            if (hardwareRes.ok) {
-              const data = await hardwareRes.json();
-              setHardwareInfo(data);
-            }
-            if (featuresRes.ok) {
-              const data = await featuresRes.json();
-              setFeatureFlags(data);
-            }
-            if (networkRes.ok) {
-              const data = await networkRes.json();
-              setNetworkSettings(data);
-            }
-            if (deviceRes.ok) {
-              const data = await deviceRes.json();
-              setDeviceInfo(data);
-            }
-          } catch (parseErr) {
-            console.warn('[SettingsPage] Basic tab: API endpoints not yet implemented', parseErr);
-          }
-          break;
+      // Use SettingsRefreshApi to get device settings
+      // Try loading from DB first (fast), fall back to device refresh if needed
+      let settings: DeviceSettings | undefined = await SettingsRefreshApi.loadFromDB(serial);
 
-        case 'communication':
-          // Fetch network and communication settings
-          try {
-            const [commNetworkRes, commRes] = await Promise.all([
-              fetch(`/api/v1/devices/${serial}/settings/network`),
-              fetch(`/api/v1/devices/${serial}/settings/communication`),
-            ]);
-            if (commNetworkRes.ok) {
-              const data = await commNetworkRes.json();
-              setNetworkSettings(data);
-            }
-            if (commRes.ok) {
-              const data = await commRes.json();
-              setCommSettings(data);
-            }
-          } catch (parseErr) {
-            console.warn('[SettingsPage] Communication tab: API endpoints not yet implemented', parseErr);
-          }
-          break;
+      if (!settings) {
+        // No cached data - fetch from device
+        console.log('[SettingsPage] No cached settings, refreshing from device...');
+        const result = await SettingsRefreshApi.refreshFromDevice(serial);
 
-        case 'time':
-          try {
-            const timeRes = await fetch(`/api/v1/devices/${serial}/settings/time`);
-            if (timeRes.ok) {
-              const data = await timeRes.json();
-              setTimeSettings(data);
-            }
-          } catch (parseErr) {
-            console.warn('[SettingsPage] Time tab: API endpoint not yet implemented', parseErr);
-          }
-          break;
+        if (!result.success || !result.data) {
+          throw new Error(result.message || 'Failed to refresh settings from device');
+        }
 
-        case 'dyndns':
-          try {
-            const dyndnsRes = await fetch(`/api/v1/devices/${serial}/settings/dyndns`);
-            if (dyndnsRes.ok) {
-              const data = await dyndnsRes.json();
-              setDyndnsSettings(data);
-            }
-          } catch (parseErr) {
-            console.warn('[SettingsPage] Dyndns tab: API endpoint not yet implemented', parseErr);
-          }
-          break;
-
-        case 'email':
-          // Email settings will be handled separately (EMAIL_ALARMS table)
-          break;
-
-        case 'users':
-          // Users are managed in separate UsersPage
-          break;
-
-        case 'expansion':
-          // Expansion IO devices will be handled separately (EXTIO_DEVICES table)
-          break;
+        settings = result.data;
       }
+
+      // Map DeviceSettings to component state
+      setNetworkSettings({
+        IP_Address: settings.ip_addr,
+        Subnet: settings.subnet,
+        Gateway: settings.gate_addr,
+        MAC_Address: settings.mac_addr,
+        TCP_Type: settings.tcp_type,
+      });
+
+      setCommSettings({
+        COM0_Config: settings.com0_config,
+        COM1_Config: settings.com1_config,
+        COM2_Config: settings.com2_config,
+        COM_Baudrate0: settings.com_baudrate0,
+        COM_Baudrate1: settings.com_baudrate1,
+        COM_Baudrate2: settings.com_baudrate2,
+        UART_Parity0: settings.uart_parity?.[0],
+        UART_Parity1: settings.uart_parity?.[1],
+        UART_Parity2: settings.uart_parity?.[2],
+        UART_Stopbit0: settings.uart_stopbit?.[0],
+        UART_Stopbit1: settings.uart_stopbit?.[1],
+        UART_Stopbit2: settings.uart_stopbit?.[2],
+        Fix_COM_Config: settings.fix_com_config,
+      });
+
+      setProtocolSettings({
+        Modbus_ID: settings.modbus_id,
+        Modbus_Port: settings.modbus_port,
+        MSTP_ID: settings.mstp_id,
+        MSTP_Network_Number: settings.mstp_network_number,
+        Max_Master: settings.max_master,
+        Object_Instance: settings.object_instance,
+        BBMD_Enable: settings.BBMD_EN,
+        Network_Number: settings.network_number,
+      });
+
+      setTimeSettings({
+        Time_Zone: settings.time_zone,
+        Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
+        Enable_SNTP: settings.en_sntp,
+        SNTP_Server: settings.sntp_server,
+        Time_Sync_Auto_Manual: settings.time_sync_auto_manual,
+        Start_Month: settings.start_month,
+        Start_Day: settings.start_day,
+        End_Month: settings.end_month,
+        End_Day: settings.end_day,
+      });
+
+      setDyndnsSettings({
+        Enable_DynDNS: settings.en_dyndns,
+        DynDNS_Provider: settings.dyndns_provider,
+        DynDNS_User: settings.dyndns_user,
+        DynDNS_Pass: settings.dyndns_pass,
+        DynDNS_Domain: settings.dyndns_domain,
+        DynDNS_Update_Time: settings.dyndns_update_time,
+      });
+
+      setHardwareInfo({
+        Mini_Type: settings.mini_type,
+        Panel_Type: settings.panel_type,
+        USB_Mode: settings.usb_mode,
+        SD_Exist: settings.sd_exist,
+      });
+
+      setFeatureFlags({
+        User_Name_Enable: settings.user_name,
+        Customer_Unite_Enable: settings.custmer_unite,
+        Enable_Panel_Name: settings.en_panel_name,
+        LCD_Display: settings.LCD_Display,
+      });
+
+      setDeviceInfo({
+        SerialNumber: settings.n_serial_number,
+        PanelId: settings.panel_name,
+        Panel_Number: settings.panel_number,
+      });
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings');
-      console.error('Error fetching settings:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setError(errorMsg);
+      console.error('[SettingsPage] Failed to fetch settings:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice, selectedTab]);
+  }, [selectedDevice]);
 
+  // Refresh from device (force fresh data)
+  const handleRefresh = useCallback(async () => {
+    if (!selectedDevice) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await SettingsRefreshApi.refreshFromDevice(selectedDevice.serialNumber);
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      setSuccessMessage('Settings refreshed successfully from device');
+
+      // Reload settings after refresh
+      await fetchSettings();
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setError(errorMsg);
+      console.error('[SettingsPage] Failed to refresh settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDevice, fetchSettings]);
+
+  // Load settings when tab or device changes
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+  }, [fetchSettings, selectedTab]);
+  // Load settings when tab or device changes
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings, selectedTab]);
 
   const handleTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as TabValue);
     setError(null);
     setSuccessMessage(null);
-  };
-
-  const handleRefresh = () => {
-    fetchSettings();
   };
 
   const handleSaveNetwork = async () => {
@@ -1327,16 +1377,33 @@ export const SettingsPage: React.FC = () => {
     <div className={styles.container}>
       {/* Tab Container */}
       <div className={styles.tabContainer}>
-        {/* Tab List */}
-        <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={`${styles.tabList} ${cssStyles.customTabList}`} style={{ fontSize: '5px' }}>
-          <Tab value="basic" style={{ fontSize: '5px' }}>Basic Information</Tab>
-          <Tab value="communication" style={{ fontSize: '5px' }}>Communication</Tab>
-          <Tab value="time" style={{ fontSize: '5px' }}>Time</Tab>
-          <Tab value="dyndns" style={{ fontSize: '5px' }}>Dyndns</Tab>
-          <Tab value="email" style={{ fontSize: '5px' }}>Email</Tab>
-          <Tab value="users" style={{ fontSize: '5px' }}>User Login</Tab>
-          <Tab value="expansion" style={{ fontSize: '5px' }}>Expansion IO</Tab>
-        </TabList>
+        {/* Tab Header with Refresh Button */}
+        <div className={styles.tabHeader}>
+          {/* Tab List */}
+          <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={`${styles.tabList} ${cssStyles.customTabList}`} style={{ fontSize: '5px' }}>
+            <Tab value="basic" style={{ fontSize: '5px' }}>Basic Information</Tab>
+            <Tab value="communication" style={{ fontSize: '5px' }}>Communication</Tab>
+            <Tab value="time" style={{ fontSize: '5px' }}>Time</Tab>
+            <Tab value="dyndns" style={{ fontSize: '5px' }}>Dyndns</Tab>
+            <Tab value="email" style={{ fontSize: '5px' }}>Email</Tab>
+            <Tab value="users" style={{ fontSize: '5px' }}>User Login</Tab>
+            <Tab value="expansion" style={{ fontSize: '5px' }}>Expansion IO</Tab>
+          </TabList>
+
+          {/* Refresh Button */}
+          {selectedDevice && (
+            <Button
+              appearance="subtle"
+              icon={<ArrowClockwiseRegular />}
+              onClick={handleRefresh}
+              disabled={loading}
+              className={styles.refreshButton}
+              title="Refresh settings from device"
+            >
+              Refresh
+            </Button>
+          )}
+        </div>
 
         {/* Tab Content Wrapper */}
         <div className={styles.tabContentWrapper}>
@@ -1358,20 +1425,31 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {renderTabContent()}
+            {/* Loading Message */}
+            {loading && (
+              <div className={styles.successMessage}>
+                <Spinner size="extra-tiny" style={{ fontSize: '12px' }} />
+                <Text style={{ color: '#0078d4', fontSize: '12px' }}>Refreshing settings from device...</Text>
+              </div>
+            )}
+
+            {/* Disable all fields when loading */}
+            <fieldset disabled={loading} style={{ border: 'none', margin: 0, padding: 0 }}>
+              {renderTabContent()}
+            </fieldset>
           </div>
 
           {/* Actions Section - Sticky Bottom */}
           {selectedDevice && selectedTab === 'basic' && (
             <div className={styles.actionsSection}>
               <div className={styles.actionButtons}>
-                <Button appearance="secondary" icon={<InfoRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                <Button appearance="secondary" icon={<InfoRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Identify Device
                 </Button>
-                <Button appearance="secondary" icon={<DeleteRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                <Button appearance="secondary" icon={<DeleteRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Clear Device
                 </Button>
-                <Button appearance="secondary" icon={<BroomRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                <Button appearance="secondary" icon={<BroomRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Clear Subnet Database
                 </Button>
                 <Button
@@ -1383,7 +1461,7 @@ export const SettingsPage: React.FC = () => {
                 >
                   Reboot Device
                 </Button>
-                <Button appearance="secondary" icon={<SaveRegular />} style={{ fontWeight: 'normal', fontSize: '12px' }}>
+                <Button appearance="secondary" icon={<SaveRegular />} disabled={loading} style={{ fontWeight: 'normal', fontSize: '12px' }}>
                   Done
                 </Button>
               </div>
