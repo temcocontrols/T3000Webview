@@ -3361,12 +3361,37 @@
           external: (context: any) => {
             const { chart, tooltip } = context
 
-            // Remove all existing tooltips
+            // Remove all existing tooltips and crosshair
             document.querySelectorAll('.chartjs-multi-tooltip').forEach(el => el.remove())
+            document.querySelectorAll('.chartjs-crosshair').forEach(el => el.remove())
 
             // Hide if no tooltip
             if (tooltip.opacity === 0) {
               return
+            }
+
+            // Draw vertical crosshair line at hover position
+            if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+              const position = chart.canvas.getBoundingClientRect()
+              const scrollX = window.pageXOffset || document.documentElement.scrollLeft
+              const scrollY = window.pageYOffset || document.documentElement.scrollTop
+
+              const firstPoint = tooltip.dataPoints[0]
+              const pointX = position.left + scrollX + firstPoint.element.x
+
+              // Create crosshair line element
+              const crosshairEl = document.createElement('div')
+              crosshairEl.className = 'chartjs-crosshair'
+              crosshairEl.style.position = 'absolute'
+              crosshairEl.style.left = pointX + 'px'
+              crosshairEl.style.top = (position.top + scrollY + chart.chartArea.top) + 'px'
+              crosshairEl.style.width = '0px'
+              crosshairEl.style.height = (chart.chartArea.bottom - chart.chartArea.top) + 'px'
+              crosshairEl.style.borderLeft = '1px dashed #d9d9d9'
+              crosshairEl.style.pointerEvents = 'none'
+              crosshairEl.style.zIndex = '999'
+
+              document.body.appendChild(crosshairEl)
             }
 
             // Create individual tooltip for each data point
@@ -3377,7 +3402,7 @@
 
               // Sort points by Y position to handle overlaps
               const sortedPoints = [...tooltip.dataPoints].sort((a, b) => a.element.y - b.element.y)
-              
+
               // Track occupied vertical spaces to prevent overlap
               const tooltipPositions: Array<{top: number, bottom: number}> = []
               const tooltipHeight = 24 // Approximate height of tooltip
@@ -3387,6 +3412,10 @@
                 const series = visibleAnalogSeries.value.find(s => s.name === point.dataset.label)
                 const value = point.parsed.y.toFixed(2)
                 const unit = series?.unit || ''
+                const label = point.dataset.label || ''
+
+                // Format display text - hide "Unused" unit
+                const displayText = unit === 'Unused' ? `${label}: ${value}` : `${label}: ${value} ${unit}`
 
                 // Create individual tooltip element
                 const tooltipEl = document.createElement('div')
@@ -3397,30 +3426,30 @@
                 tooltipEl.style.transition = 'all 0.1s ease'
                 tooltipEl.style.zIndex = '1000'
 
-                // Tooltip content - compact, just value and unit
+                // Tooltip content - compact, label with value and unit
                 tooltipEl.innerHTML = `
                   <div style="
                     background: #f5f5f5;
                     color: #000;
                     border: 1px solid #d9d9d9;
                     border-radius: 4px;
-                    padding: 4px 8px;
-                    font-size: 11px;
+                    padding: 3px 6px;
+                    font-size: 10px;
                     font-weight: 500;
                     white-space: nowrap;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
                   ">
-                    ${value} ${unit}
+                    ${displayText}
                   </div>
                 `
 
                 // Position to the right of the data point
                 const pointX = position.left + scrollX + point.element.x
                 const pointY = position.top + scrollY + point.element.y
-                
+
                 // Calculate initial vertical position
                 let tooltipTop = pointY - 12
-                
+
                 // Check for overlaps and adjust position
                 let adjusted = true
                 while (adjusted) {
@@ -3435,7 +3464,7 @@
                     }
                   }
                 }
-                
+
                 // Record this tooltip's position
                 tooltipPositions.push({
                   top: tooltipTop,
