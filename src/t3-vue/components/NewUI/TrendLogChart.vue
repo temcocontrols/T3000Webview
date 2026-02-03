@@ -3307,7 +3307,59 @@
     data: {
       datasets: [] // Will be populated in updateAnalogChart
     },
-    plugins: [], // Removed yAxisUnitsPlugin - units now shown in y-axis titles
+    plugins: [
+      {
+        id: 'yAxisTitleBackground',
+        beforeDraw: (chart: any) => {
+          const ctx = chart.ctx
+          const yAxes = ['y', 'y1', 'y2', 'y3']
+
+          yAxes.forEach(axisId => {
+            const scale = chart.scales[axisId]
+            if (!scale) return
+
+            const titleText = scale.options.title.text
+            if (!titleText) return
+
+            const color = scale.options.title.color
+
+            ctx.save()
+
+            ctx.font = '9px Inter, sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+
+            const centerY = (scale.top + scale.bottom) / 2
+            const boxWidth = 18
+            const x = scale.left + boxWidth / 2 + 2
+
+            const textWidth = ctx.measureText(titleText).width
+            const boxPadding = 4
+            const boxHeight = textWidth + (boxPadding * 2)
+
+            // Draw colored background
+            ctx.fillStyle = color
+            ctx.beginPath()
+            ctx.roundRect(
+              x - boxWidth / 2,
+              centerY - boxHeight / 2,
+              boxWidth,
+              boxHeight,
+              6
+            )
+            ctx.fill()
+
+            // Draw white text
+            ctx.fillStyle = '#ffffff'
+            ctx.translate(x, centerY)
+            ctx.rotate(-Math.PI / 2)
+            ctx.fillText(titleText, 0, 0)
+
+            ctx.restore()
+          })
+        }
+      }
+    ],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -3619,7 +3671,7 @@
           display: true,
           position: 'left' as const,
           title: {
-            display: true,
+            display: false, // Plugin renders with background
             text: '', // Will be set dynamically
             color: '#595959',
             font: {
@@ -3726,7 +3778,7 @@
             display: false
           },
           title: {
-            display: true,
+            display: false, // Plugin renders with background
             text: '', // Will be set dynamically
             color: '#1890ff',
             font: {
@@ -3825,7 +3877,7 @@
             display: false
           },
           title: {
-            display: true,
+            display: false, // Plugin renders with background
             text: '', // Will be set dynamically
             color: '#52c41a',
             font: {
@@ -3910,7 +3962,7 @@
             display: false
           },
           title: {
-            display: true,
+            display: false, // Plugin renders with background
             text: '', // Will be set dynamically
             color: '#fa8c16',
             font: {
