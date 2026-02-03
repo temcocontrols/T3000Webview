@@ -3400,7 +3400,7 @@
                 // Tooltip content - compact, just value and unit
                 tooltipEl.innerHTML = `
                   <div style="
-                    background: white;
+                    background: #f5f5f5;
                     color: #000;
                     border: 1px solid #d9d9d9;
                     border-radius: 4px;
