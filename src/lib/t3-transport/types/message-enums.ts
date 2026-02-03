@@ -77,6 +77,7 @@ export const EntryType = {
   GROUP: 10,      // BAC_GRP (Groups)
   ALARMM: 12,     // BAC_ALARMM (Alarm Monitors)
   ALARMS: 15,     // BAC_ALARMS (Alarm Settings)
+  READ_SETTING_COMMAND: 98,  // Device Settings (Str_Setting_Info - 400 bytes)
 } as const;
 
 export type EntryTypeValue = typeof EntryType[keyof typeof EntryType];
