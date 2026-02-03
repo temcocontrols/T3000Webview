@@ -581,10 +581,15 @@ export const SettingsPage: React.FC = () => {
         throw new Error(result.message);
       }
 
-      setSuccessMessage('Settings refreshed successfully from device');
-
       // Reload settings after refresh
       await fetchSettings();
+
+      setSuccessMessage('Settings refreshed successfully from device');
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
