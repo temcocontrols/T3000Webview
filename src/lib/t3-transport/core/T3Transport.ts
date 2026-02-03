@@ -327,6 +327,45 @@ export class T3Transport {
     });
   }
 
+  /**
+   * Get device settings using Action 17 with READ_SETTING_COMMAND (98)
+   * Reads entire Str_Setting_Info structure (400 bytes) from device
+   *
+   * @param serialNumber - Device serial number
+   * @returns WebViewResponse with settings data
+   */
+  async getDeviceSettings(serialNumber: number): Promise<WebViewResponse> {
+    // Get device info (panelId and objectInstance) from device list
+    const deviceListResponse = await this.getDeviceList();
+
+    const deviceList = Array.isArray(deviceListResponse.data)
+      ? deviceListResponse.data
+      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
+        ? deviceListResponse.data.data
+        : [];
+
+    if (!Array.isArray(deviceList) || deviceList.length === 0) {
+      throw new Error(`No devices found. Response data is not an array or is empty.`);
+    }
+
+    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
+
+    if (!device) {
+      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
+    }
+
+    // Call Action 17 (GET_WEBVIEW_LIST) with entryType=98 (READ_SETTING_COMMAND)
+    // Returns single Str_Setting_Info structure (400 bytes), not an array
+    return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
+      panelId: device.panel_number,
+      serialNumber,
+      entryType: 98,  // READ_SETTING_COMMAND
+      entryIndexStart: 0,
+      entryIndexEnd: 0,
+      objectinstance: device.object_instance
+    });
+  }
+
   // =============================================================================
   // Transport Management Methods
   // =============================================================================
