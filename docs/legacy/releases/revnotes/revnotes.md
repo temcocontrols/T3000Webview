@@ -184,21 +184,17 @@ Mouse hovering displays the full function name.
 
 #### 9. Multi-axis support for up to 4 independent Y-axes, allowing different units (°F, %, PSI, CFM) on one chart.
 
-![9](./pic/2025-12-21/9.png)
+![9](./pic/2025-12-21/9.1.png)
 
-#### 10. Flexible time ranges with quick presets and custom selection. Auto-refresh intervals (5s, 10s, 30s, 1min, 5min) for live monitoring.
+![9](./pic/2025-12-21/9.2.png)
 
-![10_1](./pic/2025-12-21/10_1.png)
+#### 10. Export data to PNG, JPG, CSV, or JSON formats for reports and analysis.
 
-![10_2](./pic/2025-12-21/10_2.png)
+![11_1](./pic/2025-12-21/11.1.png)
 
-#### 11. Export data to PNG, JPG, CSV, or JSON formats for reports and analysis.
+![11_2](./pic/2025-12-21/11.2.png)
 
-![11_1](./pic/2025-12-21/11_1.png)
-
-![11_2](./pic/2025-12-21/11_2.png)
-
-#### 12. Create up to 3 custom views to save different data point configurations for various monitoring scenarios.
+#### 11. Create up to 3 custom views to save different data point configurations for various monitoring scenarios.
 
 ![12_1](./pic/2025-12-21/12_1.png)
 
@@ -208,8 +204,20 @@ Mouse hovering displays the full function name.
 
 ![12_4](./pic/2025-12-21/12_4.png)
 
-![12_5](./pic/2025-12-21/12_5.png)
-
-#### 13. Interactive controls: zoom with mouse wheel, pan by dragging, double-click to reset, legend toggle to show/hide series.
+#### 11. Interactive controls: zoom with mouse wheel, pan by dragging, double-click to reset, legend toggle to show/hide series.
 
 ![13](./pic/2025-12-21/13.png)
+
+## 2026-02-04
+
+#### 1. Fixed digital chart Y-axis label ordering. Labels now display first state at top, second state at bottom (e.g., "Close" at top for "Close/Open" unit, "Off" at top for "Off/On" unit).
+
+#### 2. Fixed digital point tooltip accuracy. Tooltip displays correct state name based on control value (control=0 shows first value, control=1 shows second value in unit pair).
+
+![1](./pic/2026-02-04/1.png)
+
+#### 3. Corrected digital output database storage. Digital outputs now save control field (0/1) instead of value field for accurate historical data.
+
+#### 4. Fixed digital value scaling bug. Digital control values no longer divided by 1000, ensuring correct Y-axis positioning on chart.
+
+#### 5. Added reversed Y-axis for digital charts. Visual layout with Y-axis reversed (reverse: true) provides intuitive state display matching unit string order.
