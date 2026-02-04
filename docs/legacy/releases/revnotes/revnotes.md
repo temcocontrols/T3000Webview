@@ -166,35 +166,35 @@ Mouse hovering displays the full function name.
 
 ![4](./pic/2025-12-21/4.png)
 
-#### 5. Enhanced tooltips with gray background, collision detection, formatted time display, series names, and compact 11px font.
+#### 5. Enhanced tooltips display when hovering over data points. Features gray background, formatted timestamps, series names with values, and compact 11px font. Smart collision detection prevents tooltip overlaps.
 
 ![5](./pic/2025-12-21/5.png)
 
-#### 6. Vertical crosshair line appears on hover, connecting data points to time axis for precise alignment.
+#### 6. Vertical crosshair line appears on hover, spanning from chart top to time axis at bottom. Provides precise time alignment across all visible data series.
 
 ![6](./pic/2025-12-21/6.png)
 
-#### 7. Individual tooltips for each data series with smart positioning to avoid overlaps and chart boundaries.
+#### 7. Multiple tooltips display simultaneously for each data series at the crosshair position. Smart positioning algorithm prevents overlaps with chart boundaries and other tooltips.
 
 ![7](./pic/2025-12-21/7.png)
 
-#### 8. Colored Y-axis labels with rounded bordered boxes (6px radius) and white text. Colors: gray (#595959), blue (#1890ff), green (#52c41a), orange (#fa8c16).
+#### 8. Y-axis labels styled with colored rounded boxes (6px border radius) and white text. Available colors: gray (#595959), blue (#1890ff), green (#52c41a), orange (#fa8c16) for visual distinction.
 
 ![8](./pic/2025-12-21/8.png)
 
-#### 9. Multi-axis support for up to 4 independent Y-axes, allowing different units (°F, %, PSI, CFM) on one chart.
+#### 9. Multi-axis support allows up to 4 independent Y-axes on single chart. Each axis can display different engineering units (°F, %, PSI, CFM) with proper scaling.
 
 ![9](./pic/2025-12-21/9.1.png)
 
 ![9](./pic/2025-12-21/9.2.png)
 
-#### 10. Export data to PNG, JPG, CSV, or JSON formats for reports and analysis.
+#### 10. Export chart data to multiple formats: PNG/JPG for images, CSV for spreadsheets, JSON for data processing and integration.
 
 ![11_1](./pic/2025-12-21/11.1.png)
 
 ![11_2](./pic/2025-12-21/11.2.png)
 
-#### 11. Create up to 3 custom views to save different data point configurations for various monitoring scenarios.
+#### 11. Custom view management allows creating up to 3 saved configurations. Each view stores selected data points, time ranges, and display preferences for quick switching between monitoring scenarios.
 
 ![12_1](./pic/2025-12-21/12_1.png)
 
@@ -204,20 +204,22 @@ Mouse hovering displays the full function name.
 
 ![12_4](./pic/2025-12-21/12_4.png)
 
-#### 11. Interactive controls: zoom with mouse wheel, pan by dragging, double-click to reset, legend toggle to show/hide series.
+#### 12. Interactive chart controls: zoom in/out with mouse wheel, pan by click-and-drag, double-click to reset view, click legend items to show/hide individual data series.
 
 ![13](./pic/2025-12-21/13.png)
 
+#### 13. Keyboard shortcuts and mouse controls for toggling data point visibility. Click checkboxes in left panel to show/hide trend items, or use keyboard navigation to quickly enable/disable multiple series for focused analysis.
+
+![14](./pic/2025-12-21/14.png)
+
 ## 2026-02-04
 
-#### 1. Fixed digital chart Y-axis label ordering. Labels now display first state at top, second state at bottom (e.g., "Close" at top for "Close/Open" unit, "Off" at top for "Off/On" unit).
-
-#### 2. Fixed digital point tooltip accuracy. Tooltip displays correct state name based on control value (control=0 shows first value, control=1 shows second value in unit pair).
+#### 1. Fixed digital chart Y-axis display with reversed configuration and correct label ordering. Y-axis now displays first state at top and second state at bottom (e.g., "Close" at top for "Close/Open" units, "Off" at top for "Off/On" units), providing intuitive visual representation matching unit string definition.
 
 ![1](./pic/2026-02-04/1.png)
 
-#### 3. Corrected digital output database storage. Digital outputs now save control field (0/1) instead of value field for accurate historical data.
+#### 2. Fixed digital point tooltip accuracy. Tooltips now display correct state names based on actual control values (control=0 shows first state, control=1 shows second state from unit pair).
 
-#### 4. Fixed digital value scaling bug. Digital control values no longer divided by 1000, ensuring correct Y-axis positioning on chart.
+![2](./pic/2026-02-04/2.png)
 
-#### 5. Added reversed Y-axis for digital charts. Visual layout with Y-axis reversed (reverse: true) provides intuitive state display matching unit string order.
+#### 3. Corrected digital output data handling. Fixed database storage to properly save control field (0/1) instead of value field for accurate historical trends. Fixed scaling bug where digital control values were incorrectly divided by 1000, ensuring proper chart positioning.
