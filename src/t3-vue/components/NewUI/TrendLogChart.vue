@@ -3747,6 +3747,8 @@
             const max = Math.max(...allValues)
             const range = max - min
 
+            console.log('📊 Y-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: yDatasets.length })
+
             // Enhanced auto-ranging for better visibility
             if (range === 0) {
               // All values same - show ±10% range
@@ -3850,6 +3852,8 @@
             const max = Math.max(...allValues)
             const range = max - min
 
+            console.log('📊 Y1-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: y1Datasets.length })
+
             if (range === 0) {
               scale.min = min * 0.9
               scale.max = max * 1.1
@@ -3870,6 +3874,8 @@
             const roughStep = newRange / 10
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
+
+            console.log('📊 Y1-axis final scale:', { min: scale.min, max: scale.max, stepSize })
           }
         },
         // 🆕 Y2 axis (left side, 3rd unit type)
@@ -8136,7 +8142,17 @@
     // 🆕 FIX: Update chart without blocking UI thread
     // Using 'resize' mode forces Y-axis recalculation and header redraw
     // This ensures dynamic updates when zooming or changing time series
-    analogChartInstance.update('resize')
+
+    // CRITICAL: For custom dates, use 'none' mode to force scale recalculation
+    // 'resize' mode skips afterDataLimits callbacks, causing Y-axis compression
+    // 'none' mode bypasses animations but MUST trigger all scale callbacks
+    if (timeBase.value === 'custom') {
+      console.log('📊 Custom date: Using update("none") to trigger afterDataLimits')
+      LogUtil.Info('📊 Custom date: Using update("none") to trigger afterDataLimits')
+      analogChartInstance.update('none') // No animation but full scale recalculation
+    } else {
+      analogChartInstance.update('resize') // Fast resize for preset timebases
+    }
 
     // Scroll right-panel to bottom by default
     nextTick(() => {
@@ -9358,21 +9374,37 @@
       dataSeries.value = [...dataSeries.value]
       await nextTick()
 
-      // Force charts recreation to ensure proper axis scaling
-      if (analogChartInstance || Object.keys(digitalChartInstances).length > 0) {
-        destroyAllCharts()
-        await nextTick()
-        createCharts()
-        await nextTick()
-        // Update charts with the loaded data
-        updateCharts()
+      // Simply update existing charts with new data and time window - no need to destroy/recreate
+      LogUtil.Debug('= TLChart DataFlow: Updating charts with custom date range data', {
+        seriesCount: dataSeries.value.length,
+        seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
+        totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0),
+        hasAnalogChart: !!analogChartInstance,
+        hasDigitalCharts: Object.keys(digitalChartInstances).length > 0
+      })
 
-        LogUtil.Debug('= TLChart DataFlow: Charts recreated and updated with custom range data', {
-          seriesCount: dataSeries.value.length,
-          seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
-          totalDataPoints: dataSeries.value.reduce((sum, s) => sum + s.data.length, 0)
-        })
+      // If charts don't exist yet, create them
+      if (!analogChartInstance && visibleAnalogSeries.value.length > 0) {
+        LogUtil.Debug('= TLChart DataFlow: Creating analog chart for first time')
+        createAnalogChart()
+        await nextTick()
       }
+
+      // CRITICAL: Directly call updateAnalogChart() instead of async updateCharts()
+      // The async flow (requestAnimationFrame → setTimeout) doesn't complete properly for custom dates
+      // causing afterDataLimits callbacks to never fire, breaking Y-axis scaling
+      if (analogChartInstance) {
+        LogUtil.Debug('= TLChart DataFlow: Directly calling updateAnalogChart() for custom date')
+        await updateAnalogChart()
+      }
+
+      // Also update digital charts if present
+      if (Object.keys(digitalChartInstances).length > 0) {
+        LogUtil.Debug('= TLChart DataFlow: Updating digital charts for custom date')
+        await updateDigitalCharts()
+      }
+
+      LogUtil.Debug('= TLChart DataFlow: Charts updated with custom range data')
     }
   }
 
