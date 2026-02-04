@@ -1548,6 +1548,11 @@
   // 🆕 Chart update debouncing to prevent UI freezing in C++ embedded WebView
   let chartUpdatePending = false
 
+  // 🆕 Gap detection threshold (minutes) - configurable threshold for breaking lines when data gaps occur
+  // Default: 1 minute (reasonable since Action 15 runs every 15s minimum - detects ~4 missed data points)
+  const gapDetectionThreshold = ref(1) // Default: 1 minute
+  const getGapThresholdMs = () => gapDetectionThreshold.value * 60 * 1000
+
   // View-specific series tracking for View 2 & 3
   const viewTrackedSeries = ref({
     2: [] as string[], // View 2: user-selected series for tracking
@@ -7988,18 +7993,43 @@
         await new Promise(resolve => setTimeout(resolve, 0))
       }
 
-      // Clone and sort data
+      // Clone, filter null/undefined values, and sort data
       const sortedData = series.data
         .slice()
+        .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
         .sort((a, b) => a.timestamp - b.timestamp)
         .map(point => ({
           x: point.timestamp,
           y: point.value
         }))
 
+      // 🆕 Detect large gaps and insert null to break line visualization
+      const dataWithGaps: Array<{ x: number; y: number | null }> = []
+      const maxGapMs = getGapThresholdMs()
+
+      for (let i = 0; i < sortedData.length; i++) {
+        dataWithGaps.push(sortedData[i])
+
+        // Check if next point has a large time gap
+        if (i < sortedData.length - 1) {
+          const currentTime = sortedData[i].x
+          const nextTime = sortedData[i + 1].x
+          const gap = nextTime - currentTime
+
+          if (gap > maxGapMs) {
+            // Insert null point to break the line
+            dataWithGaps.push({
+              x: currentTime + gap / 2,
+              y: null
+            })
+          }
+        }
+      }
+
       LogUtil.Debug(`📊 Building dataset for ${series.name}:`, {
         rawDataPoints: series.data.length,
-        sortedDataPoints: sortedData.length,
+        filteredDataPoints: sortedData.length,
+        dataWithGaps: dataWithGaps.length,
         timeRange: sortedData.length > 0 ? {
           first: new Date(sortedData[0].x).toLocaleTimeString(),
           last: new Date(sortedData[sortedData.length - 1].x).toLocaleTimeString()
@@ -8017,7 +8047,7 @@
 
       datasets.push({
         label: series.name,
-        data: sortedData,
+        data: dataWithGaps, // ✅ Use data with gap detection
         borderColor: series.color,
         backgroundColor: series.color + '20',
         borderWidth: 2,
@@ -8029,7 +8059,7 @@
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointStyle: 'circle' as const,
-        spanGaps: false,
+        spanGaps: false, // Keep false - null values will break lines
         yAxisID: yAxisID // ✅ Assign axis here!
       })
     }
@@ -8255,15 +8285,36 @@
 
       const sortedData = series.data
         .slice()
+        .filter(point => point.value !== null && point.value !== undefined) // ✅ Filter invalid values
         .sort((a, b) => a.timestamp - b.timestamp)
         .map(point => ({
           x: point.timestamp,
           y: point.value > 0.5 ? 1.2 : 0.2  // Map to HTML demo range: HIGH=1.2, LOW=0.2
         }))
 
+      // 🆕 Detect large gaps and insert null to break line visualization
+      const dataWithGaps: Array<{ x: number; y: number | null }> = []
+      const maxGapMs = getGapThresholdMs()
+
+      for (let i = 0; i < sortedData.length; i++) {
+        dataWithGaps.push(sortedData[i])
+
+        // Check if next point has a large time gap
+        if (i < sortedData.length - 1) {
+          const gap = sortedData[i + 1].x - sortedData[i].x
+          if (gap > maxGapMs) {
+            // Insert null point to break the line
+            dataWithGaps.push({
+              x: sortedData[i].x + gap / 2,
+              y: null
+            })
+          }
+        }
+      }
+
       chart.data.datasets = [{
         label: series.name,
-        data: sortedData,
+        data: dataWithGaps, // ✅ Use data with gap detection
         borderColor: series.color,
         backgroundColor: 'transparent', // No background fill
         borderWidth: 2,

@@ -166,9 +166,9 @@ class StateStore {
   public readonly globalMsg: Ref<GlobalMsgModel[]> = ref([]);
 
   // Settings and version
-  public readonly devVersion: Ref<string> = ref("V:26.0204.01");
+  public readonly devVersion: Ref<string> = ref("V:26.0205.01");
   public readonly localSettings: Ref<LocalSettings> = ref({
-    version: "V:26.0204.01",
+    version: "V:26.0205.01",
     transform: 0
   });
 
