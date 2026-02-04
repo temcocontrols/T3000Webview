@@ -2160,7 +2160,7 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
-    console.log('🔔 T3000_Data.panelsData watcher TRIGGERED', {
+    LogUtil.Debug('🔔 T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
       isRealTime: isRealTime.value,
@@ -2718,7 +2718,7 @@
 
   // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
-  console.log(`📊 TrendLogChart instance created: ${instanceId}`)
+  LogUtil.Debug(`📊 TrendLogChart instance created: ${instanceId}`)
 
   // Function to set digital chart refs from template
   const setDigitalChartRef = (el: Element | ComponentPublicInstance | null, index: number) => {
@@ -2973,7 +2973,7 @@
     const noConfirmedError = !showLoadingTimeout.value && !hasConnectionError.value
     const result = isLoading.value || (noDataYet && noConfirmedError)
 
-    console.log('🔍 shouldShowLoading:', result, {
+    LogUtil.Debug('🔍 shouldShowLoading:', result, {
       isLoading: isLoading.value,
       noDataYet,
       noConfirmedError,
@@ -3104,7 +3104,7 @@
 
   // Manual refresh function
   const manualRefresh = async () => {
-    console.log('🔄 === MANUAL REFRESH START ===')
+    LogUtil.Debug('🔄 === MANUAL REFRESH START ===')
     LogUtil.Info('🔄 Manual refresh initiated')
 
     // Reset all states
@@ -3115,20 +3115,20 @@
 
     // Clear existing data completely
     dataSeries.value = []
-    console.log('🔄 Step 1: Cleared dataSeries, length:', dataSeries.value.length)
+    LogUtil.Debug('🔄 Step 1: Cleared dataSeries, length:', dataSeries.value.length)
 
     try {
       // Start timeout for this refresh attempt
       startLoadingTimeout()
 
-      console.log('🔄 Step 2: Loading historical data...')
+      LogUtil.Debug('🔄 Step 2: Loading historical data...')
       // Just reload historical data - it will populate the series
       await loadHistoricalDataFromDatabase(true) // Force reload from device
-      console.log('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
+      LogUtil.Debug('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
 
       // 🔧 FIX: Check if chart was destroyed during refresh and recreate it
       if (!analogChartInstance && analogSeriesList.value.length > 0) {
-        console.log('🔧 Recreating analog chart instance after refresh')
+        LogUtil.Debug('🔧 Recreating analog chart instance after refresh')
         createAnalogChart()
         await nextTick()
       }
@@ -3144,19 +3144,19 @@
       // Success - clear timeout and error state
       clearLoadingTimeout()
       hasConnectionError.value = false
-      console.log('🔄 === MANUAL REFRESH SUCCESS ===', {
+      LogUtil.Debug('🔄 === MANUAL REFRESH SUCCESS ===', {
         dataSeriesLength: dataSeries.value.length,
         analogSeriesLength: analogSeriesList.value.length
       })
 
     } catch (error) {
-      console.log('🔄 === MANUAL REFRESH ERROR ===')
+      LogUtil.Debug('🔄 === MANUAL REFRESH ERROR ===')
       LogUtil.Error('❌ Manual refresh failed:', error)
       clearLoadingTimeout()
       hasConnectionError.value = true
       dataSeries.value = [] // Ensure series is cleared on error
 
-      console.log('❌ Error state set:', {
+      LogUtil.Debug('❌ Error state set:', {
         hasConnectionError: hasConnectionError.value,
         isLoading: isLoading.value,
         analogSeriesCount: analogSeriesList.value.length,
@@ -3747,7 +3747,7 @@
             const max = Math.max(...allValues)
             const range = max - min
 
-            console.log('📊 Y-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: yDatasets.length })
+            LogUtil.Debug('📊 Y-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: yDatasets.length })
 
             // Enhanced auto-ranging for better visibility
             if (range === 0) {
@@ -3852,7 +3852,7 @@
             const max = Math.max(...allValues)
             const range = max - min
 
-            console.log('📊 Y1-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: y1Datasets.length })
+            LogUtil.Debug('📊 Y1-axis afterDataLimits:', { min, max, range, valueCount: allValues.length, datasets: y1Datasets.length })
 
             if (range === 0) {
               scale.min = min * 0.9
@@ -3875,7 +3875,7 @@
             const stepSize = niceSteps.find(s => s >= roughStep) || 1
             scale.options.ticks.stepSize = stepSize
 
-            console.log('📊 Y1-axis final scale:', { min: scale.min, max: scale.max, stepSize })
+            LogUtil.Debug('📊 Y1-axis final scale:', { min: scale.min, max: scale.max, stepSize })
           }
         },
         // 🆕 Y2 axis (left side, 3rd unit type)
@@ -4997,7 +4997,7 @@
 
       const response = await ffiApi.ffiGetLoggingData(currentPanelId, currentSN)
 
-      console.log('📊 Action 15 response received:', {
+      LogUtil.Debug('📊 Action 15 response received:', {
         hasResponse: !!response,
         hasData: !!(response && response.data),
         responseType: response?.debug ? 'empty' : 'data',
@@ -5033,7 +5033,7 @@
           item.id
         )
 
-        console.log('📊 Action 15 processed:', {
+        LogUtil.Debug('📊 Action 15 processed:', {
           totalItems: allPanelItems.length,
           validItems: validDataItems.length,
           willUpdate: validDataItems.length > 0,
@@ -5041,11 +5041,11 @@
         })
 
         if (validDataItems.length > 0) {
-          console.log('✅ Calling updateChartWithNewData with', validDataItems.length, 'items')
+          LogUtil.Debug('✅ Calling updateChartWithNewData with', validDataItems.length, 'items')
           updateChartWithNewData(validDataItems)
           // Batch save is done inside updateChartWithNewData - no duplicate call needed
         } else {
-          console.log('⚠️ No valid data items - chart will NOT be updated, only scrolled')
+          LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
         }
 
         lastSyncTime.value = new Date().toLocaleTimeString()
@@ -5053,7 +5053,7 @@
           hasConnectionError.value = false
         }
       } else {
-        console.log('⚠️ Action 15 response is EMPTY - no data property', {
+        LogUtil.Debug('⚠️ Action 15 response is EMPTY - no data property', {
           response: response,
           timestamp: new Date().toLocaleTimeString()
         })
@@ -6663,7 +6663,7 @@
 
         // 🔍 DEBUG: Log value selection for digital outputs
         if (item.digital_analog === 0 && pointId.startsWith('OUT')) {
-          console.log(`🎯 Digital OUTPUT ${pointId}:`, {
+          LogUtil.Debug(`🎯 Digital OUTPUT ${pointId}:`, {
             digital_analog: item.digital_analog,
             control: item.control,
             value: item.value,
@@ -6793,7 +6793,7 @@
     let matched = 0
     let unmatched = 0
 
-    console.log('🔍 updateChartWithNewData matching attempt:', {
+    LogUtil.Debug('🔍 updateChartWithNewData matching attempt:', {
       seriesCount: dataSeries.value.length,
       incomingItemsCount: validDataItems.length,
       firstSeries: dataSeries.value[0] ? {
@@ -6811,7 +6811,7 @@
 
     // 🔎 DEBUG: Show ALL properties of first series to understand structure
     if (dataSeries.value[0]) {
-      console.log('🔎 First series FULL object:', dataSeries.value[0])
+      LogUtil.Debug('🔎 First series FULL object:', dataSeries.value[0])
     }
 
     // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
@@ -6869,7 +6869,7 @@
       )
 
       if (!matchedItem) {
-        console.log(`❌ No match for series ${series.name}:`, {
+        LogUtil.Debug(`❌ No match for series ${series.name}:`, {
           searchingFor: { id: series.id, panelId: series.panelId },
           seriesIndex,
           sampleIncomingIds: validDataItems.slice(0, 3).map(item => ({ id: item.id, pid: item.pid }))
@@ -6882,7 +6882,7 @@
         return
       }
 
-      console.log(`✅ MATCHED series ${series.name}:`, {
+      LogUtil.Debug(`✅ MATCHED series ${series.name}:`, {
         series: { id: series.id, panelId: series.panelId },
         item: { id: matchedItem.id, pid: matchedItem.pid }
       })
@@ -6901,7 +6901,7 @@
 
         // 🔍 DEBUG: Log for digital outputs
         if (matchedItem.id && matchedItem.id.startsWith('OUT')) {
-          console.log(`📊 DISPLAY Digital OUTPUT ${matchedItem.id}:`, {
+          LogUtil.Debug(`📊 DISPLAY Digital OUTPUT ${matchedItem.id}:`, {
             digital_analog: matchedItem.digital_analog,
             control: matchedItem.control,
             value: matchedItem.value,
@@ -6958,7 +6958,7 @@
       if (existingIndex >= 0) {
         // Update existing data point
         series.data[existingIndex] = dataPoint
-        console.log(`🔄 Updated existing point in ${series.name}:`, {
+        LogUtil.Debug(`🔄 Updated existing point in ${series.name}:`, {
           timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
           value: dataPoint.value,
           totalPoints: series.data.length
@@ -6970,7 +6970,7 @@
         // Sort data points by timestamp to maintain chronological order
         series.data.sort((a, b) => a.timestamp - b.timestamp)
 
-        console.log(`➕ Added NEW point to ${series.name}:`, {
+        LogUtil.Debug(`➕ Added NEW point to ${series.name}:`, {
           timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
           value: dataPoint.value,
           totalPoints: series.data.length,
@@ -7447,17 +7447,17 @@
     // 🛡️ CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
     // Even if any error occurs (network, parsing, backend errors), the interval must continue
     try {
-      console.log('⏰ addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
+      LogUtil.Debug('⏰ addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
       // Only add data if we're in real-time mode
       if (!isRealTime.value) {
-        console.log('❌ EXIT: Not in real-time mode')
+        LogUtil.Debug('❌ EXIT: Not in real-time mode')
         return
       }
 
       // Safety check: If no data series exist, skip processing
       if (dataSeries.value.length === 0) {
-        console.log('❌ EXIT: No data series exist')
+        LogUtil.Debug('❌ EXIT: No data series exist')
         return
       }
 
@@ -7465,16 +7465,16 @@
       const monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        console.log('❌ EXIT: No monitor config')
+        LogUtil.Debug('❌ EXIT: No monitor config')
         return
       }
 
       if (!monitorConfigData.inputItems || monitorConfigData.inputItems.length === 0) {
-        console.log('❌ EXIT: No input items in monitor config')
+        LogUtil.Debug('❌ EXIT: No input items in monitor config')
         return
       }
 
-      console.log('✅ All checks passed - calling sendPeriodicBatchRequest')
+      LogUtil.Debug('✅ All checks passed - calling sendPeriodicBatchRequest')
 
       try {
         // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
@@ -7492,9 +7492,9 @@
         }
 
         // Send batch GET_ENTRIES request for ALL items at once
-        console.log('📤 Sending batch request at', new Date().toLocaleTimeString())
+        LogUtil.Debug('📤 Sending batch request at', new Date().toLocaleTimeString())
         await sendPeriodicBatchRequest(monitorConfigData)
-        console.log('📥 Batch request completed, waiting for T3000_Data watcher to process response...')
+        LogUtil.Debug('📥 Batch request completed, waiting for T3000_Data watcher to process response...')
 
         // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
         // which calls updateChartWithNewData() to update dataSeries automatically
@@ -7997,7 +7997,7 @@
           y: point.value
         }))
 
-      console.log(`📊 Building dataset for ${series.name}:`, {
+      LogUtil.Debug(`📊 Building dataset for ${series.name}:`, {
         rawDataPoints: series.data.length,
         sortedDataPoints: sortedData.length,
         timeRange: sortedData.length > 0 ? {
@@ -8115,7 +8115,7 @@
       xScale.min = timeWindow.min
       xScale.max = timeWindow.max
 
-      console.log('⏰ Chart Time Window:', {
+      LogUtil.Debug('⏰ Chart Time Window:', {
         timeBase: timeBase.value,
         windowMin: new Date(timeWindow.min).toLocaleTimeString(),
         windowMax: new Date(timeWindow.max).toLocaleTimeString(),
@@ -8189,7 +8189,7 @@
     // 'resize' mode skips afterDataLimits callbacks, causing Y-axis compression
     // 'none' mode bypasses animations but MUST trigger all scale callbacks
     if (timeBase.value === 'custom') {
-      console.log('📊 Custom date: Using update("none") to trigger afterDataLimits')
+      LogUtil.Debug('📊 Custom date: Using update("none") to trigger afterDataLimits')
       LogUtil.Info('📊 Custom date: Using update("none") to trigger afterDataLimits')
       analogChartInstance.update('none') // No animation but full scale recalculation
     } else {
@@ -9660,10 +9660,10 @@
   }
 
   const startRealTimeUpdates = () => {
-    console.log('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
+    LogUtil.Debug('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
     if (realtimeInterval) {
-      console.log('⚠️ Clearing existing interval:', realtimeInterval)
+      LogUtil.Debug('⚠️ Clearing existing interval:', realtimeInterval)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
@@ -9672,14 +9672,14 @@
     const monitorConfigData = monitorConfig.value
     const dataInterval = monitorConfigData?.dataIntervalMs || updateInterval.value
 
-    console.log('📡 Creating new interval with', dataInterval, 'ms interval')
+    LogUtil.Debug('📡 Creating new interval with', dataInterval, 'ms interval')
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
-    console.log('✅ Interval created - ID:', realtimeInterval)
+    LogUtil.Debug('✅ Interval created - ID:', realtimeInterval)
   }
 
   const stopRealTimeUpdates = () => {
     if (realtimeInterval) {
-      console.log(`🛑 Stopping real-time updates for instance: ${instanceId}`)
+      LogUtil.Debug(`🛑 Stopping real-time updates for instance: ${instanceId}`)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
@@ -9967,7 +9967,7 @@
       return points
     }
 
-    console.log('🔍 CUSTOM DATE PAYLOAD - Extracting points from dataSeries:', {
+    LogUtil.Debug('🔍 CUSTOM DATE PAYLOAD - Extracting points from dataSeries:', {
       totalSeries: dataSeries.value.length,
       seriesTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, unitType: s.unitType }))
     })
@@ -9992,7 +9992,7 @@
             panel_id: series.panelId || deviceParams.panel_id
           })
 
-          console.log('✅ Extracted point (method 1 - direct):', {
+          LogUtil.Debug('✅ Extracted point (method 1 - direct):', {
             name: series.name,
             pointType: series.pointType,
             pointNumber: series.pointNumber,
@@ -10055,7 +10055,7 @@
             panel_id: panelId
           })
 
-          console.log('✅ Extracted point (method 2 - itemType):', {
+          LogUtil.Debug('✅ Extracted point (method 2 - itemType):', {
             name: series.name,
             itemType: itemType,
             result: { point_id: pointId, point_type: pointType, point_index: pointIndex }
@@ -11559,13 +11559,13 @@
 
       // 🆕 CONTINUOUS MONITORING: Listen for page visibility changes to auto-backfill missing data
       document.addEventListener('visibilitychange', handleVisibilityChange)
-      LogUtil.Info('�?TrendLogChart: Continuous monitoring enabled - will backfill data gaps on return')
+      LogUtil.Info('TrendLogChart: Continuous monitoring enabled - will backfill data gaps on return')
 
       // 🆕 DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
-      LogUtil.Info('🗄�?TrendLogChart: Checking database partitions...')
+      LogUtil.Info('TrendLogChart: Checking database partitions...')
       try {
         const partitionResult = await DatabaseConfigAPI.ensurePartitionsOnTrendlogOpen()
-        LogUtil.Info('�?TrendLogChart: Partition check completed', {
+        LogUtil.Info('TrendLogChart: Partition check completed', {
           partitionsChecked: partitionResult.partitions_checked,
           partitionsCreated: partitionResult.partitions_created,
           dataMigratedMB: partitionResult.data_migrated_mb,
@@ -11582,20 +11582,20 @@
       // 🆕 STEP 0: Call Action 0 FIRST to get fresh monitor configuration from device
       // This provides the interval settings (hour_interval_time, minute_interval_time, second_interval_time)
       // that determine how often we should poll with Action 15
-      console.log('═══════════════════════════════════════════════════════════════')
-      console.log('🔄 STEP 0: Calling Action 0 to get fresh monitor configuration')
-      console.log('═══════════════════════════════════════════════════════════════')
+      LogUtil.Debug('═══════════════════════════════════════════════════════════════')
+      LogUtil.Debug('🔄 STEP 0: Calling Action 0 to get fresh monitor configuration')
+      LogUtil.Debug('═══════════════════════════════════════════════════════════════')
 
       // Log full query string
       const fullQueryString = window.location.href
       const queryParams = Object.fromEntries(new URLSearchParams(window.location.hash.split('?')[1] || ''))
-      console.log('📋 Full URL Query String:', fullQueryString)
-      console.log('📋 Parsed Query Parameters:', queryParams)
-      console.log('  - sn (serial_number):', route.query.sn)
-      console.log('  - panel_id:', route.query.panel_id)
-      console.log('  - trendlog_id:', route.query.trendlog_id)
-      console.log('  - all_data:', route.query.all_data ? JSON.parse(decodeURIComponent(route.query.all_data as string)) : null)
-      console.log('─────────────────────────────────────────────────────────────')
+      LogUtil.Debug('📋 Full URL Query String:', fullQueryString)
+      LogUtil.Debug('📋 Parsed Query Parameters:', queryParams)
+      LogUtil.Debug('  - sn (serial_number):', route.query.sn)
+      LogUtil.Debug('  - panel_id:', route.query.panel_id)
+      LogUtil.Debug('  - trendlog_id:', route.query.trendlog_id)
+      LogUtil.Debug('  - all_data:', route.query.all_data ? JSON.parse(decodeURIComponent(route.query.all_data as string)) : null)
+      LogUtil.Debug('─────────────────────────────────────────────────────────────')
 
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
       const urlTrendlogId = route.query.trendlog_id ? parseInt(route.query.trendlog_id as string) : null
@@ -11605,10 +11605,10 @@
           const action0Response = await ffiApi.ffiGetPanelData(urlPanelId)
 
           if (action0Response && action0Response.data) {
-            console.log('✅ Action 0 Response Received')
-            console.log('  - Total items:', action0Response.data?.length)
-            console.log('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
-            console.log('─────────────────────────────────────────────────────────────')
+            LogUtil.Debug('✅ Action 0 Response Received')
+            LogUtil.Debug('  - Total items:', action0Response.data?.length)
+            LogUtil.Debug('  - Looking for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
+            LogUtil.Debug('─────────────────────────────────────────────────────────────')
 
             // Find the specific monitor configuration using trendlog_id from URL
             let matchingMonitor = null
@@ -11624,22 +11624,22 @@
             }
 
             if (matchingMonitor) {
-              console.log('✅ MATCHED TRENDLOG INFO FROM ACTION 0:')
-              console.log('  - FULL MONITOR DATA:', JSON.stringify(matchingMonitor, null, 2))
-              console.log('─────────────────────────────────────────────────────────────')
-              console.log('  - id:', matchingMonitor.id)
-              console.log('  - label:', matchingMonitor.label)
-              console.log('  - index:', matchingMonitor.index)
-              console.log('  - pid:', matchingMonitor.pid)
-              console.log('  - type:', matchingMonitor.type)
-              console.log('  - status:', matchingMonitor.status)
-              console.log('  - num_inputs:', matchingMonitor.num_inputs)
-              console.log('  - an_inputs:', matchingMonitor.an_inputs)
-              console.log('  - INTERVAL SETTINGS:')
-              console.log('    * hour_interval_time:', matchingMonitor.hour_interval_time)
-              console.log('    * minute_interval_time:', matchingMonitor.minute_interval_time)
-              console.log('    * second_interval_time:', matchingMonitor.second_interval_time)
-              console.log('─────────────────────────────────────────────────────────────')
+              LogUtil.Debug('✅ MATCHED TRENDLOG INFO FROM ACTION 0:')
+              LogUtil.Debug('  - FULL MONITOR DATA:', JSON.stringify(matchingMonitor, null, 2))
+              LogUtil.Debug('─────────────────────────────────────────────────────────────')
+              LogUtil.Debug('  - id:', matchingMonitor.id)
+              LogUtil.Debug('  - label:', matchingMonitor.label)
+              LogUtil.Debug('  - index:', matchingMonitor.index)
+              LogUtil.Debug('  - pid:', matchingMonitor.pid)
+              LogUtil.Debug('  - type:', matchingMonitor.type)
+              LogUtil.Debug('  - status:', matchingMonitor.status)
+              LogUtil.Debug('  - num_inputs:', matchingMonitor.num_inputs)
+              LogUtil.Debug('  - an_inputs:', matchingMonitor.an_inputs)
+              LogUtil.Debug('  - INTERVAL SETTINGS:')
+              LogUtil.Debug('    * hour_interval_time:', matchingMonitor.hour_interval_time)
+              LogUtil.Debug('    * minute_interval_time:', matchingMonitor.minute_interval_time)
+              LogUtil.Debug('    * second_interval_time:', matchingMonitor.second_interval_time)
+              LogUtil.Debug('─────────────────────────────────────────────────────────────')
 
               // 🆕 FIX: Create temporary monitor config from Action 0 response
               // This is needed because monitorConfig.value hasn't been set yet (set later at line ~10507)
@@ -11654,7 +11654,7 @@
                 inputItems: matchingMonitor.input || []  // 🔥 FIX: Add inputItems from Action 0 response
               }
 
-              console.log('✅ Created temporary monitor config from Action 0:', tempMonitorConfig)
+              LogUtil.Debug('✅ Created temporary monitor config from Action 0:', tempMonitorConfig)
 
               // Calculate interval using temporary config since monitorConfig.value is still null
               const calculatedIntervalMs = calculateT3000Interval(tempMonitorConfig)
@@ -11663,57 +11663,57 @@
                                       matchingMonitor.minute_interval_time * 60 +
                                       matchingMonitor.second_interval_time)
 
-              console.log('📊 CALCULATED POLLING INTERVAL:')
-              console.log('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
-              console.log('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
+              LogUtil.Debug('📊 CALCULATED POLLING INTERVAL:')
+              LogUtil.Debug('  - Formula: (hour * 3600 + minute * 60 + second) * 1000')
+              LogUtil.Debug('  - Calculation: (' + matchingMonitor.hour_interval_time + ' * 3600 + ' +
                          matchingMonitor.minute_interval_time + ' * 60 + ' +
                          matchingMonitor.second_interval_time + ') * 1000')
-              console.log('  - Raw total seconds:', rawTotalSeconds)
-              console.log('  - Raw total milliseconds:', rawTotalSeconds * 1000)
-              console.log('  - Minimum enforced: 5 seconds (5000 ms) [TESTING]')
-              console.log('  - Final interval (ms):', calculatedIntervalMs)
-              console.log('  - Final interval (seconds):', calculatedIntervalSec)
+              LogUtil.Debug('  - Raw total seconds:', rawTotalSeconds)
+              LogUtil.Debug('  - Raw total milliseconds:', rawTotalSeconds * 1000)
+              LogUtil.Debug('  - Minimum enforced: 5 seconds (5000 ms) [TESTING]')
+              LogUtil.Debug('  - Final interval (ms):', calculatedIntervalMs)
+              LogUtil.Debug('  - Final interval (seconds):', calculatedIntervalSec)
               if (rawTotalSeconds * 1000 < 5000) {
-                console.log('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (5s), using 5s [TESTING]')
+                LogUtil.Debug('  ⚠️  NOTE: Configured interval (' + rawTotalSeconds + 's) is less than minimum (5s), using 5s [TESTING]')
               }
-              console.log('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
-              console.log('═══════════════════════════════════════════════════════════════')
+              LogUtil.Debug('  - Action 15 will be called every', calculatedIntervalSec, 'seconds')
+              LogUtil.Debug('═══════════════════════════════════════════════════════════════')
 
               // 🔥 CRITICAL FIX: Set monitorConfig.value to tempMonitorConfig so startRealTimeUpdates() can access it
-              console.log('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
+              LogUtil.Debug('🔥 SETTING monitorConfig.value to tempMonitorConfig to enable polling...')
               if (!monitorConfig.value) {
                 monitorConfig.value = tempMonitorConfig
-                console.log('✅ monitorConfig.value set from tempMonitorConfig')
+                LogUtil.Debug('✅ monitorConfig.value set from tempMonitorConfig')
               } else {
                 // If it already exists, update the interval fields
                 monitorConfig.value.hour_interval_time = matchingMonitor.hour_interval_time || 0
                 monitorConfig.value.minute_interval_time = matchingMonitor.minute_interval_time || 0
                 monitorConfig.value.second_interval_time = matchingMonitor.second_interval_time || 0
-                console.log('✅ Updated existing monitorConfig.value with interval settings')
+                LogUtil.Debug('✅ Updated existing monitorConfig.value with interval settings')
               }
 
               // 🆕 FORCE START: Always start realtime updates after setting monitorConfig
-              console.log('🔄 FORCING startRealTimeUpdates after Action 0 response...')
-              console.log('  - isRealTime.value:', isRealTime.value)
-              console.log('  - monitorConfig.value:', monitorConfig.value)
-              console.log('  - typeof startRealTimeUpdates:', typeof startRealTimeUpdates)
-              console.log('  - startRealTimeUpdates function:', startRealTimeUpdates)
-              console.log('  - Calling startRealTimeUpdates() now...')
+              LogUtil.Debug('🔄 FORCING startRealTimeUpdates after Action 0 response...')
+              LogUtil.Debug('  - isRealTime.value:', isRealTime.value)
+              LogUtil.Debug('  - monitorConfig.value:', monitorConfig.value)
+              LogUtil.Debug('  - typeof startRealTimeUpdates:', typeof startRealTimeUpdates)
+              LogUtil.Debug('  - startRealTimeUpdates function:', startRealTimeUpdates)
+              LogUtil.Debug('  - Calling startRealTimeUpdates() now...')
 
               try {
                 startRealTimeUpdates()
-                console.log('✅ startRealTimeUpdates() returned successfully')
-                console.log('  - realtimeInterval is now:', realtimeInterval)
+                LogUtil.Debug('✅ startRealTimeUpdates() returned successfully')
+                LogUtil.Debug('  - realtimeInterval is now:', realtimeInterval)
               } catch (error) {
                 console.error('❌ ERROR calling startRealTimeUpdates():', error)
               }
             } else {
               console.warn('⚠️ NO MATCHING MONITOR FOUND IN ACTION 0 RESPONSE')
-              console.log('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
-              console.log('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
-              console.log('  - Available monitors (FULL DATA):')
+              LogUtil.Debug('  - Searched for trendlog_id:', urlTrendlogId, '(index:', urlTrendlogId, ')')
+              LogUtil.Debug('  - Total monitors returned:', action0Response.data?.filter((d: any) => d.type === 'MON').length)
+              LogUtil.Debug('  - Available monitors (FULL DATA):')
               action0Response.data?.filter((d: any) => d.type === 'MON').forEach((mon: any) => {
-                console.log('    Monitor:', JSON.stringify({
+                LogUtil.Debug('    Monitor:', JSON.stringify({
                   id: mon.id,
                   index: mon.index,
                   label: mon.label,
@@ -11723,21 +11723,21 @@
                   second_interval_time: mon.second_interval_time
                 }, null, 2))
               })
-              console.log('  - Using DEFAULT interval: 15 seconds (15000 ms)')
-              console.log('═══════════════════════════════════════════════════════════════')
+              LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+              LogUtil.Debug('═══════════════════════════════════════════════════════════════')
             }
           }
         } catch (error) {
           console.error('❌ ACTION 0 CALL FAILED')
           console.error('  - Error:', error)
-          console.log('  - Using DEFAULT interval: 15 seconds (15000 ms)')
-          console.log('═══════════════════════════════════════════════════════════════')
+          LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+          LogUtil.Debug('═══════════════════════════════════════════════════════════════')
         }
       } else {
         console.warn('⚠️ NO PANEL_ID IN URL')
-        console.log('  - Cannot call Action 0 without panel_id')
-        console.log('  - Using DEFAULT interval: 15 seconds (15000 ms)')
-        console.log('═══════════════════════════════════════════════════════════════')
+        LogUtil.Debug('  - Cannot call Action 0 without panel_id')
+        LogUtil.Debug('  - Using DEFAULT interval: 15 seconds (15000 ms)')
+        LogUtil.Debug('═══════════════════════════════════════════════════════════════')
       }
 
       // Initialize monitor configuration
@@ -12424,7 +12424,7 @@
   // 🔥 HMR (Hot Module Reload) Cleanup - prevent multiple intervals when saving file
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
-      console.log('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
+      LogUtil.Debug('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
       stopRealTimeUpdates()
       destroyAllCharts()
       if (timebaseChangeTimeout) {
