@@ -4130,7 +4130,11 @@
                 return new Date(timestamp).toLocaleString()
               },
               label: (context: any) => {
-                const stateIndex = context.parsed.y === 1 ? 1 : 0
+                // context.parsed.y contains the actual control value (0 or 1)
+                // control=0 → digitalStates[0] (first value in pair)
+                // control=1 → digitalStates[1] (second value in pair)
+                const controlValue = context.parsed.y
+                const stateIndex = controlValue > 0.5 ? 1 : 0
                 const stateText = digitalStates[stateIndex]
                 return `   ${stateText}`
               }
@@ -4206,6 +4210,7 @@
           y: {
             min: 0,
             max: 1.4,
+            reverse: true, // CRITICAL: Reverse Y-axis so control=0 appears at TOP, control=1 at BOTTOM
             display: true, // Show y-axis for digital charts
             grid: {
               color: '#F0F0F0',
@@ -4224,6 +4229,9 @@
               align: 'end',
               maxTicksLimit: 2, // Limit to only the two states
               callback: function (value: any) {
+                // With reverse=true: value=0 appears at TOP, value=1 at BOTTOM
+                // control=0 → digitalStates[0] (first value) → at TOP (e.g., "Close")
+                // control=1 → digitalStates[1] (second value) → at BOTTOM (e.g., "Open")
                 const label = value > 0.5 ? digitalStates[1] : digitalStates[0];
                 return label.padStart(5, ' '); // Fixed width for alignment
               }
@@ -5188,7 +5196,7 @@
             if (dataSeries.value[index] && itemData.length > 0) {
               const existingData = dataSeries.value[index].data || []
               dataSeries.value[index].data = mergeAndDeduplicate(existingData, itemData)
-              LogUtil.Info(`📡 Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`)
+              LogUtil.Info(`📡 Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`);
             }
           })
           updateCharts()
@@ -6645,14 +6653,32 @@
         })
         */
 
+        // 🎯 CRITICAL FIX: Use correct value field based on digital_analog
+        // Digital outputs (digital_analog=0): use 'control' field
+        // Analog outputs (digital_analog=1): use 'value' field
+        // This must match the display logic to ensure database consistency
+        const valueToStore = item.digital_analog === 1
+          ? (item.value || 0)      // Analog: use 'value' field
+          : (item.control || 0);   // Digital: use 'control' field (per Str_out_point struct)
+
+        // 🔍 DEBUG: Log value selection for digital outputs
+        if (item.digital_analog === 0 && pointId.startsWith('OUT')) {
+          console.log(`🎯 Digital OUTPUT ${pointId}:`, {
+            digital_analog: item.digital_analog,
+            control: item.control,
+            value: item.value,
+            valueToStore,
+            auto_manual: item.auto_manual
+          })
+        }
+
         return {
-          // Required fields
           serial_number: currentSN,
           panel_id: item.pid || currentPanelId,
           point_id: pointId,
           point_index: pointIndex,
           point_type: pointType,
-          value: String(item.value || 0),
+          value: String(valueToStore), // Store correct field based on digital_analog
           // Optional fields - with enhanced logic
           range_field: item.range ? String(item.range) : undefined,
           digital_analog: item.digital_analog ? String(item.digital_analog) : undefined,
@@ -6861,18 +6887,34 @@
         item: { id: matchedItem.id, pid: matchedItem.pid }
       })
 
-      // 🎯 VALUE SELECTION: Use correct field based on digital_analog
+      // 🎯 VALUE SELECTION: Use correct field based on digital_analog (per C struct definition)
+      // digital_analog: 0=digital, 1=analog
+      // For digital (digital_analog=0): use 'control' field (0=off, 1=on)
+      // For analog (digital_analog=1): use 'value' field (int32_t)
       let actualValue;
       if (matchedItem.digital_analog === 1) {
         // Analog: use 'value' field
         actualValue = matchedItem.value;
       } else {
-        // Digital: use 'control' field
+        // Digital: use 'control' field (per Str_out_point struct)
         actualValue = matchedItem.control;
+
+        // 🔍 DEBUG: Log for digital outputs
+        if (matchedItem.id && matchedItem.id.startsWith('OUT')) {
+          console.log(`📊 DISPLAY Digital OUTPUT ${matchedItem.id}:`, {
+            digital_analog: matchedItem.digital_analog,
+            control: matchedItem.control,
+            value: matchedItem.value,
+            actualValue,
+            seriesName: series.name
+          })
+        }
       }
 
       const rawValue = actualValue || 0
-      const scaledValue = scaleValueIfNeeded(rawValue)
+      // 🎯 CRITICAL: Don't scale digital values - control field is already 0 or 1
+      // Only scale analog values (which are multiplied by 1000 in database)
+      const scaledValue = matchedItem.digital_analog === 0 ? rawValue : scaleValueIfNeeded(rawValue)
 
       // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
       if (rawValue >= 1000) {
